@@ -25,6 +25,7 @@ import { BnSentenceScene } from "./game/BnSentenceScene";
 import { GrammarScene } from "./game/GrammarScene";
 import { BgsFactsScene } from "./game/BgsFactsScene";
 import { BnColorsScene } from "./game/BnColorsScene";
+import { BdMoneyScene } from "./game/BdMoneyScene";
 import { EnPhonicsScene } from "./game/EnPhonicsScene";
 import { AddSub100Scene } from "./game/AddSub100Scene";
 import { NovaScene } from "./game/NovaScene";
@@ -51,7 +52,7 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "11 Aug 2026 · v9 (visual world map + themed lands)";
+const APP_BUILD = "11 Aug 2026 · v10 (Taka Tap: ৳ money game)";
 
 type Screen = "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
@@ -1709,6 +1710,7 @@ export default function App() {
         RocketMultScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FractionMatchScene,
         PlaceValueScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
         AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
+        BdMoneyScene,
         AddSub100Scene,
         FrogHopScene, MemoryPairsScene, BalloonPopScene, ClockTimeScene, BalanceScene,
         CountingSongScene,

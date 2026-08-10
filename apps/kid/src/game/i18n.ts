@@ -140,6 +140,9 @@ const EN: Record<string, Entry> = {
   titleBgs: "Bangladesh Facts",
   titleFrogHop: "🐸 Frog Hop",
   titleMemory: "🃏 Memory Pairs",
+  titleBdMoney: "Taka Tap",
+  tapMoney: "Tap the right money!",
+  moneyMake: "Which makes this much?",
 };
 
 const BN: Record<string, Entry> = {
@@ -269,6 +272,9 @@ const BN: Record<string, Entry> = {
   titleBgs: "বাংলাদেশ পরিচিতি",
   titleFrogHop: "🐸 ব্যাঙের লাফ",
   titleMemory: "🃏 মেমরি জোড়া",
+  titleBdMoney: "টাকা চিনি",
+  tapMoney: "সঠিক টাকা খুঁজে বের করো!",
+  moneyMake: "কোনগুলো মিলে এই টাকা হয়?",
 };
 
 /** The one translation function — use it for EVERY user-facing string. */

@@ -1,6 +1,16 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🪙 TAKA TAP — NEW BANGLA MONEY GAME (৳ চিনি / make amounts) 11 Aug 2026 ✅ (user: "Do actual feature adding not marketing")
+A real feature, not docs: a brand-new learning game that fills a genuine curriculum gap — there was **zero money/taka content** in the 43-skill catalog, yet counting ৳ is NCTB class-1 math.
+- **New skill** `bd-taka` (band 2, math, class 1): *Bangla money / টাকা চিনি* — recognize ৳ notes & coins and make amounts. `nctbCode c1-math-6` (was unused), seeded in `apps/api/app/seed.py`.
+- **New game** `game-bdtaka` → **new scene `apps/kid/src/game/BdMoneyScene.ts`** ("BdMoney", registered in App.tsx scene array + `GAME_SCENES`).
+  - **Mode 1 · Recognize** (levels 1–3): "Which is ৳৫?" — tap the right ৳ denomination. Real BD money: ৳১/২/৫ coins (gold) + ৳১০/২০/৫০/১০০ notes (colored). Pool grows 3→4→5 tiles.
+  - **Mode 2 · Make an amount** (levels 4–6): "Which makes ৳৭?" — tap the **stacked coin combo** that adds up (৫+২ = ৭), teaching "make amounts" with 2–3 real coins. 6/8/10 tiles, sums 6–12.
+  - Bangla digits in BN mode (৳৫), Latin in EN (৳5); speaks the amount aloud ("পাঁচ টাকা" / "five taka") in the app's language; full hint ladder, round meter, coin-stack sparkle celebration, safe-area aware, mobile-first.
+- **i18n** — `titleBdMoney`/`tapMoney`/`moneyMake` added to BOTH EN + BN (`i18n.ts`), audit-verified.
+- **✅ Verified:** `tsc --noEmit` clean · `audit.mjs` clean (**44 skills / 35 games / 35 scenes**) · full Oracle standup — Scope Guardian flagged the new file → committed → re-run 35/35 CLEAN. v10 stamp. Deployed live.
+
 ## 🚀 PHASE 2 — BD PARENT-GROUP SEEDING + KINDERGARTEN PILOT KIT 11 Aug 2026 ✅ (oracle picked next lever: group-seeding)
 The Oracle Team's next topic, per the growth plan (Phase 0 stable URL ✓ · Phase 1 share loop ✓ · **Phase 2 = seed**). The deferred voice-recording item was **superseded** by the on-device neural voice (8 Aug) and needs Hasan's elder girl to physically record — so the growth lever was the pick.
 - **`pitch/phase2_seeding_kit.md`** — ready-to-send, honest, zero-ads, pet-project framing:
