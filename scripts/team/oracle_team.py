@@ -13,6 +13,11 @@ Usage:
     python3 scripts/team/oracle_team.py            # run one standup (exit 0 ok, 1 = failures)
     python3 scripts/team/oracle_team.py --silent   # no board, just learn report
     python3 scripts/team/oracle_team.py --once-now # skip memory (for CI-style local use)
+    python3 scripts/team/oracle_team.py --no-page  # dev mode: never page (learn + board still run)
+
+Dev note: during feature builds the working tree is intentionally mid-edit, so the
+Scope Guardian legitimately ✖s uncommitted files. Use --no-page for those runs — the
+DAILY launchd job (full paging) is the one that should page Hasan for REAL failures.
 
 Launchd: com.tresha.oracle-team runs this daily (StartInterval 86400).
 """
@@ -27,6 +32,7 @@ SECURITY = Path.home() / ".tresha" / "data" / "security"
 MEM_API = "http://127.0.0.1:8765"
 SILENT = "--silent" in sys.argv
 SKIP_MEM = "--once-now" in sys.argv
+NO_PAGE = "--no-page" in sys.argv
 TODAY = date.today().isoformat()
 
 results = []  # {layer, role, name, status, detail}
@@ -545,8 +551,10 @@ def main():
         except Exception as e:
             print(f"⚠ mem learn failed: {e}")
 
-    # ── page Hasan on real failures (✖) ──
-    _page([r for r in results if r["status"] == "fail"])
+    # ── page Hasan on real failures (✖). Dev runs use --no-page (mid-edit trees
+    #    legitimately have unowned files — the daily launchd job pages for real).
+    if not NO_PAGE:
+        _page([r for r in results if r["status"] == "fail"])
 
     return 0 if not [r for r in results if r["status"] == "fail"] else 1
 
