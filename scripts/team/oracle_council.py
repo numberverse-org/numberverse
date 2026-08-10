@@ -26,7 +26,7 @@ for a in sys.argv:
     if a.startswith("--weeks"):
         LOOKBACK_WEEKS = int(a.split("=")[1])
 
-LAYERS = ["🧠 Oracle", "🛠️ Eng", "🛡️ Trust", "🎨 Content", "🚀 Growth"]
+LAYERS = ["🧠 Oracle", "🛠️ Eng", "🛡️ Trust", "🎨 Content", "🚀 Growth", "⚖️ Judge", "👁️ Visual"]
 
 def mem_list(module: str):
     try:

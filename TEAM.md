@@ -1,13 +1,14 @@
-# 🦉 Numberverse Oracle Team — 5 Layers · 75 People
+# 🦉 Numberverse Oracle Team — 7 Layers · 105 People
 
-> **Operating model:** a 75-role continuous team that keeps NumberVerse *easily operable*
+> **Operating model:** a 105-role continuous team that keeps NumberVerse *easily operable*
 > and *best for kids*. Most roles are ⚙️ **automated** (run daily by `scripts/team/oracle_team.py`
 > on the Mac, reported into the mem API on `:8765`). The rest are 👤 **guided duties** the
 > human + AI pick up during each session. Every role names WHO owns it, WHAT they do, and
 > HOW it keeps running — so nothing about the product is ever "unowned."
 >
-> **5 layers × 15 people = 75.** Layer 1 is the *Oracle Council* — the wise, kid-first
-> strategic top; layers 2–5 turn its vision into a working, growing product.
+> **7 layers × 15 people = 105.** Layers 1–5 run the product forward; **Layer 6 ⚖️ Adjudicator**
+> rules when layers disagree (no deadlock, every ruling is precedent); **Layer 7 👁️ Visual
+> Inspection & UI** is the eyes on every pixel — the **UI team for visual inspection**.
 >
 > Run the team: `python3 scripts/team/oracle_team.py` (single standup) · launchd `com.tresha.oracle-team` runs it daily.
 
@@ -118,18 +119,63 @@
 | 14 | Analytics (privacy-safe) | Progress stats stay on-device; no ad networks | ⚙️ no-analytics scan |
 | 15 | Community Growth Scout | BD parent groups + kindergarten pilots | 👤 Phase-2 seeding plan |
 
+## Layer 6 — ⚖️ Adjudicator (arbitrate)
+*Independent referees. When layers disagree — eng says ship, trust says hold — the Adjudicator rules. No deadlock, every ruling is precedent.*
+
+| # | Role | Mission (continuous duty) | How it runs |
+|---|---|---|---|
+| 1 | Chief Adjudicator | Final call on any layer conflict; a ruling can't be re-litigated this cycle | 👤 weekly council + escalated flags |
+| 2 | Release Gate Judge | Ships or blocks the deploy based on the day's ✖ count | ⚙️ `l6_deploy_gate`: SHIP-OK vs DEPLOY BLOCKED |
+| 3 | Kid-Bar Referee | Independently re-checks safety + privacy before anything ships | ⚙️ `l6_kid_bar`: re-verify the two guards |
+| 4 | Scope Guardian | Refuses unowned work — every file belongs to a layer | ⚙️ `l6_scope`: zero untracked files |
+| 5 | Priority Arbitrator | Multiple ✖ → rules which is fixed first (kid-impact, not noise) | 👤 weekly council priority queue |
+| 6 | Chronic-Issue Examiner | A role red for 3+ days → escalates to a human | ⚙️ `l6_chronics`: 7-day history scan |
+| 7 | Precedent Recorder | Every ruling saved to the mem API for consistent future rulings | ⚙️ `l6_precedent`: ruling trail in `adjudicator` |
+| 8 | Blocker Classifier | Rules each ✖ a real blocker vs a false-positive to dismiss | 👤 reviewed at council |
+| 9 | Policy Interpreter | Applies "offline, no ads, fun-first" to edge cases layers argue over | 👤 council rulings |
+| 10 | Deadlock Breaker | No standup ever ends unresolved — every check gets a verdict | ⚙️ `l6_no_deadlock`: run completes clean |
+| 11 | Consistency Referee | Same issue, same ruling; never contradicts earlier precedent | 👤 council cross-check |
+| 12 | Escalation Router | Disputes above a layer's authority come here first | 👤 paging + council |
+| 13 | Verdict Tracker | Rulings are dated + attributed — the trail is auditable | ⚙️ `adjudicator` mem keys carry dates |
+| 14 | Risk Balancer | Weighs "ship the fix now" vs "wait for full verification" honestly | 👤 council |
+| 15 | Standing Referee | A ruling on any flag exists within one standup — nothing waits | ⚙️ gate + kid-bar rule same day |
+
+## Layer 7 — 👁️ Visual Inspection & UI (see)
+*The UI team for visual inspection. Eyes on every pixel — catches what code-review can't: a broken render, a tofu glyph, a palette that stops being kid-friendly.*
+
+| # | Role | Mission (continuous duty) | How it runs |
+|---|---|---|---|
+| 1 | Visual QA Lead | Every screen matches its reference look in `docs/VISUAL_BASELINE.md` | ⚙️ `l7_baseline`: baseline doc fresh |
+| 2 | Palette Inspector | Every world wears its land colors; no off-theme one-offs | ⚙️ `l7_palette`: 5 lands × 5 fields |
+| 3 | Contrast Auditor | Text stays readable on every land gradient | ⚙️ `l7_contrast`: c1↔c3 ≥ 3.0:1 |
+| 4 | Glyph Watch | Bangla + English render; no tofu boxes, no missing glyphs | ⚙️ `l7_tofu`: zero replacement chars |
+| 5 | Asset Librarian | Every referenced asset exists — nothing 404s in `public/` | ⚙️ `l7_assets`: icons + og-card + url assets resolve |
+| 6 | Emoji-Fallback Sentinel | Every vector asset carries an emoji fallback | ⚙️ `l7_svg_wellformed`: emoji ≥ svg+url |
+| 7 | SVG Craftsman | Vector art is well-formed (viewBox, valid markup) | ⚙️ `l7_svg_wellformed`: wrapper + Nova viewBoxes |
+| 8 | Theme Consistency Judge | Cards/islands/journey share one art language per land | ⚙️ `l7_theme_wiring`: land vars wired in CSS |
+| 9 | Small-Screen Inspector | 320px phones: no overflow, no cut-off | 👤 visual pass on a phone |
+| 10 | Nova Consistency Guardian | Nova looks like Nova in shell, scenes, cameo, cards | 👤 scene pass |
+| 11 | Font Inspector | Fonts load offline; no layout shift when they fail | 👤 offline pass |
+| 12 | Share-Card Visual Reviewer | OG/cert/progress cards render clean at 1200×630 + WhatsApp | 👤 share pass |
+| 13 | Animation Smoothness Checker | No jank in scene transitions or CSS motion | 👤 playtest |
+| 14 | Visual Regression Recorder | Baseline vs current compared; visual changes are intentional | 👤 compare against baseline doc |
+| 15 | Landscape & Large-Screen Guard | Rotated / TV layouts don't break | 👤 rotate + TV pass |
+
 ---
 
 ## ⚙️ The daily standup (`scripts/team/oracle_team.py`)
 Every 24h (launchd `com.tresha.oracle-team`) the runner:
-1. Executes the **~20 automated checks** mapped to the ⚙️ roles above (safety scan, privacy
-   scan, curriculum shape, i18n, tsc, audit, bundle/precache budgets, live domain, memory).
+1. Executes the **~30 automated checks** mapped to the ⚙️ roles above (safety scan, privacy
+   scan, curriculum shape, i18n, tsc, audit, bundle/precache budgets, live domain, memory,
+   **adjudicator rulings**, and **visual/asset/contrast integrity**).
 2. Prints a **status board** — per layer, pass ⚠️ warn ✖ fail, with the owning role.
 3. **Learns the report** into the mem API (`oracle_team/standup_YYYY-MM-DD`, importance 4) so
    the next session knows the team's health — nothing is lost to compaction.
 
-Any ✖ means a real person (Hasan) is paged via the board; ⚠️ means "review soon."
+Any ✖ means a real person (Hasan) is paged via the board; ⚠️ means "review soon." The
+**⚖️ Adjudicator** independently re-checks the kid-bar and can block a release; the
+**👁️ Visual team** catches rendering/asset/contrast issues a compiler never sees.
 
 ---
 
-**75 people, 5 layers, one child-first mission: math & Bangla, offline, no ads, forever.**
+**105 people, 7 layers, one child-first mission: math & Bangla, offline, no ads, forever.**

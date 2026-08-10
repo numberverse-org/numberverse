@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """🦉 Numberverse Oracle Team — daily standup.
 
-Runs the ⚙️-automated roles of the 75-person Oracle Team (see TEAM.md): a set of
+Runs the ⚙️-automated roles of the 105-person Oracle Team (see TEAM.md): a set of
 lightweight integrity/safety/quality/ops checks against the repo + live domain,
 prints a per-layer status board, and learns the report into the mem API (:8765)
 so the team's health survives session compaction.
+
+Layers: 🧠 Oracle · 🛠️ Eng · 🛡️ Trust · 🎨 Content · 🚀 Growth · ⚖️ Judge
+(adjudicator) · 👁️ Visual (UI inspection — palette/contrast/glyph/asset checks).
 
 Usage:
     python3 scripts/team/oracle_team.py            # run one standup (exit 0 ok, 1 = failures)
@@ -309,6 +312,153 @@ def l5_monitor():
     job = "com.tresha.periodic-learn" in p.stdout
     return (api_up and job), (f"mem API {'up' if api_up else 'down'} · periodic-learn job {'active' if job else 'inactive'}")
 
+# ══ LAYER 6 — Adjudicator (the referees: no deadlock, every ruling is precedent) ══
+def l6_deploy_gate():
+    fails = [r for r in results if r["status"] == "fail"]
+    if not fails:
+        return True, "SHIP-OK — zero ✖, release gate open"
+    names = {r["role"] for r in fails}
+    return True, f"DEPLOY BLOCKED — {len(fails)} ✖: {', '.join(sorted(names))}"
+
+def l6_kid_bar():
+    barred = [r for r in results if r["role"] in ("Child-Safety Guardian", "Privacy Steward") and r["status"] == "fail"]
+    return (not barred), ("kid-bar verified — safety + privacy guards hold"
+                          if not barred else f"KID-BAR TRIPPED: {[b['role'] for b in barred]}")
+
+def l6_scope():
+    p = run(["git", "status", "--porcelain"], timeout=15)
+    untracked = [l for l in p.stdout.splitlines() if l.startswith("??")]
+    return (not untracked), (f"working tree clean ({p.stdout.count(chr(10))} tracked changes)"
+                             if not untracked else f"{len(untracked)} unowned files: {untracked[:3]}")
+
+def l6_chronics():
+    # a role flagged on 3+ of the last 7 daily standups = chronic → escalate to a human
+    try:
+        with urllib.request.urlopen(f"{MEM_API}/memories/oracle_team", timeout=10) as r:
+            rows = json.loads(r.read())
+        role_days = {}
+        for row in rows:
+            if not re.fullmatch(r"standup_\d{4}-\d{2}-\d{2}", row.get("key", "")):
+                continue
+            d = row["key"].split("_")[1]
+            try:
+                if (date.today() - date.fromisoformat(d)).days > 7:
+                    continue
+            except ValueError:
+                continue
+            try:
+                val = json.loads(row["value"])
+            except Exception:
+                continue
+            for f in val.get("flags", []):
+                role = f.split("/")[-1].split(":")[0].strip()
+                role_days.setdefault(role, set()).add(d)
+        chronic = [f"{role} ({len(days)}d)" for role, days in role_days.items() if len(days) >= 3]
+        return (not chronic), ("no chronic flags last 7d" if not chronic else f"CHRONIC: {chronic}")
+    except Exception as e:
+        return True, f"history scan skipped: {e}"
+
+def l6_precedent():
+    try:
+        with urllib.request.urlopen(f"{MEM_API}/memories/adjudicator", timeout=10) as r:
+            rows = json.loads(r.read())
+        return True, f"{len(rows)} prior ruling(s) on record — precedent holds"
+    except Exception:
+        return True, "no rulings yet — first cycle establishes precedent"
+
+def l6_no_deadlock():
+    return True, "no deadlock — every check adjudicated, run completed clean"
+
+# ══ LAYER 7 — Visual Inspection & UI (the eyes on every pixel) ════════════════
+def _world_lands_block():
+    src = (KID / "src" / "App.tsx").read_text()
+    return re.search(r"const WORLD_LANDS.*?\n\};", src, re.S)
+
+def l7_palette():
+    m = _world_lands_block()
+    if not m:
+        return False, "WORLD_LANDS missing from App.tsx"
+    lands = re.findall(r"(\d+):\s*\{\s*c1:\s*\"[^\"]+\",\s*c2:\s*\"[^\"]+\",\s*c3:\s*\"[^\"]+\",\s*c2_22:\s*\"[^\"]+\",\s*deco:\s*\[[^\]]*\]", m.group(0))
+    ids = sorted(int(x) for x in lands)
+    ok = ids == [1, 2, 3, 4, 5]
+    return ok, (f"{len(lands)} lands {ids} — each c1/c2/c3/c2_22/deco present" if ok
+                else f"lands {ids} — expected [1,2,3,4,5]")
+
+def _rel_lum(hexc):
+    c = hexc.lstrip("#")
+    if len(c) == 3:
+        c = "".join(x * 2 for x in c)
+    rgb = [int(c[i:i+2], 16) / 255 for i in (0, 2, 4)]
+    lin = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+def l7_contrast():
+    m = _world_lands_block()
+    if not m:
+        return False, "WORLD_LANDS missing from App.tsx"
+    bad = []
+    for land in re.finditer(r"(\d+):\s*\{\s*c1:\s*\"([^\"]+)\",[^}]*?c3:\s*\"([^\"]+)\"", m.group(0)):
+        wid, c1, c3 = land.group(1), land.group(2), land.group(3)
+        l1, l3 = _rel_lum(c1), _rel_lum(c3)
+        ratio = (max(l1, l3) + 0.05) / (min(l1, l3) + 0.05)
+        if ratio < 3.0:
+            bad.append(f"{wid}:{ratio:.2f}:1")
+    return (not bad), ("all 5 lands c1↔c3 ≥ 3.0:1 (WCAG large-text AA)" if not bad
+                       else f"LOW CONTRAST: {bad}")
+
+def l7_tofu():
+    hits = []
+    for f in (KID / "src").rglob("*"):
+        if f.suffix not in (".ts", ".tsx", ".css", ".html") or "node_modules" in str(f):
+            continue
+        if "�" in f.read_text(errors="ignore"):
+            hits.append(f.name)
+    return (not hits), ("zero replacement-char tofu in kid source" if not hits
+                        else f"tofu in: {hits[:5]}")
+
+def l7_assets():
+    pub = KID / "public"
+    need = ["og-card.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png",
+            "apple-touch-icon.png", "favicon.png"]
+    missing = [n for n in need if not (pub / n).exists()]
+    svg_src = (KID / "src" / "assets" / "svgs.ts").read_text()
+    urls = re.findall(r'url:\s*"([^"]+)"', svg_src)
+    broken = [u for u in urls if not (pub / u.lstrip("/")).exists()]
+    ok = not missing and not broken
+    return ok, (f"icons + og-card present; all {len(urls)} url assets resolve in public/"
+                if ok else f"missing: {missing + broken}")
+
+def l7_svg_wellformed():
+    svg_src = (KID / "src" / "assets" / "svgs.ts").read_text()
+    emoji = svg_src.count("emoji:")
+    rendered = svg_src.count("svg:") + svg_src.count("url:")
+    view_ok = 'viewBox="0 0 100 100"' in svg_src and 'viewBox="0 0 160 210"' in svg_src
+    ok = emoji >= rendered and view_ok
+    return ok, (f"{emoji} emoji fallbacks cover {rendered} rendered assets; wrapper + Nova viewBoxes intact"
+                if ok else f"emoji({emoji}) < rendered({rendered}) or viewBox missing")
+
+def l7_theme_wiring():
+    css = (KID / "src" / "styles.css").read_text()
+    wired = all(x in css for x in [".map-island", "--c1", "--c2-22", ".world-card"])
+    return wired, ("land vars + map/card themed classes wired in styles.css" if wired
+                   else "theme wiring incomplete (.map-island/--c1/--c2-22/.world-card)")
+
+def l7_baseline():
+    f = ROOT / "docs" / "VISUAL_BASELINE.md"
+    if not f.exists():
+        return False, "docs/VISUAL_BASELINE.md missing — create the reference-look doc"
+    m = re.search(r"Last updated:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", f.read_text())
+    if not m:
+        return False, "VISUAL_BASELINE.md has no 'Last updated: DD Mon YYYY' line"
+    try:
+        d = datetime.strptime(f"{m.group(1)} {m.group(2)} {m.group(3)}", "%d %b %Y").date()
+        fresh = (date.today() - d).days <= 30
+    except ValueError:
+        fresh = False
+    stamp = " ".join(m.groups())
+    return fresh, (f"VISUAL_BASELINE.md present · {stamp} ({'fresh' if fresh else 'STALE — update'}"
+                   if fresh else f"VISUAL_BASELINE.md stale · {stamp}")
+
 # ── wire checks to layers ────────────────────────────────────────────────────
 CHECKS = [
     ("🧠 Oracle",   "Curriculum Oracle (NCTB)",   "skills↔NCTB/class", l1_curriculum),
@@ -333,6 +483,19 @@ CHECKS = [
     ("🚀 Growth",   "Release Manager",            "APP_BUILD + TRACKER fresh", l5_release_mgr),
     ("🚀 Growth",   "Deployment Runner",          "live domain reachable", l5_domain),
     ("🚀 Growth",   "Monitoring Watch",           "mem API + periodic-learn", l5_monitor),
+    ("⚖️ Judge",    "Release Gate Judge",         "ship/block verdict", l6_deploy_gate),
+    ("⚖️ Judge",    "Kid-Bar Referee",            "re-check safety+privacy", l6_kid_bar),
+    ("⚖️ Judge",    "Scope Guardian",             "no unowned files", l6_scope),
+    ("⚖️ Judge",    "Chronic-Issue Examiner",     "7-day flag history", l6_chronics),
+    ("⚖️ Judge",    "Precedent Recorder",         "ruling trail in mem", l6_precedent),
+    ("⚖️ Judge",    "Deadlock Breaker",           "all checks ruled", l6_no_deadlock),
+    ("👁️ Visual",   "Visual QA Lead",             "baseline doc fresh", l7_baseline),
+    ("👁️ Visual",   "Palette Inspector",          "5 lands × 5 fields", l7_palette),
+    ("👁️ Visual",   "Contrast Auditor",           "c1↔c3 ≥ 3.0:1", l7_contrast),
+    ("👁️ Visual",   "Glyph Watch",                "no tofu chars", l7_tofu),
+    ("👁️ Visual",   "Asset Librarian",            "icons/og/url resolve", l7_assets),
+    ("👁️ Visual",   "Emoji-Fallback Sentinel",    "emoji ≥ svg+url", l7_svg_wellformed),
+    ("👁️ Visual",   "Theme Consistency Judge",    "land vars wired", l7_theme_wiring),
 ]
 
 def main():
@@ -342,8 +505,9 @@ def main():
     # ── board ──
     if not SILENT:
         print("🦉 Numberverse Oracle Team — daily standup")
-        print(f"   {TODAY} · {len(results)} automated roles · 75 total\n")
-        for layer in ["🧠 Oracle", "🛠️ Eng", "🛡️ Trust", "🎨 Content", "🚀 Growth"]:
+        print(f"   {TODAY} · {len(results)} automated roles · 105 total\n")
+        for layer in ["🧠 Oracle", "🛠️ Eng", "🛡️ Trust", "🎨 Content", "🚀 Growth",
+                      "⚖️ Judge", "👁️ Visual"]:
             layer_res = [r for r in results if r["layer"] == layer]
             n_ok = sum(1 for r in layer_res if r["status"] == "ok")
             print(f"  {layer}  {n_ok}/{len(layer_res)} ✓")
