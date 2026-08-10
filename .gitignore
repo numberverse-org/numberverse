@@ -1,0 +1,38 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+.next/
+out/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# editor/os
+.DS_Store
+.idea/
+.vscode/
+
+# logs
+*.log
+
+# production env on the demo box
+.env.production
+
+# build artifacts
+*.tsbuildinfo
+
+# stray session/tooling artifacts that must never reach a repo
+PRIMARY_SESSION.txt
+.tresha/
+*.tresha*

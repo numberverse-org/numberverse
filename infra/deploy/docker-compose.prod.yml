@@ -1,0 +1,49 @@
+# Numberverse demo — served through the box's EXISTING Cloudflare named
+# tunnel (7d5273d2-31dc-41ca-94b0-d36c1ad2d5a0), run as systemd service
+# `cloudflared` on the host. That tunnel is remotely-managed (routes live in
+# the Cloudflare dashboard): its ingress rule for the demo hostname must point
+# at http://localhost:8080 (this compose's `web` service). No tunnel container
+# here — the host tunnel is authoritative.
+name: numberverse-demo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: numberverse
+      POSTGRES_PASSWORD: numberverse_dev
+      POSTGRES_DB: numberverse
+    volumes:
+      - nv_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U numberverse -d numberverse"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/deploy/Dockerfile.api
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NV_DATABASE_URL: postgresql+psycopg://numberverse:numberverse_dev@postgres:5432/numberverse
+      NV_CORS_ORIGINS: "*"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/deploy/Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "8080:80"   # tunnel origin + LAN fallback: http://192.168.0.104:8080
+    depends_on:
+      - api
+
+volumes:
+  nv_pg:

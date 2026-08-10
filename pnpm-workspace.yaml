@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 11: the canonical allow-list for packages with build scripts.
+# esbuild's postinstall is REQUIRED for vite to work.
+allowBuilds:
+  esbuild: true

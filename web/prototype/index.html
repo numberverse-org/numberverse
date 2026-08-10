@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Numberverse — Kids Math Playground</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:linear-gradient(160deg,#ffd6e8,#cfe9ff 60%,#bfe8ff);font-family:"Comic Sans MS","Segoe UI",sans-serif;}
+  #game{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;}
+  canvas{border-radius:16px;box-shadow:0 12px 40px rgba(30,60,120,.25);}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+<script>
+window.__errs = 0;
+window.addEventListener('error', function(e){ window.__errs++; console.error('GAME ERROR', e.message); });
+
+/* ── WebAudio SFX (procedural, no asset files) ── */
+const Sfx = {
+  ctx: null,
+  ensure(){ if(!this.ctx){ const AC=window.AudioContext||window.webkitAudioContext; if(AC) this.ctx=new AC(); } if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume(); },
+  tone(freq,dur,type,vol,when){ if(!this.ctx) return; const t=this.ctx.currentTime+(when||0);
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol||.25,t+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,t+(dur||.18));
+    o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t+dur+.05); },
+  click(){ this.tone(660,.08,'triangle',.15); },
+  ping(n){ const s=[523,587,659,784,880,988,1046,1175,1318,1568];
+    this.tone(s[(n-1)%s.length],.2,'sine',.25); this.tone(s[(n-1)%s.length]*2,.12,'triangle',.08,.05); },
+  good(){ this.tone(784,.12,'triangle',.22); this.tone(1046,.16,'triangle',.22,.1); },
+  bad(){ this.tone(220,.2,'sine',.18); this.tone(180,.25,'sine',.15,.12); },
+  win(){ [523,659,784,1046,1318].forEach((f,i)=>this.tone(f,.18,'triangle',.22,i*.09)); }
+};
+window.addEventListener('pointerdown', ()=>Sfx.ensure(), {passive:true});
+
+/* ── Shared helpers for all scenes ── */
+class BaseScene extends Phaser.Scene {
+  mkText(x,y,str,size,color){ return this.add.text(x,y,str,{fontSize:size+'px',color:color,fontStyle:'bold'}).setOrigin(.5); }
+  makeBtn(x,y,label,cb,scale){
+    const c=this.add.container(x,y);
+    const img=this.add.image(0,0,'btnBack');
+    const t=this.add.text(0,0,label,{fontSize:'20px',color:'#fff',fontStyle:'bold'}).setOrigin(.5);
+    c.add([img,t]); c.setSize(96,48); c.setInteractive({useHandCursor:true});
+    c.on('pointerdown',()=>{ Sfx.ensure(); Sfx.click(); cb(); });
+    if(scale) c.setScale(scale);
+    return c;
+  }
+  confetti(x,y){
+    const p=this.add.particles(x,y,'dot',{speed:{min:120,max:340},angle:{min:0,max:360},lifespan:{min:500,max:1000},gravityY:260,quantity:45,tint:[0xffdd55,0x66ff66,0x66ccff,0xff7eb3,0xffa24c],scale:{start:1,end:.2},emitting:false});
+    p.explode(45);
+  }
+  sparkle(x,y){
+    const p=this.add.particles(x,y,'dot',{speed:{min:60,max:200},angle:{min:0,max:360},lifespan:{min:300,max:600},quantity:14,tint:[0xffdd55,0xffffff,0x66ff66],scale:{start:1,end:.2},emitting:false});
+    p.explode(14);
+  }
+}
+
+/* ── Boot: generate textures ── */
+class Boot extends BaseScene {
+  constructor(){ super('Boot'); }
+  create(){
+    const g=this.make.graphics({x:0,y:0,add:false});
+    g.fillStyle(0xbfe8ff); g.fillCircle(40,40,40); g.lineStyle(6,0xffffff,1); g.strokeCircle(40,40,37);
+    g.generateTexture('bubble',80,80);
+    g.clear();
+    g.fillStyle(0xffffff); g.fillCircle(5,5,5); g.generateTexture('dot',10,10);
+    g.clear();
+    g.fillStyle(0x4caf50); g.fillRoundedRect(-75,-45,150,90,22); g.generateTexture('btnGreen',150,90);
+    g.clear();
+    g.fillStyle(0x2a9df4); g.fillRoundedRect(-150,-45,300,90,22); g.generateTexture('btnBlue',300,90);
+    g.clear();
+    g.fillStyle(0xffa94c); g.fillRoundedRect(-48,-24,96,48,16); g.generateTexture('btnBack',96,48);
+    g.clear();
+    this.scene.start('Title');
+  }
+}
+
+/* ── Title screen ── */
+class Title extends BaseScene {
+  constructor(){ super('Title'); }
+  create(){
+    this.cameras.main.setBackgroundColor('#87CEEB');
+    for(let i=0;i<9;i++){
+      const b=this.add.image(Phaser.Math.Between(40,760),Phaser.Math.Between(30,570),'bubble').setAlpha(.35).setScale(Phaser.Math.Between(4,9));
+      this.tweens.add({targets:b,y:b.y+Phaser.Math.Between(-16,16),duration:Phaser.Math.Between(1600,3000),yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+    }
+    this.mkText(400,120,'🦊',110,'#fff');
+    const title=this.mkText(400,230,'Numberverse',58,'#ff6b9d');
+    title.setStroke('#ffffff',8); title.setShadow(2,3,'rgba(0,0,0,.15)',4);
+    this.mkText(400,285,'A math playground for kids 2-13',24,'#2c4f7c');
+
+    const makeGameBtn=(x,y,label,tex,key)=>{
+      const c=this.add.container(x,y);
+      const img=this.add.image(0,0,tex); img.setScale(.95);
+      const t=this.add.text(0,0,label,{fontSize:'28px',color:'#fff',fontStyle:'bold'}).setOrigin(.5);
+      c.add([img,t]); c.setSize(300,90); c.setInteractive({useHandCursor:true});
+      c.on('pointerover',()=>c.setScale(1.04)); c.on('pointerout',()=>c.setScale(1));
+      c.on('pointerdown',()=>{ Sfx.ensure(); Sfx.click(); this.cameras.main.fadeOut(250,0,0,0,false,(cc,pr)=>{ if(pr===1) this.scene.start(key); }); });
+      return c;
+    };
+    makeGameBtn(400,390,'🦋 Count & Pop','btnBlue','CountPop');
+    makeGameBtn(400,500,'🍎 Fruit Addition','btnGreen','FruitAdd');
+
+    this.mkText(400,565,'No ads · No tracking · Kid-safe',16,'#5c7a9e');
+  }
+}
+
+/* ── Game 1: Count & Pop ── */
+class CountPop extends BaseScene {
+  constructor(){ super('CountPop'); }
+  init(){ this.maxCount=3; this.round=1; this.stars=0; }
+  create(){
+    this.cameras.main.setBackgroundColor('#87CEEB');
+    this.errors=0;
+    this.hudTitle=this.mkText(400,44,'',30,'#1b3a5b');
+    this.hudProg=this.mkText(400,82,'',20,'#2c5a8c');
+    this.starTxt=this.mkText(700,50,'⭐ 0',22,'#7a4a00');
+    this.makeBtn(66,50,'⬅  Menu',()=>this.scene.start('Title'));
+    this.roundMsg=this.mkText(400,300,'',34,'#ffffff'); this.roundMsg.setStroke('#1b3a5b',6); this.roundMsg.setDepth(10); this.roundMsg.setVisible(false);
+    this.startRound();
+  }
+  startRound(){
+    this.current=1;
+    if(this.round>1) this.maxCount=Math.min(this.maxCount+2,10);
+    this.clearBubbles();
+    this.spawnBubbles(this.maxCount);
+    this.hudTitle.setText('Count to '+this.maxCount+'!');
+    this.hudProg.setText('Tap bubbles 1, 2, 3… in order');
+  }
+  clearBubbles(){
+    const bs=this.children.list.filter(c=>c.getData&&c.getData('isBubble'));
+    bs.forEach(b=>{ this.tweens.killTweensOf(b); b.destroy(); });
+  }
+  spawnBubbles(n){
+    const placed=[];
+    for(let i=1;i<=n;i++){
+      let x,y,ok=false;
+      for(let t=0;t<50&&!ok;t++){ x=Phaser.Math.Between(130,670); y=Phaser.Math.Between(150,540); ok=placed.every(p=>Math.hypot(p.x-x,p.y-y)>115); }
+      placed.push({x,y});
+      const b=this.createBubble(x,y,i);
+      this.tweens.add({targets:b,y:y+Phaser.Math.Between(-14,14),duration:Phaser.Math.Between(1500,2600),yoyo:true,repeat:-1,ease:'Sine.easeInOut',delay:Phaser.Math.Between(0,800)});
+    }
+  }
+  createBubble(x,y,num){
+    const c=this.add.container(x,y);
+    c.add(this.add.image(0,0,'bubble'));
+    c.add(this.add.text(0,0,String(num),{fontSize:'40px',color:'#12507f',fontStyle:'bold'}).setOrigin(.5));
+    c.setSize(80,80); c.setInteractive({useHandCursor:true});
+    c.on('pointerdown',()=>this.onBubble(c,num));
+    c.setData('isBubble',true); c.setData('num',num);
+    return c;
+  }
+  onBubble(bubble,num){
+    Sfx.ensure();
+    if(num===this.current){
+      Sfx.ping(num); this.sparkle(bubble.x,bubble.y);
+      bubble.disableInteractive(); this.tweens.killTweensOf(bubble);
+      this.tweens.add({targets:bubble,scale:.05,alpha:0,duration:220,ease:'Back.easeIn',onComplete:()=>bubble.destroy()});
+      this.current++;
+      if(this.current>this.maxCount){ this.roundWin(); }
+    } else {
+      this.errors++;
+      Sfx.bad();
+      this.tweens.add({targets:bubble,angle:8,duration:70,yoyo:true,repeat:3});
+      const target=this.children.list.find(c=>c.getData&&c.getData('isBubble')&&c.getData('num')===this.current);
+      if(target) this.tweens.add({targets:target,scale:1.18,duration:130,yoyo:true,repeat:1});
+    }
+  }
+  roundWin(){
+    Sfx.win(); this.confetti(400,300);
+    const earned=this.errors===0?3:this.errors<=2?2:1;
+    this.stars+=earned; this.starTxt.setText('⭐ '+this.stars);
+    this.round++;
+    this.roundMsg.setVisible(true);
+    this.roundMsg.setText(this.round>4?'🎉 Amazing — you can count to 10!':'Round '+this.round+'!  ⭐+'+earned);
+    this.roundMsg.setScale(.3);
+    this.tweens.add({targets:this.roundMsg,scale:1,duration:400,ease:'Back.easeOut'});
+    this.time.delayedCall(1800,()=>{ this.roundMsg.setVisible(false); this.errors=0; this.startRound(); });
+  }
+}
+
+/* ── Game 2: Fruit Addition ── */
+class FruitAdd extends BaseScene {
+  constructor(){ super('FruitAdd'); }
+  init(){ this.maxSum=6; this.stars=0; }
+  create(){
+    this.cameras.main.setBackgroundColor('#c5e8c0');
+    this.errors=0;
+    this.qText=this.mkText(400,58,'',30,'#1e4d1e');
+    this.starTxt=this.mkText(700,50,'⭐ 0',22,'#7a4a00');
+    this.makeBtn(66,50,'⬅  Menu',()=>this.scene.start('Title'));
+    this.hint=this.mkText(400,520,'Tap the right answer!',18,'#4a7a4a');
+    this.startRound();
+  }
+  startRound(){
+    this.errors=0;
+    let a=Phaser.Math.Between(1,Math.max(1,Math.floor(this.maxSum/2)));
+    let b=Phaser.Math.Between(1,Math.max(1,this.maxSum-a));
+    while(a+b<3&&b<this.maxSum) b++;
+    while(a+b>this.maxSum&&b>1) b--;
+    this.a=a; this.b=b; this.answer=a+b;
+    this.qText.setText(`How many apples in all?   ${a}  +  ${b}  = ?`);
+    this.renderFruit();
+    this.renderAnswers();
+  }
+  clearTagged(tag){
+    const list=this.children.list.filter(c=>c.getData&&c.getData(tag));
+    list.forEach(x=>{ this.tweens.killTweensOf(x); x.destroy(); });
+  }
+  renderFruit(){
+    this.clearTagged('isFruit');
+    const gap=58, rowW=3;
+    const place=(x0,n)=>{
+      for(let i=0;i<n;i++){
+        const col=i%rowW, r=Math.floor(i/rowW);
+        const t=this.add.text(x0+(col-(rowW-1)/2)*gap,180+r*gap,'🍎',{fontSize:'46px'}).setOrigin(.5);
+        t.setData('isFruit',true);
+        this.tweens.add({targets:t,y:t.y+Phaser.Math.Between(-6,6),duration:Phaser.Math.Between(1200,2000),yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+      }
+    };
+    place(190,this.a);
+    const plus=this.add.text(410,195,'+',{fontSize:'46px',color:'#2c5a2c',fontStyle:'bold'}).setOrigin(.5);
+    plus.setData('isFruit',true);
+    place(610,this.b);
+  }
+  renderAnswers(){
+    this.clearTagged('isAns');
+    let opts=[this.answer,this.answer+1,this.answer-1];
+    if(opts[2]<0) opts[2]=this.answer+2;
+    if(opts[1]===opts[2]) opts[2]=this.answer+2;
+    Phaser.Utils.Array.Shuffle(opts);
+    [250,400,550].forEach((x,i)=>{
+      const c=this.add.container(x,410);
+      c.add(this.add.image(0,0,'btnGreen'));
+      c.add(this.add.text(0,0,String(opts[i]),{fontSize:'36px',color:'#fff',fontStyle:'bold'}).setOrigin(.5));
+      c.setSize(150,90); c.setInteractive({useHandCursor:true});
+      c.on('pointerover',()=>c.setScale(1.05)); c.on('pointerout',()=>c.setScale(1));
+      c.on('pointerdown',()=>this.onAnswer(c,opts[i]));
+      c.setData('isAns',true); c.setData('val',opts[i]);
+    });
+  }
+  onAnswer(btn,v){
+    Sfx.ensure();
+    if(v===this.answer){
+      Sfx.good(); this.confetti(btn.x,btn.y);
+      this.clearTagged('isFruit');
+      const ok=this.mkText(400,320,'✔  '+(this.a+' + '+this.b+' = '+this.answer),40,'#1e7d1e'); ok.setDepth(10);
+      this.time.delayedCall(1500,()=>{ this.roundWin(); ok.destroy(); });
+    } else {
+      this.errors++; Sfx.bad();
+      btn.disableInteractive();
+      this.tweens.add({targets:btn,alpha:.2,duration:180});
+    }
+  }
+  roundWin(){
+    const earned=this.errors===0?3:this.errors<=2?2:1;
+    this.stars+=earned; this.starTxt.setText('⭐ '+this.stars);
+    this.maxSum=Math.min(this.maxSum+3,20);
+    Sfx.win(); this.confetti(400,300);
+    this.hint.setText('Level up! Max sum now '+this.maxSum+'  ⭐+'+earned);
+    this.time.delayedCall(1600,()=>{ this.hint.setText('Tap the right answer!'); this.startRound(); });
+  }
+}
+
+/* ── Config ── */
+const game=new Phaser.Game({
+  type:Phaser.AUTO,
+  parent:'game',
+  width:800, height:600,
+  backgroundColor:'#87CEEB',
+  scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+  defaults:{fontFamily:'"Comic Sans MS","Segoe UI",sans-serif',color:'#ffffff'},
+  scene:[Boot,Title,CountPop,FruitAdd]
+});
+window.game=game;
+</script>
+</body>
+</html>

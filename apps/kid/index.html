@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0" />
+    <!-- PWA manifest (generated: name/icons/theme) + favicon -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="theme-color" content="#0b2545" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- iOS home-screen (Safari ignores the manifest; these drive it) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Numberverse" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Numberverse — kids learn math &amp; Bangla, offline &amp; no ads</title>
+
+    <!-- ── Social sharing preview (WhatsApp / Facebook / Twitter / LinkedIn) ──
+         The app is a PWA; the stable home is https://kids.munna-khan.xyz. These
+         tags make any shared link render a proper card. og:image is the static
+         1200×630 card in public/ (served at /og-card.png). -->
+    <meta name="description" content="Numberverse — the fun offline learning world for ages 2–13. Kids learn math & Bangla, no ads, no tracking. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
+
+    <!-- Open Graph (Facebook, WhatsApp, LinkedIn, iMessage) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Numberverse" />
+    <meta property="og:url" content="https://kids.munna-khan.xyz/" />
+    <meta property="og:title" content="Numberverse — kids learn math &amp; Bangla, offline &amp; no ads" />
+    <meta property="og:description" content="The fun offline learning world for ages 2–13 — math & Bangla, adaptive, private. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
+    <meta property="og:image" content="https://kids.munna-khan.xyz/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Numberverse — kids learn math and Bangla, offline, no ads" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="bn_BD" />
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Numberverse — kids learn math &amp; Bangla, offline &amp; no ads" />
+    <meta name="twitter:description" content="The fun offline learning world for ages 2–13 — math & Bangla, adaptive, private. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
+    <meta name="twitter:image" content="https://kids.munna-khan.xyz/og-card.png" />
+    <meta name="twitter:image:alt" content="Numberverse — kids learn math and Bangla, offline, no ads" />
+
+    <!-- Canonical + structured data (honest: free PWA, no fake ratings) -->
+    <link rel="canonical" href="https://kids.munna-khan.xyz/" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Numberverse",
+      "url": "https://kids.munna-khan.xyz/",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Any (Web / PWA)",
+      "description": "The fun offline learning world for ages 2–13 — kids learn math & Bangla, no ads, no tracking.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "inLanguage": ["en", "bn"]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

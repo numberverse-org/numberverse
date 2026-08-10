@@ -1,0 +1,39 @@
+# Numberverse infra — runs entirely on this machine
+# Postgres 16 (port 5434) + Redis 7 (port 6379)
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: numberverse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: numberverse
+      POSTGRES_PASSWORD: numberverse_dev
+      POSTGRES_DB: numberverse
+    ports:
+      - "5434:5432"
+    volumes:
+      - numberverse_pg:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U numberverse -d numberverse"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: numberverse-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - numberverse_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  numberverse_pg:
+  numberverse_redis:

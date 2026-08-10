@@ -1,0 +1,171 @@
+import Phaser from "phaser";
+import { t } from "./i18n";
+import { questionPanel, type QuestionPanelApi } from "./question";
+import { GAMES } from "@numberverse/core";
+import { bad, pop, win } from "./audio";
+import { speak } from "./speech";
+import { hintWrong } from "./hints";
+import { gameBackground } from "./backgrounds";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { answerRow } from "./layout";
+import { SAB } from "./safeArea";
+
+const LEVELS = GAMES.find((g) => g.id === "game-bnmatras")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
+/** Base letter + matra → combined form. রেফ, ং etc. kept simple for kids. */
+const MATRAS = [
+  { base: "ক", matra: "া", combined: "কা", hint: "া" },
+  { base: "ক", matra: "ি", combined: "কি", hint: "ি" },
+  { base: "ক", matra: "ী", combined: "কী", hint: "ী" },
+  { base: "ক", matra: "ু", combined: "কু", hint: "ু" },
+  { base: "ক", matra: "ূ", combined: "কূ", hint: "ূ" },
+  { base: "ক", matra: "ে", combined: "কে", hint: "ে" },
+  { base: "ক", matra: "ো", combined: "কো", hint: "ো" },
+  { base: "গ", matra: "া", combined: "গা", hint: "া" },
+  { base: "ম", matra: "া", combined: "মা", hint: "া" },
+  { base: "ম", matra: "ি", combined: "মি", hint: "ি" },
+  { base: "ব", matra: "া", combined: "বা", hint: "া" },
+  { base: "স", matra: "ু", combined: "সু", hint: "ু" },
+  { base: "ন", matra: "া", combined: "না", hint: "া" },
+  { base: "ত", matra: "ু", combined: "তু", hint: "ু" },
+];
+const BUTTON_RADIUS = 56;
+const ROUNDS_TO_FINISH = 3;
+
+/**
+ * Bangla Matras — combine a letter with its matra.
+ * Band 4 (ages 8–10). Shows "ক + া = ?" and kid taps the combined letter.
+ */
+export class BnMatrasScene extends Phaser.Scene {
+  private levelIndex = 0;
+  private roundsDone = 0;
+  private startedAt = 0;
+  private target!: (typeof MATRAS)[number];
+  private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
+  private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
+  private titleText!: Phaser.GameObjects.Text;
+  private prompt!: QuestionPanelApi;
+  private roundText!: Phaser.GameObjects.Text;
+  private meter!: RoundMeterApi;
+  private factText!: Phaser.GameObjects.Text;
+  private background!: Phaser.GameObjects.Graphics;
+
+  constructor() {
+    super("BnMatras");
+  }
+
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+    this.onRoundDone = data.onRoundDone;
+    this.levelIndex = data.startLevelIndex ?? 0;
+    this.background = this.add.graphics();
+    this.drawBackground();
+    this.titleText = this.add
+      .text(0, 0, t("titleBnMatras"), txt(34, "#ffffff", {bold: true}))
+      .setOrigin(0.5);
+    this.roundText = this.add
+      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .setOrigin(0.5);
+    this.factText = this.add
+      .text(0, 0, "", txt(56, "#ffd166", {bold: true, outline: true}))
+      .setOrigin(0.5);
+        this.prompt = questionPanel(this, 0, 0);
+    this.prompt.set(t("tapMatra"));
+    this.meter = roundMeter(this);
+    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    this.layout();
+    this.startRound();
+  }
+
+  private drawBackground() {
+    gameBackground(this, "floral");
+  }
+
+  private layout() {
+    const { width, height } = this.scale;
+    this.titleText.setPosition(width / 2, 42);
+    this.roundText.setPosition(width / 2, 80);
+    this.meter.setPosition(width / 2, 104);
+    this.factText.setPosition(width / 2, height * 0.42);
+    this.prompt.setPosition(width / 2, height - 150 - SAB());
+  }
+
+  private startRound() {
+    this.clearButtons();
+    const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    this.target = MATRAS[Phaser.Math.Between(0, MATRAS.length - 1)];
+    this.startedAt = this.time.now;
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.factText.setText(`${this.target.base} + ${this.target.matra} = ?`);
+    speak(this.target.combined);
+    this.spawnButtons(n);
+  }
+
+  private spawnButtons(n: number) {
+    const opts = [this.target, ...MATRAS.filter((m) => m.combined !== this.target.combined)]
+      .slice(0, n)
+      .sort(() => Math.random() - 0.5);
+    // answerRow always fits the canvas width (shrinks radius on narrow phones)
+    // and lifts the row above the phone home-indicator area.
+    const { radius, y, xFor } = answerRow(this, opts.length, BUTTON_RADIUS, 12);
+    opts.forEach((m, i) => {
+      const c = modernAnswerButton(this, xFor(i), y, radius, m.combined, BTN_PRIMARY, {
+        labelSize: Math.max(28, Math.round(radius * 0.68)),
+      });
+      c.on("pointerdown", () => this.tap(c, m.combined));
+      this.buttons.push({ sprite: c, value: m.combined });
+    });
+  }
+
+  private tap(container: Phaser.GameObjects.Container, value: string) {
+    if (value !== this.target.combined) {
+      hintWrong(this, container, {
+        hint: "Match the sound to the letter it belongs with",
+        hintBn: "শব্দটির সাথে মিলিয়ে সঠিক অক্ষরটি বেছে নাও",
+        correct: () => this.target.combined,
+        options: () => this.buttons,
+      });
+      return;
+    }
+    pop();
+    correctButton(container);
+    this.buttons.forEach((b) => b.sprite.disableInteractive());
+    this.sparkle(container.x, container.y);
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    win();
+    this.roundsDone++;
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.time.delayedCall(800, () => {
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private clearButtons() {
+    this.buttons.forEach((b) => b.sprite.destroy());
+    this.buttons = [];
+  }
+
+  private sparkle(x: number, y: number) {
+    for (let i = 0; i < 16; i++) {
+      const p = this.add.circle(x, y, 3 + Math.random() * 3, this.randomColor());
+      this.tweens.add({
+        targets: p,
+        x: x + Phaser.Math.Between(-70, 70),
+        y: y + Phaser.Math.Between(-70, 70),
+        alpha: 0,
+        duration: 520,
+        onComplete: () => p.destroy(),
+      });
+    }
+  }
+
+  private randomColor(): number {
+    return Phaser.Display.Color.GetColor(
+      Phaser.Math.Between(80, 255),
+      Phaser.Math.Between(80, 255),
+      Phaser.Math.Between(80, 255)
+    );
+  }
+}

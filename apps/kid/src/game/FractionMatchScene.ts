@@ -1,0 +1,207 @@
+import Phaser from "phaser";
+import { t } from "./i18n";
+import { questionPanel, type QuestionPanelApi } from "./question";
+import { GAMES } from "@numberverse/core";
+import { bad, pop, win } from "./audio";
+import { speak, bnNumber } from "./speech";
+import { getAppLang } from "./locale";
+import { hintWrong } from "./hints";
+import { gameBackground } from "./backgrounds";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { SAB } from "./safeArea";
+
+const LEVELS = GAMES.find((g) => g.id === "game-fracmatch")?.difficultyLevels ?? [2, 3, 4, 6, 8, 12];
+const BUTTON_RADIUS = 52;
+const ROUNDS_TO_FINISH = 3;
+const PIZZA_RADIUS = 82;
+
+/** Simplified fractions — kid matches the shaded pizza to its simplest form. */
+const SIMPLE = [
+  { label: "½", num: 1, den: 2 },
+  { label: "⅓", num: 1, den: 3 },
+  { label: "¼", num: 1, den: 4 },
+  { label: "⅔", num: 2, den: 3 },
+  { label: "¾", num: 3, den: 4 },
+];
+
+/**
+ * Fraction Match — which fraction equals this pizza?
+ * Band 4 (ages 8–10). Shows a pizza cut into slices with some shaded;
+ * kid taps the SIMPLIFIED fraction (e.g. 2/4 → ½). Teaches equivalence.
+ */
+export class FractionMatchScene extends Phaser.Scene {
+  private levelIndex = 0;
+  private roundsDone = 0;
+  private startedAt = 0;
+  private target!: { label: string; num: number; den: number };
+  private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
+  private pizzaGfx!: Phaser.GameObjects.Graphics;
+  private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
+  private titleText!: Phaser.GameObjects.Text;
+  private prompt!: QuestionPanelApi;
+  private roundText!: Phaser.GameObjects.Text;
+  private meter!: RoundMeterApi;
+  private background!: Phaser.GameObjects.Graphics;
+
+  constructor() {
+    super("FractionMatch");
+  }
+
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+    this.onRoundDone = data.onRoundDone;
+    this.levelIndex = data.startLevelIndex ?? 0;
+    this.background = this.add.graphics();
+    this.pizzaGfx = this.add.graphics();
+    this.drawBackground();
+    this.titleText = this.add
+      .text(0, 0, t("titleFraction"), txt(34, "#ffffff", {bold: true}))
+      .setOrigin(0.5);
+    this.roundText = this.add
+      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .setOrigin(0.5);
+        this.prompt = questionPanel(this, 0, 0);
+    this.prompt.set(t("tapSimplestFrac"));
+    this.meter = roundMeter(this);
+    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    this.layout();
+    this.startRound();
+  }
+
+  private drawBackground() {
+    gameBackground(this, "kitchen");
+  }
+
+  private layout() {
+    const { width, height } = this.scale;
+    this.titleText.setPosition(width / 2, 42);
+    this.roundText.setPosition(width / 2, 80);
+    this.meter.setPosition(width / 2, 104);
+    this.prompt.setPosition(width / 2, height - 150 - SAB());
+  }
+
+  private get pizzaCenter() {
+    return { x: this.scale.width / 2, y: this.scale.height * 0.44 };
+  }
+
+  private get answersY() {
+    return this.scale.height - 64 - SAB();
+  }
+
+  private startRound() {
+    this.clearButtons();
+    const slices = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    // pick a simple fraction that divides evenly into `slices` (or any num<den works)
+    const simple = SIMPLE[Phaser.Math.Between(0, SIMPLE.length - 1)];
+    const scale = Math.max(1, Math.floor(slices / simple.den));
+    const shaded = simple.num * scale;
+    const den = slices;
+    this.target = simple;
+    this.startedAt = this.time.now;
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.drawPizza(shaded, den);
+    // Narrate what the pizza SHOWS, then ask for the simplest form — the kid
+    // hears "2 out of 4" and must find the equivalent "½", not the literal label.
+    speak(getAppLang() === "bn"
+      ? `এটা ${bnNumber(this.target.num)} ভাগ ${bnNumber(this.target.den)} — সবচেয়ে ছোট ভগ্নাংশটা বাছো!`
+      : `This shows ${this.target.num} out of ${this.target.den} — tap the simplest fraction!`);
+    this.spawnButtons();
+  }
+
+  private drawPizza(shaded: number, slices: number) {
+    const { x, y } = this.pizzaCenter;
+    this.pizzaGfx.clear();
+    const startAngle = -Math.PI / 2;
+    const step = (Math.PI * 2) / slices;
+    this.pizzaGfx.fillStyle(0xe9c46a, 1);
+    this.pizzaGfx.slice(x, y, PIZZA_RADIUS, 0, Math.PI * 2);
+    this.pizzaGfx.fillPath();
+    this.pizzaGfx.fillStyle(0xe76f51, 1);
+    for (let i = 0; i < shaded; i++) {
+      const a0 = startAngle + i * step;
+      const a1 = a0 + step;
+      this.pizzaGfx.slice(x, y, PIZZA_RADIUS - 2, a0, a1);
+      this.pizzaGfx.fillPath();
+    }
+    this.pizzaGfx.lineStyle(3, 0x8d5a2b, 1);
+    for (let i = 0; i <= slices; i++) {
+      const a = startAngle + i * step;
+      this.pizzaGfx.lineBetween(
+        x, y,
+        x + Math.cos(a) * PIZZA_RADIUS,
+        y + Math.sin(a) * PIZZA_RADIUS
+      );
+    }
+  }
+
+  private spawnButtons() {
+    const opts = new Set<string>([this.target.label]);
+    const pool = SIMPLE.filter((f) => f.label !== this.target.label);
+    while (opts.size < 3 && pool.length) {
+      opts.add(pool[Phaser.Math.Between(0, pool.length - 1)].label);
+    }
+    const values = [...opts].sort(() => Math.random() - 0.5);
+    const { width } = this.scale;
+    const spacing = BUTTON_RADIUS * 2 + 14;
+    const startX = width / 2 - (spacing * (values.length - 1)) / 2;
+    const y = this.answersY;
+    values.forEach((label, i) => {
+      const c = modernAnswerButton(this, startX + i * spacing, y, BUTTON_RADIUS, label, BTN_PRIMARY, { labelSize: 32 });
+      c.on("pointerdown", () => this.tap(c, label));
+      this.buttons.push({ sprite: c, value: label });
+    });
+  }
+
+  private tap(container: Phaser.GameObjects.Container, label: string) {
+    if (label !== this.target.label) {
+      hintWrong(this, container, {
+        hint: "Count the shaded parts over the total parts",
+        hintBn: "ছায়াযুক্ত অংশ আর মোট অংশ গুনে দেখো",
+        correct: () => this.target.label,
+        options: () => this.buttons,
+      });
+      return;
+    }
+    pop();
+    correctButton(container);
+    this.buttons.forEach((b) => b.sprite.disableInteractive());
+    this.sparkle(container.x, container.y);
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    win();
+    this.roundsDone++;
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.onRoundDone?.(true, ms, this.target.den);
+    this.time.delayedCall(800, () => {
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private clearButtons() {
+    this.buttons.forEach((b) => b.sprite.destroy());
+    this.buttons = [];
+  }
+
+  private sparkle(x: number, y: number) {
+    for (let i = 0; i < 16; i++) {
+      const p = this.add.circle(x, y, 3 + Math.random() * 3, this.randomColor());
+      this.tweens.add({
+        targets: p,
+        x: x + Phaser.Math.Between(-70, 70),
+        y: y + Phaser.Math.Between(-70, 70),
+        alpha: 0,
+        duration: 520,
+        onComplete: () => p.destroy(),
+      });
+    }
+  }
+
+  private randomColor(): number {
+    return Phaser.Display.Color.GetColor(
+      Phaser.Math.Between(80, 255),
+      Phaser.Math.Between(80, 255),
+      Phaser.Math.Between(80, 255)
+    );
+  }
+}
