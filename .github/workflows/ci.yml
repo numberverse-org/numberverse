@@ -1,0 +1,43 @@
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @numberverse/core
+        run: pnpm --filter @numberverse/core build
+
+      - name: Typecheck kid app
+        run: pnpm --filter kid typecheck
+
+      - name: Catalog + i18n audit (skills ⇄ games ⇄ scenes ⇄ App)
+        working-directory: apps/kid
+        run: node scripts/audit.mjs
+
+      - name: API app compiles
+        run: python3 -m compileall -q apps/api/app

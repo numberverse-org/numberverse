@@ -1,0 +1,8 @@
+# The maintainer owns every change by default.
+# When the repo moves into the Numberverse org, this becomes @<org>/<team>.
+* @bdlogicalerror
+
+# High-sensitivity paths — always need the maintainer's explicit sign-off.
+scripts/team/   @bdlogicalerror
+infra/          @bdlogicalerror
+packages/core/  @bdlogicalerror
