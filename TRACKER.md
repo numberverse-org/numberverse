@@ -1,6 +1,15 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🚀 PHASE 2 — BD PARENT-GROUP SEEDING + KINDERGARTEN PILOT KIT 11 Aug 2026 ✅ (oracle picked next lever: group-seeding)
+The Oracle Team's next topic, per the growth plan (Phase 0 stable URL ✓ · Phase 1 share loop ✓ · **Phase 2 = seed**). The deferred voice-recording item was **superseded** by the on-device neural voice (8 Aug) and needs Hasan's elder girl to physically record — so the growth lever was the pick.
+- **`pitch/phase2_seeding_kit.md`** — ready-to-send, honest, zero-ads, pet-project framing:
+  - **BD parent-group copy** in Bangla + English (WhatsApp status / group) — "আমার বাচ্চাদের জন্য বানিয়েছি… বিনামূল্যে, কোনো বিজ্ঞাপন নেই, অফলাইনে চলে", URL `kids.munna-khan.xyz`, no store needed (browser → Add to Home Screen), ages 2–13, no data collection.
+  - **Kindergarten teacher first-contact message** + **4-step pilot runbook** (1 pilot → 10-min show → hand them the URL not a store link → collect feedback in 1 week via WhatsApp).
+  - **Pilot tracking table** (pilot/contact/#kids/what they loved/what broke/follow-up) ready to fill.
+  - **Honesty guardrails:** never claim board approval/certificates/"AI teacher"; it's a parent's gift; if a school asks for admin/rosters that's the B2B classroom view (roadmap, not this kit).
+- **✅ Verified:** committed `bbe566f` + pushed to GitHub; learned `numberverse/phase2_seeding` + `oracle_team/phase2` to mem API. Next human action: Hasan sends the group messages to 2–3 BD parent groups + picks 1 kindergarten pilot.
+
 ## ⚖️👁️ ORACLE TEAM v2 — 7 LAYERS · 105 PEOPLE: ADJUDICATOR + UI VISUAL INSPECTION 11 Aug 2026 ✅ (user: "run the oracle and make sure there's a adjudicator layers too also, UI team for visual inspection")
 The Oracle Team grew from 5 to **7 layers × 15 = 105 people**. Ran the daily standup — **35/35 automated checks CLEAN, exit 0** — and learned the first adjudicator ruling to the mem API.
 - **⚖️ Layer 6 — Adjudicator (arbitrate).** Independent referees: when layers disagree (eng says ship, trust says hold) they rule — no deadlock, every ruling is precedent. Automated (`l6_*`): **Release Gate Judge** (SHIP-OK vs DEPLOY BLOCKED verdict), **Kid-Bar Referee** (independently re-checks safety+privacy before anything ships), **Scope Guardian** (zero untracked/unowned files), **Chronic-Issue Examiner** (a role red for 3+ of the last 7 days → human escalation), **Precedent Recorder** (`adjudicator` rulings trail in mem), **Deadlock Breaker**.
