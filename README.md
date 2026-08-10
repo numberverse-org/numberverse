@@ -61,3 +61,4 @@ cd apps/kid && ./node_modules/.bin/tsc --noEmit -p tsconfig.json   # type-safe
 cd apps/kid && node scripts/audit.mjs                              # i18n + catalog + seed integrity
 python3 scripts/team/oracle_team.py                                # the Oracle Team's 22-role sign-off
 ```
+// org move checkpoint
