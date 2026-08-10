@@ -1,6 +1,18 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🏢 GITHUB ORG SETUP — numberverse-org (the "proper way") 11 Aug 2026 ✅ (user created github.com/numberverse-org → "do all like real people do")
+The repo now lives in a real organization and runs like a real team, not a solo repo.
+- **Repo transferred** → `https://github.com/numberverse-org/numberverse` (PRIVATE, main). Local remote updated to `git@github.com:numberverse-org/numberverse.git`.
+- **CI WORKS in the org** — `.github/workflows/ci.yml`: checkout → pnpm 11.20 → Node 22 → install → build core → typecheck kid → catalog/i18n audit → api compile. **2 green runs.** (The personal account couldn't run Actions — `startup_failure` from account-level limits; the org's free 2,000 min unblocked it. First CI bug caught+fixed: pnpm@11.20 needs Node ≥ 22.13.)
+- **Auto-assign issues** → new issues auto-assign to `bdlogicalerror` (verified on issue #2).
+- **Team `@numberverse-org/maintainers`** (push access) → `bdlogicalerror` added as maintainer.
+- **Org base permissions**: members = read, repo creation OFF (access via teams).
+- **CODEOWNERS** → `@numberverse-org/maintainers` on `scripts/team/`, `infra/`, `packages/core/`.
+- **PR + issue templates**, repo description + topics.
+- **⛔ Blocked (honest): branch protection on a PRIVATE repo in a FREE org needs GitHub Pro/Team** — GitHub: "Upgrade to GitHub Pro or make public." Privacy is the moat → repo stays private. Until then: CODEOWNERS + CI + PR discipline stand in for the hard rule. Upgrading the org to Team ($4/user/mo) unlocks it.
+- **✅ Verified:** oracle 35/35 CLEAN after the move; local==remote `b18e97f`; tree clean; CI green.
+
 ## 🪙 TAKA TAP — NEW BANGLA MONEY GAME (৳ চিনি / make amounts) 11 Aug 2026 ✅ (user: "Do actual feature adding not marketing")
 A real feature, not docs: a brand-new learning game that fills a genuine curriculum gap — there was **zero money/taka content** in the 43-skill catalog, yet counting ৳ is NCTB class-1 math.
 - **New skill** `bd-taka` (band 2, math, class 1): *Bangla money / টাকা চিনি* — recognize ৳ notes & coins and make amounts. `nctbCode c1-math-6` (was unused), seeded in `apps/api/app/seed.py`.
