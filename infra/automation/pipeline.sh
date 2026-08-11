@@ -184,7 +184,7 @@ release_train(){
   bash infra/deploy/scripts/release.sh "v$next" "release train ($COUNT since $LAST)"
 }
 
-board(){ _snapshot; cat "$LOG_DIR/board.md"; }
+board(){ _snapshot; cat "$LOG_DIR/numberverse-board.md"; }
 
 case "${1:-}" in
   conductor)   conductor ;;
