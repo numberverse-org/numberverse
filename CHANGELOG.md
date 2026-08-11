@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v19 (Division by fair-sharing (sharing animation → number mode))
+
+c63985a feat(kid): division by fair-sharing — sharing animation → number mode (#58) (#141)
+6d134a4 track: v18 released — times tables 2–10 arrays-first (#57); #58 next in-progress
+
 ## 12 Aug 2026 — v18 (Times tables 2–10 with arrays-first teaching)
 
 1dd88b5 feat(kid): times tables 2–10 with arrays-first teaching (#57) (#140)
