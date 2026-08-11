@@ -1,6 +1,14 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🚀 v11 RELEASED — TAKA TAP v2: GIVE-CHANGE + ৳5/৳20 NOTES 11 Aug 2026 ✅ (user: "do work order #3" → the 24/7 pipeline's first full loop)
+Work order #3 shipped end-to-end through the automated pipeline: issue → branch → PR → CI → merge → release → live.
+- **Give-change mode (levels 7–9):** pay a ৳5/10/20/50 note for a thing, tap the coin stack that IS the change (paid − price = change). Ladder 3–6 → 6–9 → 9–12. New `moneyChange`/`priceLabel` i18n EN+BN; change-aware wrong-answer hint; paid-note + Price chip UI.
+- **৳5 and ৳20 lead the payment pool** as real notes; skill description updated; `game-bdtaka` difficultyLevels 6→9 tiers (3 modes × 3 levels), audit accepts the deliberate 9-tier ladder.
+- **The loop proved itself:** conductor created `feat/issue-3` + work order → I implemented it → PR #25 → CI 4/4 parallel gates green (build-core → typecheck+audit ‖ api) → merged (issue #3 auto-closed COMPLETED, project card → Done via project-done.yml) → **`release.sh v11`** (gates → stamp → changelog → tag → GitHub Release v11 → deploy to box) → live bundle `assets/index-BOdoGasY.js` carries the v11 stamp.
+- **Bugs fixed along the way:** `label-pr.yml` used `context.pull_request.number` (undefined) → `context.issue.number`; `release.sh` perl step choked on ৳ Unicode → python UTF-8-safe replacement; `pipeline.sh board()` cat stale `board.md` → `numberverse-board.md`.
+- **✅ Release train ARMED:** `docs/LATEST_RELEASE.md` = v11; the 6-hourly launchd job now auto-cuts v12 when ≥2 feat/fix commits land (verified "0 unreleased — waiting"). Oracle 35/35 CLEAN; CI 4/4 green on main.
+
 ## 🔁 24/7 AUTOMATED PIPELINE — ISSUE → RELEASE, FULLY ON AUTOPILOT 11 Aug 2026 ✅ (user: "make a automated pipeline for all from creating issue to release features, which will 24/7 parallel")
 Two always-on parallel legs turn an issue into a shipped feature with one human/agent step (writing the code). Full map: **`docs/AUTOMATION.md`**.
 - **🖥️ Local leg (launchd, always-on):** `infra/automation/pipeline.sh`
