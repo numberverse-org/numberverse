@@ -1,6 +1,6 @@
 name: Add to Project
 
-# Every new issue lands on the Numberverse Roadmap project automatically.
+# Every new issue lands on the Numberverse Roadmap project, in the Backlog column.
 "on":
   issues:
     types: [opened]
@@ -16,3 +16,4 @@ jobs:
         with:
           project-url: https://github.com/orgs/numberverse-org/projects/1
           github-token: ${{ secrets.PROJECT_PAT }}
+          status: Backlog
