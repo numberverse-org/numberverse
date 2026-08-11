@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🚀 v25 RELEASED — EYE-CATCHING SYLLABUS GRID (NO EN/BN MIXING) + SEMVER VERSIONING 0.25.0 12 Aug 2026 ✅ (user: "Sylabus should need new UI maybe GRID but Eyecatching and No english bengali mixed, do by pipeline and add version like 0.21.0 use versioning convention")
+- **Syllabus GRID redesign**: the expandable-list syllabus is now an eye-catching world-grid. Each of the 5 worlds is a card **tinted with its own land colors** (`WORLD_LANDS` palette) — gradient header with the world emblem, age + Band badge, and a live mastered progress bar (n/N). Lessons render as a **grid of tappable tiles** (2–3 cols): big subject icon, lesson name, one-line description, mastery badge (**✓ done / n% started / • new**). Tiles are tappable to "play it" when a kid is active; informational when browsing pre-sign-in.
+- **No English/Bengali mixing**: the old tiles showed `Count to 10 ১ থেকে ১০ গুনি` side-by-side — gone. Every label picks the CURRENT language: `en` → English title+description; `bn` → Bangla only. Added `titleBn` to all **5 BANDS** + `descriptionBn` to all **48 skills** in core (with fallbacks so nothing can ever mix).
+- **Semver versioning (0.x.0)**: new `APP_VERSION` const; `release.sh` auto-bumps to `0.<N>.0` in the same stamp step (v25 → **0.25.0**), always tracking the release train. Parent-panel footer shows `Numberverse · v0.25.0`; Settings has a **📦 About** card (version + build date). i18n EN+BN complete.
+- **Gates**: core build ✓ · kid typecheck ✓ · audit ✓ (48/45/45, i18n EN+BN) · release.sh syntax + bump derivation verified ✓ · CI 5/5 ✓.
+- **Pipeline:** `feat/syllabus-grid-version` → PR #148 (5/5 CI green) → merged (squash 5c4b4bc) → `release.sh v25` → deployed → live bundle `assets/index-DJmRIgbR.js` carries `0.25.0` + v25 stamp + grid EN/BN tokens (verified live: Band titleBn, About EN+BN, Bangla descriptions). #60 still 🔨 in-progress.
+
 ## 🚀 v24 RELEASED — GUEST → PARENT UPGRADE (SIGN IN / CREATE ACCOUNT FROM INSIDE THE APP) 12 Aug 2026 ✅ (user: "Once guest mode how may they signup?")
 - **The gap**: after choosing guest mode there was NO path to sign up / sign in. Now a guest can upgrade in two taps.
 - **Settings → "👨‍👩‍👧 Keep progress everywhere"** card (shows a `guest` badge when there's no parent session) → opens the parent gate with all options: Sign in / Create account / Continue with Google. The **Parent panel** gets the same upgrade card for guests.
