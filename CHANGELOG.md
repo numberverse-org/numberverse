@@ -1,3 +1,10 @@
+## 12 Aug 2026 — v18 (Times tables 2–10 with arrays-first teaching)
+
+1dd88b5 feat(kid): times tables 2–10 with arrays-first teaching (#57) (#140)
+de4d4f9 track: next-ship batch 1 — v18 top five groomed (todo×4, in-progress #57)
+5c97555 docs: Oracle Council weekly brief 2026-W33 (70/70 clean, zero flags)
+5beb992 docs: oracle-driven next-100 roadmap (6 new epics, 100 issues, generator versioned)
+
 ## 12 Aug 2026 — v17 (Mastery gate: kid must clear current-step wrongs before advancing)
 
 2927bf3 feat(kid): mastery gate — must clear current-step wrongs before advancing (#38) (#39)
