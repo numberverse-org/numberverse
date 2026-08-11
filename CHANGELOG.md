@@ -1,3 +1,7 @@
+## 12 Aug 2026 — v15 (Count to 100 + place-value rods)
+
+6793bc4 feat(kid): count to 100 with place-value rods (#11) (#35)
+
 ## 11 Aug 2026 — v14 (Neural voice on-device + Phaser async chunk)
 
 0e273f9 fix(audit): point scene registry checks at engine.ts (issue #15)

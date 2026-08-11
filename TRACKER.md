@@ -1,5 +1,5 @@
 # 🎮 Numberverse — Product Tracker
-> Last updated: 11 Aug 2026
+> Last updated: 12 Aug 2026
 
 ## 🚀 v13 RELEASED — NEURAL VOICE: BOOT PRELOAD + WAV CACHE (auto-cut by the 24/7 train) 11 Aug 2026 ✅ (user: "how may we improve the neural voice issue" → "yes")
 Two neural-voice features shipped end-to-end in one release — **the release train auto-cut v13 with ZERO manual release commands** (found 2 feat/fix commits since v12, derived v13 from the stamp, ran release.sh → deployed to the box → live).
