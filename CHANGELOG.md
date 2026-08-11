@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v24 (guest → parent upgrade (sign in / create account from inside the app))
+
+ee1b799 feat(kid): guest → parent upgrade path (sign in / create account from inside the app) (#147)
+e910d7e track: v23 released — google sign-in + first-time language pick + binary guest/signin + pre-login syllabus
+
 ## 12 Aug 2026 — v23 (google sign-in + first-time language pick + binary guest/signin + pre-login syllabus)
 
 b289a00 feat: google sign-in + first-time language pick + binary guest/signin + pre-login syllabus (#146)
