@@ -128,6 +128,10 @@ interface SessionStep {
   mode?: "add" | "sub" | "vowels" | "consonants" | "family";
   /** Run the narrated Basket Math concept-demo before the drills (add/sub). */
   teach?: boolean;
+  /** Mastery-gate count: how many remediation re-runs this step has had after
+   *  the kid left wrongs unresolved. >0 → re-teach (re-demo + easier tier)
+   *  until a block ends with open === 0, then advance. */
+  reteach?: number;
 }
 
 interface Kid {
@@ -429,6 +433,8 @@ interface Strings {
   parentHelpNone: string;
   parentHelpOpen: (n: number) => string;
   parentHelpWrong: (n: number) => string;
+  reteachLetTry: string;
+  practicePill: string;
   /* Nova companion */
   novaTitle: string;
   novaTagline: string;
@@ -656,6 +662,8 @@ const STR: Record<Lang, Strings> = {
     parentHelpNone: "All caught up! 🎉",
     parentHelpOpen: (n) => `${n} to finish`,
     parentHelpWrong: (n) => `${n} misses`,
+    reteachLetTry: "Almost! Let's practice this a different way 💪",
+    practicePill: "Practice!",
     inProgress: "In progress",
     notStarted: "Not started",
     /* Nova companion */
@@ -883,6 +891,8 @@ const STR: Record<Lang, Strings> = {
     parentHelpNone: "সব ঠিক আছে! 🎉",
     parentHelpOpen: (n) => `শেষ করতে ${n}টা বাকি`,
     parentHelpWrong: (n) => `${n}টা ভুল`,
+    reteachLetTry: "প্রায়! চলো এটা আরেকভাবে অনুশীলন করি 💪",
+    practicePill: "অনুশীলন!",
     inProgress: "চলমান",
     notStarted: "শুরু হয়নি",
     /* Nova companion */
@@ -1269,6 +1279,9 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const sessionRef = useRef<SessionStep[]>([]);
+  /** Bump to force the playing effect to re-run the SAME step with remediation
+   *  flags (reteach > 0) after the mastery gate blocks an advance. */
+  const [reteachNonce, setReteachNonce] = useState(0);
   const activeSceneRef = useRef<string | null>(null);
   // Mastery snapshot BEFORE a session starts — lets the done-screen celebrate
   // the skills that were genuinely NEW this session, not just re-played ones.
@@ -1793,7 +1806,12 @@ export default function App() {
     const step = sessionRef.current[sessionIdx];
     if (!step) return;
     let active = true;
-    const startLevelIndex = adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
+    const reteach = step.reteach ?? 0;
+    const startLevelIndex = reteach > 0
+      // Mastery-gate remediation: drop to the EASIEST tier so the re-taught
+      // concept is re-learned simply (then it ramps back up on its own).
+      ? Math.min(adaptiveLevelIndex(kid.id, step.skillId, step.gameId), 1)
+      : adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
     setCurrentKidName(kid.name);
     // Arm the wrong-answer ledger so hintWrong() records THIS kid+skill on every
     // wrong tap (resolve-to-complete: wrongs accumulate until a correct solve).
@@ -1811,7 +1829,9 @@ export default function App() {
       game.scene.start(step.scene, {
         startLevelIndex,
         mode: step.mode,
-        teach: step.teach,
+        // Remediation re-runs the narrated concept demo (FruitAdd) so the wrong
+        // skill is TAUGHT again, differently, before fresh easy drills.
+        teach: step.teach || reteach > 0,
         kidName: kid.name,
         // Per-skill difficulty ladder (e.g. CountPop reuses the same scene for
         // count-to-10 AND count-to-50 — the scene reads its own levels here).
@@ -1855,12 +1875,29 @@ export default function App() {
       // skill attempts. Any wrongs recorded so far stay in the ledger.
       wrongLedger.setContext(null);
     };
-  }, [screen, world, kid, sessionIdx, addEvent, novaAwardRound, novaQuestRound, gardenWater, gardenMastery]);
+  }, [screen, world, kid, sessionIdx, reteachNonce, addEvent, novaAwardRound, novaQuestRound, gardenWater, gardenMastery]);
 
-  /* ── Advance to the next skill after ROUNDS_TO_FINISH rounds ── */
+  /* ── Advance to the next skill after ROUNDS_TO_FINISH rounds — BUT only if
+     the current step's wrongs are RESOLVED (open === 0). If the kid still has
+     unresolved wrongs, the block does NOT advance: the same step re-queues in
+     REMEDIATION (re-demo + easiest tier, fresh questions each round, solution
+     revealed on miss #3) and loops until a block ends clean. The kid MUST play
+     the current step until they've shown they know it — wrongs never get
+     silently left behind. */
   useEffect(() => {
     if (screen !== "playing" || roundsDone < ROUNDS_TO_FINISH) return;
     setRoundsDone(0);
+    const step = sessionRef.current[sessionIdx];
+    if (!step || !kid) return;
+    const open = mistakes[`${kid.id}:${step.skillId}`]?.open ?? 0;
+    if (open > 0) {
+      // Mastery gate — re-teach the SAME step differently until solved.
+      sessionRef.current[sessionIdx] = { ...step, reteach: (step.reteach ?? 0) + 1 };
+      setReteachNonce((n) => n + 1);
+      const bn = getAppLang() === "bn";
+      speak(t.reteachLetTry, { lang: bn ? "bn" : "en" });
+      return; // do NOT advance
+    }
     const next = sessionIdx + 1;
     if (next < sessionRef.current.length) {
       setSessionIdx(next);
@@ -1873,7 +1910,7 @@ export default function App() {
       cancelSpeech();
       setTimeout(() => setScreen("done"), 400);
     }
-  }, [roundsDone, sessionIdx, screen, kid, recordSession, novaCompleteSession]);
+  }, [roundsDone, sessionIdx, screen, kid, mistakes, recordSession, novaCompleteSession]);
 
   /* The done screen talks — a spoken celebration to seal the win. */
   useEffect(() => {
@@ -1999,6 +2036,7 @@ export default function App() {
   };
 
   const curStep = sessionRef.current[sessionIdx];
+  const curReteach = (curStep?.reteach ?? 0) > 0;
 
   if (screen === "home") {
     // Home is JOURNEY-FIRST: Nova greets the kid by name + streak, the kid's
@@ -3289,6 +3327,7 @@ export default function App() {
               <button className="hud-back" onClick={leaveGame} aria-label={t.leaveGame}>‹</button>
               <span className="hud-world">{world && <Icon name={world.key} size={18} />} {world?.title}</span>
               {curStep ? <span className="hud-skill">{curStep.title}</span> : null}
+              {curReteach && <span className="hud-reteach">🎯 {t.practicePill}</span>}
               <span className="round-chip">{t.round(Math.min(roundsDone + 1, ROUNDS_TO_FINISH), ROUNDS_TO_FINISH)}</span>
               <span className="stars">⭐ {stars}</span>
               {sessionStreakCount >= 2 && <span className="hud-streak">🔥 {sessionStreakCount}</span>}
