@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🚀 v24 RELEASED — GUEST → PARENT UPGRADE (SIGN IN / CREATE ACCOUNT FROM INSIDE THE APP) 12 Aug 2026 ✅ (user: "Once guest mode how may they signup?")
+- **The gap**: after choosing guest mode there was NO path to sign up / sign in. Now a guest can upgrade in two taps.
+- **Settings → "👨‍👩‍👧 Keep progress everywhere"** card (shows a `guest` badge when there's no parent session) → opens the parent gate with all options: Sign in / Create account / Continue with Google. The **Parent panel** gets the same upgrade card for guests.
+- **gateReturn ref**: the gate remembers where to land after success — first-load / syllabus links → syllabus (unchanged); upgrading a guest from Settings / Parent panel → **back home**, where their kids already are. Their local kids are mapped to the parent account on the next sync tick (`mapLocalKidsToServer`), so the upgrade is seamless — nothing lost, nothing duplicated.
+- **Gates**: kid typecheck ✓ · audit ✓ (i18n EN+BN complete, 48/45/45) · CI 5/5 ✓.
+- **Pipeline:** `feat/guest-signin-upgrade` → PR #147 (5/5 CI green) → merged (squash ccaad49→) → `release.sh v24` → deployed → live bundle `assets/index-C9UqoPI9.js` carries v24 stamp + upgrade card EN+BN tokens (verified live). #60 still 🔨 in-progress.
+
 ## 🚀 v23 RELEASED — GOOGLE SIGN-IN + FIRST-TIME LANGUAGE PICK + BINARY GUEST/SIGN-IN + PRE-LOGIN SYLLABUS 12 Aug 2026 ✅ (user: "can we add google signin and language Selection First Time the top most, Also Binary scene for guest Model & Signin, where the sylabus will show I think before signin they can have see it")
 - **First-time WELCOME screen (topmost)**: fresh device → **language pick first** (🇬🇧 English / 🇧🇩 বাংলা, persists to `nv_lang`), then the **BINARY scene** — 🎮 Continue as guest | 👨‍👩‍👧 I'm a parent — sign in, plus "📚 What kids learn — no sign-in needed". `nv_seen_welcome` set on mount → shows once per device; later visits go to the gate.
 - **Google sign-in** ("Continue with Google", Identity Services): renders on the gate when `VITE_GOOGLE_CLIENT_ID` is set AND the origin is secure (https tunnel) — otherwise the button hides and email/guest remain. `POST /api/v1/auth/google` verifies the ID token **server-side** (`google-auth` against `NV_GOOGLE_CLIENT_ID`), find-or-creates the profile (Google-only accounts get a random unguessable password hash), existing password accounts with the same email log in (Google proves ownership). 501 when unconfigured (verified live). deps `google-auth`+`requests` added, lock regenerated, `uv sync --frozen` resolves.
