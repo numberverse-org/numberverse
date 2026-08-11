@@ -1,50 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import Phaser from "phaser";
+// Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
+// `import type` is erased and the main bundle carries ZERO engine bytes.
+import type { Game } from "phaser";
 import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, type Band, type Skill } from "@numberverse/core";
-import { CountPopScene } from "./game/CountPopScene";
-import { FruitAddScene } from "./game/FruitAddScene";
-import { BnLettersScene } from "./game/BnLettersScene";
-import { BnNumbersScene } from "./game/BnNumbersScene";
-import { ShapeCatcherScene } from "./game/ShapeCatcherScene";
-import { EnLettersScene } from "./game/EnLettersScene";
-import { NumberBondsScene } from "./game/NumberBondsScene";
-import { RocketMultScene } from "./game/RocketMultScene";
-import { PizzaFracScene } from "./game/PizzaFracScene";
-import { BnWordsScene } from "./game/BnWordsScene";
-import { CvcScene } from "./game/CvcScene";
-import { DivisionFactsScene } from "./game/DivisionFactsScene";
-import { FractionMatchScene } from "./game/FractionMatchScene";
-import { PlaceValueScene } from "./game/PlaceValueScene";
-import { BnMatrasScene } from "./game/BnMatrasScene";
-import { SightWordsScene } from "./game/SightWordsScene";
-import { AnimalHomeScene } from "./game/AnimalHomeScene";
-import { DecimalsScene } from "./game/DecimalsScene";
-import { PercentScene } from "./game/PercentScene";
-import { AreaPerimScene } from "./game/AreaPerimScene";
-import { BnSentenceScene } from "./game/BnSentenceScene";
-import { GrammarScene } from "./game/GrammarScene";
-import { BgsFactsScene } from "./game/BgsFactsScene";
-import { BnColorsScene } from "./game/BnColorsScene";
-import { BdMoneyScene } from "./game/BdMoneyScene";
-import { EnPhonicsScene } from "./game/EnPhonicsScene";
-import { AddSub100Scene } from "./game/AddSub100Scene";
-import { NovaScene } from "./game/NovaScene";
-import { GrowCountScene } from "./game/GrowCountScene";
-import { FruitTreeScene } from "./game/FruitTreeScene";
-import { GardenScene } from "./game/GardenScene";
-import { FrogHopScene } from "./game/FrogHopScene";
-import { MemoryPairsScene } from "./game/MemoryPairsScene";
-import { BalloonPopScene } from "./game/BalloonPopScene";
-import { ClockTimeScene } from "./game/ClockTimeScene";
-import { BalanceScene } from "./game/BalanceScene";
-import { CountingSongScene } from "./game/CountingSongScene";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult } from "./store";
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, type KidSettings } from "./api";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang } from "./game/locale";
-import { ensureAssets } from "./game/svgAssets";
+import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
@@ -1152,24 +1117,6 @@ function adaptiveLevelIndex(kidId: string, skillId: string, gameId: string): num
   return idx < 0 ? 0 : idx;
 }
 
-/**
- * No-op boot scene. Phaser auto-starts the FIRST scene in the `scene:` array on
- * boot WITHOUT any data. If that first scene is a real game (e.g. CountPop), it
- * runs standalone with an undefined onRoundDone and never reports back to React.
- * Putting a blank scene first means every real game is started explicitly via
- * `game.scene.start(key, {startLevelIndex, mode, onRoundDone})`.
- */
-class BootScene extends Phaser.Scene {
-  constructor() {
-    super("Boot");
-  }
-  create() {
-    // Kick off the SVG → canvas texture loads the moment the game boots, so
-    // lessons are already using crisp vector art (no first-round emoji flash).
-    ensureAssets(this);
-  }
-}
-
 function loadKids(): Kid[] {
   try {
     const raw = localStorage.getItem("nv_kids");
@@ -1282,7 +1229,7 @@ function VoiceCheck({ t }: { t: Strings }) {
 
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
-  const gameRef = useRef<Phaser.Game | null>(null);
+  const gameRef = useRef<Game | null>(null);
   const sessionRef = useRef<SessionStep[]>([]);
   const activeSceneRef = useRef<string | null>(null);
   // Mastery snapshot BEFORE a session starts — lets the done-screen celebrate
@@ -1700,32 +1647,13 @@ export default function App() {
     setScreen("home");
   };
 
-  /* ── Create + boot Phaser for the game canvas (playing / Nova / Garden) ── */
+  /* ── Create + boot Phaser for the game canvas (playing / Nova / Garden) ──
+     The engine + scenes are a DYNAMIC chunk (issue #15) — bootGame() imports it
+     lazily. If the user leaves before the chunk loads, teardown() bumps a
+     generation so the pending boot never creates a game on an unmounted canvas. */
   useEffect(() => {
     if ((screen !== "playing" && screen !== "nova" && screen !== "garden") || !mountRef.current || gameRef.current) return;
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      parent: mountRef.current,
-      backgroundColor: "#0b2545",
-      scene: [
-        BootScene,
-        NovaScene,
-        GardenScene,
-        GrowCountScene, FruitTreeScene,
-        CountPopScene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
-        RocketMultScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FractionMatchScene,
-        PlaceValueScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
-        AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
-        BdMoneyScene,
-        AddSub100Scene,
-        FrogHopScene, MemoryPairsScene, BalloonPopScene, ClockTimeScene, BalanceScene,
-        CountingSongScene,
-      ],
-      scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
-      input: { activePointers: 3 },
-    });
-    gameRef.current = game;
-    (window as unknown as Record<string, unknown>).__NV_GAME__ = game;
+    const mountEl = mountRef.current;
     /* iOS root-cause fix #2: Safari's toolbar collapse fires `visualViewport.resize`
        (NOT window.resize), and the canvas element can outgrow/under-grow its
        flex parent after HUD show/hide. Re-measure the canvas the moment the
@@ -1737,7 +1665,7 @@ export default function App() {
     };
     let raf = 0;
     let ro: ResizeObserver | undefined;
-    if (typeof ResizeObserver !== "undefined" && mountRef.current) {
+    if (typeof ResizeObserver !== "undefined" && mountEl) {
       ro = new ResizeObserver(() => {
         if (raf) return; // one refresh per frame max
         raf = requestAnimationFrame(() => {
@@ -1745,10 +1673,15 @@ export default function App() {
           refreshCanvas();
         });
       });
-      ro.observe(mountRef.current);
+      ro.observe(mountEl);
     }
     const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
     vv?.addEventListener("resize", refreshCanvas);
+    bootGame(mountEl).then((g) => {
+      if (!g || gameRef.current !== null) return; // torn down mid-load / already set
+      gameRef.current = g;
+      (window as unknown as Record<string, unknown>).__NV_GAME__ = g;
+    });
     return () => {
       gameRef.current = null;
       activeSceneRef.current = null;
@@ -1756,17 +1689,16 @@ export default function App() {
       if (raf) cancelAnimationFrame(raf);
       ro?.disconnect();
       vv?.removeEventListener("resize", refreshCanvas);
-      game.destroy(true);
+      teardownGame();
     };
   }, [screen]);
 
   /* ── Nova companion home: greet the kid right after profile selection ── */
   useEffect(() => {
-    if (screen !== "nova" || !kid) return;
-    const game = gameRef.current;
-    if (!game) return;
+    if (screen !== "nova" || !kid || !mountRef.current) return;
+    const mountEl = mountRef.current;
     let active = true;
-    const start = () => {
+    const start = (game: Game) => {
       if (!active || screen !== "nova") return;
       if (activeSceneRef.current && activeSceneRef.current !== "Nova") {
         game.scene.stop(activeSceneRef.current);
@@ -1786,8 +1718,7 @@ export default function App() {
       });
       activeSceneRef.current = "Nova";
     };
-    if (game.isBooted) start();
-    else game.events.once(Phaser.Core.Events.READY, start);
+    whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {
       active = false;
     };
@@ -1795,11 +1726,10 @@ export default function App() {
 
   /* ── The Growth Garden: the kid's living proof of every correct answer ── */
   useEffect(() => {
-    if (screen !== "garden" || !kid) return;
-    const game = gameRef.current;
-    if (!game) return;
+    if (screen !== "garden" || !kid || !mountRef.current) return;
+    const mountEl = mountRef.current;
     let active = true;
-    const start = () => {
+    const start = (game: Game) => {
       if (!active || screen !== "garden") return;
       if (activeSceneRef.current && activeSceneRef.current !== "Garden") {
         game.scene.stop(activeSceneRef.current);
@@ -1811,8 +1741,7 @@ export default function App() {
       });
       activeSceneRef.current = "Garden";
     };
-    if (game.isBooted) start();
-    else game.events.once(Phaser.Core.Events.READY, start);
+    whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {
       active = false;
     };
@@ -1820,14 +1749,14 @@ export default function App() {
 
   /* ── Start the scene for the current session step ── */
   useEffect(() => {
-    if (screen !== "playing" || !kid) return;
-    const game = gameRef.current;
+    if (screen !== "playing" || !kid || !mountRef.current) return;
+    const mountEl = mountRef.current;
     const step = sessionRef.current[sessionIdx];
-    if (!game || !step) return;
+    if (!step) return;
     let active = true;
     const startLevelIndex = adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
     setCurrentKidName(kid.name);
-    const start = () => {
+    const start = (game: Game) => {
       if (!active || screen !== "playing") return;
       // stop the previous scene so two games never render at once
       if (activeSceneRef.current && activeSceneRef.current !== step.scene) {
@@ -1877,8 +1806,7 @@ export default function App() {
       });
       activeSceneRef.current = step.scene;
     };
-    if (game.isBooted) start();
-    else game.events.once(Phaser.Core.Events.READY, start);
+    whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {
       active = false;
     };
