@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from "react";
 // `import type` is erased and the main bundle carries ZERO engine bytes.
 import type { Game } from "phaser";
 import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, type Band, type Skill } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult, type MistakeState } from "./store";
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, type KidSettings } from "./api";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang } from "./game/locale";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
+import { wrongLedger } from "./game/wrongLedger";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
@@ -423,6 +424,11 @@ interface Strings {
   inProgress: string;
   notStarted: string;
   playLimitReached: string;
+  /* wrong-answer ledger — parent panel "needs help" */
+  parentHelpTitle: string;
+  parentHelpNone: string;
+  parentHelpOpen: (n: number) => string;
+  parentHelpWrong: (n: number) => string;
   /* Nova companion */
   novaTitle: string;
   novaTagline: string;
@@ -646,6 +652,10 @@ const STR: Record<Lang, Strings> = {
     voicePickListen: "Listen",
     mastered: "Mastered",
     playLimitReached: "⏰ Playtime is all done for today! Ask a grown-up — more learning awaits tomorrow 🌙",
+    parentHelpTitle: "Needs a little help",
+    parentHelpNone: "All caught up! 🎉",
+    parentHelpOpen: (n) => `${n} to finish`,
+    parentHelpWrong: (n) => `${n} misses`,
     inProgress: "In progress",
     notStarted: "Not started",
     /* Nova companion */
@@ -869,6 +879,10 @@ const STR: Record<Lang, Strings> = {
     voicePickListen: "শোনো",
     mastered: "আয়ত্ত",
     playLimitReached: "⏰ আজকের খেলার সময় শেষ! একজন বড়কে বলো — কাল আবার শেখা চলবে 🌙",
+    parentHelpTitle: "একটু সাহায্য দরকার",
+    parentHelpNone: "সব ঠিক আছে! 🎉",
+    parentHelpOpen: (n) => `শেষ করতে ${n}টা বাকি`,
+    parentHelpWrong: (n) => `${n}টা ভুল`,
     inProgress: "চলমান",
     notStarted: "শুরু হয়নি",
     /* Nova companion */
@@ -923,6 +937,25 @@ function applyKidControls(enabledSubjects: string[] | null, maxBand: number | nu
 function skillMastered(skills: SkillMap, kidId: string, skillId: string): boolean {
   const st = skills[`${kidId}:${skillId}`];
   return !!st && st.pMastered >= MASTERY_THRESHOLD;
+}
+
+/** Skills a kid is currently struggling with: open (unresolved) wrongs right now,
+ *  OR ≥3 lifetime misses and not yet mastered. Feeds the parent panel's
+ *  "Needs a little help" list so a grown-up can guide the tough ones. */
+function strugglingSkills(
+  skills: SkillMap,
+  kidId: string,
+  mistakes: Record<string, MistakeState>
+): Array<{ skill: Skill; open: number; wrong: number; lastAt: number }> {
+  const out: Array<{ skill: Skill; open: number; wrong: number; lastAt: number }> = [];
+  for (const skill of SKILLS) {
+    if (!skill.game) continue;
+    if (skillMastered(skills, kidId, skill.id)) continue;
+    const m = mistakes[`${kidId}:${skill.id}`];
+    if (!m) continue;
+    if (m.open > 0 || m.wrong >= 3) out.push({ skill, open: m.open, wrong: m.wrong, lastAt: m.lastAt });
+  }
+  return out.sort((a, b) => b.open - a.open || b.wrong - a.wrong);
 }
 
 function worldProgress(skills: SkillMap, kidId: string, band: number): { mastered: number; total: number; pct: number } {
@@ -1095,12 +1128,17 @@ function stepForSkill(skill: Skill): SessionStep {
   };
 }
 
-/** Guided session = up to SESSION_LEN unmastered skills, in world order. If all mastered, replay the first few. */
+/** Guided session = up to SESSION_LEN unmastered skills, in world order. If all mastered, replay the first few.
+ *  Resolve-to-complete priority: skills the kid has ever missed come FIRST, so
+ *  the next session re-teaches the struggles before fresh practice — the app
+ *  doesn't let a wrong answer drift away, it brings it back to be solved. */
 function sessionForWorld(skills: SkillMap, kidId: string, band: number): SessionStep[] {
   const ordered = filterSkills.filter((s) => s.band === band && s.game).map(stepForSkill);
   const unmastered = ordered.filter((st) => !skillMastered(skills, kidId, st.skillId));
   const pool = unmastered.length ? unmastered : ordered;
-  return pool.slice(0, SESSION_LEN);
+  const mistakes = useKidStore.getState().mistakes;
+  const struggled = (st: SessionStep) => (mistakes[`${kidId}:${st.skillId}`]?.wrong ?? 0) > 0;
+  return [...pool.filter(struggled), ...pool.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
 }
 
 function nextUnmasteredSkill(skills: SkillMap, kidId: string, band: number): Skill | undefined {
@@ -1321,6 +1359,7 @@ export default function App() {
   }, [neural.ready]);
   const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestRound, gardenWater, gardenMastery } = useKidStore();
   const skillsMap = useKidStore((s) => s.skills);
+  const mistakes = useKidStore((s) => s.mistakes);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
   const quest = useKidStore((s) => {
     const n = s.nova[kid?.id ?? ""];
@@ -1756,6 +1795,9 @@ export default function App() {
     let active = true;
     const startLevelIndex = adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
     setCurrentKidName(kid.name);
+    // Arm the wrong-answer ledger so hintWrong() records THIS kid+skill on every
+    // wrong tap (resolve-to-complete: wrongs accumulate until a correct solve).
+    wrongLedger.setContext({ kidId: kid.id, skillId: step.skillId, gameId: step.gameId, difficulty: startLevelIndex });
     const start = (game: Game) => {
       if (!active || screen !== "playing") return;
       // stop the previous scene so two games never render at once
@@ -1809,6 +1851,9 @@ export default function App() {
     whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {
       active = false;
+      // Leaving the drill screen disarms the ledger — Nova/Garden taps aren't
+      // skill attempts. Any wrongs recorded so far stay in the ledger.
+      wrongLedger.setContext(null);
     };
   }, [screen, world, kid, sessionIdx, addEvent, novaAwardRound, novaQuestRound, gardenWater, gardenMastery]);
 
@@ -2457,6 +2502,39 @@ export default function App() {
                         );
                       })}
                     </div>
+                    {(() => {
+                      // Wrong-answer ledger — skills the kid is stuck on right now
+                      // (open unresolved) or has missed ≥3× and not yet mastered.
+                      const struggling = strugglingSkills(skillsMap, activeKid.id, mistakes);
+                      const everMissed = Object.values(mistakes).some((m) => m.wrong > 0);
+                      if (!struggling.length) {
+                        // Every past struggle has since been solved → reassure.
+                        return everMissed ? (
+                          <p className="parent-help-caught">{t.parentHelpNone}</p>
+                        ) : null;
+                      }
+                      return (
+                        <details className="parent-help" open>
+                          <summary>🎯 {t.parentHelpTitle}</summary>
+                          <div className="skill-list">
+                            {struggling.map(({ skill, open, wrong }) => (
+                              <div key={skill.id} className="skill-row">
+                                <span className="skill-emoji"><Icon name={skill.subject} size={30} /></span>
+                                <span className="skill-meta">
+                                  <span className="skill-name">
+                                    {skill.title}
+                                    {skill.titleBn ? <span className="skill-bn">{skill.titleBn}</span> : null}
+                                  </span>
+                                </span>
+                                <span className="skill-state help">
+                                  {open > 0 ? t.parentHelpOpen(open) : t.parentHelpWrong(wrong)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      );
+                    })()}
                     <button className="ghost-btn mini share-progress-btn" onClick={() => void shareProgress(activeKid)}>
                       {t.shareProgress}
                     </button>

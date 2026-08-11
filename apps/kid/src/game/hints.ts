@@ -4,6 +4,7 @@ import { getAppLang } from "./locale";
 import { t } from "./i18n";
 import { SAT } from "./safeArea";
 import { cancelSpeech, speak, speakAnswer } from "./speech";
+import { wrongLedger } from "./wrongLedger";
 
 /**
  * Escalating hints on repeated misses — every miss is a teaching moment.
@@ -56,6 +57,10 @@ export function hintWrong(
   container: Phaser.GameObjects.Container,
   ctx: HintCtx
 ) {
+  // Every wrong tap is recorded into the kid's ledger — the App set the current
+  // attempt context, so this lands under the right kid+skill. Feeds the
+  // resolve-to-complete loop + the parent panel's "needs help" list.
+  wrongLedger.record();
   const bn = getAppLang() === "bn";
   const correct = ctx.correct();
   const log = missLog(scene);
