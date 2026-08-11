@@ -1,0 +1,39 @@
+name: Label PRs by type
+
+"on":
+  pull_request:
+    types: [opened, reopened, edited]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Map conventional title prefix → type label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title.toLowerCase();
+            const map = [
+              [/^release/, "release"],
+              [/^feat/, "feature"],
+              [/^fix|^bug/, "bug"],
+              [/^docs/, "documentation"],
+              [/^chore|^build|^ci/, "chore"],
+              [/^refactor/, "tech-debt"],
+              [/^test/, "testing"],
+            ];
+            let label = null;
+            for (const [re, l] of map) {
+              if (re.test(title)) { label = l; break; }
+            }
+            if (!label) return;
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.pull_request.number,
+              labels: [label],
+            });

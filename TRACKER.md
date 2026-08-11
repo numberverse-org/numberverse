@@ -1,6 +1,19 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🗂️ FULL TRACKING + ISSUE BOARD + AUTOMATED RELEASE PIPELINE 11 Aug 2026 ✅ (user: "run oracle and make more issues and a complete project tracking, issue tracking and work also a feature relase full automated pipeline")
+The roadmap now lives as a real GitHub board, and shipping a feature is a one-command gated pipeline.
+- **Issue backlog (21 issues + #2 voice):** every idea is a scoped issue with acceptance criteria — across 5 epics:
+  - **v11 — next ship** (#3 Taka Tap v2 give-change + ৳5/৳20 · #4 parent streak + playtime-vs-cap · #5 first tagged release)
+  - **v12 — parent power** (#6 weekday caps + in-app enforcement · #7 debug card, no analytics · #8 share-card coins/minutes · #9 multi-device sync · #10 B2B classroom view)
+  - **v13 — content wave** (#11 count-to-100 + place value · #12 Bangla sentence builder · #13 sh/ch/th digraphs · #14 seasons/weather)
+  - **v14 — polish & perf** (#15 async Phaser chunk → first paint · #16 iOS physical-device pass · #17 accessibility re-audit · #18 in-app Help card)
+  - **Backlog** (#19 garden/pet expansion · #20 Jungle+Polar lands · #21 CSV/PDF export · #22 sibling co-op)
+- **Tracking (free-plan kanban):** milestones = epics; columns = `status: backlog|todo|in-progress|review|blocked` labels. New issues auto-assign to the maintainer (`auto-assign.yml`) + auto-label `status: backlog` (`triage.yml`). PRs auto-label by type from the title (`label-pr.yml`: feat/fix/docs/chore/refactor/test). Board filters + workflow in **`docs/ISSUE_BOARD.md`**.
+- **Automated release pipeline:** `bash infra/deploy/scripts/release.sh vN "summary"` → ① gates (core build · typecheck · audit · oracle CLEAN — aborts on any ✖) ② bumps `APP_BUILD` + TRACKER date ③ prepends `CHANGELOG.md` from commits since last tag ④ commits + tags `vN` ⑤ pushes main+tag → GitHub Actions **ci.yml** re-verifies the tagged commit + **release.yml** drafts a GitHub Release with auto-notes ⑥ deploys to the box. `--no-deploy` stops after push. Full flow in **`docs/RELEASING.md`**.
+- **⛔ GitHub Projects v2** still needs a token scope the user must grant once (`gh auth refresh -h github.com -s project,read:project`) — documented; until then the label board IS the live board.
+- **✅ Verified:** oracle 35/35 CLEAN; audit ✓ clean; typecheck OK; `release.sh` syntax-valid; README + TRACKER wired; pushed to `numberverse-org/numberverse`.
+
 ## 🏢 GITHUB ORG SETUP — numberverse-org (the "proper way") 11 Aug 2026 ✅ (user created github.com/numberverse-org → "do all like real people do")
 The repo now lives in a real organization and runs like a real team, not a solo repo.
 - **Repo transferred** → `https://github.com/numberverse-org/numberverse` (PRIVATE, main). Local remote updated to `git@github.com:numberverse-org/numberverse.git`.

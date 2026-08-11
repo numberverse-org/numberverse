@@ -55,6 +55,17 @@ bash infra/deploy/scripts/deploy.sh    # rsync → docker compose build on box �
 ```
 Live: `https://kids.munna-khan.xyz` (Cloudflare named tunnel) · LAN: `http://192.168.0.104:8080`
 
+## Release (one command, fully gated)
+```bash
+bash infra/deploy/scripts/release.sh v11 "Taka Tap v2"   # gates → stamp → changelog → tag → push → deploy
+```
+Pushing the `v*` tag fires CI + a GitHub Release with auto-notes. See **[docs/RELEASING.md](docs/RELEASING.md)**.
+
+## Tracking (the issue board)
+Every idea is a GitHub issue on a milestone; kanban columns are `status:` labels
+(`backlog` → `todo` → `in-progress` → `review` → `blocked`). New issues are
+auto-assigned + auto-triaged. See **[docs/ISSUE_BOARD.md](docs/ISSUE_BOARD.md)**.
+
 ## Quality gates (before any release)
 ```bash
 cd apps/kid && ./node_modules/.bin/tsc --noEmit -p tsconfig.json   # type-safe
