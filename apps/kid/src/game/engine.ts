@@ -40,6 +40,7 @@ import { BnColorsScene } from "./BnColorsScene";
 import { BdMoneyScene } from "./BdMoneyScene";
 import { EnPhonicsScene } from "./EnPhonicsScene";
 import { AddSub100Scene } from "./AddSub100Scene";
+import { RegroupScene } from "./RegroupScene";
 import { NovaScene } from "./NovaScene";
 import { GrowCountScene } from "./GrowCountScene";
 import { FruitTreeScene } from "./FruitTreeScene";
@@ -86,7 +87,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       PlaceValueScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
-      AddSub100Scene,
+      AddSub100Scene, RegroupScene,
       FrogHopScene, MemoryPairsScene, BalloonPopScene, ClockTimeScene, BalanceScene,
       CountingSongScene,
     ],

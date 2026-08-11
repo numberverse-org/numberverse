@@ -53,6 +53,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("mult-facts-2-10", 3, "math", "Times tables 2–10", "২–১০ এর নামতা"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("add-sub-100", 3, "math", "Add & subtract to 100", "১০০-এর মধ্যে যোগ-বিয়োগ"),
+    ("add-sub-regroup", 3, "math", "Carry & Borrow", "ক্যারি ও ধার"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("div-facts-by-2-3", 3, "math", "Divide by 2 and 3", "২ ও ৩ দিয়ে ভাগ"),
     ("div-facts-fair-share", 3, "math", "Fair shares", "সমান ভাগ"),
