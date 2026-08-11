@@ -1,0 +1,18 @@
+name: Add to Project
+
+# Every new issue lands on the Numberverse Roadmap project automatically.
+"on":
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/numberverse-org/projects/1
+          github-token: ${{ secrets.PROJECT_PAT }}
