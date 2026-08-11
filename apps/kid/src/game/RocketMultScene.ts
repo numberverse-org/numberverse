@@ -12,14 +12,16 @@ import { answerRow } from "./layout";
 import { ensureAssets, assetIcon } from "./svgAssets";
 
 const LEVELS = GAMES.find((g) => g.id === "game-rocketmult")?.difficultyLevels ?? [2, 5, 10, 12, 16, 20];
-/** Level → multiplier set. Later levels widen the set (mixed tables get harder). */
+/** Level → multiplier set. Stays INSIDE the skill's promise (tables 2, 5, 10) —
+ *  later levels just MIX the same three tables (harder, but never ×3/×4/…).
+ *  The "tables 2–10" skill (game-multable) owns the other multipliers. */
 const TABLE_SETS: number[][] = [
   [2],       // level 1: ×2 only
   [5],       // level 2: ×5 only
   [10],      // level 3: ×10 only
-  [2, 5, 10], // level 4: mixed easy
-  [3, 4, 6], // level 5: mixed medium
-  [7, 8, 9], // level 6: mixed hard
+  [2, 5],    // level 4: mixed pair
+  [2, 10],   // level 5: mixed pair
+  [2, 5, 10], // level 6: all three mixed
 ];
 const BUTTON_RADIUS = 50;
 const ROUNDS_TO_FINISH = 3;

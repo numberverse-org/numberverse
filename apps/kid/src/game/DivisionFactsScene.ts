@@ -18,9 +18,13 @@ const ROUNDS_TO_FINISH = 3;
  * Division Facts — "divide to cross the castle bridge".
  * Band 4 (ages 8–10). Level = divisor table (2 → 3 → 4 → 6 → 8).
  * Shows "24 ÷ 3 = ?" and 4 answer choices.
+ *
+ * The SAME scene backs the band-3 "÷ by 2 and 3" skill (game-div-23, divisors
+ * {2,3}) — the per-skill ladder is passed in scene data.
  */
 export class DivisionFactsScene extends Phaser.Scene {
   private levelIndex = 0;
+  private levels = LEVELS;
   private roundsDone = 0;
   private startedAt = 0;
   private dividend = 0;
@@ -39,9 +43,10 @@ export class DivisionFactsScene extends Phaser.Scene {
     super("DivisionFacts");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    if (data.levels?.length) this.levels = data.levels;
     this.background = this.add.graphics();
     this.drawBackground();
     this.titleText = this.add
@@ -80,7 +85,7 @@ export class DivisionFactsScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const divisor = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const divisor = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     this.divisor = divisor;
     const quotient = Phaser.Math.Between(2, 12);
     this.dividend = divisor * quotient;

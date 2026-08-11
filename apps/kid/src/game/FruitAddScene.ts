@@ -11,7 +11,9 @@ import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, 
 import { SAB } from "./safeArea";
 import { ensureAssets, assetIcon } from "./svgAssets";
 
-const LEVELS = GAMES.find((g) => g.id === "game-fruitadd")?.difficultyLevels ?? [5, 8, 11, 15, 20, 25];
+const LEVELS = GAMES.find((g) => g.id === "game-fruitadd-10")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
+/** Per-skill ladders are passed in scene data (one game per skill scope — add/sub within 10
+ *  and within 20 each have their own game id); this constant is only the standalone fallback. */
 /** SVG fruit set — crisp on every device, identical across phones. */
 const FRUIT = ["apple", "banana", "grapes", "strawberry", "orange"];
 const FRUIT_RADIUS = 44;
@@ -34,6 +36,7 @@ export class FruitAddScene extends Phaser.Scene {
   private rightCount = 0;
   private target = 0;
   private levelIndex = 0;
+  private levels = LEVELS;
   private roundsDone = 0;
   private startedAt = 0;
   private mode: "add" | "sub" = "add";
@@ -59,10 +62,11 @@ export class FruitAddScene extends Phaser.Scene {
     super("FruitAdd");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: "add" | "sub"; teach?: boolean }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: "add" | "sub"; teach?: boolean; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
     this.mode = data.mode ?? "add";
     this.levelIndex = data.startLevelIndex ?? 0;
+    if (data.levels?.length) this.levels = data.levels;
     this.teachMode = !!data.teach;
     this.taught = false;
     this.teaching = false;
@@ -114,7 +118,7 @@ export class FruitAddScene extends Phaser.Scene {
 
   private startRound() {
     this.clearRound();
-    const level = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const level = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     this.startedAt = this.time.now;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     // FIRST exposure to + or − → run the narrated Basket Math demo round.
@@ -125,9 +129,9 @@ export class FruitAddScene extends Phaser.Scene {
     this.drawBasket();
     if (this.mode === "sub") {
       // "total − taken = ?" — fruit in the basket, a big −n symbol, tap the
-      // difference. Skill is "subtract within 10" → cap at 10 so the fruit are
-      // countable on a phone.
-      this.leftCount = Math.min(level, 10);
+      // difference. The per-skill ladder already caps the total to the skill's
+      // scope (within-10 → ≤10, within-20 → ≤20) so the fruit stay countable.
+      this.leftCount = level;
       this.rightCount = Phaser.Math.Between(1, Math.max(1, this.leftCount - 1));
       this.target = this.leftCount - this.rightCount;
       this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
