@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175"
     admin_email: str = "admin@numberverse.dev"
     admin_password: str = "change-me-admin"
+    # Google sign-in (optional): the OAuth 2.0 Client ID for this origin
+    # (Google Cloud Console → Credentials → Web application). When set, the
+    # kid app shows "Continue with Google" and /auth/google verifies the ID
+    # token server-side. Leave empty to hide Google sign-in entirely.
+    google_client_id: str | None = None
 
     @property
     def origins(self) -> list[str]:

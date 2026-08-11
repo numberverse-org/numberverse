@@ -16,6 +16,12 @@ class LoginIn(BaseModel):
     password: str
 
 
+class GoogleAuthIn(BaseModel):
+    """Client-supplied Google ID token (verified server-side)."""
+
+    id_token: str = Field(min_length=10)
+
+
 class ProfileOut(BaseModel):
     id: uuid.UUID
     email: EmailStr
