@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v22 (parent sign-in gate + interactive syllabus)
+
+e0baf84 feat(kid): parent sign-in gate on first load + interactive syllabus (#145)
+8dabcdf track: v21 released — course indexing realigned with the brain (#143)
+
 ## 12 Aug 2026 — v21 (course indexing realigned with the brain (numbers first, game-first, EN/BN mirrored))
 
 2e95d33 🧠 Course indexing: realign with the brain (numbers first, game-first, EN/BN mirrored) (#144)
