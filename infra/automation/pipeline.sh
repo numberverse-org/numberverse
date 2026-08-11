@@ -24,7 +24,7 @@ LOG_DIR="$HOME/.tresha/logs"
 LOCK_DIR="$LOG_DIR/locks"
 mkdir -p "$LOG_DIR" "$LOCK_DIR"
 
-log(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG_DIR/pipeline.log"; }
+log(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG_DIR/numberverse-pipeline.log"; }
 
 _tg(){ # $1 = text (one message)
   local token chat
@@ -38,9 +38,9 @@ _tg(){ # $1 = text (one message)
 }
 
 acquire(){ # $1 = job name — one instance per job (parallel across jobs)
-  local lk="$LOCK_DIR/$1.lock"
-  if ! mkdir "$lk" 2>/dev/null; then log "$1: already running — skip"; exit 0; fi
-  trap 'rm -rf "$lk"' EXIT
+  LOCK_PATH="$LOCK_DIR/$1.lock"
+  if ! mkdir "$LOCK_PATH" 2>/dev/null; then log "$1: already running — skip"; exit 0; fi
+  trap 'rm -rf "$LOCK_PATH"' EXIT
 }
 
 # ── board snapshot (non-committed; for the human + logs) ───────────────────
@@ -61,7 +61,7 @@ _snapshot(){
     echo
     echo "## Open PRs"
     gh pr list --repo "$R" --state open --json number,title --jq '.[] | "- #\(.number) \(.title)"' 2>/dev/null || true
-  } > "$LOG_DIR/board.md"
+  } > "$LOG_DIR/numberverse-board.md"
 }
 
 # ── conductor: pick next work order, open branch, page ──────────────────────
@@ -91,6 +91,10 @@ conductor(){
     _snapshot; exit 0
   fi
   IFS='|' read -r NUM TITLE MS <<<"$pick"
+  if [ -z "$NUM" ] || [ "$NUM" = "null" ]; then
+    log "conductor: pick guard — invalid issue, idle"
+    _snapshot; exit 0
+  fi
 
   # 3. Open the feature branch off main.
   git fetch -q origin

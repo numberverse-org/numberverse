@@ -65,8 +65,8 @@ bash infra/automation/pipeline.sh board          # one-screen board snapshot
 ```
 Each job is lock-guarded (`~/.tresha/logs/locks/`) — re-entry is safe; the two
 jobs run concurrently without stepping on each other. Logs:
-`~/.tresha/logs/pipeline.log`, `pipeline-conductor.{log,err}`,
-`pipeline-release-train.{log,err}`.
+`~/.tresha/logs/numberverse-pipeline.log` (+ `numberverse-board.md`),
+`pipeline-conductor.{log,err}`, `pipeline-release-train.{log,err}`.
 
 ## Honest limits
 - Branch protection/rulesets still need GitHub Pro/Team (private repo, free org)
