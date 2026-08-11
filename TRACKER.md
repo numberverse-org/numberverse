@@ -1,6 +1,12 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🚀 v18 RELEASED — TIMES TABLES 2–10 WITH ARRAYS-FIRST TEACHING 12 Aug 2026 ✅ (user: "yes" → build #57)
+First v18 content-wave item shipped end-to-end: issue → PR → CI 5/5 → merge → release → deploy.
+- **#57 — Times tables 2–10 (new `TimesTable` scene, `mult-facts-2-10` skill / `game-multable`):** tables ramp per level 2 → 3 → 4 → 5 → 6-7 → 8-10 · **arrays-first**: single-table levels always draw a concrete a×b dot grid (each row a distinct color → count rows × dots); the first mixed round bridges, then later mixed rounds flip to **number mode** with a one-time *"Now without the dots!"* cue — a visible concrete→abstract progression · `teach:true` (remediation) keeps the grid on · escalating hints (count-the-dots → repeated-addition → reveal) · products ≤ 100 · EN+BN i18n.
+- **Batch progress:** #57 ✅ done → **#58 (division facts, fair shares) now 🔨 in-progress**; #40/#59/#60 still todo.
+- **Pipeline:** `feat/times-tables-2-10` → PR #140 (5/5 CI green) → merged → `release.sh v18` → deployed → live bundle `assets/index-DrFLccLY.js` carries v18 stamp + TimesTable scene + all tokens. GitHub Release v18 drafted. Board + project synced.
+
 ## 🚀 NEXT SHIP — v18 CONTENT WAVE 2, BATCH 1 (5 issues) 12 Aug 2026 ✅ (user: "yes please" → groom the top of v18)
 First v18 batch groomed and queued on the board — all `priority: high`, label-kanban + project Status in sync:
 - **🔨 In progress (#57) — Math: multiplication tables 2–10** (arrays → number mode, escalating hints)
