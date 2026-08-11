@@ -166,7 +166,9 @@ release_train(){
   # Count feature/fix commits on main since the last release tag.
   local COUNT=0
   if git rev-parse -q --verify "refs/tags/$LAST" >/dev/null 2>&1; then
-    COUNT=$(git log --oneline "$LAST..origin/main" 2>/dev/null | grep -cE '^(feat|fix)' || true)
+    # --format=%s gives the bare subject — the ^(feat|fix) anchor matches.
+    # (git log --oneline puts the short hash FIRST, so ^(feat|fix) never matched = 0 forever.)
+    COUNT=$(git log --format=%s "$LAST..origin/main" 2>/dev/null | grep -cE '^(feat|fix)' || true)
   fi
   local THRESHOLD="${RELEASE_THRESHOLD:-2}"
   if [ "$COUNT" -lt "$THRESHOLD" ]; then
