@@ -1,6 +1,14 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 📋 GITHUB PROJECTS V2 — NUMBERVERSE ROADMAP LIVE 11 Aug 2026 ✅ (user: "done" → granted project scope, I built the project)
+The modern board is live: **`Numberverse Roadmap`** → `github.com/orgs/numberverse-org/projects/1`.
+- **Project created** in the org, repo linked, all 22 issues backfilled (Status = Backlog).
+- **Status field reshaped** to mirror the label kanban: `Backlog → In progress → Review → Blocked → Done` (option ids in `docs/ISSUE_BOARD.md`).
+- **Auto-add for new issues**: `.github/workflows/add-to-project.yml` (`actions/add-to-project@v1.0.2`, `status: Backlog`) using `PROJECT_PAT` repo secret (scoped PAT with `project` scope, set via `gh auth token | gh secret set`). **Smoke-tested**: test issues #23/#24 landed on the board, then closed.
+- **Duplicates cleaned**: a stray empty "Numberverse Roadmap" project was deleted (kept the populated one).
+- **✅ Verified:** `gh project list` → 1 project; 21 open issues all on board in Backlog; workflows registered; oracle clean.
+
 ## 🗂️ FULL TRACKING + ISSUE BOARD + AUTOMATED RELEASE PIPELINE 11 Aug 2026 ✅ (user: "run oracle and make more issues and a complete project tracking, issue tracking and work also a feature relase full automated pipeline")
 The roadmap now lives as a real GitHub board, and shipping a feature is a one-command gated pipeline.
 - **Issue backlog (21 issues + #2 voice):** every idea is a scoped issue with acceptance criteria — across 5 epics:
@@ -11,7 +19,7 @@ The roadmap now lives as a real GitHub board, and shipping a feature is a one-co
   - **Backlog** (#19 garden/pet expansion · #20 Jungle+Polar lands · #21 CSV/PDF export · #22 sibling co-op)
 - **Tracking (free-plan kanban):** milestones = epics; columns = `status: backlog|todo|in-progress|review|blocked` labels. New issues auto-assign to the maintainer (`auto-assign.yml`) + auto-label `status: backlog` (`triage.yml`). PRs auto-label by type from the title (`label-pr.yml`: feat/fix/docs/chore/refactor/test). Board filters + workflow in **`docs/ISSUE_BOARD.md`**.
 - **Automated release pipeline:** `bash infra/deploy/scripts/release.sh vN "summary"` → ① gates (core build · typecheck · audit · oracle CLEAN — aborts on any ✖) ② bumps `APP_BUILD` + TRACKER date ③ prepends `CHANGELOG.md` from commits since last tag ④ commits + tags `vN` ⑤ pushes main+tag → GitHub Actions **ci.yml** re-verifies the tagged commit + **release.yml** drafts a GitHub Release with auto-notes ⑥ deploys to the box. `--no-deploy` stops after push. Full flow in **`docs/RELEASING.md`**.
-- **⛔ GitHub Projects v2** still needs a token scope the user must grant once (`gh auth refresh -h github.com -s project,read:project`) — documented; until then the label board IS the live board.
+- **✅ GitHub Projects v2 — DONE** — the user granted `project` scope and the **Numberverse Roadmap** project is live (see the entry above). The label board + project board are kept in sync.
 - **✅ Verified:** oracle 35/35 CLEAN; audit ✓ clean; typecheck OK; `release.sh` syntax-valid; README + TRACKER wired; pushed to `numberverse-org/numberverse`.
 
 ## 🏢 GITHUB ORG SETUP — numberverse-org (the "proper way") 11 Aug 2026 ✅ (user created github.com/numberverse-org → "do all like real people do")

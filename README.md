@@ -61,9 +61,11 @@ bash infra/deploy/scripts/release.sh v11 "Taka Tap v2"   # gates → stamp → c
 ```
 Pushing the `v*` tag fires CI + a GitHub Release with auto-notes. See **[docs/RELEASING.md](docs/RELEASING.md)**.
 
-## Tracking (the issue board)
-Every idea is a GitHub issue on a milestone; kanban columns are `status:` labels
-(`backlog` → `todo` → `in-progress` → `review` → `blocked`). New issues are
+## Tracking (the issue board + project)
+Every idea is a GitHub issue on a milestone. Live roadmap board:
+**[Numberverse Roadmap](https://github.com/orgs/numberverse-org/projects/1)** —
+new issues auto-add to Backlog, Status column mirrors the `status:` labels
+(`backlog` → `todo` → `in-progress` → `review` → `blocked`), and issues are
 auto-assigned + auto-triaged. See **[docs/ISSUE_BOARD.md](docs/ISSUE_BOARD.md)**.
 
 ## Quality gates (before any release)

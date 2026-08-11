@@ -45,16 +45,27 @@ gh issue edit 12 --label "status: todo,priority: high" --milestone "v13 — cont
 gh issue close 12
 ```
 
-## Projects v2 (wanted, blocked by a token scope — 1 command unlocks)
-GitHub Projects v2 (the modern board) needs scopes we don't have yet. Run once:
+## 📋 GitHub Projects v2 — LIVE
+**`Numberverse Roadmap`**: `github.com/orgs/numberverse-org/projects/1`
 
-```bash
-gh auth refresh -h github.com -s project,read:project
-```
-
-Then the maintainer creates the org **"Numberverse Roadmap"** project, links this
-repo, and adds an auto-add-to-project workflow. Until then the label board above
-is the live board — nothing is lost when Projects lands.
+- Every new issue auto-adds to the project in the **Backlog** column
+  (`.github/workflows/add-to-project.yml` + `PROJECT_PAT` secret).
+- The project's **Status** field mirrors the label kanban:
+  `Backlog → In progress → Review → Blocked → Done`.
+- Issues opened before the project existed were backfilled onto it (all Backlog).
+- **Keep the two in sync:** a status change on the label should also move the
+  project card (and vice-versa). Moving a card:
+  ```bash
+  # move an issue's project card to In progress
+  gh api graphql -f query='mutation { updateProjectV2ItemFieldValue(input: {
+    projectId: "PVT_kwDOEs9Wkc4Bf_Mz",
+    itemId: "<PVTI_...>",
+    fieldId: "PVTSSF_lADOEs9Wkc4Bf_MzzhaOGQo",
+    value: { singleSelectOptionId: "da217006" } }) { projectV2Item { id } } }'
+  ```
+  (item id from `gh project item-list 1 --owner numberverse-org`; option ids:
+  Backlog `2f9ff034` · In progress `da217006` · Review `2b7dac15` ·
+  Blocked `1c82ee16` · Done `4923709d`)
 
 ## Honest limits (free org, private repo)
 - **Branch protection / rulesets** are paywalled (GitHub Pro/Team) on private
