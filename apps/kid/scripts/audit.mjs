@@ -106,6 +106,52 @@ if (skills.length) {
     if (g.difficultyLevels?.length !== 6 && g.difficultyLevels?.length !== 9)
       warn(`game "${g.id}" difficultyLevels ≠ 6/9 tiers (${g.difficultyLevels?.length})`);
   }
+  // ── SCOPE GUARD: no ladder may exceed its skill's promise. This is the
+  // "pop games under another number" rule — a count-to-10 game must never ask
+  // for 12, an add-within-10 game never 25, a tables-2,5,10 lesson never ×7.
+  // (skip-per-skill: some scenes interpret levels as divisor/table/digit INDEX,
+  // not raw magnitude — they are not in the map.)
+  const SCOPE_CAP = {
+    "count-1-10": 10, "count-1-20": 20, "count-to-50": 50, "count-to-100": 100,
+    "grow-count": 12, "quantity-match": 7, "number-line": 10, "number-song": 10,
+    "fruit-tree-add": 15, "add-within-10": 10, "sub-within-10": 10,
+    "add-within-20": 20, "sub-within-20": 20, "add-to-20": 20,
+    "number-bonds-10": 12, "bd-taka": 10, "add-sub-100": 100,
+  };
+  for (const g of games) {
+    const cap = SCOPE_CAP[g.skillId];
+    if (cap && g.difficultyLevels?.length) {
+      const max = Math.max(...g.difficultyLevels);
+      if (max > cap)
+        fail(`SCOPE: "${g.skillId}" (${g.id}) difficulty max ${max} exceeds its promise (${cap})`);
+    }
+  }
+  // ÷ by 2 and 3 must ONLY use divisors {2,3}
+  const div23 = games.find((g) => g.id === "game-div-23");
+  if (div23 && !div23.difficultyLevels.every((d) => d === 2 || d === 3))
+    fail(`SCOPE: game-div-23 uses divisors outside {2,3}: ${div23.difficultyLevels}`);
+
+  // ── SEQUENCE GUARD: the SKILLS array order IS the course index. It must
+  // follow the brain ladder — a kid learns numbers BEFORE calculation, and
+  // meets an operation concretely BEFORE its abstract drill.
+  const seqIndex = new Map(skills.map((s, i) => [s.id, i]));
+  const calc = ["add-within-10", "sub-within-10", "fruit-tree-add", "add-to-20", "add-within-20", "sub-within-20"];
+  const countLadder = ["count-to-50", "count-to-100"];
+  for (const c of calc) {
+    const ci = seqIndex.get(c);
+    if (ci === undefined) continue;
+    for (const n of countLadder) {
+      const ni = seqIndex.get(n);
+      if (ni === undefined) continue;
+      if (ci < ni) fail(`SEQUENCE: "${c}" (#${ci + 1}) comes BEFORE "${n}" (#${ni + 1}) — numbers must be learned before calculation`);
+    }
+  }
+  const before = [["add-within-10", "sub-within-10"], ["add-within-20", "sub-within-20"], ["div-facts-fair-share", "div-facts-by-2-3"]];
+  for (const [a, b] of before) {
+    const ai = seqIndex.get(a), bi = seqIndex.get(b);
+    if (ai === undefined || bi === undefined) continue;
+    if (ai > bi) fail(`SEQUENCE: "${a}" (#${ai + 1}) must come BEFORE "${b}" (#${bi + 1}) (game-first, then the abstract drill)`);
+  }
   // every scene key has a class file + an engine.ts import + an engine.ts array
   // entry. Since issue #15 the scenes live in the lazy Phaser chunk (engine.ts),
   // NOT App.tsx — App.tsx only has `import type { Game } from "phaser"`.
