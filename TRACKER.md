@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🚀 v13 RELEASED — NEURAL VOICE: BOOT PRELOAD + WAV CACHE (auto-cut by the 24/7 train) 11 Aug 2026 ✅ (user: "how may we improve the neural voice issue" → "yes")
+Two neural-voice features shipped end-to-end in one release — **the release train auto-cut v13 with ZERO manual release commands** (found 2 feat/fix commits since v12, derived v13 from the stamp, ran release.sh → deployed to the box → live).
+- **#28 — Faster first-run (10s budget):** `bootPreload()` starts the voice download at first idle (not the first tap) · `downloadParallel()` fetches phoneme.data (18MB) + model (20MB) in parallel on the main thread (time ≈ max, not sum) · big `/voice/` files gzip-precompressed at Docker build + `gzip_static on` → **~30% wire cut** (18→~11, 10.5→~5.8, 20→~17MB) · `seedSwVoiceCache()` makes visit 2 instant · `VOICE_V` v2→v3. **int4 model cut proven BLOCKED on onnxruntime 1.17** (no int4 kernel in the WASM binary) → shipped gzip instead, filed **#29** (int4 needs ORT 1.27 swap + listen-QA).
+- **#31 — Every session faster:** per-line WAV cache in IndexedDB (`nv-wav-cache`, key `${speakerId}:${text}`, 30MB LRU) — repeat lines play **instantly**, no phonemizer/ORT cost · `warmCommonPhrases()` idle pre-synths Bangla 0–20 + praise/prompt words (cache-first, yields so real speech interleaves) · on-device meter `neuralStatus().cache` {hits, misses, hitRate} → parent-panel voice card shows `voiceCacheHit(pct)` EN+BN. IDB same-task tx pattern keeps LRU eviction correct.
+- **The loop, again:** #28 (conductor feat/issue-28 → PR #30 → CI 4/4 → merged → Done) + #31 (feat/issue-31 → PR #32 → CI 4/4 → merged → Done) → train auto-cut v13 → GitHub Release v13 (auto-notes, both PRs) → deployed to 192.168.0.104 → live bundle `assets/index-BgerGhnG.js` carries "v13 (release train (2 since v12))".
+- **✅ Train now ships neural-voice work autonomously:** cold first-run ≈ 34MB gzip parallel → ~5s on 4G + session build ≈ budget; post-deploy live measurement is the only AC left open (no CDP by constraint — verify on the box link + a real phone).
+
 ## 🚀 v11 RELEASED — TAKA TAP v2: GIVE-CHANGE + ৳5/৳20 NOTES 11 Aug 2026 ✅ (user: "do work order #3" → the 24/7 pipeline's first full loop)
 Work order #3 shipped end-to-end through the automated pipeline: issue → branch → PR → CI → merge → release → live.
 - **Give-change mode (levels 7–9):** pay a ৳5/10/20/50 note for a thing, tap the coin stack that IS the change (paid − price = change). Ladder 3–6 → 6–9 → 9–12. New `moneyChange`/`priceLabel` i18n EN+BN; change-aware wrong-answer hint; paid-note + Price chip UI.
