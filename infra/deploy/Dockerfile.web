@@ -44,8 +44,29 @@ COPY infra/deploy/scripts/quantize_voice.py /tmp/quantize_voice.py
 RUN apt-get update && apt-get install -y --no-install-recommends curl tar \
     && sh /tmp/fetch_voice_assets.sh /voice "${VOICE_MODEL_URL}" \
     && pip install --no-cache-dir "numpy<2" "onnx==1.16.1" onnxruntime==1.17.0 \
-    && python3 /tmp/quantize_voice.py /voice/bn_BD-google-medium.onnx /voice/bn_BD-google-medium.onnx \
-    && rm -rf /tmp/fetch_voice_assets.sh /tmp/quantize_voice.py /root/.cache/pip
+    && python3 /tmp/quantize_voice.py /voice/bn_BD-google-medium.onnx /voice/bn_BD-google-medium.onnx
+
+# Precompress the big static files — each gains a <file>.gz served by nginx
+# gzip_static when the client accepts gzip. Cuts first-run wire bytes ~30%
+# (phoneme data 18→~11MB, ort wasm 10.5→~5.8MB, int8 model 20→~17MB) with NO
+# model change / quality risk (int8→int4 is blocked on ORT 1.17 — no int4
+# kernel in the WASM build; see issue #28).
+RUN python3 - <<'PY'
+import gzip, os, shutil
+root = "/voice"
+for name in ("piper_phonemize.js", "piper_phonemize.wasm", "piper_phonemize.data",
+             "onnx/ort.min.js", "onnx/ort-wasm-simd.wasm", "onnx/ort-wasm.wasm",
+             "bn_BD-google-medium.onnx", "bn_BD-google-medium.onnx.json"):
+    p = os.path.join(root, name)
+    if not os.path.exists(p):
+        continue
+    out = p + ".gz"
+    with open(p, "rb") as f, gzip.GzipFile(out, "wb", compresslevel=9) as g:
+        shutil.copyfileobj(f, g)
+    print(f"gzip {name}: {os.path.getsize(p)/1e6:.1f}MB -> {os.path.getsize(out)/1e6:.1f}MB")
+PY
+
+RUN rm -rf /tmp/fetch_voice_assets.sh /tmp/quantize_voice.py /root/.cache/pip
 
 FROM nginx:1.27-alpine
 COPY infra/deploy/nginx.conf /etc/nginx/conf.d/default.conf
