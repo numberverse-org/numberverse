@@ -445,6 +445,7 @@ interface Strings {
   voiceNeuralLoading: (pct: number) => string;
   voiceNeuralError: string;
   voiceNeuralIdle: string;
+  voiceCacheHit: (pct: number) => string;
   /* Bangla voice picker (choose among the model's 16 speakers) */
   voicePickTitle: string;
   voicePickHint: string;
@@ -670,6 +671,7 @@ const STR: Record<Lang, Strings> = {
     voiceNeuralLoading: (pct) => `On-device Bangla neural voice downloading… ${pct}%`,
     voiceNeuralError: "Neural voice unavailable — Bangla falls back to the device voice.",
     voiceNeuralIdle: "On-device Bangla neural voice downloads on first use (once, then offline forever).",
+    voiceCacheHit: (pct) => `🎙️ Voice cache: ${pct}% of lines instant (on-device, offline)`,
     voicePickTitle: "🎙️ Bangla voice",
     voicePickHint: "Pick who reads Bangla — all on-device, same on every device.",
     voicePickFemale: "Warm adult (female)",
@@ -892,6 +894,7 @@ const STR: Record<Lang, Strings> = {
     voiceNeuralLoading: (pct) => `ডিভাইসে বাংলা নিউরাল ভয়েস ডাউনলোড হচ্ছে… ${pct}%`,
     voiceNeuralError: "নিউরাল ভয়েস পাওয়া যায়নি — বাংলা ডিভাইসের ভয়েসে পড়ে।",
     voiceNeuralIdle: "ডিভাইসে বাংলা নিউরাল ভয়েস প্রথম ব্যবহারে ডাউনলোড হয় (একবার, তারপর চিরকাল অফলাইন)।",
+    voiceCacheHit: (pct) => `🎙️ ভয়েস ক্যাশ: ${pct}% লাইন তাৎক্ষণিক (ডিভাইসে, অফলাইনে)`,
     voicePickTitle: "🎙️ বাংলা ভয়েস",
     voicePickHint: "বাংলা পড়বে কে বাছো — সব ডিভাইসে একই, সব অফলাইন।",
     voicePickFemale: "উষ্ণ প্রাপ্তবয়স্ক (মেয়ে)",
@@ -1211,6 +1214,9 @@ function VoiceCheck({ t }: { t: Strings }) {
       ) : (
         <div className="voice-body">
           <p className="voice-line">{st.neural.supported ? (neuralLine ?? null) : null}</p>
+          {st.neural.ready && st.neural.cache && st.neural.cache.hits + st.neural.cache.misses > 0 ? (
+            <p className="voice-line">{t.voiceCacheHit(Math.round(st.neural.cache.hitRate * 100))}</p>
+          ) : null}
           <p className="voice-line">{st.bnPick ? t.voiceBnOk(st.bnPick) : t.voiceBnMissing}</p>
           <p className="voice-line">{st.enPick ? t.voiceEnOk(st.enPick) : t.voiceNone}</p>
           <button

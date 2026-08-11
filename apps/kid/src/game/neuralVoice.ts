@@ -361,10 +361,17 @@ export interface NeuralStatus {
   progress: number;
   ready: boolean;
   error?: string;
+  /** Per-line WAV cache (on-device, IndexedDB) — the parent-panel meter. All
+   *  zeros until at least one line has been spoken. */
+  cache?: { hits: number; misses: number; hitRate: number };
 }
 
 export function neuralStatus(): NeuralStatus {
-  return { supported: supported(), state, progress, ready: isNeuralReady(), error: errorMsg || undefined };
+  const total = cacheHits + cacheMisses;
+  return {
+    supported: supported(), state, progress, ready: isNeuralReady(), error: errorMsg || undefined,
+    cache: { hits: cacheHits, misses: cacheMisses, hitRate: total ? cacheHits / total : 0 },
+  };
 }
 
 export function isNeuralReady(): boolean {
@@ -431,6 +438,146 @@ async function seedSwVoiceCache() {
   }
 }
 
+/* ──────────────────── per-line WAV cache (IndexedDB LRU) ────────────────────
+ * Synthesis is the slow part (phonemizer + ORT inference per line). The game
+ * repeats the same SHORT Bangla phrases constantly — counting words, praise,
+ * prompts — so caching each WAV by `${speakerId}:${text}` makes repeat lines
+ * INSTANT (no synth), and idle pre-synthesis of common phrases makes the FIRST
+ * line of a session instant too. Everything stays ON-DEVICE (privacy is the
+ * moat): IndexedDB, no network, no analytics. */
+const CACHE_DB = "nv-wav-cache";
+const CACHE_STORE = "waves";
+const CACHE_MAX_BYTES = 30 * 1024 * 1024; // LRU cap (~600 short phrases)
+const CACHE_MAX_TEXT = 100;               // only short phrases — long unique lines waste space
+const CACHE_TOUCH_MS = 60_000;            // refresh LRU timestamp at most once/minute/entry
+
+let cacheDbPromise: Promise<IDBDatabase | null> | null = null;
+function openVoiceCache(): Promise<IDBDatabase | null> {
+  if (cacheDbPromise) return cacheDbPromise;
+  cacheDbPromise = new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(CACHE_DB, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(CACHE_STORE)) {
+          const store = db.createObjectStore(CACHE_STORE, { keyPath: "key" });
+          store.createIndex("ts", "ts"); // LRU eviction by last-used
+        }
+      };
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch {
+      resolve(null); // IDB unavailable (private mode / insecure) — cache is best-effort
+    }
+  });
+  return cacheDbPromise;
+}
+
+function cacheKey(spk: number, text: string): string {
+  return spk + ":" + text;
+}
+
+async function voiceCacheGet(spk: number, text: string): Promise<Blob | undefined> {
+  const db = await openVoiceCache();
+  if (!db) return undefined;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(CACHE_STORE, "readwrite"); // readwrite so we can refresh ts
+      const store = tx.objectStore(CACHE_STORE);
+      const req = store.get(cacheKey(spk, text));
+      req.onsuccess = () => {
+        const rec = req.result as { blob: Blob; ts: number } | undefined;
+        if (!rec) { resolve(undefined); return; }
+        if (Date.now() - rec.ts > CACHE_TOUCH_MS) {
+          rec.ts = Date.now();
+          store.put(rec); // keep LRU roughly true with few writes
+        }
+        resolve(rec.blob);
+      };
+      req.onerror = () => resolve(undefined);
+    } catch {
+      resolve(undefined);
+    }
+  });
+}
+
+async function voiceCachePut(spk: number, text: string, blob: Blob): Promise<void> {
+  const db = await openVoiceCache();
+  if (!db || blob.size <= 0) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(CACHE_STORE, "readwrite");
+      const store = tx.objectStore(CACHE_STORE);
+      store.put({ key: cacheKey(spk, text), blob, ts: Date.now(), bytes: blob.size });
+      // Issue getAll SYNCHRONOUSLY after put — a gap between IDB requests lets
+      // the tx auto-commit (IndexedDB lifetime footgun), silently dropping the
+      // eviction. Same-task issuance keeps the tx alive.
+      const allReq = store.getAll();
+      allReq.onsuccess = () => {
+        const all = allReq.result as Array<{ key: string; bytes: number; ts: number }>;
+        let total = all.reduce((s, r) => s + (r.bytes || 0), 0);
+        if (total > CACHE_MAX_BYTES) {
+          const oldest = all.slice().sort((a, b) => a.ts - b.ts);
+          for (const rec of oldest) {
+            if (total <= CACHE_MAX_BYTES) break;
+            store.delete(rec.key);
+            total -= rec.bytes || 0;
+          }
+        }
+        resolve();
+      };
+      allReq.onerror = () => resolve();
+      tx.onabort = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve(); // best-effort — a full cache never breaks speech
+    }
+  });
+}
+
+/** Privacy-safe on-device meter: synth hit vs miss (localStorage, no network). */
+let cacheHits = 0;
+let cacheMisses = 0;
+function bumpCache(hit: boolean) {
+  if (hit) cacheHits++;
+  else cacheMisses++;
+  try {
+    localStorage.setItem("nv_cache_metric", JSON.stringify({ h: cacheHits, m: cacheMisses }));
+  } catch {
+    /* noop */
+  }
+}
+function loadCacheMetric() {
+  try {
+    const raw = localStorage.getItem("nv_cache_metric");
+    if (raw) {
+      const o = JSON.parse(raw);
+      cacheHits = (o.h | 0) || 0;
+      cacheMisses = (o.m | 0) || 0;
+    }
+  } catch {
+    /* noop */
+  }
+}
+loadCacheMetric();
+
+/** Resolve a WAV for text — cache-hit returns INSTANTLY (no synth), miss synths
+ *  then stores (best-effort, LRU-capped). */
+function getBlobFor(text: string, spk: number): Promise<Blob> {
+  return voiceCacheGet(spk, text).then((cached) => {
+    if (cached) {
+      bumpCache(true);
+      return cached;
+    }
+    bumpCache(false);
+    return synth(text, spk).then((blob) => {
+      if (text.length <= CACHE_MAX_TEXT) void voiceCachePut(spk, text, blob);
+      return blob;
+    });
+  });
+}
+
 /** Warm the FULL pipeline in the background: downloads phonemizer + the
  *  ~20MB int8 model IN PARALLEL (then the service worker caches them → offline
  *  forever), and builds the ORT session so the first real Bangla line is
@@ -453,6 +600,9 @@ export function preloadNeuralVoice() {
       // 3. Seed the SW runtime cache from what we already fetched (no re-wire).
       void seedSwVoiceCache();
       markReady();
+      // 4. Idle pre-synthesis of the common phrases — the first gameplay lines
+      //    hit the WAV cache instead of the worker.
+      void warmCommonPhrases();
     })
     .catch((e) => {
       failNeural(e instanceof Error ? e.message : String(e));
@@ -470,6 +620,50 @@ function bootPreload() {
   }).requestIdleCallback;
   if (typeof idle === "function") idle(kick, { timeout: 3000 });
   else window.setTimeout(kick, 1000);
+}
+
+/** Bangla words 0–20 — MUST mirror `bnNumber()` in speech.ts (the game speaks
+ *  counting via those exact strings, so the cache keys align). Kept local here
+ *  to avoid a circular import; if bnNumber changes, update this table too. */
+const BN_WARM_WORDS = [
+  "শূন্য", "এক", "দুই", "তিন", "চার", "পাঁচ", "ছয়", "সাত", "আট", "নয়",
+  "দশ", "এগারো", "বারো", "তেরো", "চৌদ্দ", "পনেরো", "ষোল", "সতেরো", "আঠারো", "উনিশ",
+  "বিশ",
+];
+/** Universal Bangla praise/prompt words that repeat across every scene. */
+const BN_WARM_PHRASES = ["দারুণ", "সাবাশ", "ঠিক আছে", "বাহ", "শোনো", "চমৎকার", "আবার", "নোট"];
+
+let warmed = false;
+/** After the model is ready, synthesize the common phrases in small idle
+ *  batches (cache-first: on a re-visit they're already stored, so this is a
+ *  no-op sweep). Yields between batches so real speech synths interleave —
+ *  pre-synthesis never blocks a kid's line. */
+function warmCommonPhrases() {
+  if (warmed || !isNeuralReady()) return;
+  warmed = true;
+  const items = [...BN_WARM_WORDS, ...BN_WARM_PHRASES];
+  let i = 0;
+  const spk = speakerId;
+  const step = () => {
+    if (!isNeuralReady()) return;
+    const batch = items.slice(i, i + 3);
+    i += 3;
+    void Promise.allSettled(
+      batch.map((s) =>
+        voiceCacheGet(spk, s).then((b) =>
+          b ? undefined : synth(s, spk).then((blob) => {
+            if (s.length <= CACHE_MAX_TEXT) void voiceCachePut(spk, s, blob);
+          })
+        )
+      )
+    ).then(() => {
+      if (i < items.length) window.setTimeout(step, 120); // yield for real speech
+    });
+  };
+  const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+    .requestIdleCallback;
+  if (typeof idle === "function") idle(() => step(), { timeout: 5000 });
+  else window.setTimeout(step, 400);
 }
 
 /** Unlock the shared <audio> element inside a user gesture (iOS rejects every
@@ -522,16 +716,16 @@ export function neuralSpeak(text: string, opts: NeuralSpeakOpts = {}): Promise<b
     // Queue mode: snapshot the token (don't bump — that's latest-wins' job).
     const token = synthToken;
     queueChain = queueChain
-      .then(() => synth(text, spk))
+      .then(() => getBlobFor(text, spk)) // cache-hit skips synth entirely
       .then(
         (b) => (token !== synthToken ? false : playBlob(b, vol)),
-        () => false // synth error → let the caller fall back
+        () => false // synth/cache error → let the caller fall back
       );
     return queueChain;
   }
   const token = ++synthToken;
   neuralStopPlayback();
-  return synth(text, spk).then(
+  return getBlobFor(text, spk).then(
     (b) => (token !== synthToken ? false : playBlob(b, vol)),
     () => false
   );
