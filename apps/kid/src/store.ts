@@ -173,6 +173,23 @@ export function dayIsoAgo(daysAgo: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Wrong-answer ledger for one kid+skill. `open` is the count of wrongs not yet
+ *  offset by a correct solve — the resolve-to-complete signal the session uses
+ *  to refuse advancing until the kid has actually solved it. */
+export interface MistakeState {
+  /** Lifetime wrong taps on this skill. */
+  wrong: number;
+  /** Unresolved wrongs — cleared when a correct round lands (addEvent(correct)). */
+  open: number;
+  firstAt: number;
+  lastAt: number;
+  lastDifficulty: number;
+}
+
+function initialMistake(now: number, difficulty: number): MistakeState {
+  return { wrong: 0, open: 0, firstAt: now, lastAt: now, lastDifficulty: difficulty };
+}
+
 interface KidState {
   score: number;
   stars: number;
@@ -183,6 +200,8 @@ interface KidState {
   syncState: SyncState;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
   skills: Record<string, SkillState>;
+  /** Wrong-answer ledger per kid+skill. Key `${kidId}:${skillId}`. */
+  mistakes: Record<string, MistakeState>;
   /** Lifetime totals per kid. Key kidId. */
   stats: Record<string, KidStats>;
   /** Nova companion economy per kid. Key kidId. */
@@ -193,6 +212,10 @@ interface KidState {
   clearPending: (uids: Set<string>) => void;
   setSyncState: (s: SyncState) => void;
   skillFor: (kidId: string, skillId: string) => SkillState;
+  /** A wrong tap happened for this kid+skill → bumps wrong + open. Called by the
+   *  wrongLedger (hooked into hintWrong), so every drill scene reports
+   *  automatically. */
+  recordWrong: (kidId: string, skillId: string, gameId: string, difficulty: number) => void;
   recordSession: (kidId: string) => void;
   reset: () => void;
   novaAwardRound: (kidId: string, correct: boolean) => void;
@@ -235,6 +258,7 @@ export const useKidStore = create<KidState>()(
       pending: [],
       syncState: "idle",
       skills: {},
+      mistakes: {},
       stats: {},
       nova: {},
       garden: {},
@@ -243,22 +267,53 @@ export const useKidStore = create<KidState>()(
         const prev = get().skills[keyOf(kidId, e.skillId)] ?? initialSkillState(kidId, e.skillId);
         const updated = observe(decay(prev, now), e.correct, DEFAULT_PARAMS, now);
         const prior = get().stats[kidId] ?? { stars: 0, score: 0, sessions: 0 };
-        set((s) => ({
-          events: [...s.events, e],
-          // durable outbox — survives reloads; the sync drains it online
-          pending: [...s.pending, { uid: genUid(), kidId, ...e, ts: now }],
-          score: s.score + (e.correct ? e.difficulty : 0),
-          stars: s.stars + (e.correct ? 1 : 0),
-          skills: { ...s.skills, [keyOf(kidId, e.skillId)]: updated },
-          stats: {
-            ...s.stats,
-            [kidId]: {
-              stars: prior.stars + (e.correct ? 1 : 0),
-              score: prior.score + (e.correct ? e.difficulty : 0),
-              sessions: prior.sessions,
+        set((s) => {
+          const mk = keyOf(kidId, e.skillId);
+          // Resolve-to-complete: a CORRECT round clears the skill's open wrongs
+          // (they're solved). A wrong round (rare today — scenes only report
+          // completes) would add to them. The ledger keeps "open" so the
+          // session refuses to advance until the kid has actually solved.
+          const m0 = s.mistakes[mk] ?? initialMistake(now, e.difficulty);
+          const mNext: MistakeState = e.correct
+            ? { ...m0, open: 0 }
+            : { ...m0, wrong: m0.wrong + 1, open: m0.open + 1, lastAt: now, lastDifficulty: e.difficulty };
+          return {
+            events: [...s.events, e],
+            // durable outbox — survives reloads; the sync drains it online
+            pending: [...s.pending, { uid: genUid(), kidId, ...e, ts: now }],
+            score: s.score + (e.correct ? e.difficulty : 0),
+            stars: s.stars + (e.correct ? 1 : 0),
+            skills: { ...s.skills, [mk]: updated },
+            mistakes: { ...(s.mistakes ?? {}), [mk]: mNext },
+            stats: {
+              ...s.stats,
+              [kidId]: {
+                stars: prior.stars + (e.correct ? 1 : 0),
+                score: prior.score + (e.correct ? e.difficulty : 0),
+                sessions: prior.sessions,
+              },
             },
-          },
-        }));
+          };
+        });
+      },
+      recordWrong: (kidId, skillId, gameId, difficulty) => {
+        const now = Date.now();
+        const mk = keyOf(kidId, skillId);
+        set((s) => {
+          const m = s.mistakes[mk] ?? initialMistake(now, difficulty);
+          return {
+            mistakes: {
+              ...(s.mistakes ?? {}),
+              [mk]: {
+                wrong: m.wrong + 1,
+                open: m.open + 1,
+                firstAt: m.firstAt || now,
+                lastAt: now,
+                lastDifficulty: difficulty,
+              },
+            },
+          };
+        });
       },
       clearPending: (uids) =>
         set((s) => (uids.size ? { pending: s.pending.filter((e) => !uids.has(e.uid)) } : s)),
@@ -525,6 +580,6 @@ export const useKidStore = create<KidState>()(
           return { garden: { ...s.garden, [kidId]: next } };
         }),
     }),
-    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending }) }
+    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending }) }
   )
 );

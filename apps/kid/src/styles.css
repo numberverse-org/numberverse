@@ -2061,6 +2061,17 @@ body {
   padding: 6px 0;
 }
 .parent-skills .skill-list { max-height: 46vh; overflow-y: auto; }
+/* Wrong-answer ledger — "Needs a little help" (resolve-to-complete) */
+.parent-help summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 14px;
+  color: #ffb35c;
+  padding: 6px 0;
+}
+.parent-help .skill-list { max-height: 30vh; overflow-y: auto; }
+.parent-help .skill-state.help { color: #ffd166; font-weight: 800; white-space: nowrap; }
+.parent-help-caught { font-size: 13px; color: #7ee8d2; font-weight: 700; margin: 6px 0 2px; text-align: left; }
 /* Share-progress button + feedback inside the parent-panel analytics card */
 .share-progress-btn {
   align-self: flex-start;
