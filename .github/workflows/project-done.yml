@@ -1,0 +1,48 @@
+name: Project sync on close
+
+# When an issue closes (usually by a merged PR's "Closes #N"), move its card
+# on the Numberverse Roadmap project to Done.
+"on":
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  move-done:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_PAT }}
+          script: |
+            const owner = "numberverse-org";
+            const repo = "numberverse";
+            const projectId = "PVT_kwDOEs9Wkc4Bf_Mz";
+            const statusFieldId = "PVTSSF_lADOEs9Wkc4Bf_MzzhaOGQo";
+            const doneOptionId = "4923709d";
+            const number = context.issue.number;
+
+            const q = `query($owner:String!, $repo:String!, $number:Int!) {
+              repository(owner: $owner, name: $repo) {
+                issue(number: $number) {
+                  projectItems(first: 10) { nodes { id project { id } } }
+                }
+              }
+            }`;
+            const res = await github.graphql(q, { owner, repo, number });
+            const cards = (res?.repository?.issue?.projectItems?.nodes || [])
+              .filter(n => n?.project?.id === projectId);
+            for (const card of cards) {
+              const m = `mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+                  value: { singleSelectOptionId: $optionId }
+                }) { projectV2Item { id } }
+              }`;
+              await github.graphql(m, {
+                projectId, itemId: card.id, fieldId: statusFieldId, optionId: doneOptionId,
+              });
+            }
+            console.log(`moved ${cards.length} card(s) to Done for #${number}`);

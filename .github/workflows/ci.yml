@@ -10,35 +10,80 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Parallel pipeline: the 4 gates fan out. build-core is the choke point
+# (typecheck + audit both need core/dist); api runs fully in parallel.
 jobs:
-  build-and-test:
-    name: build-and-test
+  build-core:
+    name: build-core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 11.20.0
-
       - uses: actions/setup-node@v4
         with:
-          # pnpm@11.20.0 needs ≥ Node 22.13 (node:sqlite builtin)
           node-version: 22
           cache: pnpm
-
-      - name: Install workspace deps
-        run: pnpm install --frozen-lockfile
-
+      - run: pnpm install --frozen-lockfile
       - name: Build @numberverse/core
         run: pnpm --filter @numberverse/core build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-dist
+          path: packages/core/dist
+          if-no-files-found: error
 
+  typecheck-kid:
+    name: typecheck-kid
+    needs: build-core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-dist
+          path: packages/core/dist
       - name: Typecheck kid app
         run: pnpm --filter kid typecheck
 
+  audit:
+    name: audit
+    needs: build-core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-dist
+          path: packages/core/dist
       - name: Catalog + i18n audit (skills ⇄ games ⇄ scenes ⇄ App)
         working-directory: apps/kid
         run: node scripts/audit.mjs
 
+  api:
+    name: api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: API app compiles
         run: python3 -m compileall -q apps/api/app

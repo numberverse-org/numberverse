@@ -46,10 +46,11 @@ cat /tmp/rel_changelog.md CHANGELOG.md > /tmp/rel_merged.md && mv /tmp/rel_merge
 echo "  ✓ CHANGELOG.md prepended ($RANGE)"
 
 echo "── 4/6 Commit + tag ────────────────────────────"
-git add apps/kid/src/App.tsx TRACKER.md CHANGELOG.md
+echo "$VERSION" > docs/LATEST_RELEASE.md   # arms the 24/7 release train after this release
+git add apps/kid/src/App.tsx TRACKER.md CHANGELOG.md docs/LATEST_RELEASE.md
 git commit -q -m "chore: $VERSION release — $SUMMARY"
 git tag -a "$VERSION" -m "$VERSION — $SUMMARY"
-echo "  ✓ committed + tagged $VERSION"
+echo "  ✓ committed + tagged $VERSION (release train armed)"
 
 echo "── 5/6 Push (fires CI + GitHub Release) ────────"
 git push -q origin main
