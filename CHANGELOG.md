@@ -1,3 +1,7 @@
+## 12 Aug 2026 — v16 (Wrong-answer ledger + resolve-to-complete)
+
+baec1f3 feat(kid): wrong-answer ledger + resolve-to-complete (#36) (#37)
+
 ## 12 Aug 2026 — v15 (Count to 100 + place-value rods)
 
 6793bc4 feat(kid): count to 100 with place-value rods (#11) (#35)
