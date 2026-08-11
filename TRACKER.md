@@ -9,6 +9,14 @@ Work order #3 shipped end-to-end through the automated pipeline: issue → branc
 - **Bugs fixed along the way:** `label-pr.yml` used `context.pull_request.number` (undefined) → `context.issue.number`; `release.sh` perl step choked on ৳ Unicode → python UTF-8-safe replacement; `pipeline.sh board()` cat stale `board.md` → `numberverse-board.md`.
 - **✅ Release train ARMED:** `docs/LATEST_RELEASE.md` = v11; the 6-hourly launchd job now auto-cuts v12 when ≥2 feat/fix commits land (verified "0 unreleased — waiting"). Oracle 35/35 CLEAN; CI 4/4 green on main.
 
+## 🚀 v12 RELEASED — iOS SPEECH AUTO-UNLOCK FIX 11 Aug 2026 ✅ (user: "User need to click listen audio to make it work, without it the game not speak" → run through the pipeline: work order #26)
+High-priority audio bug shipped end-to-end via the **24/7 release train auto-cutting v12** — no manual release command.
+- **Bug:** on iOS/Safari the game stayed silent until the kid tapped Listen. Web Speech only unlocks when the first `speak()` runs **synchronously inside a real gesture** and actually synthesizes. The old `primeSpeech()` was one-shot (`primed` flag) — if the first gesture missed the unlock window, it was stuck silent forever.
+- **Fix (apps/kid/src/game/speech.ts):** prime now retries until proven — `speak()` a warm utterance (`volume 0.001`) inside each gesture and set `unlocked = true` only on `onstart` (fires only when synthesis really begins). Mirrors the `neuralPrime()` proven-unlock pattern. Capture-phase listeners on pointerdown/touchstart/click/keydown.
+- **The loop proved itself (v2):** issue #26 → groomed `status: todo` → conductor `feat/issue-26` + work order → I implemented it → PR #27 → CI 4/4 green → merged (issue #26 auto-closed COMPLETED, project card → **Done** via project-done.yml) → **release train auto-cut v12** (found the 2+ feat/fix commits, derived v12 from the APP_BUILD stamp, ran release.sh gates→stamp→changelog→tag→GitHub Release v12→deploy) → live bundle `assets/index-BRXZ4zNk.js` carries the v12 stamp and the proven-unlock fix (`x.onstart=()=>{wc=!0}`).
+- **Bug fixed along the way:** release-train counted `0 unreleased` forever — `git log --oneline` puts the short hash first so `^(feat|fix)` never matched. Fixed → `git log --format=%s "$LAST..origin/main"` (verified 2 commits → train cut v12). The train is now genuinely autonomous.
+- **✅ Pipeline is truly 24/7:** issue → release happened with zero manual release commands; Oracle 35/35 CLEAN; CI 4/4 green on main; remote main == local.
+
 ## 🔁 24/7 AUTOMATED PIPELINE — ISSUE → RELEASE, FULLY ON AUTOPILOT 11 Aug 2026 ✅ (user: "make a automated pipeline for all from creating issue to release features, which will 24/7 parallel")
 Two always-on parallel legs turn an issue into a shipped feature with one human/agent step (writing the code). Full map: **`docs/AUTOMATION.md`**.
 - **🖥️ Local leg (launchd, always-on):** `infra/automation/pipeline.sh`
