@@ -1,0 +1,28 @@
+## 11 Aug 2026 — v11 (Taka Tap v2 — give-change + ৳5/৳20 notes)
+
+7e9dc6d fix: release.sh stamp bump — python UTF-8-safe (perl choked on ৳ in summary)
+0f92d01 Merge pull request #25 from numberverse-org/feat/issue-3
+41d7cf8 docs: work order #3 — CI green 4/4, ready to merge
+d8dd001 fix: label-pr uses context.issue.number (reliable for PR events)
+efd7851 feat(bd-taka): give-change mode (levels 7-9) + ৳5/৳20 in payment pool
+57b32f9 docs: TRACKER — 24/7 pipeline entry
+34777f6 fix: pipeline — log to numberverse-pipeline.log (was colliding with old log), robust pick guard (null issue), docs log paths
+f72a023 chore: work order #3 — Taka Tap v2: give-change mode + ৳5/৳20 notes
+415a248 chore: launchd plists for pipeline conductor + release-train (24/7)
+1128519 feat: 24/7 automated pipeline — conductor + release-train (launchd), parallel CI (4 gates), project-done sync, docs
+5d1fb4d docs: Projects v2 live (Numberverse Roadmap) — backfill, kanban status, auto-add
+15b12b7 chore: new issues land on project in Backlog column
+1b0ad1e chore: auto-add new issues to Numberverse Roadmap project
+e3673ae chore: simplify triage.yml
+511ba36 chore: touch triage.yml (force workflow re-scan)
+6456c59 feat: issue board (21 backlog issues, 5 epics, auto-triage) + automated release pipeline (release.sh, release.yml, docs)
+e74e57b 📚 TRACKER: GitHub org setup (numberverse-org) — CI live, auto-assign, teams, CODEOWNERS
+b18e97f 🏢 org setup: CODEOWNERS → @numberverse-org/maintainers · README CI note
+441d975 🔧 ci: Node 22 — pnpm@11.20 needs ≥ v22.13 (node:sqlite)
+964c3e9 🏢 repo moved to numberverse-org · checkpoint
+21c130f Merge pull request #1 from bdlogicalerror/chore/github-proper
+9cefa0e 🧹 remove diagnostic probe workflow
+19d6229 probe: minimal workflow
+0a79af3 🔧 ci: quote on: key — fixes workflow startup (Actions YAML gotcha)
+99dbe63 🏗️ GitHub proper: CI workflow + auto-assign issues + CODEOWNERS + PR/issue templates
+
