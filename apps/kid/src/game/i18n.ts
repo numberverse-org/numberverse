@@ -143,6 +143,8 @@ const EN: Record<string, Entry> = {
   titleBdMoney: "Taka Tap",
   tapMoney: "Tap the right money!",
   moneyMake: "Which makes this much?",
+  moneyChange: "You paid ৳{paid} for a ৳{price} thing. What is your change?",
+  priceLabel: "Price",
 };
 
 const BN: Record<string, Entry> = {
@@ -275,6 +277,8 @@ const BN: Record<string, Entry> = {
   titleBdMoney: "টাকা চিনি",
   tapMoney: "সঠিক টাকা খুঁজে বের করো!",
   moneyMake: "কোনগুলো মিলে এই টাকা হয়?",
+  moneyChange: "তুমি ৳{paid} দিয়ে ৳{price} এর জিনিস কিনলে। ফেরত কত টাকা?",
+  priceLabel: "দাম",
 };
 
 /** The one translation function — use it for EVERY user-facing string. */

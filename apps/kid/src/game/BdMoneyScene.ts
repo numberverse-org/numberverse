@@ -76,23 +76,27 @@ const COMBO_POOL: Array<{ sum: number; comps: number[] }> = (() => {
 })();
 
 /**
- * Taka Tap — recognize Bangladesh money and make amounts.
- * Band 2 (ages 4–6, Math): ৳১ ৳২ ৳৫ coins + ৳১০ ৳২০ ৳৫০ ৳১০০ notes.
- *  - Lower levels: "which is ৳5?" → tap the right note/coin.
- *  - Higher levels: "which makes ৳7?" → tap the coin stack that adds up.
+ * Taka Tap — recognize Bangladesh money, make amounts, and give change.
+ * Band 2 (ages 4–6, Math): ৳১ ৳২ ৳৫ coins + ৳৫ ৳১০ ৳২০ ৳৫০ ৳১০০ notes.
+ *  - Levels 1–3: "which is ৳5?" → tap the right note/coin.
+ *  - Levels 4–6: "which makes ৳7?" → tap the coin stack that adds up.
+ *  - Levels 7–9: "you paid ৳20 for a ৳14 thing" → tap the correct CHANGE back.
  */
 export class BdMoneyScene extends Phaser.Scene {
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
-  private mode: "recognize" | "make" = "recognize";
+  private mode: "recognize" | "make" | "change" = "recognize";
   private targetTaka = 0;
+  private paidTaka = 0;
+  private priceTaka = 0;
   private cards: Phaser.GameObjects.Container[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
   private roundText!: Phaser.GameObjects.Text;
   private meter!: RoundMeterApi;
   private amountText!: Phaser.GameObjects.Text;
+  private priceText!: Phaser.GameObjects.Text;
   private prompt!: QuestionPanelApi;
 
   constructor() {
@@ -113,6 +117,9 @@ export class BdMoneyScene extends Phaser.Scene {
     this.amountText = this.add
       .text(0, 0, "", txt(62, "#ffd166", { bold: true, outline: true }))
       .setOrigin(0.5);
+    this.priceText = this.add
+      .text(0, 0, "", txt(24, "#ffffff", { bold: true }))
+      .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
@@ -125,6 +132,7 @@ export class BdMoneyScene extends Phaser.Scene {
     this.roundText.setPosition(width / 2, 80);
     this.meter.setPosition(width / 2, 104);
     this.amountText.setPosition(width / 2, height * 0.27);
+    this.priceText.setPosition(width / 2, height * 0.27 + 42);
     this.prompt.setPosition(width / 2, height - 150 - SAB());
   }
 
@@ -138,32 +146,78 @@ export class BdMoneyScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.mode = this.levelIndex < 3 ? "recognize" : "make";
+    this.mode = this.levelIndex < 3 ? "recognize" : this.levelIndex < 6 ? "make" : "change";
 
     if (this.mode === "recognize") {
-      // pool grows with level: 3 → 4 → 5 denominations
+      // pool grows with level: 3 → 4 → 5 denominations (৳1/2/5 coins, then ৳10/20/50/100 notes)
       const pool = DENOMS.slice(0, Math.min(3 + this.levelIndex, DENOMS.length));
       const target = pool[Phaser.Math.Between(0, pool.length - 1)];
       this.targetTaka = target.taka;
       this.amountText.setText(`৳${digit(target.taka)}`);
+      this.priceText.setText("");
       this.prompt.set(t("tapMoney"));
       speak(this.amountWords(target.taka));
       const tiles = shuffle(pool).slice(0, LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]);
       this.spawnRecognitionTiles(tiles);
-    } else {
+    } else if (this.mode === "make") {
       // make an amount: tap the coin stack that adds up to the shown ৳ total
       const T = Phaser.Math.Between(6, 10 + (this.levelIndex - 3));
       const correctPool = COMBO_POOL.filter((c) => c.sum === T);
       const correct = correctPool[Phaser.Math.Between(0, correctPool.length - 1)];
       this.targetTaka = T;
       this.amountText.setText(`৳${digit(T)}`);
+      this.priceText.setText("");
       this.prompt.set(t("moneyMake"));
       speak(this.amountWords(T));
       const need = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
       const dist = shuffle(COMBO_POOL.filter((c) => c.sum !== T)).slice(0, Math.max(0, need - 1));
       const tiles = shuffle([correct, ...dist]);
       this.spawnCompositionTiles(tiles);
+    } else {
+      this.startChangeRound();
     }
+  }
+
+  /**
+   * Give change — levels 7–9 (class-1 money: ৳৫ and ৳২০ notes in the flow).
+   * You pay a note for a thing; tap the coin stack that IS your change.
+   *  - L7: paid ৳5/10/20, change 3–6 (simple stacks)
+   *  - L8: paid ৳10/20/50, change 6–9 (two-coin stacks)
+   *  - L9: paid ৳20/50, change 9–12 (bigger change, bigger notes)
+   */
+  private startChangeRound() {
+    const paidPools: Record<number, number[]> = { 6: [5, 10, 20], 7: [10, 20, 50], 8: [20, 50] };
+    const changeRanges: Record<number, [number, number]> = { 6: [3, 6], 7: [6, 9], 8: [9, 12] };
+    const paidPool = paidPools[this.levelIndex] ?? [20];
+    const [cLo, cHi] = changeRanges[this.levelIndex] ?? [3, 6];
+
+    // The note you hand over (৳৫ and ৳২০ are real paid-notes here).
+    const paid = paidPool[Phaser.Math.Between(0, paidPool.length - 1)];
+    // The change must be smaller than what you paid (price ≥ 1) and have a stack.
+    const hi = Math.min(cHi, paid - 1);
+    const lo = Math.min(cLo, hi);
+    const change = Phaser.Math.Between(lo, hi);
+    const price = paid - change;
+
+    this.paidTaka = paid;
+    this.priceTaka = price;
+    this.targetTaka = change; // the change is what we hunt for
+    this.amountText.setText(`৳${digit(paid)}`);
+    this.priceText.setText(`${t("priceLabel")} · ৳${digit(price)}`);
+
+    const correctPool = COMBO_POOL.filter((c) => c.sum === change);
+    const correct = correctPool[Phaser.Math.Between(0, correctPool.length - 1)];
+    this.prompt.set(t("moneyChange", { paid: digit(paid), price: digit(price) }));
+    const spoken =
+      getAppLang() === "bn"
+        ? `তুমি ${this.amountWords(paid)} দিয়ে ${this.amountWords(price)} এর জিনিস কিনলে। ফেরত কত টাকা?`
+        : `You paid ${this.amountWords(paid)} for a ${this.amountWords(price)} thing. What is your change?`;
+    speak(spoken);
+
+    const need = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const dist = shuffle(COMBO_POOL.filter((c) => c.sum !== change)).slice(0, Math.max(0, need - 1));
+    const tiles = shuffle([correct, ...dist]);
+    this.spawnCompositionTiles(tiles);
   }
 
   private spawnRecognitionTiles(tiles: Array<{ taka: number; hex: number }>) {
@@ -175,7 +229,7 @@ export class BdMoneyScene extends Phaser.Scene {
       preferredW: CARD_RADIUS * 2,
       minW: 56,
       widthPad: 40,
-      topPad: Math.round(this.scale.height * 0.27 + 44),
+      topPad: Math.round(this.scale.height * 0.27 + 68),
       bottomY: this.scale.height - 172 - SAB(),
       gapX: 10,
       gapY: 10,
@@ -201,7 +255,7 @@ export class BdMoneyScene extends Phaser.Scene {
       preferredW: CARD_RADIUS * 2,
       minW: 56,
       widthPad: 40,
-      topPad: Math.round(this.scale.height * 0.27 + 44),
+      topPad: Math.round(this.scale.height * 0.27 + 68),
       bottomY: this.scale.height - 172 - SAB(),
       gapX: 10,
       gapY: 10,
@@ -234,12 +288,21 @@ export class BdMoneyScene extends Phaser.Scene {
 
   private tap(container: Phaser.GameObjects.Container, tappedTaka: number) {
     if (tappedTaka !== this.targetTaka) {
-      hintWrong(this, container, {
-        hint: () => `Look for ৳${digit(this.targetTaka)}`,
-        hintBn: () => `${digit(this.targetTaka)} টাকা খুঁজো`,
-        correct: () => this.targetTaka,
-        options: () => this.cards.map((s) => ({ sprite: s, value: s.getData("val") })),
-      });
+      if (this.mode === "change") {
+        hintWrong(this, container, {
+          hint: () => `Your change is ৳${digit(this.targetTaka)} — tap that many`,
+          hintBn: () => `তোমার ফেরত ${digit(this.targetTaka)} টাকা — সেটা বাছো`,
+          correct: () => this.targetTaka,
+          options: () => this.cards.map((s) => ({ sprite: s, value: s.getData("val") })),
+        });
+      } else {
+        hintWrong(this, container, {
+          hint: () => `Look for ৳${digit(this.targetTaka)}`,
+          hintBn: () => `${digit(this.targetTaka)} টাকা খুঁজো`,
+          correct: () => this.targetTaka,
+          options: () => this.cards.map((s) => ({ sprite: s, value: s.getData("val") })),
+        });
+      }
       return;
     }
     pop();

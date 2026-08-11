@@ -101,7 +101,9 @@ if (skills.length) {
   for (const g of games) {
     if (!skillIds.has(g.skillId)) fail(`game "${g.id}" → skill "${g.skillId}" not in SKILLS`);
     if (!scenes[g.id]) fail(`game "${g.id}" has no GAME_SCENES entry`);
-    if (g.difficultyLevels?.length !== 6) warn(`game "${g.id}" difficultyLevels ≠ 6 tiers (${g.difficultyLevels?.length})`);
+    // 6 = one-mode ladder; 9 = three-mode ladder (e.g. game-bdtaka: recognize/make/give-change)
+    if (g.difficultyLevels?.length !== 6 && g.difficultyLevels?.length !== 9)
+      warn(`game "${g.id}" difficultyLevels ≠ 6/9 tiers (${g.difficultyLevels?.length})`);
   }
   // every scene key has a class file + an App.tsx import + an App.tsx array entry
   const appSrc = readFileSync(join(KID, "src", "App.tsx"), "utf8");
