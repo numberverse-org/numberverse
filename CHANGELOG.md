@@ -1,3 +1,12 @@
+## 11 Aug 2026 — v12 (release train (3 since v11))
+
+aa49cc1 fix: release-train commit count — --format=%s (--oneline hashed prefix broke ^(feat|fix) match)
+15cf20f Merge pull request #27 from numberverse-org/feat/issue-26
+8a75b4c fix(speech): unlock Web Speech on EVERY gesture until proven — game no longer silent until Listen tap
+4859b86 chore: work order #26 — Game doesn't speak until 'Listen' button is tapped first
+2ee19a5 docs: TRACKER — v11 release entry
+06cb625 fix: pipeline board() cats numberverse-board.md (stale reference)
+
 ## 11 Aug 2026 — v11 (Taka Tap v2 — give-change + ৳5/৳20 notes)
 
 7e9dc6d fix: release.sh stamp bump — python UTF-8-safe (perl choked on ৳ in summary)
