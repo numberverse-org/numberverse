@@ -18,6 +18,9 @@ COPY apps/admin apps/admin
 # kid PWA
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL:-/api/v1}
+# Google sign-in (optional): empty → the Google button is hidden entirely.
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-}
 RUN pnpm --filter kid build
 
 # parent portal (Next.js static export) — basePath baked into asset URLs

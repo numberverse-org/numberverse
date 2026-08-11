@@ -3359,6 +3359,104 @@ body {
   line-height: 1.4;
   text-align: center;
 }
+/* Google one-tap + "or" divider (gate + welcome) */
+.gate-google {
+  display: flex;
+  justify-content: center;
+  min-height: 48px;
+}
+.gate-google .google-btn { max-width: 100%; overflow: hidden; }
+.gate-google .google-btn.busy { opacity: 0.6; pointer-events: none; }
+.gate-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8d99ae;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.gate-or::before,
+.gate-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ── WELCOME (first-time: language on top, then guest-vs-sign-in) ──────── */
+.welcome-card { gap: 18px; }
+.welcome-langs {
+  display: flex;
+  gap: 10px;
+}
+.welcome-lang {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  color: #d7e3f4;
+  font-size: 17px;
+  font-weight: 800;
+  padding: 14px 0;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.welcome-lang.active {
+  border-color: #4cc9f0;
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.25), rgba(46, 196, 182, 0.12));
+  color: #edf2f4;
+  box-shadow: 0 4px 16px rgba(76, 201, 240, 0.25);
+}
+.welcome-binary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.welcome-guest { width: 100%; }
+.welcome-signin { width: 100%; }
+.welcome-syllabus-link {
+  background: none;
+  border: none;
+  color: #4cc9f0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px;
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
+.gate-syllabus-link { margin-top: 2px; }
+
+/* ── syllabus guest banner (browsing before sign-in) ───────────────────── */
+.syllabus-guest-banner {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255, 209, 102, 0.08);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  border-radius: 14px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.syllabus-guest-emoji { font-size: 20px; flex-shrink: 0; }
+.syllabus-guest-text { margin: 0; font-size: 12px; color: #e8d9b0; line-height: 1.45; }
+.syllabus-banner-link {
+  background: none;
+  border: none;
+  color: #ffd166;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: underline;
+}
 
 /* ── INTERACTIVE SYLLABUS (what kids learn) ─────────────────────────────── */
 .syllabus-wrap {

@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Game } from "phaser";
 import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, type Band, type Skill } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult, type MistakeState } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, clearParentSession, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, type KidSettings } from "./api";
+import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -20,7 +21,7 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
 const APP_BUILD = "12 Aug 2026 · v22 (parent sign-in gate + interactive syllabus)";
 
-type Screen = "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
+type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -393,7 +394,21 @@ interface Strings {
   gateWelcome: (name: string) => string;
   gatePower: string;
   gateContinue: string;
+  gateGoogleOr: string;
+  gateErrorGoogle: string;
+  /* first-time welcome (language pick on top, then guest-vs-sign-in) */
+  welcomeTitle: string;
+  welcomeSub: string;
+  welcomeLangLabel: string;
+  welcomeEnglish: string;
+  welcomeBangla: string;
+  welcomeGuest: string;
+  welcomeGuestSub: string;
+  welcomeOr: string;
+  welcomeSignin: string;
+  welcomeSyllabus: string;
   /* interactive syllabus (what kids learn) */
+  syllabusGuestNote: string;
   syllabusTitle: string;
   syllabusSub: string;
   syllabusWhat: string;
@@ -671,6 +686,19 @@ const STR: Record<Lang, Strings> = {
     gateWelcome: (name) => `Hi ${name} 👋 — here's what your child will learn`,
     gatePower: "You can always return here from Parent Panel → What kids learn.",
     gateContinue: "Start learning →",
+    gateGoogleOr: "or continue with email",
+    gateErrorGoogle: "Google sign-in didn't work — try email or guest instead.",
+    welcomeTitle: "Welcome to Numberverse",
+    welcomeSub: "Pick a language — the whole app will speak it. You can change it anytime in Settings.",
+    welcomeLangLabel: "Choose your language",
+    welcomeEnglish: "🇬🇧 English",
+    welcomeBangla: "🇧🇩 বাংলা",
+    welcomeGuest: "🎮 Continue as guest",
+    welcomeGuestSub: "No account? Jump straight in — progress stays private on this device.",
+    welcomeOr: "or",
+    welcomeSignin: "👨‍👩‍👧 I'm a parent — sign in",
+    welcomeSyllabus: "📚 What kids learn — no sign-in needed",
+    syllabusGuestNote: "You're browsing as a guest — sign in to keep your child's progress on every device.",
     syllabusTitle: "What kids learn",
     syllabusSub: "One guided path, built the way a child's mind grows — numbers first, then games, then questions.",
     syllabusWhat: "👨‍👩‍👧 Every step your child takes, in order",
@@ -940,6 +968,19 @@ const STR: Record<Lang, Strings> = {
     gateWelcome: (name) => `হাই ${name} 👋 — আপনার সন্তান যা শিখবে`,
     gatePower: "আপনি সবসময় অভিভাবক প্যানেল → বাচ্চারা যা শেখে থেকে ফিরে আসতে পারেন।",
     gateContinue: "শেখা শুরু করুন →",
+    gateGoogleOr: "অথবা ইমেইল দিয়ে চালিয়ে যান",
+    gateErrorGoogle: "Google সাইন ইন কাজ করেনি — বদলে ইমেইল বা অতিথি চেষ্টা করুন।",
+    welcomeTitle: "নম্বরভার্সে স্বাগতম",
+    welcomeSub: "একটি ভাষা বেছে নিন — পুরো অ্যাপ সেই ভাষাতেই কথা বলবে। যেকোনো সময় সেটিংসে বদলাতে পারবেন।",
+    welcomeLangLabel: "আপনার ভাষা চয়ন করুন",
+    welcomeEnglish: "🇬🇧 English",
+    welcomeBangla: "🇧🇩 বাংলা",
+    welcomeGuest: "🎮 অতিথি হিসেবে খেলুন",
+    welcomeGuestSub: "অ্যাকাউন্ট নেই? সোজা ঢুকে পড়ুন — অগ্রগতি এই ডিভাইসেই ব্যক্তিগত থাকে।",
+    welcomeOr: "অথবা",
+    welcomeSignin: "👨‍👩‍👧 আমি অভিভাবক — সাইন ইন করুন",
+    welcomeSyllabus: "📚 বাচ্চারা যা শেখে — সাইন ইন লাগবে না",
+    syllabusGuestNote: "আপনি অতিথি হিসেবে দেখছেন — সন্তানের অগ্রগতি সব ডিভাইসে রাখতে সাইন ইন করুন।",
     syllabusTitle: "বাচ্চারা যা শেখে",
     syllabusSub: "একটি পরিচালিত পথ, যা শিশুর মন বড় হওয়ার মতো করে গড়া — আগে সংখ্যা, তারপর খেলা, তারপর প্রশ্ন।",
     syllabusWhat: "👨‍👩‍👧 আপনার সন্তানের প্রতিটি ধাপ, ক্রম অনুযায়ী",
@@ -1429,11 +1470,13 @@ export default function App() {
       return null;
     }
   });
-  // PARENT GATE FIRST: a parent must sign in on the FIRST load before the kid
-  // app unlocks. Once a parent session exists we land on the normal flow; the
-  // token is validated against the API on mount (see effect below) and the
-  // parent is sent back to the gate if it ever expires.
+  // FIRST TIME → the WELCOME screen sits on top of everything: language pick
+  // first (topmost), then the binary Guest-vs-Sign-in scene, with the syllabus
+  // one tap away BEFORE any sign-in. `nv_seen_welcome` is set on mount so it
+  // only appears once per device. Then the normal flow: a parent session lands
+  // on the journey, otherwise the parent gate (sign in / guest / syllabus).
   const [screen, setScreen] = useState<Screen>(() => {
+    if (!localStorage.getItem("nv_seen_welcome")) return "welcome";
     if (!hasParentSession()) return "parentgate";
     const list = loadKids();
     if (list.length === 0) return "addkid";
@@ -1566,7 +1609,16 @@ export default function App() {
     };
   }, []);
 
-  // ── Parent gate handlers (sign-in / sign-up / guest) ────────────────────
+  // First-time welcome: mark it seen once so it never reopens on this device.
+  useEffect(() => {
+    try {
+      localStorage.setItem("nv_seen_welcome", "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // ── Parent gate handlers (sign-in / sign-up / google / guest) ────────────
   const submitGate = async () => {
     if (gateBusy) return;
     setGateBusy(true);
@@ -1587,10 +1639,29 @@ export default function App() {
       setGateBusy(false);
     }
   };
+  const submitGoogle = async (idToken: string) => {
+    if (gateBusy) return;
+    setGateBusy(true);
+    setGateError(null);
+    try {
+      await signinGoogle(idToken);
+      setSylBand(1);
+      setScreen("syllabus");
+    } catch {
+      setGateError(t.gateErrorGoogle);
+    } finally {
+      setGateBusy(false);
+    }
+  };
   const enterAsGuest = () => {
     clearParentSession();
     const list = loadKids();
     setScreen(list.length ? "kidpick" : "addkid");
+  };
+  // The interactive syllabus is viewable BEFORE any sign-in (welcome + gate).
+  const goSyllabus = () => {
+    setSylBand(1);
+    setScreen("syllabus");
   };
 
   // ── Parent controls ─────────────────────────────────────────────────────
@@ -2217,10 +2288,66 @@ export default function App() {
   const curStep = sessionRef.current[sessionIdx];
   const curReteach = (curStep?.reteach ?? 0) > 0;
 
-  /* ── PARENT GATE (first-load sign-in) ─────────────────────────────────────
-   *  A parent must sign in / create the family account before the kid app
-   *  unlocks. Two friendly tabs, a guest fallback for instant play, and a
-   *  privacy promise up front. After success → the interactive syllabus. */
+  /* ── WELCOME (first time — topmost) ──────────────────────────────────────
+   *  The very first screen on a fresh device. LANGUAGE first (topmost), then
+   *  the BINARY scene: Guest mode OR Sign in. The syllabus is one tap away
+   *  BEFORE any sign-in. Every choice keeps working — nothing is locked
+   *  behind the gate; the gate just unlocks cross-device progress. */
+  if (screen === "welcome") {
+    return (
+      <div className="app">
+        <main className="screen worlds parent-screen gate-screen">
+          <div className="gate-card welcome-card">
+            <div className="gate-logo" aria-hidden>🔢</div>
+            <h2 className="gate-title">{t.welcomeTitle}</h2>
+            <p className="gate-sub">{t.welcomeSub}</p>
+
+            {/* LANGUAGE SELECTION — the topmost decision on first load */}
+            <div className="welcome-langs" role="radiogroup" aria-label={t.welcomeLangLabel}>
+              <button
+                className={`welcome-lang${lang === "en" ? " active" : ""}`}
+                role="radio"
+                aria-checked={lang === "en"}
+                onClick={() => setLang("en")}
+              >
+                {t.welcomeEnglish}
+              </button>
+              <button
+                className={`welcome-lang${lang === "bn" ? " active" : ""}`}
+                role="radio"
+                aria-checked={lang === "bn"}
+                onClick={() => setLang("bn")}
+              >
+                {t.welcomeBangla}
+              </button>
+            </div>
+
+            {/* BINARY SCENE: Guest mode | Sign in */}
+            <div className="welcome-binary">
+              <button className="big-btn welcome-guest" onClick={enterAsGuest}>
+                {t.welcomeGuest}
+              </button>
+              <p className="gate-guest-sub">{t.welcomeGuestSub}</p>
+              <div className="gate-or"><span>{t.welcomeOr}</span></div>
+              <button className="ghost-btn welcome-signin" onClick={() => setScreen("parentgate")}>
+                {t.welcomeSignin}
+              </button>
+            </div>
+
+            <button className="welcome-syllabus-link" onClick={goSyllabus}>
+              {t.welcomeSyllabus}
+            </button>
+            <p className="gate-privacy">{t.gatePrivacy}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* ── PARENT GATE (sign-in) ───────────────────────────────────────────────
+   *  Reached from Welcome (I'm a parent) or on return visits without a
+   *  session. Google one-tap first (when configured), then the email tabs, a
+   *  guest fallback for instant play, and the syllabus before signing in. */
   if (screen === "parentgate") {
     const valid = gateMode === "in" ? gateEmail.trim().length > 0 && gatePass.length > 0 : gateName.trim().length > 0 && gateEmail.trim().length > 0 && gatePass.length >= 6;
     return (
@@ -2230,6 +2357,15 @@ export default function App() {
             <div className="gate-logo" aria-hidden>🔢</div>
             <h2 className="gate-title">{t.gateTitle}</h2>
             <p className="gate-sub">{t.gateSub}</p>
+
+            {googleEnabled() && (
+              <>
+                <div className="gate-google">
+                  <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} />
+                </div>
+                <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
+              </>
+            )}
 
             <div className="gate-tabs" role="tablist">
               <button role="tab" aria-selected={gateMode === "in"} className={`gate-tab${gateMode === "in" ? " active" : ""}`} onClick={() => { setGateMode("in"); setGateError(null); }}>
@@ -2272,6 +2408,9 @@ export default function App() {
               <p className="gate-guest-sub">{t.gateGuestSub}</p>
             </div>
 
+            <button className="welcome-syllabus-link gate-syllabus-link" onClick={goSyllabus}>
+              {t.welcomeSyllabus}
+            </button>
             <p className="gate-privacy">{t.gatePrivacy}</p>
           </div>
         </main>
@@ -2301,6 +2440,19 @@ export default function App() {
               <p className="head-sub">{t.syllabusSub}</p>
             </div>
           </header>
+
+          {/* Browsing the syllabus BEFORE signing in — invite, never block. */}
+          {!hasParentSession() && (
+            <div className="syllabus-guest-banner">
+              <span className="syllabus-guest-emoji" aria-hidden>👀</span>
+              <p className="syllabus-guest-text">
+                {t.syllabusGuestNote}{" "}
+                <button className="syllabus-banner-link" onClick={() => setScreen("parentgate")}>
+                  {t.gateSignin}
+                </button>
+              </p>
+            </div>
+          )}
 
           <div className="syllabus-wrap">
             <div className="syllabus-hello">

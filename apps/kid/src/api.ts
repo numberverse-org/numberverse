@@ -235,6 +235,21 @@ export async function signinParent(email: string, password: string): Promise<voi
   resetIdentity();
 }
 
+/** Google sign-in: send the client ID token to the API, which verifies it
+ *  server-side against NV_GOOGLE_CLIENT_ID and issues our own JWT. */
+export async function signinGoogle(idToken: string): Promise<void> {
+  const res = await fetch(`${API}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  if (!res.ok) throw new Error("google-signin-failed");
+  const data = await res.json();
+  localStorage.setItem(LS.parentToken, data.token as string);
+  localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? "Parent");
+  resetIdentity();
+}
+
 export async function signupParent(email: string, password: string, displayName: string): Promise<void> {
   const res = await fetch(`${API}/auth/signup`, {
     method: "POST",
