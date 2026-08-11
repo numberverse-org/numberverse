@@ -1,3 +1,15 @@
+## 11 Aug 2026 — v14 (Neural voice on-device + Phaser async chunk)
+
+0e273f9 fix(audit): point scene registry checks at engine.ts (issue #15)
+cadd811 feat(kid): split Phaser into an async chunk — cut first paint (#15)
+c681271 Merge pull request #34 from numberverse-org/feat/issue-29
+9e3180f fix(voice): on-device Bangla neural voice reliability — no re-download, no hang, Safari-compatible
+6ed24de docs: #29 — ORT 1.27 single-thread de-risk + browser-wasm QA kit
+75b9274 Merge pull request #33 from numberverse-org/feat/issue-29
+ed3b52f int4: verified weight-only block-wise quantizer for #29
+d902b04 chore: work order #29 — tech: int4 model cut needs an ORT upgrade (blocked on onnxruntime 1.17 — see #28)
+d00acaf docs: TRACKER v13 released — neural voice boot preload + WAV cache
+
 ## 11 Aug 2026 — v13 (release train (2 since v12))
 
 a9b8697 feat: per-line neural WAV cache (IndexedDB LRU) + idle pre-synth of common phrases (#31) (#32)
