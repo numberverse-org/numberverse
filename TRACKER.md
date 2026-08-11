@@ -1,6 +1,21 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🗺️ ORACLE-DRIVEN NEXT-100 ROADMAP — 6 NEW EPICS · 100 ISSUES 12 Aug 2026 ✅ (user: "run oracle for next 100 issues or feature")
+The Oracle Team standup (35/35 CLEAN) + Council brief (0 flags) held the line, then generated the next hundred scoped backlog items — every one with acceptance criteria, landed on the GitHub board, no ads / offline-first / NCTB-aligned.
+- **Oracle:** standup `2026-08-12` 35/35 ✓ (SHIP-OK, live stamp v17 verified, working tree clean) · Council `2026-W33` 70/70 across the week, **zero flags**.
+- **6 new epics (milestones 6–11):**
+  - **v18 — content wave 2** (38): Bangla (three-digit place value, opposites, যুক্তাক্ষর, days/months, বানান, advanced matras, sentence→picture, ছড়া, pronouns, count-back) · English (long-vowel teams, CVC builder, sight words L2, plurals, past-tense, sentence comprehension, case match) · Math (tables 2–10, division, 3-digit regrouping, place value 9999, fraction compare, shapes, measurement, clock 5-min, pictographs, money combos, skip-count) · Science (living/non-living, plants, animal homes, senses, food sources, materials) · ICT/social/values.
+  - **v19 — parent power 2** (12): per-day wrong history, mastery timeline, daily goal, band override, voice prefs, avatar mgmt, weekly digest, sync indicator, PIN lock, bedtime mode, skip-ahead, missed-questions view.
+  - **v20 — trust & safety** (10): data-minimization audit, content-scan CI gate, no-ads CI scan, kid-safe share metadata, encrypted sync, gentle bedtime, rate-limit, local backup, privacy explainer, screen-time accuracy.
+  - **v21 — growth & retention** (10): skill-of-the-week badge, Nova v2, quest variety, badge book, pet mini-games, streak freeze, per-skill share card, parent referral, land-unlock celebration, weekly recap.
+  - **v22 — polish & perf** (10): main bundle < 1.5MB, per-kid voice, model download progress, TTS fallback, fresh-install offline, PWA update banner, install-prompt timing, cold start < 2s, scene pooling, haptics.
+  - **v23 — infra & ops** (10): oracle-as-PR-gate, deploy smoke test, Postgres backups, uptime→Telegram, structured error log, auto-rollback, secret scan, tunnel failover, TLS rotation, RELEASING.md update.
+  - **Backlog +10** deferred: AR numbers, multi-language research, printable worksheets, screen-reader deep, ambient sound, phone-notification bridge, classroom mode, seasonal events, kid dictation, flashcards QR.
+- **Backlog now 116 open issues** (17 prior + 100 new), each auto-labeled `status: backlog` + `priority:` + category, milestone-assigned, project-auto-added (add-to-project fires on `issues: opened`).
+- **Generator is versioned:** `scripts/team/backlog_next.py` (reproducible) · full list in **`docs/ROADMAP_NEXT.md`**.
+- **✅ Verified:** 100/100 created, 0 errors, 0 skipped; spot-check #139 labels/milestone correct.
+
 ## 🚀 v13 RELEASED — NEURAL VOICE: BOOT PRELOAD + WAV CACHE (auto-cut by the 24/7 train) 11 Aug 2026 ✅ (user: "how may we improve the neural voice issue" → "yes")
 Two neural-voice features shipped end-to-end in one release — **the release train auto-cut v13 with ZERO manual release commands** (found 2 feat/fix commits since v12, derived v13 from the stamp, ran release.sh → deployed to the box → live).
 - **#28 — Faster first-run (10s budget):** `bootPreload()` starts the voice download at first idle (not the first tap) · `downloadParallel()` fetches phoneme.data (18MB) + model (20MB) in parallel on the main thread (time ≈ max, not sum) · big `/voice/` files gzip-precompressed at Docker build + `gzip_static on` → **~30% wire cut** (18→~11, 10.5→~5.8, 20→~17MB) · `seedSwVoiceCache()` makes visit 2 instant · `VOICE_V` v2→v3. **int4 model cut proven BLOCKED on onnxruntime 1.17** (no int4 kernel in the WASM binary) → shipped gzip instead, filed **#29** (int4 needs ORT 1.27 swap + listen-QA).
