@@ -38,8 +38,9 @@ const API =
 
 const SYNC_LIMIT = 40; // max events per POST
 const LS = {
-  parentToken: "nv_parent_token", // parent-linked (existing)
-  parentKid: "nv_kid_id", // parent-linked (existing)
+  parentToken: "nv_parent_token", // parent-gated session (first-load gate)
+  parentName: "nv_parent_name", // display name shown on the gate + syllabus
+  parentKid: "nv_kid_id", // parent-linked (existing, kept for compatibility)
   deviceId: "nv_device_id",
   secret: "nv_device_secret",
   deviceToken: "nv_device_token",
@@ -128,15 +129,55 @@ async function deviceAuth(deviceId: string): Promise<string> {
 
 /** Resolve (and cache) the sync identity. Returns null when offline so callers
  *  simply keep the outbox queued and retry later. */
+/** Map every LOCAL kid to a server kid under `token`'s account (create missing
+ *  ones on first sight). Used by BOTH the parent-gated path and the anonymous
+ *  device-account fallback, so the parent sees real per-kid progress in the
+ *  portal and a guest still gets an isolated private family account. */
+async function mapLocalKidsToServer(token: string): Promise<Record<string, string>> {
+  const map = readKidMap();
+  let changed = false;
+  const existing = await fetch(`${API}/kids`, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
+    r.ok ? r.json() : []
+  );
+  for (const k of localKids()) {
+    if (map[k.id]) continue;
+    const match = (existing as Array<{ id: string; name: string; birth_year?: number | null }>).find(
+      (sk) => sk.name === k.name && String(sk.birth_year) === String(k.birthYear)
+    );
+    if (match) {
+      map[k.id] = match.id;
+      changed = true;
+      continue;
+    }
+    const created = await fetch(`${API}/kids`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: k.name, avatar: k.avatar, birth_year: k.birthYear }),
+    });
+    if (!created.ok) throw new Error(`kid create ${created.status}`);
+    map[k.id] = (await created.json()).id;
+    changed = true;
+  }
+  if (changed) writeKidMap(map);
+  return map;
+}
+
 function ensureIdentity(): Promise<SyncIdentity | null> {
   if (identityPromise) return identityPromise;
   const p = (async (): Promise<SyncIdentity | null> => {
-    // 1. Parent-linked flow (existing) — the parent portal chose the server kid.
+    // 1. PARENT-GATED (the parent signed in on first load) — every local kid
+    //    syncs to the parent's portal account.
     const parentToken = localStorage.getItem(LS.parentToken);
-    const parentKid = localStorage.getItem(LS.parentKid);
-    if (parentToken && parentKid) return { token: parentToken, kidFor: () => parentKid };
+    if (parentToken) {
+      try {
+        const map = await mapLocalKidsToServer(parentToken);
+        return { token: parentToken, kidFor: (localId) => map[localId] ?? null };
+      } catch {
+        return null; // offline — keep the outbox queued, retry next tick
+      }
+    }
 
-    // 2. Device account (standalone kid URL).
+    // 2. Device account (standalone guest / kid URL).
     try {
       let deviceId = localStorage.getItem(LS.deviceId);
       if (!deviceId) {
@@ -144,32 +185,7 @@ function ensureIdentity(): Promise<SyncIdentity | null> {
         localStorage.setItem(LS.deviceId, deviceId);
       }
       const token = await deviceAuth(deviceId);
-      // Map each local kid → a server kid (create on first sight).
-      const map = readKidMap();
-      let changed = false;
-      const existing = await fetch(`${API}/kids`, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
-        r.ok ? r.json() : []
-      );
-      for (const k of localKids()) {
-        if (map[k.id]) continue;
-        const match = (existing as Array<{ id: string; name: string; birth_year?: number | null }>).find(
-          (sk) => sk.name === k.name && String(sk.birth_year) === String(k.birthYear)
-        );
-        if (match) {
-          map[k.id] = match.id;
-          changed = true;
-          continue;
-        }
-        const created = await fetch(`${API}/kids`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: k.name, avatar: k.avatar, birth_year: k.birthYear }),
-        });
-        if (!created.ok) throw new Error(`kid create ${created.status}`);
-        map[k.id] = (await created.json()).id;
-        changed = true;
-      }
-      if (changed) writeKidMap(map);
+      const map = await mapLocalKidsToServer(token);
       return { token, kidFor: (localId) => map[localId] ?? null };
     } catch {
       return null; // offline — try again next tick
@@ -181,6 +197,67 @@ function ensureIdentity(): Promise<SyncIdentity | null> {
     identityPromise = null;
   });
   return p;
+}
+
+/* ── Parent sign-in / sign-up (the first-load gate) ────────────────────── */
+export function hasParentSession(): boolean {
+  return !!localStorage.getItem(LS.parentToken);
+}
+
+export function parentName(): string | null {
+  return localStorage.getItem(LS.parentName);
+}
+
+/** Validate the stored parent token against /auth/me. Clears it when invalid. */
+export async function validateParentSession(): Promise<boolean> {
+  const token = localStorage.getItem(LS.parentToken);
+  if (!token) return false;
+  try {
+    const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) return true;
+    clearParentSession();
+    return false;
+  } catch {
+    return true; // offline — don't kick a valid parent out
+  }
+}
+
+export async function signinParent(email: string, password: string): Promise<void> {
+  const res = await fetch(`${API}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error("invalid-credentials");
+  const data = await res.json();
+  localStorage.setItem(LS.parentToken, data.token as string);
+  localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? "Parent");
+  resetIdentity();
+}
+
+export async function signupParent(email: string, password: string, displayName: string): Promise<void> {
+  const res = await fetch(`${API}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, display_name: displayName || "Parent" }),
+  });
+  if (!res.ok) throw new Error("signup-failed");
+  const data = await res.json();
+  localStorage.setItem(LS.parentToken, data.token as string);
+  localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? (displayName || "Parent"));
+  resetIdentity();
+}
+
+export function clearParentSession(): void {
+  localStorage.removeItem(LS.parentToken);
+  localStorage.removeItem(LS.parentName);
+  resetIdentity();
+}
+
+/** Drop the cached sync identity so the NEXT call picks up a new parent token
+ *  (or the device account) — call after sign-in / sign-out / validation. */
+function resetIdentity(): void {
+  identityPromise = null;
 }
 
 let syncing = false;
