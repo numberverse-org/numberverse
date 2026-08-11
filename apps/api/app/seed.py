@@ -55,6 +55,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("add-sub-100", 3, "math", "Add & subtract to 100", "১০০-এর মধ্যে যোগ-বিয়োগ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("div-facts-by-2-3", 3, "math", "Divide by 2 and 3", "২ ও ৩ দিয়ে ভাগ"),
+    ("div-facts-fair-share", 3, "math", "Fair shares", "সমান ভাগ"),
     ("bn-words", 3, "bangla", "Bangla words", "শব্দ পড়ি"),
     ("bn-family-words", 3, "bangla", "Family words", "পরিবারের শব্দ"),
     ("en-cvc", 3, "english", "CVC words", "ইংরেজি শব্দ"),

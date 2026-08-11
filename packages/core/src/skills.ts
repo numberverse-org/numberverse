@@ -50,6 +50,7 @@ export const SKILLS: Skill[] = [
   { id: 'add-sub-100', band: 3, subject: 'math', title: 'Add & subtract to 100', titleBn: '১০০-এর মধ্যে যোগ-বিয়োগ', description: 'Two-digit addition and subtraction', commonCore: ['2.NBT.5', '3.NBT.2'], nctbCode: 'c2-math-4', classNumber: 2, game: 'game-addsub100' },
   { id: 'tell-time', band: 3, subject: 'math', title: 'Tell time', titleBn: 'ঘড়ি পড়া', description: 'Read an analog clock', commonCore: ['1.MD.3', '2.MD.7'], nctbCode: 'c2-math-3', classNumber: 2, game: 'game-clock' },
   { id: 'div-facts-by-2-3', band: 3, subject: 'math', title: 'Divide by 2 and 3', titleBn: '২ ও ৩ দিয়ে ভাগ', description: 'Division facts with divisors 2 and 3', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-division' },
+  { id: 'div-facts-fair-share', band: 3, subject: 'math', title: 'Fair shares', titleBn: 'সমান ভাগ', description: 'Division taught by fair-sharing (12 ÷ 3 = share 12 into 3)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-share' },
   // Bangla — reading first words
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
   { id: 'bn-family-words', band: 3, subject: 'bangla', title: 'Family words', titleBn: 'পরিবারের শব্দ', description: 'Read Bangla family words (মা, বাবা, ভাই)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-4', classNumber: 2, game: 'game-bnwords' },
@@ -104,6 +105,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-clock', skillId: 'tell-time', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   { id: 'game-rocketmult', skillId: 'mult-facts-2-5-10', difficultyLevels: [2, 5, 10, 12, 16, 20], targetSuccess: 0.8 },
   { id: 'game-multable', skillId: 'mult-facts-2-10', difficultyLevels: [2, 3, 4, 5, 7, 9], targetSuccess: 0.8 },
+  { id: 'game-share', skillId: 'div-facts-fair-share', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-pizzafrac', skillId: 'fractions-intro', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-bnwords', skillId: 'bn-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -146,6 +148,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-clock': 'ClockTime',
   'game-rocketmult': 'RocketMult',
   'game-multable': 'TimesTable',
+  'game-share': 'FairShare',
   'game-pizzafrac': 'PizzaFrac',
   'game-bnwords': 'BnWords',
   'game-cvc': 'Cvc',
