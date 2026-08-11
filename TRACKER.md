@@ -1,10 +1,14 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🚀 v19 RELEASED — DIVISION BY FAIR-SHARING (SHARING ANIMATION → NUMBER MODE) 12 Aug 2026 ✅ (user: "yes" → build #58)
+- **#58 — Fair shares (new `FairShare` scene, `div-facts-fair-share` skill / `game-share`):** divisors ramp per level 2 → 3 → 4 → 5 → 6-7 → 8-10 · **sharing animation first**: single-divisor levels animate every round — dividend apples fly one-by-one into divisor baskets round-robin so each basket visibly ends up with the SAME count (fair!), then the voice says "q in each basket!" and the equation flips to a question · first mixed round bridges, later mixed goes abstract with *"Now without the sharing!"* cue · `teach:true` keeps sharing on · escalating hints (share-count → repeated-fit → reveal) · high divisors get small countable quotients · EN+BN i18n.
+- **Batch progress:** #57 ✅ (v18) · **#58 ✅ (v19)** → **#59 (3-digit add/sub regrouping) now 🔨 in-progress**; #40/#60 still todo.
+- **Pipeline:** `feat/fair-share-division` → PR #141 (5/5 CI green) → merged → `release.sh v19` → deployed → live bundle `assets/index-BwSgLitZ.js` carries v19 stamp + FairShare scene + all tokens. GitHub Release v19 drafted. Board + project synced.
+
 ## 🚀 v18 RELEASED — TIMES TABLES 2–10 WITH ARRAYS-FIRST TEACHING 12 Aug 2026 ✅ (user: "yes" → build #57)
 First v18 content-wave item shipped end-to-end: issue → PR → CI 5/5 → merge → release → deploy.
 - **#57 — Times tables 2–10 (new `TimesTable` scene, `mult-facts-2-10` skill / `game-multable`):** tables ramp per level 2 → 3 → 4 → 5 → 6-7 → 8-10 · **arrays-first**: single-table levels always draw a concrete a×b dot grid (each row a distinct color → count rows × dots); the first mixed round bridges, then later mixed rounds flip to **number mode** with a one-time *"Now without the dots!"* cue — a visible concrete→abstract progression · `teach:true` (remediation) keeps the grid on · escalating hints (count-the-dots → repeated-addition → reveal) · products ≤ 100 · EN+BN i18n.
-- **Batch progress:** #57 ✅ done → **#58 (division facts, fair shares) now 🔨 in-progress**; #40/#59/#60 still todo.
 - **Pipeline:** `feat/times-tables-2-10` → PR #140 (5/5 CI green) → merged → `release.sh v18` → deployed → live bundle `assets/index-DrFLccLY.js` carries v18 stamp + TimesTable scene + all tokens. GitHub Release v18 drafted. Board + project synced.
 
 ## 🚀 NEXT SHIP — v18 CONTENT WAVE 2, BATCH 1 (5 issues) 12 Aug 2026 ✅ (user: "yes please" → groom the top of v18)
