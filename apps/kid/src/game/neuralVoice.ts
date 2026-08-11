@@ -30,7 +30,7 @@ const BASE = "/voice/";
 // 6 MONTHS. If we ever change a worker/model file at the same URL, old installs
 // keep serving the stale bytes until the cache expires. Bump this version to
 // force every client onto fresh bytes after a voice deploy.
-const VOICE_V = "v3"; // v3 = boot preload + parallel fetch + gzip'd /voice/
+const VOICE_V = "v9"; // v9 = ORT engine back to 1.17 (piper-wasm's engine) — 1.20+ needs import() of an .mjs, which Safari's classic worker can't do
 const PHON_JS = BASE + "piper_phonemize.js";
 const PHON_WASM = BASE + "piper_phonemize.wasm";
 const PHON_DATA = BASE + "piper_phonemize.data";
@@ -38,6 +38,12 @@ const WORKER_JS = BASE + "piper_worker.js?v=" + VOICE_V;
 const MODEL = BASE + "bn_BD-google-medium.onnx?v=" + VOICE_V;
 const MODEL_JSON = BASE + "bn_BD-google-medium.onnx.json";
 const ORT_BASE = BASE + "onnx/";
+const ORT_JS = ORT_BASE + "ort.min.js?v=" + VOICE_V;
+// ORT 1.17's loader string-concats `wasmPaths + "ort-wasm-simd.wasm"` (no
+// query) and XHRs it — so the app must cache the SAME unversioned URL for the
+// SW to serve the cached bytes (a ?v= here would be a different cache key and
+// re-download). On a deliberate engine change we rename the file instead.
+const ORT_WASM = ORT_BASE + "ort-wasm-simd.wasm";
 
 /** Near-silent 8ms WAV — played synchronously inside the first user gesture to
  *  unlock the shared <audio> element for later programmatic plays (iOS strictest). */
@@ -74,15 +80,24 @@ let gestured = false;
 
 /** The big files, by byte size — used for a coarse overall download progress.
  *  The model is the ~20MB int8 build (weight-only QDQ, see Dockerfile.web's
- *  `voice` stage / infra/deploy/scripts/quantize_voice.py). These are the two
- *  files the worker would fetch SEQUENTIALLY inside init — the bottleneck we
- *  remove by preloading them IN PARALLEL on the main thread (ORT fetches its
- *  own .wasm independently, so it's not in the tracked set). */
+ *  `voice` stage / infra/deploy/scripts/quantize_voice.py). We preload these IN
+ *  PARALLEL on the main thread (the worker would otherwise fetch them
+ *  sequentially inside init), then seed the SW cache BEFORE the first synth —
+ *  so ORT 1.17's own XHR of the wasm hits the SW cache instead of the network. */
 const MODEL_BYTES = 20_000_000;
+const ORT_WASM_BYTES = 10_500_000; // ort-wasm-simd.wasm (1.17, single-threaded SIMD)
+/** Files the APP downloads + owns (progress-tracked): phonemize data, model,
+ *  ORT wasm. The app caches them and passes them to the worker — so a reload
+ *  needs ZERO network for the big voice payload. */
 const BIG: Array<[string, number]> = [
   [PHON_DATA, 18_077_249],
   [MODEL, MODEL_BYTES],
+  [ORT_WASM, ORT_WASM_BYTES],
 ];
+/** Small files the worker needs — fetched quietly (no progress) + seeded, so
+ *  the worker's getBlob hits `blobs` and never touches the network for them. */
+const SMALL = [PHON_JS, PHON_WASM, ORT_JS];
+const ALL_VOICE = [...BIG.map(([u]) => u), ...SMALL];
 const totalBigBytes = BIG.reduce((s, [, n]) => s + n, 0);
 let urlLoaded: Record<string, number> = {};
 let progress = 0;
@@ -284,6 +299,7 @@ function synthNow(text: string, spk: number): Promise<Blob> {
         modelConfigUrl: MODEL_JSON,
         phonemeIds: null,
         onnxruntimeUrl: ORT_BASE,
+        ortVersion: VOICE_V,
       });
     } catch (e) {
       fail(e);
@@ -401,36 +417,80 @@ function fetchBlobWithProgress(url: string): Promise<Blob> {
       urlLoaded[url] = loaded;
       bumpProgress();
     }
-    const b = new Blob(chunks);
+    // Preserve the response's MIME type on the blob. Without it (new Blob(parts)
+    // defaults to type "") any consumer that does WebAssembly streaming compile
+    // on a blob: URL — e.g. ORT's compileStreaming(fetch(blobUrl)) — throws
+    // "Incorrect response MIME type. Expected 'application/wasm'". The wasm must
+    // keep application/wasm so blob-URL streams work (defense in depth: the
+    // worker now also compiles it from wasmBinary bytes, which skips streaming).
+    const b = new Blob(chunks, { type: res.headers.get("content-type") || "" });
     blobs[url] = b;
     markFileDone(url);
     return b;
   });
 }
 
-/** Fetch the two big files IN PARALLEL on the main thread — first-run time
- *  ≈ max(file), not the sequential sum the worker's init would produce. No
- *  gesture needed: only PLAYBACK is gesture-gated, downloading is not. On a
- *  retry (flaky-Wi-Fi) any file already cached is skipped, not re-downloaded. */
+/** Reuse a blob we seeded in a PREVIOUS session from the `nv-voice` runtime
+ *  cache (visit 2+, reload, tab re-open): NO network, NO service-worker
+ *  dependency — the app owns its persistence, so a missing/not-yet-active SW
+ *  can never force a re-download. Keys match `seedSwVoiceCache` exactly. */
+async function cachedBlob(url: string): Promise<Blob | null> {
+  if (typeof caches === "undefined") return null;
+  try {
+    const cache = await caches.open("nv-voice");
+    const hit = await cache.match(url);
+    return hit ? await hit.blob() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch ALL voice files (big + small) IN PARALLEL on the main thread —
+ *  first-run time ≈ max(file), not the sequential sum the worker's init would
+ *  produce. No gesture needed: only PLAYBACK is gesture-gated, downloading is
+ *  not. On a retry/reload any file already in memory OR in the nv-voice runtime
+ *  cache is reused, not re-downloaded (reloads are instant + fully offline).
+ *  The worker's getBlob reads `blobs` first and the ORT loader's wasmPaths
+ *  reads `blobs` too, so once these are fetched the worker needs only the
+ *  tiny 24KB .mjs wrapper from the network. */
 function downloadParallel(): Promise<void> {
   return Promise.all(
-    BIG.map(([url]) =>
-      blobs[url] ? Promise.resolve(blobs[url]) : fetchBlobWithProgress(url)
-    )
+    ALL_VOICE.map(async (url) => {
+      if (blobs[url]) return;
+      const cached = await cachedBlob(url);
+      if (cached) {
+        blobs[url] = cached;
+        markFileDone(url);
+        return;
+      }
+      await fetchBlobWithProgress(url); // first visit / cache miss
+    })
   ).then(() => undefined);
 }
 
-/** Seed the service worker's `nv-voice` runtime cache from the blobs we ALREADY
- *  downloaded (visit 1 fetches are direct — no SW yet). Puts zero extra bytes
- *  on the wire and makes the SECOND visit instant (CacheFirst hits nv-voice). */
+/** Seed the `nv-voice` runtime cache from the blobs we ALREADY downloaded
+ *  (ALL of them — big files, phonemizer, ORT loader + wasm). Puts zero extra
+ *  bytes on the wire. Reads happen on TWO paths: the app's own `cachedBlob()`
+ *  (reload is instant, no SW needed) AND the service worker's CacheFirst route
+ *  (a safety net for anything the worker/ORT fetch directly). Both use the
+ *  same `nv-voice` cache + exact URLs. */
 async function seedSwVoiceCache() {
   if (typeof caches === "undefined") return;
   try {
     const cache = await caches.open("nv-voice"); // matches vite.config.ts cacheName
     await Promise.all(
-      BIG.map(async ([url]) => {
-        const blob = blobs[url];
-        if (blob) await cache.put(url, new Response(blob, { status: 200 }));
+      Object.entries(blobs).map(async ([url, blob]) => {
+        if (blob)
+          await cache.put(
+            url,
+            // Store the Content-Type so a reload's cachedBlob() returns a blob
+            // with the RIGHT MIME — otherwise the cache would degrade the wasm
+            // blob to type "" and any streaming-compile path would throw again.
+            new Response(blob, {
+              status: 200,
+              headers: { "Content-Type": blob.type || "application/octet-stream" },
+            })
+          );
       })
     );
   } catch {
@@ -591,16 +651,16 @@ export function preloadNeuralVoice() {
   state = "loading";
   // 1. Parallel main-thread download of the big files (progressed live).
   downloadParallel()
+    .then(() => seedSwVoiceCache())
     .then(() => {
-      // 2. Hand the blobs to the worker — its init hits the cache, only the
-      //    small phonemizer/ORT JS files (and ORT's own .wasm) download now.
+      // 2. Hand the blobs to the worker — its init hits the cache, and ORT
+      //    1.17's own XHR of ort-wasm-simd.wasm hits the freshly-seeded SW
+      //    cache (so the wasm is never fetched twice / never re-downloaded).
       return synth("এক", speakerId); // tiny word — warm-up only, never played
     })
     .then(() => {
-      // 3. Seed the SW runtime cache from what we already fetched (no re-wire).
-      void seedSwVoiceCache();
       markReady();
-      // 4. Idle pre-synthesis of the common phrases — the first gameplay lines
+      // 3. Idle pre-synthesis of the common phrases — the first gameplay lines
       //    hit the WAV cache instead of the worker.
       void warmCommonPhrases();
     })

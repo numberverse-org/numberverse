@@ -48,14 +48,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl tar \
 
 # Precompress the big static files — each gains a <file>.gz served by nginx
 # gzip_static when the client accepts gzip. Cuts first-run wire bytes ~30%
-# (phoneme data 18→~11MB, ort wasm 10.5→~5.8MB, int8 model 20→~17MB) with NO
-# model change / quality risk (int8→int4 is blocked on ORT 1.17 — no int4
-# kernel in the WASM build; see issue #28).
+# (phoneme data 18→~11MB, ORT 1.17 simd wasm 10.5→~4MB, int8 model 20→~17MB).
+# ORT is 1.17 (the classic-loader engine piper-wasm was built around — ORT
+# 1.20+ needs import() of an .mjs which Safari classic workers can't do); the
+# int8 model is unchanged — int4 stays a QA artifact pending human listen-QA.
 RUN python3 - <<'PY'
 import gzip, os, shutil
 root = "/voice"
 for name in ("piper_phonemize.js", "piper_phonemize.wasm", "piper_phonemize.data",
-             "onnx/ort.min.js", "onnx/ort-wasm-simd.wasm", "onnx/ort-wasm.wasm",
+             "onnx/ort.min.js", "onnx/ort-wasm-simd.wasm",
              "bn_BD-google-medium.onnx", "bn_BD-google-medium.onnx.json"):
     p = os.path.join(root, name)
     if not os.path.exists(p):
