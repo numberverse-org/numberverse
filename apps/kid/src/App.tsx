@@ -20,6 +20,9 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
 const APP_BUILD = "12 Aug 2026 · v24 (guest → parent upgrade (sign in / create account from inside the app))";
+/** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
+ *  0.<N>.0 for every vN release, so the app reports a real version number. */
+const APP_VERSION = "0.24.0";
 
 type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
@@ -435,6 +438,9 @@ interface Strings {
   settingsSigninBadge: string;
   settingsSigninSub: string;
   settingsSigninCta: string;
+  /* about / version */
+  settingsAbout: string;
+  settingsAboutSub: string;
   settingsVoice: string;
   settingsVoiceOk: (v: string) => string;
   settingsVoiceNone: string;
@@ -728,6 +734,8 @@ const STR: Record<Lang, Strings> = {
     settingsSigninBadge: "guest",
     settingsSigninSub: "You're in guest mode — progress lives on this device only. Sign in or create a parent account to keep it on every device.",
     settingsSigninCta: "🔓 Sign in / create parent account",
+    settingsAbout: "📦 About",
+    settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
     settingsVoiceNone: "No voice found — install a voice in Settings → Accessibility → Spoken Content",
@@ -1014,6 +1022,8 @@ const STR: Record<Lang, Strings> = {
     settingsSigninBadge: "অতিথি",
     settingsSigninSub: "আপনি অতিথি মোডে আছেন — অগ্রগতি শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা অভিভাবক অ্যাকাউন্ট খুলুন।",
     settingsSigninCta: "🔓 সাইন ইন / অভিভাবক অ্যাকাউন্ট খুলুন",
+    settingsAbout: "📦 এই অ্যাপ সম্পর্কে",
+    settingsAboutSub: "নম্বরভার্স · কৌতূহলী শিশুদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
@@ -2454,6 +2464,15 @@ export default function App() {
       const list = loadKids();
       setScreen(list.length ? (kid ? "home" : "kidpick") : "addkid");
     };
+    // No English/Bengali mixing — every label picks the CURRENT language:
+    //   en → English title + description · bn → Bangla title + description.
+    const L = (s: Skill) => ({
+      title: lang === "bn" ? s.titleBn ?? s.title : s.title,
+      desc: lang === "bn" ? s.descriptionBn ?? s.description ?? "" : s.description ?? "",
+    });
+    const bandName = (b: Band) => (lang === "bn" ? b.titleBn ?? b.title : b.title);
+    const subjectEmoji = (sub: string) =>
+      sub === "math" ? "🧮" : sub === "bangla" ? "📗" : sub === "english" ? "🔤" : sub === "science" ? "🔬" : "🌏";
     return (
       <div className="app">
         <main className="screen worlds parent-screen">
@@ -2498,61 +2517,63 @@ export default function App() {
               </ol>
             </div>
 
-            <p className="syllabus-hint">{t.syllabusTap}</p>
-
-            {/* one card per world/band, in course order */}
+            {/* ── EYE-CATCHING WORLD GRID ── each world is a card tinted with
+                 its own land colors; lessons are a grid of tappable tiles. */}
             {BANDS.map((b) => {
               const skills = SKILLS.filter((s) => s.band === b.id);
               const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: skills.filter((s) => s.game).length, pct: 0 };
-              const open = sylBand === b.id;
+              const palette = WORLD_LANDS[b.id] ?? { c1: "#0f3d33", c2: "#2ec4b6", c3: "#a7f3d0", c2_22: "rgba(46,196,182,0.16)", deco: ["🌱"] };
               return (
-                <div key={b.key} className={`syllabus-band${open ? " open" : ""}`}>
-                  <button
-                    className="syllabus-band-head"
-                    aria-expanded={open}
-                    onClick={() => setSylBand(open ? 0 : b.id)}
-                  >
-                    <span className="syllabus-band-emoji"><Icon name={b.key} size={30} /></span>
-                    <span className="syllabus-band-meta">
-                      <span className="syllabus-band-title">{b.title}</span>
-                      <span className="syllabus-band-age">🎂 {b.ageRange}</span>
+                <section
+                  key={b.key}
+                  className="syllabus-world"
+                  style={{ "--w1": palette.c1, "--w2": palette.c2, "--w3": palette.c3, "--w2a": palette.c2_22 } as React.CSSProperties}
+                >
+                  {/* world header — name, age, live progress */}
+                  <div className="syllabus-world-head">
+                    <span className="syllabus-world-emoji"><Icon name={b.key} size={40} /></span>
+                    <span className="syllabus-world-meta">
+                      <span className="syllabus-world-name">{bandName(b)}</span>
+                      <span className="syllabus-world-tags">
+                        <span className="syllabus-chip">{t.syllabusBadge(b.id)}</span>
+                        <span className="syllabus-chip">🎂 {b.ageRange}</span>
+                      </span>
                     </span>
-                    <span className="syllabus-band-stats">
-                      <span className="syllabus-band-pct">{t.syllabusProgress(p.mastered, p.total)}</span>
-                      <span className={`syllabus-chev${open ? " up" : ""}`}>▾</span>
+                    <span className="syllabus-world-progress">
+                      <span className="syllabus-world-pct">{t.syllabusProgress(p.mastered, p.total)}</span>
+                      <span className="syllabus-world-bar"><span style={{ width: `${p.pct}%` }} /></span>
                     </span>
-                  </button>
-                  {open && (
-                    <div className="syllabus-band-body">
-                      {skills.map((s) => {
-                        const g = s.game ? getGame(s.game) : undefined;
-                        const ms = kid ? skillsMap[`${kid.id}:${s.id}`] : undefined;
-                        const pct = ms ? Math.round(ms.pMastered * 100) : 0;
-                        const mastered = pct >= MASTERY_THRESHOLD * 100;
-                        return (
-                          <div key={s.id} className="skill-row syllabus-skill">
-                            <span className="skill-emoji"><Icon name={s.subject} size={30} fallbackEmoji={s.subject === "math" ? "🧮" : s.subject === "bangla" ? "📗" : s.subject === "english" ? "🔤" : s.subject === "science" ? "🔬" : "🌏"} /></span>
-                            <span className="skill-meta">
-                              <span className="skill-name">
-                                {s.title}
-                                {s.titleBn ? <span className="skill-bn">{s.titleBn}</span> : null}
-                              </span>
-                              <span className="syllabus-desc">{s.description}</span>
-                              <span className="syllabus-chips">
-                                <span className="syllabus-chip">{t.syllabusBadge(b.id)}</span>
-                                {g && <span className="syllabus-chip">{t.syllabusGame}</span>}
-                                {s.nctbCode && <span className="syllabus-chip">{s.nctbCode}</span>}
-                              </span>
+                  </div>
+
+                  {/* lesson tiles — one per skill, in course order */}
+                  <div className="syllabus-grid">
+                    {skills.map((s) => {
+                      const { title, desc } = L(s);
+                      const ms = kid ? skillsMap[`${kid.id}:${s.id}`] : undefined;
+                      const pct = ms ? Math.round(ms.pMastered * 100) : 0;
+                      const mastered = pct >= MASTERY_THRESHOLD * 100;
+                      const tappable = !!kid && !!s.game;
+                      return (
+                        <button
+                          key={s.id}
+                          className={`syllabus-tile${mastered ? " done" : ""}${pct > 0 && !mastered ? " started" : ""}`}
+                          onClick={() => tappable && startSingleSkill(s)}
+                          disabled={!tappable}
+                          title={tappable ? t.syllabusGame : undefined}
+                        >
+                          <span className="syllabus-tile-top">
+                            <span className="syllabus-tile-emoji"><Icon name={s.subject} size={32} fallbackEmoji={subjectEmoji(s.subject)} /></span>
+                            <span className={`syllabus-tile-badge${mastered ? " done" : ""}`}>
+                              {mastered ? "✓" : pct > 0 ? `${pct}%` : "•"}
                             </span>
-                            <span className={`skill-state${mastered ? " syl-done" : ""}`}>
-                              {mastered ? t.syllabusMastered : pct > 0 ? `${pct}%` : t.syllabusNotStarted}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                          </span>
+                          <span className="syllabus-tile-name">{title}</span>
+                          {desc && <span className="syllabus-tile-desc">{desc}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })}
 
@@ -3004,6 +3025,15 @@ export default function App() {
             </div>
           )}
 
+          {/* 📦 About — the app's semantic version (e.g. 0.25.0). */}
+          <div className="parent-card settings-about-card">
+            <div className="parent-head">
+              <span className="parent-name">{t.settingsAbout}</span>
+              <span className="parent-stats">{APP_VERSION}</span>
+            </div>
+            <p className="syllabus-settings-sub">{t.settingsAboutSub} · {APP_BUILD.split(" · ")[0]}</p>
+          </div>
+
           <button className="ghost-btn" onClick={() => setScreen("parent")}>
             {t.settingsParent}
           </button>
@@ -3184,7 +3214,7 @@ export default function App() {
           <button className="ghost-btn" onClick={() => setScreen("settings")}>
             ⚙️ {t.settingsTitle}
           </button>
-          <p className="build-stamp">Numberverse · {APP_BUILD}</p>
+          <p className="build-stamp">Numberverse · v{APP_VERSION}</p>
         </main>
       </div>
     );
