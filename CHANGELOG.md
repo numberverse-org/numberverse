@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v23 (google sign-in + first-time language pick + binary guest/signin + pre-login syllabus)
+
+b289a00 feat: google sign-in + first-time language pick + binary guest/signin + pre-login syllabus (#146)
+b0ca844 track: v22 released — parent sign-in gate + interactive syllabus
+
 ## 12 Aug 2026 — v22 (parent sign-in gate + interactive syllabus)
 
 e0baf84 feat(kid): parent sign-in gate on first load + interactive syllabus (#145)
