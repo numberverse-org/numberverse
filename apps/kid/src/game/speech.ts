@@ -450,6 +450,8 @@ export interface SpeechStatus {
     progress: number;
     ready: boolean;
     error?: string;
+    /** Per-line WAV cache meter (on-device) — synth hit rate across sessions. */
+    cache?: { hits: number; misses: number; hitRate: number };
   };
 }
 
