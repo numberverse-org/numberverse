@@ -33,6 +33,7 @@ export const SKILLS: Skill[] = [
   { id: 'add-within-20', band: 2, subject: 'math', title: 'Add within 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Addition facts with sums to 20', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruitadd' },
   { id: 'sub-within-20', band: 2, subject: 'math', title: 'Subtract within 20', titleBn: '২০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 20', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-5', classNumber: 1, game: 'game-fruitadd' },
   { id: 'count-to-50', band: 2, subject: 'math', title: 'Count to 50', titleBn: '৫০ পর্যন্ত গুনি', description: 'Count objects up to 50', commonCore: ['1.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop50' },
+  { id: 'count-to-100', band: 2, subject: 'math', title: 'Count to 100', titleBn: '১০০ পর্যন্ত গুনি', description: 'Build numbers to 100 by bundling ten-rods and ones', commonCore: ['1.NBT.1', '2.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-count100' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Bangla — consonants (ব্যঞ্জনবর্ণ), first words
   { id: 'bn-benjonborno', band: 2, subject: 'bangla', title: 'Bangla consonants', titleBn: 'ব্যঞ্জনবর্ণ', description: 'Recognize Bangla consonant letters ক খ গ ঘ', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnletters' },
@@ -81,6 +82,7 @@ export const SKILLS: Skill[] = [
 export const GAMES: GameConfig[] = [
   { id: 'game-countpop', skillId: 'count-1-10', difficultyLevels: [3, 4, 5, 7, 10, 12], targetSuccess: 0.8 },
   { id: 'game-countpop50', skillId: 'count-to-50', difficultyLevels: [10, 15, 20, 30, 40, 50], targetSuccess: 0.8 },
+  { id: 'game-count100', skillId: 'count-to-100', difficultyLevels: [10, 20, 30, 40, 60, 100], targetSuccess: 0.8 },
   { id: 'game-growcount', skillId: 'grow-count', difficultyLevels: [3, 4, 5, 7, 9, 12], targetSuccess: 0.8 },
   { id: 'game-fruitadd', skillId: 'add-within-10', difficultyLevels: [5, 8, 11, 15, 20, 25], targetSuccess: 0.8 },
   { id: 'game-fruittree', skillId: 'fruit-tree-add', difficultyLevels: [5, 8, 11, 15, 20, 25], targetSuccess: 0.8 },
@@ -121,6 +123,7 @@ export const GAMES: GameConfig[] = [
 export const GAME_SCENES: Record<string, string> = {
   'game-countpop': 'CountPop',
   'game-countpop50': 'CountPop',
+  'game-count100': 'Count100',
   'game-growcount': 'GrowCount',
   'game-fruitadd': 'FruitAdd',
   'game-fruittree': 'FruitTree',

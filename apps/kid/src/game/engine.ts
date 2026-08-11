@@ -11,6 +11,7 @@
  */
 import Phaser from "phaser";
 import { CountPopScene } from "./CountPopScene";
+import { Count100Scene } from "./Count100Scene";
 import { FruitAddScene } from "./FruitAddScene";
 import { BnLettersScene } from "./BnLettersScene";
 import { BnNumbersScene } from "./BnNumbersScene";
@@ -78,7 +79,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       NovaScene,
       GardenScene,
       GrowCountScene, FruitTreeScene,
-      CountPopScene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
+      CountPopScene, Count100Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
       RocketMultScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FractionMatchScene,
       PlaceValueScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,

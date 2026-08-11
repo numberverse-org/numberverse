@@ -39,6 +39,15 @@ const EN: Record<string, Entry> = {
   tapWordsOrder: "Tap the words in order!",
   readWordTapPic: "Read the word, tap the picture!",
   tapNumbersOrder: "Tap the numbers in order 1, 2, 3…",
+
+  /* ── Count to 100 — place-value rods ── */
+  count100Make: "Make {n}",
+  count100Round: "Round {n} · make {target}",
+  count100Breakdown: "{t} tens + {o} ones = {n}",
+  count100Bundle: "10 ones = one ten-rod!",
+  count100Plus1: "+1",
+  count100Plus10: "+10",
+  count100DoneSpeak: "You made {n}!",
   tapBiggerDecimal: "Tap the BIGGER decimal!",
   divideBridge: "Divide to lower the drawbridge!",
   startLetter: "What letter does it start with?",
@@ -108,6 +117,7 @@ const EN: Record<string, Entry> = {
 
   /* ── scene header titles (every game header switches language) ── */
   titleCountPop: "Count & Pop",
+  titleCount100: "Bundle & Count",
   titleGrowCount: "Plant & Count",
   titleFruitAdd: "Fruit Basket",
   titleFruitTree: "Fruit Tree",
@@ -173,6 +183,15 @@ const BN: Record<string, Entry> = {
   tapWordsOrder: "শব্দগুলো ক্রমানুসারে ট্যাপ করো!",
   readWordTapPic: "শব্দ পড়ো, ছবি ট্যাপ করো!",
   tapNumbersOrder: "১, ২, ৩… ক্রমানুসারে সংখ্যা ট্যাপ করো!",
+
+  /* ── Count to 100 — place-value rods ── */
+  count100Make: "{n} বানাও",
+  count100Round: "রাউন্ড {n} · বানাও {target}",
+  count100Breakdown: "{t} দশ + {o} এক = {n}",
+  count100Bundle: "১০টা এক = ১টা দশ-দণ্ড!",
+  count100Plus1: "+১",
+  count100Plus10: "+১০",
+  count100DoneSpeak: "তুমি {n} বানালে!",
   tapBiggerDecimal: "বড় দশমিক সংখ্যাটা ট্যাপ করো!",
   divideBridge: "ভাগ করে সেতু নামাও!",
   startLetter: "কোন অক্ষর দিয়ে শুরু?",
@@ -242,6 +261,7 @@ const BN: Record<string, Entry> = {
 
   /* ── scene header titles ── */
   titleCountPop: "গণনা ও পপ",
+  titleCount100: "গুচ্ছ ও গণনা",
   titleGrowCount: "বপন ও গণনা",
   titleFruitAdd: "ফলের ঝুড়ি",
   titleFruitTree: "ফলের গাছ",
