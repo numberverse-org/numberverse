@@ -1,3 +1,10 @@
+## 11 Aug 2026 — v13 (release train (2 since v12))
+
+a9b8697 feat: per-line neural WAV cache (IndexedDB LRU) + idle pre-synth of common phrases (#31) (#32)
+3069ae6 feat: faster first-run neural TTS — boot preload + parallel fetch + gzip'd /voice/ (#28) (#30)
+04531e6 docs: TRACKER v12 released — iOS speech auto-unlock fix
+7cbd49a docs: work order #26 — complete, released in v12
+
 ## 11 Aug 2026 — v12 (release train (3 since v11))
 
 aa49cc1 fix: release-train commit count — --format=%s (--oneline hashed prefix broke ^(feat|fix) match)
