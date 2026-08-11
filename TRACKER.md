@@ -1,6 +1,16 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 11 Aug 2026
 
+## 🔁 24/7 AUTOMATED PIPELINE — ISSUE → RELEASE, FULLY ON AUTOPILOT 11 Aug 2026 ✅ (user: "make a automated pipeline for all from creating issue to release features, which will 24/7 parallel")
+Two always-on parallel legs turn an issue into a shipped feature with one human/agent step (writing the code). Full map: **`docs/AUTOMATION.md`**.
+- **🖥️ Local leg (launchd, always-on):** `infra/automation/pipeline.sh`
+  - **conductor** (hourly, `com.tresha.pipeline-conductor`): picks the highest-priority groomed (`status: todo`) issue → opens `feat/issue-NNN` off main → writes `docs/work-orders/NNN.md` (acceptance criteria + the 5-spot registration checklist) → moves issue label + project card to **In progress** → pages Telegram. Idles when a work order/PR is already active (the loop is busy).
+  - **release-train** (6-hourly, `com.tresha.pipeline-release-train`): when ≥2 `feat/fix` commits merged since the last release → auto-cuts `vN+1` via `release.sh` (gates → stamp → changelog → tag → GitHub Release → deploy). **Bootstrapped**: first release stays manual (`release.sh v11 "…"`); release.sh now writes `docs/LATEST_RELEASE.md` which arms the train.
+  - Lock-guarded (parallel-safe, no double-pick), logs to `~/.tresha/logs/numberverse-pipeline.log` + board snapshot `numberverse-board.md`.
+- **🌐 Cloud leg (GitHub Actions, on-event/on-tag):** triage+auto-assign+add-to-project (new issue → backlog card) · **CI now 4 parallel jobs** (`build-core` → `typecheck-kid` + `audit` fan-out, `api` fully parallel — all green on the first parallel run) · `label-pr.yml` · `project-done.yml` (closed issue → card **Done**) · `release.yml` (v* tag → Release with auto-notes).
+- **✅ Proven live:** groomed #3 (Taka Tap v2) → conductor opened `feat/issue-3`, wrote work order, moved label+card to In progress, paged. Junk-branch bug (`feat/issue-null` from jq `first` on an empty board) found + fixed with a null guard; log-file collision with the old OTP log fixed. `pipeline.sh` syntax-valid, both agents loaded exit 0, oracle clean.
+- **⛔ Honest limit:** the pipeline automates everything around code; the code itself is the agent/human step (executing `docs/work-orders/NNN.md`), and CI/audit/oracle gates are the safety net. Deploy needs the dev box online.
+
 ## 📋 GITHUB PROJECTS V2 — NUMBERVERSE ROADMAP LIVE 11 Aug 2026 ✅ (user: "done" → granted project scope, I built the project)
 The modern board is live: **`Numberverse Roadmap`** → `github.com/orgs/numberverse-org/projects/1`.
 - **Project created** in the org, repo linked, all 22 issues backfilled (Status = Backlog).
