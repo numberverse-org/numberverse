@@ -206,26 +206,42 @@ export function speechAvailable(): boolean {
  * engine stays muted and the app never talks. A single short word is
  * guaranteed to actually synthesize (the unlock), at volume .001 it's
  * inaudible. */
-let primed = false;
+/**
+ * Whether the Web Speech engine is PROVEN unlocked. iOS only starts synthesis
+ * when a speak() runs synchronously inside a REAL gesture — and only then does
+ * the utterance's `onstart` fire. Until onstart has fired, we are not unlocked
+ * and we re-prime on every gesture. This is the same proven-unlock pattern as
+ * neuralPrime() (which retries until the <audio> element's play() resolves).
+ */
+let unlocked = false;
 
 export function primeSpeech() {
   const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
-  if (!synth || primed) return;
+  if (!synth || unlocked) return; // proven — no-op from here on
   try {
     // A real word, not a space — see note above. Short + rate 2 = over fast.
     const warm = new SpeechSynthesisUtterance("hi");
     warm.volume = 0.001;
     warm.rate = 2;
+    // onstart fires ONLY when synthesis actually begins → genuine unlock.
+    // (A locked iOS engine never starts the warm, so we retry next gesture.)
+    warm.onstart = () => {
+      unlocked = true;
+    };
+    warm.onerror = () => {
+      /* not ready / superseded — the next gesture retries, cheap */
+    };
     synth.speak(warm); // MUST be synchronous inside the gesture
-    primed = true;
     void refreshVoices(); // on iOS getVoices() populates after the first speak
   } catch {
-    primed = true; // no engine — don't retry-spam the console
+    /* no engine — the next gesture retries */
   }
 }
 
-// Wire the unlock to the FIRST gesture anywhere in the app. Capture phase, so
-// Phaser/React can't swallow the event. Stays installed (prime is idempotent).
+// Ride EVERY gesture until the engine is proven unlocked (the first one often
+// misses — voices not loaded yet, event swallowed, scene switch mid-tap).
+// Capture phase, so Phaser/React can't swallow the event. Once `unlocked` is
+// set this is a no-op on every subsequent gesture (never interrupts a line).
 if (typeof window !== "undefined" && "speechSynthesis" in window) {
   for (const evt of ["pointerdown", "touchstart", "click", "keydown"]) {
     window.addEventListener(evt, () => primeSpeech(), true);
@@ -347,7 +363,7 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
     // Cross-engine latest-wins: if a neural Bangla line is still playing or
     // synthesizing, cut it — the newest line wins across BOTH engines.
     neuralCancel();
-    primeSpeech(); // no-op once primed — safety if we're inside a gesture
+    primeSpeech(); // no-op once proven unlocked — safety if we're inside a gesture
     try {
       const platform = detectPlatform();
       const u = new SpeechSynthesisUtterance(clean);
