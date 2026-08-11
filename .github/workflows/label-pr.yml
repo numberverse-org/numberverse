@@ -31,9 +31,10 @@ jobs:
               if (re.test(title)) { label = l; break; }
             }
             if (!label) return;
+            // context.issue.number is set for both issue AND pull_request events.
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.pull_request.number,
+              issue_number: context.issue.number,
               labels: [label],
             });
