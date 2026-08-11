@@ -1,3 +1,7 @@
+## 12 Aug 2026 — v17 (Mastery gate: kid must clear current-step wrongs before advancing)
+
+2927bf3 feat(kid): mastery gate — must clear current-step wrongs before advancing (#38) (#39)
+
 ## 12 Aug 2026 — v16 (Wrong-answer ledger + resolve-to-complete)
 
 baec1f3 feat(kid): wrong-answer ledger + resolve-to-complete (#36) (#37)
