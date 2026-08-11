@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v25 (eye-catching syllabus GRID (no EN/BN mixing) + semver versioning 0.25.0)
+
+5c4b4bc feat: eye-catching syllabus GRID (no EN/BN mixing) + semver versioning (0.x.0) (#148)
+2d157fd track: v24 released — guest → parent upgrade path
+
 ## 12 Aug 2026 — v24 (guest → parent upgrade (sign in / create account from inside the app))
 
 ee1b799 feat(kid): guest → parent upgrade path (sign in / create account from inside the app) (#147)
