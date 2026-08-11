@@ -26,8 +26,18 @@ node apps/kid/scripts/audit.mjs 2>&1 | tail -1
 python3 scripts/team/oracle_team.py --no-page 2>&1 | tail -1 | sed 's/^/  oracle: /'
 
 echo "── 2/6 Bump build stamp + tracker ──────────────"
-perl -0pi -e "s/const APP_BUILD = \"[^\"]*\"/const APP_BUILD = \"$TODAY · $VERSION ($SUMMARY)\"/" apps/kid/src/App.tsx
-perl -0pi -e "s/> Last updated: [0-9]+ [A-Za-z]+ [0-9]{4}/> Last updated: $TODAY/" TRACKER.md
+python3 - "$TODAY" "$VERSION" "$SUMMARY" <<'PY'
+import re, sys
+today, version, summary = sys.argv[1], sys.argv[2], sys.argv[3]
+app = "apps/kid/src/App.tsx"
+s = open(app, encoding="utf-8").read()
+s = re.sub(r'const APP_BUILD = "[^"]*"', f'const APP_BUILD = "{today} · {version} ({summary})"', s)
+open(app, "w", encoding="utf-8").write(s)
+tr = "TRACKER.md"
+t = open(tr, encoding="utf-8").read()
+t = re.sub(r'> Last updated: [0-9]+ [A-Za-z]+ [0-9]{4}', f'> Last updated: {today}', t)
+open(tr, "w", encoding="utf-8").write(t)
+PY
 grep -n "const APP_BUILD" apps/kid/src/App.tsx | sed 's/^/  ✓ /'
 
 echo "── 3/6 Changelog since last tag ────────────────"
