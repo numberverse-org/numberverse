@@ -7,7 +7,8 @@
  *   1. i18n — every `t("key")` used in scenes must exist in BOTH EN and BN
  *      (a missing key silently renders the raw key to a child).
  *   2. catalog — every skill.game ∈ GAMES; every GAME has a GAME_SCENES key;
- *      every GAME_SCENES value has a scene class registered in App.tsx.
+ *      every GAME_SCENES value has a scene class registered in engine.ts
+ *      (the lazy Phaser chunk — see issue #15).
  *   3. seed — every core skill id exists in apps/api/app/seed.py SKILLS_SEED
  *      (or progress sync 500s on FK).
  *   4. header titles — flags hardcoded English scene headers (not via t()).
@@ -77,7 +78,7 @@ for (const k of drift) warn(`i18n key "${k}" defined but never used (maybe reuse
 if (!missEn.length && !missBn.length) console.log("  ✓ all used keys present in EN + BN");
 
 /* ── 2. core catalog integrity ── */
-console.log("②  core catalog integrity (skills ⇄ games ⇄ scenes ⇄ App)…");
+console.log("②  core catalog integrity (skills ⇄ games ⇄ scenes ⇄ engine)…");
 let skills = [], games = [], scenes = {};
 const skillsSrc = existsSync(join(CORE, "dist", "skills.js"))
   ? readFileSync(join(CORE, "dist", "skills.js"), "utf8")
@@ -105,19 +106,21 @@ if (skills.length) {
     if (g.difficultyLevels?.length !== 6 && g.difficultyLevels?.length !== 9)
       warn(`game "${g.id}" difficultyLevels ≠ 6/9 tiers (${g.difficultyLevels?.length})`);
   }
-  // every scene key has a class file + an App.tsx import + an App.tsx array entry
-  const appSrc = readFileSync(join(KID, "src", "App.tsx"), "utf8");
-  const arrayBlock = appSrc.split("scene: [")[1]?.split("]")[0] ?? "";
+  // every scene key has a class file + an engine.ts import + an engine.ts array
+  // entry. Since issue #15 the scenes live in the lazy Phaser chunk (engine.ts),
+  // NOT App.tsx — App.tsx only has `import type { Game } from "phaser"`.
+  const engineSrc = readFileSync(join(GAME, "engine.ts"), "utf8");
+  const arrayBlock = engineSrc.split("scene: [")[1]?.split("]")[0] ?? "";
   for (const [gid, sceneKey] of Object.entries(scenes)) {
     const sceneFile = join(GAME, `${sceneKey}Scene.ts`);
     if (!existsSync(sceneFile))
       fail(`GAME_SCENES "${gid}" → "${sceneKey}" but no ${sceneKey}Scene.ts file`);
     else if (!new RegExp(`export class ${sceneKey}Scene`).test(readFileSync(sceneFile, "utf8")))
       fail(`${sceneKey}Scene.ts exists but has no \`export class ${sceneKey}Scene\``);
-    if (!new RegExp(`import \\{ ${sceneKey}Scene \\}`).test(appSrc))
-      fail(`GAME_SCENES "${gid}" → "${sceneKey}" but App.tsx doesn't import ${sceneKey}Scene`);
+    if (!new RegExp(`import \\{ ${sceneKey}Scene \\}`).test(engineSrc))
+      fail(`GAME_SCENES "${gid}" → "${sceneKey}" but engine.ts doesn't import ${sceneKey}Scene`);
     if (!new RegExp(`${sceneKey}Scene`).test(arrayBlock))
-      fail(`GAME_SCENES "${gid}" → "${sceneKey}" not listed in App.tsx scene array`);
+      fail(`GAME_SCENES "${gid}" → "${sceneKey}" not listed in engine.ts scene array`);
   }
   console.log(`  ✓ ${skills.length} skills, ${games.length} games, ${Object.keys(scenes).length} scenes checked`);
 }
