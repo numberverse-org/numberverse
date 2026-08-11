@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v20 (3-digit add/sub with regrouping (written method))
+
+732cea8 🎓 Column Math: 3-digit add/sub with regrouping (Carry & Borrow) (#142)
+983ddb9 track: v19 released — division by fair-sharing (#58); #59 next in-progress
+
 ## 12 Aug 2026 — v19 (Division by fair-sharing (sharing animation → number mode))
 
 c63985a feat(kid): division by fair-sharing — sharing animation → number mode (#58) (#141)
