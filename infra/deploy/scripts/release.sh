@@ -25,20 +25,28 @@ pnpm --filter @numberverse/core build >/dev/null 2>&1 && echo "  ✓ core build"
 node apps/kid/scripts/audit.mjs 2>&1 | tail -1
 python3 scripts/team/oracle_team.py --no-page 2>&1 | tail -1 | sed 's/^/  oracle: /'
 
-echo "── 2/6 Bump build stamp + tracker ──────────────"
+echo "── 2/6 Bump build stamp + semver + tracker ────"
 python3 - "$TODAY" "$VERSION" "$SUMMARY" <<'PY'
 import re, sys
 today, version, summary = sys.argv[1], sys.argv[2], sys.argv[3]
 app = "apps/kid/src/App.tsx"
 s = open(app, encoding="utf-8").read()
 s = re.sub(r'const APP_BUILD = "[^"]*"', f'const APP_BUILD = "{today} · {version} ({summary})"', s)
+# Semantic versioning (0.MAJOR.MINOR.PATCH → 0.25.0) — derived from the vN tag
+# so it always tracks the release train. e.g. release.sh v25 → APP_VERSION 0.25.0.
+m = re.match(r"v(\d+)", version)
+if m:
+    semver = f"0.{int(m.group(1))}.0"
+    if not re.search(r"const APP_VERSION = ", s):
+        s = s.replace('const APP_BUILD = ', f'const APP_VERSION = "{semver}";\n', 1)
+    s = re.sub(r'const APP_VERSION = "[^"]*"', f'const APP_VERSION = "{semver}"', s)
 open(app, "w", encoding="utf-8").write(s)
 tr = "TRACKER.md"
 t = open(tr, encoding="utf-8").read()
 t = re.sub(r'> Last updated: [0-9]+ [A-Za-z]+ [0-9]{4}', f'> Last updated: {today}', t)
 open(tr, "w", encoding="utf-8").write(t)
 PY
-grep -n "const APP_BUILD" apps/kid/src/App.tsx | sed 's/^/  ✓ /'
+grep -n "const APP_VERSION\|const APP_BUILD" apps/kid/src/App.tsx | sed 's/^/  ✓ /'
 
 echo "── 3/6 Changelog since last tag ────────────────"
 LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)

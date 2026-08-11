@@ -4,6 +4,8 @@ export interface Band {
   id: number; // 1..5
   key: string;
   title: string;
+  /** Bangla name of the world — shown when the app language is বাংলা. */
+  titleBn?: string;
   ageRange: string;
 }
 
@@ -23,6 +25,9 @@ export interface Skill {
   title: string; // English title
   titleBn?: string; // Bangla title (NCTB curriculum)
   description?: string;
+  /** Bangla description — shown when the app language is বাংলা (never mixes
+   *  English into the Bangla UI). */
+  descriptionBn?: string;
   commonCore?: string[];
   /** NCTB curriculum code, e.g. 'c1-math-1' (class-subject-unit) */
   nctbCode?: string;
