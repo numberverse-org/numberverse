@@ -430,6 +430,11 @@ interface Strings {
   settingsSub: string;
   settingsParent: string;
   settingsSyllabus: string;
+  /* guest → parent upgrade (Settings + Parent panel) */
+  settingsSigninTitle: string;
+  settingsSigninBadge: string;
+  settingsSigninSub: string;
+  settingsSigninCta: string;
   settingsVoice: string;
   settingsVoiceOk: (v: string) => string;
   settingsVoiceNone: string;
@@ -719,6 +724,10 @@ const STR: Record<Lang, Strings> = {
     settingsSub: "Language, sound & voice",
     settingsParent: "👨‍👩‍👧 Parent analytics",
     settingsSyllabus: "📚 What kids learn",
+    settingsSigninTitle: "👨‍👩‍👧 Keep progress everywhere",
+    settingsSigninBadge: "guest",
+    settingsSigninSub: "You're in guest mode — progress lives on this device only. Sign in or create a parent account to keep it on every device.",
+    settingsSigninCta: "🔓 Sign in / create parent account",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
     settingsVoiceNone: "No voice found — install a voice in Settings → Accessibility → Spoken Content",
@@ -1001,6 +1010,10 @@ const STR: Record<Lang, Strings> = {
     settingsSub: "ভাষা, শব্দ ও ভয়েস",
     settingsParent: "👨‍👩‍👧 অভিভাবক বিশ্লেষণ",
     settingsSyllabus: "📚 বাচ্চারা যা শেখে",
+    settingsSigninTitle: "👨‍👩‍👧 সব জায়গায় অগ্রগতি রাখুন",
+    settingsSigninBadge: "অতিথি",
+    settingsSigninSub: "আপনি অতিথি মোডে আছেন — অগ্রগতি শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা অভিভাবক অ্যাকাউন্ট খুলুন।",
+    settingsSigninCta: "🔓 সাইন ইন / অভিভাবক অ্যাকাউন্ট খুলুন",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
@@ -1503,6 +1516,10 @@ export default function App() {
   const [gateError, setGateError] = useState<string | null>(null);
   // ── Interactive syllabus state: which band is expanded (default band 1). ──
   const [sylBand, setSylBand] = useState<number>(1);
+  // Where the parent gate should land after a successful sign-in. First-load /
+  // syllabus links → the syllabus; upgrading a guest from Settings → back home
+  // (their kids are already there). Never conditionally set — defaults sane.
+  const gateReturn = useRef<Screen>("syllabus");
   // PWA install affordance — set when the browser offers beforeinstallprompt.
   const [installEvt, setInstallEvt] = useState<Event | null>(null);
   // 🔊 TTS check on EVERY run: voices load async on iOS/Android (and iOS only
@@ -1629,10 +1646,11 @@ export default function App() {
       } else {
         await signupParent(gateEmail.trim(), gatePass, gateName.trim());
       }
-      // Success → the parent sees what their child will learn, then the app
-      // unlocks. (Sync re-resolves with the parent account on the next tick.)
+      // Success → land where the parent came from (syllabus on first-load, or
+      // back home when upgrading an existing guest). Their kids are mapped to
+      // the parent account on the next sync tick.
       setSylBand(1);
-      setScreen("syllabus");
+      setScreen(gateReturn.current);
     } catch {
       setGateError(gateMode === "in" ? t.gateErrorInvalid : t.gateErrorSignup);
     } finally {
@@ -1646,7 +1664,7 @@ export default function App() {
     try {
       await signinGoogle(idToken);
       setSylBand(1);
-      setScreen("syllabus");
+      setScreen(gateReturn.current);
     } catch {
       setGateError(t.gateErrorGoogle);
     } finally {
@@ -1662,6 +1680,12 @@ export default function App() {
   const goSyllabus = () => {
     setSylBand(1);
     setScreen("syllabus");
+  };
+  // Upgrade path: a guest (no parent session yet) signs in from Settings /
+  // Parent panel. Their device-account kids get mapped to the parent account.
+  const openGateForUpgrade = () => {
+    gateReturn.current = "home";
+    setScreen("parentgate");
   };
 
   // ── Parent controls ─────────────────────────────────────────────────────
@@ -2329,7 +2353,7 @@ export default function App() {
               </button>
               <p className="gate-guest-sub">{t.welcomeGuestSub}</p>
               <div className="gate-or"><span>{t.welcomeOr}</span></div>
-              <button className="ghost-btn welcome-signin" onClick={() => setScreen("parentgate")}>
+              <button className="ghost-btn welcome-signin" onClick={() => { gateReturn.current = "syllabus"; setScreen("parentgate"); }}>
                 {t.welcomeSignin}
               </button>
             </div>
@@ -2447,7 +2471,7 @@ export default function App() {
               <span className="syllabus-guest-emoji" aria-hidden>👀</span>
               <p className="syllabus-guest-text">
                 {t.syllabusGuestNote}{" "}
-                <button className="syllabus-banner-link" onClick={() => setScreen("parentgate")}>
+                <button className="syllabus-banner-link" onClick={() => { gateReturn.current = "syllabus"; setScreen("parentgate"); }}>
                   {t.gateSignin}
                 </button>
               </p>
@@ -2965,6 +2989,21 @@ export default function App() {
             <p className="syllabus-settings-sub">{t.syllabusSub}</p>
           </div>
 
+          {/* Guest → parent upgrade: a guest can sign in / create an account
+              here (their local kids then sync to the parent's account). */}
+          {!hasParentSession() && (
+            <div className="parent-card settings-signin-card">
+              <div className="parent-head">
+                <span className="parent-name">{t.settingsSigninTitle}</span>
+                <span className="parent-stats">{t.settingsSigninBadge}</span>
+              </div>
+              <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
+              <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
+                {t.settingsSigninCta}
+              </button>
+            </div>
+          )}
+
           <button className="ghost-btn" onClick={() => setScreen("parent")}>
             {t.settingsParent}
           </button>
@@ -3126,6 +3165,20 @@ export default function App() {
                 </div>
               )}
             </>
+          )}
+          {/* Guest → parent upgrade: analytics here are on this device only;
+              sign in to keep them on every device via the parent's account. */}
+          {!hasParentSession() && (
+            <div className="parent-card settings-signin-card">
+              <div className="parent-head">
+                <span className="parent-name">{t.settingsSigninTitle}</span>
+                <span className="parent-stats">{t.settingsSigninBadge}</span>
+              </div>
+              <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
+              <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
+                {t.settingsSigninCta}
+              </button>
+            </div>
           )}
           <VoiceCheck t={t} />
           <button className="ghost-btn" onClick={() => setScreen("settings")}>

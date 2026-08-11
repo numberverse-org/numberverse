@@ -3433,6 +3433,13 @@ body {
 }
 .gate-syllabus-link { margin-top: 2px; }
 
+/* ── guest → parent upgrade card (Settings + Parent panel) ─────────────── */
+.settings-signin-card {
+  border-color: rgba(255, 209, 102, 0.35);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.08), rgba(255, 255, 255, 0.03));
+}
+.settings-signin-btn { width: 100%; margin-top: 2px; }
+
 /* ── syllabus guest banner (browsing before sign-in) ───────────────────── */
 .syllabus-guest-banner {
   width: 100%;
