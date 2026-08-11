@@ -54,9 +54,13 @@ export default defineConfig({
         // phonemizer + model are way over the precache size cap (6MB), so they
         // are runtime-cached CacheFirst on first use: the first Bangla session
         // downloads the voice once (~110MB), then it's instant + fully offline.
+        // NOTE: workbox RegExpRoute matches against the FULL href (origin +
+        // path + query), NOT just pathname — so the pattern must NOT be
+        // anchored with ^/voice/ (that silently never matches and forces a
+        // re-download on every reload). Match the /voice/ segment mid-href.
         runtimeCaching: [
           {
-            urlPattern: /^\/voice\/.*$/,
+            urlPattern: /\/voice\/.*$/,
             handler: "CacheFirst",
             options: {
               cacheName: "nv-voice",
