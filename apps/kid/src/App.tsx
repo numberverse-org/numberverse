@@ -18,7 +18,7 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "12 Aug 2026 · v20 (3-digit add/sub with regrouping (written method))";
+const APP_BUILD = "12 Aug 2026 · v21 (course indexing realigned with the brain (numbers first, game-first, EN/BN mirrored))";
 
 type Screen = "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.

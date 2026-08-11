@@ -1,3 +1,8 @@
+## 12 Aug 2026 — v21 (course indexing realigned with the brain (numbers first, game-first, EN/BN mirrored))
+
+2e95d33 🧠 Course indexing: realign with the brain (numbers first, game-first, EN/BN mirrored) (#144)
+de2c202 track: v20 released — column math with regrouping (#59); #60 next in-progress
+
 ## 12 Aug 2026 — v20 (3-digit add/sub with regrouping (written method))
 
 732cea8 🎓 Column Math: 3-digit add/sub with regrouping (Carry & Borrow) (#142)
