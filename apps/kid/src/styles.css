@@ -3285,3 +3285,173 @@ body {
     padding: 30px 40px !important;
   }
 }
+
+/* ── PARENT GATE (first-load sign-in) ───────────────────────────────────── */
+.gate-screen { justify-content: center; align-items: center; }
+.gate-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 26px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.gate-logo {
+  font-size: 56px;
+  filter: drop-shadow(0 8px 18px rgba(76, 201, 240, 0.45));
+  animation: jPulse 2.4s ease-in-out infinite;
+}
+.gate-title { font-size: 26px; font-weight: 900; margin: 0; color: #edf2f4; }
+.gate-sub { font-size: 14px; color: #a7c4e2; margin: 0; line-height: 1.45; }
+.gate-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+.gate-tab {
+  flex: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #a7c4e2;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.gate-tab.active {
+  background: linear-gradient(135deg, #4cc9f0, #2ec4b6);
+  color: #0b2545;
+  box-shadow: 0 4px 14px rgba(76, 201, 240, 0.35);
+}
+.gate-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.gate-error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff6b6b;
+  text-align: center;
+}
+.gate-submit { width: 100%; margin-top: 2px; }
+.gate-toggle {
+  background: none;
+  border: none;
+  color: #4cc9f0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px;
+}
+.gate-guest { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.gate-guest-sub { margin: 0; font-size: 12px; color: #8d99ae; }
+.gate-privacy {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7a8c;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* ── INTERACTIVE SYLLABUS (what kids learn) ─────────────────────────────── */
+.syllabus-wrap {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+.syllabus-hello {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(46, 196, 182, 0.16), rgba(76, 201, 240, 0.08));
+  border: 1px solid rgba(46, 196, 182, 0.35);
+  border-radius: 18px;
+  padding: 14px;
+  text-align: left;
+}
+.syllabus-hello-emoji { font-size: 34px; flex-shrink: 0; }
+.syllabus-hello-title { margin: 0; font-size: 16px; font-weight: 800; color: #edf2f4; }
+.syllabus-hello-sub { margin: 2px 0 0; font-size: 13px; color: #a7c4e2; line-height: 1.4; }
+.syllabus-hello-progress { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: #ffd166; }
+.syllabus-ladder {
+  background: rgba(255, 209, 102, 0.07);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: left;
+}
+.syllabus-ladder-title { margin: 0 0 8px; font-size: 14px; font-weight: 800; color: #ffd166; }
+.syllabus-ladder-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.syllabus-ladder-list li { font-size: 13px; color: #d7e3f4; line-height: 1.45; }
+.syllabus-hint { margin: 0; font-size: 12px; color: #8d99ae; text-align: center; }
+.syllabus-band {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  text-align: left;
+}
+.syllabus-band-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  color: #edf2f4;
+  font: inherit;
+  cursor: pointer;
+}
+.syllabus-band-emoji {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.syllabus-band-meta { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.syllabus-band-title { font-size: 16px; font-weight: 800; }
+.syllabus-band-age { font-size: 12px; color: #8d99ae; }
+.syllabus-band-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.syllabus-band-pct { font-size: 12px; font-weight: 800; color: #4cc9f0; white-space: nowrap; }
+.syllabus-chev { font-size: 12px; color: #8d99ae; transition: transform 0.15s ease; }
+.syllabus-chev.up { transform: rotate(180deg); }
+.syllabus-band-body {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.syllabus-skill { cursor: default; min-height: 0; }
+.syllabus-desc { font-size: 12px; color: #a7c4e2; line-height: 1.4; }
+.syllabus-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.syllabus-chip {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #9ee9ff;
+  background: rgba(76, 201, 240, 0.14);
+  border: 1px solid rgba(76, 201, 240, 0.3);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+.skill-state.syl-done { color: #2ec4b6; }
+.syllabus-start { width: 100%; }
+.syllabus-settings-sub { margin: 0; font-size: 12px; color: #8d99ae; text-align: center; }
+.full-syllabus-btn { width: 100%; }

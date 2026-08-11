@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Game } from "phaser";
 import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, type Band, type Skill } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult, type MistakeState } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, clearParentSession, type KidSettings } from "./api";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -20,7 +20,7 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
 const APP_BUILD = "12 Aug 2026 · v21 (course indexing realigned with the brain (numbers first, game-first, EN/BN mirrored))";
 
-type Screen = "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
+type Screen = "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -369,10 +369,52 @@ interface Strings {
   leaveGame: string;
   parentTitle: string;
   parentSub: string;
+  /* parent gate (first-load sign-in) */
+  gateTitle: string;
+  gateSub: string;
+  gateSignin: string;
+  gateSignup: string;
+  gateNameLabel: string;
+  gateNamePh: string;
+  gateEmailLabel: string;
+  gateEmailPh: string;
+  gatePassLabel: string;
+  gatePassPh: string;
+  gateSubmitIn: string;
+  gateSubmitUp: string;
+  gateToggleUp: string;
+  gateToggleIn: string;
+  gateBusy: string;
+  gateErrorInvalid: string;
+  gateErrorSignup: string;
+  gateGuest: string;
+  gateGuestSub: string;
+  gatePrivacy: string;
+  gateWelcome: (name: string) => string;
+  gatePower: string;
+  gateContinue: string;
+  /* interactive syllabus (what kids learn) */
+  syllabusTitle: string;
+  syllabusSub: string;
+  syllabusWhat: string;
+  syllabusGame: string;
+  syllabusStart: string;
+  syllabusHow: string;
+  syllabusHow1: string;
+  syllabusHow2: string;
+  syllabusHow3: string;
+  syllabusProgress: (done: number, total: number) => string;
+  syllabusTap: string;
+  syllabusBadge: (band: number) => string;
+  syllabusMastered: string;
+  syllabusNotStarted: string;
+  syllabusDone: string;
+  syllabusOpen: string;
   /* settings screen */
   settingsTitle: string;
   settingsSub: string;
   settingsParent: string;
+  settingsSyllabus: string;
   settingsVoice: string;
   settingsVoiceOk: (v: string) => string;
   settingsVoiceNone: string;
@@ -606,9 +648,49 @@ const STR: Record<Lang, Strings> = {
     leaveGame: "Exit game",
     parentTitle: "Parent Panel",
     parentSub: "See how each kid is growing, skill by skill",
+    gateTitle: "Welcome, parent!",
+    gateSub: "You're the captain — sign in to protect your child's learning, then see exactly what they'll learn.",
+    gateSignin: "Sign in",
+    gateSignup: "Create account",
+    gateNameLabel: "Your name",
+    gateNamePh: "e.g. Aisha",
+    gateEmailLabel: "Email",
+    gateEmailPh: "you@example.com",
+    gatePassLabel: "Password",
+    gatePassPh: "at least 6 characters",
+    gateSubmitIn: "🔓 Sign in & show the syllabus",
+    gateSubmitUp: "✨ Create account & show the syllabus",
+    gateToggleUp: "New here? Create a parent account",
+    gateToggleIn: "Already have an account? Sign in",
+    gateBusy: "Working…",
+    gateErrorInvalid: "Sign-in failed — check the email and password.",
+    gateErrorSignup: "Couldn't create the account — maybe that email is already registered.",
+    gateGuest: "Skip for now — guest mode",
+    gateGuestSub: "No account? Play instantly. Progress stays on this device, private and ad-free.",
+    gatePrivacy: "🔒 No ads, no tracking, no selling your child's data. Your account just keeps their progress safe.",
+    gateWelcome: (name) => `Hi ${name} 👋 — here's what your child will learn`,
+    gatePower: "You can always return here from Parent Panel → What kids learn.",
+    gateContinue: "Start learning →",
+    syllabusTitle: "What kids learn",
+    syllabusSub: "One guided path, built the way a child's mind grows — numbers first, then games, then questions.",
+    syllabusWhat: "👨‍👩‍👧 Every step your child takes, in order",
+    syllabusGame: "🎮 play it",
+    syllabusStart: "🚀 Start learning",
+    syllabusHow: "The learning ladder",
+    syllabusHow1: "1 · Numbers first — your child meets every number before any calculation.",
+    syllabusHow2: "2 · Games teach the idea — apples, sharing, arrays make it real.",
+    syllabusHow3: "3 · Questions come last — once the idea is seen, the drill makes it stick.",
+    syllabusProgress: (done, total) => `${done}/${total} mastered`,
+    syllabusTap: "Tap a world to explore its lessons",
+    syllabusBadge: (band) => `Band ${band}`,
+    syllabusMastered: "✓ mastered",
+    syllabusNotStarted: "not started",
+    syllabusDone: "All worlds",
+    syllabusOpen: "What kids learn",
     settingsTitle: "Settings",
     settingsSub: "Language, sound & voice",
     settingsParent: "👨‍👩‍👧 Parent analytics",
+    settingsSyllabus: "📚 What kids learn",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
     settingsVoiceNone: "No voice found — install a voice in Settings → Accessibility → Spoken Content",
@@ -835,9 +917,49 @@ const STR: Record<Lang, Strings> = {
     leaveGame: "খেলা থেকে ফিরুন",
     parentTitle: "অভিভাবক প্যানেল",
     parentSub: "দেখুন প্রতিটি সন্তান কীভাবে দক্ষতায় এগোচ্ছে",
+    gateTitle: "স্বাগতম, অভিভাবক!",
+    gateSub: "আপনিই ক্যাপ্টেন — সন্তানের শেখা সুরক্ষিত করতে সাইন ইন করুন, তারপর দেখুন তারা ঠিক কী শিখবে।",
+    gateSignin: "সাইন ইন",
+    gateSignup: "অ্যাকাউন্ট খুলুন",
+    gateNameLabel: "আপনার নাম",
+    gateNamePh: "যেমন: ঐশী",
+    gateEmailLabel: "ইমেইল",
+    gateEmailPh: "you@example.com",
+    gatePassLabel: "পাসওয়ার্ড",
+    gatePassPh: "অন্তত ৬ অক্ষর",
+    gateSubmitIn: "🔓 সাইন ইন করুন ও পাঠ্যক্রম দেখুন",
+    gateSubmitUp: "✨ অ্যাকাউন্ট খুলুন ও পাঠ্যক্রম দেখুন",
+    gateToggleUp: "নতুন? একটি অভিভাবক অ্যাকাউন্ট খুলুন",
+    gateToggleIn: "ইতিমধ্যে অ্যাকাউন্ট আছে? সাইন ইন করুন",
+    gateBusy: "চলছে…",
+    gateErrorInvalid: "সাইন ইন ব্যর্থ — ইমেইল ও পাসওয়ার্ড যাচাই করুন।",
+    gateErrorSignup: "অ্যাকাউন্ট তৈরি করা যায়নি — সম্ভবত ইমেইলটি ইতিমধ্যে নিবন্ধিত।",
+    gateGuest: "এখনই না — অতিথি মোড",
+    gateGuestSub: "অ্যাকাউন্ট নেই? সাথে সাথে খেলুন। অগ্রগতি এই ডিভাইসেই থাকে, ব্যক্তিগত ও বিজ্ঞাপনমুক্ত।",
+    gatePrivacy: "🔒 কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই, সন্তানের ডেটা বিক্রি নেই। আপনার অ্যাকাউন্ট শুধু তাদের অগ্রগতি নিরাপদ রাখে।",
+    gateWelcome: (name) => `হাই ${name} 👋 — আপনার সন্তান যা শিখবে`,
+    gatePower: "আপনি সবসময় অভিভাবক প্যানেল → বাচ্চারা যা শেখে থেকে ফিরে আসতে পারেন।",
+    gateContinue: "শেখা শুরু করুন →",
+    syllabusTitle: "বাচ্চারা যা শেখে",
+    syllabusSub: "একটি পরিচালিত পথ, যা শিশুর মন বড় হওয়ার মতো করে গড়া — আগে সংখ্যা, তারপর খেলা, তারপর প্রশ্ন।",
+    syllabusWhat: "👨‍👩‍👧 আপনার সন্তানের প্রতিটি ধাপ, ক্রম অনুযায়ী",
+    syllabusGame: "🎮 খেলুন",
+    syllabusStart: "🚀 শেখা শুরু করুন",
+    syllabusHow: "শেখার সিঁড়ি",
+    syllabusHow1: "১ · আগে সংখ্যা — যেকোনো হিসাবের আগে শিশু প্রতিটি সংখ্যার সাথে পরিচিত হয়।",
+    syllabusHow2: "২ · খেলা ধারণা শেখায় — আপেল, ভাগাভাগি, সারি এটি বাস্তব করে তোলে।",
+    syllabusHow3: "৩ · প্রশ্ন শেষে আসে — ধারণাটি দেখা হলে, অনুশীলন তা মনে গেঁথে দেয়।",
+    syllabusProgress: (done, total) => `${done}/${total} আয়ত্ত`,
+    syllabusTap: "শিক্ষার স্তর দেখতে একটি জগৎ ট্যাপ করুন",
+    syllabusBadge: (band) => `স্তর ${band}`,
+    syllabusMastered: "✓ আয়ত্ত",
+    syllabusNotStarted: "শুরু হয়নি",
+    syllabusDone: "সব জগৎ",
+    syllabusOpen: "বাচ্চারা যা শেখে",
     settingsTitle: "সেটিংস",
     settingsSub: "ভাষা, শব্দ ও ভয়েস",
     settingsParent: "👨‍👩‍👧 অভিভাবক বিশ্লেষণ",
+    settingsSyllabus: "📚 বাচ্চারা যা শেখে",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
@@ -1307,9 +1429,12 @@ export default function App() {
       return null;
     }
   });
-  // First-ever launch (no profiles) → straight to onboarding. Otherwise land on
-  // the PLAY screen (remembered kid) or the simplified picker.
+  // PARENT GATE FIRST: a parent must sign in on the FIRST load before the kid
+  // app unlocks. Once a parent session exists we land on the normal flow; the
+  // token is validated against the API on mount (see effect below) and the
+  // parent is sent back to the gate if it ever expires.
   const [screen, setScreen] = useState<Screen>(() => {
+    if (!hasParentSession()) return "parentgate";
     const list = loadKids();
     if (list.length === 0) return "addkid";
     try {
@@ -1326,6 +1451,15 @@ export default function App() {
   const [muted, setMuted] = useState(isMusicMuted());
   // Which kid the parent panel is showing analytics for (defaults to the active kid).
   const [parentKidId, setParentKidId] = useState<string | null>(null);
+  // ── Parent gate form state (stable hooks — never conditionally declared) ──
+  const [gateMode, setGateMode] = useState<"in" | "up">("in");
+  const [gateName, setGateName] = useState("");
+  const [gateEmail, setGateEmail] = useState("");
+  const [gatePass, setGatePass] = useState("");
+  const [gateBusy, setGateBusy] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
+  // ── Interactive syllabus state: which band is expanded (default band 1). ──
+  const [sylBand, setSylBand] = useState<number>(1);
   // PWA install affordance — set when the browser offers beforeinstallprompt.
   const [installEvt, setInstallEvt] = useState<Event | null>(null);
   // 🔊 TTS check on EVERY run: voices load async on iOS/Android (and iOS only
@@ -1413,6 +1547,51 @@ export default function App() {
   // Always-sync: drain the offline outbox on boot, then keep a heartbeat +
   // reconnect/foreground listeners (see api.ts). Never blocks gameplay.
   useEffect(() => startAutoSync(), []);
+
+  // ── Parent session gate: validate the stored token once on boot. If it
+  // expired or was revoked, clear it and return the parent to the gate so the
+  // kid app stays protected. Offline keeps the parent in (never kick them out
+  // mid-connection-drop).
+  useEffect(() => {
+    if (!hasParentSession()) return;
+    let active = true;
+    void validateParentSession().then((ok) => {
+      if (active && !ok) {
+        clearParentSession();
+        setScreen("parentgate");
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // ── Parent gate handlers (sign-in / sign-up / guest) ────────────────────
+  const submitGate = async () => {
+    if (gateBusy) return;
+    setGateBusy(true);
+    setGateError(null);
+    try {
+      if (gateMode === "in") {
+        await signinParent(gateEmail.trim(), gatePass);
+      } else {
+        await signupParent(gateEmail.trim(), gatePass, gateName.trim());
+      }
+      // Success → the parent sees what their child will learn, then the app
+      // unlocks. (Sync re-resolves with the parent account on the next tick.)
+      setSylBand(1);
+      setScreen("syllabus");
+    } catch {
+      setGateError(gateMode === "in" ? t.gateErrorInvalid : t.gateErrorSignup);
+    } finally {
+      setGateBusy(false);
+    }
+  };
+  const enterAsGuest = () => {
+    clearParentSession();
+    const list = loadKids();
+    setScreen(list.length ? "kidpick" : "addkid");
+  };
 
   // ── Parent controls ─────────────────────────────────────────────────────
   // Per-kid settings come from the parent portal (api.ts). We fetch them on
@@ -2038,6 +2217,179 @@ export default function App() {
   const curStep = sessionRef.current[sessionIdx];
   const curReteach = (curStep?.reteach ?? 0) > 0;
 
+  /* ── PARENT GATE (first-load sign-in) ─────────────────────────────────────
+   *  A parent must sign in / create the family account before the kid app
+   *  unlocks. Two friendly tabs, a guest fallback for instant play, and a
+   *  privacy promise up front. After success → the interactive syllabus. */
+  if (screen === "parentgate") {
+    const valid = gateMode === "in" ? gateEmail.trim().length > 0 && gatePass.length > 0 : gateName.trim().length > 0 && gateEmail.trim().length > 0 && gatePass.length >= 6;
+    return (
+      <div className="app">
+        <main className="screen worlds parent-screen gate-screen">
+          <div className="gate-card">
+            <div className="gate-logo" aria-hidden>🔢</div>
+            <h2 className="gate-title">{t.gateTitle}</h2>
+            <p className="gate-sub">{t.gateSub}</p>
+
+            <div className="gate-tabs" role="tablist">
+              <button role="tab" aria-selected={gateMode === "in"} className={`gate-tab${gateMode === "in" ? " active" : ""}`} onClick={() => { setGateMode("in"); setGateError(null); }}>
+                {t.gateSignin}
+              </button>
+              <button role="tab" aria-selected={gateMode === "up"} className={`gate-tab${gateMode === "up" ? " active" : ""}`} onClick={() => { setGateMode("up"); setGateError(null); }}>
+                {t.gateSignup}
+              </button>
+            </div>
+
+            <div className="gate-form">
+              {gateMode === "up" && (
+                <label className="form-label">{t.gateNameLabel}
+                  <input className="input-field" type="text" value={gateName} maxLength={30} placeholder={t.gateNamePh} autoFocus enterKeyHint="next"
+                    onChange={(e) => setGateName(e.target.value)} />
+                </label>
+              )}
+              <label className="form-label">{t.gateEmailLabel}
+                <input className="input-field" type="email" inputMode="email" autoComplete="email" value={gateEmail} placeholder={t.gateEmailPh} autoFocus={gateMode === "in"} enterKeyHint="next"
+                  onChange={(e) => setGateEmail(e.target.value)} />
+              </label>
+              <label className="form-label">{t.gatePassLabel}
+                <input className="input-field" type="password" autoComplete={gateMode === "in" ? "current-password" : "new-password"} value={gatePass} placeholder={t.gatePassPh} enterKeyHint="go"
+                  onChange={(e) => setGatePass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && valid && !gateBusy) void submitGate(); }} />
+              </label>
+
+              {gateError && <p className="gate-error" role="alert">{gateError}</p>}
+
+              <button className="big-btn gate-submit" disabled={!valid || gateBusy} onClick={() => void submitGate()}>
+                {gateBusy ? t.gateBusy : gateMode === "in" ? t.gateSubmitIn : t.gateSubmitUp}
+              </button>
+
+              <button className="gate-toggle" onClick={() => { setGateMode((m) => (m === "in" ? "up" : "in")); setGateError(null); }}>
+                {gateMode === "in" ? t.gateToggleUp : t.gateToggleIn}
+              </button>
+            </div>
+
+            <div className="gate-guest">
+              <button className="ghost-btn" onClick={enterAsGuest}>{t.gateGuest}</button>
+              <p className="gate-guest-sub">{t.gateGuestSub}</p>
+            </div>
+
+            <p className="gate-privacy">{t.gatePrivacy}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* ── INTERACTIVE SYLLABUS (what kids learn) ──────────────────────────────
+   *  Data-driven straight from @numberverse/core SKILLS — the SAME brain-aligned
+   *  index that drives the course, so what a parent sees IS what the kid plays.
+   *  Bands expand/collapse; each lesson shows the game + the idea it teaches. */
+  if (screen === "syllabus") {
+    const pName = parentName();
+    const masteredCount = kid ? totalMastered(skillsMap, kid.id) : 0;
+    const totalCount = filterSkills.filter((s) => s.game).length;
+    const goStart = () => {
+      const list = loadKids();
+      setScreen(list.length ? (kid ? "home" : "kidpick") : "addkid");
+    };
+    return (
+      <div className="app">
+        <main className="screen worlds parent-screen">
+          <header className="screen-head">
+            <button className="icon-btn" onClick={goStart} aria-label="Back">‹</button>
+            <div className="head-title">
+              <h2>{t.syllabusTitle}</h2>
+              <p className="head-sub">{t.syllabusSub}</p>
+            </div>
+          </header>
+
+          <div className="syllabus-wrap">
+            <div className="syllabus-hello">
+              <span className="syllabus-hello-emoji" aria-hidden>👨‍👩‍👧</span>
+              <div>
+                <p className="syllabus-hello-title">{pName ? t.gateWelcome(pName) : t.syllabusTitle}</p>
+                <p className="syllabus-hello-sub">{t.syllabusWhat}</p>
+                {kid && <p className="syllabus-hello-progress">{t.syllabusProgress(masteredCount, totalCount)} · {kid.name}</p>}
+              </div>
+            </div>
+
+            {/* the learning ladder — why the order is the way it is */}
+            <div className="syllabus-ladder">
+              <p className="syllabus-ladder-title">{t.syllabusHow}</p>
+              <ol className="syllabus-ladder-list">
+                <li>{t.syllabusHow1}</li>
+                <li>{t.syllabusHow2}</li>
+                <li>{t.syllabusHow3}</li>
+              </ol>
+            </div>
+
+            <p className="syllabus-hint">{t.syllabusTap}</p>
+
+            {/* one card per world/band, in course order */}
+            {BANDS.map((b) => {
+              const skills = SKILLS.filter((s) => s.band === b.id);
+              const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: skills.filter((s) => s.game).length, pct: 0 };
+              const open = sylBand === b.id;
+              return (
+                <div key={b.key} className={`syllabus-band${open ? " open" : ""}`}>
+                  <button
+                    className="syllabus-band-head"
+                    aria-expanded={open}
+                    onClick={() => setSylBand(open ? 0 : b.id)}
+                  >
+                    <span className="syllabus-band-emoji"><Icon name={b.key} size={30} /></span>
+                    <span className="syllabus-band-meta">
+                      <span className="syllabus-band-title">{b.title}</span>
+                      <span className="syllabus-band-age">🎂 {b.ageRange}</span>
+                    </span>
+                    <span className="syllabus-band-stats">
+                      <span className="syllabus-band-pct">{t.syllabusProgress(p.mastered, p.total)}</span>
+                      <span className={`syllabus-chev${open ? " up" : ""}`}>▾</span>
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="syllabus-band-body">
+                      {skills.map((s) => {
+                        const g = s.game ? getGame(s.game) : undefined;
+                        const ms = kid ? skillsMap[`${kid.id}:${s.id}`] : undefined;
+                        const pct = ms ? Math.round(ms.pMastered * 100) : 0;
+                        const mastered = pct >= MASTERY_THRESHOLD * 100;
+                        return (
+                          <div key={s.id} className="skill-row syllabus-skill">
+                            <span className="skill-emoji"><Icon name={s.subject} size={30} fallbackEmoji={s.subject === "math" ? "🧮" : s.subject === "bangla" ? "📗" : s.subject === "english" ? "🔤" : s.subject === "science" ? "🔬" : "🌏"} /></span>
+                            <span className="skill-meta">
+                              <span className="skill-name">
+                                {s.title}
+                                {s.titleBn ? <span className="skill-bn">{s.titleBn}</span> : null}
+                              </span>
+                              <span className="syllabus-desc">{s.description}</span>
+                              <span className="syllabus-chips">
+                                <span className="syllabus-chip">{t.syllabusBadge(b.id)}</span>
+                                {g && <span className="syllabus-chip">{t.syllabusGame}</span>}
+                                {s.nctbCode && <span className="syllabus-chip">{s.nctbCode}</span>}
+                              </span>
+                            </span>
+                            <span className={`skill-state${mastered ? " syl-done" : ""}`}>
+                              {mastered ? t.syllabusMastered : pct > 0 ? `${pct}%` : t.syllabusNotStarted}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <button className="big-btn syllabus-start" onClick={goStart}>
+              {t.syllabusStart}
+            </button>
+            <p className="gate-privacy">{t.gatePower}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (screen === "home") {
     // Home is JOURNEY-FIRST: Nova greets the kid by name + streak, the kid's
     // avatar stands on their glowing spot on the path, and one tap plays the
@@ -2445,6 +2797,20 @@ export default function App() {
             >
               🔊 {t.settingsVoiceTest}
             </button>
+          </div>
+
+          {/* 📚 What kids learn — the interactive syllabus is one tap away. */}
+          <div className="parent-card">
+            <button
+              className="ghost-btn full-syllabus-btn"
+              onClick={() => {
+                setSylBand(1);
+                setScreen("syllabus");
+              }}
+            >
+              {t.settingsSyllabus}
+            </button>
+            <p className="syllabus-settings-sub">{t.syllabusSub}</p>
           </div>
 
           <button className="ghost-btn" onClick={() => setScreen("parent")}>
