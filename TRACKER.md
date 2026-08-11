@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🚀 NEXT SHIP — v18 CONTENT WAVE 2, BATCH 1 (5 issues) 12 Aug 2026 ✅ (user: "yes please" → groom the top of v18)
+First v18 batch groomed and queued on the board — all `priority: high`, label-kanban + project Status in sync:
+- **🔨 In progress (#57) — Math: multiplication tables 2–10** (arrays → number mode, escalating hints)
+- **📋 To-do:** **#40** Bangla three-digit numbers 100–1000 (place value to hundreds) · **#58** Math division facts (fair shares) · **#59** Math 3-digit add/sub with regrouping · **#60** Math place value to 9999
+- Board filters: `status: todo` → 4 cards · `status: in-progress` → 1 card (#57). Project cards: #57 = In progress, 40/58/59/60 = Backlog.
+- Build order: **#57** (arrays → tables) → **#58** (fair shares → division) → **#59** (regrouping, pairs with #57/#58) → **#60** (thousands, builds on #40) → **#40** (Bangla three-digit, BN spoken)। Each ships on its own via the release train.
+
 ## 🗺️ ORACLE-DRIVEN NEXT-100 ROADMAP — 6 NEW EPICS · 100 ISSUES 12 Aug 2026 ✅ (user: "run oracle for next 100 issues or feature")
 The Oracle Team standup (35/35 CLEAN) + Council brief (0 flags) held the line, then generated the next hundred scoped backlog items — every one with acceptance criteria, landed on the GitHub board, no ads / offline-first / NCTB-aligned.
 - **Oracle:** standup `2026-08-12` 35/35 ✓ (SHIP-OK, live stamp v17 verified, working tree clean) · Council `2026-W33` 70/70 across the week, **zero flags**.
