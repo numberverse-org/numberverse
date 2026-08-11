@@ -50,6 +50,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-phonics", 2, "english", "Letter sounds", "বর্ণের উচ্চারণ"),
     ("heavy-light", 2, "science", "Heavy or light", "ভারী না হালকা"),
     ("mult-facts-2-5-10", 3, "math", "Times tables 2, 5, 10", "২, ৫, ১০ এর নামতা"),
+    ("mult-facts-2-10", 3, "math", "Times tables 2–10", "২–১০ এর নামতা"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("add-sub-100", 3, "math", "Add & subtract to 100", "১০০-এর মধ্যে যোগ-বিয়োগ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
