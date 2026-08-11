@@ -30,7 +30,7 @@ const BASE = "/voice/";
 // 6 MONTHS. If we ever change a worker/model file at the same URL, old installs
 // keep serving the stale bytes until the cache expires. Bump this version to
 // force every client onto fresh bytes after a voice deploy.
-const VOICE_V = "v2";
+const VOICE_V = "v3"; // v3 = boot preload + parallel fetch + gzip'd /voice/
 const PHON_JS = BASE + "piper_phonemize.js";
 const PHON_WASM = BASE + "piper_phonemize.wasm";
 const PHON_DATA = BASE + "piper_phonemize.data";
@@ -74,16 +74,26 @@ let gestured = false;
 
 /** The big files, by byte size — used for a coarse overall download progress.
  *  The model is the ~20MB int8 build (weight-only QDQ, see Dockerfile.web's
- *  `voice` stage / infra/deploy/scripts/quantize_voice.py). */
+ *  `voice` stage / infra/deploy/scripts/quantize_voice.py). These are the two
+ *  files the worker would fetch SEQUENTIALLY inside init — the bottleneck we
+ *  remove by preloading them IN PARALLEL on the main thread (ORT fetches its
+ *  own .wasm independently, so it's not in the tracked set). */
 const MODEL_BYTES = 20_000_000;
 const BIG: Array<[string, number]> = [
   [PHON_DATA, 18_077_249],
-  [ORT_BASE + "ort-wasm-simd.wasm", 10_549_605],
   [MODEL, MODEL_BYTES],
 ];
 const totalBigBytes = BIG.reduce((s, [, n]) => s + n, 0);
 let urlLoaded: Record<string, number> = {};
 let progress = 0;
+/** URLs whose downloads have COMPLETED — progress counts them at full size
+ *  even when the wire bytes were gzip-encoded (fewer than the estimate). */
+const doneFiles = new Set<string>();
+function markFileDone(url: string) {
+  doneFiles.add(url);
+  urlLoaded[url] = 0;
+  bumpProgress();
+}
 
 /* ────────────────────────────── worker client ────────────────────────────── */
 
@@ -156,11 +166,8 @@ function onMessage(ev: MessageEvent) {
   kickWatchdog(); // progress = the worker is alive
   if (data.blob) {
     blobs[data.url] = data.blob;
-    if (data.url === MODEL) {
-      urlLoaded[MODEL] = MODEL_BYTES;
-      bumpProgress();
-      markReady(); // model cached ⇒ every earlier asset already is
-    }
+    markFileDone(data.url);
+    if (data.url === MODEL) markReady(); // model cached ⇒ every earlier asset already is
   } else if (data.total) {
     urlLoaded[data.url] = data.loaded ?? 0;
     bumpProgress();
@@ -168,7 +175,11 @@ function onMessage(ev: MessageEvent) {
 }
 
 function bumpProgress() {
-  const loaded = BIG.reduce((s, [u, n]) => s + Math.min(urlLoaded[u] ?? 0, n), 0);
+  let loaded = 0;
+  for (const [u, n] of BIG) {
+    // Done files count their full size (wire bytes may be gzip-smaller).
+    loaded += doneFiles.has(u) ? n : Math.min(urlLoaded[u] ?? 0, n);
+  }
   progress = Math.min(0.99, loaded / totalBigBytes);
 }
 
@@ -360,21 +371,105 @@ export function isNeuralReady(): boolean {
   return supported() && state === "ready";
 }
 
-/** Warm the FULL pipeline in the background: downloads phonemizer + ORT + the
- *  20MB int8 model (then the service worker caches them → offline forever), and
- *  builds the ORT session so the first real Bangla line is instant. Audio is
- *  discarded — nothing plays. Starts on the first user gesture; RETRIES on every
- *  later gesture if the first attempt failed (flaky Wi-Fi, dropped fetch), and
- *  a fresh worker is created each retry. */
+/** Download one big file with streaming progress, caching the blob so the
+ *  worker's getBlob hits the cache instead of re-fetching. Gzip-encoded
+ *  responses decompress transparently (progress counts real decoded bytes). */
+function fetchBlobWithProgress(url: string): Promise<Blob> {
+  return fetch(url).then(async (res) => {
+    if (!res.ok) throw new Error(`voice fetch ${res.status} ${url}`);
+    const reader = res.body?.getReader();
+    if (!reader) {
+      const b = await res.blob();
+      blobs[url] = b;
+      markFileDone(url);
+      return b;
+    }
+    const chunks: BlobPart[] = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      loaded += value.byteLength;
+      chunks.push(value);
+      urlLoaded[url] = loaded;
+      bumpProgress();
+    }
+    const b = new Blob(chunks);
+    blobs[url] = b;
+    markFileDone(url);
+    return b;
+  });
+}
+
+/** Fetch the two big files IN PARALLEL on the main thread — first-run time
+ *  ≈ max(file), not the sequential sum the worker's init would produce. No
+ *  gesture needed: only PLAYBACK is gesture-gated, downloading is not. On a
+ *  retry (flaky-Wi-Fi) any file already cached is skipped, not re-downloaded. */
+function downloadParallel(): Promise<void> {
+  return Promise.all(
+    BIG.map(([url]) =>
+      blobs[url] ? Promise.resolve(blobs[url]) : fetchBlobWithProgress(url)
+    )
+  ).then(() => undefined);
+}
+
+/** Seed the service worker's `nv-voice` runtime cache from the blobs we ALREADY
+ *  downloaded (visit 1 fetches are direct — no SW yet). Puts zero extra bytes
+ *  on the wire and makes the SECOND visit instant (CacheFirst hits nv-voice). */
+async function seedSwVoiceCache() {
+  if (typeof caches === "undefined") return;
+  try {
+    const cache = await caches.open("nv-voice"); // matches vite.config.ts cacheName
+    await Promise.all(
+      BIG.map(async ([url]) => {
+        const blob = blobs[url];
+        if (blob) await cache.put(url, new Response(blob, { status: 200 }));
+      })
+    );
+  } catch {
+    /* SW cache unavailable (insecure LAN) — voice still works, just re-downloads */
+  }
+}
+
+/** Warm the FULL pipeline in the background: downloads phonemizer + the
+ *  ~20MB int8 model IN PARALLEL (then the service worker caches them → offline
+ *  forever), and builds the ORT session so the first real Bangla line is
+ *  instant. Audio is discarded — nothing plays. Starts at BOOT (first idle),
+ *  NOT on the first user gesture — a kid's first question waits less. The
+ *  gesture handler below still retries after a flaky-Wi-Fi failure (a fresh
+ *  worker is created each retry). */
 export function preloadNeuralVoice() {
   if (!supported() || preloadStarted) return;
   preloadStarted = true;
   state = "loading";
-  synth("এক", speakerId) // tiny word — warm-up only, never played
-    .then(() => markReady())
+  // 1. Parallel main-thread download of the big files (progressed live).
+  downloadParallel()
+    .then(() => {
+      // 2. Hand the blobs to the worker — its init hits the cache, only the
+      //    small phonemizer/ORT JS files (and ORT's own .wasm) download now.
+      return synth("এক", speakerId); // tiny word — warm-up only, never played
+    })
+    .then(() => {
+      // 3. Seed the SW runtime cache from what we already fetched (no re-wire).
+      void seedSwVoiceCache();
+      markReady();
+    })
     .catch((e) => {
       failNeural(e instanceof Error ? e.message : String(e));
     });
+}
+
+/** Start the voice download at first idle after paint — the biggest lever for
+ *  first-run time (download needs no gesture, only playback does). Falls back
+ *  to a short timeout where requestIdleCallback is unavailable. */
+function bootPreload() {
+  if (!supported() || typeof window === "undefined") return;
+  const kick = () => preloadNeuralVoice();
+  const idle = (window as unknown as {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  }).requestIdleCallback;
+  if (typeof idle === "function") idle(kick, { timeout: 3000 });
+  else window.setTimeout(kick, 1000);
 }
 
 /** Unlock the shared <audio> element inside a user gesture (iOS rejects every
@@ -455,11 +550,13 @@ export function neuralCancel() {
  *    a fresh worker is created each time. Cheap: all guards short-circuit.
  * Capture phase so Phaser/React can't swallow the event. */
 if (supported() && typeof window !== "undefined") {
+  // Kick the download at boot (first idle) — not waiting for a tap.
+  bootPreload();
   for (const evt of ["pointerdown", "touchstart", "click", "keydown"]) {
     window.addEventListener(evt, () => {
       gestured = true;
-      neuralPrime();
-      preloadNeuralVoice();
+      neuralPrime();           // audio unlock — genuinely needs the gesture
+      preloadNeuralVoice();    // no-op if boot preload is running/done — retry path
     }, true);
   }
 }
