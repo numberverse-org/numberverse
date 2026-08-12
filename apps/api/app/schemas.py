@@ -194,6 +194,37 @@ class LearningStoryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Kotha semantic retrieval (#323) ──
+class StorySearchIn(BaseModel):
+    """A natural-language query for similar learning moments. The response is
+    privacy-scrubbed by construction — context envelope only, never kid ids."""
+
+    query: str = Field(min_length=2, max_length=300)
+    top_k: int = Field(default=5, ge=1, le=20)
+
+
+class StorySearchHit(BaseModel):
+    """One semantic match — the story's learning-moment envelope, ZERO kid
+    identity (no kid_id, no names, no uids). `similarity` is 1 − cosine
+    distance (higher = closer)."""
+
+    similarity: float
+    skill_id: str | None
+    game_id: str | None
+    outcome: bool | None
+    error_kind: str | None
+    misconception_code: str | None
+    action: str | None
+    context: dict
+    created_at: datetime | None
+
+
+class StorySearchOut(BaseModel):
+    query: str
+    hits: list[StorySearchHit]
+    note: str = "Privacy-scrubbed: context envelope only — no kid identity included."
+
+
 # ── Content ──
 class SubjectOut(BaseModel):
     id: str

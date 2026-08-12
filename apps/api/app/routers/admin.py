@@ -22,6 +22,8 @@ from ..models import (
     SkillMastery,
     Subscription,
 )
+from ..schemas import StorySearchIn, StorySearchOut
+from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -200,6 +202,68 @@ async def embed_stories_now(_: Profile = Depends(require_admin), db: AsyncSessio
     from ..embeddings import embed_stories
 
     return await embed_stories(db)
+
+
+@router.post("/stories/search", response_model=StorySearchOut)
+async def search_stories(
+    body: StorySearchIn,
+    _: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """📚 KOTHA semantic retrieval (#323) — 'find learning moments like this one'.
+
+    Embeds the query with the same gte-small encoder the embed job uses, then
+    does a top-K vector similarity search over `story_embeddings` (cosine
+    distance, `<=>`). The response is PRIVACY-SCRUBBED by construction: only
+    the story's context envelope (question / wrong answer / Moni reason) plus
+    skill, game, error kind, and misconception code — never kid ids, names, or
+    uids. Admin-only: it's a system capability for future tools.
+
+    503 when the pgvector/model stack is absent — the search simply isn't
+    available, exactly like the embed job's `skipped` (never a crash)."""
+    if not HAVE_VECTOR or StoryEmbedding is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "semantic search unavailable: pgvector not installed")
+
+    from ..embeddings import embed_text  # lazy — keeps the route fast to boot
+
+    vector = embed_text(body.query)
+    if vector is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "semantic search unavailable: embedding model not installed")
+
+    # Top-K by cosine distance over the vector column (gte-small embeddings are
+    # L2-normalized at encode time, so cosine ≈ the canonical `<=>` operator).
+    dist_col = StoryEmbedding.embedding.cosine_distance(vector).label("dist")
+    raw = (
+        await db.execute(
+            select(StoryEmbedding.story_id, dist_col).order_by(dist_col).limit(body.top_k)
+        )
+    ).all()
+    if not raw:
+        return StorySearchOut(query=body.query, hits=[])
+
+    story_ids = [r[0] for r in raw]
+    dists = [r[1] for r in raw]
+    stories = await db.scalars(select(LearningStory).where(LearningStory.id.in_(story_ids)))
+    by_id = {s.id: s for s in stories}
+    hits = []
+    for sid, dist in zip(story_ids, dists):
+        s = by_id.get(sid)
+        if not s:
+            continue
+        hits.append(
+            StorySearchHit(
+                similarity=round(1.0 - float(dist), 4),
+                skill_id=s.skill_id,
+                game_id=s.game_id,
+                outcome=s.outcome,
+                error_kind=s.error_kind,
+                misconception_code=s.misconception_code,
+                action=s.action,
+                context=s.context or {},
+                created_at=s.created_at,
+            )
+        )
+    return StorySearchOut(query=body.query, hits=hits)
 
 
 @router.post("/stories/prune")
