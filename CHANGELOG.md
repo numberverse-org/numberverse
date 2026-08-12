@@ -1,3 +1,7 @@
+## 13 Aug 2026 — 0.26.6 (Parent portal reachable — kid SW no longer swallows /parent/ + clean portal URL (#399))
+
+1bbf022 🐛 #399 Fix: kid SW swallows /parent/ (browser saw the GAME at the portal URL) (#400)
+
 ## 12 Aug 2026 — 0.26.5 (Settings UX: parent-portal door + cleaner cards + natural Bangla (#397))
 
 00de752 🎛️ #397 Settings: parent-portal door + cleaner cards + natural Bangla (#398)
