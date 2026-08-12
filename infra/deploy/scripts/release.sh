@@ -95,20 +95,34 @@ NV_VERSION="$VERSION" bash infra/deploy/scripts/deploy.sh
 # The box sits behind a Cloudflare tunnel whose edge caches the HTML/bundle,
 # so requests carry a no-cache header + a cache-busting query param and we
 # retry for up to ~2 minutes (the edge can lag the origin after a deploy).
-echo "── 6/7 Smoke test (live stamp) ─────────────────"
+#
+# #273 — the bundle is ~1.9MB minified on ONE line with multibyte i18n; a
+# `BODY=$(curl …)` shell variable intermittently drops bytes and makes the
+# stamp grep FALSE-NEGATIVE (0.26.16's good deploy was rolled back on this).
+# So the bundle is always fetched to a FILE (curl -o) and grepped on disk;
+# a size floor rejects truncated responses up front.
 LIVE="https://kids.munna-khan.xyz"
+SMOKE_BODY="$(mktemp -t nv-smoke-body.XXXXXX)"
+trap 'rm -f "$SMOKE_BODY"' EXIT
+# smoke_serves <base-url> <version> [curl args…] — 0 if <base> serves the stamp.
+smoke_serves() {
+  local base="$1" want="$2"; shift 2
+  local bust js
+  bust="nv$RANDOM$RANDOM"
+  js=$(curl -sL --max-time 15 "$@" "$base/?$bust" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1 || true)
+  [ -n "$js" ] || return 1
+  curl -sL --max-time 30 "$@" "$base/$js?$bust" -o "$SMOKE_BODY" || return 1
+  [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 100000 ] || return 1
+  grep -qF "$want" "$SMOKE_BODY"
+}
+
+echo "── 6/7 Smoke test (live stamp) ─────────────────"
 HIT=0
 for i in 1 2 3 4 5 6 7 8; do
-  BUST="nv$RANDOM$RANDOM"
-  HTML=$(curl -sL --max-time 15 -H 'Cache-Control: no-cache' "$LIVE/?$BUST" || true)
-  JS=$(printf '%s' "$HTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
-  if [ -n "$JS" ]; then
-    BODY=$(curl -sL --max-time 20 -H 'Cache-Control: no-cache' "$LIVE/$JS?$BUST" || true)
-    if printf '%s' "$BODY" | grep -qF "$VERSION"; then
-      echo "  ✓ $LIVE serves $VERSION ($JS)"
-      HIT=1
-      break
-    fi
+  if smoke_serves "$LIVE" "$VERSION" -H 'Cache-Control: no-cache'; then
+    echo "  ✓ $LIVE serves $VERSION"
+    HIT=1
+    break
   fi
   echo "  … stamp not live yet (attempt $i/8), waiting 15s"
   sleep 15
@@ -120,27 +134,13 @@ if [ "$HIT" != "1" ]; then
   # failure was edge-cache lag — rolling back would break a good deploy — so
   # we wait for the edge and only roll back on a genuine origin fault.
   echo "  ◆ probing origin (bypasses edge cache)…"
-  OBUST="nv$RANDOM$RANDOM"
-  OHTML=$(curl -sL --max-time 15 "http://192.168.0.104:8080/?$OBUST" || true)
-  OJS=$(printf '%s' "$OHTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
-  ORIGIN_OK=0
-  if [ -n "$OJS" ]; then
-    OBODY=$(curl -sL --max-time 20 "http://192.168.0.104:8080/$OJS?$OBUST" || true)
-    printf '%s' "$OBODY" | grep -qF "$VERSION" && ORIGIN_OK=1
-  fi
-  if [ "$ORIGIN_OK" = "1" ]; then
+  if smoke_serves "http://192.168.0.104:8080" "$VERSION"; then
     echo "  ✓ origin SERVES $VERSION — the tunnel's edge cache is lagging, NOT a"
     echo "    deploy fault. Waiting up to 90s for the edge to catch up…"
     HIT2=0
     for _ in 1 2 3 4 5 6; do
       sleep 15
-      BUST="nv$RANDOM$RANDOM"
-      HTML=$(curl -sL --max-time 15 -H 'Cache-Control: no-cache' "$LIVE/?$BUST" || true)
-      JS=$(printf '%s' "$HTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
-      if [ -n "$JS" ]; then
-        BODY=$(curl -sL --max-time 20 -H 'Cache-Control: no-cache' "$LIVE/$JS?$BUST" || true)
-        if printf '%s' "$BODY" | grep -qF "$VERSION"; then HIT2=1; break; fi
-      fi
+      if smoke_serves "$LIVE" "$VERSION" -H 'Cache-Control: no-cache'; then HIT2=1; break; fi
     done
     if [ "$HIT2" = "1" ]; then
       echo "  ✓ $LIVE serves $VERSION after edge catch-up — release live."
