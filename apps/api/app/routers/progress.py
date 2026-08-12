@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import ConfigEntry, Kid, LearningStory, ProgressEvent, Profile, SkillMastery
+from ..ratelimit import rate_limit
 from ..schemas import LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
+
+# #274 — write endpoints are the abuse surface (bulk story/progress replay). The
+# limiter keys on account+IP and is far above real sync cadence (see ratelimit.py).
+WRITE_RATE_LIMIT = rate_limit()
 
 
 def _bkt_update(mastery: float, correct: bool, p_learn=0.10, p_guess=0.15, p_slip=0.10) -> float:
@@ -44,7 +49,7 @@ router = APIRouter(prefix="/api/v1", tags=["progress"])
 @router.post("/progress", status_code=status.HTTP_202_ACCEPTED)
 async def record_progress(
     body: ProgressBatchIn,
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(WRITE_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
     params = await _adaptive_params(db)
@@ -115,7 +120,7 @@ async def get_mastery(
 @router.post("/stories", status_code=status.HTTP_202_ACCEPTED)
 async def record_stories(
     body: list[LearningStoryIn],
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(WRITE_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
     """Persist learning moments as Kotha stories (including Moni's diagnoses).
