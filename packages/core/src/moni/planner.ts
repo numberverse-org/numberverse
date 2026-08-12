@@ -38,6 +38,7 @@ export function plan(
   catalog: Record<string, CatalogSkill>,
   params: MoniParams,
   strictness?: MoniStrictness,
+  now?: number,
 ): MoniPlan {
   const entries = Object.entries(catalog);
 
@@ -66,11 +67,37 @@ export function plan(
     .filter((m) => (mastery[m.skillId]?.pMastered ?? 1) < 0.8)
     .sort((a, b) => b.lastSeen - a.lastSeen)[0];
 
-  // Spaced review: skills mastered but due for a refresh.
+  // Spaced review (#328): per-skill, confidence-based intervals.
+  // A mastered skill refreshes after 1/3/7/14 days depending on how SOLID the
+  // child is at it (mastery × consistency), weighted down when the child is
+  // globally fragile. Skills past their due date land in `dueReviews` (gentle
+  // prompt to review NOW); the rest stay in `reviewSchedule` (upcoming).
+  const DAY_MS = 86_400_000;
+  const nowMs = now ?? Date.now();
   const reviewSchedule: { skillId: string; inDays: number }[] = [];
+  const dueReviews: { skillId: string; inDays: number; overdueDays: number }[] = [];
   for (const [id, m] of Object.entries(mastery)) {
-    if (m.pMastered >= 0.8) reviewSchedule.push({ skillId: id, inDays: params.reviewDays[0] });
+    if (m.pMastered < 0.8) continue;
+    const interval = reviewIntervalDays(m, profile, params);
+    const last = m.lastPractice ?? 0;
+    if (last === 0) {
+      // No practice timestamp yet — treat as due for a first refresh.
+      dueReviews.push({ skillId: id, inDays: 0, overdueDays: 0 });
+      continue;
+    }
+    const dueAt = last + interval * DAY_MS;
+    if (nowMs >= dueAt) {
+      dueReviews.push({
+        skillId: id,
+        inDays: 0,
+        overdueDays: Math.max(0, Math.floor((nowMs - dueAt) / DAY_MS)),
+      });
+    } else {
+      reviewSchedule.push({ skillId: id, inDays: Math.max(1, Math.ceil((dueAt - nowMs) / DAY_MS)) });
+    }
   }
+  dueReviews.sort((a, b) => b.overdueDays - a.overdueDays);
+  reviewSchedule.sort((a, b) => a.inDays - b.inDays);
 
   // ── Pick the focus ──
   let focusSkillId: string;
@@ -123,6 +150,17 @@ export function plan(
       reason: `${w.reason}: ${w.skill.id} needs work.`,
     });
   }
+  // Due reviews first — they're the most urgent (gentle prompt, "no rush").
+  for (const d of dueReviews) {
+    if (recommendations.length >= 3) break;
+    if (recommendations.some((x) => x.skillId === d.skillId)) continue;
+    recommendations.push({
+      skillId: d.skillId,
+      reasonCode: "review",
+      reason: "Due for a quick review — a minute keeps it sharp.",
+      inDays: 0,
+    });
+  }
   for (const r of reviewSchedule) {
     if (recommendations.length >= 3) break;
     if (recommendations.some((x) => x.skillId === r.skillId)) continue;
@@ -144,9 +182,25 @@ export function plan(
     tone,
     sessionLengthHint,
     reviewSchedule: reviewSchedule.slice(0, 3),
+    dueReviews: dueReviews.slice(0, 5),
     recommendations,
     summary,
   };
+}
+
+/** Confidence-based review interval (#328) — per-skill, child-aware.
+ *  Ladder: [1, 3, 7, 14] days. A skill's own solidity (mastery × streak
+ *  consistency) picks the rung; a fragile child (low recoveryRate) pulls
+ *  every interval a rung shorter so skills resurface sooner. */
+function reviewIntervalDays(m: SkillMasteryLike, profile: MoniProfile, params: MoniParams): number {
+  const perSkill = m.pMastered * (0.5 + 0.5 * Math.min(1, m.streak / 5));
+  const child = profile.confidence.recoveryRate;
+  const conf = child < 0.4 ? perSkill * 0.7 : child > 0.7 ? perSkill * 1.1 : perSkill;
+  const ladder = params.reviewDays;
+  if (conf >= 0.95) return ladder[3] ?? 14;
+  if (conf >= 0.8) return ladder[2] ?? 7;
+  if (conf >= 0.6) return ladder[1] ?? 3;
+  return ladder[0] ?? 1;
 }
 
 /** Derive a rough current difficulty tier from mastery. */

@@ -590,6 +590,8 @@ interface Strings {
   moniStrictnessGentle: string;
   moniStrictnessSteady: string;
   moniStrictnessChallenging: string;
+  moniReviewGentle: string;
+  moniReviewTap: (n: number) => string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -944,6 +946,8 @@ const STR: Record<Lang, Strings> = {
     moniStrictnessGentle: "Gentle",
     moniStrictnessSteady: "Steady",
     moniStrictnessChallenging: "Challenging",
+    moniReviewGentle: "Moni says: a quick review keeps it sharp — no rush!",
+    moniReviewTap: (n) => (n === 1 ? "Tap to brush up" : "Tap to brush up"),
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1294,6 +1298,8 @@ const STR: Record<Lang, Strings> = {
     moniStrictnessGentle: "নরম",
     moniStrictnessSteady: "সাধারণ",
     moniStrictnessChallenging: "চ্যালেঞ্জিং",
+    moniReviewGentle: "মণি বলে: একটু ঝালাই করলে দারুণ লাগবে — তাড়াহুড়ো নেই!",
+    moniReviewTap: (n) => (n === 1 ? "খুলে ঝালাই করো" : "খুলে ঝালাই করো"),
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -1555,8 +1561,9 @@ function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
   if (!profile || profile.totalRounds < 4) return null;
 
   // Mastery map for every skill the app knows about (pMastered + streak +
-  // wrongStreak) — what Moni plans against.
-  const mastery: Record<string, { pMastered: number; streak: number; correct: number; attempts: number; wrongStreak: number }> = {};
+  // wrongStreak + lastPractice) — what Moni plans against. lastPractice feeds
+  // the confidence-based review schedule (#328).
+  const mastery: Record<string, { pMastered: number; streak: number; correct: number; attempts: number; wrongStreak: number; lastPractice: number | null }> = {};
   for (const s of filterSkills) {
     const key = `${kidId}:${s.id}`;
     const skill = st.skills[key];
@@ -1567,6 +1574,7 @@ function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
       correct: skill.correct ?? 0,
       attempts: skill.attempts ?? 0,
       wrongStreak: st.moniWrongStreak[key] ?? 0,
+      lastPractice: skill.lastPractice ?? null,
     };
   }
   // Catalog: every skill the app can actually teach, with its game.
@@ -1577,8 +1585,9 @@ function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
   }
   try {
     // Parent-set strictness (#333) shapes Moni's tone + difficulty deltas. It
-    // defaults to "steady" (Moni's own automatic read) when never set.
-    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, st.moniStrictness?.[kidId] ?? "steady");
+    // defaults to "steady" (Moni's own automatic read) when never set. `now`
+    // is passed explicitly so the review-due computation is deterministic.
+    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, st.moniStrictness?.[kidId] ?? "steady", Date.now());
   } catch {
     return null; // a malformed profile must never break the session loop
   }
@@ -3105,6 +3114,38 @@ export default function App() {
                 </span>
               )}
             </button>
+
+            {/* 🦉 Moni's gentle review prompt (#328) — skills mastered but DUE
+                for a spaced-review brush-up. Soft, non-blocking, offline-safe
+                (reads the local store only), and never a lecture: a quiet
+                nudge on the home screen, one tap to play. */}
+            {(() => {
+              const due = (moniPlanFor(kid.id)?.dueReviews ?? [])
+                .map((d) => ({ ...d, skill: filterSkills.find((s) => s.id === d.skillId) }))
+                .filter((d): d is typeof d & { skill: Skill } => !!d.skill && !!d.skill.game)
+                .slice(0, 2);
+              if (due.length === 0) return null;
+              return (
+                <div className="home-review-prompt" role="status" aria-label={t.moniReviewGentle}>
+                  <span className="home-review-owl" aria-hidden="true">🦉</span>
+                  <div className="home-review-body">
+                    <span className="home-review-line">{t.moniReviewGentle}</span>
+                    <div className="home-review-skills">
+                      {due.map((d) => (
+                        <button
+                          key={d.skillId}
+                          className="home-review-skill"
+                          onClick={() => startSingleSkill(d.skill)}
+                        >
+                          {d.skill.title}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="home-review-tap">{t.moniReviewTap(due.length)}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Your path — the hero avatar stands on the glowing current node;
                 stops behind are ✓, the road ahead is ▶ until it locks 🔒 */}
