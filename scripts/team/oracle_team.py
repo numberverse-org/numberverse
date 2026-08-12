@@ -33,6 +33,11 @@ MEM_API = "http://127.0.0.1:8765"
 SILENT = "--silent" in sys.argv
 SKIP_MEM = "--once-now" in sys.argv
 NO_PAGE = "--no-page" in sys.argv
+# #120 — CI mode: skip the box-only roles (they read ~/.tresha, the local mem
+# API on 127.0.0.1, launchctl) which don't exist in GitHub Actions. Every
+# code/catalog/visual role still runs, so a PR is judged on the actual tree.
+CI_MODE = "--ci" in sys.argv
+BOX_ONLY_ROLES = {"Security Auditor", "Monitoring Watch", "Chronic-Issue Examiner", "Precedent Recorder"}
 TODAY = date.today().isoformat()
 
 results = []  # {layer, role, name, status, detail}
@@ -507,6 +512,8 @@ CHECKS = [
 
 def main():
     for layer, role, name, fn in CHECKS:
+        if CI_MODE and role in BOX_ONLY_ROLES:
+            continue  # #120 — box-only roles don't run in CI
         check(layer, role, name, fn)
 
     # ── board ──
@@ -526,8 +533,8 @@ def main():
         print(f"── standup {'CLEAN' if not fails else f'{len(fails)} flags'} · exit "
               f"{0 if not [r for r in results if r['status']=='fail'] else 1}")
 
-    # ── learn to mem API (the sanctioned channel) ──
-    if not SKIP_MEM:
+    # ── learn to mem API (the sanctioned channel). CI has no mem API, so skip. ──
+    if not SKIP_MEM and not CI_MODE:
         summary = {
             "date": TODAY, "run_at": datetime.now().isoformat(timespec="seconds"),
             "checked": len(results),
