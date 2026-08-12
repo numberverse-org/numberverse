@@ -1,3 +1,12 @@
+## 12 Aug 2026 — 0.24.1 (Moni plan-driven sessions + TRUE semver versioning)
+
+65b5aab chore: TRUE SEMVER versioning (0.MAJOR.MINOR.PATCH) across the release pipeline
+9cef112 Merge pull request #358 from numberverse-org/feat/issue-324
+a4c5742 feat(kid): Moni plan-driven sessions — the tiny tutor picks the skill, difficulty, and pace
+9c70412 chore: work order #324 — Moni: plan-driven difficulty in gameplay
+22beaa6 🚀 backlog 300: oracle clean (35/35 + 70/70), 8 new epics, 199 new issues → 312 open
+17125d7 track: v28 shipped — parent portal same-tab + parent-only signout + no kid remove + MONI insight card & KOTHA stories lake (#157 done)
+
 ## 12 Aug 2026 — v28 (parent portal same-tab deep link + parent-only sign-out + no kid remove + MONI tutor insight card & KOTHA stories lake)
 
 fe8d2bb chore(team): commit backlog_300 oracle roadmap generator (repo-owned tool)
