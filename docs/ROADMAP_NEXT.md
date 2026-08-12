@@ -226,7 +226,7 @@
 - ~~Deferred: multi-device profile sync~~ ✅ #9 — server snapshot (mastery+coins, no voice/face) + newest-wins restore on parent sign-in (PR pending)
 - ~~Deferred: garden/pet expansion (new species)~~ ✅ #19 — PR #448: owl/cat/peacock/dragon, growth-milestone + coin gates, companion in Nova room
 - ~~Deferred: new lands — Jungle + Polar themes~~ ✅ #20 — BANDS 6/7, 9 new skills, jungle/polar palettes+SVG+themes, conjuncts & heritage modes (PR pending)
-- Deferred: parent phone notifications bridge  _(priority: low, deferred)_
+- ~~Deferred: parent phone notifications bridge~~ ✅ #135 — spike decision: Web Push (VAPID) on the existing SW; requires sync ✅#9; build wave scheduled (device + VAPID ops) — docs/PARENT_NOTIFS_EVAL.md
 - ~~Deferred: screen-reader deep support~~ ✅ #133 — merged #446
 - ~~Deferred: sound-design pack (per-land)~~ ✅ #134 — merged #445
 - ~~Deferred: classroom projector mode~~ ✅ #136 — merged #447
