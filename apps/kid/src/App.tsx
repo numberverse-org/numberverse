@@ -35,7 +35,7 @@ const APP_BUILD = "12 Aug 2026 · 0.25.0 (release train (2 since 0.24.1))";
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.25.0";
 
-type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
+type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -59,6 +59,79 @@ const MISCONCEPTION_LABELS: Record<string, { en: string; bn: string }> = {
   half: { en: "Halves the number", bn: "সংখ্যা অর্ধেক করে" },
   reversal: { en: "Writes the digit backwards", bn: "অঙ্ক উল্টে লেখে" },
   "repeated-error": { en: "Same mistake keeps repeating", bn: "একই ভুল বারবার হয়" },
+};
+
+/** 🎯 #325 — MONI contrast-drill templates, keyed by misconception CODE.
+ *  Each is a short side-by-side quiz: two big options (correct + the pattern's
+ *  trap) around a warm prompt. Bilingual (EN + BN) kid-facing copy; numerals
+ *  + emoji stay universal. Only codes with a template get a drill — a random
+ *  guess never triggers one. */
+interface ContrastRound {
+  prompt: { en: string; bn: string };
+  correct: string;
+  trap: string;
+  tip: { en: string; bn: string };
+}
+interface ContrastTemplate {
+  code: string;
+  intro: { en: string; bn: string };
+  rounds: ContrastRound[];
+}
+const CONTRAST_TEMPLATES: Record<string, ContrastTemplate> = {
+  reversal: {
+    code: "reversal",
+    intro: { en: "6 and 9 love to turn upside down. Can you spot the difference?", bn: "৬ আর ৯ উল্টে ঘুরতে ভালোবাসে। তুমি পারবে চিনতে?" },
+    rounds: [
+      { prompt: { en: "Which one is six?", bn: "কোনটা ৬?" }, correct: "6", trap: "9", tip: { en: "Six has the swirl on top.", bn: "৬-এর মাথায় গোল ঘুর আছে।" } },
+      { prompt: { en: "Which one is two?", bn: "কোনটা ২?" }, correct: "2", trap: "5", tip: { en: "Two has a curly tail.", bn: "২-এর একটা কোঁকড়া লেজ।" } },
+      { prompt: { en: "Which one is three?", bn: "কোনটা ৩?" }, correct: "3", trap: "8", tip: { en: "Three has two bumps.", bn: "৩-এর দুটো ঢেউ আছে।" } },
+    ],
+  },
+  "overcount-1": {
+    code: "overcount-1",
+    intro: { en: "Let's count super carefully — one at a time.", bn: "একটা করে খুব মন দিয়ে গুনি।" },
+    rounds: [
+      { prompt: { en: "⭐⭐⭐⭐⭐ How many stars?", bn: "⭐⭐⭐⭐⭐ কতগুলো তারা?" }, correct: "5", trap: "6", tip: { en: "Point to each one as you count.", bn: "গোনার সময় প্রতিটায় আঙুল দাও।" } },
+      { prompt: { en: "🌸🌸🌸🌸 How many flowers?", bn: "🌸🌸🌸🌸 কতগুলো ফুল?" }, correct: "4", trap: "5", tip: { en: "Count slowly — no rushing!", bn: "ধীরে গুনো — তাড়াহুড়ো নয়!" } },
+      { prompt: { en: "🍎🍎🍎 How many apples?", bn: "🍎🍎🍎 কতগুলো আপেল?" }, correct: "3", trap: "4", tip: { en: "Tap each apple as you count it.", bn: "গোনার সময় প্রতিটা আপেল ছোঁও।" } },
+    ],
+  },
+  "undercount-1": {
+    code: "undercount-1",
+    intro: { en: "Let's make sure we didn't miss any!", bn: "নিশ্চিত করি — যেন কিছু মিস না হয়!" },
+    rounds: [
+      { prompt: { en: "🐠🐠🐠🐠🐠🐠 How many fish?", bn: "🐠🐠🐠🐠🐠🐠 কতগুলো মাছ?" }, correct: "6", trap: "5", tip: { en: "Count them one by one.", bn: "একটা একা করে গুনো।" } },
+      { prompt: { en: "🌳🌳🌳🌳🌳 How many trees?", bn: "🌳🌳🌳🌳🌳 কতগুলো গাছ?" }, correct: "5", trap: "4", tip: { en: "Take your time — no rush.", bn: "সময় আছে — তাড়া নেই।" } },
+      { prompt: { en: "⚽⚽⚽⚽ How many balls?", bn: "⚽⚽⚽⚽ কতগুলো বল?" }, correct: "4", trap: "3", tip: { en: "Every one counts!", bn: "প্রতিটাই গুনতে হবে!" } },
+    ],
+  },
+  "off-by-ten": {
+    code: "off-by-ten",
+    intro: { en: "Tens and ones live in different houses — let's check which house the number goes in.", bn: "দশ আর এককের বাড়ি আলাদা — দেখি সংখ্যাটা কোন বাড়িতে যায়।" },
+    rounds: [
+      { prompt: { en: "Which number is ten more than 24?", bn: "কোন সংখ্যাটা ২৪-এর চেয়ে ১০ বেশি?" }, correct: "34", trap: "24", tip: { en: "Add ten: 24 → 34.", bn: "১০ যোগ করো: ২৪ → ৩৪।" } },
+      { prompt: { en: "Which number is ten less than 51?", bn: "কোন সংখ্যাটা ৫১-এর চেয়ে ১০ কম?" }, correct: "41", trap: "51", tip: { en: "Take ten away: 51 → 41.", bn: "১০ বাদ দাও: ৫১ → ৪১।" } },
+      { prompt: { en: "Which number is ten more than 68?", bn: "কোন সংখ্যাটা ৬৮-এর চেয়ে ১০ বেশি?" }, correct: "78", trap: "68", tip: { en: "Only the tens digit grows by one.", bn: "শুধু দশের ঘরের অঙ্কটা এক বাড়ে।" } },
+    ],
+  },
+  double: {
+    code: "double",
+    intro: { en: "Doubling means two of everything — like magic!", bn: "দ্বিগুণ মানে সবকিছু দুবার — জাদুর মতো!" },
+    rounds: [
+      { prompt: { en: "What is double 4?", bn: "৪-এর দ্বিগুণ কত?" }, correct: "8", trap: "4", tip: { en: "Double 4 = 4 + 4.", bn: "৪-এর দ্বিগুণ = ৪ + ৪।" } },
+      { prompt: { en: "What is double 6?", bn: "৬-এর দ্বিগুণ কত?" }, correct: "12", trap: "6", tip: { en: "Double 6 = 6 + 6.", bn: "৬-এর দ্বিগুণ = ৬ + ৬।" } },
+      { prompt: { en: "What is double 9?", bn: "৯-এর দ্বিগুণ কত?" }, correct: "18", trap: "9", tip: { en: "Double 9 = 9 + 9.", bn: "৯-এর দ্বিগুণ = ৯ + ৯।" } },
+    ],
+  },
+  half: {
+    code: "half",
+    intro: { en: "Halving means splitting into two equal parts — share it fairly!", bn: "অর্ধেক মানে সমান দুভাগে ভাগ করা — সবার সমান!" },
+    rounds: [
+      { prompt: { en: "What is half of 10?", bn: "১০-এর অর্ধেক কত?" }, correct: "5", trap: "10", tip: { en: "Split 10 into two equal piles.", bn: "১০ টা সমান দুভাগে ভাগ করো।" } },
+      { prompt: { en: "What is half of 8?", bn: "৮-এর অর্ধেক কত?" }, correct: "4", trap: "8", tip: { en: "Split 8 into two equal piles.", bn: "৮ টা সমান দুভাগে ভাগ করো।" } },
+      { prompt: { en: "What is half of 14?", bn: "১৪-এর অর্ধেক কত?" }, correct: "7", trap: "14", tip: { en: "Split 14 into two equal piles.", bn: "১৪ টা সমান দুভাগে ভাগ করো।" } },
+    ],
+  },
 };
 
 /**
@@ -609,6 +682,14 @@ interface Strings {
   moniStyleFast: string;
   moniStyleSteady: string;
   moniStyleSocial: string;
+  contrastTrigger: (name: string) => string;
+  contrastTriggerSub: string;
+  contrastRight: string;
+  contrastOops: (correct: string) => string;
+  contrastDoneTitle: string;
+  contrastDoneBody: string;
+  contrastDoneBtn: string;
+  contrastProgress: (cur: number, total: number) => string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -981,6 +1062,14 @@ const STR: Record<Lang, Strings> = {
     moniStyleFast: "⚡ Speed Sprinter",
     moniStyleSteady: "🐢 Steady Pal",
     moniStyleSocial: "🦉 Friend of All",
+    contrastTrigger: (name) => `Moni spotted a pattern in ${name} — fix it together!`,
+    contrastTriggerSub: "A short side-by-side game, no pressure",
+    contrastRight: "Correct! You spotted the pattern! 🎉",
+    contrastOops: (correct) => `That's the trick! The answer is ${correct}. Try again!`,
+    contrastDoneTitle: "Pattern beaten! 🏆",
+    contrastDoneBody: "You looked at them side by side and found the difference. Moni is SO proud — let's keep it sharp!",
+    contrastDoneBtn: "Back to the adventure",
+    contrastProgress: (cur, total) => `Pattern round ${cur} of ${total}`,
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1349,6 +1438,14 @@ const STR: Record<Lang, Strings> = {
     moniStyleFast: "⚡ দ্রুত তারা",
     moniStyleSteady: "🐢 ধীরে সুস্থে",
     moniStyleSocial: "🦉 সবার বন্ধু",
+    contrastTrigger: (name) => `মণি ${name}-এ একটা প্যাটার্ন ধরেছে — একসাথে ঠিক করি!`,
+    contrastTriggerSub: "পাশাপাশি খেলা, কোনো চাপ নেই",
+    contrastRight: "ঠিক! তুমি প্যাটার্নটা চিনে ফেললে! 🎉",
+    contrastOops: (correct) => `এইটাই কৌশল! উত্তর হলো ${correct}। আবার চেষ্টা করো!`,
+    contrastDoneTitle: "প্যাটার্ন জয় করেছ! 🏆",
+    contrastDoneBody: "পাশাপাশি দেখে তুমি পার্থক্যটা খুঁজে পেয়েছ। মণি খুব গর্বিত — ধার ধরে রাখো!",
+    contrastDoneBtn: "ফিরে যাই অভিযানে",
+    contrastProgress: (cur, total) => `প্যাটার্ন রাউন্ড ${cur}/${total}`,
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -1827,6 +1924,11 @@ export default function App() {
   const petStageBeforeRef = useRef(0);
   const [roundsDone, setRoundsDone] = useState(0);
   const [sessionIdx, setSessionIdx] = useState(0);
+  // 🎯 #325 — the active contrast drill (template + the skill it fixes) and
+  // the current round index. When the drill finishes, the misconception is
+  // resolved warmly in the store.
+  const [contrastJob, setContrastJob] = useState<{ template: ContrastTemplate; skillId: string } | null>(null);
+  const [contrastIdx, setContrastIdx] = useState(0);
   const [world, setWorld] = useState<Band | null>(null);
   // The world shown on the printable certificate (screen === "cert").
   const [certWorld, setCertWorld] = useState<Band | null>(null);
@@ -2710,6 +2812,19 @@ export default function App() {
    *  (which is the freshly-mastered skill's successor when the kid crossed the
    *  mastery bar, or the same skill to keep practicing when they didn't — the
    *  honest next step either way). Journey complete → falls back to a replay. */
+  /** 🎯 #325 — launch a Moni contrast drill for a misconception CODE on a
+   *  skill. Only codes with a template get a drill (random guesses never
+   *  match). Warm sound, then the side-by-side quiz. */
+  const startContrastDrill = (code: string, skillId: string) => {
+    if (!kid) return;
+    const template = CONTRAST_TEMPLATES[code];
+    if (!template) return;
+    click();
+    setContrastJob({ template, skillId });
+    setContrastIdx(0);
+    setScreen("contrast");
+  };
+
   const startNextRound = () => {
     if (!kid) return;
     if (playLimitReached) {
@@ -3208,6 +3323,36 @@ export default function App() {
                     <span className="home-review-tap">{t.moniReviewTap(due.length)}</span>
                   </div>
                 </div>
+              );
+            })()}
+
+            {/* 🎯 MONI contrast drill trigger (#325) — when a confirmed
+                misconception has a contrast template, a warm pill invites the
+                kid to "fix the pattern together". Tapping runs the side-by-side
+                drill; finishing it clears the misconception from the ledger. */}
+            {(() => {
+              const mis = useKidStore.getState().moni?.[kid.id]?.misconceptions;
+              if (!mis?.length) return null;
+              const target = mis
+                .slice()
+                .sort((a, b) => b.lastSeen - a.lastSeen)
+                .find((m) => !!CONTRAST_TEMPLATES[m.code]);
+              if (!target) return null;
+              const gs = filterSkills.find((s) => s.id === target.skillId);
+              const name = gs?.title ?? target.label;
+              return (
+                <button
+                  className="home-contrast-pill"
+                  onClick={() => startContrastDrill(target.code, target.skillId)}
+                  aria-label={t.contrastTrigger(name)}
+                >
+                  <span className="home-contrast-owl" aria-hidden="true">🦉</span>
+                  <span className="home-contrast-body">
+                    <span className="home-contrast-line">{t.contrastTrigger(name)}</span>
+                    <span className="home-contrast-sub">{t.contrastTriggerSub}</span>
+                  </span>
+                  <span className="home-contrast-cta" aria-hidden="true">▶</span>
+                </button>
               );
             })()}
 
@@ -4656,6 +4801,70 @@ export default function App() {
           </button>
           <button className="ghost-btn break-go-btn" onClick={keepGoing}>
             {t.breakKeepGoing}
+          </button>
+        </main>
+      </div>
+    );
+  }
+
+  /* 🎯 MONI contrast drill (#325) — a side-by-side quiz that targets a SPECIFIC
+     misconception pattern. Warm copy, two big options (correct + the pattern's
+     trap), a tip under them. Finishing all rounds resolves the misconception
+     in Moni's ledger (warm resolution — the pattern is beaten). Back always
+     works; a kid can never get stuck. */
+  if (screen === "contrast" && kid && contrastJob) {
+    const { template, skillId } = contrastJob;
+    const round = template.rounds[Math.min(contrastIdx, template.rounds.length - 1)];
+    const done = contrastIdx >= template.rounds.length;
+    const [optA, optB] = Math.random() < 0.5 ? [round.correct, round.trap] : [round.trap, round.correct];
+    const answer = (picked: string) => {
+      if (picked === round.correct) {
+        tada();
+        speak(t.contrastRight);
+        setContrastIdx((i) => i + 1);
+      } else {
+        // Wrong pick — a soft nudge and the same round re-asks (never advances).
+        click();
+        speak(t.contrastOops(round.correct));
+      }
+    };
+    const finishDrill = () => {
+      useKidStore.getState().moniResolveMisconception(kid.id, skillId, template.code);
+      setContrastJob(null);
+      setContrastIdx(0);
+      tada();
+      setScreen("home");
+    };
+    return (
+      <div className="app">
+        <main className="screen contrast-screen">
+          <div className="contrast-mascot" role="img" aria-label="Nova helping with the pattern">
+            <Icon name="nova" size={72} />
+          </div>
+          {done ? (
+            <>
+              <h1 className="title">{t.contrastDoneTitle}</h1>
+              <p className="contrast-done-body">{t.contrastDoneBody}</p>
+              <button className="big-btn contrast-done-btn" onClick={finishDrill}>
+                🌟 {t.contrastDoneBtn}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="contrast-kicker">{template.intro[lang === "bn" ? "bn" : "en"]}</p>
+              <div className="contrast-round" key={contrastIdx}>
+                <p className="contrast-prompt">{round.prompt[lang === "bn" ? "bn" : "en"]}</p>
+                <div className="contrast-options">
+                  <button className="contrast-opt" onClick={() => answer(optA)}>{optA}</button>
+                  <button className="contrast-opt" onClick={() => answer(optB)}>{optB}</button>
+                </div>
+                <p className="contrast-tip">{round.tip[lang === "bn" ? "bn" : "en"]}</p>
+              </div>
+              <span className="contrast-progress">{t.contrastProgress(Math.min(contrastIdx + 1, template.rounds.length), template.rounds.length)}</span>
+            </>
+          )}
+          <button className="ghost-btn" onClick={() => { setContrastJob(null); setContrastIdx(0); setScreen("home"); }}>
+            {t.homeBtn}
           </button>
         </main>
       </div>

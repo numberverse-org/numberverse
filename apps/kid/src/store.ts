@@ -255,6 +255,9 @@ interface KidState {
   moniStrictness: Record<string, MoniStrictness>;
   /** Set how hard Moni pushes this kid (gentle / steady / challenging). */
   setMoniStrictness: (kidId: string, s: MoniStrictness) => void;
+  /** 🎯 #325 — clear a misconception after a successful contrast drill. Warm
+   *  resolution: the pattern is beaten, so Moni stops flagging it. */
+  moniResolveMisconception: (kidId: string, skillId: string, code: string) => void;
   addEvent: (kidId: string, e: RoundResult) => void;
   clearPending: (uids: Set<string>) => void;
   /** Drop the Kotha stories that were just posted (by uid). */
@@ -458,6 +461,12 @@ export const useKidStore = create<KidState>()(
         });
       },
       moniFor: (kidId) => get().moni[kidId] ?? moni.initial(kidId),
+      moniResolveMisconception: (kidId, skillId, code) =>
+        set((s) => {
+          const prev = s.moni[kidId];
+          if (!prev) return {};
+          return { moni: { ...(s.moni ?? {}), [kidId]: moni.resolveMisconception(prev, skillId, code) } };
+        }),
       clearPending: (uids) =>
         set((s) => (uids.size ? { pending: s.pending.filter((e) => !uids.has(e.uid)) } : s)),
       clearStories: (uids) =>

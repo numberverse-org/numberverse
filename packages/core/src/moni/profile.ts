@@ -171,6 +171,22 @@ export function recordMisconception(
   return p;
 }
 
+/** Resolve a misconception after a successful contrast drill (#325).
+ *  Removes the specific pattern from the ledger once the kid has shown they
+ *  can beat it. The generic "repeated-error" is cleared too when it pointed
+ *  at the same skill — the pattern is fixed, so the generic name goes. */
+export function resolveMisconception(
+  profile: MoniProfile,
+  skillId: string,
+  code: string,
+): MoniProfile {
+  const p: MoniProfile = { ...profile };
+  p.misconceptions = p.misconceptions.filter(
+    (m) => !(m.skillId === skillId && (m.code === code || m.code === "repeated-error")),
+  );
+  return p;
+}
+
 function upsertMisconception(list: Misconception[], m: Misconception): Misconception[] {
   const i = list.findIndex((x) => x.skillId === m.skillId && x.code === m.code);
   if (i === -1) return [...list, m];
