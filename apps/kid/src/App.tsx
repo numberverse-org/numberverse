@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -1100,7 +1100,7 @@ const STR: Record<Lang, Strings> = {
     voicePickWarm: "Friendly male",
     voicePickListen: "Listen",
     mastered: "Mastered",
-    playLimitReached: "⏰ Playtime is all done for today! Ask a grown-up — more learning awaits tomorrow 🌙",
+    playLimitReached: "🦉 Wow, you played so much today! Come back tomorrow 💤",
     parentHelpTitle: "Needs a little help",
     parentHelpNone: "All caught up! 🎉",
     parentHelpOpen: (n) => `${n} to finish`,
@@ -1542,7 +1542,7 @@ const STR: Record<Lang, Strings> = {
     voicePickWarm: "বন্ধুত্বপূর্ণ ছেলে",
     voicePickListen: "শোনো",
     mastered: "আয়ত্ত",
-    playLimitReached: "⏰ আজকের খেলার সময় শেষ! একজন বড়কে বলো — কাল আবার শেখা চলবে 🌙",
+    playLimitReached: "🦉 বাহ, আজ তুমি অনেক খেলেছ! কাল আবার এসো 💤",
     parentHelpTitle: "একটু সাহায্য দরকার",
     parentHelpNone: "সব ঠিক আছে! 🎉",
     parentHelpOpen: (n) => `শেষ করতে ${n}টা বাকি`,
@@ -2578,7 +2578,7 @@ export default function App() {
   // Per-kid settings come from the parent portal (api.ts). We fetch them on
   // the active kid (cache-first so offline play still respects the rules) and
   // apply: subject visibility, world cap, daily playtime, voice + music.
-  const [settings, setSettings] = useState<KidSettings>(() => (kid ? cachedKidSettings(kid.id) : { enabled_subjects: null, max_band: null, daily_limit_min: null, tts_enabled: true, music_enabled: true }));
+  const [settings, setSettings] = useState<KidSettings>(() => (kid ? cachedKidSettings(kid.id) : { enabled_subjects: null, max_band: null, daily_limit_min: null, weekday_limits_min: null, tts_enabled: true, music_enabled: true }));
   useEffect(() => {
     if (!kid) return;
     setSettings(cachedKidSettings(kid.id));
@@ -2616,9 +2616,11 @@ export default function App() {
     subjectAllowed.clear();
     if (settings.enabled_subjects) for (const s of settings.enabled_subjects) subjectAllowed.add(s);
   }, [settings.enabled_subjects, subjectAllowed]);
-  /** Should the PLAY button be blocked? (daily playtime cap reached) */
-  const playLimitReached =
-    !!settings.daily_limit_min && settings.daily_limit_min > 0 && todayMinutes() >= settings.daily_limit_min;
+  /** Should the PLAY button be blocked? (#6 — effective per-weekday cap reached) */
+  const playLimitReached = (() => {
+    const cap = todayLimitMin(settings);
+    return cap !== null && todayMinutes() >= cap;
+  })();
   // A gentle child-facing banner when a play attempt hits the daily cap.
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
   // Track minutes: a session start stamps this ref; the session-end effect adds

@@ -85,10 +85,14 @@ class KidOut(BaseModel):
 
 
 # ── Per-kid parent controls ──
+# #6 — weekday_limits_min is a comma-joined 7-int string "45,45,45,45,45,90,90"
+# (Mon..Sun; 0 = unlimited that day), or None to fall back to daily_limit_min /
+# the kid-app defaults (45 school, 90 weekend).
 class KidSettingsIn(BaseModel):
     enabled_subjects: list[str] | None = None  # None = all
     max_band: int | None = Field(default=None, ge=1, le=5)
     daily_limit_min: int | None = Field(default=None, ge=1, le=600)
+    weekday_limits_min: str | None = Field(default=None, pattern=r"^(\d{1,3},){6}\d{1,3}$")
     tts_enabled: bool = True
     music_enabled: bool = True
 
@@ -97,6 +101,7 @@ class KidSettingsOut(BaseModel):
     enabled_subjects: list[str] | None = None
     max_band: int | None = None
     daily_limit_min: int | None = None
+    weekday_limits_min: str | None = None
     tts_enabled: bool = True
     music_enabled: bool = True
     updated_at: datetime | None = None

@@ -634,6 +634,9 @@ export interface KidSettings {
   enabled_subjects: string[] | null; // null = all
   max_band: number | null; // null = no cap
   daily_limit_min: number | null; // null = unlimited
+  /** #6 — per-day-of-week caps: "45,45,45,45,45,90,90" (Mon..Sun; 0 = unlimited
+   *  that day). null = fall back to daily_limit_min, then the built-in defaults. */
+  weekday_limits_min: string | null;
   tts_enabled: boolean;
   music_enabled: boolean;
 }
@@ -642,9 +645,26 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   enabled_subjects: null,
   max_band: null,
   daily_limit_min: null,
+  weekday_limits_min: null,
   tts_enabled: true,
   music_enabled: true,
 };
+
+/** #6 — the effective daily playtime cap (minutes) for the CURRENT weekday.
+ *  Precedence: per-weekday caps (0 = unlimited that day) → the flat
+ *  daily_limit_min → the built-in defaults (45 min school Mon–Fri, 90 weekend).
+ *  Returns null when the day is unlimited. */
+export function todayLimitMin(settings: KidSettings): number | null {
+  // today → 0=Mon..6=Sun (getDay() is 0=Sun..6=Sat)
+  const dow = (new Date().getDay() + 6) % 7;
+  if (settings.weekday_limits_min) {
+    const parts = settings.weekday_limits_min.split(",").map((x) => parseInt(x, 10));
+    const v = parts[dow];
+    if (Number.isFinite(v)) return v > 0 ? v : null;
+  }
+  if (settings.daily_limit_min && settings.daily_limit_min > 0) return settings.daily_limit_min;
+  return dow < 5 ? 45 : 90; // Mon–Fri 45, Sat–Sun 90
+}
 
 const LS_SETTINGS = "nv_kid_settings"; // { localKidId: KidSettings }
 

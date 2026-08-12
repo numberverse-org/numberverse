@@ -135,9 +135,41 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   enabled_subjects: null,
   max_band: null,
   daily_limit_min: null,
+  weekday_limits_min: null,
   tts_enabled: true,
   music_enabled: true,
 };
+
+/** #6 — day names for the per-weekday playtime editor (Mon..Sun). */
+const WEEKDAYS = [
+  { key: "mon", short: "Mon", full: "Monday" },
+  { key: "tue", short: "Tue", full: "Tuesday" },
+  { key: "wed", short: "Wed", full: "Wednesday" },
+  { key: "thu", short: "Thu", full: "Thursday" },
+  { key: "fri", short: "Fri", full: "Friday" },
+  { key: "sat", short: "Sat", full: "Saturday" },
+  { key: "sun", short: "Sun", full: "Sunday" },
+] as const;
+const LIMIT_CHOICES = [0, 30, 45, 60, 90] as const;
+const WEEKDAY_DEFAULTS = [45, 45, 45, 45, 45, 90, 90]; // school vs weekend
+
+/** #6 — read the current per-day array from settings (Mon..Sun). A legacy flat
+ *  `daily_limit_min` shows as the same value every day; nothing set → the
+ *  built-in defaults (45 school / 90 weekend). Mirrors todayLimitMin() in the
+ *  kid app, so the portal display always matches what the kid app enforces. */
+function weekdayLimits(s: KidSettingsT): number[] {
+  if (s.weekday_limits_min) {
+    const parts = s.weekday_limits_min.split(",").map((x) => parseInt(x, 10));
+    if (parts.length === 7 && parts.every((n) => Number.isFinite(n))) return parts;
+  }
+  if (s.daily_limit_min && s.daily_limit_min > 0) {
+    return Array(7).fill(s.daily_limit_min); // legacy flat cap → same every day
+  }
+  return [...WEEKDAY_DEFAULTS];
+}
+function writeWeekdayLimits(s: KidSettingsT, arr: number[]): KidSettingsT {
+  return { ...s, weekday_limits_min: arr.join(",") };
+}
 
 function masteryPct(m: MasteryRow): number {
   return Math.min(100, Math.round(m.mastery * 100));
@@ -740,24 +772,48 @@ export default function ParentDashboard() {
             </div>
 
             <div className="ctrl-block">
-              <h3>Daily playtime</h3>
-              <p className="muted small">A soft limit — the app gently stops play after {active.name} reaches it.</p>
-              <div className="toggle-grid">
+              <h3>Playtime per day</h3>
+              <p className="muted small">
+                A soft limit per day of the week — the app gently stops play when {active.name} reaches it. Default: 45 min school days, 90 weekend.
+              </p>
+              <div className="weekday-limits">
+                {WEEKDAYS.map((d, i) => {
+                  const cur = weekdayLimits(activeSettings)[i];
+                  return (
+                    <div key={d.key} className="weekday-row">
+                      <span className="weekday-name" title={d.full}>{d.short}</span>
+                      <div className="weekday-chips" role="group" aria-label={`${d.full} playtime`}>
+                        {LIMIT_CHOICES.map((m) => (
+                          <button
+                            key={m}
+                            className={`toggle-chip${cur === m ? " on" : ""}`}
+                            onClick={() => {
+                              const arr = [...weekdayLimits(activeSettings)];
+                              arr[i] = m;
+                              patchSettings(writeWeekdayLimits(activeSettings, arr));
+                            }}
+                          >
+                            {m === 0 ? "Off" : `${m}m`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="weekday-presets">
                 <button
-                  className={`toggle-chip${activeSettings.daily_limit_min === null ? " on" : ""}`}
-                  onClick={() => patchSettings({ daily_limit_min: null })}
+                  className="ghost-btn small"
+                  onClick={() => patchSettings(writeWeekdayLimits(activeSettings, WEEKDAY_DEFAULTS))}
+                >
+                  ↺ Default (45/90)
+                </button>
+                <button
+                  className="ghost-btn small"
+                  onClick={() => patchSettings(writeWeekdayLimits(activeSettings, [0, 0, 0, 0, 0, 0, 0]))}
                 >
                   No limit
                 </button>
-                {[10, 15, 30, 45, 60, 90].map((m) => (
-                  <button
-                    key={m}
-                    className={`toggle-chip${activeSettings.daily_limit_min === m ? " on" : ""}`}
-                    onClick={() => patchSettings({ daily_limit_min: m })}
-                  >
-                    {m} min
-                  </button>
-                ))}
               </div>
             </div>
 
