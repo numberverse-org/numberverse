@@ -21,6 +21,7 @@ import {
   observeWrong,
   endSession,
   recordMisconception,
+  resolveMisconception,
 } from "./profile.js";
 import { diagnose, diagnoseCorrect } from "./diagnose.js";
 import { plan } from "./planner.js";
@@ -32,6 +33,8 @@ export const moni = {
   observeWrong,
   endSession,
   recordMisconception,
+  /** 🎯 #325 — clear a misconception from the ledger after a contrast drill. */
+  resolveMisconception,
   diagnose,
   diagnoseCorrect,
   plan,
