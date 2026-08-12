@@ -15,7 +15,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
@@ -903,8 +903,8 @@ const STR: Record<Lang, Strings> = {
     petTitle: "Your pet",
     petStage0: "Egg",
     petStage1: "Hatchling",
-    petStage2: "Young owl",
-    petStage3: "Wise owl",
+    petStage2: "Young",
+    petStage3: "Grown",
     petGrow: (pct) => `${Math.round(pct * 100)}% to grow`,
     petFeed: "🍎 Feed",
     petFedToday: "Fed 💖",
@@ -1371,8 +1371,8 @@ const STR: Record<Lang, Strings> = {
     petTitle: "তোমার পোষা",
     petStage0: "ডিম",
     petStage1: "ছানা",
-    petStage2: "ছোট্ট প্যাঁচা",
-    petStage3: "জ্ঞানী প্যাঁচা",
+    petStage2: "ছোট্ট",
+    petStage3: "বড়ো",
     petGrow: (pct) => `${bnNum(Math.round(pct * 100))}% বড় হওয়া বাকি`,
     petFeed: "🍎 খাওয়াও",
     petFedToday: "খেয়েছে 💖",
@@ -2433,6 +2433,9 @@ export default function App() {
   const petStage = useKidStore((s) => (kid ? s.nova[kid.id]?.petStage ?? 0 : 0));
   const petProgress = useKidStore((s) => (kid ? s.nova[kid.id]?.petProgress ?? 0 : 0));
   const petFedToday = useKidStore((s) => (kid ? s.nova[kid.id]?.petFed === todayIso() : false));
+  // #19 — the adopted pet species (owl starter). Names/looks come from the
+  // NOVA_SPECIES registry so adding a locale or a species is pure config.
+  const petSpecies = useKidStore((s) => (kid ? s.nova[kid.id]?.species ?? "owl" : "owl"));
   const t = STR[lang];
 
   const [fsActive, setFsActive] = useState(false);
@@ -3949,11 +3952,11 @@ export default function App() {
                 session, every new mastery, and one daily snack. */}
             <div className="pet-card" role="status">
               <span className="pet-emoji" aria-hidden="true">
-                {["🥚", "🐣", "🦉", "🦉"][petStage]}
+                {speciesEmoji(petSpecies, petStage)}
                 {petStage >= 3 && <span className="pet-sparkle">✨</span>}
               </span>
               <div className="pet-meta">
-                <span className="pet-title">{t.petTitle} · {[t.petStage0, t.petStage1, t.petStage2, t.petStage3][petStage]}</span>
+                <span className="pet-title">{t.petTitle} · {speciesById(petSpecies)[lang === "bn" ? "nameBn" : "name"]} · {[t.petStage0, t.petStage1, t.petStage2, t.petStage3][petStage]}</span>
                 <span className="pet-bar">
                   <span className="pet-fill" style={{ width: `${Math.round(petProgress * 100)}%` }} />
                 </span>
@@ -5606,8 +5609,8 @@ export default function App() {
           )}
           {petStage > petStageBeforeRef.current && (
             <div className="pet-badge" key={`pet-${petStage}`}>
-              <span className="pet-badge-emoji">{["🥚", "🐣", "🦉", "🦉"][petStage]}{petStage >= 3 ? "✨" : ""}</span>
-              <span>{t.petGrewInto([t.petStage0, t.petStage1, t.petStage2, t.petStage3][petStage])}</span>
+              <span className="pet-badge-emoji">{speciesEmoji(petSpecies, petStage)}{petStage >= 3 ? "✨" : ""}</span>
+              <span>{t.petGrewInto(speciesById(petSpecies)[lang === "bn" ? "nameBn" : "name"])}</span>
             </div>
           )}
           {complete && newMastered > 0 && (

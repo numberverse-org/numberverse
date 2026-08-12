@@ -118,7 +118,39 @@ export const NOVA_SHARE_REWARD = 5;
 export const PET_GROW_SESSION = 0.25; // each completed session
 export const PET_GROW_MASTERY = 0.3; // each newly mastered skill
 export const PET_GROW_FEED = 0.2; // feeding it, once daily
-export const PET_MAX_STAGE = 3; // 🥚 → 🐣 → 🦉 → 🦉(wise)
+export const PET_MAX_STAGE = 3; // 0 egg → 1 hatch → 2 young → 3 grown (per species)
+
+/** #19 — unlockable pet species. The default owl is free; the rest are adopted
+ *  once a pet GROWTH MILESTONE is reached AND bought with coins in the pet
+ *  sheet (each has its own egg→grown evolution). Stages align with
+ *  PET_MAX_STAGE (0..3). */
+export interface NovaSpecies {
+  id: string;
+  name: string;
+  nameBn: string;
+  cost: number; // coins to adopt (owl = 0, the starter)
+  /** Pet growth stage (0..3) that must be reached before this species unlocks. */
+  unlockStage: number; // 0 = always available
+  /** Evolution emoji per petStage 0..3. */
+  stages: readonly [string, string, string, string];
+}
+
+export const NOVA_SPECIES: NovaSpecies[] = [
+  { id: "owl", name: "Owl", nameBn: "প্যাঁচা", cost: 0, unlockStage: 0, stages: ["🥚", "🐣", "🦉", "🦉"] },
+  { id: "cat", name: "Cat", nameBn: "বিড়াল", cost: 40, unlockStage: 1, stages: ["🥚", "🐱", "🐈", "🐈‍⬛"] },
+  { id: "peacock", name: "Peacock", nameBn: "ময়ূর", cost: 80, unlockStage: 2, stages: ["🥚", "🐤", "🐓", "🦚"] },
+  { id: "dragon", name: "Dragon", nameBn: "ড্রাগন", cost: 120, unlockStage: 3, stages: ["🥚", "🐲", "🐲", "🐉"] },
+];
+
+export function speciesById(id: string): NovaSpecies {
+  return NOVA_SPECIES.find((s) => s.id === id) ?? NOVA_SPECIES[0];
+}
+
+/** The pet's face for a species at a growth stage (clamped to 0..3). */
+export function speciesEmoji(speciesId: string, stage: number): string {
+  const sp = speciesById(speciesId);
+  return sp.stages[Math.max(0, Math.min(3, stage))];
+}
 
 /** 📚 KOTHA offline-queue quota (#334). A long offline stretch can't balloon
  *  storage past this many unsent learning stories. It's a HIGH-WATER MARK that
@@ -154,9 +186,11 @@ export interface NovaState {
   /** Last ISO date the parent shared this kid's progress (share reward, once/day). */
   shareDay: string;
   /** The kid's pet — an egg that hatches + grows as they learn. */
-  petStage: number; // 0 egg → 1 hatchling → 2 young owl → 3 wise owl
+  petStage: number; // 0 egg → 1 hatchling → 2 young → 3 grown (per species)
   petProgress: number; // 0..1 toward the next stage
   petFed: string; // last ISO date the pet was fed (once daily)
+  /** #19 — pet species (owl = starter, free; others adopted with coins). */
+  species: string;
 }
 
 export function defaultNova(): NovaState {
@@ -181,6 +215,7 @@ export function defaultNova(): NovaState {
     petStage: 0,
     petProgress: 0,
     petFed: "",
+    species: "owl",
   };
 }
 
@@ -297,6 +332,8 @@ interface KidState {
   petGrowMastery: (kidId: string) => void;
   /** Feed the pet — grows it once per calendar day. */
   petFeed: (kidId: string) => void;
+  /** #19 — adopt a pet species (costs coins; owl is free/the starter). */
+  petAdopt: (kidId: string, speciesId: string) => void;
 }
 
 const keyOf = (kidId: string, skillId: string) => `${kidId}:${skillId}`;
@@ -584,6 +621,31 @@ export const useKidStore = create<KidState>()(
                 ...cur,
                 petFed: today,
                 ...growPet({ petStage: cur.petStage, petProgress: cur.petProgress }, PET_GROW_FEED),
+              },
+            },
+          };
+        });
+      },
+
+      /** Adopt a pet species — owl is free (starter); others need a growth
+       *  milestone reached AND coins. Adopting switches the pet's look. */
+      petAdopt: (kidId, speciesId) => {
+        const species = speciesById(speciesId);
+        if (!species) return;
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          if (cur.species === speciesId) return { nova: s.nova };
+          // Milestone gate: pet must have grown to the species' unlock stage.
+          if (cur.petStage < species.unlockStage) return { nova: s.nova };
+          // Coin gate: starter owl is free; the rest cost coins once.
+          if (species.cost > 0 && cur.coins < species.cost) return { nova: s.nova };
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: {
+                ...cur,
+                species: speciesId,
+                coins: species.cost > 0 ? cur.coins - species.cost : cur.coins,
               },
             },
           };
