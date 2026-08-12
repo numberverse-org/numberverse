@@ -39,7 +39,7 @@ const APP_BUILD = "13 Aug 2026 · 0.26.16 (per-day wrong-answer history + playti
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.26.16";
 
-type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
+type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -313,6 +313,43 @@ function sessionStreak(events: RoundResult[]): number {
   return s;
 }
 
+/* ────────────────────────────── #283 goal badges ──────────────────────────────
+ * Small lifetime badges for real learning wins. Each condition reads only
+ * existing local state (stats, streak, world mastery) — fully offline. The
+ * earned set is persisted in the store (`NovaState.badges`); this config just
+ * DEFINES the badges + their conditions. Names are locale-packed like Nova
+ * outfits (name / nameBn — a new country adds its field, no rewrite). */
+
+interface BadgeCtx {
+  sessions: number; // completed sessions (each = a playthrough)
+  stars: number;
+  streak: number;
+  worlds: number; // fully-mastered lands
+}
+interface BadgeDef {
+  id: string;
+  emoji: string;
+  name: string;
+  nameBn: string;
+  hint: string;
+  hintBn: string;
+  earned: (c: BadgeCtx) => boolean;
+}
+const BADGES: BadgeDef[] = [
+  { id: "rounds10", emoji: "🎮", name: "10 Rounds Hero", nameBn: "১০ রাউন্ড হিরো", hint: "Finish 10 sessions", hintBn: "১০টা খেলা শেষ করো", earned: (c) => c.sessions >= 10 },
+  { id: "stars50", emoji: "⭐", name: "Star Collector", nameBn: "তারকা সংগ্রহকারী", hint: "Earn 50 stars", hintBn: "৫০টা তারা জিতো", earned: (c) => c.stars >= 50 },
+  { id: "streak7", emoji: "🔥", name: "7-Day Streak", nameBn: "৭ দিনের ধারা", hint: "Play 7 days in a row", hintBn: "টানা ৭ দিন খেলো", earned: (c) => c.streak >= 7 },
+  { id: "worldChamp", emoji: "👑", name: "Land Champion", nameBn: "ভূখণ্ড চ্যাম্পিয়ন", hint: "Master every skill in a land", hintBn: "একটি ভূখণ্ডের সব দক্ষতা আয়ত্ত করো", earned: (c) => c.worlds >= 1 },
+];
+
+/** How many lands the kid has FULLY mastered (every skill past the threshold). */
+function fullyMasteredWorlds(skillsMap: Record<string, SkillMapEntry>, kidId: string): number {
+  return BANDS.filter((b) => {
+    const prog = worldProgress(skillsMap, kidId, b.id);
+    return prog.total > 0 && prog.mastered === prog.total;
+  }).length;
+}
+
 /* ────────────────────────────── i18n (English / বাংলা) ────────────────────────────── */
 
 type Lang = "en" | "bn";
@@ -482,6 +519,13 @@ interface Strings {
   calendarClaimed: string;
   calendarLocked: string;
   calendarClaimSpeak: (name: string, n: number) => string;
+  /* #283 — goal badges */
+  badgeTile: string;
+  badgeTitle: string;
+  badgeSub: (n: number, total: number) => string;
+  badgeEarned: string;
+  badgeLocked: string;
+  badgeNewSpeak: (name: string, title: string) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -989,6 +1033,13 @@ const STR: Record<Lang, Strings> = {
     calendarClaimed: "✓ Collected",
     calendarLocked: "🔒",
     calendarClaimSpeak: (name, n) => `${name}, daily reward collected — ${n} coins! 🎉`,
+    /* #283 — goal badges */
+    badgeTile: "Badges",
+    badgeTitle: "🏅 Badge Book",
+    badgeSub: (n, total) => `${n} of ${total} badges earned`,
+    badgeEarned: "Earned!",
+    badgeLocked: "Keep playing to unlock",
+    badgeNewSpeak: (name, title) => `${name}, new badge — ${title}! 🎖️`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1481,6 +1532,13 @@ const STR: Record<Lang, Strings> = {
     calendarClaimed: "✓ পাওয়া গেছে",
     calendarLocked: "🔒",
     calendarClaimSpeak: (name, n) => `${name}, দৈনিক পুরস্কার পেয়েছো — ${n} কয়েন! 🎉`,
+    /* #283 — goal badges */
+    badgeTile: "ব্যাজ",
+    badgeTitle: "🏅 ব্যাজ বই",
+    badgeSub: (n, total) => `${bnNum(n)}/${bnNum(total)}টা ব্যাজ জিতেছো`,
+    badgeEarned: "জিতেছো!",
+    badgeLocked: "আনলক করতে খেলতে থাকো",
+    badgeNewSpeak: (name, title) => `${name}, নতুন ব্যাজ — ${title}! 🎖️`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -2527,6 +2585,29 @@ export default function App() {
         : 1; // missed a day → fresh restart at day 1
     return { pos, claimable: playedToday && n.calendarDay !== today, claimedToday: n.calendarDay === today };
   });
+  // #283 — goal badges: currently-earned ids (from local stats/streak/worlds),
+  // and the celebration effect that fires once per NEW badge.
+  const badgeStats = useKidStore((s) => s.stats[kid?.id ?? ""] ?? { stars: 0, score: 0, sessions: 0 });
+  const badgeStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
+  const storedBadges = useKidStore((s) => (kid ? s.nova[kid.id]?.badges ?? [] : []));
+  const earnedBadgeKey = kid
+    ? BADGES.filter((b) => b.earned({ sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id) }))
+        .map((b) => b.id)
+        .join(",")
+    : "";
+  useEffect(() => {
+    if (!kid || !earnedBadgeKey) return;
+    const earned = earnedBadgeKey.split(",").filter(Boolean);
+    const newly = useKidStore.getState().novaSyncBadges(kid.id, earned);
+    if (newly.length) {
+      newly.forEach((id) => {
+        const b = BADGES.find((x) => x.id === id);
+        if (!b) return;
+        tada();
+        speak(lang === "bn" ? t.badgeNewSpeak(kid.name, b.nameBn) : t.badgeNewSpeak(kid.name, b.name));
+      });
+    }
+  }, [kid?.id, earnedBadgeKey, storedBadges.join(",")]);
   // Streak kindness: the store only refreshes `streak` at session-complete, so
   // after a missed day the badge would show a STALE flame. Track the anchor day
   // so we can hide the stale flame and welcome the kid back warmly instead.
@@ -2922,6 +3003,7 @@ export default function App() {
   const goNova = () => setScreen(kid ? "nova" : "kidpick");
   const goGarden = () => setScreen(kid ? "garden" : "kidpick");
   const goCards = () => setScreen(kid ? "cards" : "kidpick");
+  const goBadges = () => setScreen(kid ? "badges" : "kidpick");
   /** Open the printable certificate for a completed world. */
   const openCert = (b: Band) => {
     if (!kid) return;
@@ -4252,6 +4334,10 @@ export default function App() {
                 <button className="play-icon" onClick={goCards}>
                   <span className="play-icon-emoji" aria-hidden="true">🏆</span>
                   <span>{t.cardsTile}</span>
+                </button>
+                <button className="play-icon" onClick={goBadges}>
+                  <span className="play-icon-emoji" aria-hidden="true">🏅</span>
+                  <span>{t.badgeTile}</span>
                 </button>
                 <button className="play-icon" onClick={() => setScreen(kid ? "castle" : "kidpick")}>
                   <span className="play-icon-emoji" aria-hidden="true">🏰</span>
@@ -6055,6 +6141,46 @@ export default function App() {
           <button className="ghost-btn" onClick={() => { setContrastJob(null); setContrastIdx(0); setScreen("home"); }}>
             {t.homeBtn}
           </button>
+        </main>
+      </div>
+    );
+  }
+
+  /* #283 — Badge Book: small trophies for real learning wins (sessions, stars,
+     streak, full-land mastery). Conditions read only local state — offline. */
+  if (screen === "badges" && kid) {
+    const ctx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id) };
+    const earnedCount = BADGES.filter((b) => b.earned(ctx)).length;
+    return (
+      <div className="app">
+        <main className="screen badges-screen">
+          <header className="screen-head">
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <div className="head-title">
+              <h2>{t.badgeTitle}</h2>
+              <p className="head-sub">{t.badgeSub(earnedCount, BADGES.length)}</p>
+            </div>
+            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
+          </header>
+
+          <div className="badge-grid">
+            {BADGES.map((b) => {
+              const earned = b.earned(ctx);
+              return (
+                <button
+                  key={b.id}
+                  className={`badge-card${earned ? " earned" : " locked"}`}
+                  onClick={() => speak(lang === "bn" ? t.badgeNewSpeak(kid.name, b.nameBn) : t.badgeNewSpeak(kid.name, b.name))}
+                  aria-label={earned ? t.badgeEarned : t.badgeLocked}
+                >
+                  <span className="badge-emoji" aria-hidden="true">{earned ? b.emoji : "🔒"}</span>
+                  <span className="badge-name">{lang === "bn" ? b.nameBn : b.name}</span>
+                  <span className="badge-hint">{lang === "bn" ? b.hintBn : b.hint}</span>
+                  <span className={`badge-state${earned ? " earned" : ""}`}>{earned ? t.badgeEarned : t.badgeLocked}</span>
+                </button>
+              );
+            })}
+          </div>
         </main>
       </div>
     );

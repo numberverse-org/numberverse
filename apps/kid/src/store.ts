@@ -206,6 +206,10 @@ export interface NovaState {
   shareDay: string;
   /** #281 — last ISO date the 7-day login calendar bonus was claimed ("" = never). */
   calendarDay: string;
+  /** #283 — badge ids the kid has earned (union of BADGES conditions met so
+   *  far). The conditions live in App.tsx (they read the skill catalog);
+   *  the store only PERSISTS the earned set. */
+  badges: string[];
   /** The kid's pet — an egg that hatches + grows as they learn. */
   petStage: number; // 0 egg → 1 hatchling → 2 young → 3 grown (per species)
   petProgress: number; // 0..1 toward the next stage
@@ -234,6 +238,7 @@ export function defaultNova(): NovaState {
     bdayYear: "",
     shareDay: "",
     calendarDay: "",
+    badges: [],
     petStage: 0,
     petProgress: 0,
     petFed: "",
@@ -347,6 +352,9 @@ interface KidState {
   /** #281 — claim today's 7-day login-calendar bonus (once per day, after the
    *  day's first session, inside the daily cap). Returns coins granted (0 = none). */
   novaClaimCalendar: (kidId: string) => number;
+  /** #283 — persist the currently-earned badge ids; returns the NEWLY-earned
+   *  subset (so the UI can celebrate each once). */
+  novaSyncBadges: (kidId: string, earned: string[]) => string[];
   /** A parent shared this kid's progress → +NOVA_SHARE_REWARD coins, once per
    *  calendar day. Returns true when the reward was actually granted. */
   novaShareReward: (kidId: string) => boolean;
@@ -859,6 +867,23 @@ export const useKidStore = create<KidState>()(
           };
         });
         return add;
+      },
+
+      /* ── #283 goal badges: merge the currently-earned badge ids (computed in
+           App.tsx from the skill catalog) into the kid's persisted set and
+           return the NEWLY-earned ones so the UI can celebrate them once. ── */
+
+      novaSyncBadges: (kidId, earned) => {
+        const n = get().nova[kidId] ?? defaultNova();
+        const stored = n.badges ?? [];
+        const newly = earned.filter((id) => !stored.includes(id));
+        if (newly.length === 0) return [];
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const merged = Array.from(new Set([...(cur.badges ?? []), ...earned]));
+          return { nova: { ...s.nova, [kidId]: { ...cur, badges: merged } } };
+        });
+        return newly;
       },
 
       /* ── Share reward: parent shared this kid's progress → once/day bonus ── */

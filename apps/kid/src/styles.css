@@ -3321,6 +3321,48 @@ body {
 
 /* ---- 🏆 Mastery Card Album: collectible cards + golden world trophies ---- */
 .cards-screen { justify-content: flex-start; gap: 10px; }
+/* #283 — Badge Book */
+.badges-screen { justify-content: flex-start; gap: 10px; }
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 560px;
+  padding: 2px 6px 24px;
+  overflow-y: auto;
+}
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  text-align: center;
+}
+.badge-card.earned {
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.22), rgba(255, 143, 163, 0.16));
+  border-color: rgba(255, 209, 102, 0.5);
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.18);
+}
+.badge-card.locked {
+  filter: saturate(0.35) brightness(0.75);
+}
+.badge-emoji { font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)); }
+.badge-card.earned .badge-emoji { animation: calPulse 2.4s ease-in-out infinite; }
+.badge-name { font-size: 14px; font-weight: 800; color: #fff; line-height: 1.2; }
+.badge-hint { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.55); line-height: 1.25; }
+.badge-state {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.03em;
+}
+.badge-state.earned { color: #ffd166; }
 .cards-scroll {
   display: flex;
   flex-direction: column;
