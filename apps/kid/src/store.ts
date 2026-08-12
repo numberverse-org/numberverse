@@ -84,6 +84,11 @@ export interface NovaOutfit {
   nameBn: string;
   cost: number;
   kind: "scarf" | "tunic" | "cape" | "hat" | "glasses" | "bow" | "boots" | "backpack";
+  /** #278 — limited seasonal set this outfit belongs to (festival key from the
+   *  locale pack, e.g. "eid_fitr" / "boishakh"). Only purchasable while that
+   *  festival is active in the current locale — pure config (#131), so another
+   *  country's festival = one entry, not a rewrite. */
+  festival?: string;
 }
 
 export const NOVA_OUTFITS: NovaOutfit[] = [
@@ -95,6 +100,13 @@ export const NOVA_OUTFITS: NovaOutfit[] = [
   { id: "bow", emoji: "🎀", name: "Cute Bow", nameBn: "ফিতে", cost: 6, kind: "bow" },
   { id: "boots", emoji: "🥾", name: "Adventure Boots", nameBn: "বুট জুতা", cost: 12, kind: "boots" },
   { id: "backpack", emoji: "🎒", name: "School Bag", nameBn: "ব্যাগ", cost: 20, kind: "backpack" },
+  // #278 — limited seasonal sets (festival-gated). Reuse existing body kinds
+  // (tunic/hat/bow) so Nova wears them without new texture code; the card emoji
+  // + name carry the festival look. Availability is config from the locale pack.
+  { id: "eid-panjabi", emoji: "👔", name: "Eid Panjabi", nameBn: "ঈদের পাঞ্জাবি", cost: 25, kind: "tunic", festival: "eid_fitr" },
+  { id: "eid-topi", emoji: "🧢", name: "Eid Prayer Cap", nameBn: "ঈদের টুপি", cost: 20, kind: "hat", festival: "eid_fitr" },
+  { id: "boishakh-sharee", emoji: "🥻", name: "Boishakh Sharee", nameBn: "বৈশাখের শাড়ি", cost: 30, kind: "tunic", festival: "boishakh" },
+  { id: "boishakh-fan", emoji: "🪭", name: "Boishakh Fan", nameBn: "বৈশাখের পাখা", cost: 20, kind: "bow", festival: "boishakh" },
 ];
 
 /** Max coins a kid can earn from games in one calendar day (anti-grind). */
@@ -313,7 +325,10 @@ interface KidState {
   reset: () => void;
   novaAwardRound: (kidId: string, correct: boolean) => void;
   novaCompleteSession: (kidId: string) => void;
-  novaBuy: (kidId: string, outfitId: string) => void;
+  /** #278 — `festivalKey` is the current locale's active festival (null
+   *  off-season). Seasonal outfits are only purchasable while their festival
+   *  is active — enforced here so a tampered client can't buy off-season. */
+  novaBuy: (kidId: string, outfitId: string, festivalKey: string | null) => void;
   novaEquip: (kidId: string, outfitId: string) => void;
   novaCare: (kidId: string, action: "feed" | "play") => void;
   /** Every completed round counts toward today's Daily Quest. Returns true the
@@ -701,9 +716,11 @@ export const useKidStore = create<KidState>()(
         }),
 
       /** Buy an outfit — instantly wears it (instant gratification). */
-      novaBuy: (kidId, outfitId) => {
+      novaBuy: (kidId, outfitId, festivalKey) => {
         const outfit = NOVA_OUTFITS.find((o) => o.id === outfitId);
         if (!outfit) return;
+        // #278 — seasonal outfits are locked outside their festival window.
+        if (outfit.festival && outfit.festival !== festivalKey) return;
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           if (cur.owned.includes(outfitId) || cur.coins < outfit.cost) return { nova: s.nova };
