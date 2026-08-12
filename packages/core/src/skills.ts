@@ -1,11 +1,14 @@
 import type { Band, GameConfig, Skill } from './types.js';
 
 export const BANDS: Band[] = [
-  { id: 1, key: 'sprout-grove', title: 'Sprout Grove', titleBn: 'স্প্রাউট গ্রোভ', ageRange: '2–4' },
-  { id: 2, key: 'cottage-fields', title: 'Cottage Fields', titleBn: 'কটেজ ফিল্ডস', ageRange: '4–6' },
-  { id: 3, key: 'river-town', title: 'River Town', titleBn: 'রিভার টাউন', ageRange: '6–8' },
-  { id: 4, key: 'sky-castle', title: 'Sky Castle', titleBn: 'স্কাই ক্যাসেল', ageRange: '8–10' },
-  { id: 5, key: 'star-academy', title: 'Star Academy', titleBn: 'স্টার অ্যাকাডেমি', ageRange: '10–13' },
+  // titleBn = REAL natural Bangla (what people say), NOT phonetic English:
+  // Sprout Grove → কুঁড়ির বাগান, Cottage Fields → মাঠের কুটির, River Town →
+  // নদীর শহর, Sky Castle → আকাশের দুর্গ, Star Academy → তারার পাঠশালা.
+  { id: 1, key: 'sprout-grove', title: 'Sprout Grove', titleBn: 'কুঁড়ির বাগান', ageRange: '2–4' },
+  { id: 2, key: 'cottage-fields', title: 'Cottage Fields', titleBn: 'মাঠের কুটির', ageRange: '4–6' },
+  { id: 3, key: 'river-town', title: 'River Town', titleBn: 'নদীর শহর', ageRange: '6–8' },
+  { id: 4, key: 'sky-castle', title: 'Sky Castle', titleBn: 'আকাশের দুর্গ', ageRange: '8–10' },
+  { id: 5, key: 'star-academy', title: 'Star Academy', titleBn: 'তারার পাঠশালা', ageRange: '10–13' },
 ];
 
 export const SKILLS: Skill[] = [
