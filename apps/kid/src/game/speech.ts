@@ -315,6 +315,136 @@ function naturalize(text: string, lang: "en" | "bn"): string {
   return s;
 }
 
+/* ─────────── 🗣️ #381 Bangla pronunciation normalizer ─────────────────────
+ * The Bangla Piper voice (espeak-ng phonemizer) reads Bangla script fluently
+ * but garbles anything Latin — kid names, "Nova", "Moni", game titles and
+ * Western digits all come out as weird English-ish noise. Before synthesis we
+ *  (1) expand digit runs to Bangla number words,
+ *  (2) swap known app vocabulary for its real Bangla spelling, and
+ *  (3) transliterate any leftover Latin word into Bengali syllables so the
+ *      voice pronounces it the way a Bangla speaker would. */
+
+const BN_APP_WORDS: Array<[RegExp, string]> = [
+  [/Nova/gi, "নোভা"],
+  [/Moni/gi, "মনি"],
+  [/Google/gi, "গুগল"],
+  [/YouTube/gi, "ইউটিউব"],
+  [/English/gi, "ইংরেজি"],
+];
+
+// Roman letters → Bengali. Two-letter keys are read before single letters so
+// digraphs ("ch","sh","th"…) come out as one Bengali sound instead of two.
+const BN_C = new Map<string, string>([
+  ["ch", "চ"], ["sh", "শ"], ["th", "থ"], ["ph", "ফ"], ["bh", "ভ"],
+  ["dh", "ধ"], ["gh", "ঘ"], ["kh", "খ"], ["jh", "ঝ"], ["ck", "ক"],
+  ["wa", "ওয়া"], ["wi", "ওয়ি"], ["we", "ওয়ে"], ["wo", "ও"], ["wu", "ও"],
+  ["ya", "য়া"], ["yi", "য়ি"], ["ye", "য়ে"], ["yo", "য়ো"], ["yu", "য়ু"],
+  ["aa", "আ"], ["ee", "ঈ"], ["ii", "ঈ"], ["oo", "ঊ"],
+  ["b", "ব"], ["c", "ক"], ["d", "ড"], ["f", "ফ"], ["g", "গ"],
+  ["h", "হ"], ["j", "জ"], ["k", "ক"], ["l", "ল"], ["m", "ম"],
+  ["n", "ন"], ["p", "প"], ["q", "ক"], ["r", "র"], ["s", "স"],
+  ["t", "ট"], ["v", "ভ"], ["w", "ও"], ["x", "ক্স"], ["y", "য়"],
+  ["z", "জ"],
+]);
+const BN_V_FULL: Record<string, string> = { a: "আ", e: "এ", i: "ই", o: "ও", u: "উ" };
+const BN_V_MATRA: Record<string, string> = { a: "া", e: "ে", i: "ি", o: "ো", u: "ু" };
+// Long/doubled vowel pairs attach to a preceding consonant as one matra:
+// "Neel"→নীল, "Saad"→সাড, "Moon"→মুন. (Standalone they still work as full
+// vowels via the digraph table above: "ee"→ঈ, "oo"→ঊ, "aa"→আ.)
+const BN_LONG_MATRA: Record<string, string> = { ee: "ী", ii: "ী", oo: "ু", aa: "া" };
+
+/** A Bengali vowel-matra (া ি ী ু ূ ে ৈ ো ৌ) ends a syllable — a consonant
+ *  character that already carries one must NOT get a halant tacked on. */
+const BN_MATRA_RE = /[া-ৌ]$/u;
+
+/** Say a bare Latin word with Bengali phonemes: consonant + vowel folds into
+ *  consonant + vowel-matra, isolated vowels become full vowel letters, and a
+ *  word-final consonant gets a halant (stripped so words don't end on a dead
+ *  syllable). Reads common names the Bangla way — "Mita"→মিটা, "Rahim"→রাহিম,
+ *  "Nova"→নোভা, "Wali"→ওয়ালি, "Shyam"→শ্যাম. Unknown letters are kept as-is so
+ *  we never drop a name's letters. */
+function bnTransliterate(raw: string): string {
+  const w = raw.toLowerCase();
+  if (!/^[a-z]+$/.test(w)) return raw;
+  let out = "";
+  let i = 0;
+  let prevVowel = false;
+  while (i < w.length) {
+    const two = w.slice(i, i + 2);
+    if (BN_C.has(two)) {
+      const c = BN_C.get(two)!;
+      const after = w[i + 2];
+      if (after !== undefined && BN_V_MATRA[after] !== undefined) {
+        out += c + BN_V_MATRA[after]; // digraph + vowel → attach its matra
+        i += 3;
+      } else if (!BN_MATRA_RE.test(c)) {
+        out += c + "্"; // dead consonant (cluster / word edge)
+        i += 2;
+      } else {
+        out += c; // value already ends in a vowel-matra ("য়া", "ওয়া", "ী"…)
+        i += 2;
+      }
+      prevVowel = false;
+      continue;
+    }
+    const one = w[i];
+    if (BN_C.has(one)) {
+      const c = BN_C.get(one)!;
+      const next = w[i + 1];
+      const pair = w.slice(i + 1, i + 3);
+      if (BN_LONG_MATRA[pair] !== undefined) {
+        out += c + BN_LONG_MATRA[pair]; // "Neel"→নী, "Moon"→মু …
+        i += 3;
+      } else if (next !== undefined && BN_V_MATRA[next] !== undefined) {
+        out += c + BN_V_MATRA[next];
+        i += 2;
+      } else {
+        out += c + "্";
+        i += 1;
+      }
+      prevVowel = false;
+      continue;
+    }
+    if (BN_V_MATRA[one] !== undefined) {
+      out += BN_V_FULL[one]; // word-start / after another vowel
+      prevVowel = true;
+      i += 1;
+      continue;
+    }
+    out += one;
+    i += 1;
+  }
+  // A word never ends on a lone halant — drop it (Rahim্ → Rahim).
+  return out.replace(/্$/u, "");
+}
+
+/** Bangla number words for one digit RUN inside text ("25"→"পঁচিশ"). Decimals
+ *  say "দশমিক" ("2.5"→"দুই দশমিক পাঁচ") instead of reading a bare dot. */
+function bnDigitRun(m: string): string {
+  const [w, f] = m.split(".");
+  let s = bnNumber(parseInt(w, 10));
+  if (f) s += " দশমিক " + f.split("").map((d) => BN0[parseInt(d, 10)]).join(" ");
+  return s;
+}
+
+/** Full Bangla text normalizer for speech (#381). Runs only on Bangla text —
+ *  the glyphs the kid actually hears. Idempotent enough to be safe on lines
+ *  that already contain Bangla number words (no digits left to touch). */
+function bnNormalize(text: string): string {
+  let s = text;
+  // 1) Western digits → Bangla number words.
+  s = s.replace(/\d+(?:\.\d+)?/g, bnDigitRun);
+  // 2) Known app vocabulary → exact Bangla spelling (before Latin fallback).
+  for (const [re, bn] of BN_APP_WORDS) s = s.replace(re, bn);
+  // 3) Any remaining Latin word → Bengali-syllable pronunciation. Apostrophes
+  //    ("Moni's") are split so each piece is read separately.
+  s = s.replace(/[A-Za-z]{1,12}(?:['’][A-Za-z]{1,12})?/g, (w) =>
+    /['’]/.test(w) ? w.split(/['’]/).map(bnTransliterate).join(" ") : bnTransliterate(w)
+  );
+  // Collapse any double spaces left by the swaps.
+  return s.replace(/\s+/g, " ").trim();
+}
+
 export function speak(text: string, opts: SpeakOpts = {}) {
   if (!speechEnabled) return;
   const raw = String(text);
@@ -322,11 +452,16 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   const bnLike = /[ঀ-৿]/.test(raw);
   const lang = opts.lang ?? (bnLike ? "bn" : getAppLang());
   // Symbols → words, then never speak pure emoji / whitespace.
-  const clean = naturalize(raw, lang)
+  let clean = naturalize(raw, lang)
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (!clean) return;
+  // 🗣️ #381 — Bangla pronunciation: the neural phonemizer (espeak-ng) only
+  // reads Bangla script well. Latin words (Nova, Moni, kid names, game names)
+  // and Western digits come out garbled. Normalize BEFORE synthesis so the
+  // voice always says clear Bangla words.
+  if (lang === "bn") clean = bnNormalize(clean);
 
   // Only the LATEST speak wins (except queue mode) — stale deferred speaks
   // from a previous question are skipped, so rapid taps never stack.
