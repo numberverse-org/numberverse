@@ -225,7 +225,7 @@
 - Deferred: elder-girl voice recording  _(priority: low, deferred)_
 - Deferred: multi-device profile sync  _(priority: low, deferred)_
 - ~~Deferred: garden/pet expansion (new species)~~ ✅ #19 — PR #448: owl/cat/peacock/dragon, growth-milestone + coin gates, companion in Nova room
-- Deferred: new lands — Jungle + Polar themes  _(priority: low, deferred)_
+- ~~Deferred: new lands — Jungle + Polar themes~~ ✅ #20 — BANDS 6/7, 9 new skills, jungle/polar palettes+SVG+themes, conjuncts & heritage modes (PR pending)
 - Deferred: parent phone notifications bridge  _(priority: low, deferred)_
 - ~~Deferred: screen-reader deep support~~ ✅ #133 — merged #446
 - ~~Deferred: sound-design pack (per-land)~~ ✅ #134 — merged #445

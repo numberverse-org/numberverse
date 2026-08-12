@@ -231,7 +231,7 @@ interface SessionStep {
   gameId: string;
   scene: string;
   title: string;
-  mode?: "add" | "sub" | "vowels" | "consonants" | "family";
+  mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
   /** Run the narrated Basket Math concept-demo before the drills (add/sub). */
   teach?: boolean;
   /** Mastery-gate count: how many remediation re-runs this step has had after
@@ -1814,6 +1814,8 @@ function worldEmoji(key: string): string {
     case "river-town": return "🏞️";
     case "sky-castle": return "🏰";
     case "star-academy": return "🚀";
+    case "jungle-canopy": return "🌴";
+    case "polar-peaks": return "❄️";
     default: return "⭐";
   }
 }
@@ -1831,6 +1833,8 @@ const WORLD_LANDS: Record<
   3: { c1: "#0b3b6d", c2: "#5fb6e8", c3: "#bde8ff", c2_22: "rgba(95,182,232,0.16)", deco: ["🌊", "🐟", "🛶"] },      // River Town
   4: { c1: "#4a1f2e", c2: "#e8b0a0", c3: "#ffd9c4", c2_22: "rgba(232,176,160,0.16)", deco: ["☁️", "🏰", "🕊️"] },      // Sky Castle
   5: { c1: "#2b2350", c2: "#c4b5fd", c3: "#e6dcff", c2_22: "rgba(196,181,253,0.16)", deco: ["🚀", "⭐", "🌠"] },       // Star Academy
+  6: { c1: "#1e4d1f", c2: "#43d17c", c3: "#c8f7a9", c2_22: "rgba(67,209,124,0.16)", deco: ["🌴", "🦜", "🌿"] },        // Jungle Canopy (#20)
+  7: { c1: "#1f3a5f", c2: "#8fd3ff", c3: "#e3f4ff", c2_22: "rgba(143,211,255,0.16)", deco: ["❄️", "🐧", "🏔️"] },       // Polar Peaks (#20)
 };
 
 /** Worlds unlock by PROGRESS, not age — beat the previous world to open the next.
@@ -1951,6 +1955,9 @@ function modeForSkill(skillId: string): SessionStep["mode"] {
   if (skillId === "sub-within-10" || skillId === "sub-within-20") return "sub";
   if (skillId === "bn-benjonborno") return "consonants";
   if (skillId === "bn-family-words") return "family";
+  // #20 — Bangla conjuncts (ক্ষ ঞ্জ ঙ্ক ণ্ড): BnMatras' combine mechanic,
+  // fed a conjunct list instead of matras.
+  if (skillId === "bn-conjuncts") return "conjuncts";
   return undefined;
 }
 
@@ -3179,6 +3186,8 @@ export default function App() {
       game.scene.start(step.scene, {
         startLevelIndex,
         mode: step.mode,
+        // #20 — scenes that vary content per skill (BgsFacts heritage) read it.
+        skill: step.skillId,
         // Remediation re-runs the narrated concept demo (FruitAdd) so the wrong
         // skill is TAUGHT again, differently, before fresh easy drills.
         teach: step.teach || reteach > 0,

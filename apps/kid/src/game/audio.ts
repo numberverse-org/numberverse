@@ -187,12 +187,35 @@ const THEME_BAND5: MusicTheme = {
   bassVol: 0.06,
 };
 
+const THEME_BAND6: MusicTheme = {
+  name: "jungle-canopy",
+  melody: [587.33, 659.25, 587.33, 783.99, 880.0, 783.99, 659.25, 587.33], // rhythmic D-pentatonic patter
+  melody2: [659.25, 880.0, 987.77, 880.0, 783.99, 659.25, 587.33, 523.25],
+  bass: [146.83, 146.83, 130.81, 146.83, 98.0, 98.0, 110.0, 98.0],
+  stepDuration: 0.16,
+  vol: 0.05,
+  bassVol: 0.06,
+};
+const THEME_BAND7: MusicTheme = {
+  name: "polar-peaks",
+  melody: [783.99, 1046.5, 1174.66, 1046.5, 880.0, 1046.5, 1174.66, 1318.5], // airy bell chimes over the snow
+  melody2: [1318.5, 1174.66, 1046.5, 880.0, 783.99, 880.0, 1046.5, 1174.66],
+  bass: [130.81, 130.81, 98.0, 130.81, 87.31, 87.31, 98.0, 87.31],
+  stepDuration: 0.34,
+  vol: 0.045,
+  bassVol: 0.045,
+};
+
 export const LAND_THEMES: Record<number, MusicTheme> = {
   1: THEME_BAND1,
   2: THEME_BAND2,
   3: THEME_BAND3,
   4: THEME_BAND4,
   5: THEME_BAND5,
+  // #20 — the two new lands keep the per-land-music promise (#134): no new
+  // audio assets, just new synth themes.
+  6: THEME_BAND6,
+  7: THEME_BAND7,
 };
 
 let musicTimer: number | null = null;
@@ -211,7 +234,7 @@ let musicAutoArmed = false;
 export function setMusicTheme(bandId: number) {
   activeTheme = LAND_THEMES[bandId] ?? THEME_BAND2;
   // The win chime roots in the land's key so celebration feels "of this land".
-  landRoot = { 1: 392.0, 2: 523.25, 3: 587.33, 4: 659.25, 5: 783.99 }[bandId] ?? 523.25;
+  landRoot = { 1: 392.0, 2: 523.25, 3: 587.33, 4: 659.25, 5: 783.99, 6: 587.33, 7: 1046.5 }[bandId] ?? 523.25;
 }
 
 export function musicThemeName(): string {

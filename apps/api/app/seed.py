@@ -86,6 +86,17 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-sentences", 5, "bangla", "Bangla sentences", "বাক্য গঠন"),
     ("en-grammar", 5, "english", "Nouns & verbs", "বিশেষ্য ও ক্রিয়া"),
     ("bgs-bangladesh", 5, "bgs", "Bangladesh facts", "বাংলাদেশ পরিচিতি"),
+    # Band 6 — Jungle Canopy (fluency)
+    ("mult-fluency-6-9", 6, "math", "Times tables 6–9", "৬–৯ এর নামতা"),
+    ("divide-within-100", 6, "math", "Divide within 100", "১০০-এর মধ্যে ভাগ"),
+    ("fraction-read", 6, "math", "Read fractions", "ভগ্নাংশ পড়ি"),
+    ("clock-minute", 6, "math", "Tell time to the minute", "মিনিট ধরে ঘড়ি পড়ি"),
+    ("bn-conjuncts", 6, "bangla", "Bangla conjuncts", "যুক্তবর্ণ"),
+    # Band 7 — Polar Peaks (refinement)
+    ("decimals-tenths", 7, "math", "Decimal tenths", "দশমিকের দশক"),
+    ("percent-of-number", 7, "math", "Percent of a number", "সংখ্যার শতকরা"),
+    ("fraction-simplify", 7, "math", "Simplify fractions", "ভগ্নাংশ ছোট করি"),
+    ("bgs-heritage", 7, "bgs", "Bangladesh heritage", "বাংলাদেশের ঐতিহ্য"),
 ]
 
 
