@@ -29,6 +29,31 @@
 
 html, body, #root { height: 100%; background-color: #140a3a; }
 
+/* 🎬 Reduced motion (#350) — an accessibility preference, not a feature loss.
+   Two switches power it: the OS `prefers-reduced-motion` media query AND the
+   in-app toggle (documentElement.nv-reduce-motion). Both kill non-essential
+   CSS animation/transition so nothing bounces, pulses, or flies for a kid who
+   finds motion overwhelming. The Phaser canvas honours it separately via
+   prefersReducedMotion() in celebrate.ts / feedback.ts. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html.nv-reduce-motion *,
+html.nv-reduce-motion *::before,
+html.nv-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   /* iOS PWA: the webview can overscroll past the page and shows a strip around

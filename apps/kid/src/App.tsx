@@ -23,6 +23,7 @@ import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang } from "./game/locale";
+import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
@@ -562,6 +563,7 @@ interface Strings {
   /* settings screen — grouped sections */
   settingsSecScreen: string;
   settingsSecParents: string;
+  settingsReduceMotion: string;
   settingsMusicOff: string;
   settingsParentsHint: string;
   settingsParentsGo: string;
@@ -971,6 +973,7 @@ const STR: Record<Lang, Strings> = {
     settingsVoiceTest: "Test voice",
     settingsSecSound: "🔊 Sound & voice",
     settingsSecScreen: "🖥️ Screen",
+    settingsReduceMotion: "Reduce motion",
     settingsSecLanguage: "🌐 Language",
     settingsSecLearning: "📚 My learning",
     settingsSecParents: "👨‍👩‍👧 For parents",
@@ -1379,6 +1382,7 @@ const STR: Record<Lang, Strings> = {
     settingsVoiceTest: "ভয়েস পরীক্ষা",
     settingsSecSound: "🔊 শব্দ ও ভয়েস",
     settingsSecScreen: "🖥️ স্ক্রিন",
+    settingsReduceMotion: "কম গতি",
     settingsSecLanguage: "🌐 ভাষা",
     settingsSecLearning: "📚 আমার শেখা",
     settingsSecParents: "👨‍👩‍👧 মা-বাবার জন্য",
@@ -2228,6 +2232,11 @@ export default function App() {
   const t = STR[lang];
 
   const [fsActive, setFsActive] = useState(false);
+  // 🎬 #350 reduced motion — explicit in-app choice wins over the OS pref.
+  const [reduceMotion, setReduceMotion] = useState(() => prefersReducedMotion());
+  useEffect(() => {
+    document.documentElement.classList.toggle("nv-reduce-motion", reduceMotion);
+  }, [reduceMotion]);
   const syncState = useKidStore((s) => s.syncState);
   const syncPending = useKidStore((s) => s.pending.length);
   // 📚 KOTHA offline-queue quota — a long offline stretch can't balloon the
@@ -3792,6 +3801,24 @@ export default function App() {
                 📲 {t.install}
               </button>
             )}
+            {/* 🎬 Reduced motion — off for kids who find motion overwhelming. */}
+            <div className="settings-row-line">
+              <span className="settings-row-icon">🦋</span>
+              <span className="settings-row-label">{t.settingsReduceMotion}</span>
+              <button
+                className={`switch${reduceMotion ? " on" : ""}`}
+                role="switch"
+                aria-checked={reduceMotion}
+                aria-label={t.settingsReduceMotion}
+                onClick={() => {
+                  const next = !reduceMotion;
+                  setReduceMotion(next);
+                  setReducedMotion(next);
+                }}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
           </div>
 
           {/* 🌐 Language — two big pills, the current one is unmistakable. */}
