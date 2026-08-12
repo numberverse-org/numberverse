@@ -1,3 +1,11 @@
+## 13 Aug 2026 — 0.26.12 (rate-limit guardrail, mastery celebration, reduced-motion mode, keyboard navigation)
+
+121f021 🎨 #351 Keyboard navigation for parent area: focus-visible rings + roving-tabindex kid switcher (#414)
+2ee741c 🦋 #350 Reduced-motion mode: OS-aware + in-app toggle, gates canvas motion (#413)
+b0bb6d0 🎉 #290 Mastery confetti + spoken cheer at the instant a skill is mastered (#412)
+e9960d2 🛡️ Guardrail #274: rate-limit story + progress write endpoints (#411)
+a90078a docs: mark #409 released in 0.26.11
+
 ## 13 Aug 2026 — 0.26.11 (UI/UX polish: demo-mode-only credentials, portal spinner, localized Back)
 
 113d221 🎨 UI/UX polish: demo creds demo-mode-only, portal session spinner, localized Back labels (#410)

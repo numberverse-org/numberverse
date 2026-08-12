@@ -33,10 +33,10 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "13 Aug 2026 · 0.26.11 (UI/UX polish: demo-mode-only credentials, portal spinner, localized Back)";
+const APP_BUILD = "13 Aug 2026 · 0.26.12 (rate-limit guardrail, mastery celebration, reduced-motion mode, keyboard navigation)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.26.11";
+const APP_VERSION = "0.26.12";
 
 type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
