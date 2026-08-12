@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@numberverse/core": "workspace:*",
+    "jsqr": "^1.4.0",
     "phaser": "^3.80.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { isAllowedExternalUrl } from "@numberverse/core";
+import { isAllowedExternalUrl, SKILLS } from "@numberverse/core";
+import QRCode from "qrcode";
 import OnDeviceData from "./OnDeviceData";
 import {
   getProfile,
@@ -206,6 +207,11 @@ export default function ParentDashboard() {
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
   const [sheetBusy, setSheetBusy] = useState(false);
+  // #139 — printable flashcard QR sheet (offline-first: pure client-side codes).
+  // Each QR encodes "NV:<skillId>" — a kid scans (or types) it in the app to
+  // jump straight into that mini-game, no network needed.
+  const [qrCards, setQrCards] = useState<Array<{ skillId: string; title: string; dataUrl: string; code: string }> | null>(null);
+  const [qrBusy, setQrBusy] = useState(false);
 
   // ── account & security ──
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -389,6 +395,35 @@ export default function ParentDashboard() {
       setError("Couldn't load weak skills for the worksheet.");
     } finally {
       setSheetBusy(false);
+    }
+  }
+
+  /** #139 — build a printable QR-card sheet for the games this kid has PLAYED.
+   *  Cards are "real" (only played skills) so the deck stays small and relevant;
+   *  each QR is pure client-side (offline-first, nothing leaves the browser). */
+  async function handleQRCards() {
+    if (!token || !activeId || qrBusy) return;
+    setQrBusy(true);
+    setError(null);
+    try {
+      const mastery = await getMastery(token, activeId);
+      const played = new Set(mastery.map((m) => m.skill_id));
+      const cards: NonNullable<typeof qrCards> = [];
+      for (const s of SKILLS) {
+        if (!s.game || !played.has(s.id)) continue;
+        const code = `NV:${s.id}`;
+        cards.push({
+          skillId: s.id,
+          title: s.title,
+          dataUrl: await QRCode.toDataURL(code, { margin: 1, width: 170, errorCorrectionLevel: "M" }),
+          code,
+        });
+      }
+      setQrCards(cards);
+    } catch {
+      setError("Couldn't build the QR cards.");
+    } finally {
+      setQrBusy(false);
     }
   }
 
@@ -766,6 +801,31 @@ export default function ParentDashboard() {
             {sheet && (
               <p className="muted small" style={{ marginTop: "8px" }}>
                 {sheet.items.length} practice lines for {sheet.name} · generated {sheet.date} · tap Print for a clean A4 sheet.
+              </p>
+            )}
+          </section>
+
+          {/* #139 — printable flashcard QR sheet (offline-first) */}
+          <section className="card worksheet-card">
+            <h2>🎴 Flashcard QR cards</h2>
+            <p className="muted small">
+              Printable QR codes for the games {active.name} has played. A kid scans a card
+              (or types its code) in the app to jump straight into that mini-game — works offline.
+            </p>
+            <div className="worksheet-actions">
+              <button className="btn" disabled={qrBusy} onClick={() => void handleQRCards()}>
+                {qrBusy ? "Building…" : "🎴 Build QR cards"}
+              </button>
+              {qrCards && qrCards.length > 0 && (
+                <button className="btn ghost-btn" onClick={() => window.print()}>Print / save PDF</button>
+              )}
+              {qrCards && (
+                <button className="btn ghost-btn" onClick={() => setQrCards(null)}>Close</button>
+              )}
+            </div>
+            {qrCards && qrCards.length === 0 && (
+              <p className="muted small" style={{ marginTop: "8px" }}>
+                No games played yet — {active.name} needs a session first (mastery builds from rounds).
               </p>
             )}
           </section>
@@ -1149,6 +1209,26 @@ export default function ParentDashboard() {
             ))}
           </div>
           <p className="sheet-footer">Made with ❤️ by Numberverse for {sheet.name}</p>
+        </div>
+      )}
+
+      {/* #139 — print-only QR card sheet. Cut along the grid, scan in the app. */}
+      {qrCards && qrCards.length > 0 && (
+        <div className="print-sheet" aria-hidden="false">
+          <h1>🎴 Numberverse flashcard QR cards</h1>
+          <p className="sheet-meta">
+            {kids.find((k) => k.id === activeId)?.name ?? "My kid"} · numberverse.org · open the app → 📷 Scan a card
+          </p>
+          <div className="qr-grid">
+            {qrCards.map((c) => (
+              <div className="qr-card" key={c.skillId}>
+                <img className="qr-img" src={c.dataUrl} alt={c.title} width={140} height={140} />
+                <div className="qr-title">{c.title}</div>
+                <div className="qr-code">{c.code}</div>
+              </div>
+            ))}
+          </div>
+          <p className="sheet-footer">Cut on the dashed lines — every card opens its mini-game offline.</p>
         </div>
       )}
     </main>
