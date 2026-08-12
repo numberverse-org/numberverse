@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { t } from "./i18n";
+import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
@@ -14,6 +15,9 @@ import { ensureAssets, assetIcon } from "./svgAssets";
 const LEVELS = GAMES.find((g) => g.id === "game-fruitadd-10")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
 /** Per-skill ladders are passed in scene data (one game per skill scope — add/sub within 10
  *  and within 20 each have their own game id); this constant is only the standalone fallback. */
+/** Skill seed for framing rotation — the scene covers add+sub across bands, so
+ *  the mode drives which skill's phrasing rotates. */
+const FRAME_SEED = (mode: "add" | "sub") => (mode === "add" ? "add-within-10" : "sub-within-10");
 /** SVG fruit set — crisp on every device, identical across phones. */
 const FRUIT = ["apple", "banana", "grapes", "strawberry", "orange"];
 const FRUIT_RADIUS = 44;
@@ -83,7 +87,7 @@ export class FruitAddScene extends Phaser.Scene {
     this.meter = roundMeter(this);
     // The QUESTION is the big thing — 34px, warm, impossible to miss.
         this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t("howManyFruit"));
+    this.prompt.set(frameText("howManyFruit", FRAME_SEED(this.mode), 0));
     this.scale.on(Phaser.Scale.Events.RESIZE, () => {
       this.layout();
       this.reflow();
@@ -147,7 +151,7 @@ export class FruitAddScene extends Phaser.Scene {
       this.leftCount = Phaser.Math.Between(1, Math.max(1, this.target - 1));
       this.rightCount = this.target - this.leftCount;
       this.roundText.setText(`${t("round", { n: this.levelIndex + 1 })} · ${t("total", { n: this.target })}`);
-      this.prompt.set(t("howManyFruit"));
+      this.prompt.set(frameText("howManyFruit", FRAME_SEED(this.mode), this.levelIndex));
       speakMath("add", this.leftCount, this.rightCount, { concrete: true });
       this.basketFruit(this.leftGroup, this.leftCount);
       this.basketFruit(this.rightGroup, this.rightCount, true);
@@ -354,7 +358,7 @@ export class FruitAddScene extends Phaser.Scene {
         t2 += 700;
       }
       this.time.delayedCall(t2 + 200, () => {
-        this.prompt.set(t("howManyInAll"));
+        this.prompt.set(frameText("howManyInAll", FRAME_SEED(this.mode), this.levelIndex));
         speakMath("add", this.leftCount, this.rightCount, { concrete: true });
         this.spawnAnswers();
       });
