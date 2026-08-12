@@ -39,8 +39,9 @@ async def get_current_profile(
         if session is None or session.revoked_at is not None:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session revoked — sign in again")
         # Throttled touch: a fresh last_seen for the "active logins" list without
-        # a write on every request.
-        now = datetime.now(timezone.utc)
+        # a write on every request. Postgres returns naive TIMESTAMP columns, so
+        # compare with a naive UTC "now" (aware would TypeError on the subtract).
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         if not session.last_seen_at or (now - session.last_seen_at).total_seconds() > 300:
             session.last_seen_at = now
             await db.commit()
