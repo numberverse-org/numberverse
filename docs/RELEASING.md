@@ -69,6 +69,8 @@ fails loudly instead of pretending).
 | `api` | API compiles (`compileall`) + PII-scrubber (#266/#270) and structured error log (#124) unit tests |
 | `license-audit` | `scripts/license-audit.mjs` — every bundled dep's license in the allowlist (#271) |
 | `secret-scan` | `scripts/secret-scan.mjs` — no hardcoded-secret shapes (AWS keys, private keys, tokens) in the tracked tree (#126) |
+| `content-safety` | `scripts/content-safety.mjs` — no unsafe words in skill titles / scene strings; allowlist-able (#91) |
+| `tracker-scan` | `scripts/tracker-scan.mjs` — no ad/tracker dependency or endpoint (100% ad-free) (#92) |
 | `label` | PR title is conventional → type label |
 | **oracle** (release gate) | `scripts/team/oracle_team.py --no-page` — the 35-role standup must be CLEAN before a tag |
 
