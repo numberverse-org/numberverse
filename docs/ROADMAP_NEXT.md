@@ -221,7 +221,7 @@
 - ~~Deferred: SVG animation library evaluation~~ ✅ #321 — no lib, doc only #442
 - ~~Deferred: printable worksheet generator~~ ✅ #132 — merged #444
 - ~~Deferred: seasonal festival decor~~ ✅ #137 — merged #443
-- Deferred: AR number-camera experiment (spike)  _(priority: low, deferred)_
+- ~~Deferred: AR number-camera experiment (spike)~~ ✅ #130 — spike doc #449: on-device digit CNN (ONNX), per-script model assets
 - Deferred: elder-girl voice recording  _(priority: low, deferred)_
 - Deferred: multi-device profile sync  _(priority: low, deferred)_
 - ~~Deferred: garden/pet expansion (new species)~~ ✅ #19 — PR #448: owl/cat/peacock/dragon, growth-milestone + coin gates, companion in Nova room
