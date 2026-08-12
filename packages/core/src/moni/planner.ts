@@ -100,6 +100,32 @@ export function plan(
   // Session length hint from attention (default 12).
   const sessionLengthHint = profile.attention.fatigueThreshold ?? 12;
 
+  // Top-3 practice goals for parents: the focus first, then the next weakest
+  // skills, then anything due for spaced review — capped at 3, most urgent
+  // first. reasonCode → localized phrase in the UI; reason is the plain line.
+  const recommendations: MoniPlan["recommendations"] = [
+    { skillId: focusSkillId, reasonCode: "focus", reason: focusReason },
+  ];
+  for (const w of weak) {
+    if (recommendations.length >= 3) break;
+    if (w.id === focusSkillId) continue;
+    recommendations.push({
+      skillId: w.id,
+      reasonCode: "weak",
+      reason: `${w.reason}: ${w.skill.id} needs work.`,
+    });
+  }
+  for (const r of reviewSchedule) {
+    if (recommendations.length >= 3) break;
+    if (recommendations.some((x) => x.skillId === r.skillId)) continue;
+    recommendations.push({
+      skillId: r.skillId,
+      reasonCode: "review",
+      reason: `Brush up in ${r.inDays} days to keep it solid.`,
+      inDays: r.inDays,
+    });
+  }
+
   const summary = summarize(profile, focusSkillId, focusReason, tone, gameId, sessionLengthHint);
 
   return {
@@ -110,6 +136,7 @@ export function plan(
     tone,
     sessionLengthHint,
     reviewSchedule: reviewSchedule.slice(0, 3),
+    recommendations,
     summary,
   };
 }

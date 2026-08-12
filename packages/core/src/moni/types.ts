@@ -163,6 +163,10 @@ export interface MoniPlan {
   reviewSchedule: { skillId: string; inDays: number }[];
   /** Parent-facing summary — what Moni learned and recommends. */
   summary: string;
+  /** The next 3 skills this child should practice, newest/most urgent first.
+   *  Parent-facing, offline-safe. `reason` is a plain English line;
+   *  `reasonCode` lets the UI render a localized phrase instead. */
+  recommendations: { skillId: string; reasonCode: "focus" | "weak" | "review"; reason: string; inDays?: number }[];
 }
 
 /** Tuning constants — sane defaults, overridable. */
