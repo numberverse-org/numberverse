@@ -34,7 +34,7 @@ const APP_BUILD = "12 Aug 2026 · 0.25.0 (release train (2 since 0.24.1))";
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.25.0";
 
-type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
+type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -592,6 +592,10 @@ interface Strings {
   moniStrictnessChallenging: string;
   moniReviewGentle: string;
   moniReviewTap: (n: number) => string;
+  breakTitle: (name: string) => string;
+  breakBody: string;
+  breakRest: string;
+  breakKeepGoing: string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -948,6 +952,10 @@ const STR: Record<Lang, Strings> = {
     moniStrictnessChallenging: "Challenging",
     moniReviewGentle: "Moni says: a quick review keeps it sharp — no rush!",
     moniReviewTap: (n) => (n === 1 ? "Tap to brush up" : "Tap to brush up"),
+    breakTitle: (name) => `Stretch time, ${name}!`,
+    breakBody: "Your brain just worked super hard, and Nova is proud. A little break makes the next game even more fun!",
+    breakRest: "OK, stretch break",
+    breakKeepGoing: "I'm good — keep going!",
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1300,6 +1308,10 @@ const STR: Record<Lang, Strings> = {
     moniStrictnessChallenging: "চ্যালেঞ্জিং",
     moniReviewGentle: "মণি বলে: একটু ঝালাই করলে দারুণ লাগবে — তাড়াহুড়ো নেই!",
     moniReviewTap: (n) => (n === 1 ? "খুলে ঝালাই করো" : "খুলে ঝালাই করো"),
+    breakTitle: (name) => `বিশ্রাম নাও, ${name}!`,
+    breakBody: "তোমার মস্তিষ্ক অনেক পরিশ্রম করেছে, আর নোভা খুব গর্বিত। একটু বিশ্রাম নিলে পরের খেলাটা আরও মজার হবে!",
+    breakRest: "ঠিক আছে, একটু বিশ্রাম",
+    breakKeepGoing: "আমি ফ্রেশ — চলো, খেলি!",
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -1763,6 +1775,10 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const sessionRef = useRef<SessionStep[]>([]);
+  /** #327 — set when a finished session crossed Moni's fatigue threshold; the
+   *  completion effect routes to the gentle break screen instead of straight
+   *  to the done screen. Cleared at every session start and after a break. */
+  const breakPendingRef = useRef(false);
   /** Bump to force the playing effect to re-run the SAME step with remediation
    *  flags (reteach > 0) after the mastery gate blocks an advance. */
   const [reteachNonce, setReteachNonce] = useState(0);
@@ -2563,13 +2579,21 @@ export default function App() {
     if (next < sessionRef.current.length) {
       setSessionIdx(next);
     } else {
+      // #327 — fatigue-aware pacing: read Moni's profile BEFORE recordSession
+      // resets sessionRounds. If the session crossed the fatigue threshold, the
+      // next screen is a gentle break (never a hard stop — "keep going" is one
+      // tap away). Threshold defaults to 12 when never measured, so short
+      // sessions are never interrupted.
+      const prof = useKidStore.getState().moni?.[kid.id];
+      const threshold = prof?.attention.fatigueThreshold ?? 12;
+      breakPendingRef.current = !!prof && prof.sessionRounds >= threshold;
       if (kid) {
         novaCompleteSession(kid.id);
         recordSession(kid.id);
       }
       tada();
       cancelSpeech();
-      setTimeout(() => setScreen("done"), 400);
+      setTimeout(() => setScreen(breakPendingRef.current ? "break" : "done"), 400);
     }
   }, [roundsDone, sessionIdx, screen, kid, mistakes, recordSession, novaCompleteSession]);
 
@@ -2592,6 +2616,7 @@ export default function App() {
     reset();
     setRoundsDone(0);
     setSessionIdx(0);
+    breakPendingRef.current = false;
     sessionRef.current = sessionForWorld(skillsMap, kid.id, b.id);
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
@@ -2613,6 +2638,7 @@ export default function App() {
     reset();
     setRoundsDone(0);
     setSessionIdx(0);
+    breakPendingRef.current = false;
     sessionRef.current = [stepForSkill(skill)];
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
@@ -2637,6 +2663,7 @@ export default function App() {
     reset();
     setRoundsDone(0);
     setSessionIdx(0);
+    breakPendingRef.current = false;
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
     setScreen("playing");
@@ -4494,6 +4521,46 @@ export default function App() {
           <button className="ghost-btn nova-home-btn" onClick={goNova}><Icon name="nova" size={20} /> {t.novaMeet} · 🪙 {novaCoins}</button>
           <button className="ghost-btn" onClick={() => setScreen("worlds")}>{t.worldsBtn}</button>
           <button className="ghost-btn" onClick={() => setScreen("home")}>{t.homeBtn}</button>
+        </main>
+      </div>
+    );
+  }
+
+  /* 🧠 MONI break screen (#327) — shown AFTER a session that crossed Moni's
+     fatigue threshold. A soft pause, never a wall: Nova gently invites a
+     stretch, and "keep going" is always one tap away (never blocks forever).
+     Choosing "keep going" lands on the regular done screen so the celebration
+     + next-round button are still there. */
+  if (screen === "break" && kid) {
+    const takeBreak = () => {
+      breakPendingRef.current = false;
+      cancelSpeech();
+      setScreen("home");
+    };
+    const keepGoing = () => {
+      breakPendingRef.current = false;
+      setScreen("done");
+    };
+    return (
+      <div className="app">
+        <main className="screen break-screen">
+          <div className="break-sky" aria-hidden="true">
+            {["☁️", "☁️", "⭐", "🌤️", "🕊️", "☁️"].map((e, i) => (
+              <span key={i} className={`break-sky-float f${i}`}>{e}</span>
+            ))}
+          </div>
+          <div className="break-mascot" role="img" aria-label="Nova suggesting a break">
+            <Icon name="nova" size={96} />
+          </div>
+          <h1 className="title">{t.breakTitle(kid.name)}</h1>
+          <p className="break-body">{t.breakBody}</p>
+          <div className="break-stretch" aria-hidden="true">🧘</div>
+          <button className="big-btn break-rest-btn" onClick={takeBreak}>
+            🦉 {t.breakRest}
+          </button>
+          <button className="ghost-btn break-go-btn" onClick={keepGoing}>
+            {t.breakKeepGoing}
+          </button>
         </main>
       </div>
     );
