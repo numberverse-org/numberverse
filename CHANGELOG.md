@@ -1,3 +1,8 @@
+## 12 Aug 2026 — 0.26.2 (Bangla voice no-latin fallback + API schema-drift migrations)
+
+dc5ba13 🛡️ #388 API: idempotent column migrations — schema drift can't 502 the API (#390)
+7bb7881 🗣️ #387 Voice: never read Bangla with a non-Bangla voice (#389)
+
 ## 12 Aug 2026 — 0.26.1 (Bangla voice pronunciation fix + Google sign-in hardening + parent gate UX)
 
 d7d3bac 🎨 #383 Auth: parent gate UX — single action, show/hide password, hints (#386)
