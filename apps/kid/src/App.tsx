@@ -556,30 +556,25 @@ interface Strings {
   /* settings screen */
   settingsTitle: string;
   settingsSub: string;
-  settingsPrefs: string;
-  settingsAccount: string;
-  settingsPortalGuest: string;
-  settingsParent: string;
   settingsSyllabus: string;
-  /* guest → parent upgrade (Settings + Parent panel) */
-  settingsSigninTitle: string;
-  settingsSigninBadge: string;
-  settingsSigninSub: string;
-  settingsSigninCta: string;
   /* parent sign-out (Parent panel — parent-only, never kid-facing) */
   parentSignoutTitle: string;
   parentSignoutSub: string;
   parentSignoutCta: string;
   parentSignoutConfirm: string;
   /* about / version */
-  settingsAbout: string;
   settingsAboutSub: string;
   settingsVoice: string;
   settingsVoiceOk: (v: string) => string;
   settingsVoiceNone: string;
   settingsVoiceTest: string;
   /* settings screen — grouped sections */
-  settingsSecFamily: string;
+  settingsSecScreen: string;
+  settingsSecParents: string;
+  settingsMusicOff: string;
+  settingsParentsHint: string;
+  settingsParentsGo: string;
+  settingsParentsSignin: string;
   settingsSecSound: string;
   settingsSecLanguage: string;
   settingsSecLearning: string;
@@ -981,30 +976,26 @@ const STR: Record<Lang, Strings> = {
     syllabusDone: "All worlds",
     syllabusOpen: "What kids learn",
     settingsTitle: "Settings",
-    settingsSub: "Language, sound & voice",
-    settingsPrefs: "⚙️ Language & sound",
-    settingsAccount: "👤 Account",
-    settingsPortalGuest: "Sign in to open the Parent Portal",
-    settingsParent: "👨‍👩‍👧 Parent analytics",
+    settingsSub: "Make it yours",
     settingsSyllabus: "📚 What kids learn",
-    settingsSigninTitle: "👨‍👩‍👧 Keep progress everywhere",
-    settingsSigninBadge: "guest",
-    settingsSigninSub: "You're in guest mode — progress lives on this device only. Sign in or create a parent account to keep it on every device.",
-    settingsSigninCta: "🔓 Sign in / create parent account",
     parentSignoutTitle: "🚪 Sign out",
     parentSignoutSub: "This device will leave the parent account — local progress stays. Sign back in anytime to keep it everywhere.",
     parentSignoutCta: "Sign out",
     parentSignoutConfirm: "Tap again to confirm",
-    settingsAbout: "📦 About",
     settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
     settingsVoiceNone: "No voice found — install a voice in Settings → Accessibility → Spoken Content",
     settingsVoiceTest: "Test voice",
-    settingsSecFamily: "👨‍👩‍👧 Family",
     settingsSecSound: "🔊 Sound & voice",
+    settingsSecScreen: "🖥️ Screen",
     settingsSecLanguage: "🌐 Language",
-    settingsSecLearning: "📚 Learning",
+    settingsSecLearning: "📚 My learning",
+    settingsSecParents: "👨‍👩‍👧 For parents",
+    settingsMusicOff: "A parent turned music off for this profile.",
+    settingsParentsHint: "Progress, per-kid controls and the full portal — grown-ups only.",
+    settingsParentsGo: "Open parent area",
+    settingsParentsSignin: "Sign in as parent",
     settingsMusicRow: "Background music",
     settingsVoiceNeural: (v) => `Neural Bangla voice — ${v} (offline)`,
     settingsVoiceOff: "Reading is off",
@@ -1403,30 +1394,26 @@ const STR: Record<Lang, Strings> = {
     syllabusDone: "সব জগৎ",
     syllabusOpen: "বাচ্চারা যা শেখে",
     settingsTitle: "সেটিংস",
-    settingsSub: "ভাষা, শব্দ ও ভয়েস",
-    settingsPrefs: "⚙️ ভাষা ও শব্দ",
-    settingsAccount: "👤 অ্যাকাউন্ট",
-    settingsPortalGuest: "পোর্টাল খুলতে সাইন ইন করুন",
-    settingsParent: "👨‍👩‍👧 মা-বাবার বিশ্লেষণ",
+    settingsSub: "তোমার মতো করে বানাও",
     settingsSyllabus: "📚 বাচ্চারা যা শেখে",
-    settingsSigninTitle: "👨‍👩‍👧 সব জায়গায় শেখার খবর রাখুন",
-    settingsSigninBadge: "অতিথি",
-    settingsSigninSub: "আপনি অতিথি মোডে আছেন — শেখার খবর শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা মা-বাবার অ্যাকাউন্ট খুলুন।",
-    settingsSigninCta: "🔓 সাইন ইন / মা-বাবার অ্যাকাউন্ট খুলুন",
     parentSignoutTitle: "🚪 সাইন আউট",
     parentSignoutSub: "এই ডিভাইসটি মা-বাবার অ্যাকাউন্ট ছেড়ে যাবে — এই ডিভাইসের শেখার খবর থাকে। যেকোনো সময় আবার সাইন ইন করুন।",
     parentSignoutCta: "সাইন আউট",
     parentSignoutConfirm: "নিশ্চিত করতে আবার চাপুন",
-    settingsAbout: "📦 এই অ্যাপ সম্পর্কে",
     settingsAboutSub: "নম্বরভার্স · কৌতূহলী বাচ্চাদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
     settingsVoiceTest: "ভয়েস পরীক্ষা",
-    settingsSecFamily: "👨‍👩‍👧 পরিবার",
     settingsSecSound: "🔊 শব্দ ও ভয়েস",
+    settingsSecScreen: "🖥️ স্ক্রিন",
     settingsSecLanguage: "🌐 ভাষা",
-    settingsSecLearning: "📚 শেখা",
+    settingsSecLearning: "📚 আমার শেখা",
+    settingsSecParents: "👨‍👩‍👧 মা-বাবার জন্য",
+    settingsMusicOff: "মা-বাবা এই প্রোফাইলের জন্য মিউজিক বন্ধ করে দিয়েছেন।",
+    settingsParentsHint: "শেখার খবর, নিয়ন্ত্রণ ও পূর্ণ পোর্টাল — শুধু বড়দের জন্য।",
+    settingsParentsGo: "মা-বাবার অংশ খুলুন",
+    settingsParentsSignin: "মা-বাবা হিসেবে সাইন ইন করুন",
     settingsMusicRow: "ব্যাকগ্রাউন্ড মিউজিক",
     settingsVoiceNeural: (v) => `বাংলা ভয়েস — ${v} (অফলাইন)`,
     settingsVoiceOff: "পড়া বন্ধ",
@@ -2364,11 +2351,16 @@ export default function App() {
     setSylBand(1);
     setScreen("syllabus");
   };
-  // Upgrade path: a guest (no parent session yet) signs in from Settings /
-  // Parent panel. Their device-account kids get mapped to the parent account.
-  const openGateForUpgrade = () => {
-    gateReturn.current = "home";
-    setScreen("parentgate");
+  // 🔐 Parent-area access control — the Parent panel (analytics, portal,
+  // per-kid controls, sign-out) is grown-ups-only. A signed-in parent goes
+  // straight through; anyone else is routed to the parent gate first, so a kid
+  // can never open the panel without a parent account on this device.
+  const goParent = () => {
+    if (hasParentSession()) setScreen("parent");
+    else {
+      gateReturn.current = "parent";
+      setScreen("parentgate");
+    }
   };
   // Sign out of the parent account — revokes the session server-side, clears
   // the local parent session, then lands on the gate (guest / sign-in /
@@ -2400,11 +2392,25 @@ export default function App() {
     setAgg(await fetchAggregates());
     setAggBusy(false);
   };
-  // Refresh whenever the settings screen opens so the preview stays fresh.
+  // Refresh whenever the settings screen or parent panel opens so the preview
+  // stays fresh.
   useEffect(() => {
-    if (screen !== "settings") return;
+    if (screen !== "settings" && screen !== "parent") return;
     setAggOpted(aggregateOptIn());
     if (aggregateOptIn()) void loadAggregates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
+  // 🔐 Access control (defense in depth): the Parent panel is grown-ups-only.
+  // Every real entry point routes through goParent() (→ gate when signed out),
+  // but if ANY path — a stale deep link, a future regression — lands on the
+  // panel without a parent session, bounce straight to the gate. A kid must
+  // never see family analytics, per-kid controls, or sign-out by accident.
+  useEffect(() => {
+    if (screen === "parent" && !hasParentSession()) {
+      gateReturn.current = "parent";
+      setScreen("parentgate");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
@@ -3748,10 +3754,10 @@ export default function App() {
   }
 
   if (screen === "settings") {
-    // Live voice status — what Bangla is ACTUALLY spoken by: the on-device
-    // neural voice when ready, otherwise the best device voice (re-probed as
-    // voices load + on the test tap). The parent's per-kid reading control
-    // can also switch the whole card to "off".
+    // 🔐 Kid-facing Settings = KID controls ONLY (sound, screen, language,
+    // learning). Parent territory — portal, per-kid analytics, sign-out,
+    // aggregate insights — lives in the PARENT AREA behind goParent() (→ the
+    // parent gate when signed out). No kid should see a parent thing here.
     const neuralOn = isNeuralReady();
     const curSpk = getNeuralSpeaker();
     const spkVoice = NEURAL_VOICES.find((v) => v.id === curSpk);
@@ -3773,7 +3779,11 @@ export default function App() {
             ? t.settingsVoiceOk(tts.enPick)
             : t.settingsVoiceNone
         : t.settingsVoiceNone;
+    // Parent controls land on this screen as immutable rules: when the parent
+    // switched reading/music off for this profile, the kid sees WHY the
+    // control is stuck off — never a way to flip it back on.
     const readingOff = settings.tts_enabled === false;
+    const musicLocked = settings.music_enabled === false;
     const syncLine =
       syncState === "ok"
         ? t.settingsSyncOk
@@ -3795,150 +3805,7 @@ export default function App() {
             </div>
           </header>
 
-          {/* 👨‍👩‍👧 Family — the Parent Portal door is always one tap away.
-              Signed in → straight through (same tab, so it works inside the
-              installed PWA). Guest → sign in first, then land on the parent
-              panel where the portal is waiting. */}
-          <h3 className="settings-sec">{t.settingsSecFamily}</h3>
-          <div className="parent-card settings-portal-card">
-            <div className="parent-head">
-              <span className="parent-name">{t.parentPortalTitle}</span>
-              <span className="parent-stats">{hasParentSession() ? "✓" : t.settingsSigninBadge}</span>
-            </div>
-            <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
-            {hasParentSession() ? (
-              <a className="big-btn settings-portal-btn" href="/parent/">
-                {t.parentPortalCta} →
-              </a>
-            ) : (
-              <button
-                className="big-btn settings-portal-btn"
-                onClick={() => {
-                  gateReturn.current = "parent";
-                  setScreen("parentgate");
-                }}
-              >
-                {t.settingsPortalGuest}
-              </button>
-            )}
-          </div>
-
-          {/* In-app analytics (works for guests too) — the quick per-kid view. */}
-          <button className="ghost-btn settings-parent-btn" onClick={() => setScreen("parent")}>
-            {t.settingsParent}
-          </button>
-
-          {/* Account — guest → parent upgrade (their local kids then sync to
-              the parent's account). Signed-in parents manage the account from
-              the portal / parent panel instead. */}
-          {!hasParentSession() && (
-            <div className="parent-card settings-signin-card">
-              <div className="parent-head">
-                <span className="parent-name">{t.settingsSigninTitle}</span>
-                <span className="parent-stats">{t.settingsSigninBadge}</span>
-              </div>
-              <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
-              <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
-                {t.settingsSigninCta}
-              </button>
-            </div>
-          )}
-
-          {/* 🔭 Kotha class insights — parent opt-in + anonymized aggregate
-              preview. Signed-in parent only; the response carries zero kid
-              identity. */}
-          {hasParentSession() && (
-            <div className="parent-card settings-aggregate-card">
-              <div className="parent-head">
-                <span className="parent-name">{t.aggTitle}</span>
-                <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
-              </div>
-              <p className="syllabus-settings-sub">{t.aggSub}</p>
-
-              {!aggOpted ? (
-                <>
-                  <button
-                    className="big-btn settings-signin-btn"
-                    disabled={aggBusy}
-                    onClick={() => {
-                      setAggBusy(true);
-                      void setAggregateOptIn(true).then((ok) => {
-                        setAggBusy(false);
-                        if (ok) {
-                          setAggOpted(true);
-                          void loadAggregates();
-                        }
-                      });
-                    }}
-                  >
-                    {t.aggOptIn}
-                  </button>
-                  {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
-                </>
-              ) : (
-                <>
-                  {aggBusy && !agg ? (
-                    <p className="syllabus-settings-sub">…</p>
-                  ) : agg ? (
-                    <div className="agg-preview">
-                      <p className="agg-line">
-                        {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
-                        {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
-                      </p>
-                      {agg.top_misconceptions.length > 0 && (
-                        <p className="agg-block">
-                          <span className="agg-k">{t.aggTopMis}</span>
-                          {agg.top_misconceptions.slice(0, 3).map((m) => (
-                            <span key={m.code} className="agg-item">
-                              {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
-                            </span>
-                          ))}
-                        </p>
-                      )}
-                      {agg.top_struggle_skills.length > 0 && (
-                        <p className="agg-block">
-                          <span className="agg-k">{t.aggTopSkills}</span>
-                          {agg.top_struggle_skills.slice(0, 3).map((s) => {
-                            const sk = filterSkills.find((f) => f.id === s.skill_id);
-                            return (
-                              <span key={s.skill_id} className="agg-item">
-                                {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
-                              </span>
-                            );
-                          })}
-                        </p>
-                      )}
-                      {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
-                        <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                      )}
-                      <p className="agg-note">{t.aggPreview}</p>
-                    </div>
-                  ) : (
-                    <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                  )}
-                  <button
-                    className="ghost-btn mini agg-optout-btn"
-                    onClick={() => {
-                      setAggBusy(true);
-                      void setAggregateOptIn(false).then((ok) => {
-                        setAggBusy(false);
-                        if (ok) {
-                          setAggOpted(false);
-                          setAgg(null);
-                        }
-                      });
-                    }}
-                  >
-                    {t.aggOptOut}
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* 🔊 Sound & voice — REAL switches for the local prefs (music,
-              fullscreen), the app-install affordance, then the voice status
-              with a live test + on-device voice picker. */}
+          {/* 🔊 Sound & voice — how the app sounds, and which voice reads. */}
           <h3 className="settings-sec">{t.settingsSecSound}</h3>
           <div className="parent-card settings-card">
             <div className="settings-row-line">
@@ -3949,31 +3816,13 @@ export default function App() {
                 role="switch"
                 aria-checked={!muted}
                 aria-label={t.settingsMusicRow}
+                disabled={musicLocked}
                 onClick={() => setMuted(toggleMusicMute())}
               >
                 <span className="switch-thumb" />
               </button>
             </div>
-            {fsSupported() && (
-              <div className="settings-row-line">
-                <span className="settings-row-icon">⛶</span>
-                <span className="settings-row-label">{t.fullscreen}</span>
-                <button
-                  className={`switch${fsActive ? " on" : ""}`}
-                  role="switch"
-                  aria-checked={fsActive}
-                  aria-label={t.fullscreen}
-                  onClick={toggleFs}
-                >
-                  <span className="switch-thumb" />
-                </button>
-              </div>
-            )}
-            {installEvt && (
-              <button className="ghost-btn mini settings-install-btn" onClick={installApp}>
-                📲 {t.install}
-              </button>
-            )}
+            {musicLocked && <p className="settings-voice-note warn">{t.settingsMusicOff}</p>}
 
             <div className="settings-divider" />
 
@@ -4052,8 +3901,32 @@ export default function App() {
             </div>
           </div>
 
-          {/* 🌐 Language — a clear two-choice picker (a toggle hides the other
-              option; two big pills show exactly where the app is now). */}
+          {/* 🖥️ Screen — how the app fills the device. */}
+          <h3 className="settings-sec">{t.settingsSecScreen}</h3>
+          <div className="parent-card settings-card">
+            {fsSupported() && (
+              <div className="settings-row-line">
+                <span className="settings-row-icon">⛶</span>
+                <span className="settings-row-label">{t.fullscreen}</span>
+                <button
+                  className={`switch${fsActive ? " on" : ""}`}
+                  role="switch"
+                  aria-checked={fsActive}
+                  aria-label={t.fullscreen}
+                  onClick={toggleFs}
+                >
+                  <span className="switch-thumb" />
+                </button>
+              </div>
+            )}
+            {installEvt && (
+              <button className="ghost-btn mini settings-install-btn" onClick={installApp}>
+                📲 {t.install}
+              </button>
+            )}
+          </div>
+
+          {/* 🌐 Language — two big pills, the current one is unmistakable. */}
           <h3 className="settings-sec">{t.settingsSecLanguage}</h3>
           <div className="parent-card settings-card settings-lang-card">
             <div className="settings-lang-pills">
@@ -4074,8 +3947,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* 📚 Learning — the interactive syllabus is one tap away, with a
-              friendly line about where their progress lives. */}
+          {/* 📚 My learning — the syllabus is one tap away, plus a friendly
+              line about where progress is kept. */}
           <h3 className="settings-sec">{t.settingsSecLearning}</h3>
           <div className="parent-card settings-card">
             <button
@@ -4098,8 +3971,17 @@ export default function App() {
             )}
           </div>
 
-          {/* footer — version + build, so a parent can tell the installed PWA
-              apart from a stale home-screen icon. */}
+          {/* 👨‍👩‍👧 For parents — grown-ups only, behind the parent gate.
+              Signed in → straight to the panel; signed out → sign in first.
+              A kid tapping this gets the gate, never the analytics. */}
+          <h3 className="settings-sec settings-sec-parents">{t.settingsSecParents}</h3>
+          <div className="parent-card settings-card settings-parents-card">
+            <p className="settings-voice-note">{t.settingsParentsHint}</p>
+            <button className="big-btn settings-parents-btn" onClick={goParent}>
+              {hasParentSession() ? t.settingsParentsGo : t.settingsParentsSignin}
+            </button>
+          </div>
+
           <p className="settings-footer">
             {t.settingsAboutSub} · {APP_VERSION} · {APP_BUILD.split(" · ")[0]}
           </p>
@@ -4160,50 +4042,122 @@ export default function App() {
               </section>
 
               {/* ── The full Parent Portal door — always one tap away.
-                  Signed in → straight through (same tab, PWA-safe). Guest →
-                  sign in first, then land back here with the portal open. */}
-              {signedIn ? (
-                <a className="parent-card parent-portal-card" href={PARENT_PORTAL}>
-                  <div className="parent-head">
-                    <span className="parent-name">{t.parentPortalTitle}</span>
-                    <span className="parent-stats">{t.parentFamSessions(famSessions)}</span>
-                  </div>
-                  <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
-                  <span className="big-btn parent-portal-btn">{t.parentPortalCta}</span>
-                </a>
-              ) : (
-                <button
-                  className="parent-card parent-portal-card parent-portal-guest"
-                  onClick={() => {
-                    gateReturn.current = "parent";
-                    setScreen("parentgate");
-                  }}
-                >
-                  <div className="parent-head">
-                    <span className="parent-name">{t.parentPortalTitle}</span>
-                    <span className="parent-stats">{t.settingsSigninBadge}</span>
-                  </div>
-                  <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
-                  <span className="big-btn parent-portal-btn">{t.settingsPortalGuest}</span>
-                </button>
-              )}
+                  This panel is only reachable with a parent session (see
+                  goParent + the access-control effect), so the portal is
+                  always one tap straight through — same tab, PWA-safe. */}
+              <a className="parent-card parent-portal-card" href={PARENT_PORTAL}>
+                <div className="parent-head">
+                  <span className="parent-name">{t.parentPortalTitle}</span>
+                  <span className="parent-stats">{t.parentFamSessions(famSessions)}</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
+                <span className="big-btn parent-portal-btn">{t.parentPortalCta}</span>
+              </a>
 
               {/* ── Sign out of the parent account (device only — progress stays) ── */}
-              {signedIn && (
-                <div className="parent-card settings-signout-card">
-                  <div className="parent-head">
-                    <span className="parent-name">{t.parentSignoutTitle}</span>
-                    <span className="parent-stats">{(parentName() ?? "").slice(0, 1)}</span>
-                  </div>
-                  <p className="syllabus-settings-sub">{t.parentSignoutSub}</p>
-                  <button
-                    className={`big-btn settings-signout-btn${signoutArmed ? " armed" : ""}`}
-                    onClick={signOut}
-                  >
-                    {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
-                  </button>
+              <div className="parent-card settings-signout-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.parentSignoutTitle}</span>
+                  <span className="parent-stats">{(parentName() ?? "").slice(0, 1)}</span>
                 </div>
-              )}
+                <p className="syllabus-settings-sub">{t.parentSignoutSub}</p>
+                <button
+                  className={`big-btn settings-signout-btn${signoutArmed ? " armed" : ""}`}
+                  onClick={signOut}
+                >
+                  {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
+                </button>
+              </div>
+
+              {/* ── 🔭 Kotha class insights — parent opt-in + anonymized
+                  aggregate preview. Parent-panel only (grown-ups-only, behind
+                  the gate); the response carries zero kid identity. */}
+              <div className="parent-card settings-aggregate-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.aggTitle}</span>
+                  <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.aggSub}</p>
+
+                {!aggOpted ? (
+                  <>
+                    <button
+                      className="big-btn settings-signin-btn"
+                      disabled={aggBusy}
+                      onClick={() => {
+                        setAggBusy(true);
+                        void setAggregateOptIn(true).then((ok) => {
+                          setAggBusy(false);
+                          if (ok) {
+                            setAggOpted(true);
+                            void loadAggregates();
+                          }
+                        });
+                      }}
+                    >
+                      {t.aggOptIn}
+                    </button>
+                    {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
+                  </>
+                ) : (
+                  <>
+                    {aggBusy && !agg ? (
+                      <p className="syllabus-settings-sub">…</p>
+                    ) : agg ? (
+                      <div className="agg-preview">
+                        <p className="agg-line">
+                          {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
+                          {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
+                        </p>
+                        {agg.top_misconceptions.length > 0 && (
+                          <p className="agg-block">
+                            <span className="agg-k">{t.aggTopMis}</span>
+                            {agg.top_misconceptions.slice(0, 3).map((m) => (
+                              <span key={m.code} className="agg-item">
+                                {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
+                              </span>
+                            ))}
+                          </p>
+                        )}
+                        {agg.top_struggle_skills.length > 0 && (
+                          <p className="agg-block">
+                            <span className="agg-k">{t.aggTopSkills}</span>
+                            {agg.top_struggle_skills.slice(0, 3).map((s) => {
+                              const sk = filterSkills.find((f) => f.id === s.skill_id);
+                              return (
+                                <span key={s.skill_id} className="agg-item">
+                                  {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
+                                </span>
+                              );
+                            })}
+                          </p>
+                        )}
+                        {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
+                          <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                        )}
+                        <p className="agg-note">{t.aggPreview}</p>
+                      </div>
+                    ) : (
+                      <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                    )}
+                    <button
+                      className="ghost-btn mini agg-optout-btn"
+                      onClick={() => {
+                        setAggBusy(true);
+                        void setAggregateOptIn(false).then((ok) => {
+                          setAggBusy(false);
+                          if (ok) {
+                            setAggOpted(false);
+                            setAgg(null);
+                          }
+                        });
+                      }}
+                    >
+                      {t.aggOptOut}
+                    </button>
+                  </>
+                )}
+              </div>
 
               {/* ── Child picker: tap an avatar to switch whose analytics you see ── */}
               <div className="parent-picker" role="tablist" aria-label={t.parentTitle}>
@@ -4548,20 +4502,9 @@ export default function App() {
               )}
             </>
           )}
-          {/* Guest → parent upgrade: analytics here are on this device only;
-              sign in to keep them on every device via the parent's account. */}
-          {!signedIn && (
-            <div className="parent-card settings-signin-card">
-              <div className="parent-head">
-                <span className="parent-name">{t.settingsSigninTitle}</span>
-                <span className="parent-stats">{t.settingsSigninBadge}</span>
-              </div>
-              <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
-              <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
-                {t.settingsSigninCta}
-              </button>
-            </div>
-          )}
+          {/* This panel is grown-ups-only (session required to enter), so the
+              old guest-upgrade card is gone — a parent is always signed in
+              here. */}
           <VoiceCheck t={t} />
           <button className="ghost-btn" onClick={() => setScreen("settings")}>
             ⚙️ {t.settingsTitle}

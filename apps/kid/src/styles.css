@@ -3761,11 +3761,7 @@ body {
 }
 .gate-syllabus-link { margin-top: 2px; }
 
-/* ── guest → parent upgrade card (Settings + Parent panel) ─────────────── */
-.settings-signin-card {
-  border-color: rgba(255, 209, 102, 0.35);
-  background: linear-gradient(135deg, rgba(255, 209, 102, 0.08), rgba(255, 255, 255, 0.03));
-}
+/* Full-width in-card action button (parent panel aggregate opt-in etc.) */
 .settings-signin-btn { width: 100%; margin-top: 2px; }
 
 /* ── parent sign-out card (Settings) ───────────────────────────────────── */
@@ -4095,13 +4091,8 @@ body {
   color: #8fb8d8;
 }
 .settings-sec:first-of-type { margin-top: 8px; }
-/* Parent Portal door — accent border + full-width button so it's the first
-   thing a parent sees, not a footnote buried under the settings cards. */
-.settings-portal-card { border-color: rgba(76, 201, 240, 0.45); background: rgba(76, 201, 240, 0.08); }
-.settings-portal-btn { width: 100%; text-align: center; text-decoration: none; box-sizing: border-box; }
-.settings-parent-btn { width: 100%; margin-top: 14px; }
 
-/* 🔭 #330 Kotha class insights (settings card) */
+/* 🔭 #330 Kotha class insights — lives in the (session-gated) parent panel. */
 .settings-aggregate-card { border-color: rgba(124, 232, 210, 0.25); }
 .agg-preview { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
 .agg-line { font-size: 12.5px; color: #e6fffa; font-weight: 700; }
@@ -4217,3 +4208,28 @@ body {
   color: #6c86a5;
   line-height: 1.5;
 }
+/* 🔐 "For parents" zone — visually apart from the kid controls: a dashed
+   grown-ups divider, slightly different tint, and a lock-accent button. The
+   entry itself is gated (goParent → parent gate when signed out). */
+.settings-sec-parents {
+  margin-top: 22px;
+  color: #c3a26b;
+  border-top: 1px dashed rgba(255, 209, 102, 0.35);
+  padding-top: 14px;
+}
+.settings-parents-card {
+  border-color: rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.05);
+}
+.settings-parents-btn {
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+/* Disabled switches (parent-locked control, e.g. music off) — clearly stuck
+   off, never tappable, and the label underneath explains WHY. */
+.switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.switch:disabled .switch-thumb { box-shadow: none; }
