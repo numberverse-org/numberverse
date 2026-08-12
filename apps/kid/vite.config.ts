@@ -49,6 +49,13 @@ export default defineConfig({
         // offline — keep it out of the precache so it doesn't burn install bytes.
         globIgnores: ["**/og-card.png"],
         navigateFallback: "/index.html",
+        // CRITICAL — the kid SW's scope is "/", so its navigation fallback would
+        // intercept EVERY path on this origin and serve the game's index.html —
+        // including the sibling apps (/parent portal, /admin console). Without
+        // this denylist a parent navigating to the portal in a browser with the
+        // installed PWA sees the GAME, not the portal. Let these namespaces fall
+        // through to the network (nginx serves the real static exports).
+        navigateFallbackDenylist: [/^\/parent\//, /^\/admin\//],
         // The app never fetches remote data (local-first), so precache is all
         // we need — EXCEPT the on-device neural Bangla voice. The piper
         // phonemizer + model are way over the precache size cap (6MB), so they
