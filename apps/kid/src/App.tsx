@@ -13,8 +13,8 @@ import {
   type Band,
   type Skill,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult, type MistakeState } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, type KidSettings } from "./api";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState } from "./store";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
@@ -236,6 +236,7 @@ interface Strings {
   syncOk: string;
   syncSyncing: string;
   syncOffline: string;
+  storyQueueNote: (n: number) => string;
   syncError: string;
   pickKid: string;
   switchKid: (avatar: string, name: string) => string;
@@ -602,6 +603,7 @@ const STR: Record<Lang, Strings> = {
     syncSyncing: "Syncing…",
     syncOffline: "Offline — progress saved on device",
     syncError: "Sync hiccup — will retry",
+    storyQueueNote: (n) => `${n} learning moments saved on this device — they'll reach the cloud when you're online 📚`,
     pickKid: "👶 Pick your kid",
     switchKid: (a, n) => `${a} ${n} — switch kid`,
     parentZone: "👨‍👩‍👧 Parent Zone",
@@ -935,6 +937,7 @@ const STR: Record<Lang, Strings> = {
     syncSyncing: "সিঙ্ক হচ্ছে…",
     syncOffline: "অফলাইন — অগ্রগতি ডিভাইসে সংরক্ষিত",
     syncError: "সিঙ্কে সমস্যা — আবার চেষ্টা হবে",
+    storyQueueNote: (n) => `${n}টি শেখার মুহূর্ত এই ডিভাইসে সংরক্ষিত — অনলাইন হলে ক্লাউডে পৌঁছে যাবে 📚`,
     pickKid: "👶 বাচ্চা বাছাই করুন",
     switchKid: (a, n) => `${a} ${n} — পরিবর্তন করুন`,
     parentZone: "👨‍👩‍👧 অভিভাবক অঞ্চল",
@@ -1820,6 +1823,13 @@ export default function App() {
   const [fsActive, setFsActive] = useState(false);
   const syncState = useKidStore((s) => s.syncState);
   const syncPending = useKidStore((s) => s.pending.length);
+  // 📚 KOTHA offline-queue quota — a long offline stretch can't balloon the
+  // story queue: once it hits the cap we eagerly drain (best-effort; nothing is
+  // ever dropped before the server confirms it). Count is surfaced in the UI.
+  const storyPending = useKidStore((s) => s.stories.length);
+  useEffect(() => {
+    if (storyPending >= STORY_QUEUE_CAP) drainStoriesIfFull();
+  }, [storyPending]);
   // Offline-first cue: the service worker has fully installed (page now served
   // from cache) → the app genuinely works with NO network.
   const [swActive, setSwActive] = useState(false);
@@ -3217,7 +3227,7 @@ export default function App() {
             </div>
             <div
               className={`sync-pill sync-${syncState}`}
-              title={`${syncPending} pending · ${t.syncIdle}`}
+              title={`${syncPending} rounds · ${storyPending} stories · ${t.syncIdle}`}
             >
               {syncState === "ok"
                 ? t.syncOk
@@ -3228,7 +3238,11 @@ export default function App() {
                     : syncState === "error"
                       ? t.syncError
                       : t.syncIdle}
+              {storyPending > 0 && <span className="sync-pill-count">📚 {storyPending}</span>}
             </div>
+            {storyPending >= 20 && (
+              <p className="story-queue-note" role="status">{t.storyQueueNote(storyPending)}</p>
+            )}
           </div>
 
           {/* 🔊 TTS check on every run lives here — status + a live test. */}

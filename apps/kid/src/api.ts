@@ -1,4 +1,4 @@
-import { useKidStore, type KothaStory, type RoundResult, type SyncEvent } from "./store";
+import { useKidStore, STORY_QUEUE_CAP, type KothaStory, type RoundResult, type SyncEvent } from "./store";
 
 /**
  * API base. Resolution order:
@@ -422,6 +422,16 @@ export async function syncStories(): Promise<void> {
     useKidStore.getState().setSyncState("offline");
   } finally {
     storySyncing = false;
+  }
+}
+
+/** 📚 KOTHA OFFLINE-QUOTA (#334) — when the local story queue hits its cap,
+ *  eagerly drain it. Best-effort: if we're offline the heartbeat keeps retrying
+ *  and the queue stays intact (never dropped before a confirmed send). */
+export function drainStoriesIfFull(): void {
+  const { stories, syncState } = useKidStore.getState();
+  if (stories.length >= STORY_QUEUE_CAP && syncState !== "syncing") {
+    void syncStories();
   }
 }
 

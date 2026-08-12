@@ -118,6 +118,12 @@ export const PET_GROW_MASTERY = 0.3; // each newly mastered skill
 export const PET_GROW_FEED = 0.2; // feeding it, once daily
 export const PET_MAX_STAGE = 3; // 🥚 → 🐣 → 🦉 → 🦉(wise)
 
+/** 📚 KOTHA offline-queue quota (#334). A long offline stretch can't balloon
+ *  storage past this many unsent learning stories. It's a HIGH-WATER MARK that
+ *  triggers an eager drain — it never deletes: stories are only removed by
+ *  `clearStories` AFTER the server confirms them (no data loss before drain). */
+export const STORY_QUEUE_CAP = 300;
+
 export interface NovaState {
   coins: number;
   totalEarned: number;
