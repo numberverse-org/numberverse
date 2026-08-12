@@ -69,6 +69,15 @@ async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_
     return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
 
 
+@router.get("/google/status")
+async def google_status():
+    """Public: whether Google sign-in is configured on THIS server. The kid
+    app checks this before showing its Google button — a frontend baked with
+    VITE_GOOGLE_CLIENT_ID but a backend whose env lacks NV_GOOGLE_CLIENT_ID
+    would otherwise render a button that 501s on every tap (#382)."""
+    return {"enabled": bool(settings.google_client_id)}
+
+
 @router.post("/google", response_model=TokenOut)
 async def google_auth(body: GoogleAuthIn, request: Request, db: AsyncSession = Depends(get_db)):
     """Sign in / create an account with a Google ID token (Google Identity

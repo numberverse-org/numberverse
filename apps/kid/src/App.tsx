@@ -521,6 +521,7 @@ interface Strings {
   gateContinue: string;
   gateGoogleOr: string;
   gateErrorGoogle: string;
+  gateGoogleGone: string;
   /* first-time welcome (language pick on top, then guest-vs-sign-in) */
   welcomeTitle: string;
   welcomeSub: string;
@@ -929,6 +930,7 @@ const STR: Record<Lang, Strings> = {
     gateContinue: "Start learning →",
     gateGoogleOr: "or continue with email",
     gateErrorGoogle: "Google sign-in didn't work — try email or guest instead.",
+    gateGoogleGone: "Google sign-in isn't available right now — email below works too.",
     welcomeTitle: "Welcome to Numberverse",
     welcomeSub: "Pick a language — the whole app will speak it. You can change it anytime in Settings.",
     welcomeLangLabel: "Choose your language",
@@ -1331,6 +1333,7 @@ const STR: Record<Lang, Strings> = {
     gateContinue: "শেখা শুরু করুন →",
     gateGoogleOr: "অথবা ইমেইল দিয়ে চালিয়ে যান",
     gateErrorGoogle: "Google সাইন ইন কাজ করেনি — বদলে ইমেইল বা অতিথি চেষ্টা করুন।",
+    gateGoogleGone: "Google সাইন ইন এখন পাওয়া যাচ্ছে না — নিচের ইমেইলও ঠিক কাজ করবে।",
     welcomeTitle: "নম্বরভার্সে স্বাগতম",
     welcomeSub: "একটি ভাষা বেছে নিন — পুরো অ্যাপ সেই ভাষাতেই কথা বলবে। যেকোনো সময় সেটিংসে বদলাতে পারবেন।",
     welcomeLangLabel: "আপনার ভাষা চয়ন করুন",
@@ -3087,7 +3090,7 @@ export default function App() {
             {googleEnabled() && (
               <>
                 <div className="gate-google">
-                  <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} />
+                  <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} />
                 </div>
                 <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
               </>
