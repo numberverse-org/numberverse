@@ -1,3 +1,8 @@
+## 13 Aug 2026 — 0.26.11 (UI/UX polish: demo-mode-only credentials, portal spinner, localized Back)
+
+113d221 🎨 UI/UX polish: demo creds demo-mode-only, portal session spinner, localized Back labels (#410)
+caa3b86 docs: mark #407 released in 0.26.10
+
 ## 13 Aug 2026 — 0.26.10 (Parent-area cleanup: no Class Insights, one parent page, portal auth gate)
 
 8e5c5af 👨‍👩‍👧 Parent-area cleanup: no Class Insights on user face, ONE parent page, real portal security (#408)
