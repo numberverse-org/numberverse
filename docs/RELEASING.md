@@ -44,7 +44,7 @@ smoke test. That's the point.
 | `build-core` | `packages/core` compiles (choke point for the next two) |
 | `typecheck-kid` | kid app `tsc --noEmit` (needs core/dist) |
 | `audit` | `apps/kid/scripts/audit.mjs` — i18n EN/BN parity, catalog integrity, scope/sequence guards, no console.log in shipped code (#268) |
-| `api` | API compiles (`compileall`) + PII-scrubber unit tests (#266/#270) |
+| `api` | API compiles (`compileall`) + PII-scrubber (#266/#270) and structured error log (#124) unit tests |
 | `license-audit` | `scripts/license-audit.mjs` — every bundled dep's license in the allowlist (#271) |
 | `secret-scan` | `scripts/secret-scan.mjs` — no hardcoded-secret shapes (AWS keys, private keys, tokens) in the tracked tree (#126) |
 | `label` | PR title is conventional → type label |

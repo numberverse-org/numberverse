@@ -89,6 +89,8 @@ jobs:
         run: python3 -m compileall -q apps/api/app
       - name: API unit tests (PII scrubber)
         run: python3 apps/api/tests/test_scrub.py
+      - name: API unit tests (structured error log #124)
+        run: python3 apps/api/tests/test_errorlog.py
 
   license-audit:
     name: license-audit
