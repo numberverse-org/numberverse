@@ -9,7 +9,7 @@ from .config import settings
 from .db import SessionLocal
 from .embeddings import embed_stories
 from .errorlog import install as install_errorlog
-from .routers import admin, auth, content, kids, progress
+from .routers import admin, auth, content, export, kids, progress
 from .scrub import ScrubFilter
 from .seed import create_tables, seed
 
@@ -81,6 +81,7 @@ app.include_router(auth.router)
 app.include_router(kids.router)
 app.include_router(progress.router)
 app.include_router(content.router)
+app.include_router(export.router)
 app.include_router(admin.router)
 
 
