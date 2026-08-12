@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { isAllowedExternalUrl } from "@numberverse/core";
+import OnDeviceData from "./OnDeviceData";
 import {
   getProfile,
   getKids,
@@ -1057,6 +1058,9 @@ export default function ParentDashboard() {
               )}
             </div>
           </section>
+
+          {/* ── #262 on-device data review (localStorage, offline) ── */}
+          <OnDeviceData />
         </>
       )}
 
