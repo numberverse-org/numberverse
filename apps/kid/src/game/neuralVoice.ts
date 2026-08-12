@@ -70,9 +70,9 @@ let synthToken = 0;
  *  then it plays programmatically forever after. */
 let audio: HTMLAudioElement | null = null;
 let audioUrl: string | null = null;
-let currentPlayResolve: ((ok: boolean) => void) | null = null;
+let currentPlayResolve: ((outcome: NeuralOutcome) => void) | null = null;
 /** Chain for queue mode (counting 1,2,3…): each queued synth waits its turn. */
-let queueChain: Promise<boolean> = Promise.resolve(true);
+let queueChain: Promise<NeuralOutcome> = Promise.resolve("played");
 /** Chain so worker jobs serialize (the worker runs one init at a time). */
 let jobChain: Promise<void> = Promise.resolve();
 let preloadStarted = false;
@@ -309,6 +309,20 @@ function synthNow(text: string, spk: number): Promise<Blob> {
 
 /* ──────────────────────────────── playback ──────────────────────────────── */
 
+/**
+ * What happened to one neural line. speech.ts needs to know WHY a line did not
+ * play, because the right reaction differs:
+ *  - "played"      → audio actually played to completion.
+ *  - "failed"      → genuine failure (voice not ready, synth error, iOS audio
+ *                    still locked) → speech.ts SHOULD fall back to Web Speech
+ *                    so Bangla is never silent.
+ *  - "superseded"  → a NEWER line took over (another neuralSpeak bumped
+ *                    synthToken, or webSpeak's neuralCancel fired). Falling
+ *                    back here would make BOTH engines speak the old line at
+ *                    once — the exact double-TTS bug. Never fall back.
+ */
+export type NeuralOutcome = "played" | "failed" | "superseded";
+
 function sharedAudio(): HTMLAudioElement {
   if (!audio) {
     audio = new Audio();
@@ -317,12 +331,31 @@ function sharedAudio(): HTMLAudioElement {
   return audio;
 }
 
-/** Play a WAV blob through the shared element. Resolves TRUE only when audio
- *  actually played to completion; FALSE on error / iOS rejecting play() (element
- *  not unlocked by a gesture). speech.ts falls back to Web Speech on FALSE, so
- *  a locked iOS audio element can never cause silence. Cancellation via
- *  neuralStopPlayback() resolves FALSE so chains never stall. */
-function playBlob(blob: Blob, volume: number): Promise<boolean> {
+/** Stop any in-flight Web Speech line (the OTHER engine). Cross-engine
+ *  latest-wins: webSpeak() already cancels neural before it speaks; this is
+ *  the mirror direction, so a neural line never starts while a Web Speech line
+ *  is still audible (English line → Bangla line used to make BOTH speak).
+ *  Only called in playBlob — right before neural audio actually starts — so a
+ *  neural line that never plays (superseded mid-synth) leaves web speech alone. */
+function stopWebSpeech() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.resume?.(); // clear a paused state so we don't queue
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+/** Play a WAV blob through the shared element. Resolves "played" only when
+ *  audio actually played to completion; "failed" on error / iOS rejecting
+ *  play() (element not unlocked by a gesture) — speech.ts falls back to Web
+ *  Speech on "failed", so a locked iOS audio element can never cause silence.
+ *  Cancellation via neuralStopPlayback() resolves "superseded" (a newer line
+ *  took over) so chains never stall AND the old line never falls back. */
+function playBlob(blob: Blob, volume: number): Promise<NeuralOutcome> {
+  stopWebSpeech(); // the newest line wins across BOTH engines — kill web before we play
   const el = sharedAudio();
   if (audioUrl) URL.revokeObjectURL(audioUrl);
   audioUrl = URL.createObjectURL(blob);
@@ -331,21 +364,21 @@ function playBlob(blob: Blob, volume: number): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
     currentPlayResolve = resolve;
-    const done = (ok: boolean) => {
+    const done = (outcome: NeuralOutcome) => {
       if (settled) return;
       settled = true;
       if (currentPlayResolve === resolve) currentPlayResolve = null;
       el.removeEventListener("ended", onEnd);
       el.removeEventListener("error", onErr);
-      resolve(ok);
+      resolve(outcome);
     };
-    const onEnd = () => done(true); // played to completion
-    const onErr = () => done(false); // decode/playback error
+    const onEnd = () => done("played"); // played to completion
+    const onErr = () => done("failed"); // decode/playback error
     el.addEventListener("ended", onEnd);
     el.addEventListener("error", onErr);
     el.play().then(() => {
       audioUnlocked = true; // play() started → iOS has unlocked this element
-    }, () => done(false)); // iOS rejection (pre-gesture) → report failure
+    }, () => done("failed")); // iOS rejection (pre-gesture) → report failure
   });
 }
 
@@ -353,7 +386,7 @@ function playBlob(blob: Blob, volume: number): Promise<boolean> {
 let audioUnlocked = false;
 
 function neuralStopPlayback() {
-  if (currentPlayResolve) currentPlayResolve(false); // canceled → not played
+  if (currentPlayResolve) currentPlayResolve("superseded"); // canceled → a newer line took over, never fall back
   currentPlayResolve = null;
   if (audio) {
     try {
@@ -763,13 +796,15 @@ export interface NeuralSpeakOpts {
 }
 
 /** Speak one Bangla line with the on-device neural voice. Latest-wins (unless
- *  queue mode). Resolves TRUE if audio actually played, FALSE on any failure
- *  (model not ready, synth error, superseded, or iOS audio still locked) — the
- *  caller (speech.ts) falls back to Web Speech on FALSE, so Bangla is never
- *  silent even on a locked iOS audio element. `opts.speaker` previews a
- *  specific voice without changing the persistent selection. */
-export function neuralSpeak(text: string, opts: NeuralSpeakOpts = {}): Promise<boolean> {
-  if (!isNeuralReady()) return Promise.resolve(false);
+ *  queue mode). Resolves "played" if audio actually played; "failed" on a
+ *  GENUINE failure (model not ready, synth error, iOS audio still locked) —
+ *  the caller (speech.ts) falls back to Web Speech on "failed", so Bangla is
+ *  never silent even on a locked iOS audio element; "superseded" when a newer
+ *  line took over (another neuralSpeak, or webSpeak's neuralCancel) — the
+ *  caller must NOT fall back then, or BOTH engines speak at once.
+ *  `opts.speaker` previews a specific voice without changing the selection. */
+export function neuralSpeak(text: string, opts: NeuralSpeakOpts = {}): Promise<NeuralOutcome> {
+  if (!isNeuralReady()) return Promise.resolve("failed");
   const vol = opts.volume ?? 0.9;
   const spk = opts.speaker ?? speakerId;
   if (opts.queue) {
@@ -778,16 +813,16 @@ export function neuralSpeak(text: string, opts: NeuralSpeakOpts = {}): Promise<b
     queueChain = queueChain
       .then(() => getBlobFor(text, spk)) // cache-hit skips synth entirely
       .then(
-        (b) => (token !== synthToken ? false : playBlob(b, vol)),
-        () => false // synth/cache error → let the caller fall back
+        (b) => (token !== synthToken ? "superseded" : playBlob(b, vol)),
+        () => "failed" // synth/cache error → the caller may fall back
       );
     return queueChain;
   }
   const token = ++synthToken;
   neuralStopPlayback();
   return getBlobFor(text, spk).then(
-    (b) => (token !== synthToken ? false : playBlob(b, vol)),
-    () => false
+    (b) => (token !== synthToken ? "superseded" : playBlob(b, vol)),
+    () => "failed"
   );
 }
 

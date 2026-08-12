@@ -578,6 +578,21 @@ interface Strings {
   settingsVoiceOk: (v: string) => string;
   settingsVoiceNone: string;
   settingsVoiceTest: string;
+  /* settings screen — grouped sections */
+  settingsSecFamily: string;
+  settingsSecSound: string;
+  settingsSecLanguage: string;
+  settingsSecLearning: string;
+  settingsMusicRow: string;
+  settingsVoiceNeural: (v: string) => string;
+  settingsVoiceOff: string;
+  settingsReadingOff: string;
+  settingsVoiceDownload: (pct: number) => string;
+  settingsSyncOk: string;
+  settingsSyncWorking: string;
+  settingsSyncOffline: string;
+  settingsSyncError: string;
+  settingsSyncIdle: string;
   starsTotal: (n: number) => string;
   points: (n: number) => string;
   sessions: (n: number) => string;
@@ -986,6 +1001,20 @@ const STR: Record<Lang, Strings> = {
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
     settingsVoiceNone: "No voice found — install a voice in Settings → Accessibility → Spoken Content",
     settingsVoiceTest: "Test voice",
+    settingsSecFamily: "👨‍👩‍👧 Family",
+    settingsSecSound: "🔊 Sound & voice",
+    settingsSecLanguage: "🌐 Language",
+    settingsSecLearning: "📚 Learning",
+    settingsMusicRow: "Background music",
+    settingsVoiceNeural: (v) => `Neural Bangla voice — ${v} (offline)`,
+    settingsVoiceOff: "Reading is off",
+    settingsReadingOff: "A parent turned reading off — ask them to turn it back on.",
+    settingsVoiceDownload: (pct) => `Downloading Bangla voice… ${pct}%`,
+    settingsSyncOk: "✓ All stories saved on this device",
+    settingsSyncWorking: "Saving stories…",
+    settingsSyncOffline: "Not connected — stories stay on this device",
+    settingsSyncError: "Couldn't save — I'll try again",
+    settingsSyncIdle: "Ready — stories save as you play",
     starsTotal: (n) => `${n} stars earned`,
     points: (n) => `${n} points`,
     sessions: (n) => `${n} sessions`,
@@ -1394,6 +1423,20 @@ const STR: Record<Lang, Strings> = {
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
     settingsVoiceTest: "ভয়েস পরীক্ষা",
+    settingsSecFamily: "👨‍👩‍👧 পরিবার",
+    settingsSecSound: "🔊 শব্দ ও ভয়েস",
+    settingsSecLanguage: "🌐 ভাষা",
+    settingsSecLearning: "📚 শেখা",
+    settingsMusicRow: "ব্যাকগ্রাউন্ড মিউজিক",
+    settingsVoiceNeural: (v) => `বাংলা ভয়েস — ${v} (অফলাইন)`,
+    settingsVoiceOff: "পড়া বন্ধ",
+    settingsReadingOff: "মা-বাবা পড়া বন্ধ করে দিয়েছেন — আবার চালাতে তাদের বলুন।",
+    settingsVoiceDownload: (pct) => `বাংলা ভয়েস ডাউনলোড হচ্ছে… ${pct}%`,
+    settingsSyncOk: "✓ সব শেখার খবর এই ডিভাইসে সংরক্ষিত",
+    settingsSyncWorking: "শেখার খবর সংরক্ষণ হচ্ছে…",
+    settingsSyncOffline: "নেট সংযোগ নেই — শেখার খবর এই ডিভাইসেই থাকবে",
+    settingsSyncError: "সংরক্ষণ করা যায়নি — আবার চেষ্টা করব",
+    settingsSyncIdle: "প্রস্তুত — খেললেই শেখার খবর সংরক্ষিত হবে",
     starsTotal: (n) => `${n}টি তারা অর্জন`,
     points: (n) => `${n} পয়েন্ট`,
     sessions: (n) => `${n}টি সেশন`,
@@ -3705,11 +3748,42 @@ export default function App() {
   }
 
   if (screen === "settings") {
-    const voiceLine = tts && tts.available
-      ? tts.bnPick
-        ? t.settingsVoiceOk(tts.bnPick)
-        : t.settingsVoiceOk(tts.enPick ?? t.settingsVoiceTest)
-      : t.settingsVoiceNone;
+    // Live voice status — what Bangla is ACTUALLY spoken by: the on-device
+    // neural voice when ready, otherwise the best device voice (re-probed as
+    // voices load + on the test tap). The parent's per-kid reading control
+    // can also switch the whole card to "off".
+    const neuralOn = isNeuralReady();
+    const curSpk = getNeuralSpeaker();
+    const spkVoice = NEURAL_VOICES.find((v) => v.id === curSpk);
+    const spkLabel = spkVoice
+      ? spkVoice.key === "female"
+        ? t.voicePickFemale
+        : spkVoice.key === "kid"
+          ? t.voicePickKid
+          : spkVoice.key === "soft"
+            ? t.voicePickSoft
+            : t.voicePickWarm
+      : t.voicePickWarm;
+    const voiceLine = neuralOn
+      ? t.settingsVoiceNeural(spkLabel)
+      : tts && tts.available
+        ? tts.bnPick
+          ? t.settingsVoiceOk(tts.bnPick)
+          : tts.enPick
+            ? t.settingsVoiceOk(tts.enPick)
+            : t.settingsVoiceNone
+        : t.settingsVoiceNone;
+    const readingOff = settings.tts_enabled === false;
+    const syncLine =
+      syncState === "ok"
+        ? t.settingsSyncOk
+        : syncState === "syncing"
+          ? t.settingsSyncWorking
+          : syncState === "offline"
+            ? t.settingsSyncOffline
+            : syncState === "error"
+              ? t.settingsSyncError
+              : t.settingsSyncIdle;
     return (
       <div className="app">
         <main className="screen worlds parent-screen">
@@ -3721,10 +3795,11 @@ export default function App() {
             </div>
           </header>
 
-          {/* 🖥️ Parent Portal — the door to the full portal, always one tap
-              from Settings. Signed in → straight through (same tab, so it
-              works inside the installed PWA). Guest → sign in first, then
-              land on the parent panel where the portal is waiting. */}
+          {/* 👨‍👩‍👧 Family — the Parent Portal door is always one tap away.
+              Signed in → straight through (same tab, so it works inside the
+              installed PWA). Guest → sign in first, then land on the parent
+              panel where the portal is waiting. */}
+          <h3 className="settings-sec">{t.settingsSecFamily}</h3>
           <div className="parent-card settings-portal-card">
             <div className="parent-head">
               <span className="parent-name">{t.parentPortalTitle}</span>
@@ -3748,82 +3823,261 @@ export default function App() {
             )}
           </div>
 
-          {/* ⚙️ Language & sound — one row of quick toggles + live sync status */}
-          <div className="parent-card">
-            <div className="parent-head">
-              <span className="parent-name">{t.settingsPrefs}</span>
-              <span className="parent-stats">{syncState === "ok" ? t.syncOk : t.syncIdle}</span>
-            </div>
-            <div className="row settings-row">
-              <button
-                className="ghost-btn lang-toggle"
-                onClick={() => setLang((l) => (l === "en" ? "bn" : "en"))}
-                aria-label="Switch language"
-              >
-                {t.langLabel}
+          {/* In-app analytics (works for guests too) — the quick per-kid view. */}
+          <button className="ghost-btn settings-parent-btn" onClick={() => setScreen("parent")}>
+            {t.settingsParent}
+          </button>
+
+          {/* Account — guest → parent upgrade (their local kids then sync to
+              the parent's account). Signed-in parents manage the account from
+              the portal / parent panel instead. */}
+          {!hasParentSession() && (
+            <div className="parent-card settings-signin-card">
+              <div className="parent-head">
+                <span className="parent-name">{t.settingsSigninTitle}</span>
+                <span className="parent-stats">{t.settingsSigninBadge}</span>
+              </div>
+              <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
+              <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
+                {t.settingsSigninCta}
               </button>
+            </div>
+          )}
+
+          {/* 🔭 Kotha class insights — parent opt-in + anonymized aggregate
+              preview. Signed-in parent only; the response carries zero kid
+              identity. */}
+          {hasParentSession() && (
+            <div className="parent-card settings-aggregate-card">
+              <div className="parent-head">
+                <span className="parent-name">{t.aggTitle}</span>
+                <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
+              </div>
+              <p className="syllabus-settings-sub">{t.aggSub}</p>
+
+              {!aggOpted ? (
+                <>
+                  <button
+                    className="big-btn settings-signin-btn"
+                    disabled={aggBusy}
+                    onClick={() => {
+                      setAggBusy(true);
+                      void setAggregateOptIn(true).then((ok) => {
+                        setAggBusy(false);
+                        if (ok) {
+                          setAggOpted(true);
+                          void loadAggregates();
+                        }
+                      });
+                    }}
+                  >
+                    {t.aggOptIn}
+                  </button>
+                  {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
+                </>
+              ) : (
+                <>
+                  {aggBusy && !agg ? (
+                    <p className="syllabus-settings-sub">…</p>
+                  ) : agg ? (
+                    <div className="agg-preview">
+                      <p className="agg-line">
+                        {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
+                        {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
+                      </p>
+                      {agg.top_misconceptions.length > 0 && (
+                        <p className="agg-block">
+                          <span className="agg-k">{t.aggTopMis}</span>
+                          {agg.top_misconceptions.slice(0, 3).map((m) => (
+                            <span key={m.code} className="agg-item">
+                              {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                      {agg.top_struggle_skills.length > 0 && (
+                        <p className="agg-block">
+                          <span className="agg-k">{t.aggTopSkills}</span>
+                          {agg.top_struggle_skills.slice(0, 3).map((s) => {
+                            const sk = filterSkills.find((f) => f.id === s.skill_id);
+                            return (
+                              <span key={s.skill_id} className="agg-item">
+                                {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
+                              </span>
+                            );
+                          })}
+                        </p>
+                      )}
+                      {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
+                        <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                      )}
+                      <p className="agg-note">{t.aggPreview}</p>
+                    </div>
+                  ) : (
+                    <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                  )}
+                  <button
+                    className="ghost-btn mini agg-optout-btn"
+                    onClick={() => {
+                      setAggBusy(true);
+                      void setAggregateOptIn(false).then((ok) => {
+                        setAggBusy(false);
+                        if (ok) {
+                          setAggOpted(false);
+                          setAgg(null);
+                        }
+                      });
+                    }}
+                  >
+                    {t.aggOptOut}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 🔊 Sound & voice — REAL switches for the local prefs (music,
+              fullscreen), the app-install affordance, then the voice status
+              with a live test + on-device voice picker. */}
+          <h3 className="settings-sec">{t.settingsSecSound}</h3>
+          <div className="parent-card settings-card">
+            <div className="settings-row-line">
+              <span className="settings-row-icon">🎵</span>
+              <span className="settings-row-label">{t.settingsMusicRow}</span>
               <button
-                className="ghost-btn lang-toggle"
+                className={`switch${muted ? "" : " on"}`}
+                role="switch"
+                aria-checked={!muted}
+                aria-label={t.settingsMusicRow}
                 onClick={() => setMuted(toggleMusicMute())}
-                aria-label="Toggle music"
               >
-                {muted ? t.musicMuted : t.music}
+                <span className="switch-thumb" />
               </button>
-              {fsSupported() && (
+            </div>
+            {fsSupported() && (
+              <div className="settings-row-line">
+                <span className="settings-row-icon">⛶</span>
+                <span className="settings-row-label">{t.fullscreen}</span>
                 <button
-                  className="ghost-btn lang-toggle fullscreen-toggle"
+                  className={`switch${fsActive ? " on" : ""}`}
+                  role="switch"
+                  aria-checked={fsActive}
+                  aria-label={t.fullscreen}
                   onClick={toggleFs}
-                  aria-label={fsActive ? t.fullscreenOff : t.fullscreen}
                 >
-                  {fsActive ? t.fullscreenOff : t.fullscreen}
+                  <span className="switch-thumb" />
                 </button>
-              )}
-              {installEvt && (
-                <button className="ghost-btn mini pwa-install" onClick={installApp}>
-                  📲 {t.install}
-                </button>
-              )}
-            </div>
-            <div
-              className={`sync-pill sync-${syncState}`}
-              title={`${syncPending} rounds · ${storyPending} stories · ${t.syncIdle}`}
-            >
-              {syncState === "ok"
-                ? t.syncOk
-                : syncState === "syncing"
-                  ? t.syncSyncing
-                  : syncState === "offline"
-                    ? t.syncOffline
-                    : syncState === "error"
-                      ? t.syncError
-                      : t.syncIdle}
-              {storyPending > 0 && <span className="sync-pill-count">📚 {storyPending}</span>}
-            </div>
-            {storyPending >= 20 && (
-              <p className="story-queue-note" role="status">{t.storyQueueNote(storyPending)}</p>
+              </div>
             )}
-          </div>
+            {installEvt && (
+              <button className="ghost-btn mini settings-install-btn" onClick={installApp}>
+                📲 {t.install}
+              </button>
+            )}
 
-          {/* 🔊 Voice — status + a live test on every run */}
-          <div className="parent-card">
-            <div className="parent-head">
-              <span className="parent-name">{t.settingsVoice}</span>
-              <span className="parent-stats">{voiceLine}</span>
+            <div className="settings-divider" />
+
+            <div className="settings-voice">
+              <div className="settings-row-line">
+                <span className="settings-row-icon">🗣️</span>
+                <span className="settings-row-label">{t.settingsVoice}</span>
+                {neuralOn && (
+                  <span className="settings-voice-badge" title={t.settingsVoiceNeural(spkLabel)}>🧠</span>
+                )}
+              </div>
+              {readingOff ? (
+                <p className="settings-voice-note warn">{t.settingsReadingOff}</p>
+              ) : (
+                <>
+                  <p className="settings-voice-status">{voiceLine}</p>
+                  {neural.state === "loading" && !neuralOn && (
+                    <p className="settings-voice-note">{t.settingsVoiceDownload(Math.round(neural.progress * 100))}</p>
+                  )}
+                  <button
+                    className="ghost-btn mini voice-test-btn"
+                    onClick={() => {
+                      setTts(speechReadiness());
+                      speak(lang === "bn" ? "এক দুই তিন — এইটা একটা পরীক্ষা।" : "One two three — this is a test line.", { lang: lang === "bn" ? "bn" : "en" });
+                    }}
+                  >
+                    🔊 {t.settingsVoiceTest}
+                  </button>
+                  {neuralOn && (
+                    <div className="voice-picker">
+                      <div className="voice-picker-head">
+                        <span>{t.voicePickTitle}</span>
+                        <span className="voice-picker-hint">{t.voicePickHint}</span>
+                      </div>
+                      <div className="voice-picker-rows">
+                        {NEURAL_VOICES.map((v) => {
+                          const active = curSpk === v.id;
+                          const label =
+                            v.key === "female"
+                              ? t.voicePickFemale
+                              : v.key === "kid"
+                                ? t.voicePickKid
+                                : v.key === "soft"
+                                  ? t.voicePickSoft
+                                  : t.voicePickWarm;
+                          return (
+                            <div key={v.id} className={`voice-pick-row${active ? " active" : ""}`}>
+                              <button
+                                className="voice-pick-select"
+                                onClick={() => {
+                                  setNeuralSpeaker(v.id);
+                                  setTts(speechReadiness());
+                                }}
+                                aria-pressed={active}
+                              >
+                                {active ? "✓ " : ""}
+                                {label}
+                              </button>
+                              <button
+                                className="voice-pick-listen"
+                                aria-label={`${t.voicePickListen} · ${label}`}
+                                onClick={() => {
+                                  void neuralSpeak("আমি তোমার বন্ধু — চলো একসাথে খেলি!", { speaker: v.id });
+                                }}
+                              >
+                                🔈
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            <button
-              className="ghost-btn mini voice-test-btn"
-              onClick={() => {
-                setTts(speechReadiness());
-                const bn = getAppLang() === "bn";
-                speak(bn ? "এক দুই তিন — এইটা একটা পরীক্ষা।" : "One two three — this is a test line.", { lang: bn ? "bn" : "en" });
-              }}
-            >
-              🔊 {t.settingsVoiceTest}
-            </button>
           </div>
 
-          {/* 📚 What kids learn — the interactive syllabus is one tap away. */}
-          <div className="parent-card">
+          {/* 🌐 Language — a clear two-choice picker (a toggle hides the other
+              option; two big pills show exactly where the app is now). */}
+          <h3 className="settings-sec">{t.settingsSecLanguage}</h3>
+          <div className="parent-card settings-card settings-lang-card">
+            <div className="settings-lang-pills">
+              <button
+                className={`settings-lang-pill${lang === "en" ? " active" : ""}`}
+                onClick={() => setLang("en")}
+                aria-pressed={lang === "en"}
+              >
+                English
+              </button>
+              <button
+                className={`settings-lang-pill${lang === "bn" ? " active" : ""}`}
+                onClick={() => setLang("bn")}
+                aria-pressed={lang === "bn"}
+              >
+                বাংলা
+              </button>
+            </div>
+          </div>
+
+          {/* 📚 Learning — the interactive syllabus is one tap away, with a
+              friendly line about where their progress lives. */}
+          <h3 className="settings-sec">{t.settingsSecLearning}</h3>
+          <div className="parent-card settings-card">
             <button
               className="ghost-btn full-syllabus-btn"
               onClick={() => {
@@ -3834,134 +4088,21 @@ export default function App() {
               {t.settingsSyllabus}
             </button>
             <p className="syllabus-settings-sub">{t.syllabusSub}</p>
-          </div>
-
-          {/* Account — guest → parent upgrade (their local kids then sync to
-              the parent's account). Signed-in parents manage the account from
-              the portal / parent panel instead. */}
-          {!hasParentSession() && (
-            <>
-              <div className="parent-card settings-signin-card">
-                <div className="parent-head">
-                  <span className="parent-name">{t.settingsSigninTitle}</span>
-                  <span className="parent-stats">{t.settingsSigninBadge}</span>
-                </div>
-                <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
-                <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
-                  {t.settingsSigninCta}
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* 🔭 Kotha class insights — parent opt-in + anonymized aggregate
-              preview. Signed-in parent only; the response carries zero kid
-              identity. */}
-          {hasParentSession() && (
-            <>
-              <div className="parent-card settings-aggregate-card">
-                <div className="parent-head">
-                  <span className="parent-name">{t.aggTitle}</span>
-                  <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
-                </div>
-                <p className="syllabus-settings-sub">{t.aggSub}</p>
-
-                {!aggOpted ? (
-                  <>
-                    <button
-                      className="big-btn settings-signin-btn"
-                      disabled={aggBusy}
-                      onClick={() => {
-                        setAggBusy(true);
-                        void setAggregateOptIn(true).then((ok) => {
-                          setAggBusy(false);
-                          if (ok) {
-                            setAggOpted(true);
-                            void loadAggregates();
-                          }
-                        });
-                      }}
-                    >
-                      {t.aggOptIn}
-                    </button>
-                    {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
-                  </>
-                ) : (
-                  <>
-                    {aggBusy && !agg ? (
-                      <p className="syllabus-settings-sub">…</p>
-                    ) : agg ? (
-                      <div className="agg-preview">
-                        <p className="agg-line">
-                          {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
-                          {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
-                        </p>
-                        {agg.top_misconceptions.length > 0 && (
-                          <p className="agg-block">
-                            <span className="agg-k">{t.aggTopMis}</span>
-                            {agg.top_misconceptions.slice(0, 3).map((m) => (
-                              <span key={m.code} className="agg-item">
-                                {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
-                              </span>
-                            ))}
-                          </p>
-                        )}
-                        {agg.top_struggle_skills.length > 0 && (
-                          <p className="agg-block">
-                            <span className="agg-k">{t.aggTopSkills}</span>
-                            {agg.top_struggle_skills.slice(0, 3).map((s) => {
-                              const sk = filterSkills.find((f) => f.id === s.skill_id);
-                              return (
-                                <span key={s.skill_id} className="agg-item">
-                                  {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
-                                </span>
-                              );
-                            })}
-                          </p>
-                        )}
-                        {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
-                          <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                        )}
-                        <p className="agg-note">{t.aggPreview}</p>
-                      </div>
-                    ) : (
-                      <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                    )}
-                    <button
-                      className="ghost-btn mini agg-optout-btn"
-                      onClick={() => {
-                        setAggBusy(true);
-                        void setAggregateOptIn(false).then((ok) => {
-                          setAggBusy(false);
-                          if (ok) {
-                            setAggOpted(false);
-                            setAgg(null);
-                          }
-                        });
-                      }}
-                    >
-                      {t.aggOptOut}
-                    </button>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* 📦 About — the app's semantic version */}
-          <div className="parent-card settings-about-card">
-            <div className="parent-head">
-              <span className="parent-name">{t.settingsAbout}</span>
-              <span className="parent-stats">{APP_VERSION}</span>
+            <div className={`settings-sync settings-sync-${syncState}`}>
+              <span className="settings-sync-dot" />
+              <span className="settings-sync-text">{syncLine}</span>
+              {storyPending > 0 && <span className="sync-pill-count">📚 {storyPending}</span>}
             </div>
-            <p className="syllabus-settings-sub">{t.settingsAboutSub} · {APP_BUILD.split(" · ")[0]}</p>
+            {storyPending >= 20 && (
+              <p className="story-queue-note" role="status">{t.storyQueueNote(storyPending)}</p>
+            )}
           </div>
 
-          {/* In-app analytics (works for guests too) — the full portal is the
-              card up top; this is the quick per-kid view. */}
-          <button className="ghost-btn settings-parent-btn" onClick={() => setScreen("parent")}>
-            {t.settingsParent}
-          </button>
+          {/* footer — version + build, so a parent can tell the installed PWA
+              apart from a stale home-screen icon. */}
+          <p className="settings-footer">
+            {t.settingsAboutSub} · {APP_VERSION} · {APP_BUILD.split(" · ")[0]}
+          </p>
         </main>
       </div>
     );

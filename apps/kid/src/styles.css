@@ -4110,3 +4110,110 @@ body {
 .agg-item { font-size: 12px; color: #a9c9e0; background: rgba(124, 232, 210, 0.07); border-radius: 6px; padding: 4px 8px; width: fit-content; }
 .agg-note { font-size: 11px; color: #7fb8d6; font-style: italic; margin: 4px 0 0; }
 .agg-optout-btn { margin-top: 6px; }
+
+/* ⚙️ Settings screen (kid-facing) — grouped sections, real switches, a
+   two-choice language picker, and a voice card that shows what ACTUALLY reads.
+   Big tap targets throughout (44px+ rows) — a kid (and a parent) should be
+   able to change anything on this page without a second thought. */
+.settings-card { gap: 4px; padding: 10px 14px; }
+/* One settings row: icon + label on the left, the control (switch / badge) on
+   the right. min-height keeps a comfy tap target even when the row has no
+   control. */
+.settings-row-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.settings-row-icon { font-size: 18px; width: 26px; text-align: center; flex: none; }
+.settings-row-label { flex: 1; font-size: 15px; font-weight: 700; color: #e8eef7; }
+/* Real toggle switch — an obvious ON/OFF affordance instead of a text button
+   that had to be read to understand. The `.on` state colors the track green
+   and slides the thumb right. */
+.switch {
+  position: relative;
+  width: 50px;
+  height: 30px;
+  flex: none;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s ease;
+}
+.switch.on {
+  background: rgba(78, 200, 121, 0.85);
+  border-color: rgba(78, 200, 121, 0.9);
+}
+.switch.on .switch-thumb { transform: translateX(20px); }
+.settings-install-btn { align-self: flex-start; margin-top: 6px; }
+.settings-divider { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 8px 0; }
+.settings-voice { display: flex; flex-direction: column; gap: 8px; padding: 2px 0; }
+.settings-voice-badge {
+  font-size: 12px;
+  background: rgba(124, 232, 210, 0.14);
+  border: 1px solid rgba(124, 232, 210, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 800;
+}
+.settings-voice-status { margin: 0; font-size: 13px; color: #a7c4e2; line-height: 1.45; }
+.settings-voice-note { margin: 0; font-size: 12px; color: #8fa9c9; line-height: 1.4; }
+.settings-voice-note.warn { color: #ffb35c; }
+/* Language — two big pills so the CURRENT language is unmistakable. */
+.settings-lang-card { padding-top: 12px; padding-bottom: 12px; }
+.settings-lang-pills { display: flex; gap: 10px; }
+.settings-lang-pill {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: #c9d4ff;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.settings-lang-pill.active {
+  border-color: rgba(78, 200, 121, 0.6);
+  background: rgba(78, 200, 121, 0.16);
+  color: #e6fffa;
+}
+/* Progress storage — a friendly colored line (dot + message) instead of a
+   cryptic pill. Colors match the old sync-pill states. */
+.settings-sync {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: #a7c4e2;
+  font-weight: 600;
+}
+.settings-sync-text { flex: 1; line-height: 1.4; }
+.settings-sync-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.settings-sync-ok .settings-sync-dot { background: #5ee2c0; box-shadow: 0 0 6px rgba(94, 226, 192, 0.7); }
+.settings-sync-syncing .settings-sync-dot { background: #a9e6ff; box-shadow: 0 0 6px rgba(169, 230, 255, 0.7); }
+.settings-sync-offline .settings-sync-dot { background: #ffd166; box-shadow: 0 0 6px rgba(255, 209, 102, 0.7); }
+.settings-sync-error .settings-sync-dot { background: #ff8fa3; box-shadow: 0 0 6px rgba(255, 143, 163, 0.7); }
+.settings-sync-idle .settings-sync-dot { background: #8fb8d8; }
+.settings-footer {
+  margin: 16px 0 10px;
+  text-align: center;
+  font-size: 11px;
+  color: #6c86a5;
+  line-height: 1.5;
+}
