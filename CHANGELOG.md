@@ -1,3 +1,8 @@
+## 13 Aug 2026 — 0.26.10 (Parent-area cleanup: no Class Insights, one parent page, portal auth gate)
+
+8e5c5af 👨‍👩‍👧 Parent-area cleanup: no Class Insights on user face, ONE parent page, real portal security (#408)
+83ccae5 docs: mark #405 released in 0.26.9
+
 ## 13 Aug 2026 — 0.26.9 (Access control: kid-only Settings + gated parent area (#405))
 
 0cfb08c 🔐 Access control: kids never reach parent things; kid-only Settings restructure (#406)
