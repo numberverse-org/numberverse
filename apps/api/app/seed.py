@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
 from .db import Base, engine, SessionLocal
+from .migrations import apply_column_migrations
 from .models import Kid, KidSettings, Profile, Skill, Subject, Subscription
 from .security import hash_password
 
@@ -111,6 +112,10 @@ async def seed_content(db: AsyncSession) -> None:
 async def create_tables() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # #388 — create_all never alters an existing table to add a new COLUMN, so
+    # a model change silently breaks the API on an old DB (the `aggregate_opt_in`
+    # 502 outage). Diff + ADD COLUMN IF NOT EXISTS for anything missing.
+    await apply_column_migrations()
 
 
 async def _ensure_profile(db: AsyncSession, email: str, password: str, display_name: str, is_admin: bool) -> Profile:
