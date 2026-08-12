@@ -1,11 +1,17 @@
 /**
- * Central EN/BN translation table for the whole game.
+ * Central locale translation table for the whole game.
  *
- * Every visible/spoken string lives HERE once, with both languages — no more
- * inline `getAppLang() === "bn" ? "..." : "..."` scattered across scenes.
+ * Every visible/spoken string lives HERE once, in every SHIPPED locale — no
+ * more inline `getAppLang() === "bn" ? "..." : "..."` scattered across scenes.
  *
  * Keys are dot-free lowercase-words. `{name}` placeholders are interpolated by
  * t() from the vars you pass. Missing keys fall back to EN, then to the key.
+ *
+ * EXTENSIBLE (#131): `DICTS` is the registry. Shipping a new language =
+ *   1. add a LocalePack in packages/core/src/locale.ts (status: "shipped")
+ *   2. add a `const <CODE>` dictionary below
+ *   3. add it to `DICTS` — the audit then auto-checks parity for it.
+ * No other code changes; the UI, digits, RTL and TTS follow the pack.
  */
 
 import { getAppLang } from "./locale";
@@ -409,9 +415,19 @@ const BN: Record<string, Entry> = {
   priceLabel: "দাম",
 };
 
+/**
+ * The shipped-locale dictionary registry (#131). Every locale with a
+ * `status: "shipped"` LocalePack must have an entry here (audit-enforced).
+ * Unknown/planned codes resolve to EN so the app never renders a raw key.
+ */
+const DICTS: Record<string, Record<string, Entry>> = {
+  en: EN,
+  bn: BN,
+};
+
 /** The one translation function — use it for EVERY user-facing string. */
 export function t(key: string, vars?: TVars): string {
-  const dict = getAppLang() === "bn" ? BN : EN;
+  const dict = DICTS[getAppLang()] ?? EN;
   const entry = dict[key] ?? EN[key] ?? key;
   if (typeof entry === "function") return entry(vars);
   if (!vars) return entry;
@@ -419,6 +435,11 @@ export function t(key: string, vars?: TVars): string {
 }
 
 /** Convenience: t() resolved to the CURRENT language for the current key. */
-export function langOf(): "en" | "bn" {
+export function langOf(): string {
   return getAppLang();
+}
+
+/** Exposed for the i18n parity audit: which locale codes have a dictionary. */
+export function shippedLocaleCodes(): string[] {
+  return Object.keys(DICTS).sort();
 }
