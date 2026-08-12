@@ -192,6 +192,16 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
     }
 
 
+@router.post("/stories/embed")
+async def embed_stories_now(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """📚 KOTHA embed job (#329) — manual trigger of the scheduled batch-embed.
+    Idempotent (only unembedded stories are picked; ON CONFLICT no-op). Reports
+    `skipped` instead of failing when the model/pgvector stack is absent."""
+    from ..embeddings import embed_stories
+
+    return await embed_stories(db)
+
+
 @router.post("/stories/prune")
 async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """📚 KOTHA retention job (#331) — idempotent, admin-only.
