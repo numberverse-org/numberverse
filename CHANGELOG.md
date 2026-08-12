@@ -1,3 +1,7 @@
+## 12 Aug 2026 — 0.26.5 (Settings UX: parent-portal door + cleaner cards + natural Bangla (#397))
+
+00de752 🎛️ #397 Settings: parent-portal door + cleaner cards + natural Bangla (#398)
+
 ## 12 Aug 2026 — 0.26.4 (Round placeholder fix (#393) + natural Bangla world/level names + syllabus FAB (#394))
 
 b9ad356 🇧🇩 #394 Natural Bangla world/level names + syllabus FAB (#396)
