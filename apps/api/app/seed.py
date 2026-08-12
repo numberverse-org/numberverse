@@ -65,7 +65,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("div-facts-by-2-3", 3, "math", "Divide by 2 and 3", "২ ও ৩ দিয়ে ভাগ"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
-    ("place-value-1000", 3, "math", "Place value to 1,000", "স্থানীয় মান"),
+    ("place-value-1000", 3, "math", "Place value to 9,999", "স্থানীয় মান"),
     ("add-sub-regroup", 3, "math", "Carry & Borrow", "ক্যারি ও ধার"),
     # Language stage 3 — first words
     ("bn-words", 3, "bangla", "Bangla words", "শব্দ পড়ি"),

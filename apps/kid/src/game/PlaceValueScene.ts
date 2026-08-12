@@ -21,9 +21,11 @@ const BUTTON_RADIUS = 50;
 const ROUNDS_TO_FINISH = 3;
 
 /**
- * Place Value — find the digit in a given place.
- * Band 4 (ages 8–10). Shows "In 4,829, what is the TENS digit?"
- * Kid taps the correct digit button.
+ * Place Value — read the number from base-10 blocks, then find the digit in a
+ * given place.
+ * Band 3 (ages 8–10). Shows 4,829 as blocks (4 thousand-cubes, 8 hundred-flats,
+ * 2 ten-rods, 9 one-units) — the 100-rods idea extended to thousands — and
+ * asks "In 4,829, what is the TENS digit?" Kid taps the correct digit button.
  */
 export class PlaceValueScene extends Phaser.Scene {
   private levelIndex = 0;
@@ -40,6 +42,7 @@ export class PlaceValueScene extends Phaser.Scene {
   private meter!: RoundMeterApi;
   private factText!: Phaser.GameObjects.Text;
   private background!: Phaser.GameObjects.Graphics;
+  private blocksRef: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super("PlaceValue");
@@ -60,7 +63,6 @@ export class PlaceValueScene extends Phaser.Scene {
       .text(0, 0, "", txt(26, "#ffd166", {bold: true, align: "center", wrap: 340, outline: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t("tapDigitPlace"));
     this.meter = roundMeter(this);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
@@ -76,7 +78,8 @@ export class PlaceValueScene extends Phaser.Scene {
     this.titleText.setPosition(width / 2, 42);
     this.roundText.setPosition(width / 2, 80);
     this.meter.setPosition(width / 2, 104);
-    this.factText.setPosition(width / 2, height * 0.42).setWordWrapWidth(Math.max(140, width - 20));
+    this.factText.setPosition(width / 2, height * 0.34).setWordWrapWidth(Math.max(140, width - 20));
+    this.blocksRef?.setPosition(width / 2, height * 0.55);
     this.prompt.setPosition(width / 2, height - 150 - SAB());
   }
 
@@ -84,8 +87,17 @@ export class PlaceValueScene extends Phaser.Scene {
     return this.scale.height - 64 - SAB();
   }
 
+  /** Localized place-name key, e.g. "tens" → colTens → "tens"/"দশক". */
+  private placeName(p: string): string {
+    if (p === "thousands") return t("colThousands");
+    if (p === "hundreds") return t("colHundreds");
+    if (p === "tens") return t("colTens");
+    return t("colOnes");
+  }
+
   private startRound() {
     this.clearButtons();
+    this.clearBlocks();
     const digits = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     this.number = Phaser.Math.Between(Math.pow(10, digits - 1), Math.pow(10, digits) - 1);
     const maxPlace = Math.min(digits - 1, PLACES.length - 1);
@@ -95,13 +107,85 @@ export class PlaceValueScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.factText.setText(`In ${this.number.toLocaleString()}, the ${this.place} digit is?`);
+    const localPlace = this.placeName(this.place);
+    this.factText.setText(t("qPlaceDigit", { n: this.number.toLocaleString(), place: localPlace }));
+    this.prompt.set(t("blocksShow", { place: localPlace }));
+    this.drawBlocks(this.number);
     speak(
       getAppLang() === "bn"
         ? `${bnNumber(this.number)}-এ ${BN_PLACE[this.place] ?? this.place} ঘরে কোন অঙ্কটি আছে?`
         : `In ${this.number}, what is the ${this.place} digit?`
     );
     this.spawnButtons();
+  }
+
+  /** Base-10 blocks — the 100-rods idea extended to thousands. Each place is
+   *  ONE block scaled by magnitude (thousands biggest, ones smallest) with its
+   *  count + name below, so the kid reads "4 thousands, 8 hundreds, 2 tens,
+   *  9 ones" right off the image. The asked place gets a bright highlight. */
+  private drawBlocks(n: number) {
+    const c = this.add.container(0, 0);
+    const places = [
+      { key: "thousands", v: Math.floor(n / 1000) % 10, w: 46, h: 46, color: 0x4cc9f0 },
+      { key: "hundreds", v: Math.floor(n / 100) % 10, w: 38, h: 38, color: 0xf8961e },
+      { key: "tens", v: Math.floor(n / 10) % 10, w: 34, h: 20, color: 0x90be6d },
+      { key: "ones", v: n % 10, w: 18, h: 18, color: 0xf9c74f },
+    ];
+    const shown = places.filter((p) => p.v > 0);
+    const gap = 22;
+    const totalW = shown.reduce((s, p) => s + Math.max(p.w, 60), 0) + (shown.length - 1) * gap;
+    let x = -totalW / 2;
+    for (const p of shown) {
+      const group = this.add.container(x, 0);
+      const isAsk = p.key === this.place;
+      const box = this.add.rectangle(0, 0, p.w + 8, p.h + 8, isAsk ? 0xffd166 : 0xffffff, isAsk ? 0.22 : 0.05);
+      box.setStrokeStyle(2, isAsk ? 0xffd166 : 0xffffff, isAsk ? 1 : 0.25);
+      group.add(box);
+      const blk = this.add.rectangle(0, 0, p.w, p.h, p.color, 0.95);
+      blk.setStrokeStyle(2, 0xffffff, 0.85);
+      blk.setOrigin(0.5, 0.5);
+      group.add(blk);
+      // magnitude ticks: thousands = 10×10 grid, hundreds = 5×5, tens = 5, ones = none
+      if (p.key === "thousands") {
+        const g = this.add.graphics();
+        g.lineStyle(1, 0xffffff, 0.35);
+        for (let i = 1; i < 10; i++) {
+          g.lineBetween(-p.w / 2 + (p.w * i) / 10, -p.h / 2, -p.w / 2 + (p.w * i) / 10, p.h / 2);
+          g.lineBetween(-p.w / 2, -p.h / 2 + (p.h * i) / 10, p.w / 2, -p.h / 2 + (p.h * i) / 10);
+        }
+        group.add(g);
+      } else if (p.key === "hundreds") {
+        const g = this.add.graphics();
+        g.lineStyle(1, 0xffffff, 0.3);
+        for (let i = 1; i < 5; i++) {
+          g.lineBetween(-p.w / 2 + (p.w * i) / 5, -p.h / 2, -p.w / 2 + (p.w * i) / 5, p.h / 2);
+          g.lineBetween(-p.w / 2, -p.h / 2 + (p.h * i) / 5, p.w / 2, -p.h / 2 + (p.h * i) / 5);
+        }
+        group.add(g);
+      } else if (p.key === "tens") {
+        const g = this.add.graphics();
+        g.lineStyle(1, 0xffffff, 0.3);
+        for (let i = 1; i < 5; i++) {
+          g.lineBetween(-p.w / 2 + (p.w * i) / 5, -p.h / 2, -p.w / 2 + (p.w * i) / 5, p.h / 2);
+        }
+        group.add(g);
+      }
+      const label = this.add
+        .text(0, p.h / 2 + 14, `${p.v} ${this.placeName(p.key)}`, txt(14, isAsk ? "#ffd166" : "#e9ecef", { bold: isAsk }))
+        .setOrigin(0.5, 0);
+      group.add(label);
+      c.add(group);
+      x += Math.max(p.w, 60) + gap;
+    }
+    c.setPosition(this.scale.width / 2, this.scale.height * 0.55);
+    this.blocksRef = c;
+  }
+
+  private clearBlocks() {
+    if (this.blocksRef) {
+      this.blocksRef.destroy();
+      this.blocksRef = null;
+    }
   }
 
   private spawnButtons() {
@@ -121,8 +205,8 @@ export class PlaceValueScene extends Phaser.Scene {
   private tap(container: Phaser.GameObjects.Container, value: number) {
     if (value !== this.answer) {
       hintWrong(this, container, {
-        hint: "Look at the place value — tens first, then ones",
-        hintBn: "ঘরের মান দেখো — আগে দশক, তারপর একক",
+        hint: `The glowing ${this.placeName(this.place)} block shows how many. Count it!`,
+        hintBn: `চকচকে ${BN_PLACE[this.place] ?? this.place} ব্লকটিতে কতগুলো আছে দেখো। গুনে ফেলো!`,
         correct: () => this.answer,
         options: () => this.buttons,
       });
