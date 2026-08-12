@@ -3892,6 +3892,32 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .syllabus-start { width: 100%; }
+/* Floating action button — signed-in parent's "jump into learning" affordance
+   on the syllabus after the gate. Fixed bottom-right; pill so it's thumb-sized
+   but still carries a label. */
+.syllabus-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 22px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4cc9f0, #4361ee);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 0 0 4px rgba(76, 201, 240, 0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.syllabus-fab:hover { transform: translateY(-2px) scale(1.03); }
+.syllabus-fab:active { transform: scale(0.97); }
+.syllabus-fab-icon { font-size: 15px; line-height: 1; }
+.syllabus-fab-label { line-height: 1; }
 .syllabus-settings-sub { margin: 0; font-size: 12px; color: #8d99ae; text-align: center; }
 .full-syllabus-btn { width: 100%; }
 

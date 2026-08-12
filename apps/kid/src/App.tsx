@@ -541,6 +541,7 @@ interface Strings {
   syllabusWhat: string;
   syllabusGame: string;
   syllabusStart: string;
+  syllabusFab: string;
   syllabusHow: string;
   syllabusHow1: string;
   syllabusHow2: string;
@@ -949,6 +950,7 @@ const STR: Record<Lang, Strings> = {
     syllabusWhat: "👨‍👩‍👧 Every step your child takes, in order",
     syllabusGame: "🎮 play it",
     syllabusStart: "🚀 Start learning",
+    syllabusFab: "Start",
     syllabusHow: "The learning ladder",
     syllabusHow1: "1 · Numbers first — your child meets every number before any calculation.",
     syllabusHow2: "2 · Games teach the idea — apples, sharing, arrays make it real.",
@@ -1353,6 +1355,7 @@ const STR: Record<Lang, Strings> = {
     syllabusWhat: "👨‍👩‍👧 আপনার সন্তানের প্রতিটি ধাপ, ক্রম অনুযায়ী",
     syllabusGame: "🎮 খেলুন",
     syllabusStart: "🚀 শেখা শুরু করুন",
+    syllabusFab: "শুরু",
     syllabusHow: "শেখার সিঁড়ি",
     syllabusHow1: "১ · আগে সংখ্যা — যেকোনো হিসাবের আগে শিশু প্রতিটি সংখ্যার সাথে পরিচিত হয়।",
     syllabusHow2: "২ · খেলা ধারণা শেখায় — আপেল, ভাগাভাগি, সারি এটি বাস্তব করে তোলে।",
@@ -2448,7 +2451,9 @@ export default function App() {
     setScreen("cert");
     cancelSpeech();
     tada();
-    speak(t.certSpeak(kid.name, b.title));
+    // Speak the REAL Bangla world name (কুঁড়ির বাগান …), not an English one
+    // or a phonetic transliteration — the parent/certificate hears proper Bangla.
+    speak(t.certSpeak(kid.name, lang === "bn" ? b.titleBn ?? b.title : b.title));
   };
 
   /** Transient "✓ Shared" / error feedback next to the share buttons. */
@@ -2466,7 +2471,7 @@ export default function App() {
       const st = stats[k.id] ?? { stars: 0, score: 0, sessions: 0 };
       const worlds: ShareCardData["worlds"] = BANDS.map((b) => {
         const p = worldProgress(skillsMap, k.id, b.id);
-        return { emoji: worldEmoji(b.key), title: b.title, mastered: p.mastered, total: p.total };
+        return { emoji: worldEmoji(b.key), title: lang === "bn" ? b.titleBn ?? b.title : b.title, mastered: p.mastered, total: p.total };
       });
       const data: ShareCardData = {
         title: t.shareCardTitle,
@@ -2558,7 +2563,7 @@ export default function App() {
         certifies: t.certThisCertifies,
         name: kid.name,
         mastered: t.certHasMastered,
-        worldTitle: certWorld.title,
+        worldTitle: lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title,
         skillCount: t.certSkillCount(cSkills.length),
         withNova: t.certWithNova,
         signed: t.certSigned,
@@ -2569,7 +2574,7 @@ export default function App() {
       };
       const canvas = renderCertCard(document.createElement("canvas"), data);
       const blob = await canvasToBlob(canvas);
-      const caption = t.certShareCaption(kid.name, certWorld.title);
+      const caption = t.certShareCaption(kid.name, lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title);
       const res = await sharePng(blob, `numberverse-${kid.name.replace(/\s+/g, "-")}-certificate.png`, caption, waTextUrl(caption));
       flashShare(res === "unsupported" ? t.shareFail : t.shareDone);
     } catch {
@@ -3289,6 +3294,17 @@ export default function App() {
             </button>
             <p className="gate-privacy">{t.gatePower}</p>
           </div>
+
+          {/* Floating action button — the signed-in parent just finished the
+              gate; one thumb-tap jumps straight into the kid's learning instead
+              of scrolling the whole syllabus again. Guests browsing the
+              syllabus don't get it (they're not logged in yet). */}
+          {hasParentSession() && (
+            <button className="syllabus-fab" onClick={goStart} aria-label={t.syllabusStart}>
+              <span className="syllabus-fab-icon">▶</span>
+              <span className="syllabus-fab-label">{t.syllabusFab}</span>
+            </button>
+          )}
         </main>
       </div>
     );
@@ -4539,7 +4555,7 @@ export default function App() {
 
           {curStop ? (
             <button className="big-btn play-now" onClick={() => startSingleSkill(curStop.skill)}>
-              {t.playNext(curStop.skill.title)}
+              {t.playNext(lang === "bn" ? curStop.skill.titleBn ?? curStop.skill.title : curStop.skill.title)}
             </button>
           ) : journeyDone ? (
             <button className="big-btn play-now" onClick={() => startPlayWorld(BANDS[0])}>
@@ -4608,7 +4624,7 @@ export default function App() {
                       </span>
                       <span className="map-island-meta">
                         <span className="map-island-name">
-                          {b.title}
+                          {lang === "bn" ? b.titleBn ?? b.title : b.title}
                           {isHere && <span className="map-here-chip">📍 {t.mapHere}</span>}
                         </span>
                         <span className="map-island-age">{t.worldAges(b.ageRange, prog.mastered, prog.total)}</span>
@@ -4731,13 +4747,13 @@ export default function App() {
                     >
                       <span className="world-emoji">{complete ? <Icon name="trophy" size={40} /> : <Icon name={b.key} size={40} />}</span>
                       <span className="world-meta">
-                        <span className="world-name">{b.title}</span>
+                        <span className="world-name">{lang === "bn" ? b.titleBn ?? b.title : b.title}</span>
                         <span className="world-age">
                           {unlocked
                             ? complete
                               ? t.worldComplete
                               : t.skillsProg(prog.mastered, prog.total)
-                            : t.masterMoreIn(more, prev?.title ?? (lang === "bn" ? "আগের জগৎ" : "the last world"))}
+                            : t.masterMoreIn(more, prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : (lang === "bn" ? "আগের জগৎ" : "the last world"))}
                         </span>
                         <div className="progress-bar">
                           <div className="progress-fill" style={{ width: `${prog.pct}%`, background: `linear-gradient(90deg, ${land.c2}, ${land.c3})` }} />
@@ -4773,7 +4789,7 @@ export default function App() {
           >
             <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label="Back">‹</button>
             <div className="head-title">
-              <h2><Icon name={world.key} size={26} /> {world.title}</h2>
+              <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
               <p className="head-sub">{t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
             </div>
           </header>
@@ -4880,7 +4896,7 @@ export default function App() {
             <CountUp value={stars} />
             <span className="gold"> ⭐</span>
           </div>
-          <p className="subtitle">{t.earned(kid.avatar, kid.name, stars, score, world.title)}</p>
+          <p className="subtitle">{t.earned(kid.avatar, kid.name, stars, score, lang === "bn" ? world.titleBn ?? world.title : world.title)}</p>
           {newMastered > 0 && (
             <div className="mastered-badge" key={newMastered}>
               <Icon name="trophy" size={24} />
@@ -4896,7 +4912,7 @@ export default function App() {
           {complete && newMastered > 0 && (
             <div className="gold-badge" key={`gold-${world.id}-${newMastered}`}>
               <span className="gold-badge-icon">👑</span>
-              <span>{t.worldChampDone(world.title)}</span>
+              <span>{t.worldChampDone(lang === "bn" ? world.titleBn ?? world.title : world.title)}</span>
             </div>
           )}
           <div className="rank-badge">
@@ -5138,7 +5154,7 @@ export default function App() {
           <p className="cert-line">{t.certThisCertifies}</p>
           <p className="cert-name">{kid.name}</p>
           <p className="cert-line">{t.certHasMastered}</p>
-          <p className="cert-world">{certWorld.title}</p>
+          <p className="cert-world">{lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title}</p>
           <p className="cert-skills">{t.certSkillCount(cSkills.length)}</p>
           <ul className="cert-list">
             {cSkills.slice(0, 6).map((sk) => (
