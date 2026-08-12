@@ -55,6 +55,10 @@ interface Props {
    *  (script unloadable after retries, or the backend has no OAuth client).
    *  Points the parent at the email path that always works. */
   fallbackText?: string;
+  /** Current app UI language — pinned onto Google's button so it NEVER
+   *  auto-localizes to a surprise language (e.g. a German-browser parent
+   *  seeing "Weiter mit Google"). bn → বাংলা, en → English. */
+  lang?: "en" | "bn";
 }
 
 /** Max script-load attempts and backoff between them (ms) — Google's CDN is
@@ -62,7 +66,7 @@ interface Props {
 const MAX_SCRIPT_ATTEMPTS = 3;
 const RETRY_DELAYS = [1000, 3000, 9000];
 
-export function GoogleSignIn({ onToken, disabled, fallbackText }: Props) {
+export function GoogleSignIn({ onToken, disabled, fallbackText, lang }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState<null | "backend" | "script">(null);
   // Keep the latest callback without re-running the mount effect (which would
@@ -73,6 +77,7 @@ export function GoogleSignIn({ onToken, disabled, fallbackText }: Props) {
   }, [onToken]);
 
   useEffect(() => {
+    setFailed(null); // fresh attempt per language — a stale fallback note shouldn't linger
     const clientId = googleClientId();
     if (!clientId || !container.current) return;
     if (!googleEnabled()) return;
@@ -83,6 +88,10 @@ export function GoogleSignIn({ onToken, disabled, fallbackText }: Props) {
     const start = () => {
       const gid = window.google?.accounts?.id;
       if (!gid || !container.current) return;
+      // Re-render safety: GIS throws if renderButton is called on an element
+      // that already holds a button (a language switch re-runs this effect) —
+      // clear it first so the new locale actually takes.
+      container.current.innerHTML = "";
       gid.initialize({
         client_id: clientId,
         callback: (resp) => {
@@ -96,6 +105,10 @@ export function GoogleSignIn({ onToken, disabled, fallbackText }: Props) {
         shape: "pill",
         text: "continue_with",
         width: 340,
+        // #391 — Google auto-detects the button language from the browser /
+        // Google-account locale, which is how a parent ends up seeing
+        // "Weiter mit Google". Pin it to the app language: never surprise.
+        locale: lang === "bn" ? "bn" : "en",
       });
     };
 
@@ -149,7 +162,7 @@ export function GoogleSignIn({ onToken, disabled, fallbackText }: Props) {
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, []);
+  }, [lang]);
 
   if (failed) {
     // GIS unavailable (network or backend) → the email + guest fallbacks are
