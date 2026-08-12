@@ -1,10 +1,11 @@
 name: Release
 
-# Cut by the pipeline (infra/deploy/scripts/release.sh): pushing a v* tag
-# triggers CI + this job → GitHub Release with auto-generated notes.
+# Cut by the pipeline (infra/deploy/scripts/release.sh): pushing a semver
+# tag (e.g. 0.24.1) triggers CI + this job → GitHub Release with notes.
+# "v*" kept for any legacy vN tags still floating around.
 "on":
   push:
-    tags: ["v*"]
+    tags: ["0.*", "v*"]
 
 permissions:
   contents: write

@@ -268,7 +268,8 @@ def l3_release():
         with urllib.request.urlopen(urllib.request.Request("https://kids.munna-khan.xyz" + m.group(0), headers=UA), timeout=15) as r:
             js = r.read().decode(errors="ignore")
         # the minifier renames APP_BUILD, but the literal stamp survives
-        v = re.search(r"\b\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s*·\s*v\d+[^\"']*", js)
+        # matches "· v28 (summary)" (legacy) AND "· 0.24.1 (summary)" (semver)
+        v = re.search(r"\b\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s*·\s*v?\d[\d.]*[^\"']*", js)
         stamp = v.group(0) if v else "?"
         return (stamp != "?"), f"live stamp: {stamp}"
     except Exception as e:

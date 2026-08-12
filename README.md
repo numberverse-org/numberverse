@@ -57,9 +57,10 @@ Live: `https://kids.munna-khan.xyz` (Cloudflare named tunnel) · LAN: `http://19
 
 ## Release (one command, fully gated)
 ```bash
-bash infra/deploy/scripts/release.sh v11 "Taka Tap v2"   # gates → stamp → changelog → tag → push → deploy
+bash infra/deploy/scripts/release.sh 0.24.1 "Moni plan-driven sessions"   # gates → stamp → changelog → tag → push → deploy
 ```
-Pushing the `v*` tag fires CI + a GitHub Release with auto-notes. See **[docs/RELEASING.md](docs/RELEASING.md)**.
+TRUE SEMVER (`0.MAJOR.MINOR.PATCH`). Pushing the semver tag fires CI + a
+GitHub Release with auto-notes. See **[docs/RELEASING.md](docs/RELEASING.md)**.
 
 ## Tracking (the issue board + project)
 Every idea is a GitHub issue on a milestone. Live roadmap board:

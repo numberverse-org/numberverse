@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 # Numberverse release pipeline — gates → stamp → changelog → tag → push → deploy.
 #
-# Usage:  bash infra/deploy/scripts/release.sh v11 "Taka Tap v2 + release pipeline"
-#         bash infra/deploy/scripts/release.sh v11 "summary" --no-deploy
+# Usage:  bash infra/deploy/scripts/release.sh 0.24.1 "Moni plan-driven sessions"
+#         bash infra/deploy/scripts/release.sh 0.24.1 "summary" --no-deploy
 #
-# Pushing the v* tag fires CI + .github/workflows/release.yml, which drafts the
-# GitHub Release with auto-generated notes. This script then deploys to the box.
+# Versions are TRUE SEMVER (0.MAJOR.MINOR.PATCH). Pushing the semver tag fires
+# CI + .github/workflows/release.yml, which drafts the GitHub Release with
+# auto-generated notes. This script then deploys to the box.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-VERSION="${1:?usage: release.sh <vN> <one-line summary> [--no-deploy]}"
-SUMMARY="${2:?usage: release.sh <vN> <one-line summary> [--no-deploy]}"
+VERSION="${1:?usage: release.sh <X.Y.Z> <one-line summary> [--no-deploy]}"
+SUMMARY="${2:?usage: release.sh <X.Y.Z> <one-line summary> [--no-deploy]}"
+# Enforce semver (X.Y.Z) — never accept a bare vN again.
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "✖ version must be SEMVER (X.Y.Z), got '$VERSION'. e.g. release.sh 0.24.1 'summary'" >&2
+  exit 1
+fi
 NO_DEPLOY="false"; [[ " $* " == *" --no-deploy "* ]] && NO_DEPLOY="true"
 TODAY=$(date '+%d %b %Y')
 ROOT="$(pwd)"
@@ -32,14 +38,11 @@ today, version, summary = sys.argv[1], sys.argv[2], sys.argv[3]
 app = "apps/kid/src/App.tsx"
 s = open(app, encoding="utf-8").read()
 s = re.sub(r'const APP_BUILD = "[^"]*"', f'const APP_BUILD = "{today} · {version} ({summary})"', s)
-# Semantic versioning (0.MAJOR.MINOR.PATCH → 0.25.0) — derived from the vN tag
-# so it always tracks the release train. e.g. release.sh v25 → APP_VERSION 0.25.0.
-m = re.match(r"v(\d+)", version)
-if m:
-    semver = f"0.{int(m.group(1))}.0"
-    if not re.search(r"const APP_VERSION = ", s):
-        s = s.replace('const APP_BUILD = ', f'const APP_VERSION = "{semver}";\n', 1)
-    s = re.sub(r'const APP_VERSION = "[^"]*"', f'const APP_VERSION = "{semver}"', s)
+# True SEMVER — the release version IS the semver, used verbatim (0.MAJOR.MINOR.PATCH).
+semver = version
+if not re.search(r"const APP_VERSION = ", s):
+    s = s.replace('const APP_BUILD = ', f'const APP_VERSION = "{semver}";\n', 1)
+s = re.sub(r'const APP_VERSION = "[^"]*"', f'const APP_VERSION = "{semver}"', s)
 open(app, "w", encoding="utf-8").write(s)
 tr = "TRACKER.md"
 t = open(tr, encoding="utf-8").read()

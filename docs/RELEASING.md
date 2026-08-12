@@ -7,11 +7,11 @@ A feature becomes a version in 6 automated steps. No manual tagging, no
 
 ```
 PR merged → CI green (build core → typecheck → audit → api compile)
-        → bash infra/deploy/scripts/release.sh vN "one-line summary"
+        → bash infra/deploy/scripts/release.sh 0.24.1 "one-line summary"
             1. Quality gates      (core build · kid typecheck · audit · oracle CLEAN)
-            2. Bump stamp         (APP_BUILD → "dd Mmm YYYY · vN (summary)" + TRACKER date)
+            2. Bump stamp         (APP_BUILD → "dd Mmm YYYY · 0.24.1 (summary)" + TRACKER date)
             3. Changelog          (CHANGELOG.md prepended with commits since last tag)
-            4. Commit + tag       (chore: vN release — summary  →  tag vN)
+            4. Commit + tag       (chore: 0.24.1 release — summary  →  tag 0.24.1)
             5. Push               (main + tag)  →  GitHub Actions:
                     • ci.yml        re-verifies the exact tagged commit
                     • release.yml   drafts a GitHub Release with auto-generated notes
@@ -22,9 +22,14 @@ PR merged → CI green (build core → typecheck → audit → api compile)
 ## How to ship (one command)
 
 ```bash
-bash infra/deploy/scripts/release.sh v11 "Taka Tap v2 + release pipeline"
+bash infra/deploy/scripts/release.sh 0.24.1 "Moni plan-driven sessions + semver scheme"
 # add --no-deploy to stop after push/tag (deploy later with deploy.sh)
 ```
+
+Versions are **TRUE SEMVER (0.MAJOR.MINOR.PATCH)** — the version you pass IS
+the semver, used verbatim in the stamp, the git tag, and APP_VERSION. The
+release train bumps MINOR for feature releases (`feat:` commits) and PATCH for
+fix-only releases (`fix:` commits).
 
 The script aborts on the **first failing gate** — you cannot release with a
 broken audit, a red typecheck, or an ✖ oracle check. That's the point.
@@ -36,7 +41,7 @@ broken audit, a red typecheck, or an ✖ oracle check. That's the point.
 | CI on push/PR | `.github/workflows/ci.yml` |
 | Auto-triage new issues | `.github/workflows/triage.yml` (+ auto-assign) |
 | Label PRs by type | `.github/workflows/label-pr.yml` |
-| GitHub Release on `v*` tag | `.github/workflows/release.yml` |
+| GitHub Release on semver tag (`0.*`) | `.github/workflows/release.yml` |
 | Gates → stamp → changelog → tag → push → deploy | `infra/deploy/scripts/release.sh` |
 
 ## Rules of the road

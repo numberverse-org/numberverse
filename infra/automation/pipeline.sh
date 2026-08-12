@@ -154,21 +154,22 @@ release_train(){
   acquire release-train
   cd "$ROOT"
 
-  # Bootstrap guard: the FIRST release is manual (release.sh v11 "…"). After it
-  # ships, docs/LATEST_RELEASE.md exists and the train arms for everything after.
+  # Bootstrap guard: the FIRST release is manual (release.sh 0.24.1 "…"). After
+  # it ships, docs/LATEST_RELEASE.md exists and the train arms for everything after.
   if [ ! -f docs/LATEST_RELEASE.md ]; then
-    log "release-train: bootstrap — no LATEST_RELEASE.md yet. First release is manual; train arms after v11 ships."
+    log "release-train: bootstrap — no LATEST_RELEASE.md yet. First release is manual; train arms after the first semver ships."
     exit 0
   fi
-  LAST=$(head -1 docs/LATEST_RELEASE.md)   # e.g. v11
+  LAST=$(head -1 docs/LATEST_RELEASE.md)   # e.g. 0.24.1 (or legacy v28)
   git fetch -q origin --tags
 
   # Count feature/fix commits on main since the last release tag.
-  local COUNT=0
+  local COUNT=0 FEATS=0
   if git rev-parse -q --verify "refs/tags/$LAST" >/dev/null 2>&1; then
     # --format=%s gives the bare subject — the ^(feat|fix) anchor matches.
     # (git log --oneline puts the short hash FIRST, so ^(feat|fix) never matched = 0 forever.)
     COUNT=$(git log --format=%s "$LAST..origin/main" 2>/dev/null | grep -cE '^(feat|fix)' || true)
+    FEATS=$(git log --format=%s "$LAST..origin/main" 2>/dev/null | grep -c '^feat' || true)
   fi
   local THRESHOLD="${RELEASE_THRESHOLD:-2}"
   if [ "$COUNT" -lt "$THRESHOLD" ]; then
@@ -176,14 +177,27 @@ release_train(){
     exit 0
   fi
 
-  # Derive next version from the live stamp (… · vN … → vN+1).
-  local cur next
-  cur=$(grep -o 'APP_BUILD = "[^"]*· v[0-9]*' apps/kid/src/App.tsx | grep -oE 'v[0-9]+' | tr -d 'v' | head -1)
-  [ -n "$cur" ] || { log "release-train: could not read APP_BUILD version — aborting"; exit 1; }
-  next=$((cur + 1))
+  # TRUE SEMVER next-version: features bump MINOR (X.(Y+1).0), fix-only bumps
+  # PATCH (X.Y.(Z+1)). Normalizes a legacy "vN" LATEST into 0.N.0.
+  local next
+  local v_re="${LAST#v}"   # strip a legacy "v" prefix → "28" or "0.24.1"
+  local ma mi pa
+  if [[ "$v_re" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+    ma=${BASH_REMATCH[1]}; mi=${BASH_REMATCH[2]}; pa=${BASH_REMATCH[3]}
+  elif [[ "$v_re" =~ ^[0-9]+$ ]]; then
+    ma=0; mi=$v_re; pa=0                     # legacy v28 → 0.28.0
+  else
+    log "release-train: could not parse version '$LAST' — aborting"
+    exit 1
+  fi
+  if [ "$FEATS" -gt 0 ]; then
+    next="$ma.$((mi + 1)).0"                  # feature release → minor bump
+  else
+    next="$ma.$mi.$((pa + 1))"                # fix-only release → patch bump
+  fi
   local summary="release train — $COUNT merged since $LAST"
-  log "release-train: cutting v$next ($COUNT commits) → ${summary}"
-  bash infra/deploy/scripts/release.sh "v$next" "release train ($COUNT since $LAST)"
+  log "release-train: cutting $next ($COUNT commits, $FEATS feats) → ${summary}"
+  bash infra/deploy/scripts/release.sh "$next" "release train ($COUNT since $LAST)"
 }
 
 board(){ _snapshot; cat "$LOG_DIR/numberverse-board.md"; }
