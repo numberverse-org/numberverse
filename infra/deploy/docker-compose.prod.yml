@@ -6,6 +6,15 @@
 # here — the host tunnel is authoritative.
 name: numberverse-demo
 
+# #303 — container log rotation + size cap: docker's json-file driver handles
+# cleanup (each service keeps 3×10MB, oldest dropped automatically), so the
+# box needs no separate clean-logs cron.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -21,6 +30,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    logging: *default-logging
 
   api:
     build:
@@ -35,6 +45,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging: *default-logging
 
   web:
     build:
@@ -50,6 +61,7 @@ services:
       - "8080:80"   # tunnel origin + LAN fallback: http://192.168.0.104:8080
     depends_on:
       - api
+    logging: *default-logging
 
 volumes:
   nv_pg:
