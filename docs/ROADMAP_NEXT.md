@@ -230,6 +230,6 @@
 - ~~Deferred: screen-reader deep support~~ ✅ #133 — merged #446
 - ~~Deferred: sound-design pack (per-land)~~ ✅ #134 — merged #445
 - ~~Deferred: classroom projector mode~~ ✅ #136 — merged #447
-- Deferred: flashcard QR tie-in  _(priority: low, deferred)_
+- ~~Deferred: flashcard QR tie-in~~ ✅ #139 — parent-printed `NV:<skillId>` QR cards (client-side, offline) + kid 📷 scan / manual-code → launches the mini-game (PR pending)
 - Deferred: teacher mode — class roster  _(priority: low, deferred)_
 - ~~Deferred: sibling co-op play mode~~ ✅ #22 — pass-the-device HUD toggle, mid-session switch keeps per-kid progress separate (PR pending)

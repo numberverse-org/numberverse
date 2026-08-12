@@ -339,6 +339,15 @@ interface Strings {
   nowPlaying: (name: string) => string;
   youBadge: string;
   coopHint: string;
+  /* #139 — flashcard QR → mini-game tie-in. */
+  scanCard: string;
+  scanTitle: string;
+  scanHint: string;
+  scanCodePlaceholder: string;
+  scanLaunch: string;
+  scanNotCard: string;
+  scanCameraDenied: string;
+  scanClose: string;
   parentZone: string;
   parentNote: string;
   whoPlaying: string;
@@ -844,6 +853,15 @@ const STR: Record<Lang, Strings> = {
     nowPlaying: (name) => `${name} is playing now`,
     youBadge: "You",
     coopHint: "Two kids, one device — take turns!",
+    // #139 — flashcard QR → mini-game tie-in.
+    scanCard: "Scan a card",
+    scanTitle: "Scan a flashcard",
+    scanHint: "Point the camera at a flashcard QR — or type its code below.",
+    scanCodePlaceholder: "NV:skillId (or just skillId)",
+    scanLaunch: "Open game",
+    scanNotCard: "That code isn't a Numberverse card",
+    scanCameraDenied: "Camera unavailable — type the card's code instead",
+    scanClose: "Cancel",
     parentZone: "👨‍👩‍👧 Parent Zone",
     parentNote:
       "Worlds unlock by learning progress, not age — master a world's skills to open the next one.",
@@ -1319,6 +1337,15 @@ const STR: Record<Lang, Strings> = {
     nowPlaying: (name) => `এখন খেলছে ${name}`,
     youBadge: "তুমি",
     coopHint: "দুই ভাই-বোন, একটি ডিভাইস — পালা করে খেলো!",
+    // #139 — flashcard QR → mini-game tie-in.
+    scanCard: "কার্ড স্ক্যান করো",
+    scanTitle: "ফ্ল্যাশকার্ড স্ক্যান করো",
+    scanHint: "ফ্ল্যাশকার্ড QR-এর দিকে ক্যামেরা রাখো — অথবা নিচে কোডটি লিখো।",
+    scanCodePlaceholder: "NV:skillId (বা শুধু skillId)",
+    scanLaunch: "খেলা খুলো",
+    scanNotCard: "এই কোডটি নম্বরভার্স কার্ড নয়",
+    scanCameraDenied: "ক্যামেরা পাওয়া যায়নি — বদলে কার্ডের কোডটি লিখো",
+    scanClose: "বাতিল",
     parentZone: "👨‍👩‍👧 মা-বাবার জায়গা",
     parentNote:
       "দক্ষতা দিয়ে জগৎ খোলে, বয়স দিয়ে নয় — পরের জগৎ খুলতে আগের জগতের দক্ষতা আয়ত্ত করুন।",
@@ -2337,6 +2364,14 @@ export default function App() {
   const [coopOpen, setCoopOpen] = useState(false);
   const [coopToast, setCoopToast] = useState<string | null>(null);
   const coopTimerRef = useRef<number | undefined>(undefined);
+  // #139 — flashcard QR scan overlay (camera + manual code fallback).
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanCode, setScanCode] = useState("");
+  const scanVideoRef = useRef<HTMLVideoElement | null>(null);
+  const scanCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scanStreamRef = useRef<MediaStream | null>(null);
+  const scanRafRef = useRef<number | undefined>(undefined);
   // FIRST TIME → the WELCOME screen sits on top of everything: language pick
   // first (topmost), then the binary Guest-vs-Sign-in scene, with the syllabus
   // one tap away BEFORE any sign-in. `nv_seen_welcome` is set on mount so it
@@ -3020,6 +3055,95 @@ export default function App() {
     coopTimerRef.current = window.setTimeout(() => setCoopToast(null), 2200);
   };
   useEffect(() => () => window.clearTimeout(coopTimerRef.current), []);
+
+  /* #139 — stop the QR camera + decode loop (safe to call when idle). */
+  const stopScanner = () => {
+    cancelAnimationFrame(scanRafRef.current ?? 0);
+    scanRafRef.current = undefined;
+    scanStreamRef.current?.getTracks().forEach((tr) => tr.stop());
+    scanStreamRef.current = null;
+  };
+
+  /** Launch the game a flashcard code points to — "NV:<skillId>" or bare
+   *  skillId. Used by BOTH the camera decode and the manual entry fallback, so
+   *  the card→game path is fully testable offline without a camera. */
+  const launchCardCode = (raw: string) => {
+    const trimmed = raw.trim();
+    const skillId = trimmed.startsWith("NV:") ? trimmed.slice(3).trim() : trimmed;
+    const skill = SKILLS.find((s) => s.id === skillId && !!s.game);
+    if (!skill) {
+      setScanError(t.scanNotCard);
+      return;
+    }
+    stopScanner();
+    setScanOpen(false);
+    setScanCode("");
+    startSingleSkill(skill);
+  };
+
+  // Keep the decode loop on the LATEST launcher without re-running the camera
+  // effect every render (the effect's closure would otherwise go stale).
+  const launchCardCodeRef = useRef(launchCardCode);
+  launchCardCodeRef.current = launchCardCode;
+
+  /** #139 — open the camera when the scan sheet opens and live-decode QRs.
+   *  jsQR is dynamically imported so the main bundle stays lean. On camera
+   *  failure (denied / no camera / non-secure) the sheet shows the manual
+   *  entry input instead — the scan flow never dead-ends. */
+  useEffect(() => {
+    if (!scanOpen) return;
+    let active = true;
+    setScanError(null);
+    (async () => {
+      let stream: MediaStream | null = null;
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error("no camera");
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 640 } },
+          audio: false,
+        });
+        if (!active) {
+          stream.getTracks().forEach((tr) => tr.stop());
+          return;
+        }
+        scanStreamRef.current = stream;
+        const video = scanVideoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        await video.play().catch(() => {});
+        const loop = async () => {
+          if (!active || !scanOpen) return;
+          const v = scanVideoRef.current;
+          const c = scanCanvasRef.current;
+          if (v && c && v.readyState >= 2 && v.videoWidth > 0) {
+            const ctx = c.getContext("2d", { willReadFrequently: true });
+            if (ctx) {
+              c.width = v.videoWidth;
+              c.height = v.videoHeight;
+              ctx.drawImage(v, 0, 0);
+              try {
+                const { default: jsQR } = await import("jsqr");
+                const img = ctx.getImageData(0, 0, c.width, c.height);
+                const found = jsQR(img.data, c.width, c.height);
+                if (found?.data) launchCardCodeRef.current(found.data);
+              } catch {
+                /* decode hiccup — keep scanning */
+              }
+            }
+          }
+          scanRafRef.current = requestAnimationFrame(loop);
+        };
+        scanRafRef.current = requestAnimationFrame(loop);
+      } catch {
+        if (active) setScanError(t.scanCameraDenied);
+      }
+    })();
+    return () => {
+      active = false;
+      stopScanner();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanOpen]);
 
   /* ── Persist the chosen UI language + mirror it to game scenes ── */
   useEffect(() => {
@@ -3764,6 +3888,15 @@ export default function App() {
                     <button className="icon-btn settings-btn" onClick={() => setScreen("settings")} aria-label={t.settingsTitle}>
                       ⚙️
                     </button>
+                    {/* #139 — flashcard QR → mini-game: scan (or type) a card. */}
+                    <button
+                      className="icon-btn scan-btn"
+                      onClick={() => { setScanCode(""); setScanError(null); setScanOpen(true); }}
+                      aria-label={t.scanCard}
+                      title={t.scanCard}
+                    >
+                      📷
+                    </button>
                   </>
                 )}
               </div>
@@ -4071,6 +4204,35 @@ export default function App() {
               <span className="offline-chip ready" role="status">{t.offlineReady}</span>
             ) : null}
           </main>
+
+          {/* #139 — flashcard QR scan sheet. Camera auto-starts; manual code
+              entry is the offline/no-camera fallback (both launch the game). */}
+          {scanOpen && (
+            <div className="scan-overlay" onClick={() => { stopScanner(); setScanOpen(false); }}>
+              <div className="scan-sheet" role="dialog" aria-label={t.scanTitle} onClick={(e) => e.stopPropagation()}>
+                <h3 className="scan-title">📷 {t.scanTitle}</h3>
+                <p className="scan-hint">{t.scanHint}</p>
+                <div className="scan-stage">
+                  <video ref={scanVideoRef} muted playsInline className="scan-video" />
+                  <canvas ref={scanCanvasRef} className="scan-canvas" />
+                  {scanError && <p className="scan-error">{scanError}</p>}
+                </div>
+                <div className="scan-manual">
+                  <input
+                    className="scan-input"
+                    value={scanCode}
+                    onChange={(e) => setScanCode(e.target.value)}
+                    placeholder={t.scanCodePlaceholder}
+                    onKeyDown={(e) => { if (e.key === "Enter") launchCardCode(scanCode); }}
+                  />
+                  <button className="scan-go" onClick={() => launchCardCode(scanCode)}>{t.scanLaunch}</button>
+                </div>
+                <button className="scan-close" onClick={() => { stopScanner(); setScanOpen(false); }}>
+                  {t.scanClose}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
