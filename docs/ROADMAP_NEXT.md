@@ -216,13 +216,20 @@
 
 ## Backlog
 
+- ~~Deferred: multi-language scaffold research~~ ✅ #131 — locale packs shipped
+- ~~Deferred: kid voice recording (on-device)~~ ✅ #138 — merged #441
+- ~~Deferred: SVG animation library evaluation~~ ✅ #321 — no lib, doc only #442
+- ~~Deferred: printable worksheet generator~~ ✅ #132 — merged #444
+- ~~Deferred: seasonal festival decor~~ ✅ #137 — merged #443
 - Deferred: AR number-camera experiment (spike)  _(priority: low, deferred)_
-- Deferred: multi-language scaffold research  _(priority: low, deferred)_
+- Deferred: elder-girl voice recording  _(priority: low, deferred)_
+- Deferred: multi-device profile sync  _(priority: low, deferred)_
+- Deferred: garden/pet expansion (new species)  _(priority: low, deferred)_
+- Deferred: new lands — Jungle + Polar themes  _(priority: low, deferred)_
+- Deferred: parent phone notifications bridge  _(priority: low, deferred)_
 - Deferred: screen-reader deep support  _(priority: low, deferred)_
 - Deferred: sound-design pack (per-land)  _(priority: low, deferred)_
 - Deferred: classroom projector mode  _(priority: low, deferred)_
-- Deferred: kid voice recording (on-device)  _(priority: low, deferred)_
 - Deferred: flashcard QR tie-in  _(priority: low, deferred)_
 - Deferred: teacher mode — class roster  _(priority: low, deferred)_
 - Deferred: sibling co-op play mode  _(priority: low, deferred)_
-- Deferred: SVG animation library evaluation  _(priority: low, deferred)_
