@@ -2215,6 +2215,15 @@ body {
   cursor: pointer;
 }
 .parent-portal-btn { width: 100%; text-align: center; }
+/* Guest variant — a <button> wearing the card look; reset button styling so
+   the card reads as a tappable card, not a text-center submit. */
+.parent-portal-guest {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+}
 /* header quick-action icon → the portal */
 .parent-portal-quick {
   display: inline-flex;
@@ -4071,6 +4080,26 @@ body {
   overflow: hidden;
 }
 .settings-about-card { border-color: rgba(76, 201, 240, 0.25); }
+
+/* ⚙️ Settings redesign — section headers break the flat card-scroll into
+   clear groups (Parent Portal / preferences / voice / learning / about) so a
+   parent can find the thing they came for in one scan. */
+.settings-sec {
+  width: 100%;
+  max-width: 520px;
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #8fb8d8;
+}
+.settings-sec:first-of-type { margin-top: 8px; }
+/* Parent Portal door — accent border + full-width button so it's the first
+   thing a parent sees, not a footnote buried under the settings cards. */
+.settings-portal-card { border-color: rgba(76, 201, 240, 0.45); background: rgba(76, 201, 240, 0.08); }
+.settings-portal-btn { width: 100%; text-align: center; text-decoration: none; box-sizing: border-box; }
+.settings-parent-btn { width: 100%; margin-top: 14px; }
 
 /* 🔭 #330 Kotha class insights (settings card) */
 .settings-aggregate-card { border-color: rgba(124, 232, 210, 0.25); }
