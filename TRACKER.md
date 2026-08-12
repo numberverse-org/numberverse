@@ -6,6 +6,17 @@
 - **Google sign-in status (the user's "where is it?"):** **LIVE/ACTIVATED** — see the entry below. Button renders on the gate, `/auth/google` verifies server-side (401 on a bad token). Client id + project in the box `.env.production`; docs in `.env.production.example`.
 - Board: **Done** = closed issues. **#60 (place value to 9999)** stays `status: in-progress` = next build.
 
+## 🚀 v27 RELEASED — BEST-UI/UX IN-APP PARENT PANEL + DEEP LINK TO THE FULL PORTAL 0.27.0 12 Aug 2026 ✅ (user: "but from how may they access it make the parent UI currently on phaser Best UI/UX and linked their logged user parent portal link to manage all")
+- **The gap:** the in-app parent panel (inside the kid app) was a bare analytics list — a signed-in parent couldn't reach the full portal (kid CRUD, limits, weekly report, account security) from inside the game.
+- **Family summary hero**: greeting (`Hi {name} 👋` / `হ্যালো, {name} 👋` — the parent's name when signed in) + a stat-tile row across the WHOLE household: kids · ⭐ stars · 🧠 points · 🏆 mastered (aggregated across all kids, not just the active one).
+- **Richer kid picker**: each avatar chip now shows a mini mastered-progress bar under the name.
+- **Language-aware world names**: per-world progress bars render Bangla world names in bn mode (no EN/BN mixing).
+- **🖥️ Open Parent Portal** deep link: for a signed-in parent, a prominent gradient card + a header quick-action icon link to `/parent/parent` — **same origin → the logged-in `nv_parent_token` session carries straight over** → lands on the dashboard already signed in with full management (add/remove kids, learning limits, weekly report, active logins, account & security). Guests still see the sign-in/upgrade card.
+- **Gates**: core build ✓ · kid tsc ✓ · audit ✓ (i18n EN+BN) · oracle SHIP-OK zero ✖.
+- **Pipeline:** `feat/parent-panel-portal-link` → PR #155 (CI 5/5) → merged d9cf399 → `release.sh v27` → deploy → live bundle `assets/index-pW3nQHVR.js` carries v27 + `0.27.0` + EN/BN portal strings (verified live); `/parent/parent` → HTTP 200.
+- **Note:** a pre-existing `packages/core/src/moni/` (per-child tutor model, untracked + wired into core index) was committed this release so the Scope Guardian gate could pass — typechecks clean, ships with the bundle.
+- Board: #60 (place value to 9999) stays 🔨 in-progress = next build.
+
 ## 🚀 v26 RELEASED — SECURE PARENT PORTAL (REVOCABLE SESSIONS, REAL LOGOUT, ACCOUNT + FAMILY OVERVIEW) 0.26.0 12 Aug 2026 ✅ (user: "make logout and secure parent portal also make complete parent portal for kids management and So On, use oracle to make better parent portal")
 - **Server-side sessions (the real logout fix):** "Sign out" was cosmetic (cleared localStorage only) — a stolen JWT stayed valid 7 days. New `sessions` table; the JWT now carries `sid`; **every authenticated request checks the session isn't revoked** → logout kills the token on the API. Legacy tokens (no `sid`) stay valid until expiry so the deploy didn't force-log-out anyone mid-flight. New endpoints: `POST /auth/logout` (revoke current) · `POST /auth/logout-all` (every device) · `GET /auth/sessions` (active logins) · `DELETE /auth/sessions/{id}` (one device) · `POST /auth/change-password` (revokes all OTHER devices) · `PATCH /auth/me` (display name).
 - **Kid app:** Settings → **🚪 Sign out** (two-tap arm→confirm) revokes server-side, clears the parent session + kid→server map, lands on the gate. EN + বাংলা.
