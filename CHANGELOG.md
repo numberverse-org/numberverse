@@ -1,3 +1,12 @@
+## 13 Aug 2026 — 0.26.14 (CI oracle gate, post-deploy smoke test, secrets hygiene scan, structured error log)
+
+6ef237f 📝 Structured error log (#124): rotating JSON-lines error file, PII-redacted (#419)
+ee9ae85 🛡️ CI secrets hygiene scan (#126): secret-scan.mjs gate + job (#418)
+e379731 🦉 CI oracle gate (#120): --ci mode skips box-only roles; oracle PR job (#417)
+b56f740 🔧 Release hygiene: post-deploy smoke test (#121) + current RELEASING.md (#129) (#416)
+3959f6b docs: TRACKER entry for 0.26.13 release
+9e8ad48 docs: mark #266 #267 #268 #270 #271 released in 0.26.13
+
 ## 13 Aug 2026 — 0.26.13 (guardrail sweep: PII log scrubber, scheme allowlist, console-log scan, story context redaction, license gate)
 
 51c64bb 🛡️ Guardrail sweep: PII log scrubber (#266), scheme allowlist (#267), console scan (#268), story redaction (#270), license gate (#271) (#415)
