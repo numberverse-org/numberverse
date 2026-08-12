@@ -2146,6 +2146,9 @@ export default function App() {
   const [muted, setMuted] = useState(isMusicMuted());
   // Which kid the parent panel is showing analytics for (defaults to the active kid).
   const [parentKidId, setParentKidId] = useState<string | null>(null);
+  // #351 — kid-switcher chips are a real ARIA tablist: only the selected chip
+  // sits in tab order (roving tabindex) and arrow keys move focus + selection.
+  const parentChipRefs = useRef(new Map<string, HTMLButtonElement>());
   // ── Parent gate form state (stable hooks — never conditionally declared) ──
   const [gateMode, setGateMode] = useState<"in" | "up">("in");
   const [gateName, setGateName] = useState("");
@@ -4048,8 +4051,43 @@ export default function App() {
                 </button>
               </div>
 
-              {/* ── Child picker: tap an avatar to switch whose analytics you see ── */}
-              <div className="parent-picker" role="tablist" aria-label={t.parentTitle}>
+              {/* ── Child picker: tap an avatar to switch whose analytics you see.
+                  #351 — full keyboard support: only the selected chip is in tab
+                  order, and ←/→ (or ↑/↓) + Home/End move focus AND selection. */}
+              <div
+                className="parent-picker"
+                role="tablist"
+                aria-label={t.parentTitle}
+                onKeyDown={(e) => {
+                  if (kids.length < 2) return;
+                  const idx = kids.findIndex((k) => k.id === activeId);
+                  const move = (nextIdx: number) => {
+                    const next = kids[(nextIdx + kids.length) % kids.length];
+                    setParentKidId(next.id);
+                    parentChipRefs.current.get(next.id)?.focus();
+                  };
+                  switch (e.key) {
+                    case "ArrowRight":
+                    case "ArrowDown":
+                      e.preventDefault();
+                      move(idx + 1);
+                      break;
+                    case "ArrowLeft":
+                    case "ArrowUp":
+                      e.preventDefault();
+                      move(idx - 1);
+                      break;
+                    case "Home":
+                      e.preventDefault();
+                      move(0);
+                      break;
+                    case "End":
+                      e.preventDefault();
+                      move(kids.length - 1);
+                      break;
+                  }
+                }}
+              >
                 {kids.map((k) => {
                   const selected = k.id === activeId;
                   const st = stats[k.id];
@@ -4060,6 +4098,11 @@ export default function App() {
                       key={k.id}
                       role="tab"
                       aria-selected={selected}
+                      tabIndex={selected ? 0 : -1}
+                      ref={(el) => {
+                        if (el) parentChipRefs.current.set(k.id, el);
+                        else parentChipRefs.current.delete(k.id);
+                      }}
                       className={`parent-chip${selected ? " selected" : ""}`}
                       onClick={() => setParentKidId(k.id)}
                     >
