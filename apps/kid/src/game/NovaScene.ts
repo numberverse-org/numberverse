@@ -8,11 +8,15 @@ import { t } from "./i18n";
 import {
   useKidStore,
   NOVA_OUTFITS,
+  NOVA_SPECIES,
+  speciesById,
+  speciesEmoji,
   NOVA_DAILY_CAP,
   todayIso,
   dayIsoAgo,
   defaultNova,
   type NovaOutfit,
+  type NovaSpecies,
 } from "../store";
 import { ROOMS } from "./rooms";
 import { ACTIVITIES, type ActivityDef } from "./activities";
@@ -37,6 +41,7 @@ const NOVA_T = {
     doneTodayPlay: "We already played lots today! 🎈💛",
     playMsg: "Whee! That was fun! 🎈",
     shopTitle: "🛍 Outfit Shop",
+    speciesTitle: "🐣 Pet Friends",
     funTitle: "🎉 Play with Nova",
     close: "✕",
     playCta: "Let's Play!",
@@ -46,6 +51,11 @@ const NOVA_T = {
     needCoins: "Play games to earn coins! 💪",
     boughtMsg: "Ooh, I love it! 💛",
     equipMsg: "Fashion! 💅",
+    adopt: "Adopt",
+    adopted: "Mine",
+    locked: "🔒 Grows to unlock",
+    adoptedMsg: "New friend! 💛",
+    needGrow: "Grow your pet to unlock me! 🌱",
     daily: (n: number) => `today ${n}/${NOVA_DAILY_CAP}`,
     streak: (n: number) => `${n}-day streak`,
     zzz: "Zzz…",
@@ -68,6 +78,7 @@ const NOVA_T = {
     doneTodayPlay: "আজ তো অনেক খেললাম! 🎈💛",
     playMsg: "উহু! দারুণ মজা! 🎈",
     shopTitle: "🛍 পোশাকের দোকান",
+    speciesTitle: "🐣 পোষা বন্ধু",
     funTitle: "🎉 নোভার সাথে খেলো",
     close: "✕",
     playCta: "খেলি!",
@@ -77,6 +88,11 @@ const NOVA_T = {
     needCoins: "কয়েন পেতে খেলা খেলো! 💪",
     boughtMsg: "ওহ্, আমার খুব পছন্দ! 💛",
     equipMsg: "দারুণ ফ্যাশন! 💅",
+    adopt: "দত্তক নাও",
+    adopted: "আমার",
+    locked: "🔒 বড়ো হলে খুলবে",
+    adoptedMsg: "নতুন বন্ধু! 💛",
+    needGrow: "পোষা প্রাণী বড়ো করলে আমায় পাবে! 🌱",
     daily: (n: number) => `আজ ${n}/${NOVA_DAILY_CAP}`,
     streak: (n: number) => `${n} দিনের ধারা`,
     zzz: "ঘুম…",
@@ -577,6 +593,8 @@ export class NovaScene extends Phaser.Scene {
 
   private root!: Phaser.GameObjects.Container;
   private glowImg!: Phaser.GameObjects.Image;
+  /** #19 — the adopted pet companion floating beside Nova (owl = no companion). */
+  private companion!: Phaser.GameObjects.Text;
   private owl!: Phaser.GameObjects.Container;
   private cloud!: Phaser.GameObjects.Image;
   private shadow!: Phaser.GameObjects.Graphics;
@@ -633,6 +651,8 @@ export class NovaScene extends Phaser.Scene {
   private careFab!: Phaser.GameObjects.Container;
   private shopFab!: Phaser.GameObjects.Container;
   private funFab!: Phaser.GameObjects.Container;
+  /** #19 — opens the pet-species adopt sheet. */
+  private speciesFab!: Phaser.GameObjects.Container;
 
   // rooms
   private roomIdx = 0;
@@ -665,6 +685,15 @@ export class NovaScene extends Phaser.Scene {
   private shopPage = 0;
   private shopPages = 1;
   private shopTargetY = 0;
+
+  // #19 — pet species sheet (adopt a new friend once a growth milestone is reached)
+  private speciesPanel!: Phaser.GameObjects.Container;
+  private speciesDim!: Phaser.GameObjects.Rectangle;
+  private speciesCard!: Phaser.GameObjects.Graphics;
+  private speciesTitleText!: Phaser.GameObjects.Text;
+  private speciesCloseText!: Phaser.GameObjects.Text;
+  private species!: Phaser.GameObjects.Container;
+  private speciesTargetY = 0;
 
   // fun sheet
   private actPanel!: Phaser.GameObjects.Container;
@@ -730,7 +759,7 @@ export class NovaScene extends Phaser.Scene {
     // sheet's dim) are taps and left alone; only open-canvas swipes flip.
     this.buildSwipeHint();
     enableSwipeRooms(this, (dir) => {
-      if (this.shopPanel.visible || this.actPanel.visible) return; // a sheet is open — that press was its close
+      if (this.shopPanel.visible || this.speciesPanel.visible || this.actPanel.visible) return; // a sheet is open — that press was its close
       this.poke();
       this.setRoom(dir);
       if (!this.swipedRooms) {
@@ -738,7 +767,7 @@ export class NovaScene extends Phaser.Scene {
         this.hideSwipeHint();
       }
       this.say(t("roomFlipped"), 1600);
-    }, { ignoreStart: () => this.shopPanel.visible || this.actPanel.visible });
+    }, { ignoreStart: () => this.shopPanel.visible || this.speciesPanel.visible || this.actPanel.visible });
     makeTex(this, "nv-grad-Nova", 4, 4, (ctx) => {
       ctx.fillStyle = "#2b1e6d";
       ctx.fillRect(0, 0, 4, 4);
@@ -753,6 +782,7 @@ export class NovaScene extends Phaser.Scene {
     this.buildBubble();
     this.buildBottomDock();
     this.buildShopSheet();
+    this.buildSpeciesSheet();
     this.buildActSheet();
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layout, this);
@@ -1172,7 +1202,11 @@ export class NovaScene extends Phaser.Scene {
       bpStrapR,
     ]);
     this.glowImg = this.add.image(0, -20, makeTex(this, "nv-owl-glow", 380, 340, texGlow));
-    this.root = this.add.container(0, 0, [this.glowImg, this.owl]).setDepth(10);
+    // #19 — a tiny adopted pet floats beside Nova (owl starter → hidden; a
+    // bobbing companion for cat/peacock/dragon). Updated in refresh().
+    this.companion = this.add.text(0, 0, "", txt(30, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
+    this.companion.setVisible(false);
+    this.root = this.add.container(0, 0, [this.glowImg, this.owl, this.companion]).setDepth(10);
     this.root.setSize(320, 400);
     this.root.setInteractive({ useHandCursor: true });
     this.root.on("pointerdown", () => this.onTap());
@@ -1285,6 +1319,8 @@ export class NovaScene extends Phaser.Scene {
     // small round FABs — quiet utility row
     this.shopFab = this.roundFab("🛍️");
     this.shopFab.on("pointerdown", () => this.showShop());
+    this.speciesFab = this.roundFab("🐣");
+    this.speciesFab.on("pointerdown", () => this.showSpecies());
     this.feedFab = this.roundFab("🍎");
     this.feedFab.on("pointerdown", () => this.care("feed"));
     this.careFab = this.roundFab("🎈");
@@ -1292,7 +1328,9 @@ export class NovaScene extends Phaser.Scene {
     this.funFab = this.roundFab("🎉");
     this.funFab.on("pointerdown", () => this.showAct());
 
-    this.dock = this.add.container(0, 0, [this.dockBg, this.cta, this.shopFab, this.feedFab, this.careFab, this.funFab]).setDepth(310);
+    this.dock = this.add
+      .container(0, 0, [this.dockBg, this.cta, this.shopFab, this.speciesFab, this.feedFab, this.careFab, this.funFab])
+      .setDepth(310);
   }
 
   private roundFab(emoji: string) {
@@ -1515,6 +1553,155 @@ export class NovaScene extends Phaser.Scene {
       this.shop.add(btn);
     });
     this.updateDots(this.shopPanel, this.shopDots, this.shopPages, this.shopPage, 116, this.shopPrevBtn, this.shopNextBtn);
+  }
+
+  /* ────────────────────────── pet species sheet (#19) ────────────────────────── */
+
+  private buildSpeciesSheet() {
+    this.speciesPanel = this.add.container(0, 0).setDepth(5000).setVisible(false);
+    this.speciesDim = this.add.rectangle(0, 0, 10, 10, 0x04060f, 0.62).setOrigin(0).setInteractive();
+    this.speciesDim.on("pointerdown", () => this.hideSpecies());
+    this.speciesCard = this.add.graphics();
+    this.speciesTitleText = this.add.text(0, 0, this.t().speciesTitle, txt(20, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
+    this.speciesCloseText = this.add.text(0, 0, this.t().close, txt(22, "#c9d4ff", { bold: true, shadow: false })).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this.speciesCloseText.on("pointerdown", () => this.hideSpecies());
+    this.species = this.add.container(0, 0);
+    this.speciesPanel.add([this.speciesDim, this.speciesCard, this.speciesTitleText, this.speciesCloseText, this.species]);
+  }
+
+  private showSpecies() {
+    this.poke();
+    if (this.speciesPanel.visible) return;
+    this.hideShop(true);
+    this.hideAct(true);
+    this.speciesPanel.setVisible(true);
+    this.speciesPanel.setAlpha(1).setPosition(this.speciesPanel.x, this.speciesTargetY + 90);
+    this.tweens.add({ targets: this.speciesPanel, y: this.speciesTargetY, duration: 300, ease: "Back.easeOut" });
+    this.renderSpeciesPage();
+  }
+
+  private hideSpecies(instant = false) {
+    if (!this.speciesPanel.visible) return;
+    if (instant) {
+      this.speciesPanel.setVisible(false);
+      return;
+    }
+    this.tweens.add({
+      targets: this.speciesPanel,
+      y: this.speciesPanel.y + 90,
+      alpha: 0,
+      duration: 200,
+      ease: "Sine.easeIn",
+      onComplete: () => this.speciesPanel.setVisible(false),
+    });
+  }
+
+  private speciesButton(sp: NovaSpecies) {
+    const st = useKidStore.getState();
+    const nova = st.nova[this.kidId] ?? defaultNova();
+    const isCurrent = nova.species === sp.id;
+    const unlocked = nova.petStage >= sp.unlockStage;
+    const afford = nova.coins >= sp.cost;
+
+    // the pet's face at THIS growth stage — the adopt sheet previews your friend
+    const preview = speciesEmoji(sp.id, nova.petStage);
+
+    const cardK = makeTex(this, `nv-species-card-${sp.id}`, 100, 118, (ctx, w, h) => {
+      ctx.shadowColor = "rgba(0,0,0,0.35)";
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "rgba(255,255,255,0.96)");
+      g.addColorStop(1, "rgba(240,244,252,0.92)");
+      ctx.fillStyle = g;
+      rr(ctx, 2, 2, w - 4, h - 4, 18);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.95)";
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    });
+    const face = this.add.image(0, 0, cardK);
+    face.setTint(isCurrent ? 0xffd166 : unlocked && afford ? 0xdceeff : unlocked ? 0xffd9b3 : 0xc9d2df);
+
+    const tile = this.add.image(0, -26, makeTex(this, `nv-species-tile-${sp.id}`, 52, 52, (ctx, w) => {
+      const g = ctx.createLinearGradient(0, 0, 0, w);
+      g.addColorStop(0, "rgba(255,255,255,0.95)");
+      g.addColorStop(1, "rgba(235,240,250,0.9)");
+      ctx.fillStyle = g;
+      rr(ctx, 1, 1, w - 2, w - 2, 14);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(210,220,240,0.9)";
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+    })).setDepth(301);
+    const emoji = this.add
+      .text(0, -26, unlocked ? preview : "🔒", txt(24, "#ffffff", { bold: true, shadow: false }))
+      .setOrigin(0.5)
+      .setDepth(302);
+
+    const name = this.lang === "bn" ? sp.nameBn : sp.name;
+    // state line: current friend / adopt+price / locked milestone
+    let state: string;
+    let stateColor: string;
+    if (isCurrent) {
+      state = `✅ ${this.t().adopted}`;
+      stateColor = "#8a5a00";
+    } else if (!unlocked) {
+      state = this.t().locked;
+      stateColor = "#7c8898";
+    } else if (!afford) {
+      state = `🪙 ${sp.cost}`;
+      stateColor = "#b3630c";
+    } else {
+      state = `${this.t().adopt} 🪙${sp.cost}`;
+      stateColor = "#0b4f7a";
+    }
+
+    const c = this.add.container(0, 0, [
+      face,
+      tile,
+      emoji,
+      this.add.text(0, 16, name, txt(10, "#23203f", { bold: true, shadow: false, wrap: 92 })).setOrigin(0.5).setDepth(301),
+      this.add.text(0, 44, state, txt(11, stateColor, { bold: true, shadow: false, wrap: 92 })).setOrigin(0.5).setDepth(301),
+    ]).setSize(100, 118).setDepth(300);
+    c.setInteractive({ useHandCursor: true });
+    c.on("pointerdown", () => {
+      this.tweens.add({ targets: c, scale: 0.93, duration: 80, yoyo: true });
+      this.adoptSpecies(sp, unlocked, afford);
+    });
+    return c;
+  }
+
+  private renderSpeciesPage() {
+    this.species.removeAll(true);
+    NOVA_SPECIES.forEach((sp, i) => {
+      const btn = this.speciesButton(sp);
+      btn.x = (i - (NOVA_SPECIES.length - 1) / 2) * 108;
+      this.species.add(btn);
+    });
+  }
+
+  private adoptSpecies(sp: NovaSpecies, unlocked: boolean, afford: boolean) {
+    const T = this.t();
+    const nova = useKidStore.getState().nova[this.kidId] ?? defaultNova();
+    if (nova.species === sp.id) {
+      this.say(`${T.adoptedMsg} ${this.lang === "bn" ? sp.nameBn : sp.name}!`, 1600);
+      return;
+    }
+    if (!unlocked) {
+      this.say(T.needGrow, 2000);
+      return;
+    }
+    if (!afford) {
+      this.say(T.needCoins, 2000);
+      return;
+    }
+    useKidStore.getState().petAdopt(this.kidId, sp.id);
+    win();
+    this.say(`${T.adoptedMsg} ${this.lang === "bn" ? sp.nameBn : sp.name}!`, 1800);
+    this.sparkle(this.baseX + 40, this.baseY - 60);
+    this.refresh();
   }
 
   private renderActPage() {
@@ -2410,6 +2597,17 @@ export class NovaScene extends Phaser.Scene {
     const earnedToday = nova.earnDay === today ? nova.earnedToday : 0;
 
     this.applyOutfit(nova.equipped);
+
+    // #19 — adopted pet companion (owl = the mascot itself, no companion)
+    const sp = speciesById(nova.species);
+    if (sp.id === "owl") {
+      this.companion.setVisible(false);
+    } else {
+      this.companion.setText(speciesEmoji(sp.id, nova.petStage));
+      this.companion.setPosition(-100, 170);
+      this.companion.setVisible(true);
+    }
+
     this.wallet.setText(`🪙 ${nova.coins}`);
     this.walletSub.setText(this.t().daily(Math.min(earnedToday, NOVA_DAILY_CAP)));
     this.tweens.add({ targets: this.wallet, scale: 1.18, duration: 120, yoyo: true });
@@ -2441,6 +2639,7 @@ export class NovaScene extends Phaser.Scene {
     this.ctaSub.setText(this.t().playSub);
 
     this.renderShopPage();
+    this.renderSpeciesPage();
     this.renderActPage();
   }
 
@@ -2492,13 +2691,15 @@ export class NovaScene extends Phaser.Scene {
     this.dock.setPosition(W / 2, H - 14 - 62 - this.bottomInset);
     this.dockBg.setDisplaySize(Math.min(W - 24, 430), 124);
     this.cta.setPosition(0, -28);
-    this.shopFab.setPosition(-120, 28);
-    this.feedFab.setPosition(-44, 28);
-    this.careFab.setPosition(44, 28);
-    this.funFab.setPosition(120, 28);
+    this.shopFab.setPosition(-152, 28);
+    this.speciesFab.setPosition(-76, 28);
+    this.feedFab.setPosition(0, 28);
+    this.careFab.setPosition(76, 28);
+    this.funFab.setPosition(152, 28);
 
     // sheets
     this.layoutShopSheet(W, H);
+    this.layoutSpeciesSheet(W, H);
     this.layoutActSheet(W, H);
 
     this.buildRoom(this.roomIdx);
@@ -2535,6 +2736,26 @@ export class NovaScene extends Phaser.Scene {
     this.shop.setPosition(0, 6);
     this.shopPrevBtn.setPosition(-sw / 2 + 32, 6);
     this.shopNextBtn.setPosition(sw / 2 - 32, 6);
+  }
+
+  private layoutSpeciesSheet(W: number, H: number) {
+    const sw = Math.min(W - 20, 470);
+    const sh = 280;
+    const ty = H - 14 - this.bottomInset - sh / 2;
+    this.speciesTargetY = ty;
+    this.speciesPanel.setPosition(W / 2, this.speciesPanel.visible ? ty : ty);
+    this.speciesDim.setPosition(-W / 2, -ty).setSize(W, H);
+    this.speciesCard.clear();
+    this.speciesCard.fillStyle(0x0d1733, 0.96);
+    this.speciesCard.fillRoundedRect(-sw / 2, -sh / 2, sw, sh, { tl: 28, tr: 28, bl: 0, br: 0 });
+    this.speciesCard.lineStyle(1.5, 0xffffff, 0.18);
+    this.speciesCard.strokeRoundedRect(-sw / 2, -sh / 2, sw, sh, { tl: 28, tr: 28, bl: 0, br: 0 });
+    // handle
+    this.speciesCard.fillStyle(0xffffff, 0.35);
+    this.speciesCard.fillRoundedRect(-20, -sh / 2 + 8, 40, 5, 3);
+    this.speciesTitleText.setPosition(0, -sh / 2 + 36);
+    this.speciesCloseText.setPosition(sw / 2 - 26, -sh / 2 + 36);
+    this.species.setPosition(0, 6);
   }
 
   private layoutActSheet(W: number, H: number) {
