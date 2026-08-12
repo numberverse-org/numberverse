@@ -5,17 +5,41 @@ import { t } from "./i18n";
 import { SAT } from "./safeArea";
 import { cancelSpeech, speak, speakAnswer } from "./speech";
 import { wrongLedger } from "./wrongLedger";
+import { useKidStore } from "../store";
 
 /**
  * Escalating hints on repeated misses — every miss is a teaching moment.
  *
  *   miss #1  → soft nudge  ("Almost! Try again 💪")
- *   miss #2  → BIG coaching banner + fade out ~half of the wrong buttons
+ *   miss #2+ → BIG coaching banner + fade out ~half of the wrong buttons
  *   miss #3+ → glow the correct answer + reveal banner ("The answer is X!")
  *
  * The miss counter is keyed by the current correct value, so it resets
  * naturally when a new round poses a different question.
+ *
+ * ## Confidence depth (adaptive)
+ * The ladder's SPEED scales with the kid's Moni confidence (0–1): an unsure
+ * kid gets scaffolding early, a sharp kid is held back so they can figure it
+ * out themselves.
+ *   confidence < 0.4  (fragile) → reveal at miss 2  — catch them before snowball
+ *   0.4 – 0.7          (steady)  → reveal at miss 3  — the classic ladder
+ *   > 0.7             (sharp)   → reveal at miss 4  — give the confident mind room
+ * The reveal banner is the SAME "answer is X" teach, just timed to their pace.
  */
+export type HintDepth = 0 | 1 | 2;
+
+/** Map a Moni confidence score to a hint-depth tier. Exported for tests + UI. */
+export function confidenceDepth(confidence: number | undefined): HintDepth {
+  if (confidence === undefined) return 1;      // no profile yet → the classic ladder
+  if (confidence < 0.4) return 0;              // fragile — scaffold early
+  if (confidence > 0.7) return 2;              // sharp — hold back
+  return 1;
+}
+
+/** The miss number at which the reveal ("the answer is X!") happens. */
+export function revealAtDepth(depth: HintDepth): number {
+  return depth === 0 ? 2 : depth === 2 ? 4 : 3;
+}
 export interface HintCtx {
   /** Coaching line (en). String, or a function for round-dependent text. */
   hint: string | (() => string);
@@ -68,6 +92,13 @@ export function hintWrong(
   const n = (log[key] ?? 0) + 1;
   log[key] = n;
 
+  // Scale the ladder to this kid's Moni confidence: fragile kids get the reveal
+  // sooner (before a miss snowballs), sharp kids get more room to figure it out.
+  const kidId = wrongLedger.kidId();
+  const conf = kidId ? useKidStore.getState().moni?.[kidId]?.confidence?.score : undefined;
+  const depth = confidenceDepth(conf);
+  const revealAt = revealAtDepth(depth);
+
   // ANY wrong attempt retires that button — a kid can't keep tapping the same
   // wrong answer. It dims, shrinks, gets an ✕, and becomes non-clickable.
   // (keepOnWrong → sequencing games: the option stays alive and recovers.)
@@ -85,10 +116,11 @@ export function hintWrong(
 
   const opts = ctx.options?.() ?? [];
 
-  if (n === 2) {
-    // miss #2: coach loudly + clear away half the remaining wrong choices.
-    // (`o.sprite.input` is null after disableInteractive → already retired.)
-    // (keepOnWrong → nothing may be cleared; every option is a future answer.)
+  // Not yet at the reveal depth: coach loudly + clear away half the remaining
+  // wrong choices. (`o.sprite.input` is null after disableInteractive → already
+  // retired.) (keepOnWrong → nothing may be cleared; every option is a future
+  // answer.)
+  if (n < revealAt) {
     if (!ctx.keepOnWrong) {
       const wrong = opts.filter((o) => o.value !== correct && o.sprite.active && o.sprite.input);
       if (wrong.length > 0) {
@@ -104,7 +136,7 @@ export function hintWrong(
     return;
   }
 
-  // miss #3+: light up the right answer + tell them exactly what it is.
+  // At the reveal depth: light up the right answer + tell them what it is.
   // The reveal always cancels whatever's still speaking (a stale hint from the
   // previous round) so the kid hears THIS answer, and speaks it as a WORD
   // ("two", not a bare "2") so no voice can mangle a digit.
