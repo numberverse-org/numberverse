@@ -19,6 +19,7 @@ import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD,
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
+import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang } from "./game/locale";
@@ -740,6 +741,8 @@ interface Strings {
   rankLabel: string;
   rankNextNeed: (next: string, need: number) => string;
   newSkill: (n: number) => string;
+  /** Spoken the INSTANT a skill crosses the mastery bar mid-session (#290). */
+  masterySpeak: (title: string) => string;
   /* growth garden */
   gardenTile: string;
   gardenHint: string;
@@ -1149,6 +1152,7 @@ const STR: Record<Lang, Strings> = {
     rankLabel: "Your rank",
     rankNextNeed: (next, need) => `${need} more lesson${need > 1 ? "s" : ""} to become ${next}`,
     newSkill: (n) => (n === 1 ? "🌟 New skill mastered!" : `🌟 ${n} new skills mastered!`),
+    masterySpeak: (title) => `Wow! You mastered ${title}! 🎉`,
     gardenTile: "My Garden",
     gardenHint: "Answer right — plants grow!",
   },
@@ -1556,6 +1560,7 @@ const STR: Record<Lang, Strings> = {
     rankLabel: "তোমার পদবি",
     rankNextNeed: (next, need) => `${next} হতে আর ${need}টি পাঠ আয়ত্ত করো`,
     newSkill: (n) => (n === 1 ? "🌟 নতুন দক্ষতা আয়ত্ত করেছো!" : `🌟 ${n}টি নতুন দক্ষতা আয়ত্ত করেছো!`),
+    masterySpeak: (title) => `বাহ! তুমি ${title} আয়ত্ত করেছ! 🎉`,
     gardenTile: "আমার বাগান",
     gardenHint: "ঠিক উত্তর দাও — গাছ বাড়বে!",
   },
@@ -2824,10 +2829,20 @@ export default function App() {
           const st = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
           if (st && st.pMastered >= MASTERY_THRESHOLD) {
             gardenMastery(kid.id, step.skillId, step.title);
-            // PET: a brand-new mastery is a BIG step — egg cracks, hatchling grows.
+            // PET + 🎉 #290 IN-THE-MOMENT: a brand-new mastery is the BIG moment —
+            // the pet takes a step AND we celebrate RIGHT NOW with a confetti burst
+            // + a spoken cheer, not just a badge on the done screen. One per skill.
             if (!masteredBeforeRef.current.has(step.skillId)) {
               useKidStore.getState().petGrowMastery(kid.id);
               masteredBeforeRef.current.add(step.skillId);
+              cancelSpeech();
+              tada();
+              const bn = getAppLang() === "bn";
+              speak(t.masterySpeak(step.title), { lang: bn ? "bn" : "en" });
+              const sc = game.scene.getScene(step.scene);
+              if (sc && sc.scale) {
+                confettiBurst(sc, sc.scale.width / 2, Math.min(sc.scale.height * 0.35, 240), 44);
+              }
             }
           }
           void syncProgress();
