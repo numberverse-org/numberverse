@@ -1,126 +1,228 @@
-# 🗺️ ROADMAP_NEXT — oracle-driven next 100 features
+# 🗺️ ROADMAP_NEXT — oracle-driven next-300 backlog
 
-> Generated from the clean 2026-08-12 Oracle standup + Council brief. 
-> Each issue is scoped with acceptance criteria and lives on the GitHub board.
+> Generated 2026-08-12 from a CLEAN Oracle standup (35/35) + Council (70/70).
+> 8 new epics · ~190 new issues · every one scoped with acceptance criteria.
 
 
-## v18 — content wave 2
+## v24 — content wave 3
 
-- Bangla: three-digit numbers 100–1000 (place value to hundreds)  _(priority: medium, kid-first)_
-- Bangla: opposites (বিপরীত শব্দ) matching game  _(priority: medium, kid-first)_
-- Bangla: conjunct letters (যুক্তাক্ষর) — ক্ষ, ঞ্জ, ঙ্ক etc.  _(priority: low, kid-first)_
-- Bangla: days & months (সপ্তাহের দিন, মাসের নাম) order game  _(priority: low, kid-first)_
-- Bangla: spelling (বানান) — common 2-3 letter words  _(priority: medium, kid-first)_
-- Bangla: advanced matras (ে/ো/ৈ/ৌ) tap game  _(priority: low, kid-first)_
-- Bangla: simple sentence → picture match  _(priority: medium, kid-first)_
-- Bangla: nursery rhyme tap-along (ছড়া)  _(priority: low, kid-first)_
-- Bangla: pronouns (সর্বনাম) fill-in  _(priority: low, kid-first)_
-- Bangla: count back from 100 (উল্টো গোনা)  _(priority: low, kid-first)_
-- English: long-vowel teams (ee/ea/ai/ay/oa/ow) phonics  _(priority: medium, kid-first)_
-- English: CVC word builder (drag letters)  _(priority: medium, kid-first)_
-- English: sight words level 2 (next 100)  _(priority: medium, kid-first)_
-- English: plurals -s/-es/-ies  _(priority: low, kid-first)_
-- English: regular past tense (-ed)  _(priority: low, kid-first)_
-- English: sentence reading comprehension (3-5 words)  _(priority: low, kid-first)_
-- English: uppercase ↔ lowercase match  _(priority: low, kid-first)_
-- Math: multiplication tables 2–10  _(priority: high, kid-first)_
-- Math: division facts (fair shares)  _(priority: high, kid-first)_
-- Math: 3-digit add/sub with regrouping  _(priority: medium, kid-first)_
-- Math: place value to 9999  _(priority: medium, kid-first)_
-- Math: compare & order fractions  _(priority: medium, kid-first)_
-- Math: 2D shapes — sides & corners  _(priority: low, kid-first)_
-- Math: measurement — length, weight, capacity  _(priority: low, kid-first)_
-- Math: clock to 5 minutes (analog + digital)  _(priority: low, kid-first)_
-- Math: pictographs (data handling)  _(priority: low, kid-first)_
-- Math: money change combos (৳2/৳5/৳10/৳20)  _(priority: medium, kid-first)_
-- Math: skip counting patterns (+2, +5, +10)  _(priority: low, kid-first)_
-- Science: living vs non-living sort  _(priority: medium, kid-first)_
-- Science: plants — parts & needs  _(priority: medium, kid-first)_
-- Science: animal homes & babies  _(priority: low, kid-first)_
-- Science: five senses  _(priority: low, kid-first)_
-- Science: food sources — plant or animal  _(priority: low, kid-first)_
-- Science: materials — wood, metal, plastic, glass  _(priority: low, kid-first)_
-- ICT: computer parts & safe offline habits  _(priority: low, kid-first)_
-- Social: family & community helpers  _(priority: low, kid-first)_
-- Social: Bangladesh national symbols  _(priority: low, kid-first)_
-- Values: good habits & hygiene  _(priority: low, kid-first)_
+- Bangla: consonant conjunct speed drill (ক্ষ ঞ্জ ঙ্ক ণ্ড)  _(priority: low, kid-first)_
+- Bangla: two-letter sight word wall (দেখে বলো)  _(priority: low, kid-first)_
+- Bangla: sentence builder — subject + verb + object tiles  _(priority: low, kid-first)_
+- Bangla: short-paragraph comprehension (ছোট গল্প)  _(priority: low, kid-first)_
+- Bangla: NCTB rhymes vol. 2 — tap-along  _(priority: low, kid-first)_
+- Bangla: antonyms & synonyms pairs (বিপরীত/সমার্থক)  _(priority: low, kid-first)_
+- Bangla: punctuation placement (। , ? !)  _(priority: low, kid-first)_
+- Bangla: compound word building (যোগে যোগে শব্দ)  _(priority: low, kid-first)_
+- Bangla: letter vs sound discrimination (অ-আ-ক-খ)  _(priority: low, kid-first)_
+- Bangla: matra matrix challenge (মাত্রা মিশ্রণ)  _(priority: low, kid-first)_
+- Bangla: graded read-a-story — 3 short stories  _(priority: low, kid-first)_
+- Bangla: numbers 1-100 — see the word, tap the digit  _(priority: low, kid-first)_
+- Bangla: coin values (টাকার চেনা)  _(priority: low, kid-first)_
+- Bangla: time words ordering (কাল-আজ-আগামীকাল)  _(priority: low, kid-first)_
+- Bangla: direction words (উপরে-নিচে-ডানে-বামে)  _(priority: low, kid-first)_
+- Bangla: polite words social game (শিষ্টাচার)  _(priority: low, kid-first)_
+- Bangla: riddle time (ধাঁধা) fun reads  _(priority: low, kid-first)_
+- English: R-controlled vowels (ar er ir or ur)  _(priority: low, kid-first)_
+- English: silent-e magic (make-a-word)  _(priority: low, kid-first)_
+- English: sight words level 3 (3rd 100)  _(priority: low, kid-first)_
+- English: contractions (I'm, don't, can't)  _(priority: low, kid-first)_
+- English: comparatives & superlatives (big-bigger-biggest)  _(priority: low, kid-first)_
+- English: prepositions (in, on, under, behind)  _(priority: low, kid-first)_
+- English: question words (who what where when why)  _(priority: low, kid-first)_
+- English: story sequencing (first then last)  _(priority: low, kid-first)_
+- English: compound words (rain+bow=rainbow)  _(priority: low, kid-first)_
+- English: read-aloud comprehension lvl 2  _(priority: low, kid-first)_
+- English: alphabetical order race  _(priority: low, kid-first)_
+- English: word families (-at -an -ig -op)  _(priority: low, kid-first)_
+- English: yes/no listening comprehension  _(priority: low, kid-first)_
+- Math: addition facts to 20 fluency  _(priority: low, kid-first)_
+- Math: subtraction facts to 20 fluency  _(priority: low, kid-first)_
+- Math: doubles & near-doubles  _(priority: low, kid-first)_
+- Math: making ten strategy  _(priority: low, kid-first)_
+- Math: 2-digit addition with regrouping (visual)  _(priority: low, kid-first)_
+- Math: 2-digit subtraction with borrowing (visual)  _(priority: low, kid-first)_
+- Math: multiplication arrays (visual times tables)  _(priority: low, kid-first)_
+- Math: division as sharing lvl 2  _(priority: low, kid-first)_
+- Math: fractions — parts of a set  _(priority: low, kid-first)_
+- Math: mixed numbers & improper fractions intro  _(priority: low, kid-first)_
+- Math: decimals — tenths place value  _(priority: low, kid-first)_
+- Math: making change with ৳ notes  _(priority: low, kid-first)_
+- Math: elapsed time (how long until…)  _(priority: low, kid-first)_
+- Math: perimeter intro (measure the fence)  _(priority: low, kid-first)_
+- Math: 2D → 3D shape pairing  _(priority: low, kid-first)_
+- Math: symmetry mirror game  _(priority: low, kid-first)_
+- Science: animals — features & movement  _(priority: low, kid-first)_
+- Science: plant life cycle (seed→fruit)  _(priority: low, kid-first)_
+- Science: weather & seasons sorting  _(priority: low, kid-first)_
+- Science: light & shadows  _(priority: low, kid-first)_
+- Science: magnets — attract/repel  _(priority: low, kid-first)_
+- Science: water cycle for kids  _(priority: low, kid-first)_
+- ICT: keyboard explorer (letters & numbers)  _(priority: low, kid-first)_
+- ICT: device manners — on/off & wait  _(priority: low, kid-first)_
+- Social: professions & their tools  _(priority: low, kid-first)_
+- Social: our festivals — customs sort  _(priority: low, kid-first)_
+- Values: kindness & sharing scenarios  _(priority: low, kid-first)_
+- Values: honesty — the truth game  _(priority: low, kid-first)_
+- Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)  _(priority: low, kid-first)_
+- Bangla: simple idioms for kids  _(priority: low, kid-first)_
+- Bangla: verb-form gender agreement  _(priority: low, kid-first)_
+- Bangla: classifiers & postpositions (গুলো/টাকে)  _(priority: low, kid-first)_
+- English: digraph review challenge (sh ch th wh ph)  _(priority: low, kid-first)_
+- English: synonyms & antonyms pairs  _(priority: low, kid-first)_
+- English: irregular plurals (foot-feet, mouse-mice)  _(priority: low, kid-first)_
+- English: irregular past tense (go-went, see-saw)  _(priority: low, kid-first)_
+- English: long-vowel teams review  _(priority: low, kid-first)_
+- Math: skip-counting by 3s & 4s  _(priority: low, kid-first)_
+- Math: odd & even sort  _(priority: low, kid-first)_
+- Math: number bonds to 10 & 20  _(priority: low, kid-first)_
+- Math: place value to 9999 (thousands)  _(priority: low, kid-first)_
+- Math: rounding to nearest 10/100  _(priority: low, kid-first)_
+- Math: bar-chart reading  _(priority: low, kid-first)_
+- Science: sink or float predict  _(priority: low, kid-first)_
+- Science: animal food chains  _(priority: low, kid-first)_
+- Science: day & night — earth rotation  _(priority: low, kid-first)_
+- ICT: tap/drag accuracy trainer  _(priority: low, kid-first)_
+- Social: village & city life sort  _(priority: low, kid-first)_
+- Values: patience & waiting game  _(priority: low, kid-first)_
 
-## v19 — parent power 2
+## v25 — parent power 3
 
-- Parent panel: per-day wrong-answer history per kid  _(priority: high, parent-facing)_
-- Parent panel: mastery timeline  _(priority: medium, parent-facing)_
-- Parent: per-kid daily goal (minutes/rounds) + gentle nudge  _(priority: medium, parent-facing)_
-- Parent: curriculum band focus override  _(priority: medium, parent-facing)_
-- Parent: voice preference per kid  _(priority: low, parent-facing)_
-- Parent: kid profile avatar/photo management  _(priority: low, parent-facing)_
-- Parent: on-demand weekly digest  _(priority: low, parent-facing)_
-- Parent: offline sync indicator + manual sync  _(priority: low, parent-facing)_
-- Parent: PIN lock to enter parent area  _(priority: high, parent-facing)_
-- Parent: bedtime quiet mode  _(priority: low, parent-facing)_
-- Parent: skip-ahead for advanced kids  _(priority: low, parent-facing)_
-- Parent: see exact questions each kid missed  _(priority: medium, parent-facing)_
+- Parent: per-kid reading & story progress view  _(priority: low, parent-facing)_
+- Parent: weekly learning narrative from Kotha  _(priority: low, parent-facing)_
+- Parent: struggle-alert card (skill needs help)  _(priority: low, parent-facing)_
+- Parent: compare two kids side-by-side  _(priority: low, parent-facing)_
+- Parent: export learning history (CSV/PDF)  _(priority: low, parent-facing)_
+- Parent: printable worksheet generator from weak skills  _(priority: low, parent-facing)_
+- Parent: per-kid sound & music balance  _(priority: low, parent-facing)_
+- Parent: daily play summary  _(priority: low, parent-facing)_
+- Parent: share-card deep link per kid  _(priority: low, parent-facing)_
+- Parent: multi-kid onboarding flow  _(priority: low, parent-facing)_
+- Parent: PIN recovery flow  _(priority: low, parent-facing)_
+- Parent: quiet hours scheduling  _(priority: low, parent-facing)_
+- Parent: acceleration plan view  _(priority: low, parent-facing)_
+- Parent: big-text & high-contrast mode  _(priority: low, parent-facing)_
+- Parent: monthly learning report archive  _(priority: low, parent-facing)_
+- Parent: untouched-games view  _(priority: low, parent-facing)_
+- Parent: session-preserving kid switch  _(priority: low, parent-facing)_
+- Parent: dashboard light/dark theme  _(priority: low, parent-facing)_
+- Parent: session timeline per kid  _(priority: low, parent-facing)_
+- Parent: goal-setting screen (minutes/rounds per day)  _(priority: low, parent-facing)_
+- Parent: curriculum focus pin  _(priority: low, parent-facing)_
+- Parent: per-kid voice preference  _(priority: low, parent-facing)_
+- Parent: bedtime wind-down config  _(priority: low, parent-facing)_
 
-## v20 — trust & safety
+## v26 — Kotha & adaptive
 
-- Privacy: data-minimization audit (what's stored + why)  _(priority: high, guardrail)_
-- Safety: automated content scan as a CI gate  _(priority: medium, guardrail)_
-- No-ads: CI scan that no ad/tracker SDK ever lands  _(priority: high, guardrail)_
-- Kid-safe share images: strip kid name/photo metadata  _(priority: medium, guardrail)_
-- Encrypted sync payloads (when sync lands)  _(priority: low, guardrail)_
-- Gentle bedtime enforcement (not blocking)  _(priority: medium, parent-facing)_
-- API rate-limit + abuse guard  _(priority: low, guardrail)_
-- Local backup/restore (zip) for parents  _(priority: low, parent-facing)_
-- Privacy explainer card for parents  _(priority: low, parent-facing)_
-- Screen-time accuracy check (ties to playtime reports)  _(priority: low, guardrail)_
+- Kotha: story inspector in parent panel  _(priority: low, kid-first, adaptive)_
+- Kotha: semantic RAG retrieval endpoint  _(priority: low, kid-first, adaptive)_
+- Moni: plan-driven difficulty in gameplay  _(priority: low, kid-first, adaptive)_
+- Moni: misconception contrast drills  _(priority: low, kid-first, adaptive)_
+- Moni: weekly insight card for parents  _(priority: low, kid-first, adaptive)_
+- Moni: fatigue-aware session pacing  _(priority: low, kid-first, adaptive)_
+- Moni: confidence-based review schedule  _(priority: low, kid-first, adaptive)_
+- Kotha: batch-embed stories to pgvector  _(priority: low, kid-first, adaptive)_
+- Kotha: privacy-scrubbed cross-kid aggregates  _(priority: low, kid-first, adaptive)_
+- Kotha: story dedup + retention policy  _(priority: low, kid-first, adaptive)_
+- Moni: learning-style surface  _(priority: low, kid-first, adaptive)_
+- Moni: parent-adjustable strictness  _(priority: low, kid-first, adaptive)_
+- Kotha: offline story queue quota  _(priority: low, kid-first, adaptive)_
+- Moni: per-skill error fingerprinting  _(priority: low, kid-first, adaptive)_
+- Kotha: admin story health dashboard  _(priority: low, kid-first, adaptive)_
+- Adaptive: lesson-variation anti-boredom  _(priority: low, kid-first, adaptive)_
+- Moni: per-skill goal planner for parents  _(priority: low, kid-first, adaptive)_
+- Kotha: story search by skill/error-kind  _(priority: low, kid-first, adaptive)_
+- Kotha: weekly story digest export  _(priority: low, kid-first, adaptive)_
+- Moni: session-length recommendation surfacing  _(priority: low, kid-first, adaptive)_
+- Adaptive: hint-ladder depth by confidence  _(priority: low, kid-first, adaptive)_
 
-## v21 — growth & retention
+## v27 — trust & safety 2
 
-- Skill-of-the-week challenge + badge  _(priority: medium, kid-first)_
-- Nova personality v2 — more reactions & micro-animations  _(priority: low, kid-first)_
-- Daily quest variety: skill-based quests  _(priority: low, kid-first)_
-- Collectible badge book per land  _(priority: low, kid-first)_
-- Pet mini-games with Nova  _(priority: low, kid-first)_
-- Streak freeze tokens  _(priority: low, kid-first)_
-- Per-skill share card: 'Look what I learned!'  _(priority: low, kid-first)_
-- Parent referral share (offline WhatsApp)  _(priority: low, parent-facing)_
-- Land-unlock celebration fireworks  _(priority: low, kid-first)_
-- Weekly recap for kid  _(priority: low, kid-first)_
+- Safety: parent-area age gate (PIN)  _(priority: low, guardrail)_
+- Privacy: on-device data review for parents  _(priority: low, guardrail)_
+- Safety: content-scan allowlist governance  _(priority: low, guardrail)_
+- Guardrail: no-network fallback verification test  _(priority: low, guardrail)_
+- Guardrail: invalidate sessions on password change  _(priority: low, guardrail)_
+- Privacy: PII scrubber for logs  _(priority: low, guardrail)_
+- Safety: scheme/link allowlist  _(priority: low, guardrail)_
+- Guardrail: no console.log in prod bundle  _(priority: low, guardrail)_
+- Safety: gentle screen-time wind-down  _(priority: low, guardrail)_
+- Privacy: Kotha story context redaction  _(priority: low, guardrail)_
+- Guardrail: dependency license audit gate  _(priority: low, guardrail)_
+- Safety: instant pause (parent kill-switch)  _(priority: low, guardrail)_
+- Privacy: data-export for parents (own-API)  _(priority: low, guardrail)_
+- Guardrail: rate-limit on story + progress endpoints  _(priority: low, guardrail)_
+- Safety: age-appropriate band lock for content  _(priority: low, guardrail)_
 
-## v22 — polish & perf
+## v28 — growth & retention 2
 
-- Split main bundle below 1.5MB (more lazy chunks)  _(priority: medium, kid-first)_
-- Voice: per-kid gender/speed options  _(priority: low, kid-first)_
-- Voice: model download progress + retry  _(priority: low, kid-first)_
-- Voice: graceful fallback to system TTS  _(priority: low, kid-first)_
-- Offline: verify full offline on fresh install  _(priority: medium, guardrail)_
-- PWA: update banner with version notes  _(priority: low, kid-first)_
-- PWA: install-prompt timing polish  _(priority: low, kid-first)_
-- Cold start < 2s on mid-range Android  _(priority: medium, guardrail)_
-- Memory: scene pooling to cut GC jank  _(priority: low, kid-first)_
-- Haptics: subtle tap feedback where supported  _(priority: low, kid-first)_
+- Kids: skill-tree map per land  _(priority: low, kid-first)_
+- Kids: land trophy room  _(priority: low, kid-first)_
+- Kids: Nova seasonal outfits (Eid, Boishakh)  _(priority: low, kid-first)_
+- Kids: pet evolution level 2 — new pet types  _(priority: low, kid-first)_
+- Kids: challenge Nova — beat-the-owl rounds  _(priority: low, kid-first)_
+- Kids: daily login calendar reward  _(priority: low, kid-first)_
+- Kids: same-device sibling leaderboard  _(priority: low, kid-first)_
+- Kids: goal badges (10 rounds, 100% day)  _(priority: low, kid-first)_
+- Kids: mastery mystery reward boxes  _(priority: low, kid-first)_
+- Kids: custom avatar builder  _(priority: low, kid-first)_
+- Kids: star-of-the-week recap card  _(priority: low, kid-first)_
+- Kids: quest mission variety  _(priority: low, kid-first)_
+- Kids: kid-friendly voice settings  _(priority: low, kid-first)_
+- Kids: long-term achievements book  _(priority: low, kid-first)_
+- Kids: mastery confetti + spoken cheer  _(priority: low, kid-first)_
+- Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_
+- Kids: Nova reaction pack v2  _(priority: low, kid-first)_
+- Kids: quest variety — mission types  _(priority: low, kid-first)_
+- Kids: streak-freeze token system  _(priority: low, kid-first)_
 
-## v23 — infra & ops
+## v29 — polish & perf 2
 
-- CI: run oracle_team as a PR gate job  _(priority: high, documentation)_
-- CI: post-deploy smoke test (stamp + tokens)  _(priority: high, documentation)_
-- Postgres backup schedule to box disk  _(priority: medium, documentation)_
-- Uptime monitor → Telegram alert  _(priority: medium, documentation)_
-- Structured error logging (no analytics)  _(priority: low, documentation)_
-- Auto-rollback if post-deploy check fails  _(priority: medium, documentation)_
-- CI secrets hygiene scan  _(priority: low, documentation)_
-- Second cloudflared tunnel failover  _(priority: low, documentation)_
-- TLS cert rotation check automation  _(priority: low, documentation)_
-- RELEASING.md update: mastery-gate + oracle gate notes  _(priority: low, documentation)_
+- Perf: lazy-load every game scene chunk  _(priority: low, kid-first, polish)_
+- Perf: 60fps on 2GB Android  _(priority: low, kid-first, polish)_
+- Polish: unified design tokens  _(priority: low, kid-first, polish)_
+- Polish: empty/loading/error states everywhere  _(priority: low, kid-first, polish)_
+- PWA: iOS home-screen polish  _(priority: low, kid-first, polish)_
+- Voice: quantize on-device model  _(priority: low, kid-first, polish)_
+- Perf: preconnect/priority for first paint  _(priority: low, kid-first, polish)_
+- Polish: reduced-motion mode  _(priority: low, kid-first, polish)_
+- Polish: keyboard navigation for parent area  _(priority: low, kid-first, polish)_
+- Perf: game-loop memory audit  _(priority: low, kid-first, polish)_
+- PWA: staged offline updates  _(priority: low, kid-first, polish)_
+- Polish: sound-mixing balance  _(priority: low, kid-first, polish)_
+- Polish: haptic feedback on taps  _(priority: low, kid-first, polish)_
+- Polish: onboarding tour for first play  _(priority: low, kid-first, polish)_
+- Perf: scene preload strategy  _(priority: low, kid-first, polish)_
+
+## v30 — infra & ops 2
+
+- CI: oracle_team as PR gate job  _(priority: low, documentation)_
+- CI: post-deploy smoke test  _(priority: low, documentation)_
+- Infra: automated Postgres backups  _(priority: low, documentation)_
+- Infra: uptime monitor → Telegram  _(priority: low, documentation)_
+- Ops: structured error log + rotation  _(priority: low, documentation)_
+- Ops: auto-rollback on smoke failure  _(priority: low, documentation)_
+- CI: secret-scan job  _(priority: low, documentation)_
+- Infra: second tunnel failover  _(priority: low, documentation)_
+- Ops: container log cleanup  _(priority: low, documentation)_
+- Infra: restore-drill automation  _(priority: low, documentation)_
+- CI: bundle-size regression gate  _(priority: low, documentation)_
+- Docs: RELEASING.md update for new gates  _(priority: low, documentation)_
+- Ops: healthcheck + auto-restart policy  _(priority: low, documentation)_
+- CI: dependency-audit job (npm audit)  _(priority: low, documentation)_
+- Infra: metrics dashboard (box CPU/RAM/disk)  _(priority: low, documentation)_
+- Ops: backup encryption at rest  _(priority: low, documentation)_
+- Docs: architecture diagram refresh  _(priority: low, documentation)_
 
 ## Backlog
 
-- AR numbers camera experiment  _(priority: low, deferred)_
-- Multi-language scaffold (Arabic/Hindi) — research  _(priority: low, deferred)_
-- Printable worksheet generator (offline PDF)  _(priority: low, deferred)_
-- Screen-reader deep support (VoiceOver/TalkBack)  _(priority: low, deferred)_
-- Sound design: per-land ambient music + SFX pack  _(priority: low, deferred)_
-- Optional parent phone notifications bridge  _(priority: low, deferred)_
-- Big-screen / classroom projector mode  _(priority: low, deferred)_
-- Seasonal events (Eid, Pohela Boishakh) decor  _(priority: low, deferred)_
-- Kid dictation: record own voice + replay  _(priority: low, deferred)_
-- Physical flashcards QR → mini game tie-in  _(priority: low, deferred)_
+- Deferred: AR number-camera experiment (spike)  _(priority: low, deferred)_
+- Deferred: multi-language scaffold research  _(priority: low, deferred)_
+- Deferred: screen-reader deep support  _(priority: low, deferred)_
+- Deferred: sound-design pack (per-land)  _(priority: low, deferred)_
+- Deferred: classroom projector mode  _(priority: low, deferred)_
+- Deferred: kid voice recording (on-device)  _(priority: low, deferred)_
+- Deferred: flashcard QR tie-in  _(priority: low, deferred)_
+- Deferred: teacher mode — class roster  _(priority: low, deferred)_
+- Deferred: sibling co-op play mode  _(priority: low, deferred)_
+- Deferred: SVG animation library evaluation  _(priority: low, deferred)_

@@ -692,14 +692,28 @@ for ms, rows in [("v24 — content wave 3", V24), ("v25 — parent power 3", V25
 for (t, goal, *done) in BACKLOG:
     ROADMAP.append(("Backlog", "low", ["deferred"], t, B(goal, *done)))
 
+def issue_kind(labels):
+    """Work-item kind: a true FEATURE (kid-first / parent-facing / adaptive /
+    polish) vs supporting work (guardrail → guardrail, docs → documentation,
+    deferred → enhancement). Keeps the '~100 features' signal honest."""
+    if "guardrail" in labels:
+        return "guardrail"
+    if "documentation" in labels:
+        return "documentation"
+    if "deferred" in labels:
+        return "enhancement"
+    return "feature"
+
 def create(ms, pri, labels, title, body):
     if title in EX:
         return None, "exists"
     ensure_milestone(ms)
+    kind = issue_kind(labels)
     args = ["gh", "issue", "create", "--repo", REPO,
-            "--title", title, "--body", body, "--label", f"priority: {pri}",
-            "--label", "feature" if "deferred" not in labels and "guardrail" not in labels and "documentation" not in labels else ("enhancement" if "deferred" in labels else ("feature" if "guardrail" in labels else "feature")),
-            "--milestone", ms]
+            "--title", title, "--body", body, "--label", f"priority: {pri}"]
+    if kind != "guardrail":
+        args += ["--label", kind]
+    args += ["--milestone", ms]
     for l in labels:
         args += ["--label", l]
     r = subprocess.run(args, capture_output=True, text=True)

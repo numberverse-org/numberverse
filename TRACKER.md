@@ -1,6 +1,12 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 12 Aug 2026
 
+## 🗺️ NEXT-300 BACKLOG — ORACLE CLEAN + 8 NEW EPICS · 312 OPEN ISSUES 12 Aug 2026 ✅ (user: "run the Oracle and use github pipelines make 300 issues and ~100 features, the work must continue")
+- **Oracle:** standup **35/35 CLEAN** after fixing a real `App.tsx` JSX bug the Type-Safety Officer caught (two siblings inside `{signedIn && …}` needed a fragment). Weekly Council **70/70, zero flags**.
+- **Backlog 113 → 312 open** (199 new issues) via the new data-driven **`scripts/team/backlog_300.py`** (idempotent: skips existing titles, auto-creates milestones, ~100+ real features). New epics: **v24 content wave 3** (79), **v25 parent power 3** (23), **v26 Kotha & adaptive** (21), **v27 trust & safety 2** (15), **v28 growth & retention 2** (19), **v29 polish & perf 2** (15), **v30 infra & ops 2** (17) + Backlog.
+- Every issue has Goal + Done-when acceptance criteria; the **add-to-project GitHub pipeline** auto-filed all 199 onto the Numberverse Roadmap board (Backlog column). New labels: `adaptive`, `polish`.
+- **Continuation:** `backlog_300.py` stays rerunnable to top the board back to ~300 whenever issues close; the 6-hourly release train + Oracle daily standup keep running on launchd.
+
 ## 📋 BOARD SYNCED — v22–v25 FEATURES FILED AS DONE ISSUES 12 Aug 2026 ✅ (user: "from last few changes, update existing project and issues, also where is the google signin")
 - The last four releases shipped as PRs with NO board cards — now they exist and are closed (= **Done column**): **#149** (parent gate + syllabus, v22) · **#150** (google sign-in + welcome, v23) · **#151** (guest→parent upgrade, v24) · **#152** (syllabus GRID + semver, v25). All on the Roadmap project, `priority: high`, `parent-facing`/`kid-first`, closed with a PR/version comment.
 - **Google sign-in status (the user's "where is it?"):** **LIVE/ACTIVATED** — see the entry below. Button renders on the gate, `/auth/google` verifies server-side (401 on a bad token). Client id + project in the box `.env.production`; docs in `.env.production.example`.
