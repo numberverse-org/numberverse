@@ -82,10 +82,13 @@ export function bad() {
   tone(311, 0.26, "sine", 0.1, 0.09); // E♭4 — "oh"
 }
 
-/** Round complete — C–E–G–C fanfare with a sparkle on top. */
+/** #134 — the land's celebratory root note (C4 by default). */
+let landRoot = 523.25;
+
+/** Round complete — a major fanfare rooted in the current land's key. */
 export function win() {
-  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.4, "triangle", 0.16, i * 0.1));
-  tone(1318.5, 0.6, "sine", 0.08, 0.42);
+  [1, 1.25, 1.5, 2].forEach((r, i) => tone(landRoot * r, 0.4, "triangle", 0.16, i * 0.1));
+  tone(landRoot * 2.52, 0.6, "sine", 0.08, 0.42);
 }
 
 /** Soft UI button tap — DOM navigation buttons (home/worlds/done). */
@@ -120,12 +123,77 @@ export function tada() {
 }
 
 /* ────────────────────────────── background music ──────────────────────────────
- * Cheerful, zero-asset chiptune loop. Scheduler ticks ahead 0.8s so notes flow
+ * Cheerful, zero-asset chiptune loop. Scheduler ticks ahead 0.9s so notes flow
  * seamlessly. Pentatonic melody + soft bass → never grating, kid-safe volume.
+ *
+ * #134 — per-LAND ambient music: each of the 5 lands (bands) has its own scale,
+ * tempo and volume flavor, all still synthesized (zero asset files, offline
+ * friendly). `setMusicTheme(bandId)` swaps the active theme; the next scheduled
+ * notes pick it up on the following step (step is monotonic — no bursts).
  */
-const MELODY = [523.25, 587.33, 659.25, 783.99, 880.0, 783.99, 659.25, 587.33]; // C D E G A G E D
-const MELODY2 = [659.25, 698.46, 783.99, 880.0, 987.77, 880.0, 783.99, 698.46]; // E F G A B A G F
-const BASS = [130.81, 130.81, 146.83, 130.81, 110.0, 110.0, 98.0, 110.0]; // C2 C2 D2 C2 A1 A1 G1 A1
+interface MusicTheme {
+  name: string;
+  melody: number[];
+  melody2: number[];
+  bass: number[];
+  stepDuration: number; // seconds per eighth note
+  vol: number; // melody gain
+  bassVol: number;
+}
+
+const THEME_BAND1: MusicTheme = {
+  name: "sprout-grove",
+  melody: [523.25, 587.33, 659.25, 587.33, 523.25, 587.33, 659.25, 783.99], // gentle C pentatonic lullaby
+  melody2: [659.25, 587.33, 523.25, 659.25, 783.99, 659.25, 587.33, 523.25],
+  bass: [130.81, 130.81, 146.83, 130.81, 110.0, 110.0, 98.0, 110.0],
+  stepDuration: 0.42,
+  vol: 0.04,
+  bassVol: 0.045,
+};
+const THEME_BAND2: MusicTheme = {
+  name: "cottage-fields",
+  melody: [523.25, 587.33, 659.25, 783.99, 880.0, 783.99, 659.25, 587.33], // bouncy C major hop
+  melody2: [659.25, 698.46, 783.99, 880.0, 987.77, 880.0, 783.99, 698.46],
+  bass: [130.81, 130.81, 146.83, 130.81, 110.0, 110.0, 98.0, 110.0],
+  stepDuration: 0.3,
+  vol: 0.045,
+  bassVol: 0.05,
+};
+const THEME_BAND3: MusicTheme = {
+  name: "river-town",
+  melody: [659.25, 783.99, 880.0, 987.77, 880.0, 783.99, 659.25, 587.33], // flowing pentatonic stream
+  melody2: [880.0, 783.99, 659.25, 587.33, 659.25, 783.99, 880.0, 987.77],
+  bass: [110.0, 110.0, 130.81, 130.81, 146.83, 130.81, 110.0, 98.0],
+  stepDuration: 0.26,
+  vol: 0.05,
+  bassVol: 0.055,
+};
+const THEME_BAND4: MusicTheme = {
+  name: "sky-castle",
+  melody: [783.99, 880.0, 1046.5, 1174.66, 1046.5, 880.0, 783.99, 659.25], // airy, high shimmer
+  melody2: [1046.5, 1174.66, 1318.5, 1174.66, 1046.5, 880.0, 1046.5, 1318.5],
+  bass: [98.0, 98.0, 110.0, 98.0, 130.81, 130.81, 110.0, 98.0],
+  stepDuration: 0.22,
+  vol: 0.05,
+  bassVol: 0.045,
+};
+const THEME_BAND5: MusicTheme = {
+  name: "star-academy",
+  melody: [659.25, 783.99, 880.0, 1046.5, 880.0, 1046.5, 1174.66, 1318.5], // confident, upbeat
+  melody2: [880.0, 987.77, 1046.5, 1174.66, 1318.5, 1174.66, 1046.5, 987.77],
+  bass: [130.81, 130.81, 146.83, 130.81, 164.81, 164.81, 146.83, 130.81],
+  stepDuration: 0.19,
+  vol: 0.055,
+  bassVol: 0.06,
+};
+
+export const LAND_THEMES: Record<number, MusicTheme> = {
+  1: THEME_BAND1,
+  2: THEME_BAND2,
+  3: THEME_BAND3,
+  4: THEME_BAND4,
+  5: THEME_BAND5,
+};
 
 let musicTimer: number | null = null;
 let musicStep = 0;
@@ -133,9 +201,22 @@ let musicOn = false;
 // Background music is OFF by default (kids' app — quiet start, parent/child opts in).
 // Stored as "0" = on, "1" = off; unset → off (true).
 let musicMuted = typeof localStorage !== "undefined" ? localStorage.getItem("nv_music") !== "0" : true;
+// #134 — active land theme; defaults to band 2 (Cottage Fields) for the home.
+let activeTheme: MusicTheme = THEME_BAND2;
 
 /** True once the user has started a game — we auto-start the background music. */
 let musicAutoArmed = false;
+
+/** #134 — switch the ambient music + SFX key to a land's theme (1–5, clamps). */
+export function setMusicTheme(bandId: number) {
+  activeTheme = LAND_THEMES[bandId] ?? THEME_BAND2;
+  // The win chime roots in the land's key so celebration feels "of this land".
+  landRoot = { 1: 392.0, 2: 523.25, 3: 587.33, 4: 659.25, 5: 783.99 }[bandId] ?? 523.25;
+}
+
+export function musicThemeName(): string {
+  return activeTheme.name;
+}
 
 function musicTick() {
   const c = ensureAudio();
@@ -143,19 +224,19 @@ function musicTick() {
     musicTimer = null;
     return;
   }
-  const stepDuration = 0.28; // ~107 BPM eighth notes
+  const { melody, melody2, bass, stepDuration, vol, bassVol } = activeTheme;
   // Schedule notes until we're 0.9s ahead of the playback clock.
   // `musicStep` is monotonic so the absolute note times always move forward —
   // resetting it would burst notes (scheduling in the past).
   while (musicStep * stepDuration < c.currentTime + 0.9) {
     const i = musicStep;
-    const mel = Math.floor(i / 16) % 2 === 0 ? MELODY : MELODY2;
+    const mel = Math.floor(i / 16) % 2 === 0 ? melody : melody2;
     const m = mel[i % mel.length];
-    const b = BASS[Math.floor(i / 2) % BASS.length];
+    const b = bass[Math.floor(i / 2) % bass.length];
     const at = i * stepDuration - c.currentTime; // delay until the note's absolute time
-    tone(m, 0.45, "triangle", 0.045, at + 0.02);
-    tone(b, 0.85, "sine", 0.05, at + 0.02);
-    if (i % 8 === 4) tone(m * 2, 0.22, "triangle", 0.018, at);
+    tone(m, stepDuration * 1.6, "triangle", vol, at + 0.02);
+    tone(b, stepDuration * 3, "sine", bassVol, at + 0.02);
+    if (i % 8 === 4) tone(m * 2, 0.22, "triangle", vol * 0.4, at);
     musicStep++;
   }
   musicTimer = window.setTimeout(musicTick, 200);
