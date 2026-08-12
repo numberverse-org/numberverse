@@ -3094,7 +3094,7 @@ export default function App() {
             {googleEnabled() && (
               <>
                 <div className="gate-google">
-                  <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} />
+                  <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} lang={lang} />
                 </div>
                 <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
               </>
