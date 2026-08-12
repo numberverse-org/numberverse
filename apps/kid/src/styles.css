@@ -2182,6 +2182,82 @@ body {
 }
 .hud-music:active { background: rgba(255, 255, 255, 0.22); }
 
+/* #22 — sibling co-op: pass-the-device overlay + "now playing" toast. */
+.coop-btn.coop-open { background: rgba(255, 255, 255, 0.22); }
+.coop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(8, 15, 26, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.coop-sheet {
+  width: 100%;
+  max-width: 400px;
+  background: #0e1a2b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  padding: 22px 18px 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+.coop-title { margin: 0 0 4px; color: #fff; font-size: 19px; }
+.coop-sub { margin: 0 0 16px; color: #9fb3c8; font-size: 13px; }
+.coop-list { display: flex; flex-direction: column; gap: 10px; }
+.coop-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.coop-card.active { opacity: 0.55; cursor: default; border-color: #43d17c; }
+.coop-card:not(.active):active { background: rgba(255, 255, 255, 0.14); }
+.coop-name { font-weight: 700; flex: 1; }
+.coop-you { color: #43d17c; font-size: 13px; font-weight: 700; }
+.coop-go { color: rgba(255, 255, 255, 0.5); font-size: 16px; }
+.coop-close {
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 22px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.coop-close:active { background: rgba(255, 255, 255, 0.16); }
+.coop-toast {
+  position: fixed;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: rgba(14, 26, 43, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+  animation: coop-pop 0.22s ease-out;
+  pointer-events: none;
+  white-space: nowrap;
+}
+@keyframes coop-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* ---- parent panel ---- */
 /* ONE scroll column: the whole panel (header → picker → kid progress → voice
    config → settings) scrolls together on the outer .screen. No nested scroll
