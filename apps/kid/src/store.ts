@@ -9,6 +9,7 @@ import {
   DEFAULT_MONI_PARAMS,
   type SkillState,
   type MoniProfile,
+  type MoniStrictness,
   type ErrorKind,
   fingerprintAnswer,
 } from "@numberverse/core";
@@ -249,6 +250,11 @@ interface KidState {
   moni: Record<string, MoniProfile>;
   /** Consecutive wrongs per kid+skill (for Moni diagnosis). Key `${kidId}:${skillId}`. */
   moniWrongStreak: Record<string, number>;
+  /** 🧠 MONI parent-adjustable strictness (#333). Key kidId → gentle/steady/challenging.
+   *  Persisted offline; Moni's plan() tone + difficulty respect it. */
+  moniStrictness: Record<string, MoniStrictness>;
+  /** Set how hard Moni pushes this kid (gentle / steady / challenging). */
+  setMoniStrictness: (kidId: string, s: MoniStrictness) => void;
   addEvent: (kidId: string, e: RoundResult) => void;
   clearPending: (uids: Set<string>) => void;
   /** Drop the Kotha stories that were just posted (by uid). */
@@ -310,6 +316,12 @@ export const useKidStore = create<KidState>()(
       garden: {},
       moni: {},
       moniWrongStreak: {},
+      moniStrictness: {},
+      setMoniStrictness: (kidId, s) => {
+        const prev = get().moniStrictness[kidId];
+        if (prev === s) return {};
+        return { moniStrictness: { ...(get().moniStrictness ?? {}), [kidId]: s } };
+      },
       addEvent: (kidId, e) => {
         const now = Date.now();
         const prev = get().skills[keyOf(kidId, e.skillId)] ?? initialSkillState(kidId, e.skillId);
@@ -718,6 +730,6 @@ export const useKidStore = create<KidState>()(
           return { garden: { ...s.garden, [kidId]: next } };
         }),
     }),
-    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories }) }
+    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness }) }
   )
 );

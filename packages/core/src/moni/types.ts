@@ -149,6 +149,11 @@ export interface MoniProfile {
   sessionRounds: number;
 }
 
+/** Parent-adjustable strictness (#333) — how hard Moni pushes a kid.
+ *  `gentle` → step difficulty back + warm tone; `steady` → keep the current
+ *  level; `challenging` → push a step up + crisp tone. Offline, per-kid. */
+export type MoniStrictness = "gentle" | "steady" | "challenging";
+
 /** The plan Moni produces — the next best move for this child. */
 export interface MoniPlan {
   focusSkillId: string;
