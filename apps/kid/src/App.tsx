@@ -13,8 +13,9 @@ import {
   DEFAULT_MONI_PARAMS,
   type Band,
   type Skill,
+  type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, aggregateOptIn, setAggregateOptIn, fetchAggregates, type KidSettings, type KothaAggregates } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
@@ -690,6 +691,21 @@ interface Strings {
   contrastDoneBody: string;
   contrastDoneBtn: string;
   contrastProgress: (cur: number, total: number) => string;
+  kothaInspector: string;
+  kothaInspectorSub: string;
+  kothaFilterAll: string;
+  kothaFilterWrong: string;
+  kothaFilterCorrect: string;
+  kothaEmpty: string;
+  kothaKindMisconception: string;
+  kothaKindGap: string;
+  kothaKindFatigue: string;
+  kothaKindGuessing: string;
+  kothaKindSlip: string;
+  kothaAction: string;
+  kothaAgo: (ts: number) => string;
+  kothaCorrect: string;
+  kothaWrong: string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -1070,6 +1086,30 @@ const STR: Record<Lang, Strings> = {
     contrastDoneBody: "You looked at them side by side and found the difference. Moni is SO proud — let's keep it sharp!",
     contrastDoneBtn: "Back to the adventure",
     contrastProgress: (cur, total) => `Pattern round ${cur} of ${total}`,
+    kothaInspector: "📚 Learning stories",
+    kothaInspectorSub: "What was tried, how Moni read it, what we did",
+    kothaFilterAll: "All",
+    kothaFilterWrong: "Wrong",
+    kothaFilterCorrect: "Correct",
+    kothaEmpty: "No stories yet — play a round and the story log fills up.",
+    kothaKindMisconception: "misconception",
+    kothaKindGap: "gap",
+    kothaKindFatigue: "fatigue",
+    kothaKindGuessing: "guessing",
+    kothaKindSlip: "slip",
+    kothaAction: "Moni",
+    kothaAgo: (ts) => {
+      const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (s < 60) return "just now";
+      const m = Math.floor(s / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}h ago`;
+      const d = Math.floor(h / 24);
+      return `${d}d ago`;
+    },
+    kothaCorrect: "Correct",
+    kothaWrong: "Wrong",
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1446,6 +1486,30 @@ const STR: Record<Lang, Strings> = {
     contrastDoneBody: "পাশাপাশি দেখে তুমি পার্থক্যটা খুঁজে পেয়েছ। মণি খুব গর্বিত — ধার ধরে রাখো!",
     contrastDoneBtn: "ফিরে যাই অভিযানে",
     contrastProgress: (cur, total) => `প্যাটার্ন রাউন্ড ${cur}/${total}`,
+    kothaInspector: "📚 শেখার গল্প",
+    kothaInspectorSub: "কী চেষ্টা হলো, মণি কী দেখল, কী করলাম",
+    kothaFilterAll: "সব",
+    kothaFilterWrong: "ভুল",
+    kothaFilterCorrect: "ঠিক",
+    kothaEmpty: "এখনও কোনো গল্প নেই — এক রাউন্ড খেলো, গল্পের খাতা ভরে যাবে।",
+    kothaKindMisconception: "ভুল ধারণা",
+    kothaKindGap: "ফাঁক",
+    kothaKindFatigue: "ক্লান্তি",
+    kothaKindGuessing: "অনুমান",
+    kothaKindSlip: "অমনোযোগ",
+    kothaAction: "মণি",
+    kothaAgo: (ts) => {
+      const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (s < 60) return "এইমাত্র";
+      const m = Math.floor(s / 60);
+      if (m < 60) return `${m} মিনিট আগে`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h} ঘণ্টা আগে`;
+      const d = Math.floor(h / 24);
+      return `${d} দিন আগে`;
+    },
+    kothaCorrect: "ঠিক",
+    kothaWrong: "ভুল",
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -1905,6 +1969,92 @@ function VoiceCheck({ t }: { t: Strings }) {
   );
 }
 
+/** 📚 #322 — KOTHA story inspector: browse a kid's learning stories in the
+ *  parent panel. Reads the LOCAL story log (the offline mirror of the server's
+ *  learning_stories table) — what was tried, how Moni read it, what we did.
+ *  Filterable by outcome + Moni error kind, newest first, capped for perf.
+ *  A proper component so the filter chips own their state. */
+function StoryInspector({ stories, t, lang }: { stories: KothaStory[]; t: Strings; lang: string }) {
+  const [kind, setKind] = useState<"all" | ErrorKind>("all");
+  const [outcome, setOutcome] = useState<"all" | "wrong" | "correct">("all");
+  const kinds: ("all" | ErrorKind)[] = ["all", "misconception", "gap", "fatigue", "guessing", "slip"];
+  const kindLabel = (k: "all" | ErrorKind) =>
+    k === "all" ? t.kothaFilterAll
+      : k === "misconception" ? t.kothaKindMisconception
+        : k === "gap" ? t.kothaKindGap
+          : k === "fatigue" ? t.kothaKindFatigue
+            : k === "guessing" ? t.kothaKindGuessing
+              : t.kothaKindSlip;
+  const bn = lang === "bn";
+  const filtered = stories
+    .filter(
+      (st) =>
+        (kind === "all" || st.errorKind === kind) &&
+        (outcome === "all" || (outcome === "wrong" ? !st.outcome : st.outcome)),
+    )
+    .slice(0, 50);
+  return (
+    <details className="parent-help kotha-inspector" open>
+      <summary>{t.kothaInspector}</summary>
+      <p className="kotha-inspector-sub">{t.kothaInspectorSub}</p>
+      <div className="kotha-filters" role="group" aria-label={t.kothaInspector}>
+        {(["all", "wrong", "correct"] as const).map((o) => (
+          <button
+            key={o}
+            className={`kotha-chip${outcome === o ? " active" : ""}`}
+            aria-pressed={outcome === o}
+            onClick={() => setOutcome(o)}
+          >
+            {o === "all" ? t.kothaFilterAll : o === "wrong" ? t.kothaFilterWrong : t.kothaFilterCorrect}
+          </button>
+        ))}
+        {kinds.map((k) => (
+          <button
+            key={k}
+            className={`kotha-chip${kind === k ? " active" : ""}`}
+            aria-pressed={kind === k}
+            onClick={() => setKind(k)}
+          >
+            {kindLabel(k)}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <p className="kotha-empty">{t.kothaEmpty}</p>
+      ) : (
+        <ul className="kotha-list">
+          {filtered.map((st) => {
+            const gs = filterSkills.find((s) => s.id === st.skillId);
+            const misLabel = st.misconceptionCode ? MISCONCEPTION_LABELS[st.misconceptionCode]?.[bn ? "bn" : "en"] : null;
+            const reason = typeof st.context?.reason === "string" ? st.context.reason : "";
+            return (
+              <li key={st.uid} className="kotha-item">
+                <span className={`kotha-dot ${st.outcome ? "ok" : "bad"}`} aria-hidden="true">
+                  {st.outcome ? "✓" : "✗"}
+                </span>
+                <span className="kotha-meta">
+                  <span className="kotha-name">
+                    {gs?.title ?? st.skillId}
+                    {gs?.titleBn ? <span className="skill-bn">{gs.titleBn}</span> : null}
+                  </span>
+                  <span className="kotha-line">
+                    {st.outcome ? t.kothaCorrect : t.kothaWrong}
+                    {st.errorKind ? ` · ${kindLabel(st.errorKind)}` : ""}
+                    {misLabel ? ` · ${misLabel}` : ""}
+                    {st.action ? ` · ${t.kothaAction}: ${st.action}` : ""}
+                  </span>
+                  {reason ? <span className="kotha-reason">{reason}</span> : null}
+                </span>
+                <span className="kotha-ago">{t.kothaAgo(st.ts)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </details>
+  );
+}
+
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -2030,6 +2180,7 @@ export default function App() {
   const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestRound, gardenWater, gardenMastery } = useKidStore();
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
+  const kothaStories = useKidStore((s) => s.stories);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
   const quest = useKidStore((s) => {
     const n = s.nova[kid?.id ?? ""];
@@ -4116,6 +4267,16 @@ export default function App() {
                         </details>
                       );
                     })()}
+                    {/* 📚 #322 — KOTHA story inspector — the per-kid learning
+                        story log (offline mirror of learning_stories): what was
+                        tried, how Moni read it, what we did. Own card so the
+                        parent can dig into the diagnostic detail without
+                        crowding the "needs help" list. */}
+                    <StoryInspector
+                      stories={kothaStories.filter((st) => st.kidId === activeKid.id).sort((a, b) => b.ts - a.ts)}
+                      t={t}
+                      lang={lang}
+                    />
                     <button className="ghost-btn mini share-progress-btn" onClick={() => void shareProgress(activeKid)}>
                       {t.shareProgress}
                     </button>
