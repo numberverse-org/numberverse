@@ -210,9 +210,9 @@
 - Docs: RELEASING.md update for new gates  _(priority: low, documentation)_
 - Ops: healthcheck + auto-restart policy  _(priority: low, documentation)_
 - CI: dependency-audit job (npm audit)  _(priority: low, documentation)_
-- Infra: metrics dashboard (box CPU/RAM/disk)  _(priority: low, documentation)_
-- Ops: backup encryption at rest  _(priority: low, documentation)_
-- Docs: architecture diagram refresh  _(priority: low, documentation)_
+- ~~Infra: metrics dashboard (box CPU/RAM/disk)~~ ✅ #309 — homelab prometheus + node-exporter + grafana + uptime-kuma, self-hosted
+- ~~Ops: backup encryption at rest~~ ✅ #310 — AES-256-CBC at rest, drill proven on box (12/12)
+- ~~Docs: architecture diagram refresh~~ ✅ #311 — docs/ARCHITECTURE.md (Kotha + Moni + always-sync)
 
 ## Backlog
 
