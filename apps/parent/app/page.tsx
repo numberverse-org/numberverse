@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { isAllowedExternalUrl } from "@numberverse/core";
 import {
   getProfile,
   getKids,
@@ -630,7 +631,16 @@ export default function ParentDashboard() {
             <div className="weekly-head">
               <h2>📊 This week</h2>
               {activeWeekly.rounds > 0 && (
-                <a className="share-btn" href={waShare(active.name, activeWeekly)} target="_blank" rel="noopener noreferrer">
+                <a
+                  className="share-btn"
+                  href={waShare(active.name, activeWeekly)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    // #267 — never launch an app outside the scheme allowlist.
+                    if (!isAllowedExternalUrl(waShare(active.name, activeWeekly))) e.preventDefault();
+                  }}
+                >
                   Share on WhatsApp
                 </a>
               )}

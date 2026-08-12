@@ -11,6 +11,7 @@ from ..deps import get_current_profile
 from ..models import ConfigEntry, Kid, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
 from ..schemas import LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
+from ..scrub import redact_context
 
 # #274 — write endpoints are the abuse surface (bulk story/progress replay). The
 # limiter keys on account+IP and is far above real sync cadence (see ratelimit.py).
@@ -151,7 +152,8 @@ async def record_stories(
             "difficulty": s.difficulty,
             "response_ms": s.response_ms,
             "wrong_streak": s.wrong_streak,
-            "context": s.context,
+            # #270 — redact PII-shaped strings in the context envelope BEFORE storage.
+            "context": redact_context(s.context),
         }
         for s in body
     ]

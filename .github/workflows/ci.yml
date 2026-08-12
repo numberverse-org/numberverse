@@ -87,3 +87,21 @@ jobs:
           python-version: "3.12"
       - name: API app compiles
         run: python3 -m compileall -q apps/api/app
+      - name: API unit tests (PII scrubber)
+        run: python3 apps/api/tests/test_scrub.py
+
+  license-audit:
+    name: license-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Dependency license gate (#271)
+        run: node scripts/license-audit.mjs

@@ -9,9 +9,13 @@ from .config import settings
 from .db import SessionLocal
 from .embeddings import embed_stories
 from .routers import admin, auth, content, kids, progress
+from .scrub import ScrubFilter
 from .seed import create_tables, seed
 
 logging.basicConfig(level=logging.INFO)
+# #266 — every log line is scrubbed for PII before it's written.
+for _h in logging.getLogger().handlers:
+    _h.addFilter(ScrubFilter())
 log = logging.getLogger("numberverse")
 
 
