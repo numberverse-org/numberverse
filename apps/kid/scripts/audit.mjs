@@ -193,6 +193,36 @@ for (const f of readdirSync(GAME).filter((x) => x.endsWith("Scene.ts"))) {
   }
 }
 
+/* ── 5. no console.log in shipped frontend code (#268) ── */
+console.log("⑤  console.log scan (debug logging must never ship)…");
+const SHIPPED_DIRS = [
+  join(KID, "src"),            // kid app (PWA)
+  join(ROOT, "apps", "parent", "app"),   // parent portal (Next.js)
+  join(ROOT, "apps", "parent", "lib"),   // portal helpers
+  join(ROOT, "apps", "admin", "src"),    // admin console
+];
+const CONSOLE_BAD = /\bconsole\.(log|debug|info|warn|trace)\(/g;
+let consoleHits = 0;
+for (const dir of SHIPPED_DIRS) {
+  if (!existsSync(dir)) continue;
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.(ts|tsx|js|mjs)$/.test(e.name)) continue;
+      const src = readFileSync(p, "utf8");
+      let m;
+      while ((m = CONSOLE_BAD.exec(src))) {
+        consoleHits++;
+        fail(`${p.replace(ROOT + "/", "")}: ${m[0].trim()} — debug logging ships to kids`);
+      }
+    }
+  };
+  walk(dir);
+}
+// console.error on a genuine error path is allowed (only hits above are fatal).
+if (!consoleHits) console.log("  ✓ zero console.log/debug/info/warn/trace in shipped code");
+
 console.log("\n──────────────────────────────");
 if (errors) { console.log(`✖ ${errors} error(s), ${warns} warning(s)`); process.exit(1); }
 if (warns) console.log(`✓ 0 errors, ${warns} warning(s) — fix warnings or leave deliberate`);

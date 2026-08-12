@@ -12,7 +12,11 @@
  * Flow (per share):
  *   renderToCanvas() → toBlob() → try Web Share API with the FILE (native
  *   Android/iOS share sheet, incl. WhatsApp) → fallback download + wa.me text.
+ *
+ * #267 — the wa.me fallback goes through the core external-link allowlist
+ * (https only), so no app can ever be launched from the share flow.
  */
+import { openExternal } from "@numberverse/core";
 
 export interface ShareCardData {
   title: string;          // "🎉 Numberverse" (or local brand)
@@ -350,7 +354,7 @@ export async function sharePng(
     a.click();
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(a.href as string), 4000);
-    if (waUrl) window.open(waUrl, "_blank", "noopener");
+    if (waUrl) openExternal(waUrl, "_blank");
     return "downloaded";
   } catch {
     return "unsupported";
