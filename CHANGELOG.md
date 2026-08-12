@@ -1,3 +1,8 @@
+## 13 Aug 2026 — 0.26.9 (Access control: kid-only Settings + gated parent area (#405))
+
+0cfb08c 🔐 Access control: kids never reach parent things; kid-only Settings restructure (#406)
+e825900 docs: mark #403 released in 0.26.8
+
 ## 13 Aug 2026 — 0.26.8 (Settings redesign + double-TTS fix (#403))
 
 3d047ad 🎛️ Settings redesign (kid-facing) + fix double-TTS (neural + web speaking at once) (#404)
