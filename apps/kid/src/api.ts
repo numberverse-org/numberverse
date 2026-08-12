@@ -639,6 +639,9 @@ export interface KidSettings {
   weekday_limits_min: string | null;
   tts_enabled: boolean;
   music_enabled: boolean;
+  /** #138 — kid records their own voice and replays. Parent-gated, OFF by
+   *  default (privacy-first); when on, recordings stay ON-DEVICE only. */
+  voice_record_enabled: boolean;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -648,6 +651,7 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   weekday_limits_min: null,
   tts_enabled: true,
   music_enabled: true,
+  voice_record_enabled: false,
 };
 
 /** #6 — the effective daily playtime cap (minutes) for the CURRENT weekday.

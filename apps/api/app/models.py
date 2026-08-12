@@ -64,6 +64,9 @@ class KidSettings(Base):
     weekday_limits_min: Mapped[str | None] = mapped_column(String, nullable=True)
     tts_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     music_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # #138 — kid voice recording (record own voice + replay). PARENT-gated,
+    # privacy-first: off by default, on-device only (never synced).
+    voice_record_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kid: Mapped[Kid] = relationship(back_populates="settings")
