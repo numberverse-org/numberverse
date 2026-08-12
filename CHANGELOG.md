@@ -1,3 +1,9 @@
+## 12 Aug 2026 — v28 (parent portal same-tab deep link + parent-only sign-out + no kid remove + MONI tutor insight card & KOTHA stories lake)
+
+fe8d2bb chore(team): commit backlog_300 oracle roadmap generator (repo-owned tool)
+f7dd841 fix(kid): parent portal same-tab + parent-only sign-out + no kid remove (#157)
+1546669 track: v27 shipped — best-UI/UX parent panel + deep link to full portal (#156 done)
+
 ## 12 Aug 2026 — v27 (best-UI/UX parent panel — family summary hero + deep link to full parent portal)
 
 ffdaaaa chore(core): commit moni tutor module (per-child learning model) + index wiring
