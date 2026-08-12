@@ -105,3 +105,27 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Dependency license gate (#271)
         run: node scripts/license-audit.mjs
+
+  oracle:
+    name: oracle
+    needs: build-core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-dist
+          path: packages/core/dist
+      - name: Oracle standup gate (#120)
+        run: python3 scripts/team/oracle_team.py --ci --no-page --silent
