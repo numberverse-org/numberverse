@@ -16,37 +16,40 @@
 
 import { t, type TVars } from "./i18n";
 
-/** Variant i18n keys per base key, most-repeated prompts first. ≥3 each. */
-const FRAME_BANK: Record<string, Array<() => string>> = {
+/** Variant i18n keys per base key, most-repeated prompts first. ≥3 each.
+ *  Each arrow takes the round's `vars` so placeholder-bearing variants
+ *  ("Round {n} · tap {count} numbers") actually interpolate — a variant that
+ *  dropped vars would render its braces literally ("Round {n}"). */
+const FRAME_BANK: Record<string, Array<(vars?: TVars) => string>> = {
   // Fruit add — "how many fruit in all?"
   howManyFruit: [
-    () => t("howManyFruit1"),
-    () => t("howManyFruit2"),
-    () => t("howManyFruit3"),
+    (vars) => t("howManyFruit1", vars),
+    (vars) => t("howManyFruit2", vars),
+    (vars) => t("howManyFruit3", vars),
   ],
   // Fruit add / story problems — "how many in all?"
   howManyInAll: [
-    () => t("howManyInAll1"),
-    () => t("howManyInAll2"),
-    () => t("howManyInAll3"),
+    (vars) => t("howManyInAll1", vars),
+    (vars) => t("howManyInAll2", vars),
+    (vars) => t("howManyInAll3", vars),
   ],
   // Number bonds — "how many more make 10?"
   howManyMore: [
-    () => t("howManyMore1"),
-    () => t("howManyMore2"),
-    () => t("howManyMore3"),
+    (vars) => t("howManyMore1", vars),
+    (vars) => t("howManyMore2", vars),
+    (vars) => t("howManyMore3", vars),
   ],
   // Count & Pop — "Round N · tap X numbers"
   roundTap: [
-    () => t("roundTap1"),
-    () => t("roundTap2"),
-    () => t("roundTap3"),
+    (vars) => t("roundTap1", vars),
+    (vars) => t("roundTap2", vars),
+    (vars) => t("roundTap3", vars),
   ],
   // Count to 100 / Build to 999 — "Round N · make X"
   count100Round: [
-    () => t("count100Round1"),
-    () => t("count100Round2"),
-    () => t("count100Round3"),
+    (vars) => t("count100Round1", vars),
+    (vars) => t("count100Round2", vars),
+    (vars) => t("count100Round3", vars),
   ],
 };
 
@@ -75,5 +78,5 @@ export function frameText(
   const bank = FRAME_BANK[baseKey];
   if (!bank || bank.length < 2) return t(baseKey, vars);
   const pick = bank[frameIndex(skillId, round, bank.length)];
-  return pick ? pick() : t(baseKey, vars);
+  return pick ? pick(vars) : t(baseKey, vars);
 }
