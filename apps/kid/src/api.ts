@@ -366,11 +366,71 @@ export async function syncProgress(): Promise<void> {
   }
 }
 
+let storySyncing = false;
+
+/** 📚 KOTHA — drain the learning-story outbox to POST /stories.
+ *  Same durable-outbox contract as syncProgress: shares the lock, maps local
+ *  kid ids → server kids, posts one batch, clears exactly what posted, and
+ *  lets the heartbeat/online/visibility events retry what was missed. */
+export async function syncStories(): Promise<void> {
+  if (storySyncing) return;
+  const { stories } = useKidStore.getState();
+  if (stories.length === 0) return;
+  const identity = await ensureIdentity();
+  if (!identity) {
+    useKidStore.getState().setSyncState("offline");
+    return;
+  }
+  storySyncing = true;
+  try {
+    const batch = stories.slice(0, SYNC_LIMIT);
+    const mapped = batch.filter((st) => identity.kidFor(st.kidId) !== null);
+    const orphaned = batch.filter((st) => identity.kidFor(st.kidId) === null);
+    if (mapped.length === 0) {
+      // local kids were deleted — drop their orphaned stories
+      useKidStore.getState().clearStories(new Set([...orphaned.map((st) => st.uid), ...batch.map((st) => st.uid)]));
+      return;
+    }
+    useKidStore.getState().setSyncState("syncing");
+    const res = await fetch(`${API}/stories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
+      body: JSON.stringify(
+        mapped.map((st) => ({
+          kid_id: identity.kidFor(st.kidId),
+          skill_id: st.skillId,
+          game_id: st.gameId,
+          outcome: st.outcome,
+          error_kind: st.errorKind,
+          misconception_code: st.misconceptionCode,
+          action: st.action,
+          difficulty: st.difficulty,
+          response_ms: st.responseMs,
+          wrong_streak: st.wrongStreak,
+          context: st.context,
+        })),
+      ),
+    });
+    if (res.ok) {
+      const done = new Set([...orphaned.map((st) => st.uid), ...mapped.map((st) => st.uid)]);
+      useKidStore.getState().clearStories(done);
+      useKidStore.getState().setSyncState("ok");
+    } else {
+      useKidStore.getState().setSyncState("error");
+    }
+  } catch {
+    useKidStore.getState().setSyncState("offline");
+  } finally {
+    storySyncing = false;
+  }
+}
+
 /** Kick off always-sync: immediate drain (clears offline backlog on open),
  *  a 30s heartbeat, plus instant retries on reconnect / app-foreground. */
 export function startAutoSync(): () => void {
   const tick = () => {
     void syncProgress();
+    void syncStories();
   };
   tick();
   const iv = window.setInterval(tick, 30_000);

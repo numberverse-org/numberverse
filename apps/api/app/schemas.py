@@ -156,6 +156,39 @@ class ProgressBatchIn(BaseModel):
     events: list[ProgressEventIn]
 
 
+# ── Kotha (কথা) — RAG knowledge lake ──
+class LearningStoryIn(BaseModel):
+    kid_id: uuid.UUID
+    skill_id: str
+    game_id: str
+    outcome: bool
+    error_kind: str | None = None
+    misconception_code: str | None = None
+    action: str | None = None
+    difficulty: float | None = None
+    response_ms: int | None = None
+    wrong_streak: int | None = None
+    context: dict = Field(default_factory=dict)
+
+
+class LearningStoryOut(BaseModel):
+    id: uuid.UUID
+    kid_id: uuid.UUID
+    skill_id: str
+    game_id: str
+    outcome: bool
+    error_kind: str | None
+    misconception_code: str | None
+    action: str | None
+    difficulty: float | None
+    response_ms: int | None
+    wrong_streak: int | None
+    context: dict
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Content ──
 class SubjectOut(BaseModel):
     id: str

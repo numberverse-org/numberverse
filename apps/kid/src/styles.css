@@ -2157,6 +2157,15 @@ body {
 .parent-help .skill-list { max-height: 30vh; overflow-y: auto; }
 .parent-help .skill-state.help { color: #ffd166; font-weight: 800; white-space: nowrap; }
 .parent-help-caught { font-size: 13px; color: #7ee8d2; font-weight: 700; margin: 6px 0 2px; text-align: left; }
+/* 🧠 MONI — the tiny tutor's insight card */
+.moni-card { border-top: 1px dashed rgba(124, 232, 210, 0.25); margin-top: 10px; padding-top: 8px; }
+.moni-card summary { color: #f2cc8f; }
+.moni-tag { font-size: 12px; color: #a9c9e0; margin: 2px 0 8px; }
+.moni-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-bottom: 8px; }
+.moni-cell { display: flex; flex-direction: column; background: rgba(76, 201, 240, 0.06); border-radius: 8px; padding: 6px 8px; }
+.moni-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fb8d6; }
+.moni-v { font-size: 13px; font-weight: 700; color: #f4f9ff; }
+.moni-next { font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border-radius: 8px; padding: 8px 10px; margin: 0; }
 /* Share-progress button + feedback inside the parent-panel analytics card */
 .share-progress-btn {
   align-self: flex-start;

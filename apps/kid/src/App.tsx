@@ -259,7 +259,6 @@ interface Strings {
   masterMoreIn: (n: number, prev: string) => string;
   skillsProg: (m: number, t: number) => string;
   champion: string;
-  removeKid: (name: string) => string;
   worldAges: (range: string, m: number, t: number) => string;
   masterMoreToUnlock: (n: number, name: string) => string;
   readyFor: (name: string) => string;
@@ -448,11 +447,11 @@ interface Strings {
   settingsSigninBadge: string;
   settingsSigninSub: string;
   settingsSigninCta: string;
-  /* parent sign-out (Settings) */
-  settingsSignoutTitle: string;
-  settingsSignoutSub: string;
-  settingsSignoutCta: string;
-  settingsSignoutConfirm: string;
+  /* parent sign-out (Parent panel — parent-only, never kid-facing) */
+  parentSignoutTitle: string;
+  parentSignoutSub: string;
+  parentSignoutCta: string;
+  parentSignoutConfirm: string;
   /* about / version */
   settingsAbout: string;
   settingsAboutSub: string;
@@ -518,6 +517,26 @@ interface Strings {
   parentHelpWrong: (n: number) => string;
   reteachLetTry: string;
   practicePill: string;
+  /* 🧠 MONI — the tiny tutor's insight card */
+  moniTitle: string;
+  moniTag: string;
+  moniLearnStyle: string;
+  moniBestGame: string;
+  moniAttention: string;
+  moniConfidence: string;
+  moniConfidenceGentle: string;
+  moniConfidenceSteady: string;
+  moniConfidenceChallenging: string;
+  moniMisconceptions: string;
+  moniMisconceptionsNone: string;
+  moniNextMove: string;
+  moniTone: string;
+  moniSessionLength: string;
+  moniTrendUp: string;
+  moniTrendFlat: string;
+  moniTrendDown: string;
+  moniSessions: (n: number) => string;
+  moniRounds: (n: number) => string;
   /* Nova companion */
   novaTitle: string;
   novaTagline: string;
@@ -590,7 +609,6 @@ const STR: Record<Lang, Strings> = {
     masterMoreIn: (n, prev) => `Master ${n} more in ${prev} to unlock`,
     skillsProg: (m, t) => `${m}/${t} skills mastered`,
     champion: "🏆 Every world mastered — you're a Numberverse champion!",
-    removeKid: (name) => `🗑 Remove ${name}`,
     worldAges: (range, m, t) => `Ages ${range} · ${m}/${t} skills mastered`,
     masterMoreToUnlock: (n, name) => `Master ${n} more skill${n > 1 ? "s" : ""} to unlock ${name}`,
     readyFor: (name) => `You're ready for ${name}!`,
@@ -759,10 +777,10 @@ const STR: Record<Lang, Strings> = {
     settingsSigninBadge: "guest",
     settingsSigninSub: "You're in guest mode — progress lives on this device only. Sign in or create a parent account to keep it on every device.",
     settingsSigninCta: "🔓 Sign in / create parent account",
-    settingsSignoutTitle: "🚪 Sign out",
-    settingsSignoutSub: "Sign out of this parent account on this device. Local progress stays — sign back in anytime to keep it everywhere.",
-    settingsSignoutCta: "Sign out",
-    settingsSignoutConfirm: "Tap again to confirm",
+    parentSignoutTitle: "🚪 Sign out",
+    parentSignoutSub: "This device will leave the parent account — local progress stays. Sign back in anytime to keep it everywhere.",
+    parentSignoutCta: "Sign out",
+    parentSignoutConfirm: "Tap again to confirm",
     settingsAbout: "📦 About",
     settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
@@ -822,6 +840,26 @@ const STR: Record<Lang, Strings> = {
     practicePill: "Practice!",
     inProgress: "In progress",
     notStarted: "Not started",
+    /* 🧠 MONI */
+    moniTitle: "Moni the Tutor",
+    moniTag: "What Moni learned about your child",
+    moniLearnStyle: "Learning style",
+    moniBestGame: "Loves",
+    moniAttention: "Focus",
+    moniConfidence: "Confidence",
+    moniConfidenceGentle: "gentle — needs kind wins",
+    moniConfidenceSteady: "steady — balanced",
+    moniConfidenceChallenging: "ready for a challenge",
+    moniMisconceptions: "Patterns spotted",
+    moniMisconceptionsNone: "None yet — Moni is still watching",
+    moniNextMove: "Moni's next move",
+    moniTone: "Tone",
+    moniSessionLength: "Best session",
+    moniTrendUp: "improving 📈",
+    moniTrendFlat: "steady ➖",
+    moniTrendDown: "needs support 📉",
+    moniSessions: (n) => `${n} sessions`,
+    moniRounds: (n) => `${n} rounds`,
     /* Nova companion */
     novaTitle: "Nova the Owl",
     novaTagline: "Earn coins in games — dress up Nova!",
@@ -891,7 +929,6 @@ const STR: Record<Lang, Strings> = {
     masterMoreIn: (n, prev) => `${prev} এ আর ${n}টি আয়ত্ত করলে খুলবে`,
     skillsProg: (m, t) => `${m}/${t} দক্ষতা আয়ত্ত`,
     champion: "🏆 সব জগৎ আয়ত্ত — তুমি Numberverse চ্যাম্পিয়ন!",
-    removeKid: (name) => `🗑 ${name} মুছুন`,
     worldAges: (range, m, t) => `${range} বছর · ${m}/${t} দক্ষতা আয়ত্ত`,
     masterMoreToUnlock: (n, name) => `${name} খুলতে আর ${n}টি আয়ত্ত করুন`,
     readyFor: (name) => `${name} এর জন্য তুমি প্রস্তুত!`,
@@ -1061,10 +1098,10 @@ const STR: Record<Lang, Strings> = {
     settingsSigninBadge: "অতিথি",
     settingsSigninSub: "আপনি অতিথি মোডে আছেন — অগ্রগতি শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা অভিভাবক অ্যাকাউন্ট খুলুন।",
     settingsSigninCta: "🔓 সাইন ইন / অভিভাবক অ্যাকাউন্ট খুলুন",
-    settingsSignoutTitle: "🚪 সাইন আউট",
-    settingsSignoutSub: "এই ডিভাইসে অভিভাবক অ্যাকাউন্ট থেকে সাইন আউট করুন। স্থানীয় অগ্রগতি থাকে — যেকোনো সময় আবার সাইন ইন করুন।",
-    settingsSignoutCta: "সাইন আউট",
-    settingsSignoutConfirm: "নিশ্চিত করতে আবার চাপুন",
+    parentSignoutTitle: "🚪 সাইন আউট",
+    parentSignoutSub: "এই ডিভাইসটি অভিভাবক অ্যাকাউন্ট ছেড়ে যাবে — স্থানীয় অগ্রগতি থাকে। যেকোনো সময় আবার সাইন ইন করুন।",
+    parentSignoutCta: "সাইন আউট",
+    parentSignoutConfirm: "নিশ্চিত করতে আবার চাপুন",
     settingsAbout: "📦 এই অ্যাপ সম্পর্কে",
     settingsAboutSub: "নম্বরভার্স · কৌতূহলী শিশুদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
@@ -1122,6 +1159,26 @@ const STR: Record<Lang, Strings> = {
     parentHelpWrong: (n) => `${n}টা ভুল`,
     reteachLetTry: "প্রায়! চলো এটা আরেকভাবে অনুশীলন করি 💪",
     practicePill: "অনুশীলন!",
+    /* 🧠 MONI */
+    moniTitle: "মনি টিউটর",
+    moniTag: "মনি আপনার সন্তান সম্পর্কে যা শিখেছে",
+    moniLearnStyle: "শেখার ধরন",
+    moniBestGame: "ভালোবাসে",
+    moniAttention: "মনোযোগ",
+    moniConfidence: "আত্মবিশ্বাস",
+    moniConfidenceGentle: "ভদ্র — দরকার জয়ের আস্থা",
+    moniConfidenceSteady: "স্থির — ভারসাম্যপূর্ণ",
+    moniConfidenceChallenging: "চ্যালেঞ্জের জন্য প্রস্তুত",
+    moniMisconceptions: "ধরার ভুল",
+    moniMisconceptionsNone: "এখনো কিছু নেই — মনি দেখছে",
+    moniNextMove: "মনির পরবর্তী পদক্ষেপ",
+    moniTone: "ভাষা",
+    moniSessionLength: "সেরা সেশন",
+    moniTrendUp: "উন্নতি 📈",
+    moniTrendFlat: "স্থির ➖",
+    moniTrendDown: "সাহায্য দরকার 📉",
+    moniSessions: (n) => `${n}টা সেশন`,
+    moniRounds: (n) => `${n}টা রাউন্ড`,
     inProgress: "চলমান",
     notStarted: "শুরু হয়নি",
     /* Nova companion */
@@ -1956,15 +2013,6 @@ export default function App() {
       /* ignore */
     }
   };
-  /** Forget the active kid (they're leaving the app to a sibling). */
-  const clearKid = () => {
-    setKid(null);
-    try {
-      localStorage.removeItem("nv_kid_id");
-    } catch {
-      /* ignore */
-    }
-  };
 
   /* ── Persist the chosen UI language + mirror it to game scenes ── */
   useEffect(() => {
@@ -2361,21 +2409,6 @@ export default function App() {
     // one tap and a brand-new kid is already playing.
     selectKid(newKid);
     setScreen("home");
-  };
-
-  const removeKid = (id: string) => {
-    const next = kids.filter((k) => k.id !== id);
-    setKids(next);
-    try {
-      localStorage.setItem("nv_kids", JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-    if (kid?.id === id) {
-      clearKid();
-      // Never strand a blank screen — go pick a remaining kid (or onboard a new one).
-      setScreen(next.length ? "kidpick" : "addkid");
-    }
   };
 
   const curStep = sessionRef.current[sessionIdx];
@@ -3084,23 +3117,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Parent sign-out: revokes the session server-side, lands on the gate. */}
-          {hasParentSession() && (
-            <div className="parent-card settings-signout-card">
-              <div className="parent-head">
-                <span className="parent-name">{t.settingsSignoutTitle}</span>
-                <span className="parent-stats">{parentName() ?? "👨‍👩‍👧"}</span>
-              </div>
-              <p className="syllabus-settings-sub">{t.settingsSignoutSub}</p>
-              <button
-                className={`big-btn settings-signout-btn${signoutArmed ? " armed" : ""}`}
-                onClick={signOut}
-              >
-                {signoutArmed ? t.settingsSignoutConfirm : t.settingsSignoutCta}
-              </button>
-            </div>
-          )}
-
           {/* 📦 About — the app's semantic version (e.g. 0.25.0). */}
           <div className="parent-card settings-about-card">
             <div className="parent-head">
@@ -3144,8 +3160,6 @@ export default function App() {
               <a
                 className="parent-portal-quick"
                 href={PARENT_PORTAL}
-                target="_blank"
-                rel="noopener noreferrer"
                 aria-label={t.parentPortalTitle}
                 title={t.parentPortalTitle}
               >
@@ -3174,7 +3188,8 @@ export default function App() {
 
               {/* ── Deep link into the full portal for a signed-in parent ── */}
               {signedIn && (
-                <a className="parent-card parent-portal-card" href={PARENT_PORTAL} target="_blank" rel="noopener noreferrer">
+                <>
+                <a className="parent-card parent-portal-card" href={PARENT_PORTAL}>
                   <div className="parent-head">
                     <span className="parent-name">{t.parentPortalTitle}</span>
                     <span className="parent-stats">{t.parentFamSessions(famSessions)}</span>
@@ -3182,6 +3197,22 @@ export default function App() {
                   <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
                   <span className="big-btn parent-portal-btn">{t.parentPortalCta}</span>
                 </a>
+
+                {/* ── Sign out of the parent account (device only — progress stays) ── */}
+                <div className="parent-card settings-signout-card">
+                  <div className="parent-head">
+                    <span className="parent-name">{t.parentSignoutTitle}</span>
+                    <span className="parent-stats">{(parentName() ?? "").slice(0, 1)}</span>
+                  </div>
+                  <p className="syllabus-settings-sub">{t.parentSignoutSub}</p>
+                  <button
+                    className={`big-btn settings-signout-btn${signoutArmed ? " armed" : ""}`}
+                    onClick={signOut}
+                  >
+                    {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
+                  </button>
+                </div>
+                </>
               )}
 
               {/* ── Child picker: tap an avatar to switch whose analytics you see ── */}
@@ -3254,6 +3285,72 @@ export default function App() {
                         );
                       })}
                     </div>
+                    {/* 🧠 MONI — the tiny tutor's insight card (only after real play) */}
+                    {(() => {
+                      const mp = useKidStore.getState().moni?.[activeKid.id];
+                      if (!mp || mp.totalRounds < 4) return null;
+                      const styleWords = (s: string) => {
+                        const sb: Record<string, string> = {
+                          gentle: t.moniConfidenceGentle,
+                          steady: t.moniConfidenceSteady,
+                          challenging: t.moniConfidenceChallenging,
+                        };
+                        return sb[s] ?? t.moniConfidenceSteady;
+                      };
+                      const trendWord = mp.trend === 1 ? t.moniTrendUp : mp.trend === -1 ? t.moniTrendDown : t.moniTrendFlat;
+                      const mis = mp.misconceptions?.length
+                        ? mp.misconceptions.map((m) => m.label).join(", ")
+                        : t.moniMisconceptionsNone;
+                      const style = mp.style.speedTendency > 0.65 ? "fast ⚡" : mp.style.speedTendency < 0.35 ? "careful 🐢" : "balanced ⚖️";
+                      const focusMs = mp.attention.fatigueThreshold ? `~${mp.attention.fatigueThreshold} ${lang === "bn" ? "রাউন্ড" : "rounds"}` : "—";
+                      const pace = mp.confidence.fragile
+                        ? t.moniConfidenceGentle
+                        : mp.confidence.recoveryRate > 0.7 && mp.style.speedTendency > 0.6
+                          ? t.moniConfidenceChallenging
+                          : t.moniConfidenceSteady;
+                      return (
+                        <details className="parent-help moni-card" open>
+                          <summary>🧠 {t.moniTitle}</summary>
+                          <p className="moni-tag">{t.moniTag}</p>
+                          <div className="moni-grid">
+                            <div className="moni-cell">
+                              <span className="moni-k">{t.moniLearnStyle}</span>
+                              <span className="moni-v">{style}</span>
+                            </div>
+                            <div className="moni-cell">
+                              <span className="moni-k">{t.moniAttention}</span>
+                              <span className="moni-v">{focusMs}</span>
+                            </div>
+                            <div className="moni-cell">
+                              <span className="moni-k">{t.moniConfidence}</span>
+                              <span className="moni-v">{pace}</span>
+                            </div>
+                            <div className="moni-cell">
+                              <span className="moni-k">{t.moniBestGame}</span>
+                              <span className="moni-v">{mp.style.bestGame ?? "—"}</span>
+                            </div>
+                            <div className="moni-cell">
+                              <span className="moni-k">{t.moniSessions(mp.sessions)}</span>
+                              <span className="moni-v">{t.moniRounds(mp.totalRounds)} · {trendWord}</span>
+                            </div>
+                            <div className="moni-cell">
+                              <span className="moni-k">{t.moniMisconceptions}</span>
+                              <span className="moni-v">{mis}</span>
+                            </div>
+                          </div>
+                          <p className="moni-next">
+                            <strong>{t.moniNextMove}:</strong>{" "}
+                            {mp.totalRounds >= 8 ? (
+                              lang === "bn"
+                                ? `${mp.weak?.[0]?.skillId ?? "শেখা চালিয়ে যাও"} · ${styleWords(mp.trend === -1 ? "gentle" : mp.trend === 1 ? "challenging" : "steady")}`
+                                : `${mp.weak?.[0]?.skillId ?? "keep learning"} · ${styleWords(mp.trend === -1 ? "gentle" : mp.trend === 1 ? "challenging" : "steady")}`
+                            ) : (
+                              lang === "bn" ? "আরও কিছু খেলা চলুক — মনি দেখে নেবে" : "A few more games and Moni will know exactly what to do"
+                            )}
+                          </p>
+                        </details>
+                      );
+                    })()}
                     {(() => {
                       // Wrong-answer ledger — skills the kid is stuck on right now
                       // (open unresolved) or has missed ≥3× and not yet mastered.
@@ -3743,10 +3840,6 @@ export default function App() {
               {allComplete && <div className="badge">{t.champion}</div>}
             </>
           )}
-
-          <button className="ghost-btn" onClick={() => removeKid(kid!.id)}>
-            {t.removeKid(kid?.name ?? "")}
-          </button>
         </main>
       </div>
     );
