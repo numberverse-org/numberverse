@@ -147,6 +147,23 @@ export async function getProfile(token: string): Promise<Profile> {
   return res.json();
 }
 
+/** Three-way session check for the portal gate. Distinguishes a genuinely dead
+ *  session (401/403 → bounce to login and clear the stored token) from a
+ *  transient network failure (→ "offline" — keep the token for a later retry,
+ *  but NEVER render the dashboard with an unvalidated token). A kid who stumbles
+ *  onto /parent/ with a stale, forged, or shared token therefore always lands on
+ *  the login page, never on the dashboard. */
+export async function validateToken(token: string): Promise<"ok" | "invalid" | "offline"> {
+  try {
+    const res = await authFetch(token, `${API}/auth/me`);
+    if (res.ok) return "ok";
+    if (res.status === 401 || res.status === 403) return "invalid";
+    return "offline";
+  } catch {
+    return "offline";
+  }
+}
+
 export async function getKids(token: string): Promise<Kid[]> {
   const res = await fetch(`${API}/kids`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error("Failed to load kids");
