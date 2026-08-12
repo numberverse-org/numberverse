@@ -33,6 +33,7 @@ Last audited: **2026-08-13** (against 0.26.14 + guardrail sweep).
 | `nv_seen_welcome` | onboarding flag | don't re-show welcome | 0/1 |
 | `nv_cache_metric` | cached display metric | instant stat render | single number |
 | `nv_parent_aggregate_opt_in` | aggregate opt-in (#330) | explicit consent, off by default | "1"/"0" |
+| `nv_parent_pin` | salted FNV-1a hash of the parent-area PIN (#86) | 4-digit gate so kids can't open the parent panel | hash only — the raw PIN never leaves the device and is never stored |
 
 Nothing on-device stores a photo, contacts, location, or browsing data.
 

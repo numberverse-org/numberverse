@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -554,6 +554,30 @@ interface Strings {
   parentSignoutSub: string;
   parentSignoutCta: string;
   parentSignoutConfirm: string;
+  /* parent PIN lock (#86) — 4-digit gate on the parent area */
+  pinTitle: string;
+  pinUnlockSub: string;
+  pinSetTitle: string;
+  pinSetSub: string;
+  pinConfirmTitle: string;
+  pinConfirmSub: string;
+  pinChangeTitle: string;
+  pinChangeSub: string;
+  pinNewTitle: string;
+  pinWrong: (n: number) => string;
+  pinLocked: string;
+  pinLockedSub: string;
+  pinForgot: string;
+  pinForgotSub: string;
+  pinResetArmed: string;
+  pinResetCta: string;
+  pinMismatch: string;
+  pinCurrentWrong: string;
+  pinKeep: string;
+  pinLockCardTitle: string;
+  pinLockCardSub: string;
+  pinSet: string;
+  pinChange: string;
   /* about / version */
   settingsAboutSub: string;
   settingsVoice: string;
@@ -966,6 +990,30 @@ const STR: Record<Lang, Strings> = {
     parentSignoutSub: "This device will leave the parent account — local progress stays. Sign back in anytime to keep it everywhere.",
     parentSignoutCta: "Sign out",
     parentSignoutConfirm: "Tap again to confirm",
+    /* parent PIN lock (#86) */
+    pinTitle: "🔒 Parent PIN",
+    pinUnlockSub: "Enter the 4-digit PIN to open the parent area",
+    pinSetTitle: "Set a parent PIN",
+    pinSetSub: "Choose a 4-digit PIN — you'll need it every time the parent area opens",
+    pinConfirmTitle: "Confirm your PIN",
+    pinConfirmSub: "Enter the same 4 digits again",
+    pinChangeTitle: "Change PIN",
+    pinChangeSub: "Enter your current PIN",
+    pinNewTitle: "New PIN",
+    pinWrong: (n) => (n === 1 ? "Wrong PIN — 1 try left" : `Wrong PIN — ${n} tries left`),
+    pinLocked: "PIN pad locked",
+    pinLockedSub: "Too many wrong tries. Reset the PIN below — you'll sign back in and set a new one.",
+    pinForgot: "Forgot PIN?",
+    pinForgotSub: "Resets the lock and signs you out of the parent account.",
+    pinResetArmed: "Reset PIN & sign out?",
+    pinResetCta: "Reset & sign out",
+    pinMismatch: "PINs don't match — start over",
+    pinCurrentWrong: "That's not your current PIN",
+    pinKeep: "Never share your PIN with your child",
+    pinLockCardTitle: "🔐 PIN lock",
+    pinLockCardSub: "The parent area opens with a 4-digit PIN",
+    pinSet: "Set PIN",
+    pinChange: "Change PIN",
     settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
@@ -1375,6 +1423,30 @@ const STR: Record<Lang, Strings> = {
     parentSignoutSub: "এই ডিভাইসটি মা-বাবার অ্যাকাউন্ট ছেড়ে যাবে — এই ডিভাইসের শেখার খবর থাকে। যেকোনো সময় আবার সাইন ইন করুন।",
     parentSignoutCta: "সাইন আউট",
     parentSignoutConfirm: "নিশ্চিত করতে আবার চাপুন",
+    /* parent PIN lock (#86) */
+    pinTitle: "🔒 মা-বাবার পিন",
+    pinUnlockSub: "মা-বাবার অংশ খুলতে ৪ অঙ্কের পিন লিখুন",
+    pinSetTitle: "মা-বাবার পিন সেট করুন",
+    pinSetSub: "৪ অঙ্কের একটি পিন বেছে নিন — প্রতিবার মা-বাবার অংশ খুলতে এটা লাগবে",
+    pinConfirmTitle: "পিন নিশ্চিত করুন",
+    pinConfirmSub: "আবার একই ৪ অঙ্ক লিখুন",
+    pinChangeTitle: "পিন পরিবর্তন করুন",
+    pinChangeSub: "আপনার বর্তমান পিন লিখুন",
+    pinNewTitle: "নতুন পিন",
+    pinWrong: (n) => (n === 1 ? "ভুল পিন — ১ বার চেষ্টা বাকি" : `ভুল পিন — ${n} বার চেষ্টা বাকি`),
+    pinLocked: "পিন প্যাড লক হয়ে গেছে",
+    pinLockedSub: "অনেকবার ভুল পিন দেওয়া হয়েছে। নিচে থেকে পিন রিসেট করুন — আবার সাইন ইন করে নতুন পিন সেট করবেন।",
+    pinForgot: "পিন ভুলে গেছেন?",
+    pinForgotSub: "লক রিসেট করে মা-বাবার অ্যাকাউন্ট থেকে সাইন আউট হবে।",
+    pinResetArmed: "পিন রিসেট করে সাইন আউট করবেন?",
+    pinResetCta: "রিসেট ও সাইন আউট",
+    pinMismatch: "পিন মেলেনি — আবার শুরু করুন",
+    pinCurrentWrong: "এটা আপনার বর্তমান পিন নয়",
+    pinKeep: "আপনার সন্তানকে পিন কখনো বলবেন না",
+    pinLockCardTitle: "🔐 পিন লক",
+    pinLockCardSub: "মা-বাবার অংশ ৪ অঙ্কের পিন দিয়ে খোলে",
+    pinSet: "পিন সেট করুন",
+    pinChange: "পিন পরিবর্তন করুন",
     settingsAboutSub: "নম্বরভার্স · কৌতূহলী বাচ্চাদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
@@ -2274,6 +2346,7 @@ export default function App() {
     void validateParentSession().then((ok) => {
       if (active && !ok) {
         clearParentSession();
+        setPinOk(false);
         setScreen("parent"); // shows the inline sign-in form — same parent page
       }
     });
@@ -2304,8 +2377,10 @@ export default function App() {
       }
       // Success → land where the parent came from (syllabus on first-load, or
       // back home when upgrading an existing guest). Their kids are mapped to
-      // the parent account on the next sync tick.
+      // the parent account on the next sync tick. A fresh sign-in re-arms the
+      // PIN gate so a newly signed-in parent proves the PIN before the panel.
       setSylBand(1);
+      setPinOk(false);
       setScreen(gateReturn.current);
     } catch {
       setGateError(gateMode === "in" ? t.gateErrorInvalid : t.gateErrorSignup);
@@ -2320,6 +2395,7 @@ export default function App() {
     try {
       await signinGoogle(idToken);
       setSylBand(1);
+      setPinOk(false);
       setScreen(gateReturn.current);
     } catch {
       setGateError(t.gateErrorGoogle);
@@ -2329,6 +2405,7 @@ export default function App() {
   };
   const enterAsGuest = () => {
     clearParentSession();
+    setPinOk(false);
     const list = loadKids();
     setScreen(list.length ? "kidpick" : "addkid");
   };
@@ -2338,11 +2415,14 @@ export default function App() {
     setScreen("syllabus");
   };
   // 🔐 Parent-area access control — the Parent area is ONE page. A signed-in
-  // parent sees the full panel; anyone else sees the sign-in form INLINE on
-  // the same page (never a separate "parent gate" page in the user face). A
-  // kid tapping "For parents" gets the login form, not any parent data.
+  // parent sees the full panel (behind the PIN gate when one is set); anyone
+  // else sees the sign-in form INLINE on the same page (never a separate
+  // "parent gate" page in the user face). A kid tapping "For parents" gets the
+  // login form, not any parent data.
   const goParent = () => {
     gateReturn.current = "parent";
+    setPinOk(false); // re-arm the PIN gate every time the parent area opens
+    pinNewFlow("unlock"); // fresh pad + no stale lock/change mode
     setScreen("parent");
   };
   // Sign out of the parent account — revokes the session server-side, clears
@@ -2357,8 +2437,111 @@ export default function App() {
     }
     void signoutParent().then(() => {
       setSignoutArmed(false);
+      setPinOk(false);
       gateReturn.current = "parent";
       setScreen("parent"); // stays on the one parent page → inline sign-in form
+    });
+  };
+
+  // ── Parent-area PIN lock (#86) ───────────────────────────────────────────
+  // A 4-digit gate on the signed-in panel, so a kid handed a signed-in device
+  // can't wander into parent territory. Enforced INLINE on the parent screen —
+  // every path to the panel runs through this render gate, so nothing can
+  // bypass it. The PIN is stored as a salted hash in api.ts (per-device only).
+  //   · no PIN set yet        → mandatory setup pad on first panel entry
+  //   · PIN set + not verified → unlock pad (3 wrong tries → locked → recover
+  //     via sign-out-and-back-in, which resets the PIN)
+  //   · PIN verified          → panel; a "Change PIN" card re-arms the pad
+  const [pinOk, setPinOk] = useState(false);
+  const [pinMode, setPinMode] = useState<"unlock" | "setup" | "change">("unlock");
+  const [pinStep, setPinStep] = useState<"current" | "new" | "confirm">("current");
+  const [pinDigits, setPinDigits] = useState("");
+  const [pinPending, setPinPending] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinTries, setPinTries] = useState(0);
+  const [pinLocked, setPinLocked] = useState(false);
+  const [pinForgotArmed, setPinForgotArmed] = useState(false);
+  const pinResetPad = () => { setPinDigits(""); setPinError(null); };
+  const pinNewFlow = (mode: "unlock" | "setup" | "change") => {
+    setPinMode(mode);
+    setPinStep("current");
+    setPinPending("");
+    setPinTries(0);
+    setPinLocked(false);
+    pinResetPad();
+  };
+  /** Append a digit; auto-submit once 4 digits are entered. */
+  const appendPinDigit = (d: string) => {
+    const next = (pinDigits + d).slice(0, 4);
+    setPinDigits(next);
+    setPinError(null);
+    if (next.length === 4) pinSubmit(next);
+  };
+  /** The 4-digit value is complete → run the step logic. `hasParentPin()` is
+   *  the source of truth for setup-vs-unlock: with no PIN, "current" is
+   *  meaningless, so the first entry is treated as the new-PIN stage. A device
+   *  with no PIN can never accidentally hit the verify branch. */
+  const pinSubmit = (value: string) => {
+    const hasPin = hasParentPin();
+    const step = hasPin ? pinStep : pinStep === "confirm" ? "confirm" : "new";
+    // Verify the current PIN (unlock, or change-current) — only when one exists.
+    if (hasPin && step === "current") {
+      if (verifyParentPin(value)) {
+        pinResetPad();
+        if (pinMode === "change") { setPinStep("new"); setPinError(null); }
+        else { setPinOk(true); }
+        return;
+      }
+      if (pinMode === "change") {
+        pinResetPad();
+        setPinError(t.pinCurrentWrong);
+      } else {
+        const t2 = pinTries + 1;
+        setPinTries(t2);
+        pinResetPad();
+        if (t2 >= 3) { setPinLocked(true); setPinError(null); }
+        else { setPinError(t.pinWrong(3 - t2)); }
+      }
+      return;
+    }
+    // New PIN (first-time setup, or change-new): stage it, then confirm.
+    if (step === "new") {
+      setPinPending(value);
+      pinResetPad();
+      setPinStep("confirm");
+      return;
+    }
+    // Confirmation: must match the staged PIN → save, then open the panel.
+    if (value === pinPending) {
+      setParentPin(value);
+      pinResetPad();
+      setPinPending("");
+      setPinMode("unlock");
+      setPinStep("current");
+      setPinOk(true);
+    } else {
+      pinResetPad();
+      setPinPending("");
+      setPinStep("new");
+      setPinError(t.pinMismatch);
+    }
+  };
+  /** Recovery: a parent who forgot the PIN (or a locked pad) resets the lock
+   *  and signs out — signing back in lands on the parent page, which (with no
+   *  PIN set) prompts for a fresh PIN. Two taps (arm → confirm). */
+  const pinForgot = () => {
+    if (!pinForgotArmed) {
+      setPinForgotArmed(true);
+      window.setTimeout(() => setPinForgotArmed(false), 4000);
+      return;
+    }
+    clearParentPin();
+    setPinForgotArmed(false);
+    pinNewFlow("unlock");
+    setPinOk(false);
+    void signoutParent().then(() => {
+      gateReturn.current = "parent";
+      setScreen("parent"); // inline sign-in form → after sign-in, setup a new PIN
     });
   };
 
@@ -3975,6 +4158,78 @@ export default function App() {
         </div>
       );
     }
+    // 🔐 PIN gate (#86): a signed-in parent proves a 4-digit PIN before the
+    // panel — mandatory first-time setup, 3-strike lockout, sign-out recovery.
+    // Enforced HERE so EVERY path to the panel (goParent, a fresh sign-in, a
+    // session restore) passes through it; there is no bypass path.
+    const pinRequired = hasParentPin() && !pinOk;
+    if (!hasParentPin() || pinMode === "change" || pinRequired) {
+      let pinTitle = t.pinTitle;
+      let pinSub = t.pinUnlockSub;
+      if (pinLocked) {
+        pinTitle = t.pinLocked;
+        pinSub = t.pinLockedSub;
+      } else if (!hasParentPin()) {
+        // first-time setup — this device has no PIN yet
+        pinTitle = pinStep === "confirm" ? t.pinConfirmTitle : t.pinSetTitle;
+        pinSub = pinStep === "confirm" ? t.pinConfirmSub : t.pinSetSub;
+      } else if (pinMode === "change") {
+        pinTitle = pinStep === "new" ? t.pinNewTitle : pinStep === "confirm" ? t.pinConfirmTitle : t.pinChangeTitle;
+        pinSub = pinStep === "new" ? t.pinSetSub : pinStep === "confirm" ? t.pinConfirmSub : t.pinChangeSub;
+      }
+      return (
+        <div className="app">
+          <main className="screen worlds parent-screen">
+            <header className="screen-head">
+              <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+              <div className="head-title">
+                <h2>{t.parentTitle}</h2>
+                <p className="head-sub">{t.parentSub}</p>
+              </div>
+            </header>
+            <div className="gate-card pin-card">
+              <div className="gate-logo" aria-hidden>🔒</div>
+              <h2 className="gate-title">{pinTitle}</h2>
+              <p className="gate-sub">{pinSub}</p>
+
+              {/* 4 digit dots */}
+              <div className="pin-dots" role="status" aria-label={`${pinDigits.length}/4`}>
+                {[0, 1, 2, 3].map((i) => (
+                  <span key={i} className={`pin-dot${i < pinDigits.length ? " filled" : ""}`} />
+                ))}
+              </div>
+
+              {pinError && <p className="gate-error" role="alert">{pinError}</p>}
+
+              {/* keypad — hidden once the pad locks (3 wrong tries in unlock) */}
+              {!pinLocked && (
+                <div className="pin-pad">
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+                    <button key={d} className="pin-key" onClick={() => appendPinDigit(d)}>{d}</button>
+                  ))}
+                  <span className="pin-key pin-key-spacer" aria-hidden />
+                  <button className="pin-key" onClick={() => appendPinDigit("0")}>0</button>
+                  <button className="pin-key pin-key-back" aria-label="⌫" onClick={() => { setPinDigits((v) => v.slice(0, -1)); setPinError(null); }}>⌫</button>
+                </div>
+              )}
+
+              {/* recovery: forgot PIN / locked pad → reset lock + sign out.
+                  Only on the unlock pad (setup has no PIN to forget yet). */}
+              {hasParentPin() && pinMode === "unlock" && (
+                <div className="pin-recovery">
+                  <button className="syllabus-banner-link" onClick={pinForgot}>
+                    {pinForgotArmed ? t.pinResetArmed : t.pinForgot}
+                  </button>
+                  <p className="gate-guest-sub">{t.pinForgotSub}</p>
+                </div>
+              )}
+
+              <p className="gate-privacy">{t.pinKeep}</p>
+            </div>
+          </main>
+        </div>
+      );
+    }
     // Signed in → the full parent panel.
     const activeId = parentKidId && kids.some((k) => k.id === parentKidId) ? parentKidId : (kid?.id ?? kids[0]?.id ?? null);
     const activeKid = kids.find((k) => k.id === activeId);
@@ -4048,6 +4303,22 @@ export default function App() {
                   onClick={signOut}
                 >
                   {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
+                </button>
+              </div>
+
+              {/* ── PIN lock (#86) — change the 4-digit parent-area PIN. Only
+                  reachable from the panel, which is itself behind the PIN. */}
+              <div className="parent-card settings-signout-card pin-lock-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.pinLockCardTitle}</span>
+                  <span className="parent-stats">🔑</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.pinLockCardSub}</p>
+                <button
+                  className="big-btn settings-signout-btn pin-lock-btn"
+                  onClick={() => { pinNewFlow("change"); }}
+                >
+                  {t.pinChange}
                 </button>
               </div>
 

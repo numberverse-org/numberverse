@@ -47,6 +47,7 @@ const LS = {
   deviceProfileId: "nv_device_profile_id",
   kidMap: "nv_kid_map", // { localKidId: serverKidId }
   parentAggregateOptIn: "nv_parent_aggregate_opt_in", // #330 privacy opt-in ("1"/"0")
+  parentPin: "nv_parent_pin", // #86 — salted hash of the parent-area PIN (never the raw PIN)
 } as const;
 
 function genId(): string {
@@ -269,6 +270,38 @@ export function clearParentSession(): void {
   localStorage.removeItem(LS.parentName);
   localStorage.removeItem(LS.parentAggregateOptIn);
   resetIdentity();
+}
+
+/* ── #86 Parent-area PIN lock ────────────────────────────────────────────
+ * A 4-digit gate on the signed-in parent panel, so a kid who's handed a
+ * signed-in device can't open parent territory. Only a salted FNV-1a hash is
+ * stored — never the raw PIN — which is proportionate for a curious-kid threat
+ * model (a determined child with DevTools could equally just clear
+ * localStorage, which wipes the gate anyway). The PIN is per-device and never
+ * leaves the device.
+ */
+const PIN_SALT = "numberverse-parent-pin-v1"; // fixed per-app salt (obfuscation, not a secret)
+function pinHash(pin: string): string {
+  let h = 0x811c9dc5; // FNV-1a 32-bit offset basis
+  const s = `${PIN_SALT}:${pin}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return `fnv1a$${(h >>> 0).toString(16).padStart(8, "0")}`;
+}
+export function hasParentPin(): boolean {
+  return !!localStorage.getItem(LS.parentPin);
+}
+export function setParentPin(pin: string): void {
+  localStorage.setItem(LS.parentPin, pinHash(pin));
+}
+export function verifyParentPin(pin: string): boolean {
+  const stored = localStorage.getItem(LS.parentPin);
+  return !!stored && stored === pinHash(pin);
+}
+export function clearParentPin(): void {
+  localStorage.removeItem(LS.parentPin);
 }
 
 /* ── #330 Kotha: privacy-scrubbed cross-kid aggregates ─────────────────── */
