@@ -224,12 +224,12 @@
 - Deferred: AR number-camera experiment (spike)  _(priority: low, deferred)_
 - Deferred: elder-girl voice recording  _(priority: low, deferred)_
 - Deferred: multi-device profile sync  _(priority: low, deferred)_
-- Deferred: garden/pet expansion (new species)  _(priority: low, deferred)_
+- ~~Deferred: garden/pet expansion (new species)~~ ✅ #19 — PR #448: owl/cat/peacock/dragon, growth-milestone + coin gates, companion in Nova room
 - Deferred: new lands — Jungle + Polar themes  _(priority: low, deferred)_
 - Deferred: parent phone notifications bridge  _(priority: low, deferred)_
-- Deferred: screen-reader deep support  _(priority: low, deferred)_
-- Deferred: sound-design pack (per-land)  _(priority: low, deferred)_
-- Deferred: classroom projector mode  _(priority: low, deferred)_
+- ~~Deferred: screen-reader deep support~~ ✅ #133 — merged #446
+- ~~Deferred: sound-design pack (per-land)~~ ✅ #134 — merged #445
+- ~~Deferred: classroom projector mode~~ ✅ #136 — merged #447
 - Deferred: flashcard QR tie-in  _(priority: low, deferred)_
 - Deferred: teacher mode — class roster  _(priority: low, deferred)_
 - Deferred: sibling co-op play mode  _(priority: low, deferred)_
