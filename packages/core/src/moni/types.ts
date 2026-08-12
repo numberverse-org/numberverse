@@ -166,6 +166,10 @@ export interface MoniPlan {
   sessionLengthHint: number;
   /** Spaced review schedule (days). */
   reviewSchedule: { skillId: string; inDays: number }[];
+  /** Skills due for a review NOW (#328) — most overdue first. The kid UI
+   *  surfaces these as gentle, non-blocking prompts ("no rush"). `overdueDays`
+   *  is 0 when the skill is due today. */
+  dueReviews: { skillId: string; inDays: number; overdueDays: number }[];
   /** Parent-facing summary — what Moni learned and recommends. */
   summary: string;
   /** The next 3 skills this child should practice, newest/most urgent first.
@@ -207,4 +211,7 @@ export interface SkillMasteryLike {
   attempts: number;
   /** Consecutive wrongs on this skill right now (0 if the last round was right). */
   wrongStreak: number;
+  /** Last practice time (epoch ms) — feeds the confidence-based review
+   *  schedule (#328). Optional: falls back to "due now" when unknown. */
+  lastPractice?: number | null;
 }
