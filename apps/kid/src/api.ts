@@ -46,6 +46,7 @@ const LS = {
   deviceToken: "nv_device_token",
   deviceProfileId: "nv_device_profile_id",
   kidMap: "nv_kid_map", // { localKidId: serverKidId }
+  parentAggregateOptIn: "nv_parent_aggregate_opt_in", // #330 privacy opt-in ("1"/"0")
 } as const;
 
 function genId(): string {
@@ -266,7 +267,62 @@ export async function signupParent(email: string, password: string, displayName:
 export function clearParentSession(): void {
   localStorage.removeItem(LS.parentToken);
   localStorage.removeItem(LS.parentName);
+  localStorage.removeItem(LS.parentAggregateOptIn);
   resetIdentity();
+}
+
+/* ── #330 Kotha: privacy-scrubbed cross-kid aggregates ─────────────────── */
+
+/** Cached parent privacy opt-in ("1" / "0" / null when signed out). */
+export function aggregateOptIn(): boolean {
+  return localStorage.getItem(LS.parentAggregateOptIn) === "1";
+}
+
+/** Flip the parent's aggregate-sharing opt-in via PATCH /auth/me. Returns
+ *  true when the server accepted it (offline → false, UI keeps the old state). */
+export async function setAggregateOptIn(on: boolean): Promise<boolean> {
+  const token = localStorage.getItem(LS.parentToken);
+  if (!token) return false;
+  try {
+    const res = await fetch(`${API}/auth/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ aggregate_opt_in: on }),
+    });
+    if (res.ok) {
+      localStorage.setItem(LS.parentAggregateOptIn, on ? "1" : "0");
+      return true;
+    }
+  } catch {
+    /* offline — leave the stored state untouched */
+  }
+  return false;
+}
+
+/** Cross-kid Kotha aggregates (opted-in families only, zero kid identity).
+ *  Returns null when not opted in / signed out / offline. */
+export async function fetchAggregates(): Promise<KothaAggregates | null> {
+  const token = localStorage.getItem(LS.parentToken);
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API}/stories/aggregates`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as KothaAggregates;
+  } catch {
+    return null;
+  }
+}
+
+/** Shape of the cross-kid aggregates response — no kid identity anywhere. */
+export interface KothaAggregates {
+  contributing_kids: number;
+  total_stories: number;
+  success_rate: number;
+  top_misconceptions: { code: string; count: number }[];
+  error_kind_distribution: { error_kind: string; count: number }[];
+  top_struggle_skills: { skill_id: string; count: number }[];
 }
 
 /** Full sign-out: revoke the session server-side (so the token dies on the

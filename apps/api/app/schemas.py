@@ -27,6 +27,7 @@ class ProfileOut(BaseModel):
     email: EmailStr
     display_name: str | None = None
     is_admin: bool = False
+    aggregate_opt_in: bool = False  # #330 parent privacy opt-in
 
     model_config = {"from_attributes": True}
 
@@ -43,6 +44,7 @@ class ChangePasswordIn(BaseModel):
 
 class ProfileUpdateIn(BaseModel):
     display_name: str | None = Field(default=None, max_length=80)
+    aggregate_opt_in: bool | None = None  # #330 parent privacy opt-in
 
 
 class SessionOut(BaseModel):
