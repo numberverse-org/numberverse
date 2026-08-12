@@ -1,3 +1,10 @@
+## 12 Aug 2026 — v26 (secure parent portal — revocable sessions, logout, account & family overview)
+
+f2b49c8 feat: secure parent portal — revocable sessions, logout, account & family overview (#153)
+1de96aa track: google sign-in activated live — client id set on box env, endpoint verifies (401), button live
+ab7d6a6 track: board synced — v22–v25 filed as Done issues (#149–#152); google sign-in status documented
+2fb3645 track: v25 released — syllabus GRID + semver versioning 0.25.0
+
 ## 12 Aug 2026 — v25 (eye-catching syllabus GRID (no EN/BN mixing) + semver versioning 0.25.0)
 
 5c4b4bc feat: eye-catching syllabus GRID (no EN/BN mixing) + semver versioning (0.x.0) (#148)
