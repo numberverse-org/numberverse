@@ -28,6 +28,10 @@ export const wrongLedger = {
   setContext(c: WrongAttemptCtx | null) {
     ctx = c;
   },
+  /** The kid currently in a drill round (null before a round starts). */
+  kidId(): string | null {
+    return ctx?.kidId ?? null;
+  },
   /** Call on every wrong tap — persisted, deduped naturally by the store. */
   record() {
     if (!ctx) return;
