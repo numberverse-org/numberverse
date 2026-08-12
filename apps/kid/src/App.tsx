@@ -18,7 +18,7 @@ import {
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
-import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
+import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -2658,6 +2658,13 @@ export default function App() {
       setMuted(true);
     }
   }, [settings.music_enabled]);
+  // #134 — the home/journey ambient follows the current land the kid is on.
+  useEffect(() => {
+    if (!kid) return;
+    const stops = journeyState(skillsMap, kid.id);
+    const idx = journeyCurrentIndex(stops);
+    setMusicTheme(idx < stops.length ? stops[idx].skill.band : 2);
+  }, [kid, skillsMap]);
   // #138 — kid dictation: record own voice + replay. Parent-gated (off by
   // default); when enabled, recording stays ON-DEVICE only (voiceRecorder.ts).
   const [recState, setRecState] = useState<"idle" | "recording" | "denied" | "unsupported">("idle");
@@ -3213,6 +3220,7 @@ export default function App() {
     setLimitNotice(null);
     requestFullscreen();
     ensureAudio();
+    setMusicTheme(b.id); // #134 — this land's ambient music + SFX key
     startMusic();
     whooshUp();
     reset();
@@ -3235,6 +3243,7 @@ export default function App() {
     setLimitNotice(null);
     requestFullscreen();
     ensureAudio();
+    setMusicTheme(skill.band); // #134 — the stop's land music
     startMusic();
     whooshUp();
     reset();
