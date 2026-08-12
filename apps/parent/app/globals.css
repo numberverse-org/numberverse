@@ -248,6 +248,15 @@ input {
   font-family: inherit;
 }
 input:focus { outline: none; border-color: rgba(125,227,255,0.6); }
+/* #351 — keyboard users get a visible focus ring on the portal (mouse users don't) */
+:focus-visible {
+  outline: 3px solid #7de3ff;
+  outline-offset: 2px;
+}
+input:focus-visible {
+  outline: 3px solid #7de3ff;
+  outline-offset: 2px;
+}
 input::placeholder { color: rgba(255,255,255,0.4); }
 label { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
