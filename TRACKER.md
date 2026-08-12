@@ -12,6 +12,14 @@
 - **Google sign-in status (the user's "where is it?"):** **LIVE/ACTIVATED** — see the entry below. Button renders on the gate, `/auth/google` verifies server-side (401 on a bad token). Client id + project in the box `.env.production`; docs in `.env.production.example`.
 - Board: **Done** = closed issues. **#60 (place value to 9999)** stays `status: in-progress` = next build.
 
+## 🚀 0.26.13 RELEASED — GUARDRAIL SWEEP: PII LOG SCRUBBER + SCHEME ALLOWLIST + CONSOLE SCAN + STORY REDACTION + LICENSE GATE 13 Aug 2026 ✅ (user: "do all the pendings")
+- **🛡️ PII log scrubber #266:** new `apps/api/app/scrub.py` — `redact_text()` (emails/IPv4/IPv6/BD phones/cards/device-ids/MACs) + `ScrubFilter` logging filter installed on every root handler in main.py; no PII can reach a log line. `redact_context()` deep-walks story envelopes.
+- **🔗 Scheme allowlist #267:** `packages/core/src/links.ts` — `ALLOWED_EXTERNAL_SCHEMES` (https/mailto/blob/data/about) + `openExternal`/guard helpers; kid share-image `window.open` + parent portal WhatsApp button are now allowlist-gated (unknown schemes never fire).
+- **🔕 console scan #268:** fail-closed section ⑤ in `audit.mjs` — any `console.log/debug/info/warn/trace` in shipped frontend dirs fails the audit (CI `audit` job); `console.error` on error paths stays allowed; injected-leak test verified.
+- **🔐 Kotha story redaction #270:** `record_stories` stores `redact_context(s.context)` server-side before INSERT — nested dicts/lists, str leaves redacted, caller's dict never mutated.
+- **📜 License gate #271:** `scripts/license-audit.mjs` parses `pnpm licenses list --json` vs an SPDX allowlist (445 deps all allowed) + `docs/LICENSES.md` policy + new parallel `license-audit` CI job. `api` job also now runs the 18-check scrubber unit tests.
+- **Pipeline:** one guardrail-sweep PR #415 (CI 5/5 incl. new license-audit) → squash-merged → `release.sh 0.26.13` → deploy → live bundle carries `0.26.13`. All five issues commented + work orders marked released.
+
 ## 🚀 0.26.12 RELEASED — RATE-LIMIT GUARDRAIL + MASTERY CELEBRATION + REDUCED-MOTION + KEYBOARD NAV 13 Aug 2026 ✅ (user: "do all the pendings")
 - **🛡️ Guardrail #274:** `/progress` + `/stories` write endpoints now sit behind an in-memory sliding-window rate limiter (120 req/min keyed on `profile.id:client-ip`, `apps/api/app/ratelimit.py`). Kid syncs every 30s → >60× headroom; bulk story/progress replay is capped. Unit-tested.
 - **🎉 Mastery celebration #290:** the exact round a skill crosses `MASTERY_THRESHOLD` now fires confetti + a spoken "Wow! You mastered {skill}! 🎉" (EN/BN) + pet-grow, instead of a silent threshold cross.
