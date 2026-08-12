@@ -36,3 +36,8 @@ __pycache__/
 PRIMARY_SESSION.txt
 .tresha/
 *.tresha*
+
+# Playwright e2e output (#264)
+test-results/
+playwright-report/
+blob-report/

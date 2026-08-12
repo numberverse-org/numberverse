@@ -4,6 +4,13 @@ The kid PWA is **local-first by design**: the game shell and every game are
 fully precached, and progress is queued on-device until a connection returns.
 This document is the recorded verification.
 
+**Automated guardrail (#264):** `e2e/offline.spec.ts` (Playwright, runs against
+the live deployed app) machine-checks the cold + warm offline contract: an
+offline reload must render with every launch-critical asset served from the SW
+precache, and the ONLY network failures allowed are the two documented runtime
+features (neural-voice model download, Google sign-in button). CI job:
+`offline-e2e`.
+
 ## Test matrix
 
 | Case | Scenario | Result | Evidence |

@@ -11,8 +11,15 @@
     "build": "pnpm --filter core build && pnpm --filter kid build && pnpm --filter parent build && pnpm --filter admin build",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
-    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f"
+    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "e2e": "playwright test",
+    "e2e:offline": "playwright test e2e/offline.spec.ts"
   },
   "packageManager": "pnpm@11.20.0",
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
 }

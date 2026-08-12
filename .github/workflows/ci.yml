@@ -188,6 +188,24 @@ jobs:
       - name: Secrets hygiene gate (#126)
         run: node scripts/secret-scan.mjs
 
+  offline-e2e:
+    name: offline-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Offline no-network fallback e2e (#264)
+        run: pnpm exec playwright test
+
   oracle:
     name: oracle
     needs: build-core
