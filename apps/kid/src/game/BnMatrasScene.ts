@@ -28,6 +28,29 @@ const MATRAS = [
   { base: "ন", matra: "া", combined: "না", hint: "া" },
   { base: "ত", matra: "ু", combined: "তু", hint: "ু" },
 ];
+/** #20 — Bangla conjuncts (যুক্তবর্ণ): two letters fuse into one glyph. Same
+ *  "combine" mechanic as matras, with a conjunct pool instead. Class 5 reading
+ *  hits these constantly (ক্ষ ঞ্জ ঙ্ক ণ্ড). */
+const CONJUNCTS = [
+  { base: "ক", base2: "ষ", combined: "ক্ষ", hint: "ক্ষ" },
+  { base: "ক", base2: "খ", combined: "খ্খ", hint: "খ্খ" },
+  { base: "জ", base2: "্ঞ", combined: "জ্ঞ", hint: "জ্ঞ" },
+  { base: "ক", base2: "ক", combined: "ক্ক", hint: "ক্ক" },
+  { base: "ত", base2: "্ত", combined: "ত্ত", hint: "ত্ত" },
+  { base: "ঙ", base2: "্ক", combined: "ঙ্ক", hint: "ঙ্ক" },
+  { base: "ণ", base2: "্ড", combined: "ণ্ড", hint: "ণ্ড" },
+  { base: "ম", base2: "্প", combined: "ম্প", hint: "ম্প" },
+  { base: "ল", base2: "্ল", combined: "ল্ল", hint: "ল্ল" },
+  { base: "স", base2: "্থ", combined: "স্থ", hint: "স্থ" },
+  { base: "ন", base2: "্ত", combined: "ন্ত", hint: "ন্ত" },
+  { base: "শ", base2: "্চ", combined: "শ্চ", hint: "শ্চ" },
+  { base: "প", base2: "্র", combined: "প্র", hint: "প্র" },
+  { base: "ব", base2: "্র", combined: "ব্র", hint: "ব্র" },
+];
+/** A combine fact — matras OR conjuncts share the same 2→1 shape. */
+type CombineFact = { parts: [string, string]; combined: string; hint: string };
+const MATRA_FACTS: CombineFact[] = MATRAS.map((m) => ({ parts: [m.base, m.matra], combined: m.combined, hint: m.hint }));
+const CONJUNCT_FACTS: CombineFact[] = CONJUNCTS.map((c) => ({ parts: [c.base, c.base2], combined: c.combined, hint: c.hint }));
 const BUTTON_RADIUS = 56;
 const ROUNDS_TO_FINISH = 3;
 
@@ -39,7 +62,9 @@ export class BnMatrasScene extends Phaser.Scene {
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
-  private target!: (typeof MATRAS)[number];
+  private conjunctMode = false;
+  private facts: CombineFact[] = MATRA_FACTS;
+  private target!: CombineFact;
   private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
@@ -53,13 +78,16 @@ export class BnMatrasScene extends Phaser.Scene {
     super("BnMatras");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    // #20 — conjuncts mode (bn-conjuncts) shares the combine mechanic.
+    this.conjunctMode = data.mode === "conjuncts";
+    this.facts = this.conjunctMode ? CONJUNCT_FACTS : MATRA_FACTS;
     this.background = this.add.graphics();
     this.drawBackground();
     this.titleText = this.add
-      .text(0, 0, t("titleBnMatras"), txt(34, "#ffffff", {bold: true}))
+      .text(0, 0, t(this.conjunctMode ? "titleBnConjunct" : "titleBnMatras"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
       .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
@@ -68,7 +96,7 @@ export class BnMatrasScene extends Phaser.Scene {
       .text(0, 0, "", txt(56, "#ffd166", {bold: true, outline: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t("tapMatra"));
+    this.prompt.set(t(this.conjunctMode ? "tapConjunct" : "tapMatra"));
     this.meter = roundMeter(this);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
@@ -91,17 +119,17 @@ export class BnMatrasScene extends Phaser.Scene {
   private startRound() {
     this.clearButtons();
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
-    this.target = MATRAS[Phaser.Math.Between(0, MATRAS.length - 1)];
+    this.target = this.facts[Phaser.Math.Between(0, this.facts.length - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.factText.setText(`${this.target.base} + ${this.target.matra} = ?`);
+    this.factText.setText(`${this.target.parts[0]} + ${this.target.parts[1]} = ?`);
     speak(this.target.combined);
     this.spawnButtons(n);
   }
 
   private spawnButtons(n: number) {
-    const opts = [this.target, ...MATRAS.filter((m) => m.combined !== this.target.combined)]
+    const opts = [this.target, ...this.facts.filter((m) => m.combined !== this.target.combined)]
       .slice(0, n)
       .sort(() => Math.random() - 0.5);
     // answerRow always fits the canvas width (shrinks radius on narrow phones)

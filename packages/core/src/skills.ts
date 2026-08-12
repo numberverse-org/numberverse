@@ -9,6 +9,10 @@ export const BANDS: Band[] = [
   { id: 3, key: 'river-town', title: 'River Town', titleBn: 'নদীর শহর', ageRange: '6–8' },
   { id: 4, key: 'sky-castle', title: 'Sky Castle', titleBn: 'আকাশের দুর্গ', ageRange: '8–10' },
   { id: 5, key: 'star-academy', title: 'Star Academy', titleBn: 'তারার পাঠশালা', ageRange: '10–13' },
+  // #20 — two more lands on the "living map" (journey breadth, not age-split):
+  // the road keeps going past Star Academy into the deep jungle and the arctic.
+  { id: 6, key: 'jungle-canopy', title: 'Jungle Canopy', titleBn: 'জঙ্গলের চাঁদোয়া', ageRange: '11–14' },
+  { id: 7, key: 'polar-peaks', title: 'Polar Peaks', titleBn: 'মেরু শৃঙ্গ', ageRange: '12–15' },
 ];
 
 export const SKILLS: Skill[] = [
@@ -100,6 +104,25 @@ export const SKILLS: Skill[] = [
   { id: 'en-grammar', band: 5, subject: 'english', title: 'Nouns & verbs', titleBn: 'বিশেষ্য ও ক্রিয়া', description: 'Sort words into nouns and verbs', descriptionBn: 'শব্দকে বিশেষ্য ও ক্রিয়ায় ভাগ করি', commonCore: ['L.5.1'], nctbCode: 'c5-english-3', classNumber: 5, game: 'game-grammar' },
   // BGS — Bangladesh & the world
   { id: 'bgs-bangladesh', band: 5, subject: 'bgs', title: 'Bangladesh facts', titleBn: 'বাংলাদেশ পরিচিতি', description: 'Capital, national symbols, rivers', descriptionBn: 'রাজধানী, জাতীয় প্রতীক, নদনদী', commonCore: [], nctbCode: 'c5-bgs-1', classNumber: 5, game: 'game-bgs' },
+
+  // ── Band 6 — Jungle Canopy (ages 11–14, class 5–6): FLUENCY ──
+  // Deeper practice of the band 3–5 operations at higher difficulty; each
+  // skill reuses a proven scene (TimesTable, DivisionFacts, PizzaFrac, Clock).
+  { id: 'mult-fluency-6-9', band: 6, subject: 'math', title: 'Times tables 6–9', titleBn: '৬–৯ এর নামতা', description: 'Multiplication tables 6, 7, 8, 9', descriptionBn: '৬, ৭, ৮, ৯ এর নামতা', commonCore: ['3.OA.7'], nctbCode: 'c5-math-2', classNumber: 5, game: 'game-multable' },
+  { id: 'divide-within-100', band: 6, subject: 'math', title: 'Divide within 100', titleBn: '১০০-এর মধ্যে ভাগ', description: 'Division facts within 100 (72÷8)', descriptionBn: '১০০-এর মধ্যে ভাগ (৭২÷৮)', commonCore: ['3.OA.7'], nctbCode: 'c5-math-4', classNumber: 5, game: 'game-division' },
+  { id: 'fraction-read', band: 6, subject: 'math', title: 'Read fractions', titleBn: 'ভগ্নাংশ পড়ি', description: 'Read shaded fractions to 8 parts', descriptionBn: '৮ ভাগ পর্যন্ত ছায়া-ভগ্নাংশ পড়ি', commonCore: ['3.NF.1'], nctbCode: 'c5-math-3', classNumber: 5, game: 'game-pizzafrac' },
+  { id: 'clock-minute', band: 6, subject: 'math', title: 'Tell time to the minute', titleBn: 'মিনিট ধরে ঘড়ি পড়ি', description: 'Read any time to the exact minute', descriptionBn: 'মিনিট ধরে সঠিক সময় পড়ি', commonCore: ['2.MD.7'], nctbCode: 'c5-math-6', classNumber: 5, game: 'game-clock' },
+  // Language — Bangla conjuncts (যুক্তবর্ণ): the tricky two-letter blends kids
+  // meet in class 5 Bangla reading (ক্ষ ঞ্জ ঙ্ক ণ্ড). Reuses BnMatras' combine
+  // mechanic with a conjuncts mode.
+  { id: 'bn-conjuncts', band: 6, subject: 'bangla', title: 'Bangla conjuncts', titleBn: 'যুক্তবর্ণ', description: 'Combine letters into conjuncts ক্ষ ঞ্জ ঙ্ক ণ্ড', descriptionBn: 'অক্ষর জুড়ে যুক্তবর্ণ তৈরি করি (ক্ষ ঞ্জ ঙ্ক ণ্ড)', commonCore: ['RF.5.3'], nctbCode: 'c5-bangla-2', classNumber: 5, game: 'game-bnmatras' },
+
+  // ── Band 7 — Polar Peaks (ages 12–15, class 6–8): REFINEMENT ──
+  { id: 'decimals-tenths', band: 7, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Place value in decimals (0.5, 0.25, 0.75)', descriptionBn: 'দশমিকের স্থানীয় মান (০.৫, ০.২৫, ০.৭৫)', commonCore: ['5.NBT.3', '4.NF.6'], nctbCode: 'c6-math-3', classNumber: 6, game: 'game-decimals' },
+  { id: 'percent-of-number', band: 7, subject: 'math', title: 'Percent of a number', titleBn: 'সংখ্যার শতকরা', description: 'Find 10%, 25%, 50% and 75% of a number', descriptionBn: 'সংখ্যার ১০%, ২৫%, ৫০%, ৭৫% বের করি', commonCore: ['6.RP.3'], nctbCode: 'c6-math-2', classNumber: 6, game: 'game-percent' },
+  { id: 'fraction-simplify', band: 7, subject: 'math', title: 'Simplify fractions', titleBn: 'ভগ্নাংশ ছোট করি', description: 'Reduce fractions to simplest form (4⁄8 → ½)', descriptionBn: 'ভগ্নাংশ ছোট করি (৪⁄৮ → ½)', commonCore: ['3.NF.3', '5.NF.1'], nctbCode: 'c6-math-3', classNumber: 6, game: 'game-fracmatch' },
+  // BGS — heritage facts (a new, deeper fact tier in the BGS scene)
+  { id: 'bgs-heritage', band: 7, subject: 'bgs', title: 'Bangladesh heritage', titleBn: 'বাংলাদেশের ঐতিহ্য', description: 'Festivals, crafts, foods, landmarks', descriptionBn: 'উৎসব, শিল্প, খাবার, ঐতিহাসিক স্থান', commonCore: [], nctbCode: 'c6-bgs-1', classNumber: 6, game: 'game-bgs' },
 ];
 
 /** Game configs (mirrors content_items rows). Levels are ascending — engine picks an index by mastery.

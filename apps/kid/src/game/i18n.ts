@@ -45,6 +45,8 @@ const EN: Record<string, Entry> = {
   findLetter: "Find  {ch}  ({hint})",
   listenNumber: "Listen — which number?",
   tapMatra: "Tap the letter with the matra!",
+  // #20 — conjuncts mode shares BnMatras' combine mechanic.
+  tapConjunct: "Tap the joined letters!",
   tapWordsOrder: "Tap the words in order!",
   readWordTapPic: "Read the word, tap the picture!",
   tapNumbersOrder: "Tap the numbers in order 1, 2, 3…",
@@ -199,6 +201,7 @@ const EN: Record<string, Entry> = {
   titleFraction: "Fraction Match",
   titlePlaceValue: "Place Value Tower",
   titleBnMatras: "Bangla Matras",
+  titleBnConjunct: "Bangla Conjuncts",
   titleSightWords: "Sight Words",
   titleAnimalHome: "Animal Homes",
   titleDecimals: "Decimal Duel",
@@ -242,6 +245,8 @@ const BN: Record<string, Entry> = {
   findLetter: "খুঁজে বের করো  {ch}  ({hint})",
   listenNumber: "শোনো — কোন সংখ্যাটা?",
   tapMatra: "মাত্রা দেওয়া অক্ষর ট্যাপ করো!",
+  // #20 — conjuncts mode shares BnMatras' combine mechanic.
+  tapConjunct: "যুক্ত অক্ষরটি ট্যাপ করো!",
   tapWordsOrder: "শব্দগুলো ক্রমানুসারে ট্যাপ করো!",
   readWordTapPic: "শব্দ পড়ো, ছবি ট্যাপ করো!",
   tapNumbersOrder: "১, ২, ৩… ক্রমানুসারে সংখ্যা ট্যাপ করো!",
@@ -398,6 +403,7 @@ const BN: Record<string, Entry> = {
   titleFraction: "ভগ্নাংশ মেলানো",
   titlePlaceValue: "ঘরের মান",
   titleBnMatras: "বাংলা কার",
+  titleBnConjunct: "যুক্তবর্ণ",
   titleSightWords: "দেখে পড়া শব্দ",
   titleAnimalHome: "প্রাণীর বাসা",
   titleDecimals: "দশমিক খেলা",

@@ -19,6 +19,8 @@ interface Fact {
   tier: 1 | 2 | 3;
   /** Near-miss distractor added at high levels. */
   trick?: string;
+  /** #20 — heritage facts shown only for the bgs-heritage skill (band 7). */
+  kind?: "heritage";
 }
 const FACTS: Fact[] = [
   { q: "Capital of Bangladesh?", options: ["ঢাকা", "চট্টগ্রাম", "খুলনা"], answer: "ঢাকা", emoji: "🏙️", tier: 1 },
@@ -38,13 +40,30 @@ const FACTS: Fact[] = [
   { q: "Highest mountain peak?", options: ["তাজিংডং", "কেওক্রাডং", "চিম্বুক"], answer: "তাজিংডং", emoji: "⛰️", tier: 2, trick: "সাজেক" },
   { q: "Victory Day?", options: ["১৬ ডিসেম্বর", "২৬ মার্চ", "২১ ফেব্রুয়ারি"], answer: "১৬ ডিসেম্বর", emoji: "🎉", tier: 3, trick: "১৪ ডিসেম্বর" },
 ];
+
+/** #20 — Band 7 heritage facts: festivals, crafts, foods, landmarks.
+ *  Real, kid-safe, and they keep the tier ladder honest (all tier 3). */
+const HERITAGE_FACTS: Fact[] = [
+  { q: "Which festival celebrates the Bangla New Year?", options: ["পহেলা বৈশাখ", "দীপাবলি", "ক্রিসমাস"], answer: "পহেলা বৈশাখ", emoji: "🎭", tier: 3, trick: "পহেলা ফাল্গুন", kind: "heritage" },
+  { q: "The spring festival of colors is called…?", options: ["পহেলা ফাল্গুন", "শবে বরাত", "ইদের চাঁদ"], answer: "পহেলা ফাল্গুন", emoji: "🌼", tier: 3, trick: "বসন্ত উৎসব", kind: "heritage" },
+  { q: "What winter treat is a steamed rice-cake?", options: ["পিঠা", "বিরিয়ানি", "রুটি"], answer: "পিঠা", emoji: "🍥", tier: 3, trick: "পায়েস", kind: "heritage" },
+  { q: "Which world-famous fine cloth is from Bengal?", options: ["ঢাকাই মসলিন", "সিল্ক", "ডেনিম"], answer: "ঢাকাই মসলিন", emoji: "🧵", tier: 3, trick: "লেহেঙ্গা", kind: "heritage" },
+  { q: "Embroidered quilt stitched by village women is…?", options: ["নকশী কাঁথা", "কম্বল", "তসর"], answer: "নকশী কাঁথা", emoji: "🪡", tier: 3, trick: "দুপাট্টা", kind: "heritage" },
+  { q: "The 60-dome mosque is at…?", options: ["বাগেরহাট", "ঢাকা", "সিলেট"], answer: "বাগেরহাট", emoji: "🕌", tier: 3, trick: "পাহাড়পুর", kind: "heritage" },
+  { q: "The ancient Buddhist monastery Somapura is in…?", options: ["পাহাড়পুর", "বরিশাল", "কক্সবাজার"], answer: "পাহাড়পুর", emoji: "🏛️", tier: 3, trick: "ময়নামতি", kind: "heritage" },
+  { q: "Our national fish is…?", options: ["ইলিশ", "রুই", "কাতলা"], answer: "ইলিশ", emoji: "🐟", tier: 3, trick: "পাবদা", kind: "heritage" },
+  { q: "The harvest festival after the rice season is…?", options: ["নবান্ন", "ইদ", "বসন্ত"], answer: "নবান্ন", emoji: "🌾", tier: 3, trick: "পিঠা উৎসব", kind: "heritage" },
+  { q: "Pohela Boishakh falls in which month?", options: ["বৈশাখ", "জ্যৈষ্ঠ", "আষাঢ়"], answer: "বৈশাখ", emoji: "📅", tier: 3, trick: "ফাল্গুন", kind: "heritage" },
+];
 const BUTTON_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 
-/** Facts that match the current level — symbols → geography → history. */
-function factsForLevel(level: number): Fact[] {
+/** Facts that match the current level — symbols → geography → history.
+ *  Heritage mode (bgs-heritage) shows only the band-7 heritage facts. */
+function factsForLevel(level: number, heritage: boolean): Fact[] {
   const tier = level >= 4 ? 3 : level >= 2 ? 2 : 1;
-  return FACTS.filter((f) => f.tier <= tier);
+  const pool = heritage ? HERITAGE_FACTS : FACTS;
+  return pool.filter((f) => f.tier <= tier);
 }
 
 /**
@@ -57,7 +76,8 @@ export class BgsFactsScene extends Phaser.Scene {
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
-  private target!: (typeof FACTS)[number];
+  private heritageMode = false;
+  private target!: Fact;
   private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
@@ -71,9 +91,11 @@ export class BgsFactsScene extends Phaser.Scene {
     super("BgsFacts");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; skill?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    // #20 — bgs-heritage (band 7) draws only the heritage fact pool.
+    this.heritageMode = data.skill === "bgs-heritage";
     this.background = this.add.graphics();
     this.drawBackground();
     this.titleText = this.add
@@ -112,7 +134,7 @@ export class BgsFactsScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const pool = factsForLevel(this.levelIndex);
+    const pool = factsForLevel(this.levelIndex, this.heritageMode);
     this.target = pool[Phaser.Math.Between(0, pool.length - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));

@@ -241,6 +241,22 @@ const WORLDS: Record<string, Asset> = {
       <path d="M44 82 L40 92 L50 84 Z" fill="#ffb35c"/><path d="M56 82 L60 92 L50 84 Z" fill="#ffb35c"/>
       <rect x="48" y="60" width="4" height="14" rx="2" fill="#fff" opacity="0.7"/></g>`),
   },
+  "jungle-canopy": {
+    emoji: "🌴",
+    svg: view(`<g filter="url(#s)"><path d="M50 88 Q46 60 34 44 L44 48 Q48 36 58 36 Q68 36 72 48 L78 40 C66 56 56 72 54 88 Z" fill="#43d17c"/>
+      <path d="M30 48 Q22 56 14 52 Q26 44 34 46 Z" fill="#2f9e63"/>
+      <path d="M76 48 Q84 56 92 52 Q80 44 74 46 Z" fill="#2f9e63"/>
+      <rect x="47" y="74" width="6" height="22" rx="3" fill="#8a5a2b"/>
+      <path d="M44 96 Q50 102 56 96" stroke="#2f9e63" stroke-width="3" fill="none" stroke-linecap="round"/></g>`),
+  },
+  "polar-peaks": {
+    emoji: "❄️",
+    svg: view(`<g filter="url(#s)"><path d="M28 92 L50 28 L72 92 Z" fill="#9fd6ff"/>
+      <path d="M50 92 L66 52 L82 92 Z" fill="#c6e7ff"/>
+      <path d="M18 92 L34 52 L50 92 Z" fill="#7abfff"/>
+      <path d="M50 28 L50 42" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <path d="M50 58 L58 78 L42 78 Z" fill="#e8f6ff"/></g>`),
+  },
 };
 
 /* ────────────────────────────── subject icons ────────────────────────────── */
