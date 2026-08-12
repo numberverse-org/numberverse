@@ -5,7 +5,11 @@ import {
   decay,
   initialSkillState,
   DEFAULT_PARAMS,
+  moni,
+  DEFAULT_MONI_PARAMS,
   type SkillState,
+  type MoniProfile,
+  type ErrorKind,
 } from "@numberverse/core";
 import { waterGarden, masteryPlant, emptyGarden, type GardenState } from "./game/garden";
 
@@ -23,6 +27,30 @@ export interface RoundResult {
 export interface SyncEvent extends RoundResult {
   uid: string;
   kidId: string;
+  ts: number;
+}
+
+/** 📚 A KOTHA (কথা) learning moment — the RAG knowledge lake outbox.
+ *  Every meaningful round (Moni's diagnosis included) is queued here and
+ *  drained to POST /stories, exactly like `pending` drains to /progress.
+ *  Today these stories feed Moni's per-kid plans; later they become the
+ *  retrieval corpus for the big move. */
+export interface KothaStory {
+  uid: string;
+  kidId: string; // LOCAL kid id — mapped to a server kid at sync time
+  skillId: string;
+  gameId: string;
+  outcome: boolean;
+  /** Moni's classification (null for correct rounds). */
+  errorKind: ErrorKind | null;
+  misconceptionCode: string | null;
+  /** The Moni action type taken this round. */
+  action: string | null;
+  difficulty: number;
+  responseMs: number;
+  wrongStreak: number;
+  /** Free envelope — reason/message/tts/source. */
+  context: Record<string, unknown>;
   ts: number;
 }
 
@@ -196,6 +224,8 @@ interface KidState {
   events: RoundResult[];
   /** Persisted outbox — every round, queued for server sync (offline-safe). */
   pending: SyncEvent[];
+  /** 📚 KOTHA outbox — learning moments with Moni's diagnosis, drained to /stories. */
+  stories: KothaStory[];
   /** Live sync indicator (transient, not persisted). */
   syncState: SyncState;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
@@ -208,10 +238,18 @@ interface KidState {
   nova: Record<string, NovaState>;
   /** Growth Garden per kid — correct answers water it, mastery plants flowers. */
   garden: Record<string, GardenState>;
+  /** 🧠 MONI — the tiny per-child tutor profile. Key kidId. */
+  moni: Record<string, MoniProfile>;
+  /** Consecutive wrongs per kid+skill (for Moni diagnosis). Key `${kidId}:${skillId}`. */
+  moniWrongStreak: Record<string, number>;
   addEvent: (kidId: string, e: RoundResult) => void;
   clearPending: (uids: Set<string>) => void;
+  /** Drop the Kotha stories that were just posted (by uid). */
+  clearStories: (uids: Set<string>) => void;
   setSyncState: (s: SyncState) => void;
   skillFor: (kidId: string, skillId: string) => SkillState;
+  /** 🧠 MONI profile for a kid (empty profile if never seen). */
+  moniFor: (kidId: string) => MoniProfile;
   /** A wrong tap happened for this kid+skill → bumps wrong + open. Called by the
    *  wrongLedger (hooked into hintWrong), so every drill scene reports
    *  automatically. */
@@ -256,17 +294,30 @@ export const useKidStore = create<KidState>()(
       stars: 0,
       events: [],
       pending: [],
+      stories: [],
       syncState: "idle",
       skills: {},
       mistakes: {},
       stats: {},
       nova: {},
       garden: {},
+      moni: {},
+      moniWrongStreak: {},
       addEvent: (kidId, e) => {
         const now = Date.now();
         const prev = get().skills[keyOf(kidId, e.skillId)] ?? initialSkillState(kidId, e.skillId);
         const updated = observe(decay(prev, now), e.correct, DEFAULT_PARAMS, now);
         const prior = get().stats[kidId] ?? { stars: 0, score: 0, sessions: 0 };
+        // 🧠 MONI — observe this round + update the kid's wrong streak.
+        const moniPrev = get().moni[kidId] ?? moni.initial(kidId, now);
+        const wrongStreak = e.correct ? 0 : (get().moniWrongStreak[keyOf(kidId, e.skillId)] ?? 0) + 1;
+        const round = { kidId, skillId: e.skillId, gameId: e.gameId, correct: e.correct, difficulty: e.difficulty, responseMs: e.responseMs, timestamp: now };
+        const moniNext = moni.observeRound(moniPrev, round, { ...prev, wrongStreak }, DEFAULT_MONI_PARAMS, now);
+        // 📚 KOTHA — Moni's diagnosis of this round becomes a learning story.
+        const diag = e.correct
+          ? moni.diagnoseCorrect(moniPrev, round, { ...prev, wrongStreak }, DEFAULT_MONI_PARAMS)
+          : moni.diagnose(moniPrev, round, { ...prev, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
+        const mis = moniNext.misconceptions?.find((m) => m.skillId === e.skillId);
         set((s) => {
           const mk = keyOf(kidId, e.skillId);
           // Resolve-to-complete: a CORRECT round clears the skill's open wrongs
@@ -281,10 +332,31 @@ export const useKidStore = create<KidState>()(
             events: [...s.events, e],
             // durable outbox — survives reloads; the sync drains it online
             pending: [...s.pending, { uid: genUid(), kidId, ...e, ts: now }],
+            // durable Kotha outbox — the story of this learning moment
+            stories: [
+              ...(s.stories ?? []),
+              {
+                uid: genUid(),
+                kidId,
+                skillId: e.skillId,
+                gameId: e.gameId,
+                outcome: e.correct,
+                errorKind: e.correct ? null : diag.kind,
+                misconceptionCode: mis?.code ?? null,
+                action: diag.action.type,
+                difficulty: e.difficulty,
+                responseMs: e.responseMs,
+                wrongStreak,
+                context: { reason: diag.reason, message: diag.action.message },
+                ts: now,
+              },
+            ],
             score: s.score + (e.correct ? e.difficulty : 0),
             stars: s.stars + (e.correct ? 1 : 0),
             skills: { ...s.skills, [mk]: updated },
             mistakes: { ...(s.mistakes ?? {}), [mk]: mNext },
+            moni: { ...(s.moni ?? {}), [kidId]: moniNext },
+            moniWrongStreak: { ...(s.moniWrongStreak ?? {}), [mk]: wrongStreak },
             stats: {
               ...s.stats,
               [kidId]: {
@@ -299,6 +371,17 @@ export const useKidStore = create<KidState>()(
       recordWrong: (kidId, skillId, gameId, difficulty) => {
         const now = Date.now();
         const mk = keyOf(kidId, skillId);
+        // 🧠 MONI — observe the wrong tap + track the wrong streak.
+        const moniPrev = get().moni[kidId] ?? moni.initial(kidId, now);
+        const wrongStreak = (get().moniWrongStreak[mk] ?? 0) + 1;
+        const skill = get().skills[mk] ?? initialSkillState(kidId, skillId);
+        const round = { kidId, skillId, gameId, correct: false, difficulty, responseMs: DEFAULT_MONI_PARAMS.slowMs, timestamp: now };
+        const moniNext = moni.observeWrong(moniPrev, round, { ...skill, wrongStreak }, DEFAULT_MONI_PARAMS, now);
+        // 📚 KOTHA — a wrong tap is a learning moment too (drill-scene struggle).
+        // responseMs=0 marks it as a tap, not a scored round; slowMs fed to the
+        // diagnosis keeps it from being misclassified as a "fast guess".
+        const diag = moni.diagnose(moniPrev, round, { ...skill, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
+        const mis = moniNext.misconceptions?.find((m) => m.skillId === skillId);
         set((s) => {
           const m = s.mistakes[mk] ?? initialMistake(now, difficulty);
           return {
@@ -312,18 +395,46 @@ export const useKidStore = create<KidState>()(
                 lastDifficulty: difficulty,
               },
             },
+            moni: { ...(s.moni ?? {}), [kidId]: moniNext },
+            moniWrongStreak: { ...(s.moniWrongStreak ?? {}), [mk]: wrongStreak },
+            stories: [
+              ...(s.stories ?? []),
+              {
+                uid: genUid(),
+                kidId,
+                skillId,
+                gameId,
+                outcome: false,
+                errorKind: diag.kind,
+                misconceptionCode: mis?.code ?? null,
+                action: diag.action.type,
+                difficulty,
+                responseMs: 0,
+                wrongStreak,
+                context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap" },
+                ts: now,
+              },
+            ],
           };
         });
       },
+      moniFor: (kidId) => get().moni[kidId] ?? moni.initial(kidId),
       clearPending: (uids) =>
         set((s) => (uids.size ? { pending: s.pending.filter((e) => !uids.has(e.uid)) } : s)),
+      clearStories: (uids) =>
+        set((s) => (uids.size ? { stories: (s.stories ?? []).filter((st) => !uids.has(st.uid)) } : s)),
       setSyncState: (syncState) => set({ syncState }),
       skillFor: (kidId, skillId) =>
         get().skills[keyOf(kidId, skillId)] ?? initialSkillState(kidId, skillId),
       recordSession: (kidId) =>
         set((s) => {
           const prior = s.stats[kidId] ?? { stars: 0, score: 0, sessions: 0 };
-          return { stats: { ...s.stats, [kidId]: { ...prior, sessions: prior.sessions + 1 } } };
+          // 🧠 MONI — a session ended: reset its round counter.
+          const moniPrev = s.moni?.[kidId] ?? moni.initial(kidId);
+          return {
+            stats: { ...s.stats, [kidId]: { ...prior, sessions: prior.sessions + 1 } },
+            moni: { ...(s.moni ?? {}), [kidId]: moni.endSession(moniPrev) },
+          };
         }),
       reset: () => set({ score: 0, stars: 0, events: [] }),
 
@@ -580,6 +691,6 @@ export const useKidStore = create<KidState>()(
           return { garden: { ...s.garden, [kidId]: next } };
         }),
     }),
-    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending }) }
+    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories }) }
   )
 );

@@ -122,6 +122,41 @@ class SkillMastery(Base):
     kid: Mapped[Kid] = relationship(back_populates="mastery")
 
 
+class LearningStory(Base):
+    """📚 KOTHA (কথা — "the stories") — the RAG knowledge lake.
+
+    Every meaningful learning moment is stored as a story: what the kid faced,
+    how Moni diagnosed it, what we tried, and how it landed. Today it feeds
+    Moni's per-kid plans; later it becomes the retrieval corpus for the big
+    move (semantic search over thousands of real learning moments).
+
+    `context` is a free JSONB envelope so we can grow the payload without
+    migrations: the question text, the kid's answer, reaction timings, TTS,
+    the exact Moni plan that ran, etc."""
+
+    __tablename__ = "learning_stories"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), index=True)
+    skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
+    game_id: Mapped[str] = mapped_column(String)
+    # Moni's classification of a wrong round (fatigue|misconception|gap|guessing|slip)
+    # or None when the round was correct.
+    error_kind: Mapped[str | None] = mapped_column(String, nullable=True)
+    misconception_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    # The Moni plan action taken this round (reteach|slow_down|break|encourage|...).
+    action: Mapped[str | None] = mapped_column(String, nullable=True)
+    outcome: Mapped[bool] = mapped_column(Boolean)  # correct this round
+    difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
+    response_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    wrong_streak: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Free envelope: question, kid's answer, reaction, tts, moni plan diff, ...
+    context: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    kid: Mapped[Kid] = relationship()
+
+
 class ProgressEvent(Base):
     __tablename__ = "progress_events"
 

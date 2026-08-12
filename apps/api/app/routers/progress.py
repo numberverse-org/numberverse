@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import ConfigEntry, Kid, ProgressEvent, Profile, SkillMastery
-from ..schemas import MasteryOut, ProgressBatchIn
+from ..models import ConfigEntry, Kid, LearningStory, ProgressEvent, Profile, SkillMastery
+from ..schemas import LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
 
 
 def _bkt_update(mastery: float, correct: bool, p_learn=0.10, p_guess=0.15, p_slip=0.10) -> float:
@@ -107,3 +107,66 @@ async def get_mastery(
         )
         for m in result
     ]
+
+
+# ── KOTHA (কথা) — RAG knowledge lake ──────────────────────────────────────────
+
+@router.post("/stories", status_code=status.HTTP_202_ACCEPTED)
+async def record_stories(
+    body: list[LearningStoryIn],
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Persist learning moments as Kotha stories (including Moni's diagnoses).
+
+    Fire-and-forget from the kid app: the client sends a small batch of stories
+    each sync, we verify ownership, store them, and return the count."""
+    kid_ids = {s.kid_id for s in body}
+    for kid_id in kid_ids:
+        owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+        if not owned:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
+
+    for s in body:
+        db.add(
+            LearningStory(
+                kid_id=s.kid_id,
+                skill_id=s.skill_id,
+                game_id=s.game_id,
+                error_kind=s.error_kind,
+                misconception_code=s.misconception_code,
+                action=s.action,
+                outcome=s.outcome,
+                difficulty=s.difficulty,
+                response_ms=s.response_ms,
+                wrong_streak=s.wrong_streak,
+                context=s.context,
+            )
+        )
+    await db.commit()
+    return {"recorded": len(body)}
+
+
+@router.get("/kids/{kid_id}/stories", response_model=list[LearningStoryOut])
+async def get_stories(
+    kid_id: uuid.UUID,
+    limit: int = 100,
+    offset: int = 0,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read a kid's Kotha stories (newest first). This is the retrieval hook —
+    the future RAG pipeline reads from here."""
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    limit = min(max(limit, 1), 500)
+    offset = max(offset, 0)
+    result = await db.scalars(
+        select(LearningStory)
+        .where(LearningStory.kid_id == kid_id)
+        .order_by(LearningStory.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result)
