@@ -108,6 +108,28 @@ jobs:
       - name: Dependency license gate (#271)
         run: node scripts/license-audit.mjs
 
+  content-safety:
+    name: content-safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Child-safety content gate (#91)
+        run: node scripts/content-safety.mjs
+
+  tracker-scan:
+    name: tracker-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: No-ads tracker gate (#92)
+        run: node scripts/tracker-scan.mjs
+
   secret-scan:
     name: secret-scan
     runs-on: ubuntu-latest
