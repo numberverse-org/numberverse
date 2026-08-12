@@ -3651,6 +3651,21 @@ body {
 }
 .gate-google .google-btn { max-width: 100%; overflow: hidden; }
 .gate-google .google-btn.busy { opacity: 0.6; pointer-events: none; }
+/* #382 — Google unavailable (script dead after retries / backend not
+ * configured): a small friendly note in the button's spot, pointing down
+ * to the email path that always works. */
+.gate-google-fallback {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8d99ae;
+  margin: 0;
+  padding: 8px 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  max-width: 340px;
+}
 .gate-or {
   display: flex;
   align-items: center;

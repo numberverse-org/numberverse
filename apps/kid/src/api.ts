@@ -8,7 +8,7 @@ import { useKidStore, STORY_QUEUE_CAP, type KothaStory, type RoundResult, type S
  *  3. Plain http → http://hostname:8000 (LAN dev — a phone on the Wi-Fi
  *     calling 192.168.0.x:5173 talks to :8000 on the same machine).
  */
-const API =
+export const API =
   (import.meta.env.VITE_API_URL as string | undefined) ??
   (typeof window !== "undefined"
     ? window.location.protocol === "https:"
