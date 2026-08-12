@@ -11,7 +11,7 @@ from ..db import get_db
 from ..deps import get_current_profile
 from ..models import ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
-from ..schemas import LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
+from ..schemas import KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
 from ..scrub import redact_context
 from ..seed import SKILLS_SEED
 
@@ -116,6 +116,17 @@ async def record_progress(
         sm.last_practice = datetime.now(timezone.utc)
         sm.last_decay = datetime.now(timezone.utc)
 
+    # #9 — multi-device sync: newest-wins coin wallet. The server keeps the max
+    # coin balance ever reported per kid (aggregate only — no voice/face).
+    if body.coins:
+        for kid_id in kid_ids:
+            coin = body.coins.get(str(kid_id))
+            if coin is None:
+                continue
+            owned = await db.get(Kid, kid_id)
+            if owned and (owned.coins or 0) < coin:
+                owned.coins = coin
+
     await db.commit()
     return {"recorded": len(events), "band_skipped": band_skipped}
 
@@ -140,6 +151,40 @@ async def get_mastery(
         )
         for m in result
     ]
+
+
+@router.get("/kids/{kid_id}/snapshot", response_model=KidSnapshotOut)
+async def get_kid_snapshot(
+    kid_id: uuid.UUID,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """#9 — multi-device sync: the aggregate profile a SECOND device restores a
+    kid from after the parent signs in. E2E-friendly by construction — mastery
+    + coins only, never voice/face/raw answers. Conflict resolution is
+    newest-wins on the client (more accumulated corrects / higher coins win)."""
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    mastery = await db.scalars(
+        select(SkillMastery).where(SkillMastery.kid_id == kid_id).order_by(SkillMastery.skill_id)
+    )
+    return KidSnapshotOut(
+        kid_id=kid_id,
+        name=owned.name,
+        avatar=owned.avatar,
+        coins=owned.coins or 0,
+        mastery=[
+            MasteryOut(
+                skill_id=m.skill_id,
+                mastery=round(_clamp01(m.mastery), 4),
+                correct=m.correct,
+                attempts=m.attempts,
+                streak=m.streak,
+            )
+            for m in mastery
+        ],
+    )
 
 
 # ── KOTHA (কথা) — RAG knowledge lake ──────────────────────────────────────────

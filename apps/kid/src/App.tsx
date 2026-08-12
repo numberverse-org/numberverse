@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -2546,6 +2546,10 @@ export default function App() {
       setSylBand(1);
       setPinOk(false);
       setScreen(gateReturn.current);
+      // #9 — a fresh parent sign-in immediately pulls the kids' server profiles
+      // (mastery + coins) so a second device "catches up" right away, not on the
+      // next 30s heartbeat. Best-effort — offline/errors skip quietly.
+      void restoreServerState();
     } catch {
       setGateError(gateMode === "in" ? t.gateErrorInvalid : t.gateErrorSignup);
     } finally {
@@ -2561,6 +2565,7 @@ export default function App() {
       setSylBand(1);
       setPinOk(false);
       setScreen(gateReturn.current);
+      void restoreServerState();
     } catch {
       setGateError(t.gateErrorGoogle);
     } finally {

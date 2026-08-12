@@ -334,6 +334,17 @@ interface KidState {
   petFeed: (kidId: string) => void;
   /** #19 — adopt a pet species (costs coins; owl is free/the starter). */
   petAdopt: (kidId: string, speciesId: string) => void;
+  /** #9 — merge a server snapshot into the local store, newest-wins. Called on
+   *  a SECOND device after the parent signs in, so a kid's progress "follows"
+   *  them (aggregate mastery + coins only — never voice/face). The device with
+   *  more accumulated corrects wins a skill; the wallet takes the max coins. */
+  restoreSnapshot: (
+    kidId: string,
+    snap: {
+      coins: number;
+      mastery: Array<{ skillId: string; mastery: number; correct: number; attempts: number; streak: number }>;
+    }
+  ) => void;
 }
 
 const keyOf = (kidId: string, skillId: string) => `${kidId}:${skillId}`;
@@ -651,6 +662,43 @@ export const useKidStore = create<KidState>()(
           };
         });
       },
+
+      /** #9 — restore a server snapshot (newest-wins). See the type doc. */
+      restoreSnapshot: (kidId, snap) =>
+        set((s) => {
+          const skills = { ...s.skills };
+          for (const m of snap.mastery) {
+            if (m.correct <= 0) continue;
+            const key = keyOf(kidId, m.skillId);
+            const local = s.skills[key];
+            // Newest-wins: the device with more accumulated corrects owns the
+            // skill (the server is the sum of ALL devices' outboxes, so it wins
+            // against a stale/fresh device but loses to a device that just played
+            // and hasn't drained yet — that event catches up on the next sync).
+            if (local && local.correct > m.correct) continue;
+            skills[key] = {
+              kidId,
+              skillId: m.skillId,
+              pMastered: Math.max(0, Math.min(1, m.mastery)),
+              correct: m.correct,
+              attempts: m.attempts,
+              streak: m.streak,
+              lastPractice: local?.lastPractice ?? Date.now(),
+              lastDecay: Date.now(),
+            };
+          }
+          // Wallet: keep the max (server may know a higher balance synced earlier).
+          // Only touch nova when the balance actually improves or a record needs
+          // creating — the skills merge above is the main event.
+          const cur = s.nova[kidId];
+          const nextCoins = Math.max(cur?.coins ?? 0, snap.coins);
+          if (cur) {
+            return { skills, nova: { ...s.nova, [kidId]: { ...cur, coins: nextCoins } } };
+          }
+          return snap.coins > 0
+            ? { skills, nova: { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins } } }
+            : { skills };
+        }),
 
       /** Buy an outfit — instantly wears it (instant gratification). */
       novaBuy: (kidId, outfitId) => {

@@ -223,7 +223,7 @@
 - ~~Deferred: seasonal festival decor~~ ✅ #137 — merged #443
 - ~~Deferred: AR number-camera experiment (spike)~~ ✅ #130 — spike doc #449: on-device digit CNN (ONNX), per-script model assets
 - Deferred: elder-girl voice recording  _(priority: low, deferred)_
-- Deferred: multi-device profile sync  _(priority: low, deferred)_
+- ~~Deferred: multi-device profile sync~~ ✅ #9 — server snapshot (mastery+coins, no voice/face) + newest-wins restore on parent sign-in (PR pending)
 - ~~Deferred: garden/pet expansion (new species)~~ ✅ #19 — PR #448: owl/cat/peacock/dragon, growth-milestone + coin gates, companion in Nova room
 - ~~Deferred: new lands — Jungle + Polar themes~~ ✅ #20 — BANDS 6/7, 9 new skills, jungle/polar palettes+SVG+themes, conjuncts & heritage modes (PR pending)
 - Deferred: parent phone notifications bridge  _(priority: low, deferred)_
