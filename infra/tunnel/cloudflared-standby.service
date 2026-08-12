@@ -1,0 +1,29 @@
+# Numberverse STANDBY cloudflared tunnel (#302) — second path into the box.
+#
+# The PRIMARY tunnel (`cloudflared.service`) routes the family hostnames today.
+# This unit runs a SECOND, separately-created Cloudflare tunnel. It is NOT a
+# replacement for DNS failover — Cloudflare routes a hostname through ONE
+# tunnel (CNAME → that tunnel's UUID). To make the standby live you must
+# repoint the DNS record (Cloudflare API) or edit the tunnel's hostname in the
+# dashboard — see docs/TUNNEL_FAILOVER.md.
+#
+# Enable AFTER creating tunnel #2 and dropping its token in the ExecStart line:
+#   sudo cloudflared tunnel --token <TUNNEL2_TOKEN> run
+#   sudo systemctl enable --now cloudflared-standby
+#
+[Unit]
+Description=Numberverse standby cloudflared tunnel (#302)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --token REPLACE_WITH_TUNNEL2_TOKEN run
+Restart=on-failure
+RestartSec=10
+# Hard cap so a wedged tunnel can't peg the box forever.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Install]
+WantedBy=multi-user.target

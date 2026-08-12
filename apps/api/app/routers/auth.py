@@ -21,6 +21,7 @@ from ..schemas import (
     TokenOut,
 )
 from ..security import create_access_token, hash_password, sha256_token, verify_password
+from ..session_guard import revoke_other_sessions  # #265 — password change kills every OTHER session
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -171,8 +172,7 @@ async def logout_all(
             select(Session).where(Session.profile_id == profile.id, Session.revoked_at.is_(None))
         )
     ).all()
-    for s in sessions:
-        s.revoked_at = now
+    revoke_other_sessions(sessions, None, now)  # #265 — sign out everywhere, caller included
     await db.commit()
 
 
@@ -243,7 +243,7 @@ async def change_password(
             select(Session).where(Session.profile_id == profile.id, Session.revoked_at.is_(None))
         )
     ).all()
-    for s in sessions:
-        if current is None or s.id != current.id:
-            s.revoked_at = now
+    # #265 — the security contract: every OTHER session dies NOW; the device
+    # doing the change stays signed in. A leaked token stops working immediately.
+    revoke_other_sessions(sessions, current.id if current else None, now)
     await db.commit()
