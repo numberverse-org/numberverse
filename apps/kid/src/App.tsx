@@ -14,7 +14,7 @@ import {
   type Skill,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, aggregateOptIn, setAggregateOptIn, fetchAggregates, type KidSettings, type KothaAggregates } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
@@ -45,6 +45,20 @@ const SESSION_LEN = 6;
 const MASTERY_THRESHOLD = 0.8;
 /** Next world unlocks when ≥80% of the previous world's skills are mastered. */
 const UNLOCK_THRESHOLD = 0.8;
+
+/** 📚 #330 — misconception codes → parent-friendly labels (EN + BN). Plain
+ *  strings on purpose (not t()) so the class-insights card stays readable
+ *  without bloating the i18n table with a full code dictionary. */
+const MISCONCEPTION_LABELS: Record<string, { en: string; bn: string }> = {
+  "overcount-1": { en: "Counts one too many", bn: "এক বেশি গুনে" },
+  "undercount-1": { en: "Counts one too few", bn: "এক কম গুনে" },
+  "off-by-ten": { en: "Off by ten — tens/ones mix-up", bn: "দশের ঘরের গোলমাল" },
+  "off-by-hundred": { en: "Off by one hundred — place mix-up", bn: "শতকের ঘরের গোলমাল" },
+  double: { en: "Doubles the number", bn: "সংখ্যা দ্বিগুণ করে" },
+  half: { en: "Halves the number", bn: "সংখ্যা অর্ধেক করে" },
+  reversal: { en: "Writes the digit backwards", bn: "অঙ্ক উল্টে লেখে" },
+  "repeated-error": { en: "Same mistake keeps repeating", bn: "একই ভুল বারবার হয়" },
+};
 
 /**
  * Done-screen confetti field — computed ONCE at module load. This MUST NOT be
@@ -238,6 +252,19 @@ interface Strings {
   syncOffline: string;
   storyQueueNote: (n: number) => string;
   syncError: string;
+  /* #330 Kotha: privacy-scrubbed cross-kid aggregates */
+  aggTitle: string;
+  aggSub: string;
+  aggOptIn: string;
+  aggOptOut: string;
+  aggOffline: string;
+  aggPreview: string;
+  aggFamilies: (n: number) => string;
+  aggStories: (n: number) => string;
+  aggSuccessRate: (pct: number) => string;
+  aggTopMis: string;
+  aggTopSkills: string;
+  aggNoneYet: string;
   pickKid: string;
   switchKid: (avatar: string, name: string) => string;
   parentZone: string;
@@ -610,6 +637,18 @@ const STR: Record<Lang, Strings> = {
     syncOffline: "Offline — progress saved on device",
     syncError: "Sync hiccup — will retry",
     storyQueueNote: (n) => `${n} learning moments saved on this device — they'll reach the cloud when you're online 📚`,
+    aggTitle: "🔭 Class insights",
+    aggSub: "Share your kids' anonymized learning moments (no names, no identities) to see what kids everywhere get stuck on — and help classrooms improve.",
+    aggOptIn: "Share anonymized insights",
+    aggOptOut: "Opt out",
+    aggOffline: "Requires a signed-in parent account + connection.",
+    aggPreview: "Made from opted-in families only — no kid identity is ever included.",
+    aggFamilies: (n) => `${n} family${n === 1 ? "" : "ies"} sharing`,
+    aggStories: (n) => `${n} anonymized stories`,
+    aggSuccessRate: (pct) => `Success rate ${pct}%`,
+    aggTopMis: "Most common mistake patterns",
+    aggTopSkills: "Trickiest skills",
+    aggNoneYet: "Not enough shared data yet — check back soon.",
     pickKid: "👶 Pick your kid",
     switchKid: (a, n) => `${a} ${n} — switch kid`,
     parentZone: "👨‍👩‍👧 Parent Zone",
@@ -949,6 +988,18 @@ const STR: Record<Lang, Strings> = {
     syncOffline: "অফলাইন — অগ্রগতি ডিভাইসে সংরক্ষিত",
     syncError: "সিঙ্কে সমস্যা — আবার চেষ্টা হবে",
     storyQueueNote: (n) => `${n}টি শেখার মুহূর্ত এই ডিভাইসে সংরক্ষিত — অনলাইন হলে ক্লাউডে পৌঁছে যাবে 📚`,
+    aggTitle: "🔭 ক্লাসের অন্তর্দৃষ্টি",
+    aggSub: "আপনার বাচ্চাদের শেখার মুহূর্ত বেনামে (নাম বা পরিচয় ছাড়া) ভাগ করলে দেখবেন সব বাচ্চা কোথায় আটকে যায় — আর ক্লাসরুম উন্নত হোক।",
+    aggOptIn: "বেনামি অন্তর্দৃষ্টি ভাগ করুন",
+    aggOptOut: "অপ্ট-আউট",
+    aggOffline: "সাইন-ইন করা অভিভাবক অ্যাকাউন্ট ও সংযোগ লাগবে।",
+    aggPreview: "শুধু অপ্ট-ইন পরিবারের ডেটা থেকে তৈরি — কোনো শিশুর পরিচয় কখনোই অন্তর্ভুক্ত নয়।",
+    aggFamilies: (n) => `${n}টা পরিবার ভাগ করছে`,
+    aggStories: (n) => `${n}টা বেনামি গল্প`,
+    aggSuccessRate: (pct) => `সাফল্যের হার ${pct}%`,
+    aggTopMis: "সবচেয়ে সাধারণ ভুলের ধরন",
+    aggTopSkills: "কঠিনতম দক্ষতা",
+    aggNoneYet: "এখনো পর্যাপ্ত শেয়ারড ডেটা নেই — একটু পর আবার দেখুন।",
     pickKid: "👶 বাচ্চা বাছাই করুন",
     switchKid: (a, n) => `${a} ${n} — পরিবর্তন করুন`,
     parentZone: "👨‍👩‍👧 অভিভাবক অঞ্চল",
@@ -1958,6 +2009,27 @@ export default function App() {
       setScreen("parentgate");
     });
   };
+
+  // ── #330 Kotha class insights — privacy opt-in + aggregate preview ──────
+  const [aggOpted, setAggOpted] = useState(aggregateOptIn());
+  const [agg, setAgg] = useState<KothaAggregates | null>(null);
+  const [aggBusy, setAggBusy] = useState(false);
+  const loadAggregates = async () => {
+    if (!aggregateOptIn()) {
+      setAgg(null);
+      return;
+    }
+    setAggBusy(true);
+    setAgg(await fetchAggregates());
+    setAggBusy(false);
+  };
+  // Refresh whenever the settings screen opens so the preview stays fresh.
+  useEffect(() => {
+    if (screen !== "settings") return;
+    setAggOpted(aggregateOptIn());
+    if (aggregateOptIn()) void loadAggregates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   // ── Parent controls ─────────────────────────────────────────────────────
   // Per-kid settings come from the parent portal (api.ts). We fetch them on
@@ -3307,6 +3379,98 @@ export default function App() {
               <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
                 {t.settingsSigninCta}
               </button>
+            </div>
+          )}
+
+          {/* 🔭 #330 Kotha class insights — parent opt-in + aggregate preview.
+              Showed only for a signed-in parent; all data is anonymized and the
+              response itself carries zero kid identity. */}
+          {hasParentSession() && (
+            <div className="parent-card settings-aggregate-card">
+              <div className="parent-head">
+                <span className="parent-name">{t.aggTitle}</span>
+                <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
+              </div>
+              <p className="syllabus-settings-sub">{t.aggSub}</p>
+
+              {!aggOpted ? (
+                <>
+                  <button
+                    className="big-btn settings-signin-btn"
+                    disabled={aggBusy}
+                    onClick={() => {
+                      setAggBusy(true);
+                      void setAggregateOptIn(true).then((ok) => {
+                        setAggBusy(false);
+                        if (ok) {
+                          setAggOpted(true);
+                          void loadAggregates();
+                        }
+                      });
+                    }}
+                  >
+                    {t.aggOptIn}
+                  </button>
+                  {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
+                </>
+              ) : (
+                <>
+                  {aggBusy && !agg ? (
+                    <p className="syllabus-settings-sub">…</p>
+                  ) : agg ? (
+                    <div className="agg-preview">
+                      <p className="agg-line">
+                        {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
+                        {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
+                      </p>
+                      {agg.top_misconceptions.length > 0 && (
+                        <p className="agg-block">
+                          <span className="agg-k">{t.aggTopMis}</span>
+                          {agg.top_misconceptions.slice(0, 3).map((m) => (
+                            <span key={m.code} className="agg-item">
+                              {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                      {agg.top_struggle_skills.length > 0 && (
+                        <p className="agg-block">
+                          <span className="agg-k">{t.aggTopSkills}</span>
+                          {agg.top_struggle_skills.slice(0, 3).map((s) => {
+                            const sk = filterSkills.find((f) => f.id === s.skill_id);
+                            return (
+                              <span key={s.skill_id} className="agg-item">
+                                {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
+                              </span>
+                            );
+                          })}
+                        </p>
+                      )}
+                      {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
+                        <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                      )}
+                      <p className="agg-note">{t.aggPreview}</p>
+                    </div>
+                  ) : (
+                    <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                  )}
+                  <button
+                    className="ghost-btn mini agg-optout-btn"
+                    onClick={() => {
+                      setAggBusy(true);
+                      void setAggregateOptIn(false).then((ok) => {
+                        setAggBusy(false);
+                        if (ok) {
+                          setAggOpted(false);
+                          setAgg(null);
+                        }
+                      });
+                    }}
+                  >
+                    {t.aggOptOut}
+                  </button>
+                </>
+              )}
             </div>
           )}
 

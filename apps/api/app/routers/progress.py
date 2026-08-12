@@ -231,3 +231,71 @@ async def story_stats(
         "by_error_kind": {r[0]: r[1] for r in by_error.all()},
         "by_misconception": {r[0]: r[1] for r in by_mis.all()},
     }
+
+
+@router.get("/stories/aggregates")
+async def story_aggregates(
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """📚 KOTHA cross-kid aggregates (#330) — 'what's everyone getting stuck on'.
+
+    Built ONLY from stories of kids whose parent opted in (`aggregate_opt_in`),
+    and the response carries ZERO kid identity: no names, no kid ids, no emails
+    — just counts and rates. Give-to-get: a parent must be opted in to read.
+
+    403 when the caller hasn't opted in (privacy wall, not an error)."""
+    if not profile.aggregate_opt_in:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Enable 'share anonymized insights' to view class-level insights",
+        )
+
+    opted_kids = (
+        select(Kid.id)
+        .where(Kid.profile_id.in_(select(Profile.id).where(Profile.aggregate_opt_in.is_(True))))
+        .scalar_subquery()
+    )
+    base = LearningStory.kid_id.in_(opted_kids)
+
+    total = (await db.scalar(select(func.count()).select_from(LearningStory).where(base))) or 0
+    contributing_kids = (
+        await db.scalar(select(func.count(func.distinct(LearningStory.kid_id))).where(base))
+    ) or 0
+    correct = (await db.scalar(select(func.count()).select_from(LearningStory).where(base, LearningStory.outcome.is_(True)))) or 0
+
+    mis_raw = await db.execute(
+        select(LearningStory.misconception_code, func.count())
+        .where(base, LearningStory.misconception_code.is_not(None))
+        .group_by(LearningStory.misconception_code)
+        .order_by(func.count().desc())
+        .limit(5)
+    )
+    top_misconceptions = [{"code": c, "count": n} for c, n in mis_raw.all()]
+
+    err_raw = await db.execute(
+        select(LearningStory.error_kind, func.count())
+        .where(base, LearningStory.error_kind.is_not(None))
+        .group_by(LearningStory.error_kind)
+        .order_by(func.count().desc())
+    )
+    error_kind_distribution = [{"error_kind": e, "count": n} for e, n in err_raw.all()]
+
+    skill_raw = await db.execute(
+        select(LearningStory.skill_id, func.count())
+        .where(base, LearningStory.outcome.is_(False))
+        .group_by(LearningStory.skill_id)
+        .order_by(func.count().desc())
+        .limit(5)
+    )
+    top_struggle_skills = [{"skill_id": s, "count": n} for s, n in skill_raw.all()]
+
+    return {
+        "contributing_kids": contributing_kids,
+        "total_stories": total,
+        "success_rate": round(correct / total, 4) if total else 0.0,
+        "top_misconceptions": top_misconceptions,
+        "error_kind_distribution": error_kind_distribution,
+        "top_struggle_skills": top_struggle_skills,
+        "note": "Aggregated from opted-in families only — no kid identity included.",
+    }

@@ -119,9 +119,16 @@ async def update_me(
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update the parent's display name (shown across the portal + kid app)."""
+    """Update the parent's display name (shown across the portal + kid app) and
+    the #330 aggregate privacy opt-in."""
+    changed = False
     if body.display_name is not None and body.display_name.strip():
         profile.display_name = body.display_name.strip()[:80]
+        changed = True
+    if body.aggregate_opt_in is not None:
+        profile.aggregate_opt_in = body.aggregate_opt_in
+        changed = True
+    if changed:
         await db.commit()
         await db.refresh(profile)
     return profile
