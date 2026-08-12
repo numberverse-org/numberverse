@@ -43,6 +43,8 @@ export interface KidSettings {
   enabled_subjects: string[] | null;
   max_band: number | null;
   daily_limit_min: number | null;
+  /** #6 — per-day-of-week caps "45,45,45,45,45,90,90" (Mon..Sun; 0 = off). */
+  weekday_limits_min: string | null;
   tts_enabled: boolean;
   music_enabled: boolean;
   updated_at?: string | null;

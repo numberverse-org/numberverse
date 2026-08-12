@@ -57,6 +57,11 @@ class KidSettings(Base):
     max_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # None = no daily limit (minutes). Kid app gates play after the cap.
     daily_limit_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # #6 — per-day-of-week caps: comma-joined 7 ints "45,45,45,45,45,90,90"
+    # (Mon..Sun; 0 = unlimited that day). None = fall back to daily_limit_min,
+    # then to the kid-app defaults (45 school / 90 weekend). Auto-migrated by
+    # #388 on an existing DB.
+    weekday_limits_min: Mapped[str | None] = mapped_column(String, nullable=True)
     tts_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     music_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

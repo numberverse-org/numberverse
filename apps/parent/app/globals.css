@@ -233,6 +233,27 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
   color: #fff;
 }
 .toggle-emoji { font-size: 15px; }
+/* #6 — per-weekday playtime editor */
+.weekday-limits { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.weekday-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+.weekday-name {
+  min-width: 44px;
+  font-weight: 800;
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+}
+.weekday-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.weekday-chips .toggle-chip { padding: 6px 12px; font-size: 12.5px; }
+.weekday-presets { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.btn.ghost.small { padding: 8px 14px; font-size: 12.5px; }
 
 /* forms */
 input {
