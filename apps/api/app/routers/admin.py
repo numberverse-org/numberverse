@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -14,6 +14,7 @@ from ..models import (
     ContentItem,
     Kid,
     KidSettings,
+    LearningStory,
     Profile,
     ProgressEvent,
     Skill,
@@ -80,6 +81,113 @@ async def stats(_: Profile = Depends(require_admin), db: AsyncSession = Depends(
         "progress_events": await count(ProgressEvent),
         "subscriptions": await count(Subscription),
         "recent_events": [_row_to_dict(e) for e in recent],
+    }
+
+
+# ── 📚 KOTHA story health dashboard (#336) ────────────────────────────────
+# One admin view over the learning-story lake: counts + breakdown + sanity.
+# Charts are deliberately PII-free (anonymous rank buckets, skill/error kinds).
+# The only kid-identifiable rows are the rate-limit flags, which admin needs
+# to act on — never mixed into the chart payloads.
+
+# How fast a single kid can LEGITIMATELY generate stories. A real session tops
+# out far below this; crossing it in the last hour means a runaway sync loop,
+# a duplicated outbox replay, or a bot. The dashboard flags those kids.
+STORY_RATE_LIMIT_PER_HOUR = 200
+STORY_HEALTH_DAYS = 14
+
+
+@router.get("/stories/health")
+async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    total = (await db.scalar(select(func.count()).select_from(LearningStory))) or 0
+
+    # Breakdown by kid → ANONYMOUS buckets for the chart (rank only, no UUID).
+    by_kid_raw = await db.execute(
+        select(LearningStory.kid_id, func.count().label("n"))
+        .group_by(LearningStory.kid_id)
+        .order_by(func.count().desc())
+        .limit(10)
+    )
+    by_kid = [
+        {"rank": i + 1, "label": f"Kid #{i + 1}", "stories": n}
+        for i, (_kid_id, n) in enumerate(by_kid_raw.all())
+    ]
+
+    # Breakdown by skill (skill ids are curriculum, not kid data).
+    by_skill_raw = await db.execute(
+        select(LearningStory.skill_id, func.count().label("n"))
+        .group_by(LearningStory.skill_id)
+        .order_by(func.count().desc())
+        .limit(10)
+    )
+    by_skill = [{"skill_id": sid, "stories": n} for sid, n in by_skill_raw.all()]
+
+    # Breakdown by Moni error kind (fatigue|misconception|gap|guessing|slip).
+    by_error_raw = await db.execute(
+        select(LearningStory.error_kind, func.count().label("n"))
+        .where(LearningStory.error_kind.is_not(None))
+        .group_by(LearningStory.error_kind)
+        .order_by(func.count().desc())
+    )
+    by_error = [{"error_kind": e or "unknown", "stories": n} for e, n in by_error_raw.all()]
+
+    # Breakdown by plan action.
+    by_action_raw = await db.execute(
+        select(LearningStory.action, func.count().label("n"))
+        .where(LearningStory.action.is_not(None))
+        .group_by(LearningStory.action)
+        .order_by(func.count().desc())
+    )
+    by_action = [{"action": a or "none", "stories": n} for a, n in by_action_raw.all()]
+
+    # 14-day ingest trend (for a line chart) — date-only buckets, no kids.
+    since = datetime.utcnow() - timedelta(days=STORY_HEALTH_DAYS)
+    by_day_raw = await db.execute(
+        select(func.date(LearningStory.created_at).label("d"), func.count().label("n"))
+        .where(LearningStory.created_at >= since)
+        .group_by(func.date(LearningStory.created_at))
+        .order_by(func.date(LearningStory.created_at))
+    )
+    by_day = [{"date": d.isoformat() if hasattr(d, "isoformat") else str(d), "stories": n} for d, n in by_day_raw.all()]
+
+    # Rate-limit-aware flags: kids whose story volume in the last 60 min
+    # breached the per-hour budget → likely a runaway replay, needs a look.
+    hour_ago = datetime.utcnow() - timedelta(hours=1)
+    hot_raw = await db.execute(
+        select(LearningStory.kid_id, func.count().label("n"))
+        .where(LearningStory.created_at >= hour_ago)
+        .group_by(LearningStory.kid_id)
+        .having(func.count() > STORY_RATE_LIMIT_PER_HOUR)
+        .order_by(func.count().desc())
+    )
+    high_velocity = [
+        {"kid_id": str(kid_id), "last_hour": n, "over_budget_by": n - STORY_RATE_LIMIT_PER_HOUR}
+        for kid_id, n in hot_raw.all()
+    ]
+
+    # Sanity check — the dashboard's verdict.
+    warnings: list[str] = []
+    if total == 0:
+        warnings.append("Kotha lake is empty — is the client syncing?")
+    if not by_kid:
+        warnings.append("No per-kid story data yet.")
+    elif by_kid and by_kid[0]["stories"] > STORY_RATE_LIMIT_PER_HOUR * 24:
+        warnings.append("A single kid owns the lake — check for a sync loop.")
+    if high_velocity:
+        warnings.append(f"{len(high_velocity)} kid(s) breached the {STORY_RATE_LIMIT_PER_HOUR}-stories/hour budget in the last hour.")
+
+    return {
+        "total": total,
+        "charts": {
+            "by_kid": by_kid,       # anonymous rank buckets — no kid PII
+            "by_skill": by_skill,
+            "by_error_kind": by_error,
+            "by_action": by_action,
+            "by_day": by_day,
+        },
+        "rate_limit_per_hour": STORY_RATE_LIMIT_PER_HOUR,
+        "high_velocity_kids": high_velocity,
+        "sanity": {"ok": not warnings, "warnings": warnings},
     }
 
 
