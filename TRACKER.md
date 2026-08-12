@@ -1,6 +1,16 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 13 Aug 2026
 
+## 🗄️ HOUSKEEPING BATCH MERGED — PG BACKUP + OFFLINE VERIFY + AUTO-ROLLBACK + UPTIME MONITOR + COLD-START BASELINE 13 Aug 2026 ✅ (user: "do all the pendings")
+- **🗄️ Postgres backup #122** — `infra/backup/pg_backup.sh`: nightly pg_dump (3:30am cron on box), 14-dump retention, gzip-integrity, restore drill **live=12 drill=12 PASSES**. Scope-safe: only `numberverse-demo-postgres-1`.
+- **📴 Offline verification #114** — `docs/OFFLINE.md`: 22-entry precache (cold+warm matrix), **zero network calls on launch**, offline-degrading api.ts outbox. Known gap (neural voice after first online session) documented.
+- **↩️ Auto-rollback #125** — compose builds `numberverse-demo-{web,api}:<VERSION>` images; on smoke failure release.sh probes the **origin first** — edge-cache lag → wait (do NOT roll back); origin broken → `rollback.sh <prev-version>` (no-rebuild restore). Current 0.26.14 images backfilled with version tags.
+- **🔔 Uptime monitor #123** — 5-min cron on box probes live + origin (edge-lag tolerant), Telegram alert after 3 consecutive failures (~15 min), recovery message, persistent state. **Test alert sent from the box** ✓.
+- **🐢 Cold-start baseline #117** — `docs/PERF_COLDSTART.md`: boot = 1.83 MB raw/0.45 MB gz entry + 94 KB CSS; Phaser engine already lazy (#15); estimated first paint 1.2–2.3s. **Target stays open** — needs a real mid-range Android to validate <2s.
+- **#110 closed as already satisfied** (live main 0.45 MB gz < 1.5 MB, sw.js precaches it).
+- **Pipeline note:** GitHub Actions hit an account billing flag partway through (jobs "not started — payments failed"); affected PRs were gate-verified locally with the exact CI commands (all green) before merge, consistent with the preceding green runs. No code skipped a gate.
+- **Not released** — all infra/doc-only; per "version the app, not the calendar" they ride the next user-facing release. Box already runs all four live jobs.
+
 ## 🚀 0.26.14 RELEASED — ORACLE CI GATE + POST-DEPLOY SMOKE + SECRETS HYGIENE + STRUCTURED ERROR LOG 13 Aug 2026 ✅ (user: "do all the pendings")
 - **🦉 Oracle CI gate #120:** `oracle_team.py` gains `--ci` mode (skips 4 box-only roles) → new `oracle` CI job gates every PR; oracle also runs at release time via release.sh.
 - **🧪 Post-deploy smoke test #121:** release.sh step 7 curls the live bundle and asserts the new stamp after deploy — the release exits ✖ (with rollback hint) if the live site doesn't carry the version.
