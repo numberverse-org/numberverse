@@ -488,7 +488,7 @@ export default function ParentDashboard() {
         <div className="logo">🔢</div>
         <h1>Parent Portal</h1>
         {authState === "checking" ? (
-          <p className="center muted">Checking your session…</p>
+          <p className="center muted"><span className="spinner" aria-hidden />Checking your session…</p>
         ) : (
           <>
             <p className="center muted">Sign in to manage your children’s learning.</p>

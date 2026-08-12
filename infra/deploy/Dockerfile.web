@@ -28,6 +28,10 @@ ARG NEXT_PUBLIC_BASE_PATH
 ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-/parent}
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api/v1}
+# Demo mode (default OFF): when "1", the login form shows the seeded demo
+# credentials. Production never advertises a real account's sign-in.
+ARG NEXT_PUBLIC_DEMO_MODE
+ENV NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-}
 RUN pnpm --filter parent build && test -d apps/parent/out
 
 # admin console — base /admin/

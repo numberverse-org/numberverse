@@ -398,6 +398,9 @@ interface Strings {
   certPrint: string;
   certBack: string;
   certSpeak: (name: string, world: string) => string;
+  /** Generic back-button label (aria) used on every `icon-btn` back arrow —
+   *  localized so a Bangla screen reader never announces English "Back". */
+  back: string;
   /* birthday party */
   birthMonth: string;
   birthDay: string;
@@ -820,6 +823,7 @@ const STR: Record<Lang, Strings> = {
     certPrint: "🖨️ Print / Save as PDF",
     certBack: "‹ Back",
     certSpeak: (name, world) => `Certificate! ${name}, you mastered ${world}!`,
+    back: "Back",
     birthMonth: "Month",
     birthDay: "Day",
     birthdayHello: (name) => `Happy Birthday, ${name}! 🎂`,
@@ -1225,6 +1229,7 @@ const STR: Record<Lang, Strings> = {
     certPrint: "🖨️ প্রিন্ট / PDF সংরক্ষণ",
     certBack: "‹ ফিরে যাও",
     certSpeak: (name, world) => `সনদ! ${name}, তুমি ${world} আয়ত্ত করেছ!`,
+    back: "ফিরে যাও",
     birthMonth: "মাস",
     birthDay: "দিন",
     birthdayHello: (name) => `জন্মদিনের শুভেচ্ছা, ${name}! 🎂`,
@@ -3095,7 +3100,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goStart} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={goStart} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.syllabusTitle}</h2>
               <p className="head-sub">{t.syllabusSub}</p>
@@ -3646,7 +3651,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>⚙️ {t.settingsTitle}</h2>
               <p className="head-sub">{t.settingsSub}</p>
@@ -3848,7 +3853,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen gate-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+              <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -3938,7 +3943,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.parentTitle}</h2>
               <p className="head-sub">{t.parentSub}</p>
@@ -4365,7 +4370,7 @@ export default function App() {
             <button
               className="icon-btn"
               onClick={() => setScreen(kids.length ? "home" : "addkid")}
-              aria-label="Back"
+              aria-label={t.back}
             >
               ‹
             </button>
@@ -4420,7 +4425,7 @@ export default function App() {
       <div className="app">
         <main className="screen cards-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>🏆 {t.cardsTitle}</h2>
               <p className="head-sub">{t.cardsSub(collected, totalCards)}</p>
@@ -4528,7 +4533,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{kid ? <AvatarIcon emoji={kid.avatar} size={26} /> : null} {kid?.name ? t.worldsOf(kid.name) : t.worldsOf("")}</h2>
               <p className="head-sub">{mapView ? t.mapSub : journeyView ? t.journeySub : t.masterSkillsSub}</p>
@@ -4773,7 +4778,7 @@ export default function App() {
             className="screen-head worlddetail-head"
             style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
           >
-            <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
               <p className="head-sub">{t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
@@ -5063,7 +5068,7 @@ export default function App() {
       <div className="app">
         <main className="screen castle-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>🏰 {t.castleTitle}</h2>
               <p className="head-sub">{t.castleBuilt(builtCount, towers.length)}</p>
@@ -5239,7 +5244,7 @@ function AddKidForm({ t, lang, onSave, onCancel }: { t: Strings; lang: Lang; onS
     <div className="app">
       <main className="screen worlds">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onCancel} aria-label="Back">‹</button>
+          <button className="icon-btn" onClick={onCancel} aria-label={t.back}>‹</button>
           <div className="head-title">
             <h2>{t.addKid}</h2>
             <p className="head-sub">{t.addKidSub}</p>
