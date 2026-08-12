@@ -488,6 +488,15 @@ interface Strings {
   shareDone: string;
   shareFail: string;
   shareProgressCaption: (name: string) => string;
+  /* 📄 KOTHA weekly digest export */
+  digestBtn: string;
+  digestEmpty: string;
+  digestDone: string;
+  digestHeader: (name: string, week: string) => string;
+  digestStats: (total: number, solved: number, tricky: number) => string;
+  digestSolved: string;
+  digestTricky: (n: number) => string;
+  digestMoni: (code: string) => string;
   certShare: string;
   certShareFooter: string;
   certShareCaption: (name: string, world: string) => string;
@@ -819,6 +828,14 @@ const STR: Record<Lang, Strings> = {
     shareDone: "✓ Shared",
     shareFail: "Couldn't share on this device",
     shareProgressCaption: (name) => `${name} has been playing Numberverse — math & Bangla, offline, no ads! kids.munna-khan.xyz`,
+    digestBtn: "📄 Weekly digest",
+    digestEmpty: "No stories yet this week — a few games and the digest will fill up.",
+    digestDone: "Weekly digest downloaded ✓",
+    digestHeader: (name, week) => `Numberverse — weekly learning digest\nKid: ${name}\nWeek: ${week}`,
+    digestStats: (total, solved, tricky) => `${total} moments · ${solved} solved · ${tricky} tricky`,
+    digestSolved: "solved",
+    digestTricky: (n) => `${n} misses`,
+    digestMoni: (code) => `Moni spotted: ${code}`,
     certShare: "📤 Share",
     certShareFooter: "Made with Numberverse — kids learn math & Bangla, offline, no ads.",
     certShareCaption: (name, world) => `${name} mastered ${world} in Numberverse! 🏆 kids.munna-khan.xyz`,
@@ -1141,6 +1158,14 @@ const STR: Record<Lang, Strings> = {
     shareDone: "✓ শেয়ার হয়েছে",
     shareFail: "এই ডিভাইসে শেয়ার করা যায়নি",
     shareProgressCaption: (name) => `${name} Numberverse-এ খেলছে — গণিত ও বাংলা, অফলাইনেও, কোনো বিজ্ঞাপন নেই! kids.munna-khan.xyz`,
+    digestBtn: "📄 সাপ্তাহিক ডাইজেস্ট",
+    digestEmpty: "এই সপ্তাহে এখনো কোনো গল্প নেই — কিছু খেলা খেলুন, ডাইজেস্ট ভরে উঠবে।",
+    digestDone: "সাপ্তাহিক ডাইজেস্ট ডাউনলোড হয়েছে ✓",
+    digestHeader: (name, week) => `Numberverse — সাপ্তাহিক শেখার ডাইজেস্ট\nশিশু: ${name}\nসপ্তাহ: ${week}`,
+    digestStats: (total, solved, tricky) => `${total}টি মুহূর্ত · ${solved}টি সমাধান · ${tricky}টি কঠিন`,
+    digestSolved: "সমাধান",
+    digestTricky: (n) => `${n}টি ভুল`,
+    digestMoni: (code) => `মনি ধরেছে: ${code}`,
     certShare: "📤 শেয়ার",
     certShareFooter: "Numberverse দিয়ে তৈরি — বাচ্চারা গণিত ও বাংলা শেখে, অফলাইনেও, কোনো বিজ্ঞাপন নেই।",
     certShareCaption: (name, world) => `${name} Numberverse-এ ${world} আয়ত্ত করেছে! 🏆 Numberverse দিয়ে তৈরি। kids.munna-khan.xyz`,
@@ -2039,6 +2064,50 @@ export default function App() {
     } catch {
       flashShare(t.shareFail);
     }
+  };
+
+  /** 📄 KOTHA weekly digest — exports the last 7 days of learning stories as a
+   *  plain-text file (kid name + moments; no PII beyond that). Fully local:
+   *  reads the store's own story outbox, never touches the cloud. */
+  const downloadWeekDigest = (k: Kid) => {
+    click();
+    const weekMs = 7 * 864e5;
+    const stories = useKidStore
+      .getState()
+      .stories.filter((s) => s.kidId === k.id && s.ts >= Date.now() - weekMs);
+    if (stories.length === 0) {
+      flashShare(t.digestEmpty);
+      return;
+    }
+    const sorted = [...stories].sort((a, b) => a.ts - b.ts);
+    const solved = sorted.filter((s) => s.outcome).length;
+    const tricky = sorted.length - solved;
+    const locale = lang === "bn" ? "bn-BD" : "en-GB";
+    const day = (ts: number, opts: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short" }) =>
+      new Date(ts).toLocaleDateString(locale, opts);
+    const weekFrom = day(sorted[0].ts, { day: "numeric", month: "short" });
+    const weekTo = day(sorted[sorted.length - 1].ts, { day: "numeric", month: "short" });
+    const lines = [
+      t.digestHeader(k.name, `${weekFrom} – ${weekTo}`),
+      t.digestStats(sorted.length, solved, tricky),
+      "",
+      ...sorted.map((s) => {
+        const skill = filterSkills.find((f) => f.id === s.skillId);
+        const title = skill?.title ?? s.skillId;
+        const game = getGame(s.gameId)?.id ?? s.gameId;
+        const result = s.outcome ? `✓ ${t.digestSolved}` : `⚠ ${t.digestTricky(s.wrongStreak)}`;
+        const mis = s.misconceptionCode ? ` · ${t.digestMoni(s.misconceptionCode)}` : "";
+        return `${day(s.ts)} · ${title} (${game})\n  ${result}${mis} · lvl ${s.difficulty}`;
+      }),
+    ].join("\n");
+    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `numberverse-${k.name.replace(/\s+/g, "-")}-digest.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    flashShare(t.digestDone);
   };
 
   /** Certificate screen → pretty cert card → WhatsApp (no coin reward — the
@@ -3473,6 +3542,9 @@ export default function App() {
                     })()}
                     <button className="ghost-btn mini share-progress-btn" onClick={() => void shareProgress(activeKid)}>
                       {t.shareProgress}
+                    </button>
+                    <button className="ghost-btn mini share-progress-btn" onClick={() => downloadWeekDigest(activeKid)}>
+                      {t.digestBtn}
                     </button>
                     {shareMsg && <p className="share-feedback" role="status">{shareMsg}</p>}
                     <details className="parent-skills">
