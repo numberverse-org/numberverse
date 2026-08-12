@@ -1977,6 +1977,9 @@ body {
 .sync-pill.sync-syncing { color: #a9e6ff; }
 .sync-pill.sync-offline { color: #ffd166; }
 .sync-pill.sync-error { color: #ff8fa3; }
+.sync-pill .sync-pill-count { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: rgba(255, 209, 102, 0.14); color: #ffd166; font-weight: 800; font-size: 11px; }
+/* 📚 KOTHA offline-queue note — shows the story backlog waiting to sync */
+.story-queue-note { font-size: 12px; color: #ffd166; background: rgba(255, 209, 102, 0.08); border: 1px dashed rgba(255, 209, 102, 0.3); border-radius: 8px; padding: 6px 10px; margin: 6px 0 0; text-align: left; }
 
 /* ---- music toggle button inside the game HUD ---- */
 .hud-music {
