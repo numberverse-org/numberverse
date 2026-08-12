@@ -1,5 +1,12 @@
 # Numberverse infra — runs entirely on this machine
 # Postgres 16 (port 5434) + Redis 7 (port 6379)
+# #303 — json-file rotation (3×10MB per service) so dev logs can't grow unbounded.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -19,6 +26,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
@@ -33,6 +41,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+    logging: *default-logging
 
 volumes:
   numberverse_pg:

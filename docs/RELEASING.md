@@ -68,6 +68,8 @@ fails loudly instead of pretending).
 | `audit` | `apps/kid/scripts/audit.mjs` — i18n EN/BN parity, catalog integrity, scope/sequence guards, no console.log in shipped code (#268); + share-PNG zero-metadata test (#93) |
 | `api` | API compiles (`compileall`) + PII-scrubber (#266/#270), structured error log (#124), age-band lock (#275), and parent data-export format (#273) unit tests |
 | `license-audit` | `scripts/license-audit.mjs` — every bundled dep's license in the allowlist (#271) |
+| `dep-audit` | `scripts/audit-deps.mjs` — `pnpm audit`; fails on any high/critical advisory not on the justified allowlist (#308) |
+| `bundle-size` | `scripts/bundle-size.mjs` — kid main bundle stays under the 2100 KB budget after `pnpm --filter kid build` (#305) |
 | `secret-scan` | `scripts/secret-scan.mjs` — no hardcoded-secret shapes (AWS keys, private keys, tokens) in the tracked tree (#126) |
 | `content-safety` | `scripts/content-safety.mjs` — no unsafe words in skill titles / scene strings; allowlist-able (#91) |
 | `tracker-scan` | `scripts/tracker-scan.mjs` — no ad/tracker dependency or endpoint (100% ad-free) (#92) |

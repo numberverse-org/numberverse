@@ -114,6 +114,45 @@ jobs:
       - name: Dependency license gate (#271)
         run: node scripts/license-audit.mjs
 
+  dep-audit:
+    name: dep-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Dependency vulnerability gate (#308)
+        run: node scripts/audit-deps.mjs
+
+  bundle-size:
+    name: bundle-size
+    needs: build-core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-dist
+          path: packages/core/dist
+      - name: Build kid app
+        run: pnpm --filter kid build
+      - name: Bundle-size regression gate (#305)
+        run: node scripts/bundle-size.mjs
+
   content-safety:
     name: content-safety
     runs-on: ubuntu-latest
