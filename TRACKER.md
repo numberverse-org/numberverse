@@ -1,6 +1,14 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 13 Aug 2026
 
+## 🚀 0.26.14 RELEASED — ORACLE CI GATE + POST-DEPLOY SMOKE + SECRETS HYGIENE + STRUCTURED ERROR LOG 13 Aug 2026 ✅ (user: "do all the pendings")
+- **🦉 Oracle CI gate #120:** `oracle_team.py` gains `--ci` mode (skips 4 box-only roles) → new `oracle` CI job gates every PR; oracle also runs at release time via release.sh.
+- **🧪 Post-deploy smoke test #121:** release.sh step 7 curls the live bundle and asserts the new stamp after deploy — the release exits ✖ (with rollback hint) if the live site doesn't carry the version.
+- **🛡️ Secrets hygiene scan #126:** zero-dependency `scripts/secret-scan.mjs` scans **tracked files only** for AWS keys / PEM private keys / GitHub tokens / high-entropy key assignments (justified per-file ALLOWLIST) → new `secret-scan` CI job, fail-closed (planted-key proofs: caught, exit 1).
+- **📝 Structured error log #124:** `apps/api/app/errorlog.py` — WARNING+ records from any `numberverse.*` logger land in `data/error.log` as JSON-lines (`ts/level/logger/msg/exc`), RotatingFileHandler (1 MB × 3), INFO never on disk, and the formatter **re-redacts the rendered traceback** (filters run before `format` computes `exc_text`, so traceback scrubbing is done post-format). 13/13 self-contained checks in CI `api` job.
+- **Pipeline:** PRs #418 (secret-scan) + #419 (errorlog) → both merged. GitHub Actions hit an account billing flag right after #418 (jobs "not started — payments failed") so #419's 8 gates were verified locally with the exact CI commands (all green); identical stack had passed green on #418 minutes earlier.
+- **Smoke note:** the first smoke run flagged a **false negative** — Cloudflare edge cache lagged past the 50s window though the deploy had landed; live re-verified minutes later carrying `0.26.14` (bundle hash matches the container). Smoke test hardened afterwards (see follow-up).
+
 ## 🗺️ NEXT-300 BACKLOG — ORACLE CLEAN + 8 NEW EPICS · 312 OPEN ISSUES 12 Aug 2026 ✅ (user: "run the Oracle and use github pipelines make 300 issues and ~100 features, the work must continue")
 - **Oracle:** standup **35/35 CLEAN** after fixing a real `App.tsx` JSX bug the Type-Safety Officer caught (two siblings inside `{signedIn && …}` needed a fragment). Weekly Council **70/70, zero flags**.
 - **Backlog 113 → 312 open** (199 new issues) via the new data-driven **`scripts/team/backlog_300.py`** (idempotent: skips existing titles, auto-creates milestones, ~100+ real features). New epics: **v24 content wave 3** (79), **v25 parent power 3** (23), **v26 Kotha & adaptive** (21), **v27 trust & safety 2** (15), **v28 growth & retention 2** (19), **v29 polish & perf 2** (15), **v30 infra & ops 2** (17) + Backlog.

@@ -89,22 +89,26 @@ bash infra/deploy/scripts/deploy.sh
 # #121 — post-deploy smoke test: the stamp MUST be live. curl the deployed
 # bundle and assert it carries this release's APP_BUILD string. Fail loudly
 # with the rollback hint (the box still runs the previous tag until retag).
+# The box sits behind a Cloudflare tunnel whose edge caches the HTML/bundle,
+# so requests carry a no-cache header + a cache-busting query param and we
+# retry for up to ~2 minutes (the edge can lag the origin after a deploy).
 echo "── 6/7 Smoke test (live stamp) ─────────────────"
 LIVE="https://kids.munna-khan.xyz"
 HIT=0
-for _ in 1 2 3 4 5; do
-  HTML=$(curl -sL --max-time 15 "$LIVE/" || true)
+for i in 1 2 3 4 5 6 7 8; do
+  BUST="nv$RANDOM$RANDOM"
+  HTML=$(curl -sL --max-time 15 -H 'Cache-Control: no-cache' "$LIVE/?$BUST" || true)
   JS=$(printf '%s' "$HTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
   if [ -n "$JS" ]; then
-    BODY=$(curl -sL --max-time 20 "$LIVE/$JS" || true)
+    BODY=$(curl -sL --max-time 20 -H 'Cache-Control: no-cache' "$LIVE/$JS?$BUST" || true)
     if printf '%s' "$BODY" | grep -qF "$VERSION"; then
       echo "  ✓ $LIVE serves $VERSION ($JS)"
       HIT=1
       break
     fi
   fi
-  echo "  … stamp not live yet (attempt $_/5), waiting 10s"
-  sleep 10
+  echo "  … stamp not live yet (attempt $i/8), waiting 15s"
+  sleep 15
 done
 if [ "$HIT" != "1" ]; then
   echo "  ✖ POST-DEPLOY SMOKE FAILED: $LIVE does not serve $VERSION." >&2
