@@ -113,6 +113,7 @@ if (skills.length) {
   // not raw magnitude — they are not in the map.)
   const SCOPE_CAP = {
     "count-1-10": 10, "count-1-20": 20, "count-to-50": 50, "count-to-100": 100,
+    "count-to-999": 999,
     "grow-count": 12, "quantity-match": 7, "number-line": 10, "number-song": 10,
     "fruit-tree-add": 15, "add-within-10": 10, "sub-within-10": 10,
     "add-within-20": 20, "sub-within-20": 20, "add-to-20": 20,

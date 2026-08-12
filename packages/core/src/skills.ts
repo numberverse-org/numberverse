@@ -44,6 +44,7 @@ export const SKILLS: Skill[] = [
   // The counting ladder first (a kid must KNOW numbers before adding them) …
   { id: 'count-to-50', band: 2, subject: 'math', title: 'Count to 50', titleBn: '৫০ পর্যন্ত গুনি', description: 'Count objects up to 50', descriptionBn: '৫০ পর্যন্ত বস্তু গুনি', commonCore: ['1.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop50' },
   { id: 'count-to-100', band: 2, subject: 'math', title: 'Count to 100', titleBn: '১০০ পর্যন্ত গুনি', description: 'Build numbers to 100 by bundling ten-rods and ones', descriptionBn: 'দশের ছড় আর একক জুড়ে ১০০ পর্যন্ত সংখ্যা গঠন করি', commonCore: ['1.NBT.1', '2.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-count100' },
+  { id: 'count-to-999', band: 2, subject: 'math', title: 'Build to 999', titleBn: '৯৯৯ পর্যন্ত গঠন', description: 'Build three-digit numbers with hundred-flats, ten-rods and ones', descriptionBn: 'শতক, দশক আর একক দিয়ে তিন-অঙ্কের সংখ্যা গঠন করি', commonCore: ['2.NBT.1', '2.NBT.3'], nctbCode: 'c2-math-1', classNumber: 2, game: 'game-build999' },
   // …then addition, CONCRETE GAME FIRST, abstract drill LAST:
   { id: 'fruit-tree-add', band: 2, subject: 'math', title: 'Fruit tree addition', titleBn: 'ফলের গাছ যোগ', description: 'Grow fruit on a tree as you add — see addition happen', descriptionBn: 'যোগ করলে গাছে ফল জন্মায় — যোগ করা চোখে দেখা যায়', commonCore: ['1.OA.6'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruittree' },
   { id: 'add-within-10', band: 2, subject: 'math', title: 'Add within 10', titleBn: '১০-এর মধ্যে যোগ', description: 'Addition facts with sums to 10 (apples shown)', descriptionBn: 'যোগফল ১০-এর মধ্যে (আপেল দেখিয়ে)', commonCore: ['1.OA.6'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruitadd-10' },
@@ -116,6 +117,7 @@ export const GAMES: GameConfig[] = [
   // ── Band 2 counting → concrete add/sub → abstract recap ──
   { id: 'game-countpop50', skillId: 'count-to-50', difficultyLevels: [10, 15, 20, 30, 40, 50], targetSuccess: 0.8 },
   { id: 'game-count100', skillId: 'count-to-100', difficultyLevels: [10, 20, 30, 40, 60, 100], targetSuccess: 0.8 },
+  { id: 'game-build999', skillId: 'count-to-999', difficultyLevels: [100, 120, 150, 200, 300, 500], targetSuccess: 0.8 },
   { id: 'game-fruittree', skillId: 'fruit-tree-add', difficultyLevels: [4, 6, 8, 10, 12, 15], targetSuccess: 0.8 },
   { id: 'game-fruitadd-10', skillId: 'add-within-10', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-fruitsub-10', skillId: 'sub-within-10', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -161,6 +163,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-countpop20': 'CountPop',
   'game-countpop50': 'CountPop',
   'game-count100': 'Count100',
+  'game-build999': 'Build999',
   'game-growcount': 'GrowCount',
   'game-fruitadd-10': 'FruitAdd',
   'game-fruitsub-10': 'FruitAdd',
