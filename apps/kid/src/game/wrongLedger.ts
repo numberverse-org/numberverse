@@ -32,9 +32,13 @@ export const wrongLedger = {
   kidId(): string | null {
     return ctx?.kidId ?? null;
   },
-  /** Call on every wrong tap — persisted, deduped naturally by the store. */
-  record() {
+  /** Call on every wrong tap — persisted, deduped naturally by the store.
+   *  `correct`/`wrong` are the answer VALUES (numbers for math, strings for
+   *  language) — Moni fingerprints them into misconception codes (#335). */
+  record(correct?: unknown, wrong?: unknown) {
     if (!ctx) return;
-    useKidStore.getState().recordWrong(ctx.kidId, ctx.skillId, ctx.gameId, ctx.difficulty);
+    useKidStore
+      .getState()
+      .recordWrong(ctx.kidId, ctx.skillId, ctx.gameId, ctx.difficulty, correct, wrong);
   },
 };

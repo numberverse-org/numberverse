@@ -46,7 +46,11 @@ export function diagnose(
   }
 
   // 2. MISCONCEPTION — a systematic error on a skill we've seen before.
-  const mis = profile.misconceptions.find((m) => m.skillId === round.skillId);
+  // Prefer the SPECIFIC fingerprint code (overcount-1, off-by-ten…) over the
+  // generic "repeated-error" so the contrast drill names the real pattern.
+  const mis = profile.misconceptions
+    .filter((m) => m.skillId === round.skillId)
+    .sort((a, b) => (a.code === "repeated-error" ? 1 : 0) - (b.code === "repeated-error" ? 1 : 0))[0];
   if (mis && mis.occurrences >= params.misconcOccurrences) {
     return {
       kind: "misconception",
