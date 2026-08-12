@@ -20,6 +20,7 @@ import {
   revokeSession,
   changePassword,
   updateProfile,
+  validateToken,
   type Profile,
   type Kid,
   type MasteryRow,
@@ -143,6 +144,10 @@ function masteryPct(m: MasteryRow): number {
 
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
+  /** Gate: "checking" → validating the stored token server-side,
+   *  "ok" → token proved valid, "anon" → no usable session (login gate). */
+  const [authState, setAuthState] = useState<"checking" | "ok" | "anon">("checking");
+  const [authNote, setAuthNote] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [kids, setKids] = useState<Kid[]>([]);
   const [mastery, setMastery] = useState<Record<string, MasteryRow[]>>({});
@@ -181,6 +186,8 @@ export default function ParentDashboard() {
     localStorage.removeItem("nv_kid_map");
     setToken(null);
     setProfile(null);
+    setAuthState("anon");
+    setAuthNote(null);
   }, []);
 
   const refreshAll = useCallback(
@@ -230,11 +237,36 @@ export default function ParentDashboard() {
     const tok = localStorage.getItem("nv_parent_token");
     if (!tok) {
       setToken(null);
+      setAuthState("anon");
       return;
     }
-    setToken(tok);
-    refreshAll(tok).catch(() => setError("Could not load progress. Is the API running?"));
-    reloadAccount(tok).catch(() => setError("Could not load account details."));
+    setAuthState("checking");
+    validateToken(tok).then((verdict) => {
+      if (verdict === "ok") {
+        // Only a token the API accepts unlocks the dashboard. This is the real
+        // gate: presence of ANY string in nv_parent_token (shared, stale, or
+        // forged — the kid app writes the same key) no longer grants access.
+        setToken(tok);
+        setAuthState("ok");
+        refreshAll(tok).catch(() => setError("Could not load progress. Is the API running?"));
+        reloadAccount(tok).catch(() => setError("Could not load account details."));
+      } else if (verdict === "invalid") {
+        localStorage.removeItem("nv_parent_token");
+        localStorage.removeItem("nv_parent_name");
+        localStorage.removeItem("nv_kid_id");
+        localStorage.removeItem("nv_kid_map");
+        setToken(null);
+        setAuthState("anon");
+        setAuthNote("Your session ended. Sign in again to view the portal.");
+      } else {
+        // Offline / API down — we cannot PROVE the session, so we never render
+        // the dashboard with an unvalidated token. The stored token survives so
+        // a reload (when back online) re-validates and re-enters.
+        setToken(null);
+        setAuthState("anon");
+        setAuthNote("Can't check your session right now — make sure you're online, then sign in.");
+      }
+    });
   }, [refreshAll, reloadAccount]);
 
   const switchKid = useCallback(
@@ -447,14 +479,28 @@ export default function ParentDashboard() {
   const famMinutes = kids.reduce((sum, k) => sum + ((weekly[k.id]?.minutes as number) ?? 0), 0);
   const famActive = kids.filter((k) => ((weekly[k.id]?.active_days as number) ?? 0) > 0).length;
 
-  if (!token) {
+  // The dashboard renders ONLY after the server validates the token. While the
+  // session is being checked we show a neutral shell, and any failure (invalid
+  // OR unverifiable) lands on the login gate — never on parent data.
+  if (authState !== "ok") {
     return (
       <main className="shell">
         <div className="logo">🔢</div>
         <h1>Parent Portal</h1>
-        <p className="center muted">Sign in to manage your children’s learning.</p>
+        {authState === "checking" ? (
+          <p className="center muted">Checking your session…</p>
+        ) : (
+          <>
+            <p className="center muted">Sign in to manage your children’s learning.</p>
+            {authNote && <p className="center err" style={{ marginTop: 8 }}>{authNote}</p>}
+          </>
+        )}
         <div className="center" style={{ marginTop: 24 }}>
-          <Link className="btn" href="/login">Go to login →</Link>
+          {authState === "checking" ? (
+            <Link className="btn btn-small ghost" href="/login">Sign in instead →</Link>
+          ) : (
+            <Link className="btn" href="/login">Go to login →</Link>
+          )}
         </div>
       </main>
     );

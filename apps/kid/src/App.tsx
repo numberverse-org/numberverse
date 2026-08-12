@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, aggregateOptIn, setAggregateOptIn, fetchAggregates, type KidSettings, type KothaAggregates } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
@@ -36,7 +36,7 @@ const APP_BUILD = "13 Aug 2026 · 0.26.9 (Access control: kid-only Settings + ga
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.26.9";
 
-type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
+type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -327,19 +327,6 @@ interface Strings {
   syncOffline: string;
   storyQueueNote: (n: number) => string;
   syncError: string;
-  /* #330 Kotha: privacy-scrubbed cross-kid aggregates */
-  aggTitle: string;
-  aggSub: string;
-  aggOptIn: string;
-  aggOptOut: string;
-  aggOffline: string;
-  aggPreview: string;
-  aggFamilies: (n: number) => string;
-  aggStories: (n: number) => string;
-  aggSuccessRate: (pct: number) => string;
-  aggTopMis: string;
-  aggTopSkills: string;
-  aggNoneYet: string;
   pickKid: string;
   switchKid: (avatar: string, name: string) => string;
   parentZone: string;
@@ -769,18 +756,6 @@ const STR: Record<Lang, Strings> = {
     syncOffline: "Offline — progress saved on device",
     syncError: "Sync hiccup — will retry",
     storyQueueNote: (n) => `${n} learning moments saved on this device — they'll reach the cloud when you're online 📚`,
-    aggTitle: "🔭 Class insights",
-    aggSub: "Share your kids' anonymized learning moments (no names, no identities) to see what kids everywhere get stuck on — and help classrooms improve.",
-    aggOptIn: "Share anonymized insights",
-    aggOptOut: "Opt out",
-    aggOffline: "Requires a signed-in parent account + connection.",
-    aggPreview: "Made from opted-in families only — no kid identity is ever included.",
-    aggFamilies: (n) => `${n} family${n === 1 ? "" : "ies"} sharing`,
-    aggStories: (n) => `${n} anonymized stories`,
-    aggSuccessRate: (pct) => `Success rate ${pct}%`,
-    aggTopMis: "Most common mistake patterns",
-    aggTopSkills: "Trickiest skills",
-    aggNoneYet: "Not enough shared data yet — check back soon.",
     pickKid: "👶 Pick your kid",
     switchKid: (a, n) => `${a} ${n} — switch kid`,
     parentZone: "👨‍👩‍👧 Parent Zone",
@@ -1186,18 +1161,6 @@ const STR: Record<Lang, Strings> = {
     syncOffline: "অফলাইন — শেখার খবর এই ডিভাইসে সংরক্ষিত",
     syncError: "সিঙ্কে সমস্যা — আবার চেষ্টা হবে",
     storyQueueNote: (n) => `${n}টি শেখার মুহূর্ত এই ডিভাইসে সংরক্ষিত — অনলাইন হলে ক্লাউডে পৌঁছে যাবে 📚`,
-    aggTitle: "🔭 ক্লাসের খবর",
-    aggSub: "বাচ্চারা কী শিখছে, নাম ছাড়া ভাগ করলে দেখবেন সবাই কোথায় আটকাচ্ছে — আর ক্লাসরুম উন্নত হোক।",
-    aggOptIn: "নাম ছাড়া শেখার খবর ভাগ করুন",
-    aggOptOut: "বন্ধ করুন",
-    aggOffline: "এটা দেখতে সাইন ইন করা অ্যাকাউন্ট আর ইন্টারনেট লাগবে।",
-    aggPreview: "শুধু রাজি হওয়া পরিবারের তথ্য দিয়ে তৈরি — কোনো বাচ্চার পরিচয় কখনোই থাকে না।",
-    aggFamilies: (n) => `${n}টা পরিবার ভাগ করছে`,
-    aggStories: (n) => `${n}টা নাম-ছাড়া শেখার গল্প`,
-    aggSuccessRate: (pct) => `সাফল্যের হার ${pct}%`,
-    aggTopMis: "সবচেয়ে বেশি যে ভুলগুলো হয়",
-    aggTopSkills: "সবচেয়ে কঠিন দক্ষতাগুলো",
-    aggNoneYet: "এখনো যথেষ্ট তথ্য আসেনি — একটু পর আবার দেখুন।",
     pickKid: "👶 বাচ্চা বাছাই করুন",
     switchKid: (a, n) => `${a} ${n} — পরিবর্তন করুন`,
     parentZone: "👨‍👩‍👧 মা-বাবার জায়গা",
@@ -2148,10 +2111,11 @@ export default function App() {
   // first (topmost), then the binary Guest-vs-Sign-in scene, with the syllabus
   // one tap away BEFORE any sign-in. `nv_seen_welcome` is set on mount so it
   // only appears once per device. Then the normal flow: a parent session lands
-  // on the journey, otherwise the parent gate (sign in / guest / syllabus).
+  // on the journey, otherwise the PARENT page (which shows the sign-in form
+  // inline — the one and only parent page in the whole app).
   const [screen, setScreen] = useState<Screen>(() => {
     if (!localStorage.getItem("nv_seen_welcome")) return "welcome";
-    if (!hasParentSession()) return "parentgate";
+    if (!hasParentSession()) return "parent";
     const list = loadKids();
     if (list.length === 0) return "addkid";
     try {
@@ -2288,7 +2252,7 @@ export default function App() {
     void validateParentSession().then((ok) => {
       if (active && !ok) {
         clearParentSession();
-        setScreen("parentgate");
+        setScreen("parent"); // shows the inline sign-in form — same parent page
       }
     });
     return () => {
@@ -2351,16 +2315,13 @@ export default function App() {
     setSylBand(1);
     setScreen("syllabus");
   };
-  // 🔐 Parent-area access control — the Parent panel (analytics, portal,
-  // per-kid controls, sign-out) is grown-ups-only. A signed-in parent goes
-  // straight through; anyone else is routed to the parent gate first, so a kid
-  // can never open the panel without a parent account on this device.
+  // 🔐 Parent-area access control — the Parent area is ONE page. A signed-in
+  // parent sees the full panel; anyone else sees the sign-in form INLINE on
+  // the same page (never a separate "parent gate" page in the user face). A
+  // kid tapping "For parents" gets the login form, not any parent data.
   const goParent = () => {
-    if (hasParentSession()) setScreen("parent");
-    else {
-      gateReturn.current = "parent";
-      setScreen("parentgate");
-    }
+    gateReturn.current = "parent";
+    setScreen("parent");
   };
   // Sign out of the parent account — revokes the session server-side, clears
   // the local parent session, then lands on the gate (guest / sign-in /
@@ -2374,45 +2335,10 @@ export default function App() {
     }
     void signoutParent().then(() => {
       setSignoutArmed(false);
-      gateReturn.current = "home";
-      setScreen("parentgate");
+      gateReturn.current = "parent";
+      setScreen("parent"); // stays on the one parent page → inline sign-in form
     });
   };
-
-  // ── #330 Kotha class insights — privacy opt-in + aggregate preview ──────
-  const [aggOpted, setAggOpted] = useState(aggregateOptIn());
-  const [agg, setAgg] = useState<KothaAggregates | null>(null);
-  const [aggBusy, setAggBusy] = useState(false);
-  const loadAggregates = async () => {
-    if (!aggregateOptIn()) {
-      setAgg(null);
-      return;
-    }
-    setAggBusy(true);
-    setAgg(await fetchAggregates());
-    setAggBusy(false);
-  };
-  // Refresh whenever the settings screen or parent panel opens so the preview
-  // stays fresh.
-  useEffect(() => {
-    if (screen !== "settings" && screen !== "parent") return;
-    setAggOpted(aggregateOptIn());
-    if (aggregateOptIn()) void loadAggregates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen]);
-
-  // 🔐 Access control (defense in depth): the Parent panel is grown-ups-only.
-  // Every real entry point routes through goParent() (→ gate when signed out),
-  // but if ANY path — a stale deep link, a future regression — lands on the
-  // panel without a parent session, bounce straight to the gate. A kid must
-  // never see family analytics, per-kid controls, or sign-out by accident.
-  useEffect(() => {
-    if (screen === "parent" && !hasParentSession()) {
-      gateReturn.current = "parent";
-      setScreen("parentgate");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen]);
 
   // ── Parent controls ─────────────────────────────────────────────────────
   // Per-kid settings come from the parent portal (api.ts). We fetch them on
@@ -3125,7 +3051,7 @@ export default function App() {
               </button>
               <p className="gate-guest-sub">{t.welcomeGuestSub}</p>
               <div className="gate-or"><span>{t.welcomeOr}</span></div>
-              <button className="ghost-btn welcome-signin" onClick={() => { gateReturn.current = "syllabus"; setScreen("parentgate"); }}>
+              <button className="ghost-btn welcome-signin" onClick={() => { gateReturn.current = "syllabus"; setScreen("parent"); }}>
                 {t.welcomeSignin}
               </button>
             </div>
@@ -3144,84 +3070,6 @@ export default function App() {
    *  Reached from Welcome (I'm a parent) or on return visits without a
    *  session. Google one-tap first (when configured), then the email tabs, a
    *  guest fallback for instant play, and the syllabus before signing in. */
-  if (screen === "parentgate") {
-    const valid = gateMode === "in" ? gateEmail.trim().length > 0 && gatePass.length > 0 : gateName.trim().length > 0 && gateEmail.trim().length > 0 && gatePass.length >= 6;
-    return (
-      <div className="app">
-        <main className="screen worlds parent-screen gate-screen">
-          <div className="gate-card">
-            <div className="gate-logo" aria-hidden>🔢</div>
-            <h2 className="gate-title">{t.gateTitle}</h2>
-            <p className="gate-sub">{t.gateSub}</p>
-
-            {googleEnabled() && (
-              <>
-                <div className="gate-google">
-                  <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} lang={lang} />
-                </div>
-                <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
-              </>
-            )}
-
-            <div className="gate-tabs" role="tablist">
-              <button role="tab" aria-selected={gateMode === "in"} className={`gate-tab${gateMode === "in" ? " active" : ""}`} onClick={() => { setGateMode("in"); setGateError(null); }}>
-                {t.gateSignin}
-              </button>
-              <button role="tab" aria-selected={gateMode === "up"} className={`gate-tab${gateMode === "up" ? " active" : ""}`} onClick={() => { setGateMode("up"); setGateError(null); }}>
-                {t.gateSignup}
-              </button>
-            </div>
-
-            <div className="gate-form">
-              {gateMode === "up" && (
-                <label className="form-label">{t.gateNameLabel}
-                  <input className="input-field" type="text" value={gateName} maxLength={30} placeholder={t.gateNamePh} autoFocus enterKeyHint="next"
-                    onChange={(e) => setGateName(e.target.value)} />
-                </label>
-              )}
-              <label className="form-label">{t.gateEmailLabel}
-                <input className="input-field" type="email" inputMode="email" autoComplete="email" value={gateEmail} placeholder={t.gateEmailPh} autoFocus={gateMode === "in"} enterKeyHint="next"
-                  onChange={(e) => setGateEmail(e.target.value)} />
-              </label>
-              <label className="form-label">{t.gatePassLabel}
-                <span className="pass-wrap">
-                  <input className="input-field pass-input" type={gateShowPass ? "text" : "password"} autoComplete={gateMode === "in" ? "current-password" : "new-password"} value={gatePass} placeholder={t.gatePassPh} enterKeyHint="go"
-                    onChange={(e) => setGatePass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && valid && !gateBusy) void submitGate(); }} />
-                  <button type="button" className="pass-toggle" aria-label={t.gateShowPass} aria-pressed={gateShowPass}
-                    onClick={() => setGateShowPass((v) => !v)}>
-                    {gateShowPass ? "🙈" : "👁️"}
-                  </button>
-                </span>
-                {/* Live password hint — one clear instruction, gone when it's long enough. */}
-                {gateMode === "up" && (
-                  <span className={`pass-hint${gatePass.length >= 6 ? " ok" : ""}`} role="status">
-                    {gatePass.length >= 6 ? t.gatePassOk : t.gatePassHint}
-                  </span>
-                )}
-              </label>
-
-              {gateError && <p className="gate-error" role="alert">{gateError}</p>}
-
-              <button className="big-btn gate-submit" disabled={!valid || gateBusy} onClick={() => void submitGate()}>
-                {gateBusy ? t.gateBusy : gateMode === "in" ? t.gateSubmitIn : t.gateSubmitUp}
-              </button>
-            </div>
-
-            <div className="gate-guest">
-              <button className="ghost-btn" onClick={enterAsGuest}>{t.gateGuest}</button>
-              <p className="gate-guest-sub">{t.gateGuestSub}</p>
-            </div>
-
-            <button className="welcome-syllabus-link gate-syllabus-link" onClick={goSyllabus}>
-              {t.welcomeSyllabus}
-            </button>
-            <p className="gate-privacy">{t.gatePrivacy}</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   /* ── INTERACTIVE SYLLABUS (what kids learn) ──────────────────────────────
    *  Data-driven straight from @numberverse/core SKILLS — the SAME brain-aligned
    *  index that drives the course, so what a parent sees IS what the kid plays.
@@ -3260,7 +3108,7 @@ export default function App() {
               <span className="syllabus-guest-emoji" aria-hidden>👀</span>
               <p className="syllabus-guest-text">
                 {t.syllabusGuestNote}{" "}
-                <button className="syllabus-banner-link" onClick={() => { gateReturn.current = "syllabus"; setScreen("parentgate"); }}>
+                <button className="syllabus-banner-link" onClick={() => { gateReturn.current = "syllabus"; setScreen("parent"); }}>
                   {t.gateSignin}
                 </button>
               </p>
@@ -3990,12 +3838,96 @@ export default function App() {
     );
   }
   if (screen === "parent") {
-    // Analytics for one kid at a time (compact), plus a family-summary hero
-    // and — for a signed-in parent — a deep link into the full parent portal
-    // (same origin → the nv_parent_token session carries straight over).
+    // ONE parent page: signed in → the full panel; signed out → the sign-in
+    // form INLINE (there is no separate "parent gate" page anymore). A kid who
+    // taps "For parents" gets this login form, never any parent data.
+    const signedIn = hasParentSession();
+    if (!signedIn) {
+      const valid = gateMode === "in" ? gateEmail.trim().length > 0 && gatePass.length > 0 : gateName.trim().length > 0 && gateEmail.trim().length > 0 && gatePass.length >= 6;
+      return (
+        <div className="app">
+          <main className="screen worlds parent-screen gate-screen">
+            <header className="screen-head">
+              <button className="icon-btn" onClick={() => setScreen("home")} aria-label="Back">‹</button>
+              <div className="head-title">
+                <h2>{t.parentTitle}</h2>
+                <p className="head-sub">{t.parentSub}</p>
+              </div>
+            </header>
+            <div className="gate-card">
+              <div className="gate-logo" aria-hidden>🔢</div>
+              <h2 className="gate-title">{t.settingsSecParents}</h2>
+              <p className="gate-sub">{t.settingsParentsHint}</p>
+
+              {googleEnabled() && (
+                <>
+                  <div className="gate-google">
+                    <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} lang={lang} />
+                  </div>
+                  <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
+                </>
+              )}
+
+              <div className="gate-tabs" role="tablist">
+                <button role="tab" aria-selected={gateMode === "in"} className={`gate-tab${gateMode === "in" ? " active" : ""}`} onClick={() => { setGateMode("in"); setGateError(null); }}>
+                  {t.gateSignin}
+                </button>
+                <button role="tab" aria-selected={gateMode === "up"} className={`gate-tab${gateMode === "up" ? " active" : ""}`} onClick={() => { setGateMode("up"); setGateError(null); }}>
+                  {t.gateSignup}
+                </button>
+              </div>
+
+              <div className="gate-form">
+                {gateMode === "up" && (
+                  <label className="form-label">{t.gateNameLabel}
+                    <input className="input-field" type="text" value={gateName} maxLength={30} placeholder={t.gateNamePh} autoFocus enterKeyHint="next"
+                      onChange={(e) => setGateName(e.target.value)} />
+                  </label>
+                )}
+                <label className="form-label">{t.gateEmailLabel}
+                  <input className="input-field" type="email" inputMode="email" autoComplete="email" value={gateEmail} placeholder={t.gateEmailPh} autoFocus={gateMode === "in"} enterKeyHint="next"
+                    onChange={(e) => setGateEmail(e.target.value)} />
+                </label>
+                <label className="form-label">{t.gatePassLabel}
+                  <span className="pass-wrap">
+                    <input className="input-field pass-input" type={gateShowPass ? "text" : "password"} autoComplete={gateMode === "in" ? "current-password" : "new-password"} value={gatePass} placeholder={t.gatePassPh} enterKeyHint="go"
+                      onChange={(e) => setGatePass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && valid && !gateBusy) void submitGate(); }} />
+                    <button type="button" className="pass-toggle" aria-label={t.gateShowPass} aria-pressed={gateShowPass}
+                      onClick={() => setGateShowPass((v) => !v)}>
+                      {gateShowPass ? "🙈" : "👁️"}
+                    </button>
+                  </span>
+                  {gateMode === "up" && (
+                    <span className={`pass-hint${gatePass.length >= 6 ? " ok" : ""}`} role="status">
+                      {gatePass.length >= 6 ? t.gatePassOk : t.gatePassHint}
+                    </span>
+                  )}
+                </label>
+
+                {gateError && <p className="gate-error" role="alert">{gateError}</p>}
+
+                <button className="big-btn gate-submit" disabled={!valid || gateBusy} onClick={() => void submitGate()}>
+                  {gateBusy ? t.gateBusy : gateMode === "in" ? t.gateSubmitIn : t.gateSubmitUp}
+                </button>
+              </div>
+
+              <div className="gate-guest">
+                <button className="ghost-btn" onClick={enterAsGuest}>{t.gateGuest}</button>
+                <p className="gate-guest-sub">{t.gateGuestSub}</p>
+              </div>
+
+              <button className="welcome-syllabus-link gate-syllabus-link" onClick={goSyllabus}>
+                {t.welcomeSyllabus}
+              </button>
+              <p className="gate-privacy">{t.gatePrivacy}</p>
+            </div>
+          </main>
+        </div>
+      );
+    }
+    // Signed in → the full parent panel.
     const activeId = parentKidId && kids.some((k) => k.id === parentKidId) ? parentKidId : (kid?.id ?? kids[0]?.id ?? null);
     const activeKid = kids.find((k) => k.id === activeId);
-    const signedIn = hasParentSession();
     const pBandName = (b: Band) => (lang === "bn" ? b.titleBn ?? b.title : b.title);
     const famStars = kids.reduce((sum, k) => sum + (stats[k.id]?.stars ?? 0), 0);
     const famPoints = kids.reduce((sum, k) => sum + (stats[k.id]?.score ?? 0), 0);
@@ -4067,96 +3999,6 @@ export default function App() {
                 >
                   {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
                 </button>
-              </div>
-
-              {/* ── 🔭 Kotha class insights — parent opt-in + anonymized
-                  aggregate preview. Parent-panel only (grown-ups-only, behind
-                  the gate); the response carries zero kid identity. */}
-              <div className="parent-card settings-aggregate-card">
-                <div className="parent-head">
-                  <span className="parent-name">{t.aggTitle}</span>
-                  <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
-                </div>
-                <p className="syllabus-settings-sub">{t.aggSub}</p>
-
-                {!aggOpted ? (
-                  <>
-                    <button
-                      className="big-btn settings-signin-btn"
-                      disabled={aggBusy}
-                      onClick={() => {
-                        setAggBusy(true);
-                        void setAggregateOptIn(true).then((ok) => {
-                          setAggBusy(false);
-                          if (ok) {
-                            setAggOpted(true);
-                            void loadAggregates();
-                          }
-                        });
-                      }}
-                    >
-                      {t.aggOptIn}
-                    </button>
-                    {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
-                  </>
-                ) : (
-                  <>
-                    {aggBusy && !agg ? (
-                      <p className="syllabus-settings-sub">…</p>
-                    ) : agg ? (
-                      <div className="agg-preview">
-                        <p className="agg-line">
-                          {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
-                          {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
-                        </p>
-                        {agg.top_misconceptions.length > 0 && (
-                          <p className="agg-block">
-                            <span className="agg-k">{t.aggTopMis}</span>
-                            {agg.top_misconceptions.slice(0, 3).map((m) => (
-                              <span key={m.code} className="agg-item">
-                                {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
-                              </span>
-                            ))}
-                          </p>
-                        )}
-                        {agg.top_struggle_skills.length > 0 && (
-                          <p className="agg-block">
-                            <span className="agg-k">{t.aggTopSkills}</span>
-                            {agg.top_struggle_skills.slice(0, 3).map((s) => {
-                              const sk = filterSkills.find((f) => f.id === s.skill_id);
-                              return (
-                                <span key={s.skill_id} className="agg-item">
-                                  {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
-                                </span>
-                              );
-                            })}
-                          </p>
-                        )}
-                        {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
-                          <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                        )}
-                        <p className="agg-note">{t.aggPreview}</p>
-                      </div>
-                    ) : (
-                      <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                    )}
-                    <button
-                      className="ghost-btn mini agg-optout-btn"
-                      onClick={() => {
-                        setAggBusy(true);
-                        void setAggregateOptIn(false).then((ok) => {
-                          setAggBusy(false);
-                          if (ok) {
-                            setAggOpted(false);
-                            setAgg(null);
-                          }
-                        });
-                      }}
-                    >
-                      {t.aggOptOut}
-                    </button>
-                  </>
-                )}
               </div>
 
               {/* ── Child picker: tap an avatar to switch whose analytics you see ── */}

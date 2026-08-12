@@ -3761,7 +3761,7 @@ body {
 }
 .gate-syllabus-link { margin-top: 2px; }
 
-/* Full-width in-card action button (parent panel aggregate opt-in etc.) */
+/* Full-width in-card action button in the parent panel */
 .settings-signin-btn { width: 100%; margin-top: 2px; }
 
 /* ── parent sign-out card (Settings) ───────────────────────────────────── */
@@ -4091,16 +4091,6 @@ body {
   color: #8fb8d8;
 }
 .settings-sec:first-of-type { margin-top: 8px; }
-
-/* 🔭 #330 Kotha class insights — lives in the (session-gated) parent panel. */
-.settings-aggregate-card { border-color: rgba(124, 232, 210, 0.25); }
-.agg-preview { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
-.agg-line { font-size: 12.5px; color: #e6fffa; font-weight: 700; }
-.agg-block { display: flex; flex-direction: column; gap: 4px; margin: 0; }
-.agg-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #f2cc8f; font-weight: 800; }
-.agg-item { font-size: 12px; color: #a9c9e0; background: rgba(124, 232, 210, 0.07); border-radius: 6px; padding: 4px 8px; width: fit-content; }
-.agg-note { font-size: 11px; color: #7fb8d6; font-style: italic; margin: 4px 0 0; }
-.agg-optout-btn { margin-top: 6px; }
 
 /* ⚙️ Settings screen (kid-facing) — grouped sections, real switches, a
    two-choice language picker, and a voice card that shows what ACTUALLY reads.
