@@ -9,6 +9,7 @@ import type {
   MoniProfile,
   MoniPlan,
   MoniParams,
+  MoniStrictness,
   SkillMasteryLike,
 } from "./types.js";
 
@@ -36,13 +37,16 @@ export function plan(
   mastery: MasteryMap,
   catalog: Record<string, CatalogSkill>,
   params: MoniParams,
+  strictness?: MoniStrictness,
 ): MoniPlan {
   const entries = Object.entries(catalog);
 
   // Confidence/tone: fragile + low recovery → gentle; confident + fast → challenging.
+  // A parent-set strictness (#333) OVERRIDES Moni's automatic tone.
   const fragile = profile.confidence.fragile || profile.confidence.recoveryRate < 0.4;
   const sharp = profile.confidence.recoveryRate > 0.7 && profile.style.speedTendency > 0.6;
-  const tone: MoniPlan["tone"] = fragile ? "gentle" : sharp ? "challenging" : "steady";
+  const autoTone: MoniPlan["tone"] = fragile ? "gentle" : sharp ? "challenging" : "steady";
+  const tone: MoniPlan["tone"] = strictness ?? autoTone;
 
   // Weak skills: low mastery + low confidence in them. Pick the weakest that
   // is also "next" in its band (a real gap, not a skill way above their level).
@@ -95,7 +99,11 @@ export function plan(
   const cat = catalog[focusSkillId];
   const gameId = cat?.game ?? profile.style.bestGame ?? "game-countpop";
   const m = mastery[focusSkillId];
-  const difficulty = Math.max(1, (m ? currentDifficulty(m) : 1) + difficultyDelta);
+
+  // Parent-set strictness (#333) pushes the difficulty one step further in the
+  // chosen direction (on top of whatever the focus selection already implied).
+  const strictnessDelta = strictness === "gentle" ? -1 : strictness === "challenging" ? 1 : 0;
+  const difficulty = Math.max(1, (m ? currentDifficulty(m) : 1) + difficultyDelta + strictnessDelta);
 
   // Session length hint from attention (default 12).
   const sessionLengthHint = profile.attention.fatigueThreshold ?? 12;

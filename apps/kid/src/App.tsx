@@ -557,6 +557,12 @@ interface Strings {
   moniGoalFocus: string;
   moniGoalWeak: string;
   moniGoalReview: (n: number) => string;
+  /* #333 parent-adjustable strictness */
+  moniStrictness: string;
+  moniStrictnessHelp: string;
+  moniStrictnessGentle: string;
+  moniStrictnessSteady: string;
+  moniStrictnessChallenging: string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -894,6 +900,11 @@ const STR: Record<Lang, Strings> = {
     moniGoalFocus: "the main focus right now",
     moniGoalWeak: "still needs work",
     moniGoalReview: (n) => `brush up in ${n} day${n === 1 ? "" : "s"}`,
+    moniStrictness: "How hard should Moni push?",
+    moniStrictnessHelp: "Gentle eases difficulty back, challenging takes it a step up. Changes instantly, offline.",
+    moniStrictnessGentle: "Gentle",
+    moniStrictnessSteady: "Steady",
+    moniStrictnessChallenging: "Challenging",
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1227,6 +1238,11 @@ const STR: Record<Lang, Strings> = {
     moniGoalFocus: "এখনকার প্রধান লক্ষ্য",
     moniGoalWeak: "এখনো অনুশীলন দরকার",
     moniGoalReview: (n) => `${n} দিনে একবার ঝালাই`,
+    moniStrictness: "মনি কতটা চাপ দেবে?",
+    moniStrictnessHelp: "নরম = ধাপ পিছিয়ে নেয়, চ্যালেঞ্জিং = ধাপ উপরে তোলে। সাথে সাথে বদলায়, অফলাইনেও।",
+    moniStrictnessGentle: "নরম",
+    moniStrictnessSteady: "সাধারণ",
+    moniStrictnessChallenging: "চ্যালেঞ্জিং",
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -1509,7 +1525,9 @@ function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
     catalog[s.id] = { id: s.id, band: s.band, game: s.game };
   }
   try {
-    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS);
+    // Parent-set strictness (#333) shapes Moni's tone + difficulty deltas. It
+    // defaults to "steady" (Moni's own automatic read) when never set.
+    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, st.moniStrictness?.[kidId] ?? "steady");
   } catch {
     return null; // a malformed profile must never break the session loop
   }
@@ -3487,6 +3505,34 @@ export default function App() {
                         <details className="parent-help moni-card" open>
                           <summary>🧠 {t.moniTitle}</summary>
                           <p className="moni-tag">{t.moniTag}</p>
+                          {/* 🎚️ #333 parent-adjustable strictness — how hard Moni
+                              pushes this kid. Persists offline; plan() tone +
+                              difficulty follow instantly. */}
+                          <div className="moni-strictness">
+                            <span className="moni-strictness-label">{t.moniStrictness}</span>
+                            <div className="moni-strictness-options" role="group" aria-label={t.moniStrictness}>
+                              {(["gentle", "steady", "challenging"] as const).map((opt) => {
+                                const cur = useKidStore.getState().moniStrictness?.[activeKid.id] ?? "steady";
+                                const label =
+                                  opt === "gentle"
+                                    ? t.moniStrictnessGentle
+                                    : opt === "steady"
+                                      ? t.moniStrictnessSteady
+                                      : t.moniStrictnessChallenging;
+                                return (
+                                  <button
+                                    key={opt}
+                                    className={`moni-strictness-opt${cur === opt ? " active" : ""}`}
+                                    aria-pressed={cur === opt}
+                                    onClick={() => useKidStore.getState().setMoniStrictness(activeKid.id, opt)}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <p className="moni-strictness-help">{t.moniStrictnessHelp}</p>
+                          </div>
                           <div className="moni-grid">
                             <div className="moni-cell">
                               <span className="moni-k">{t.moniLearnStyle}</span>
