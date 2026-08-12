@@ -3703,6 +3703,65 @@ body {
 .gate-submit { width: 100%; margin-top: 2px; }
 .gate-guest { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .gate-guest-sub { margin: 0; font-size: 12px; color: #8d99ae; }
+/* ── Parent PIN pad (#86) — 4-digit gate on the parent area ─────────────── */
+.pin-card { align-items: center; }
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 6px 0 2px;
+}
+.pin-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  transition: all 0.12s ease;
+}
+.pin-dot.filled {
+  background: linear-gradient(135deg, #4cc9f0, #2ec4b6);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 12px rgba(76, 201, 240, 0.6);
+}
+.pin-pad {
+  width: 100%;
+  max-width: 300px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+.pin-key {
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #edf2f4;
+  font-size: 24px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pin-key:active { background: rgba(76, 201, 240, 0.3); transform: scale(0.94); }
+.pin-key-spacer { background: transparent; border: none; cursor: default; }
+.pin-key-back { font-size: 22px; }
+.pin-recovery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.pin-lock-card { border-color: rgba(76, 201, 240, 0.3); }
+.pin-lock-btn {
+  background: rgba(76, 201, 240, 0.14);
+  color: #9be7ff;
+  border: 1px solid rgba(76, 201, 240, 0.35);
+}
+.pin-lock-btn:active { background: rgba(76, 201, 240, 0.28); }
 .gate-privacy {
   margin: 0;
   font-size: 11px;
