@@ -1,3 +1,8 @@
+## 12 Aug 2026 — 0.26.4 (Round placeholder fix (#393) + natural Bangla world/level names + syllabus FAB (#394))
+
+b9ad356 🇧🇩 #394 Natural Bangla world/level names + syllabus FAB (#396)
+91d6da1 🐛 #393 Fix: frameText drops round vars — 'Round {n}' literal placeholders (#395)
+
 ## 12 Aug 2026 — 0.26.3 (Google button always in the app language (no more German))
 
 185f64a 🔤 #391 Auth: pin Google button language to the app (no more 'Weiter mit Google') (#392)
