@@ -1,3 +1,11 @@
+## 12 Aug 2026 — v27 (best-UI/UX parent panel — family summary hero + deep link to full parent portal)
+
+ffdaaaa chore(core): commit moni tutor module (per-child learning model) + index wiring
+d9cf399 feat(kid): best-UI/UX parent panel — family summary hero, stat tiles, richer kid picker + deep link to the full parent portal (#155)
+7f6f3a2 track: v26 shipped — secure parent portal, revocable sessions, logout, account + family overview (#154 done)
+4ff3e9d fix(infra): nginx serves .html for /parent/ — the portal dashboard (parent.html) was unreachable, /parent/parent fell through to login
+6bb44f1 fix(api): sessions timestamps — use naive UTC to match Postgres TIMESTAMP (aware subtraction 500'd every authed request)
+
 ## 12 Aug 2026 — v26 (secure parent portal — revocable sessions, logout, account & family overview)
 
 f2b49c8 feat: secure parent portal — revocable sessions, logout, account & family overview (#153)
