@@ -495,16 +495,28 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
   if (!synth) return;
   const doSpeak = () => {
     if (token !== speakToken) return;
+    const platform = detectPlatform();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = lang === "bn" ? "bn-BD" : "en-US";
+    const v = pickVoice(lang, platform);
+    if (v) u.voice = v;
+    else if (lang === "bn") {
+      // 🗣️ #387 — NEVER read Bengali script with a non-Bangla voice. On a
+      // device with NO Bangla voice (desktop Chrome, a phone without the bn
+      // TTS pack), the engine reads Bengali with its DEFAULT (English) voice
+      // → exactly the "speaks like latin, not bengali" sound users report,
+      // worst during the neural download window when every Bangla line falls
+      // back to Web Speech. A wrong-language voice is worse than silence:
+      // drop the line — the on-device neural voice takes over the moment it's
+      // ready (it preloads at boot and retries on every gesture). English is
+      // unaffected (it falls through to u.lang alone, which is harmless).
+      return;
+    }
     // Cross-engine latest-wins: if a neural Bangla line is still playing or
     // synthesizing, cut it — the newest line wins across BOTH engines.
     neuralCancel();
     primeSpeech(); // no-op once proven unlocked — safety if we're inside a gesture
     try {
-      const platform = detectPlatform();
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = lang === "bn" ? "bn-BD" : "en-US";
-      const v = pickVoice(lang, platform);
-      if (v) u.voice = v;
       u.rate = opts.rate ?? 0.9; // a touch slower — small ears
       // Brighter than adult speech, but capped on Android so Google's voices
       // stay warm instead of chipmunk; Apple's voices take the higher pitch.
