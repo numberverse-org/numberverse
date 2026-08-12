@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -147,26 +147,76 @@ async def record_stories(
     return {"recorded": len(body)}
 
 
+def _story_filters(kid_id: uuid.UUID, skill_id: str | None, error_kind: str | None, action: str | None, misconception_code: str | None):
+    """Shared WHERE clause for Kotha story search — filter by skill, error kind,
+    action or misconception code. None = no filter on that axis."""
+    q = select(LearningStory).where(LearningStory.kid_id == kid_id)
+    if skill_id:
+        q = q.where(LearningStory.skill_id == skill_id)
+    if error_kind:
+        q = q.where(LearningStory.error_kind == error_kind)
+    if action:
+        q = q.where(LearningStory.action == action)
+    if misconception_code:
+        q = q.where(LearningStory.misconception_code == misconception_code)
+    return q
+
+
 @router.get("/kids/{kid_id}/stories", response_model=list[LearningStoryOut])
 async def get_stories(
     kid_id: uuid.UUID,
+    skill_id: str | None = None,
+    error_kind: str | None = None,
+    action: str | None = None,
+    misconception_code: str | None = None,
     limit: int = 100,
     offset: int = 0,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
-    """Read a kid's Kotha stories (newest first). This is the retrieval hook —
-    the future RAG pipeline reads from here."""
+    """Read a kid's Kotha stories (newest first). Filterable by skill, error
+    kind, action and misconception code — the RAG search hook. Pass
+    `skill_id` + `error_kind` to find a kid's recurring mistakes on a skill."""
     owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     limit = min(max(limit, 1), 500)
     offset = max(offset, 0)
-    result = await db.scalars(
-        select(LearningStory)
-        .where(LearningStory.kid_id == kid_id)
-        .order_by(LearningStory.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    q = _story_filters(kid_id, skill_id, error_kind, action, misconception_code)
+    result = await db.scalars(q.order_by(LearningStory.created_at.desc()).limit(limit).offset(offset))
     return list(result)
+
+
+@router.get("/kids/{kid_id}/stories/stats")
+async def story_stats(
+    kid_id: uuid.UUID,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kotha counts — the shape of a kid's learning. Returns total stories plus
+    counts grouped by skill, error kind and misconception code, so the app can
+    surface "this kid keeps confusing tens and ones" without paging through rows."""
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+
+    total = await db.scalar(select(func.count()).select_from(LearningStory).where(LearningStory.kid_id == kid_id))
+    by_skill = await db.execute(
+        select(LearningStory.skill_id, func.count()).where(LearningStory.kid_id == kid_id).group_by(LearningStory.skill_id)
+    )
+    by_error = await db.execute(
+        select(LearningStory.error_kind, func.count())
+        .where(LearningStory.kid_id == kid_id, LearningStory.error_kind.is_not(None))
+        .group_by(LearningStory.error_kind)
+    )
+    by_mis = await db.execute(
+        select(LearningStory.misconception_code, func.count())
+        .where(LearningStory.kid_id == kid_id, LearningStory.misconception_code.is_not(None))
+        .group_by(LearningStory.misconception_code)
+    )
+    return {
+        "total": total or 0,
+        "by_skill": {r[0]: r[1] for r in by_skill.all()},
+        "by_error_kind": {r[0]: r[1] for r in by_error.all()},
+        "by_misconception": {r[0]: r[1] for r in by_mis.all()},
+    }
