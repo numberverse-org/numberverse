@@ -1,3 +1,11 @@
+## 13 Aug 2026 — 0.26.16 (per-day wrong-answer history + playtime caps + band lock + data export)
+
+be0df42 docs: mark #273 work order done (merged #432)
+43e554e feat: parent-facing data export (#273) (#432)
+7fb11a0 feat(safety): server-side age-band lock on progress + stories (#275) (#431)
+facd365 feat(playtime): per-weekday caps with gentle enforcement (#6) (#430)
+b4d83bd feat(kid): per-day wrong-answer history in the parent panel (#78) (#429)
+
 ## 13 Aug 2026 — 0.26.15 (parent PIN lock + guardrail housekeeping)
 
 97dee44 feat(kid): parent-area PIN lock (#86) (#428)
