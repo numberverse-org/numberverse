@@ -12,6 +12,7 @@ import {
   saveKidSettings,
   getActivity,
   getWeekly,
+  getWeakSkills,
   resetKidProgress,
   createKid,
   updateKid,
@@ -32,6 +33,7 @@ import {
   type NewKid,
   type SessionRow,
 } from "../lib/api";
+import { worksheetFor, type WorksheetProblem } from "../lib/worksheet";
 
 const AVATARS = ["🛡️", "🔮", "🗡️", "🪓", "🏹", "🦊", "🐱", "🐼", "🐸", "🦄", "🐯", "🐰", "🐨", "🐹", "🦁"];
 const SUBJECTS = [
@@ -201,6 +203,10 @@ export default function ParentDashboard() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // #132 — printable worksheet from weak skills
+  const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
+  const [sheetBusy, setSheetBusy] = useState(false);
+
   // ── account & security ──
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [displayName, setDisplayName] = useState("");
@@ -363,6 +369,26 @@ export default function ParentDashboard() {
       setError("Failed to reset progress.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** #132 — build + show a printable worksheet from the kid's weak skills. */
+  async function handleWorksheet() {
+    if (!token || !activeId || sheetBusy) return;
+    setSheetBusy(true);
+    setError(null);
+    try {
+      const weak = await getWeakSkills(token, activeId);
+      const active = kids.find((k) => k.id === activeId);
+      setSheet({
+        name: active?.name ?? "My kid",
+        items: worksheetFor(weak, "en", Date.now() % 100000),
+        date: new Date().toISOString().slice(0, 10),
+      });
+    } catch {
+      setError("Couldn't load weak skills for the worksheet.");
+    } finally {
+      setSheetBusy(false);
     }
   }
 
@@ -716,6 +742,31 @@ export default function ParentDashboard() {
                   </p>
                 )}
               </>
+            )}
+          </section>
+
+          {/* #132 — printable worksheet from weak skills */}
+          <section className="card worksheet-card">
+            <h2>📄 Printable worksheet</h2>
+            <p className="muted small">
+              A practice sheet built from what {active.name} hasn't mastered yet — perfect for offline
+              homework. Print or save as PDF (your browser's Print dialog).
+            </p>
+            <div className="worksheet-actions">
+              <button className="btn" disabled={sheetBusy} onClick={() => void handleWorksheet()}>
+                {sheetBusy ? "Building…" : "🖨️ Build worksheet"}
+              </button>
+              {sheet && (
+                <button className="btn ghost-btn" onClick={() => window.print()}>Print / save PDF</button>
+              )}
+              {sheet && (
+                <button className="btn ghost-btn" onClick={() => setSheet(null)}>Close</button>
+              )}
+            </div>
+            {sheet && (
+              <p className="muted small" style={{ marginTop: "8px" }}>
+                {sheet.items.length} practice lines for {sheet.name} · generated {sheet.date} · tap Print for a clean A4 sheet.
+              </p>
             )}
           </section>
 
@@ -1075,6 +1126,30 @@ export default function ParentDashboard() {
 
       {kids.length === 0 && !error && (
         <p className="hint center">No kids on this account yet — add one above to get started.</p>
+      )}
+
+      {/* #132 — print-only worksheet. Rendered in the DOM so window.print()
+          picks it up; CSS @media print hides everything else. */}
+      {sheet && (
+        <div className="print-sheet" aria-hidden="false">
+          <h1>📄 Numberverse practice worksheet</h1>
+          <p className="sheet-meta">
+            {sheet.name} · {sheet.date} · numberverse.org
+          </p>
+          <p className="sheet-sub">
+            Practice a little every day — you’re getting better every time! ✨
+          </p>
+          <div className="sheet-problems">
+            {sheet.items.map((p, i) => (
+              <div className="sheet-problem" key={`${p.skillId}-${i}`}>
+                <span className="sheet-num">{i + 1}.</span>
+                <span className="sheet-prompt">{p.prompt}</span>
+                <span className="sheet-answer">{p.lines === 1 ? "____" : ""}</span>
+              </div>
+            ))}
+          </div>
+          <p className="sheet-footer">Made with ❤️ by Numberverse for {sheet.name}</p>
+        </div>
       )}
     </main>
   );

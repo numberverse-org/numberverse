@@ -134,6 +134,21 @@ class MasteryOut(BaseModel):
     streak: int
 
 
+class WeakSkillOut(BaseModel):
+    """A skill the kid hasn't mastered yet (< threshold) — feeds the printable
+    worksheet generator (#132). Titles come from the catalog (en + bn)."""
+
+    skill_id: str
+    band: int
+    subject: str
+    title: str
+    title_bn: str | None = None
+    description: str | None = None
+    mastery: float
+    attempts: int
+    correct: int
+
+
 # ── Progress ──
 class ProgressEventIn(BaseModel):
     kid_id: uuid.UUID
