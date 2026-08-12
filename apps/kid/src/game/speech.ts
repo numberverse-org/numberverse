@@ -472,12 +472,20 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // wrong-language voice (the old German bug). If neural can't actually play
   // (iOS audio element still locked, synth error, worker hiccup), we FALL BACK
   // to Web Speech for that line — Bangla is never silent.
+  //
+  // FALL BACK ONLY ON A GENUINE "failed" — a "superseded" outcome means a NEWER
+  // line already took over (another neuralSpeak — a rapid second question, or
+  // the voice-picker preview — or webSpeak's neuralCancel on a newer web line).
+  // Falling back then makes the OLD line speak on Web Speech WHILE the new line
+  // speaks on neural → the both-voices-at-once bug. "superseded" must stay silent.
   if (lang === "bn" && isNeuralReady()) {
     void neuralSpeak(clean, { queue: opts.cancel === false, volume: opts.volume ?? 0.9 }).then(
-      (played) => {
-        if (!played && token === speakToken) webSpeak(clean, lang, opts, token);
+      (outcome) => {
+        if (outcome === "failed" && token === speakToken) webSpeak(clean, lang, opts, token);
       },
       () => {
+        // Defensive — neuralSpeak never rejects today, but if it ever does,
+        // treat it as a genuine failure (never a double-speak source).
         if (token === speakToken) webSpeak(clean, lang, opts, token);
       }
     );
