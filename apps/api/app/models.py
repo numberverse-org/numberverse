@@ -21,6 +21,7 @@ class Profile(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kids: Mapped[list["Kid"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
+    sessions: Mapped[list["Session"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
 
 
 class Kid(Base):
@@ -57,6 +58,28 @@ class KidSettings(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kid: Mapped[Kid] = relationship(back_populates="settings")
+
+
+class Session(Base):
+    """A revocable login. The JWT carries `sid`; every authenticated request
+    checks this row is still alive (revoked_at IS NULL), so "Sign out" and
+    "Sign out all devices" actually kill tokens server-side — a leaked token
+    dies the moment the parent revokes it, no waiting for JWT expiry."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    # SHA-256 of the signed token — the raw JWT is never stored, only a
+    # one-way fingerprint so a DB leak can't be replayed as credentials.
+    token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
+    user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
+    ip: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    profile: Mapped[Profile] = relationship(back_populates="sessions")
 
 
 class Subject(Base):

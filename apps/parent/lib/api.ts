@@ -64,6 +64,16 @@ export interface NewKid {
   birth_year?: number | null;
 }
 
+/** One active login on the account (from GET /auth/sessions). */
+export interface SessionRow {
+  id: string;
+  created_at: string;
+  last_seen_at: string;
+  user_agent: string | null;
+  ip: string | null;
+  current: boolean;
+}
+
 async function authFetch(token: string, url: string, init?: RequestInit): Promise<Response> {
   return fetch(url, {
     ...init,
@@ -81,6 +91,59 @@ export async function login(email: string, password: string): Promise<LoginRespo
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error("Invalid credentials");
+  return res.json();
+}
+
+/** Revoke the current session server-side (real logout — the token dies on
+ *  the API, not just in this browser). Best-effort: fine if the network fails,
+ *  the local clear below still ends the session here. */
+export async function signout(token: string): Promise<void> {
+  try {
+    await authFetch(token, `${API}/auth/logout`, { method: "POST" });
+  } catch {
+    /* offline — local clear still wins */
+  }
+}
+
+/** Sign out on every device — revokes ALL sessions on the account. */
+export async function signoutAll(token: string): Promise<void> {
+  const res = await authFetch(token, `${API}/auth/logout-all`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to sign out all devices");
+}
+
+export async function getSessions(token: string): Promise<SessionRow[]> {
+  const res = await authFetch(token, `${API}/auth/sessions`);
+  if (!res.ok) throw new Error("Failed to load sessions");
+  return res.json();
+}
+
+export async function revokeSession(token: string, sessionId: string): Promise<void> {
+  const res = await authFetch(token, `${API}/auth/sessions/${sessionId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to revoke session");
+}
+
+export async function changePassword(token: string, current: string, next: string): Promise<void> {
+  const res = await authFetch(token, `${API}/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password: current, new_password: next }),
+  });
+  if (!res.ok) throw new Error("Password change failed");
+}
+
+export async function updateProfile(token: string, displayName: string): Promise<Profile> {
+  const res = await authFetch(token, `${API}/auth/me`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ display_name: displayName }),
+  });
+  if (!res.ok) throw new Error("Failed to update profile");
+  return res.json();
+}
+
+export async function getProfile(token: string): Promise<Profile> {
+  const res = await authFetch(token, `${API}/auth/me`);
+  if (!res.ok) throw new Error("Failed to load profile");
   return res.json();
 }
 

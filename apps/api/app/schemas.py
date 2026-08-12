@@ -36,6 +36,28 @@ class TokenOut(BaseModel):
     profile: ProfileOut
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+
+class ProfileUpdateIn(BaseModel):
+    display_name: str | None = Field(default=None, max_length=80)
+
+
+class SessionOut(BaseModel):
+    """One active login on the account (for the "manage my devices" screen)."""
+
+    id: uuid.UUID
+    created_at: datetime
+    last_seen_at: datetime
+    user_agent: str | None = None
+    ip: str | None = None
+    current: bool = False  # is this the session that called /auth/sessions?
+
+    model_config = {"from_attributes": True}
+
+
 # ── Kids ──
 class KidIn(BaseModel):
     name: str = Field(min_length=1, max_length=40)
