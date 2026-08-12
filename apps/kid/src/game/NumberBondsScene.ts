@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { t } from "./i18n";
+import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
@@ -10,6 +11,8 @@ import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, 
 import { answerRow } from "./layout";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnbonds")?.difficultyLevels ?? [4, 5, 6, 8, 10, 12];
+/** Skill seed for deterministic framing rotation. */
+const SKILL_ID = GAMES.find((g) => g.id === "game-bnbonds")?.skillId ?? "number-bonds-10";
 const TARGET = 10;
 const ROUNDS_TO_FINISH = 3;
 const BUTTON_RADIUS = 52;
@@ -50,7 +53,7 @@ export class NumberBondsScene extends Phaser.Scene {
       .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t("howManyMore"));
+    this.prompt.set(frameText("howManyMore", SKILL_ID, 0));
     this.shownText = this.add
       .text(0, 0, "", txt(72, "#ffd166", {bold: true, outline: true}))
       .setOrigin(0.5);
@@ -84,6 +87,7 @@ export class NumberBondsScene extends Phaser.Scene {
     this.answer = TARGET - this.shown;
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
+    this.prompt.set(frameText("howManyMore", SKILL_ID, this.levelIndex));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.shownText.setText(String(this.shown));
     speakMath("bonds", this.shown, TARGET);

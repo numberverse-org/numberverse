@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { t } from "./i18n";
+import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win, starPop } from "./audio";
@@ -11,6 +12,8 @@ import { correctCelebrate } from "./celebrate";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-count100")?.difficultyLevels ?? [10, 20, 30, 40, 60, 100];
+/** The skill this scene teaches — used for deterministic framing rotation. */
+const SKILL_ID = GAMES.find((g) => g.id === "game-count100")?.skillId ?? "count-to-100";
 
 const ROD_H = 26;      // ten-rod height (px)
 const ROD_GAP = 8;
@@ -111,7 +114,7 @@ export class Count100Scene extends Phaser.Scene {
     this.total = 0;
     this.startedAt = this.time.now;
     const target = this.roundTarget;
-    this.roundText.setText(t("count100Round", { n: this.levelIndex + 1, target }));
+    this.roundText.setText(frameText("count100Round", SKILL_ID, this.levelIndex, { n: this.levelIndex + 1, target }));
     this.instruction.set(t("count100Make", { n: target }));
     this.refresh();
   }

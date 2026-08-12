@@ -11,8 +11,11 @@ import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, 
 import { correctCelebrate } from "./celebrate";
 import { SAB } from "./safeArea";
 import { enableDragToPop } from "./gestures";
+import { frameText } from "./framing";
 
 const LEVELS = GAMES.find((g) => g.id === "game-countpop")?.difficultyLevels ?? [3, 4, 5, 7, 10, 12];
+/** The skill this scene teaches — used for deterministic framing rotation. */
+const SKILL_ID = GAMES.find((g) => g.id === "game-countpop")?.skillId ?? "count-1-10";
 /** Per-skill levels are passed in scene data (App resolves the skill's game);
  *  this constant is only the fallback when launched standalone. */
 /** Big, thumb-friendly bubble diameter (mobile-first: ≥ 88px visual). */
@@ -118,7 +121,7 @@ export class CountPopScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.bubbles.forEach((b) => b.sprite.destroy());
     this.bubbles = [];
-    this.roundText.setText(t("roundTap", { n: this.levelIndex + 1, count: this.roundTarget }));
+    this.roundText.setText(frameText("roundTap", SKILL_ID, this.levelIndex, { n: this.levelIndex + 1, count: this.roundTarget }));
     this.meter.set(this.roundCount, this.roundTarget);
     speak(getAppLang() === "bn"
       ? `এক থেকে ${bnNumber(this.roundTarget)} পর্যন্ত ক্রমানুসারে সংখ্যাগুলো ফুটাও`
