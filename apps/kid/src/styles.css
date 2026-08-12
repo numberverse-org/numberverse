@@ -2166,6 +2166,8 @@ body {
 .moni-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fb8d6; }
 .moni-v { font-size: 13px; font-weight: 700; color: #f4f9ff; }
 .moni-next { font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border-radius: 8px; padding: 8px 10px; margin: 0; }
+/* 🧠 soft session-length note on the done screen — always a suggestion, never a wall */
+.moni-session-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border: 1px dashed rgba(242, 204, 143, 0.35); border-radius: 20px; padding: 6px 14px; margin: 0 auto 10px; max-width: 420px; text-align: left; }
 /* Share-progress button + feedback inside the parent-panel analytics card */
 .share-progress-btn {
   align-self: flex-start;

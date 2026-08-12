@@ -542,6 +542,7 @@ interface Strings {
   moniNextMove: string;
   moniTone: string;
   moniSessionLength: string;
+  moniSessionHint: (n: number) => string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -865,6 +866,7 @@ const STR: Record<Lang, Strings> = {
     moniNextMove: "Moni's next move",
     moniTone: "Tone",
     moniSessionLength: "Best session",
+    moniSessionHint: (n) => `Moni saw you stay sharp for ~${n} rounds — keep going or take a break, your call 💛`,
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1184,6 +1186,7 @@ const STR: Record<Lang, Strings> = {
     moniNextMove: "মনির পরবর্তী পদক্ষেপ",
     moniTone: "ভাষা",
     moniSessionLength: "সেরা সেশন",
+    moniSessionHint: (n) => `মণি দেখল ~${n} রাউন্ড পর্যন্ত তোমার মনোযোগ ছিল — চালিয়ে যাও বা বিরতি নাও, তোমার পছন্দ 💛`,
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -3399,6 +3402,13 @@ export default function App() {
                               <span className="moni-v">{focusMs}</span>
                             </div>
                             <div className="moni-cell">
+                              <span className="moni-k">{t.moniSessionLength}</span>
+                              <span className="moni-v">
+                                ~{moniPlanFor(activeKid.id)?.sessionLengthHint ?? mp.attention.fatigueThreshold ?? 12}{" "}
+                                {lang === "bn" ? "রাউন্ড" : "rounds"}
+                              </span>
+                            </div>
+                            <div className="moni-cell">
                               <span className="moni-k">{t.moniConfidence}</span>
                               <span className="moni-v">{pace}</span>
                             </div>
@@ -4011,6 +4021,11 @@ export default function App() {
     const newMastered = sessionRef.current.filter(
       (s) => !masteredBeforeRef.current.has(s.skillId) && (skillsMap[`${kid.id}:${s.skillId}`]?.pMastered ?? 0) >= MASTERY_THRESHOLD
     ).length;
+    // 🧠 MONI soft session hint — a measured attention dip or a sensible default.
+    // Soft by design: the keep-going / play-again / home buttons stay available.
+    const moniDone = useKidStore.getState().moni?.[kid.id];
+    const sessionHint =
+      moniPlanFor(kid.id)?.sessionLengthHint ?? moniDone?.attention.fatigueThreshold ?? 12;
     // a field of falling confetti — each piece is pure CSS, runs forever.
     // Module-level (not a hook) — see DONE_CONFETTI above.
     const confetti = DONE_CONFETTI;
@@ -4065,6 +4080,11 @@ export default function App() {
             <span className="rank-badge-title">{rank.title}</span>
             {rank.nextTitle && <span className="rank-badge-next">{t.rankNextNeed(rank.nextTitle, rank.need)}</span>}
           </div>
+          {moniDone && moniDone.totalRounds >= 4 && (
+            <div className="moni-session-note">
+              <Icon name="nova" size={18} /> {t.moniSessionHint(sessionHint)}
+            </div>
+          )}
           <div className="badge">
             {complete
               ? nextWorld
