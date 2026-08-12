@@ -1,3 +1,24 @@
+## 13 Aug 2026 — 0.26.15 (parent PIN lock + guardrail housekeeping)
+
+97dee44 feat(kid): parent-area PIN lock (#86) (#428)
+9f8e66a docs: mark #90 shipped (privacy audit)
+26b852b 🔒 Privacy data-minimization audit (#90): docs/PRIVACY.md — every stored field justified (#427)
+9c37312 docs: mark #93 shipped (share-PNG metadata stripper)
+e664b78 🖼️ Kid-safe share PNGs (#93): stripPngMetadata in core + zero-metadata test (#426)
+108ae27 docs: mark #91 #92 shipped (content-safety + no-ads gates)
+236d72b 🛡️ Content-safety + no-ads CI gates (#91 #92): dedicated fail-closed scans with allowlist (#425)
+012e2cc docs: TRACKER housekeeping batch (pg backup, offline verify, auto-rollback, uptime monitor, cold-start baseline)
+183cdf1 🐢 Cold-start baseline (#117): PERF_COLDSTART.md — entry is the tail; engine already lazy; device needed (#424)
+c8e1d50 docs: mark #123 shipped (uptime monitor)
+6e3c587 🔔 Uptime monitor → Telegram alert (#123): 5-min probe + false-alarm guard + recovery (#423)
+5231b5e docs: mark #125 shipped (auto-rollback)
+5d80e7b ↩️ Auto-rollback on failed deploy (#125): version-tagged images + origin-aware rollback (#422)
+b77104c docs: mark #114 shipped (offline verification)
+bc98644 📴 Offline verification (#114): docs/OFFLINE.md — test matrix + zero network on boot (#421)
+5c6e817 docs: mark #122 shipped (pg backup cron live on box)
+41c053f 🗄️ Postgres backup schedule to box disk (#122): pg_backup.sh dump + retention + restore drill (#420)
+5b1de5a docs: mark #120 #121 #124 #126 #129 released in 0.26.14; harden smoke test against Cloudflare cache lag
+
 ## 13 Aug 2026 — 0.26.14 (CI oracle gate, post-deploy smoke test, secrets hygiene scan, structured error log)
 
 6ef237f 📝 Structured error log (#124): rotating JSON-lines error file, PII-redacted (#419)
