@@ -1,3 +1,9 @@
+## 12 Aug 2026 — 0.26.1 (Bangla voice pronunciation fix + Google sign-in hardening + parent gate UX)
+
+d7d3bac 🎨 #383 Auth: parent gate UX — single action, show/hide password, hints (#386)
+5dc5b88 🔐 #382 Auth: Google sign-in hardening — retry, backend check, fallback (#385)
+2d89bd0 🗣️ #381 Voice: Bangla TTS pronunciation — normalizer before synthesis (#384)
+
 ## 12 Aug 2026 — 0.26.0 (v26 complete — Kotha RAG + Moni adaptive suite)
 
 fcfcefb 📚 #322 Kotha: story inspector in parent panel (list + filters, offline) (#380)
