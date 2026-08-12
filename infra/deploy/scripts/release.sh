@@ -86,6 +86,35 @@ fi
 echo "── 6/6 Deploy to box ───────────────────────────"
 bash infra/deploy/scripts/deploy.sh
 
+# #121 — post-deploy smoke test: the stamp MUST be live. curl the deployed
+# bundle and assert it carries this release's APP_BUILD string. Fail loudly
+# with the rollback hint (the box still runs the previous tag until retag).
+echo "── 6/7 Smoke test (live stamp) ─────────────────"
+LIVE="https://kids.munna-khan.xyz"
+HIT=0
+for _ in 1 2 3 4 5; do
+  HTML=$(curl -sL --max-time 15 "$LIVE/" || true)
+  JS=$(printf '%s' "$HTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+  if [ -n "$JS" ]; then
+    BODY=$(curl -sL --max-time 20 "$LIVE/$JS" || true)
+    if printf '%s' "$BODY" | grep -qF "$VERSION"; then
+      echo "  ✓ $LIVE serves $VERSION ($JS)"
+      HIT=1
+      break
+    fi
+  fi
+  echo "  … stamp not live yet (attempt $_/5), waiting 10s"
+  sleep 10
+done
+if [ "$HIT" != "1" ]; then
+  echo "  ✖ POST-DEPLOY SMOKE FAILED: $LIVE does not serve $VERSION." >&2
+  echo "  ✖ The previous tag is still live. Rollback hint: the box was NOT" >&2
+  echo "     retagged (we never create a new tag for a failed deploy), so" >&2
+  echo "     re-run after fixing, or check: ssh munna@192.168.0.104 &&" >&2
+  echo "     cd numberverse-demo && docker compose logs api web" >&2
+  exit 1
+fi
+
 echo "════════════════════════════════════════════════"
-echo "  ✅ $VERSION shipped. Live: https://kids.munna-khan.xyz"
+echo "  ✅ $VERSION shipped + smoke-tested. Live: $LIVE"
 echo "════════════════════════════════════════════════"
