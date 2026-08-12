@@ -6,16 +6,35 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..bandlock import skill_band_allowed
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import ConfigEntry, Kid, LearningStory, ProgressEvent, Profile, SkillMastery
+from ..models import ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
 from ..schemas import LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
 from ..scrub import redact_context
+from ..seed import SKILLS_SEED
 
 # #274 — write endpoints are the abuse surface (bulk story/progress replay). The
 # limiter keys on account+IP and is far above real sync cadence (see ratelimit.py).
 WRITE_RATE_LIMIT = rate_limit()
+
+# #275 — age-appropriate band lock (SERVER side). The client already locks worlds
+# above the parent's `max_band`; this is the enforcement layer so a tampered or
+# buggy client can NEVER persist progress/stories for content beyond the cap.
+# skill_id → band, from the seed (the same catalog the client ships — the audit
+# gate keeps them in sync).
+SKILL_BANDS: dict[str, int] = {sid: band for sid, band, _subject, _t, _tb in SKILLS_SEED}
+
+
+async def _load_band_caps(db: AsyncSession, kid_ids: set[uuid.UUID]) -> dict[uuid.UUID, int | None]:
+    """Load each kid's configured max_band (None = no cap). One query per batch."""
+    if not kid_ids:
+        return {}
+    rows = await db.execute(
+        select(KidSettings.kid_id, KidSettings.max_band).where(KidSettings.kid_id.in_(kid_ids))
+    )
+    return {kid_id: max_band for kid_id, max_band in rows.all()}
 
 
 def _bkt_update(mastery: float, correct: bool, p_learn=0.10, p_guess=0.15, p_slip=0.10) -> float:
@@ -60,7 +79,14 @@ async def record_progress(
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
 
-    for e in body.events:
+    # #275 — band lock: drop events for skills beyond the kid's max_band (or any
+    # skill we can't verify when a cap is set). Never lets a capped kid persist
+    # out-of-band progress, even from a tampered client.
+    caps = await _load_band_caps(db, kid_ids)
+    events = [e for e in body.events if skill_band_allowed(e.skill_id, SKILL_BANDS, caps.get(e.kid_id))]
+    band_skipped = len(body.events) - len(events)
+
+    for e in events:
         db.add(
             ProgressEvent(
                 kid_id=e.kid_id,
@@ -91,7 +117,7 @@ async def record_progress(
         sm.last_decay = datetime.now(timezone.utc)
 
     await db.commit()
-    return {"recorded": len(body.events)}
+    return {"recorded": len(events), "band_skipped": band_skipped}
 
 
 @router.get("/kids/{kid_id}/mastery", response_model=list[MasteryOut])
@@ -139,6 +165,12 @@ async def record_stories(
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
 
+    # #275 — band lock on stories too: a capped kid must not accumulate learning
+    # moments for out-of-band skills (same rule as /progress).
+    caps = await _load_band_caps(db, kid_ids)
+    stories = [s for s in body if skill_band_allowed(s.skill_id, SKILL_BANDS, caps.get(s.kid_id))]
+    band_skipped = len(body) - len(stories)
+
     rows = [
         {
             "kid_id": s.kid_id,
@@ -155,14 +187,14 @@ async def record_stories(
             # #270 — redact PII-shaped strings in the context envelope BEFORE storage.
             "context": redact_context(s.context),
         }
-        for s in body
+        for s in stories
     ]
     stmt = pg_insert(LearningStory).values(rows)
     stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"])
     result = await db.execute(stmt)
     await db.commit()
-    inserted = result.rowcount if result.rowcount is not None else len(body)
-    return {"recorded": inserted, "duplicates_skipped": len(body) - inserted}
+    inserted = result.rowcount if result.rowcount is not None else len(rows)
+    return {"recorded": inserted, "duplicates_skipped": len(rows) - inserted, "band_skipped": band_skipped}
 
 
 def _story_filters(kid_id: uuid.UUID, skill_id: str | None, error_kind: str | None, action: str | None, misconception_code: str | None):
