@@ -4,6 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { login, type LoginResponse } from "../../lib/api";
 
+// Demo-mode only: the seeded demo@numberverse.dev account is REAL on the box
+// (a live kid + plus subscription). Advertising its credentials on a production
+// build invites anyone to sign in as the demo parent. Only show the hint when
+// the build opts in (NEXT_PUBLIC_DEMO_MODE=1); production default is OFF.
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +55,7 @@ export default function LoginPage() {
           />
           {error && <p className="err">{error}</p>}
           <button className="btn" type="submit">Sign in</button>
-          <p className="hint">Demo parent: demo@numberverse.dev / demo1234</p>
+          {DEMO_MODE && <p className="hint">Demo parent: demo@numberverse.dev / demo1234</p>}
         </form>
       )}
     </main>
