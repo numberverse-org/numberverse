@@ -332,6 +332,13 @@ interface Strings {
   syncError: string;
   pickKid: string;
   switchKid: (avatar: string, name: string) => string;
+  /* #22 — sibling co-op: two kids, one device, alternating turns. */
+  siblingCoop: string;
+  passDevice: string;
+  passTo: (name: string) => string;
+  nowPlaying: (name: string) => string;
+  youBadge: string;
+  coopHint: string;
   parentZone: string;
   parentNote: string;
   whoPlaying: string;
@@ -830,6 +837,13 @@ const STR: Record<Lang, Strings> = {
     storyQueueNote: (n) => `${n} learning moments saved on this device — they'll reach the cloud when you're online 📚`,
     pickKid: "👶 Pick your kid",
     switchKid: (a, n) => `${a} ${n} — switch kid`,
+    // #22 — sibling co-op: two kids, one device, alternating turns.
+    siblingCoop: "Sibling co-op",
+    passDevice: "Pass the device",
+    passTo: (name) => `Pass to ${name}`,
+    nowPlaying: (name) => `${name} is playing now`,
+    youBadge: "You",
+    coopHint: "Two kids, one device — take turns!",
     parentZone: "👨‍👩‍👧 Parent Zone",
     parentNote:
       "Worlds unlock by learning progress, not age — master a world's skills to open the next one.",
@@ -1298,6 +1312,13 @@ const STR: Record<Lang, Strings> = {
     storyQueueNote: (n) => `${n}টি শেখার মুহূর্ত এই ডিভাইসে সংরক্ষিত — অনলাইন হলে ক্লাউডে পৌঁছে যাবে 📚`,
     pickKid: "👶 বাচ্চা বাছাই করুন",
     switchKid: (a, n) => `${a} ${n} — পরিবর্তন করুন`,
+    // #22 — sibling co-op: two kids, one device, alternating turns.
+    siblingCoop: "ভাই-বোনের খেলা",
+    passDevice: "হাত বদল",
+    passTo: (name) => `${name}-কে দাও`,
+    nowPlaying: (name) => `এখন খেলছে ${name}`,
+    youBadge: "তুমি",
+    coopHint: "দুই ভাই-বোন, একটি ডিভাইস — পালা করে খেলো!",
     parentZone: "👨‍👩‍👧 মা-বাবার জায়গা",
     parentNote:
       "দক্ষতা দিয়ে জগৎ খোলে, বয়স দিয়ে নয় — পরের জগৎ খুলতে আগের জগতের দক্ষতা আয়ত্ত করুন।",
@@ -2312,6 +2333,10 @@ export default function App() {
       return null;
     }
   });
+  // #22 — sibling co-op: "pass the device" overlay + "now playing" toast.
+  const [coopOpen, setCoopOpen] = useState(false);
+  const [coopToast, setCoopToast] = useState<string | null>(null);
+  const coopTimerRef = useRef<number | undefined>(undefined);
   // FIRST TIME → the WELCOME screen sits on top of everything: language pick
   // first (topmost), then the binary Guest-vs-Sign-in scene, with the syllabus
   // one tap away BEFORE any sign-in. `nv_seen_welcome` is set on mount so it
@@ -2976,6 +3001,20 @@ export default function App() {
       /* ignore */
     }
   };
+
+  /* #22 — sibling co-op: hand the device to a sibling MID-SESSION. Swapping
+     `kid` re-runs the playing effect (kid is a dep), which restarts the CURRENT
+     step scene for the new kid with their own name, level ladder, and wrong-ledger
+     context — so per-kid progress (skills/moni/stats/pet/coins) stays separate
+     automatically while both kids co-play the SAME session (alternating turns). */
+  const passToSibling = (k: Kid) => {
+    selectKid(k);
+    setCoopOpen(false);
+    setCoopToast(t.nowPlaying(k.name));
+    window.clearTimeout(coopTimerRef.current);
+    coopTimerRef.current = window.setTimeout(() => setCoopToast(null), 2200);
+  };
+  useEffect(() => () => window.clearTimeout(coopTimerRef.current), []);
 
   /* ── Persist the chosen UI language + mirror it to game scenes ── */
   useEffect(() => {
@@ -5914,6 +5953,19 @@ export default function App() {
               >
                 {muted ? "🔇" : "🔊"}
               </button>
+              {/* #22 — sibling co-op: only when a second profile exists on this
+                  device. Tap → pass the device to a sibling mid-session. */}
+              {kids.length >= 2 && (
+                <button
+                  className={`hud-music coop-btn${coopOpen ? " coop-open" : ""}`}
+                  onClick={() => setCoopOpen((o) => !o)}
+                  aria-label={t.siblingCoop}
+                  title={t.siblingCoop}
+                  aria-expanded={coopOpen}
+                >
+                  👥
+                </button>
+              )}
             </>
           )}
         </div>
@@ -5924,6 +5976,38 @@ export default function App() {
           </button>
         )}
         <div ref={mountRef} className="game-wrap" />
+        {/* #22 — pass-the-device sheet: pick the sibling whose turn it is. */}
+        {coopOpen && kids.length >= 2 && (
+          <div className="coop-overlay" onClick={() => setCoopOpen(false)}>
+            <div className="coop-sheet" role="dialog" aria-label={t.passDevice} onClick={(e) => e.stopPropagation()}>
+              <h3 className="coop-title">👥 {t.passDevice}</h3>
+              <p className="coop-sub">{t.coopHint}</p>
+              <div className="coop-list">
+                {kids.map((k) => (
+                  <button
+                    key={k.id}
+                    className={`coop-card${k.id === kid?.id ? " active" : ""}`}
+                    disabled={k.id === kid?.id}
+                    onClick={() => passToSibling(k)}
+                    aria-label={t.passTo(k.name)}
+                  >
+                    <AvatarIcon emoji={k.avatar} size={38} />
+                    <span className="coop-name">{k.name}</span>
+                    {k.id === kid?.id ? (
+                      <span className="coop-you">✅ {t.youBadge}</span>
+                    ) : (
+                      <span className="coop-go">→</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button className="coop-close" onClick={() => setCoopOpen(false)} aria-label={t.back}>
+                {t.back}
+              </button>
+            </div>
+          </div>
+        )}
+        {coopToast && <div className="coop-toast" role="status">👥 {coopToast}</div>}
       </div>
     );
   }

@@ -232,4 +232,4 @@
 - ~~Deferred: classroom projector mode~~ ✅ #136 — merged #447
 - Deferred: flashcard QR tie-in  _(priority: low, deferred)_
 - Deferred: teacher mode — class roster  _(priority: low, deferred)_
-- Deferred: sibling co-op play mode  _(priority: low, deferred)_
+- ~~Deferred: sibling co-op play mode~~ ✅ #22 — pass-the-device HUD toggle, mid-session switch keeps per-kid progress separate (PR pending)
