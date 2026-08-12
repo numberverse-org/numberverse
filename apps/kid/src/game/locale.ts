@@ -12,6 +12,7 @@
 import {
   LOCALES,
   getLocale as resolveLocale,
+  currentFestival as resolveFestival,
   type LocalePack,
 } from "@numberverse/core";
 
@@ -35,4 +36,9 @@ export function getLocale(): LocalePack {
 /** Compatibility: the active locale code ("en" | "bn" today, "ar"|"hi" later). */
 export function getAppLang(): string {
   return appCode;
+}
+
+/** The active festival for the current locale (null off-season) — #137. */
+export function currentFestival(): import("@numberverse/core").FestivalEvent | null {
+  return resolveFestival(appCode);
 }

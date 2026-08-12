@@ -20,6 +20,21 @@ export type TextDir = "ltr" | "rtl";
 export type DigitSet = "latin" | "bengali" | "arabic-indic" | "devanagari";
 export type LocaleStatus = "shipped" | "planned";
 
+/**
+ * One festival/holiday for a country pack (#137). Fully CONFIG — no code:
+ * fixed feasts get a single MM-DD window; lunar feasts (Eid, Ramadan) move
+ * ~11 days earlier each Gregorian year, so they carry one window per year as
+ * data. The kid app decorates the journey/home while a window is active.
+ */
+export interface FestivalEvent {
+  /** Machine key — the UI looks up a localized label via this key. */
+  key: string;
+  /** Decor emoji shown in the banner. */
+  emoji: string;
+  /** Inclusive Gregorian windows ("MM-DD" → "MM-DD"), one per occurrence. */
+  windows: Array<{ start: string; end: string }>;
+}
+
 export interface LocalePack {
   /** BCP-47-style code — the key in nv_lang and the i18n DICTS table. */
   code: string;
@@ -37,6 +52,8 @@ export interface LocalePack {
   voice: string;
   /** "shipped" locales are audited for i18n parity; "planned" are research. */
   status: LocaleStatus;
+  /** Country festivals — config, the UI just reads the active one. */
+  festivals: FestivalEvent[];
 }
 
 /** The single registry — adding a country = adding one entry here. */
@@ -50,6 +67,9 @@ export const LOCALES: Record<string, LocalePack> = {
     curriculum: "early-years-uk",
     voice: "en-GB",
     status: "shipped",
+    festivals: [
+      { key: "christmas", emoji: "🎄", windows: [{ start: "12-01", end: "12-31" }] },
+    ],
   },
   bn: {
     code: "bn",
@@ -60,6 +80,21 @@ export const LOCALES: Record<string, LocalePack> = {
     curriculum: "nctb-bangladesh",
     voice: "bn-BD",
     status: "shipped",
+    festivals: [
+      // Pohela Boishakh — Bengali New Year, fixed (Apr 14).
+      { key: "boishakh", emoji: "🎋", windows: [{ start: "04-01", end: "04-30" }] },
+      // Lunar feasts move ~11 days earlier each year — one window per year, as config.
+      { key: "eid_fitr", emoji: "🌙", windows: [
+        { start: "2026-03-18", end: "2026-03-23" }, { start: "2027-03-07", end: "2027-03-12" },
+        { start: "2028-02-24", end: "2028-02-29" }, { start: "2029-02-12", end: "2029-02-17" },
+        { start: "2030-02-02", end: "2030-02-07" },
+      ] },
+      { key: "eid_adha", emoji: "🕌", windows: [
+        { start: "2026-05-25", end: "2026-05-30" }, { start: "2027-05-14", end: "2027-05-19" },
+        { start: "2028-05-03", end: "2028-05-08" }, { start: "2029-04-22", end: "2029-04-27" },
+        { start: "2030-04-11", end: "2030-04-16" },
+      ] },
+    ],
   },
   // ── planned scaffold (research only — NOT yet shipping) ──
   ar: {
@@ -71,6 +106,20 @@ export const LOCALES: Record<string, LocalePack> = {
     curriculum: "saudi-arabia",
     voice: "ar-SA",
     status: "planned",
+    festivals: [
+      { key: "ramadan", emoji: "🌙", windows: [
+        { start: "2026-02-17", end: "2026-03-18" }, { start: "2027-02-07", end: "2027-03-08" },
+        { start: "2028-01-27", end: "2028-02-25" },
+      ] },
+      { key: "eid_fitr", emoji: "⭐", windows: [
+        { start: "2026-03-19", end: "2026-03-24" }, { start: "2027-03-09", end: "2027-03-14" },
+        { start: "2028-02-26", end: "2028-03-02" },
+      ] },
+      { key: "eid_adha", emoji: "🕌", windows: [
+        { start: "2026-05-26", end: "2026-05-31" }, { start: "2027-05-15", end: "2027-05-20" },
+        { start: "2028-05-04", end: "2028-05-09" },
+      ] },
+    ],
   },
   hi: {
     code: "hi",
@@ -81,6 +130,16 @@ export const LOCALES: Record<string, LocalePack> = {
     curriculum: "india-ncert",
     voice: "hi-IN",
     status: "planned",
+    festivals: [
+      { key: "diwali", emoji: "🪔", windows: [
+        { start: "2026-11-06", end: "2026-11-12" }, { start: "2027-10-27", end: "2027-11-02" },
+        { start: "2028-10-15", end: "2028-10-21" },
+      ] },
+      { key: "holi", emoji: "🎨", windows: [
+        { start: "2026-03-02", end: "2026-03-08" }, { start: "2027-03-21", end: "2027-03-27" },
+        { start: "2028-03-11", end: "2028-03-17" },
+      ] },
+    ],
   },
 };
 
@@ -113,4 +172,23 @@ export function formatNumber(n: number, code: string): string {
 /** Convenience: is this locale right-to-left? (drives the app's dir attribute.) */
 export function isRtl(code: string): boolean {
   return getLocale(code).dir === "rtl";
+}
+
+/** The active festival for a locale on a given day (defaults to today). */
+export function currentFestival(code: string, today: Date = new Date()): FestivalEvent | null {
+  const md = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const full = `${today.getFullYear()}-${md}`;
+  for (const f of getLocale(code).festivals) {
+    for (const w of f.windows) {
+      // Fixed "MM-DD" windows match every year; full "YYYY-MM-DD" windows are
+      // year-specific (lunar feasts). Lexicographic compare works because every
+      // field is zero-padded.
+      if (w.start.length === 5) {
+        if (md >= w.start && md <= w.end) return f;
+      } else if (full >= w.start && full <= w.end) {
+        return f;
+      }
+    }
+  }
+  return null;
 }

@@ -22,7 +22,7 @@ import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
-import { getAppLang, setAppLang, getLocale } from "./game/locale";
+import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
@@ -443,6 +443,15 @@ interface Strings {
   seasonFlowers: string;
   seasonFireflies: string;
   seasonLeaves: string;
+  /* festivals — country-based decor, the active one is config (#137) */
+  festivalBanner: (name: string, emoji: string) => string;
+  fest_boishakh: string;
+  fest_eid_fitr: string;
+  fest_eid_adha: string;
+  fest_christmas: string;
+  fest_ramadan: string;
+  fest_diwali: string;
+  fest_holi: string;
   /* daily quest */
   questTitle: string;
   questProgress: (n: number, target: number) => string;
@@ -905,6 +914,14 @@ const STR: Record<Lang, Strings> = {
     seasonFlowers: "🌸 Spring",
     seasonFireflies: "✨ Firefly Summer",
     seasonLeaves: "🍂 Autumn",
+    festivalBanner: (name, emoji) => `✨ ${emoji} ${name} is here in Numberverse!`,
+    fest_boishakh: "Pohela Boishakh",
+    fest_eid_fitr: "Eid al-Fitr",
+    fest_eid_adha: "Eid al-Adha",
+    fest_christmas: "Christmas",
+    fest_ramadan: "Ramadan",
+    fest_diwali: "Diwali",
+    fest_holi: "Holi",
     /* daily quest */
     questTitle: "🎯 Today's Quest",
     questProgress: (n, target) => `Play ${n}/${target} rounds`,
@@ -1353,6 +1370,14 @@ const STR: Record<Lang, Strings> = {
     seasonFlowers: "🌸 বসন্ত",
     seasonFireflies: "✨ জোনাকির গ্রীষ্ম",
     seasonLeaves: "🍂 শরৎ",
+    festivalBanner: (name, emoji) => `✨ ${emoji} নম্বরভার্সে আজ ${name}!`,
+    fest_boishakh: "পহেলা বৈশাখ",
+    fest_eid_fitr: "ঈদুল ফিতর",
+    fest_eid_adha: "ঈদুল আজহা",
+    fest_christmas: "বড়দিন",
+    fest_ramadan: "রমজান",
+    fest_diwali: "দীপাবলি",
+    fest_holi: "হোলি",
     /* daily quest */
     /* daily quest */
     questTitle: "🎯 আজকের মিশন",
@@ -3732,6 +3757,21 @@ export default function App() {
                   </span>
                   <span className="home-contrast-cta" aria-hidden="true">▶</span>
                 </button>
+              );
+            })()}
+
+            {/* #137 — festival decor: the active festival is CONFIG per country
+                (locale pack). Off-season this renders nothing. */}
+            {(() => {
+              const fest = currentFestival();
+              if (!fest) return null;
+              const label =
+                (t as unknown as Record<string, string>)[`fest_${fest.key}`] ?? fest.key;
+              return (
+                <div className="festival-banner" role="status">
+                  <span className="festival-banner-emoji" aria-hidden="true">{fest.emoji}</span>
+                  <span className="festival-banner-text">{t.festivalBanner(label, fest.emoji)}</span>
+                </div>
               );
             })()}
 

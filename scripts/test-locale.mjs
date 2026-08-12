@@ -18,7 +18,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { LOCALES, getLocale, shippedLocales, formatNumber, isRtl } = require("../packages/core/dist/index.js");
+const { LOCALES, getLocale, shippedLocales, formatNumber, isRtl, currentFestival } = require("../packages/core/dist/index.js");
 
 let fails = 0;
 const check = (name, got, want) => {
@@ -53,6 +53,17 @@ console.log("③  Fallback — unknown codes never break…");
 check("unknown → en pack", getLocale("zz").code, "en");
 check("unknown → latin digits", formatNumber(5, "zz"), "5");
 check("empty → en", getLocale("").code, "en");
+
+console.log("⑤  Festivals — country config, the UI just reads the active one (#137)…");
+check("bn has Boishakh", LOCALES.bn.festivals.some((f) => f.key === "boishakh"), true);
+check("bn has Eid (lunar config)", LOCALES.bn.festivals.filter((f) => f.key.startsWith("eid_")).length, 2);
+check("en has Christmas", LOCALES.en.festivals.some((f) => f.key === "christmas"), true);
+check("ar has Ramadan (planned)", LOCALES.ar.festivals.some((f) => f.key === "ramadan"), true);
+check("hi has Diwali (planned)", LOCALES.hi.festivals.some((f) => f.key === "diwali"), true);
+check("off-season → null", currentFestival("bn", new Date("2026-08-15T12:00:00")), null);
+check("Boishakh window active", currentFestival("bn", new Date("2026-04-14T12:00:00"))?.key, "boishakh");
+check("lunar Eid window active", currentFestival("bn", new Date("2026-03-20T12:00:00"))?.key, "eid_fitr");
+check("unknown locale falls back to en's festival", currentFestival("zz", new Date("2026-12-25T12:00:00"))?.key, "christmas");
 
 console.log("④  i18n table parity (apps/kid/src/game/i18n.ts)…");
 const src = readFileSync(join(dirname(dirname(fileURLToPath(import.meta.url))), "apps", "kid", "src", "game", "i18n.ts"), "utf8");
