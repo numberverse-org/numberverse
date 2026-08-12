@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     kotha_retention_days: int = 90
     kotha_active_skill_days: int = 7
     kotha_max_stories_per_kid: int = 1000
+    # #329 — how often the background batch-embed job runs (minutes).
+    kotha_embed_interval_minutes: int = 15
 
     @property
     def origins(self) -> list[str]:
