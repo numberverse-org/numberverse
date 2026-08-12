@@ -52,6 +52,21 @@ Nothing on-device stores a photo, contacts, location, or browsing data.
 | `subscriptions` | plan, store, store_ref, status, period_end | monetization (free tier today) | no |
 | `content_items`, `story_embedding_model` | content + story vectors | catalog + RAG retrieval | vectors of the (already-redacted) stories |
 
+## Parent data export (#273)
+
+A parent can download **their own family's** data at `GET /api/v1/export`
+(readable JSON, versioned) or `GET /api/v1/export.csv` (round history for
+spreadsheets). Rules:
+
+- **Auth-protected** like every parent route — a valid, unrevoked session token
+  is required; each kid is ownership-checked against the calling profile.
+- **Family data only** — kid profiles, settings, mastery, every round, every
+  learning story. The payload deliberately omits account internals
+  (`password_hash`, sessions/tokens, `is_admin`), enforced by a CI unit test
+  (`tests/test_export.py`).
+- **Your data, your hands** — nothing is shared, telemetrized, or cached; the
+  export is a plain file download with a `Content-Disposition` attachment.
+
 ## What the audit found
 
 - **Every field is either required for the app's function or already
