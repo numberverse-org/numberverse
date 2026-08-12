@@ -1,3 +1,7 @@
+## 13 Aug 2026 — 0.26.8 (Settings redesign + double-TTS fix (#403))
+
+3d047ad 🎛️ Settings redesign (kid-facing) + fix double-TTS (neural + web speaking at once) (#404)
+
 ## 13 Aug 2026 — 0.26.7 (nginx /parent redirects preserve https (#401))
 
 d93053a 🔒 #401 nginx: /parent + /admin redirects preserve https through the tunnel (#402)
