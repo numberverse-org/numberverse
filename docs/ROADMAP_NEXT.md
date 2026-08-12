@@ -92,7 +92,7 @@
 - Parent: weekly learning narrative from Kotha  _(priority: low, parent-facing)_
 - Parent: struggle-alert card (skill needs help)  _(priority: low, parent-facing)_
 - Parent: compare two kids side-by-side  _(priority: low, parent-facing)_
-- Parent: export learning history (CSV/PDF)  _(priority: low, parent-facing)_
+- ~~Parent: export learning history (CSV/PDF)~~ ✅ #241 — shipped as #273 (0.26.16): CSV + JSON export, ISO-8601 UTC columns
 - Parent: printable worksheet generator from weak skills  _(priority: low, parent-facing)_
 - Parent: per-kid sound & music balance  _(priority: low, parent-facing)_
 - Parent: daily play summary  _(priority: low, parent-facing)_
@@ -139,19 +139,19 @@
 ## v27 — trust & safety 2
 
 - Safety: parent-area age gate (PIN)  _(priority: low, guardrail)_
-- Privacy: on-device data review for parents  _(priority: low, guardrail)_
+- ~~Privacy: on-device data review for parents~~ ✅ #262 — parent portal on-device data section (categories + per-category clear, offline)
 - Safety: content-scan allowlist governance  _(priority: low, guardrail)_
-- Guardrail: no-network fallback verification test  _(priority: low, guardrail)_
-- Guardrail: invalidate sessions on password change  _(priority: low, guardrail)_
+- ~~Guardrail: no-network fallback verification test~~ ✅ #264 — Playwright cold+warm offline e2e, live 2/2 pass
+- ~~Guardrail: invalidate sessions on password change~~ ✅ #265 — session_guard revokes other sessions; 16-check CI gate
 - Privacy: PII scrubber for logs  _(priority: low, guardrail)_
 - Safety: scheme/link allowlist  _(priority: low, guardrail)_
 - Guardrail: no console.log in prod bundle  _(priority: low, guardrail)_
-- Safety: gentle screen-time wind-down  _(priority: low, guardrail)_
+- ~~Safety: gentle screen-time wind-down~~ ✅ #269 — parent-set cap (#6) gives gentle 'all done today' + rest, not a block
 - Privacy: Kotha story context redaction  _(priority: low, guardrail)_
 - Guardrail: dependency license audit gate  _(priority: low, guardrail)_
 - Safety: instant pause (parent kill-switch)  _(priority: low, guardrail)_
 - Privacy: data-export for parents (own-API)  _(priority: low, guardrail)_
-- Guardrail: rate-limit on story + progress endpoints  _(priority: low, guardrail)_
+- ~~Guardrail: rate-limit on story + progress endpoints~~ ✅ #96 — #274 per-account+IP limiter, HTTP 429 on breach
 - Safety: age-appropriate band lock for content  _(priority: low, guardrail)_
 
 ## v28 — growth & retention 2
@@ -203,7 +203,7 @@
 - Ops: structured error log + rotation  _(priority: low, documentation)_
 - Ops: auto-rollback on smoke failure  _(priority: low, documentation)_
 - CI: secret-scan job  _(priority: low, documentation)_
-- Infra: second tunnel failover  _(priority: low, documentation)_
+- ~~Infra: second tunnel failover~~ ✅ #302 — tunnel watchdog cron-armed + standby unit + failover doc
 - Ops: container log cleanup  _(priority: low, documentation)_
 - Infra: restore-drill automation  _(priority: low, documentation)_
 - CI: bundle-size regression gate  _(priority: low, documentation)_
