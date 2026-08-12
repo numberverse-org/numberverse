@@ -161,7 +161,7 @@
 - ~~Kids: Nova seasonal outfits (Eid, Boishakh)~~ ✅ #278 — festival-gated Eid + Boishakh sets, coin-buy via festival-gated store, locale-config (#131) (PR pending)
 - Kids: pet evolution level 2 — new pet types  _(priority: low, kid-first)_
 - Kids: challenge Nova — beat-the-owl rounds  _(priority: low, kid-first)_
-- Kids: daily login calendar reward  _(priority: low, kid-first)_
+- ~~Kids: daily login calendar reward~~ ✅ #281 — 7-day cycle, growing coin bonus per consecutive play day, claim once/day within the cap (PR pending)
 - Kids: same-device sibling leaderboard  _(priority: low, kid-first)_
 - Kids: goal badges (10 rounds, 100% day)  _(priority: low, kid-first)_
 - Kids: mastery mystery reward boxes  _(priority: low, kid-first)_

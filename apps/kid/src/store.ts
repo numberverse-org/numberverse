@@ -120,6 +120,13 @@ export const NOVA_CARE_COINS = 1;
 /** Daily Quest — play NOVA_QUEST_TARGET rounds in one calendar day to win a bonus. */
 export const NOVA_QUEST_TARGET = 3;
 export const NOVA_QUEST_REWARD = 5;
+/** #281 — 7-day login calendar: growing coin bonuses for consecutive play days.
+ *  Every reward sits inside the daily anti-grind cap (NOVA_DAILY_CAP). */
+export const NOVA_CALENDAR_REWARDS = [3, 4, 5, 6, 7, 8, 10] as const;
+/** Position (1..7) in the 7-day login cycle for a given streak length. */
+export function calendarCycleDay(streak: number): number {
+  return streak > 0 ? ((streak - 1) % NOVA_CALENDAR_REWARDS.length) + 1 : 1;
+}
 /** Birthday gift — Nova's once-a-year treat (a real bonus, so it bypasses the daily cap). */
 export const NOVA_BIRTHDAY_COINS = 10;
 /** Share reward — a parent sharing the kid's progress to WhatsApp pays the kid
@@ -197,6 +204,8 @@ export interface NovaState {
   bdayYear: string;
   /** Last ISO date the parent shared this kid's progress (share reward, once/day). */
   shareDay: string;
+  /** #281 — last ISO date the 7-day login calendar bonus was claimed ("" = never). */
+  calendarDay: string;
   /** The kid's pet — an egg that hatches + grows as they learn. */
   petStage: number; // 0 egg → 1 hatchling → 2 young → 3 grown (per species)
   petProgress: number; // 0..1 toward the next stage
@@ -224,6 +233,7 @@ export function defaultNova(): NovaState {
     questDone: false,
     bdayYear: "",
     shareDay: "",
+    calendarDay: "",
     petStage: 0,
     petProgress: 0,
     petFed: "",
@@ -334,6 +344,9 @@ interface KidState {
   /** Every completed round counts toward today's Daily Quest. Returns true the
    *  moment the quest completes (so the caller can celebrate once). */
   novaQuestRound: (kidId: string) => boolean;
+  /** #281 — claim today's 7-day login-calendar bonus (once per day, after the
+   *  day's first session, inside the daily cap). Returns coins granted (0 = none). */
+  novaClaimCalendar: (kidId: string) => number;
   /** A parent shared this kid's progress → +NOVA_SHARE_REWARD coins, once per
    *  calendar day. Returns true when the reward was actually granted. */
   novaShareReward: (kidId: string) => boolean;
@@ -813,6 +826,39 @@ export const useKidStore = create<KidState>()(
           };
         });
         return reached;
+      },
+
+      /* ── #281 7-day login calendar: collect today's cycle bonus (once/day,
+           only after today's first session — a reward for DAILY play, not a
+           free login; amount stays inside the anti-grind cap). ── */
+
+      novaClaimCalendar: (kidId) => {
+        const n = get().nova[kidId] ?? defaultNova();
+        const today = todayIso();
+        if (n.calendarDay === today || n.lastDay !== today) return 0; // already claimed / not played today
+        const pos = calendarCycleDay(n.streak); // 1..7
+        const base = NOVA_CALENDAR_REWARDS[pos - 1] ?? 0;
+        const earnedToday = n.earnDay === today ? n.earnedToday : 0;
+        const add = Math.max(0, Math.min(base, NOVA_DAILY_CAP - earnedToday));
+        if (add <= 0) return 0;
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const todayEarned = cur.earnDay === today ? cur.earnedToday : 0;
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: {
+                ...cur,
+                coins: cur.coins + add,
+                totalEarned: cur.totalEarned + add,
+                earnedToday: todayEarned + add,
+                earnDay: today,
+                calendarDay: today,
+              },
+            },
+          };
+        });
+        return add;
       },
 
       /* ── Share reward: parent shared this kid's progress → once/day bonus ── */

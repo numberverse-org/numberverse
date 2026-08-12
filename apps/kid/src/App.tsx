@@ -15,7 +15,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
@@ -474,6 +474,14 @@ interface Strings {
   questDoneText: string;
   questReward: (n: number) => string;
   questCompleteSpeak: (n: number) => string;
+  /* #281 — 7-day login calendar */
+  calendarTitle: string;
+  calendarHint: string;
+  calendarDayOf: (d: number) => string;
+  calendarClaim: (n: number) => string;
+  calendarClaimed: string;
+  calendarLocked: string;
+  calendarClaimSpeak: (name: string, n: number) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -973,6 +981,14 @@ const STR: Record<Lang, Strings> = {
     questDoneText: "✅ Quest complete!",
     questReward: (n) => `+${n} 🪙 bonus`,
     questCompleteSpeak: (n) => `Quest complete! You won ${n} bonus coins! 🎉`,
+    /* #281 — 7-day login calendar */
+    calendarTitle: "📅 Daily Rewards",
+    calendarHint: "Play every day — a bigger bonus each day",
+    calendarDayOf: (d) => `Day ${d} of 7`,
+    calendarClaim: (n) => `Collect +${n} 🪙`,
+    calendarClaimed: "✓ Collected",
+    calendarLocked: "🔒",
+    calendarClaimSpeak: (name, n) => `${name}, daily reward collected — ${n} coins! 🎉`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1452,12 +1468,19 @@ const STR: Record<Lang, Strings> = {
     fest_diwali: "দীপাবলি",
     fest_holi: "হোলি",
     /* daily quest */
-    /* daily quest */
     questTitle: "🎯 আজকের মিশন",
     questProgress: (n, target) => `${n}/${target}টা খেলা খেলো`,
     questDoneText: "✅ মিশন শেষ!",
     questReward: (n) => `+${n} 🪙 বোনাস`,
     questCompleteSpeak: (n) => `মিশন শেষ! তুমি ${n}টা বোনাস কয়েন জিতেছ! 🎉`,
+    /* #281 — 7-day login calendar */
+    calendarTitle: "📅 দৈনিক পুরস্কার",
+    calendarHint: "প্রতিদিন খেলো — প্রতিদিন বড় বোনাস",
+    calendarDayOf: (d) => `৭ এর মধ্যে দিন ${bnNum(d)}`,
+    calendarClaim: (n) => `+${n} 🪙 নাও`,
+    calendarClaimed: "✓ পাওয়া গেছে",
+    calendarLocked: "🔒",
+    calendarClaimSpeak: (name, n) => `${name}, দৈনিক পুরস্কার পেয়েছো — ${n} কয়েন! 🎉`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -2489,6 +2512,21 @@ export default function App() {
   });
   const sessionStreakCount = sessionStreak(events);
   const novaDayStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
+  // #281 — 7-day login calendar: which cycle position is "today" (from the
+  // streak anchor), and whether today's bonus is claimable. Claiming requires
+  // today's first session — a reward for DAILY play, not a free login tap.
+  const calendar = useKidStore((s) => {
+    const n = s.nova[kid?.id ?? ""];
+    if (!n) return null;
+    const today = todayIso();
+    const playedToday = n.lastDay === today;
+    const pos = playedToday
+      ? calendarCycleDay(n.streak)
+      : n.lastDay === dayIsoAgo(1)
+        ? calendarCycleDay(n.streak + 1) // today would extend the streak → next tile
+        : 1; // missed a day → fresh restart at day 1
+    return { pos, claimable: playedToday && n.calendarDay !== today, claimedToday: n.calendarDay === today };
+  });
   // Streak kindness: the store only refreshes `streak` at session-complete, so
   // after a missed day the badge would show a STALE flame. Track the anchor day
   // so we can hide the stale flame and welcome the kid back warmly instead.
@@ -4133,6 +4171,46 @@ export default function App() {
             </div>
 
             {limitNotice ? <p className="limit-banner" role="status">{limitNotice}</p> : null}
+
+            {/* #281 — 7-day login calendar: a growing coin bonus per consecutive
+                play day. One tap per day, fully offline, inside the anti-grind cap.
+                Day 1..7 of the cycle; past tiles ✓, today's tile pulses when ready,
+                future tiles 🔒. */}
+            {calendar ? (
+              <div className="cal-chip" role="status" aria-label={t.calendarTitle}>
+                <div className="cal-head">
+                  <span className="cal-title">{t.calendarTitle}</span>
+                  <span className="cal-hint">{t.calendarHint}</span>
+                </div>
+                <div className="cal-strip" role="list">
+                  {NOVA_CALENDAR_REWARDS.map((coins, i) => {
+                    const day = i + 1;
+                    const isToday = day === calendar.pos;
+                    const past = day < calendar.pos;
+                    const state = isToday && calendar.claimable ? "claim" : past || calendar.claimedToday ? "done" : isToday ? "wait" : "future";
+                    return (
+                      <button
+                        key={day}
+                        className={`cal-tile ${state}`}
+                        disabled={!isToday || !calendar.claimable}
+                        onClick={() => {
+                          const add = useKidStore.getState().novaClaimCalendar(kid.id);
+                          if (add > 0) {
+                            tada();
+                            speak(t.calendarClaimSpeak(kid.name, add));
+                          }
+                        }}
+                        aria-label={isToday ? (calendar.claimable ? t.calendarClaim(coins) : calendar.claimedToday ? t.calendarClaimed : t.calendarHint) : t.calendarLocked}
+                      >
+                        <span className="cal-tile-top">{past || calendar.claimedToday ? "✓" : isToday ? day : "🔒"}</span>
+                        <span className="cal-tile-coin">🪙{coins}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="cal-dayof">{t.calendarDayOf(calendar.pos)}</span>
+              </div>
+            ) : null}
 
             {/* The pet — the kid's growing friend. Learning feeds it: every
                 session, every new mastery, and one daily snack. */}
