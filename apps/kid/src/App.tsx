@@ -29,10 +29,10 @@ import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, typ
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "12 Aug 2026 · 0.24.1 (Moni plan-driven sessions + TRUE semver versioning)";
+const APP_BUILD = "12 Aug 2026 · 0.25.0 (release train (2 since 0.24.1))";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.24.1";
+const APP_VERSION = "0.25.0";
 
 type Screen = "welcome" | "parentgate" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "parent" | "settings" | "nova" | "garden" | "cards" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.

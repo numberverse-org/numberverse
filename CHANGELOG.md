@@ -1,3 +1,8 @@
+## 12 Aug 2026 — 0.25.0 (release train (2 since 0.24.1))
+
+73e8570 feat: build to 999 — three-digit numbers with hundred-flats (Closes #40) (#360)
+75512b6 feat: place value to 9999 — base-10 blocks visual + i18n'd question (Closes #60) (#359)
+
 ## 12 Aug 2026 — 0.24.1 (Moni plan-driven sessions + TRUE semver versioning)
 
 65b5aab chore: TRUE SEMVER versioning (0.MAJOR.MINOR.PATCH) across the release pipeline
