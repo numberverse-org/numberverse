@@ -1,3 +1,7 @@
+## 13 Aug 2026 — 0.26.7 (nginx /parent redirects preserve https (#401))
+
+d93053a 🔒 #401 nginx: /parent + /admin redirects preserve https through the tunnel (#402)
+
 ## 13 Aug 2026 — 0.26.6 (Parent portal reachable — kid SW no longer swallows /parent/ + clean portal URL (#399))
 
 1bbf022 🐛 #399 Fix: kid SW swallows /parent/ (browser saw the GAME at the portal URL) (#400)
