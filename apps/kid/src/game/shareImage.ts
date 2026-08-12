@@ -16,7 +16,7 @@
  * #267 — the wa.me fallback goes through the core external-link allowlist
  * (https only), so no app can ever be launched from the share flow.
  */
-import { openExternal } from "@numberverse/core";
+import { openExternal, stripPngMetadata } from "@numberverse/core";
 
 export interface ShareCardData {
   title: string;          // "🎉 Numberverse" (or local brand)
@@ -312,12 +312,17 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, start
   if (line) ctx.fillText(line, cx, y);
 }
 
-/** Turn a canvas into a PNG blob. */
+/** Turn a canvas into a PNG blob — with zero identifying metadata (#93).
+ *  `stripPngMetadata` (from @numberverse/core) drops every tEXt/zTXt/iTXt/
+ *  eXIf chunk, so a share card never carries a kid's name, a path, or EXIF
+ *  into WhatsApp. */
 export function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((b) => {
-      if (b) resolve(b);
-      else reject(new Error("canvas toBlob failed"));
+      if (!b) { reject(new Error("canvas toBlob failed")); return; }
+      b.arrayBuffer()
+        .then((ab) => resolve(new Blob([stripPngMetadata(ab)], { type: "image/png" })))
+        .catch(reject);
     }, "image/png");
   });
 }
