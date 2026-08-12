@@ -27,19 +27,31 @@ let warns = 0;
 const fail = (msg) => { errors++; console.error("  ✖ " + msg); };
 const warn = (msg) => { warns++; console.error("  ⚠ " + msg); };
 
-/* ── 1. i18n completeness ── */
+/* ── 1. i18n completeness (every used key in EVERY shipped locale) ── */
 function parseI18nTable() {
   const src = readFileSync(join(GAME, "i18n.ts"), "utf8");
-  const bnBlock = src.slice(src.indexOf("const BN"));
-  const enBlock = src.slice(src.indexOf("const EN"), src.indexOf("const BN"));
-  const keys = (block) => {
-    const set = new Set();
+  // Locale codes with a dict: `const <CODE>: Record<string, Entry> = {` blocks,
+  // ordered by their declaration order in the file.
+  const dictDecls = [...src.matchAll(/const ([A-Z][A-Z0-9_]*): Record<string, Entry> = \{/g)].map(
+    (m) => m[1]
+  );
+  const dicts = {};
+  for (let i = 0; i < dictDecls.length; i++) {
+    const start = src.indexOf(`const ${dictDecls[i]}`);
+    const end =
+      i + 1 < dictDecls.length
+        ? src.indexOf(`const ${dictDecls[i + 1]}`)
+        : src.indexOf("/**", src.indexOf(`const ${dictDecls[i]}`) + 8) !== -1
+          ? src.indexOf("/**", src.indexOf(`const ${dictDecls[i]}`) + 8)
+          : src.length;
+    const block = src.slice(start, end);
+    const keys = new Set();
     const re = /^\s*([a-zA-Z][a-zA-Z0-9]*):\s*(?:\([^)]*\)\s*=>|"|`)/gm;
     let m;
-    while ((m = re.exec(block))) set.add(m[1]);
-    return set;
-  };
-  return { en: keys(enBlock), bn: keys(bnBlock) };
+    while ((m = re.exec(block))) keys.add(m[1]);
+    dicts[dictDecls[i].toLowerCase()] = keys;
+  }
+  return dicts;
 }
 
 function usedKeys() {
@@ -65,17 +77,21 @@ function usedKeys() {
   return used;
 }
 
-console.log("①  i18n completeness (every used key in EN + BN)…");
-const { en, bn } = parseI18nTable();
+console.log("①  i18n completeness (every used key in every shipped locale)…");
+const dicts = parseI18nTable();
 const used = usedKeys();
-const missEn = [...used].filter((k) => !en.has(k)).sort();
-const missBn = [...used].filter((k) => !bn.has(k)).sort();
-for (const k of missEn) fail(`t("${k}") used in a scene but MISSING from EN table`);
-for (const k of missBn) fail(`t("${k}") used in a scene but MISSING from BN table`);
-// keys defined but never used (drift)
-const drift = [...en].filter((k) => !used.has(k)).sort();
+const codes = Object.keys(dicts).sort();
+if (codes.length < 2) fail(`expected ≥2 shipped locale dictionaries (en, bn…), found: ${codes.join(", ")}`);
+for (const code of codes) {
+  const miss = [...used].filter((k) => !dicts[code].has(k)).sort();
+  for (const k of miss) fail(`t("${k}") used in a scene but MISSING from ${code.toUpperCase()} table`);
+}
+// keys defined but never used (drift) — check against the first (EN) dict
+const en = dicts.en;
+const drift = [...(en ?? [])].filter((k) => !used.has(k)).sort();
 for (const k of drift) warn(`i18n key "${k}" defined but never used (maybe reuse or remove)`);
-if (!missEn.length && !missBn.length) console.log("  ✓ all used keys present in EN + BN");
+const ok = codes.length >= 2 && codes.every((c) => [...used].every((k) => dicts[c].has(k)));
+if (ok) console.log(`  ✓ all used keys present in ${codes.map((c) => c.toUpperCase()).join(" + ")}`);
 
 /* ── 2. core catalog integrity ── */
 console.log("②  core catalog integrity (skills ⇄ games ⇄ scenes ⇄ engine)…");

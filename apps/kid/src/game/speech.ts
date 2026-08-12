@@ -450,7 +450,11 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   const raw = String(text);
   // Detect the language FIRST (Bangla glyphs → Bangla) — symbol words follow it.
   const bnLike = /[ঀ-৿]/.test(raw);
-  const lang = opts.lang ?? (bnLike ? "bn" : getAppLang());
+  // Speech supports en/bn today; any future locale code (ar, hi…) falls back to
+  // en until its voice lands — the speech layer never receives an unsupported
+  // code (#131).
+  const appLang = getAppLang() === "bn" ? "bn" : "en";
+  const lang = opts.lang ?? (bnLike ? "bn" : appLang);
   // Symbols → words, then never speak pure emoji / whitespace.
   let clean = naturalize(raw, lang)
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, " ")

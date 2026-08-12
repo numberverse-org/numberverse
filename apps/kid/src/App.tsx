@@ -22,7 +22,7 @@ import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
-import { getAppLang, setAppLang } from "./game/locale";
+import { getAppLang, setAppLang, getLocale } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
@@ -2830,6 +2830,9 @@ export default function App() {
       /* ignore */
     }
     setAppLang(lang);
+    // #131 — locale packs carry the text direction: an RTL locale (Arabic…)
+    // flips the whole document so bidi text lays out correctly.
+    document.documentElement.dir = getLocale().dir === "rtl" ? "rtl" : "ltr";
   }, [lang]);
 
   /* ── PWA: capture the browser's install prompt (Chrome/Samsung/Edge) ── */
