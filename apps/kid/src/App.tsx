@@ -556,6 +556,9 @@ interface Strings {
   /* settings screen */
   settingsTitle: string;
   settingsSub: string;
+  settingsPrefs: string;
+  settingsAccount: string;
+  settingsPortalGuest: string;
   settingsParent: string;
   settingsSyllabus: string;
   /* guest → parent upgrade (Settings + Parent panel) */
@@ -964,6 +967,9 @@ const STR: Record<Lang, Strings> = {
     syllabusOpen: "What kids learn",
     settingsTitle: "Settings",
     settingsSub: "Language, sound & voice",
+    settingsPrefs: "⚙️ Language & sound",
+    settingsAccount: "👤 Account",
+    settingsPortalGuest: "Sign in to open the Parent Portal",
     settingsParent: "👨‍👩‍👧 Parent analytics",
     settingsSyllabus: "📚 What kids learn",
     settingsSigninTitle: "👨‍👩‍👧 Keep progress everywhere",
@@ -1155,26 +1161,26 @@ const STR: Record<Lang, Strings> = {
     fullscreen: "⛶ পূর্ণ পর্দা",
     fullscreenOff: "⛶ পর্দা ছোট করুন",
     syncIdle: "সিঙ্কের অপেক্ষায়…",
-    syncOk: "✓ অগ্রগতি ক্লাউডে সংরক্ষিত",
+    syncOk: "✓ শেখার খবর ক্লাউডে সংরক্ষিত",
     syncSyncing: "সিঙ্ক হচ্ছে…",
-    syncOffline: "অফলাইন — অগ্রগতি ডিভাইসে সংরক্ষিত",
+    syncOffline: "অফলাইন — শেখার খবর এই ডিভাইসে সংরক্ষিত",
     syncError: "সিঙ্কে সমস্যা — আবার চেষ্টা হবে",
     storyQueueNote: (n) => `${n}টি শেখার মুহূর্ত এই ডিভাইসে সংরক্ষিত — অনলাইন হলে ক্লাউডে পৌঁছে যাবে 📚`,
-    aggTitle: "🔭 ক্লাসের অন্তর্দৃষ্টি",
-    aggSub: "আপনার বাচ্চাদের শেখার মুহূর্ত বেনামে (নাম বা পরিচয় ছাড়া) ভাগ করলে দেখবেন সব বাচ্চা কোথায় আটকে যায় — আর ক্লাসরুম উন্নত হোক।",
-    aggOptIn: "বেনামি অন্তর্দৃষ্টি ভাগ করুন",
-    aggOptOut: "অপ্ট-আউট",
-    aggOffline: "সাইন-ইন করা অভিভাবক অ্যাকাউন্ট ও সংযোগ লাগবে।",
-    aggPreview: "শুধু অপ্ট-ইন পরিবারের ডেটা থেকে তৈরি — কোনো শিশুর পরিচয় কখনোই অন্তর্ভুক্ত নয়।",
+    aggTitle: "🔭 ক্লাসের খবর",
+    aggSub: "বাচ্চারা কী শিখছে, নাম ছাড়া ভাগ করলে দেখবেন সবাই কোথায় আটকাচ্ছে — আর ক্লাসরুম উন্নত হোক।",
+    aggOptIn: "নাম ছাড়া শেখার খবর ভাগ করুন",
+    aggOptOut: "বন্ধ করুন",
+    aggOffline: "এটা দেখতে সাইন ইন করা অ্যাকাউন্ট আর ইন্টারনেট লাগবে।",
+    aggPreview: "শুধু রাজি হওয়া পরিবারের তথ্য দিয়ে তৈরি — কোনো বাচ্চার পরিচয় কখনোই থাকে না।",
     aggFamilies: (n) => `${n}টা পরিবার ভাগ করছে`,
-    aggStories: (n) => `${n}টা বেনামি গল্প`,
+    aggStories: (n) => `${n}টা নাম-ছাড়া শেখার গল্প`,
     aggSuccessRate: (pct) => `সাফল্যের হার ${pct}%`,
-    aggTopMis: "সবচেয়ে সাধারণ ভুলের ধরন",
-    aggTopSkills: "কঠিনতম দক্ষতা",
-    aggNoneYet: "এখনো পর্যাপ্ত শেয়ারড ডেটা নেই — একটু পর আবার দেখুন।",
+    aggTopMis: "সবচেয়ে বেশি যে ভুলগুলো হয়",
+    aggTopSkills: "সবচেয়ে কঠিন দক্ষতাগুলো",
+    aggNoneYet: "এখনো যথেষ্ট তথ্য আসেনি — একটু পর আবার দেখুন।",
     pickKid: "👶 বাচ্চা বাছাই করুন",
     switchKid: (a, n) => `${a} ${n} — পরিবর্তন করুন`,
-    parentZone: "👨‍👩‍👧 অভিভাবক অঞ্চল",
+    parentZone: "👨‍👩‍👧 মা-বাবার জায়গা",
     parentNote:
       "দক্ষতা দিয়ে জগৎ খোলে, বয়স দিয়ে নয় — পরের জগৎ খুলতে আগের জগতের দক্ষতা আয়ত্ত করুন।",
     whoPlaying: "কে খেলবে?",
@@ -1300,20 +1306,20 @@ const STR: Record<Lang, Strings> = {
     saveKid: (name) => `✨ সংরক্ষণ করুন ${name}`,
     langLabel: "🌐 বাংলা",
     leaveGame: "খেলা থেকে ফিরুন",
-    parentTitle: "অভিভাবক প্যানেল",
-    parentSub: "দেখুন প্রতিটি সন্তান কীভাবে দক্ষতায় এগোচ্ছে",
+    parentTitle: "মা-বাবার প্যানেল",
+    parentSub: "দেখুন প্রতিটি বাচ্চা কীভাবে শিখছে",
     parentWelcome: (name) => `হ্যালো, ${name} 👋`,
-    parentFamTitle: "পরিবারের সারসংক্ষেপ",
-    parentFamKids: (n) => `${n} জন শিশু`,
+    parentFamTitle: "পরিবারের এক ঝলক",
+    parentFamKids: (n) => `${n} জন বাচ্চা`,
     parentFamStars: (n) => `${n}টি তারা`,
     parentFamPoints: (n) => `${n} পয়েন্ট`,
     parentFamSessions: (n) => `${n}টি সেশন`,
     parentFamMastered: (n) => `${n}টি আয়ত্ত`,
-    parentPortalTitle: "🖥️ অভিভাবক পোর্টাল",
-    parentPortalSub: "পোর্টাল থেকে সবকিছু পরিচালনা করুন — শিশু যোগ/মুছুন, শেখার সীমা নির্ধারণ, সাপ্তাহিক রিপোর্ট দেখুন, অ্যাকাউন্ট সুরক্ষিত করুন।",
-    parentPortalCta: "অভিভাবক পোর্টাল খুলুন",
-    gateTitle: "স্বাগতম, অভিভাবক!",
-    gateSub: "সন্তানের শেখা নিরাপদ রাখতে ও অগ্রগতি দেখতে সাইন ইন করুন।",
+    parentPortalTitle: "🖥️ মা-বাবার পোর্টাল",
+    parentPortalSub: "পোর্টাল থেকে সবকিছু করুন — বাচ্চা যোগ/মুছুন, শেখার সময় বেঁধে দিন, সাপ্তাহিক রিপোর্ট দেখুন, অ্যাকাউন্ট সুরক্ষিত রাখুন।",
+    parentPortalCta: "মা-বাবার পোর্টাল খুলুন",
+    gateTitle: "স্বাগতম, মা-বাবা!",
+    gateSub: "বাচ্চার শেখা নিরাপদ রাখতে ও কতটা শিখছে দেখতে সাইন ইন করুন।",
     gateSignin: "সাইন ইন",
     gateSignup: "অ্যাকাউন্ট খুলুন",
     gateNameLabel: "আপনার নাম",
@@ -1331,10 +1337,10 @@ const STR: Record<Lang, Strings> = {
     gateErrorInvalid: "সাইন ইন ব্যর্থ — ইমেইল ও পাসওয়ার্ড যাচাই করুন।",
     gateErrorSignup: "অ্যাকাউন্ট তৈরি করা যায়নি — সম্ভবত ইমেইলটি ইতিমধ্যে নিবন্ধিত।",
     gateGuest: "এখনই না — অতিথি মোড",
-    gateGuestSub: "অ্যাকাউন্ট নেই? সাথে সাথে খেলুন। অগ্রগতি এই ডিভাইসেই থাকে, ব্যক্তিগত ও বিজ্ঞাপনমুক্ত।",
-    gatePrivacy: "🔒 কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই, সন্তানের ডেটা বিক্রি নেই। আপনার অ্যাকাউন্ট শুধু তাদের অগ্রগতি নিরাপদ রাখে।",
-    gateWelcome: (name) => `হাই ${name} 👋 — আপনার সন্তান যা শিখবে`,
-    gatePower: "আপনি সবসময় অভিভাবক প্যানেল → বাচ্চারা যা শেখে থেকে ফিরে আসতে পারেন।",
+    gateGuestSub: "অ্যাকাউন্ট নেই? সাথে সাথে খেলুন। শেখার খবর এই ডিভাইসেই থাকে, ব্যক্তিগত ও বিজ্ঞাপনমুক্ত।",
+    gatePrivacy: "🔒 কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই, বাচ্চার ডেটা বিক্রি নেই। আপনার অ্যাকাউন্ট শুধু তাদের শেখার খবর নিরাপদ রাখে।",
+    gateWelcome: (name) => `হাই ${name} 👋 — আপনার বাচ্চা যা শিখবে`,
+    gatePower: "আপনি সবসময় মা-বাবার প্যানেল → বাচ্চারা যা শেখে থেকে ফিরে আসতে পারেন।",
     gateContinue: "শেখা শুরু করুন →",
     gateGoogleOr: "অথবা ইমেইল দিয়ে চালিয়ে যান",
     gateErrorGoogle: "Google সাইন ইন কাজ করেনি — বদলে ইমেইল বা অতিথি চেষ্টা করুন।",
@@ -1345,19 +1351,19 @@ const STR: Record<Lang, Strings> = {
     welcomeEnglish: "🇬🇧 English",
     welcomeBangla: "🇧🇩 বাংলা",
     welcomeGuest: "🎮 অতিথি হিসেবে খেলুন",
-    welcomeGuestSub: "অ্যাকাউন্ট নেই? সোজা ঢুকে পড়ুন — অগ্রগতি এই ডিভাইসেই ব্যক্তিগত থাকে।",
+    welcomeGuestSub: "অ্যাকাউন্ট নেই? সোজা ঢুকে পড়ুন — শেখার খবর এই ডিভাইসেই ব্যক্তিগত থাকে।",
     welcomeOr: "অথবা",
-    welcomeSignin: "👨‍👩‍👧 আমি অভিভাবক — সাইন ইন করুন",
+    welcomeSignin: "👨‍👩‍👧 আমি মা-বাবা — সাইন ইন করুন",
     welcomeSyllabus: "📚 বাচ্চারা যা শেখে — সাইন ইন লাগবে না",
-    syllabusGuestNote: "আপনি অতিথি হিসেবে দেখছেন — সন্তানের অগ্রগতি সব ডিভাইসে রাখতে সাইন ইন করুন।",
+    syllabusGuestNote: "আপনি অতিথি হিসেবে দেখছেন — বাচ্চার শেখার খবর সব ডিভাইসে রাখতে সাইন ইন করুন।",
     syllabusTitle: "বাচ্চারা যা শেখে",
-    syllabusSub: "একটি পরিচালিত পথ, যা শিশুর মন বড় হওয়ার মতো করে গড়া — আগে সংখ্যা, তারপর খেলা, তারপর প্রশ্ন।",
+    syllabusSub: "একটি সাজানো পথ, যা বাচ্চার মন বড় হওয়ার মতো করে গড়া — আগে সংখ্যা, তারপর খেলা, তারপর প্রশ্ন।",
     syllabusWhat: "👨‍👩‍👧 আপনার সন্তানের প্রতিটি ধাপ, ক্রম অনুযায়ী",
     syllabusGame: "🎮 খেলুন",
     syllabusStart: "🚀 শেখা শুরু করুন",
     syllabusFab: "শুরু",
     syllabusHow: "শেখার সিঁড়ি",
-    syllabusHow1: "১ · আগে সংখ্যা — যেকোনো হিসাবের আগে শিশু প্রতিটি সংখ্যার সাথে পরিচিত হয়।",
+    syllabusHow1: "১ · আগে সংখ্যা — যেকোনো হিসাবের আগে বাচ্চা প্রতিটি সংখ্যার সাথে পরিচিত হয়।",
     syllabusHow2: "২ · খেলা ধারণা শেখায় — আপেল, ভাগাভাগি, সারি এটি বাস্তব করে তোলে।",
     syllabusHow3: "৩ · প্রশ্ন শেষে আসে — ধারণাটি দেখা হলে, অনুশীলন তা মনে গেঁথে দেয়।",
     syllabusProgress: (done, total) => `${done}/${total} আয়ত্ত`,
@@ -1369,18 +1375,21 @@ const STR: Record<Lang, Strings> = {
     syllabusOpen: "বাচ্চারা যা শেখে",
     settingsTitle: "সেটিংস",
     settingsSub: "ভাষা, শব্দ ও ভয়েস",
-    settingsParent: "👨‍👩‍👧 অভিভাবক বিশ্লেষণ",
+    settingsPrefs: "⚙️ ভাষা ও শব্দ",
+    settingsAccount: "👤 অ্যাকাউন্ট",
+    settingsPortalGuest: "পোর্টাল খুলতে সাইন ইন করুন",
+    settingsParent: "👨‍👩‍👧 মা-বাবার বিশ্লেষণ",
     settingsSyllabus: "📚 বাচ্চারা যা শেখে",
-    settingsSigninTitle: "👨‍👩‍👧 সব জায়গায় অগ্রগতি রাখুন",
+    settingsSigninTitle: "👨‍👩‍👧 সব জায়গায় শেখার খবর রাখুন",
     settingsSigninBadge: "অতিথি",
-    settingsSigninSub: "আপনি অতিথি মোডে আছেন — অগ্রগতি শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা অভিভাবক অ্যাকাউন্ট খুলুন।",
-    settingsSigninCta: "🔓 সাইন ইন / অভিভাবক অ্যাকাউন্ট খুলুন",
+    settingsSigninSub: "আপনি অতিথি মোডে আছেন — শেখার খবর শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা মা-বাবার অ্যাকাউন্ট খুলুন।",
+    settingsSigninCta: "🔓 সাইন ইন / মা-বাবার অ্যাকাউন্ট খুলুন",
     parentSignoutTitle: "🚪 সাইন আউট",
-    parentSignoutSub: "এই ডিভাইসটি অভিভাবক অ্যাকাউন্ট ছেড়ে যাবে — স্থানীয় অগ্রগতি থাকে। যেকোনো সময় আবার সাইন ইন করুন।",
+    parentSignoutSub: "এই ডিভাইসটি মা-বাবার অ্যাকাউন্ট ছেড়ে যাবে — এই ডিভাইসের শেখার খবর থাকে। যেকোনো সময় আবার সাইন ইন করুন।",
     parentSignoutCta: "সাইন আউট",
     parentSignoutConfirm: "নিশ্চিত করতে আবার চাপুন",
     settingsAbout: "📦 এই অ্যাপ সম্পর্কে",
-    settingsAboutSub: "নম্বরভার্স · কৌতূহলী শিশুদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
+    settingsAboutSub: "নম্বরভার্স · কৌতূহলী বাচ্চাদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
@@ -1392,7 +1401,7 @@ const STR: Record<Lang, Strings> = {
     music: "🔊 মিউজিক চালু",
     musicMuted: "🔇 মিউজিক বন্ধ",
     install: "অ্যাপ ইনস্টল করুন",
-    shareProgress: "📤 অগ্রগতি শেয়ার করুন",
+    shareProgress: "📤 শেখার খবর শেয়ার করুন",
     shareShare: "শেয়ার",
     shareCardTitle: "🎉 Numberverse",
     shareCardFooter: "Numberverse দিয়ে তৈরি — বাচ্চারা গণিত ও বাংলা শেখে, অফলাইনেও, কোনো বিজ্ঞাপন নেই।",
@@ -1400,7 +1409,7 @@ const STR: Record<Lang, Strings> = {
     shareStatsScore: "পয়েন্ট",
     shareStatsSessions: "সেশন",
     shareWorldsTitle: "জগৎ",
-    shareRewardSpeak: (name) => `${name}-এর অগ্রগতি শেয়ার হয়েছে! তুমি +৫ কয়েন পেয়েছ! 🎉`,
+    shareRewardSpeak: (name) => `${name}-এর শেখার খবর শেয়ার হয়েছে! তুমি +৫ কয়েন পেয়েছ! 🎉`,
     shareRewardToast: "🎉 শেয়ার হয়েছে! আপনার সন্তানের জন্য +৫ কয়েন",
     shareWhatsApp: "WhatsApp",
     shareDone: "✓ শেয়ার হয়েছে",
@@ -1409,7 +1418,7 @@ const STR: Record<Lang, Strings> = {
     digestBtn: "📄 সাপ্তাহিক ডাইজেস্ট",
     digestEmpty: "এই সপ্তাহে এখনো কোনো গল্প নেই — কিছু খেলা খেলুন, ডাইজেস্ট ভরে উঠবে।",
     digestDone: "সাপ্তাহিক ডাইজেস্ট ডাউনলোড হয়েছে ✓",
-    digestHeader: (name, week) => `Numberverse — সাপ্তাহিক শেখার ডাইজেস্ট\nশিশু: ${name}\nসপ্তাহ: ${week}`,
+    digestHeader: (name, week) => `Numberverse — সাপ্তাহিক শেখার ডাইজেস্ট\nবাচ্চা: ${name}\nসপ্তাহ: ${week}`,
     digestStats: (total, solved, tricky) => `${total}টি মুহূর্ত · ${solved}টি সমাধান · ${tricky}টি কঠিন`,
     digestSolved: "সমাধান",
     digestTricky: (n) => `${n}টি ভুল`,
@@ -1432,7 +1441,7 @@ const STR: Record<Lang, Strings> = {
     voicePickTitle: "🎙️ বাংলা ভয়েস",
     voicePickHint: "বাংলা পড়বে কে বাছো — সব ডিভাইসে একই, সব অফলাইন।",
     voicePickFemale: "উষ্ণ প্রাপ্তবয়স্ক (মেয়ে)",
-    voicePickKid: "শিশুর ভয়েস",
+    voicePickKid: "বাচ্চার ভয়েস",
     voicePickSoft: "নরম মেয়ে",
     voicePickWarm: "বন্ধুত্বপূর্ণ ছেলে",
     voicePickListen: "শোনো",
@@ -3712,10 +3721,38 @@ export default function App() {
             </div>
           </header>
 
+          {/* 🖥️ Parent Portal — the door to the full portal, always one tap
+              from Settings. Signed in → straight through (same tab, so it
+              works inside the installed PWA). Guest → sign in first, then
+              land on the parent panel where the portal is waiting. */}
+          <div className="parent-card settings-portal-card">
+            <div className="parent-head">
+              <span className="parent-name">{t.parentPortalTitle}</span>
+              <span className="parent-stats">{hasParentSession() ? "✓" : t.settingsSigninBadge}</span>
+            </div>
+            <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
+            {hasParentSession() ? (
+              <a className="big-btn settings-portal-btn" href="/parent/parent">
+                {t.parentPortalCta} →
+              </a>
+            ) : (
+              <button
+                className="big-btn settings-portal-btn"
+                onClick={() => {
+                  gateReturn.current = "parent";
+                  setScreen("parentgate");
+                }}
+              >
+                {t.settingsPortalGuest}
+              </button>
+            )}
+          </div>
+
+          {/* ⚙️ Language & sound — one row of quick toggles + live sync status */}
           <div className="parent-card">
             <div className="parent-head">
-              <span className="parent-name">{t.langLabel}</span>
-              <span className="parent-stats">{t.music}</span>
+              <span className="parent-name">{t.settingsPrefs}</span>
+              <span className="parent-stats">{syncState === "ok" ? t.syncOk : t.syncIdle}</span>
             </div>
             <div className="row settings-row">
               <button
@@ -3767,7 +3804,7 @@ export default function App() {
             )}
           </div>
 
-          {/* 🔊 TTS check on every run lives here — status + a live test. */}
+          {/* 🔊 Voice — status + a live test on every run */}
           <div className="parent-card">
             <div className="parent-head">
               <span className="parent-name">{t.settingsVoice}</span>
@@ -3799,114 +3836,119 @@ export default function App() {
             <p className="syllabus-settings-sub">{t.syllabusSub}</p>
           </div>
 
-          {/* Guest → parent upgrade: a guest can sign in / create an account
-              here (their local kids then sync to the parent's account). */}
+          {/* Account — guest → parent upgrade (their local kids then sync to
+              the parent's account). Signed-in parents manage the account from
+              the portal / parent panel instead. */}
           {!hasParentSession() && (
-            <div className="parent-card settings-signin-card">
-              <div className="parent-head">
-                <span className="parent-name">{t.settingsSigninTitle}</span>
-                <span className="parent-stats">{t.settingsSigninBadge}</span>
+            <>
+              <div className="parent-card settings-signin-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.settingsSigninTitle}</span>
+                  <span className="parent-stats">{t.settingsSigninBadge}</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
+                <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
+                  {t.settingsSigninCta}
+                </button>
               </div>
-              <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
-              <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
-                {t.settingsSigninCta}
-              </button>
-            </div>
+            </>
           )}
 
-          {/* 🔭 #330 Kotha class insights — parent opt-in + aggregate preview.
-              Showed only for a signed-in parent; all data is anonymized and the
-              response itself carries zero kid identity. */}
+          {/* 🔭 Kotha class insights — parent opt-in + anonymized aggregate
+              preview. Signed-in parent only; the response carries zero kid
+              identity. */}
           {hasParentSession() && (
-            <div className="parent-card settings-aggregate-card">
-              <div className="parent-head">
-                <span className="parent-name">{t.aggTitle}</span>
-                <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
-              </div>
-              <p className="syllabus-settings-sub">{t.aggSub}</p>
+            <>
+              <div className="parent-card settings-aggregate-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.aggTitle}</span>
+                  <span className="parent-stats">{aggOpted ? "✓ " + t.aggOptIn : t.aggOptOut}</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.aggSub}</p>
 
-              {!aggOpted ? (
-                <>
-                  <button
-                    className="big-btn settings-signin-btn"
-                    disabled={aggBusy}
-                    onClick={() => {
-                      setAggBusy(true);
-                      void setAggregateOptIn(true).then((ok) => {
-                        setAggBusy(false);
-                        if (ok) {
-                          setAggOpted(true);
-                          void loadAggregates();
-                        }
-                      });
-                    }}
-                  >
-                    {t.aggOptIn}
-                  </button>
-                  {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
-                </>
-              ) : (
-                <>
-                  {aggBusy && !agg ? (
-                    <p className="syllabus-settings-sub">…</p>
-                  ) : agg ? (
-                    <div className="agg-preview">
-                      <p className="agg-line">
-                        {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
-                        {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
-                      </p>
-                      {agg.top_misconceptions.length > 0 && (
-                        <p className="agg-block">
-                          <span className="agg-k">{t.aggTopMis}</span>
-                          {agg.top_misconceptions.slice(0, 3).map((m) => (
-                            <span key={m.code} className="agg-item">
-                              {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
-                            </span>
-                          ))}
+                {!aggOpted ? (
+                  <>
+                    <button
+                      className="big-btn settings-signin-btn"
+                      disabled={aggBusy}
+                      onClick={() => {
+                        setAggBusy(true);
+                        void setAggregateOptIn(true).then((ok) => {
+                          setAggBusy(false);
+                          if (ok) {
+                            setAggOpted(true);
+                            void loadAggregates();
+                          }
+                        });
+                      }}
+                    >
+                      {t.aggOptIn}
+                    </button>
+                    {!aggregateOptIn() && <p className="syllabus-settings-sub">{t.aggOffline}</p>}
+                  </>
+                ) : (
+                  <>
+                    {aggBusy && !agg ? (
+                      <p className="syllabus-settings-sub">…</p>
+                    ) : agg ? (
+                      <div className="agg-preview">
+                        <p className="agg-line">
+                          {t.aggFamilies(agg.contributing_kids)} · {t.aggStories(agg.total_stories)} ·{" "}
+                          {t.aggSuccessRate(Math.round(agg.success_rate * 100))}
                         </p>
-                      )}
-                      {agg.top_struggle_skills.length > 0 && (
-                        <p className="agg-block">
-                          <span className="agg-k">{t.aggTopSkills}</span>
-                          {agg.top_struggle_skills.slice(0, 3).map((s) => {
-                            const sk = filterSkills.find((f) => f.id === s.skill_id);
-                            return (
-                              <span key={s.skill_id} className="agg-item">
-                                {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
+                        {agg.top_misconceptions.length > 0 && (
+                          <p className="agg-block">
+                            <span className="agg-k">{t.aggTopMis}</span>
+                            {agg.top_misconceptions.slice(0, 3).map((m) => (
+                              <span key={m.code} className="agg-item">
+                                {MISCONCEPTION_LABELS[m.code]?.[lang] ?? m.code.replace(/-/g, " ")}
                               </span>
-                            );
-                          })}
-                        </p>
-                      )}
-                      {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
-                        <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                      )}
-                      <p className="agg-note">{t.aggPreview}</p>
-                    </div>
-                  ) : (
-                    <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
-                  )}
-                  <button
-                    className="ghost-btn mini agg-optout-btn"
-                    onClick={() => {
-                      setAggBusy(true);
-                      void setAggregateOptIn(false).then((ok) => {
-                        setAggBusy(false);
-                        if (ok) {
-                          setAggOpted(false);
-                          setAgg(null);
-                        }
-                      });
-                    }}
-                  >
-                    {t.aggOptOut}
-                  </button>
-                </>
-              )}
-            </div>
+                            ))}
+                          </p>
+                        )}
+                        {agg.top_struggle_skills.length > 0 && (
+                          <p className="agg-block">
+                            <span className="agg-k">{t.aggTopSkills}</span>
+                            {agg.top_struggle_skills.slice(0, 3).map((s) => {
+                              const sk = filterSkills.find((f) => f.id === s.skill_id);
+                              return (
+                                <span key={s.skill_id} className="agg-item">
+                                  {lang === "bn" ? sk?.titleBn ?? s.skill_id : sk?.title ?? s.skill_id}
+                                </span>
+                              );
+                            })}
+                          </p>
+                        )}
+                        {agg.top_misconceptions.length === 0 && agg.top_struggle_skills.length === 0 && (
+                          <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                        )}
+                        <p className="agg-note">{t.aggPreview}</p>
+                      </div>
+                    ) : (
+                      <p className="syllabus-settings-sub">{t.aggNoneYet}</p>
+                    )}
+                    <button
+                      className="ghost-btn mini agg-optout-btn"
+                      onClick={() => {
+                        setAggBusy(true);
+                        void setAggregateOptIn(false).then((ok) => {
+                          setAggBusy(false);
+                          if (ok) {
+                            setAggOpted(false);
+                            setAgg(null);
+                          }
+                        });
+                      }}
+                    >
+                      {t.aggOptOut}
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
           )}
 
-          {/* 📦 About — the app's semantic version (e.g. 0.25.0). */}
+          {/* 📦 About — the app's semantic version */}
           <div className="parent-card settings-about-card">
             <div className="parent-head">
               <span className="parent-name">{t.settingsAbout}</span>
@@ -3915,14 +3957,15 @@ export default function App() {
             <p className="syllabus-settings-sub">{t.settingsAboutSub} · {APP_BUILD.split(" · ")[0]}</p>
           </div>
 
-          <button className="ghost-btn" onClick={() => setScreen("parent")}>
+          {/* In-app analytics (works for guests too) — the full portal is the
+              card up top; this is the quick per-kid view. */}
+          <button className="ghost-btn settings-parent-btn" onClick={() => setScreen("parent")}>
             {t.settingsParent}
           </button>
         </main>
       </div>
     );
   }
-
   if (screen === "parent") {
     // Analytics for one kid at a time (compact), plus a family-summary hero
     // and — for a signed-in parent — a deep link into the full parent portal
@@ -3975,9 +4018,10 @@ export default function App() {
                 </div>
               </section>
 
-              {/* ── Deep link into the full portal for a signed-in parent ── */}
-              {signedIn && (
-                <>
+              {/* ── The full Parent Portal door — always one tap away.
+                  Signed in → straight through (same tab, PWA-safe). Guest →
+                  sign in first, then land back here with the portal open. */}
+              {signedIn ? (
                 <a className="parent-card parent-portal-card" href={PARENT_PORTAL}>
                   <div className="parent-head">
                     <span className="parent-name">{t.parentPortalTitle}</span>
@@ -3986,8 +4030,25 @@ export default function App() {
                   <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
                   <span className="big-btn parent-portal-btn">{t.parentPortalCta}</span>
                 </a>
+              ) : (
+                <button
+                  className="parent-card parent-portal-card parent-portal-guest"
+                  onClick={() => {
+                    gateReturn.current = "parent";
+                    setScreen("parentgate");
+                  }}
+                >
+                  <div className="parent-head">
+                    <span className="parent-name">{t.parentPortalTitle}</span>
+                    <span className="parent-stats">{t.settingsSigninBadge}</span>
+                  </div>
+                  <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
+                  <span className="big-btn parent-portal-btn">{t.settingsPortalGuest}</span>
+                </button>
+              )}
 
-                {/* ── Sign out of the parent account (device only — progress stays) ── */}
+              {/* ── Sign out of the parent account (device only — progress stays) ── */}
+              {signedIn && (
                 <div className="parent-card settings-signout-card">
                   <div className="parent-head">
                     <span className="parent-name">{t.parentSignoutTitle}</span>
@@ -4001,7 +4062,6 @@ export default function App() {
                     {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
                   </button>
                 </div>
-                </>
               )}
 
               {/* ── Child picker: tap an avatar to switch whose analytics you see ── */}
