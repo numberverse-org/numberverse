@@ -76,6 +76,8 @@ jobs:
       - name: Catalog + i18n audit (skills ⇄ games ⇄ scenes ⇄ App)
         working-directory: apps/kid
         run: node scripts/audit.mjs
+      - name: Share PNG has zero metadata (#93)
+        run: node scripts/test-png-metadata.mjs
 
   api:
     name: api
