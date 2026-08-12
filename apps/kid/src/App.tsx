@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from "react";
 // Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
 // `import type` is erased and the main bundle carries ZERO engine bytes.
 import type { Game } from "phaser";
-import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, type Band, type Skill } from "@numberverse/core";
+import {
+  BANDS,
+  SKILLS,
+  GAME_SCENES,
+  getGame,
+  nextDifficulty,
+  moni,
+  DEFAULT_MONI_PARAMS,
+  type Band,
+  type Skill,
+} from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult, type MistakeState } from "./store";
 import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
@@ -1424,16 +1434,78 @@ function stepForSkill(skill: Skill): SessionStep {
   };
 }
 
-/** Guided session = up to SESSION_LEN unmastered skills, in world order. If all mastered, replay the first few.
- *  Resolve-to-complete priority: skills the kid has ever missed come FIRST, so
- *  the next session re-teaches the struggles before fresh practice — the app
- *  doesn't let a wrong answer drift away, it brings it back to be solved. */
+/** 🧠 MONI — the child's next move, from the tiny tutor.
+ *  Returns Moni's plan (focus skill, difficulty, game, tone) once the kid has
+ *  enough rounds for Moni to see a pattern (>= 4, same bar as the parent card).
+ *  Falls back to null before that — the journey logic is the default until
+ *  Moni earns its voice. */
+function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
+  const st = useKidStore.getState();
+  const profile = st.moni[kidId];
+  if (!profile || profile.totalRounds < 4) return null;
+
+  // Mastery map for every skill the app knows about (pMastered + streak +
+  // wrongStreak) — what Moni plans against.
+  const mastery: Record<string, { pMastered: number; streak: number; correct: number; attempts: number; wrongStreak: number }> = {};
+  for (const s of filterSkills) {
+    const key = `${kidId}:${s.id}`;
+    const skill = st.skills[key];
+    if (!skill) continue;
+    mastery[s.id] = {
+      pMastered: skill.pMastered,
+      streak: skill.streak ?? 0,
+      correct: skill.correct ?? 0,
+      attempts: skill.attempts ?? 0,
+      wrongStreak: st.moniWrongStreak[key] ?? 0,
+    };
+  }
+  // Catalog: every skill the app can actually teach, with its game.
+  const catalog: Record<string, { id: string; band: number; game: string; dependsOn?: string[] }> = {};
+  for (const s of filterSkills) {
+    if (!s.game) continue;
+    catalog[s.id] = { id: s.id, band: s.band, game: s.game };
+  }
+  try {
+    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS);
+  } catch {
+    return null; // a malformed profile must never break the session loop
+  }
+}
+
+/** 🧠 MONI difficulty — the level index Moni wants for a skill (from its plan).
+ *  Moni's difficulty is an absolute 1–5 (mastery tier + delta); we normalize it
+ *  into the game's own level array. Returns -1 when Moni has no opinion. */
+function moniLevelIndex(kidId: string, skillId: string, gameId: string): number {
+  const plan = moniPlanFor(kidId);
+  if (!plan || plan.focusSkillId !== skillId) return -1;
+  const game = getGame(gameId);
+  if (!game || game.difficultyLevels.length === 0) return -1;
+  // Map Moni's 1–5 tier onto the game's ascending levels (tier 3 of 5 → the
+  // middle level). Clamp so it can never leave the game's range.
+  const t = Math.min(1, Math.max(0, (plan.difficulty - 1) / 4));
+  const idx = Math.round(t * (game.difficultyLevels.length - 1));
+  return Math.min(Math.max(idx, 0), game.difficultyLevels.length - 1);
+}
+
+/** 🧠 MONI-guided session — Moni's focus skill leads the pool when it has an
+ *  opinion (else the classic journey order: struggled-first, then fresh). */
 function sessionForWorld(skills: SkillMap, kidId: string, band: number): SessionStep[] {
   const ordered = filterSkills.filter((s) => s.band === band && s.game).map(stepForSkill);
   const unmastered = ordered.filter((st) => !skillMastered(skills, kidId, st.skillId));
   const pool = unmastered.length ? unmastered : ordered;
   const mistakes = useKidStore.getState().mistakes;
   const struggled = (st: SessionStep) => (mistakes[`${kidId}:${st.skillId}`]?.wrong ?? 0) > 0;
+
+  // MONI: if the tutor has a recommended skill in THIS band, it leads the queue
+  // (it already accounts for gaps + misconceptions + review timing).
+  const plan = moniPlanFor(kidId);
+  if (plan && plan.focusSkillId) {
+    const focus = pool.find((st) => st.skillId === plan.focusSkillId);
+    if (focus) {
+      const rest = pool.filter((st) => st.skillId !== plan.focusSkillId);
+      return [focus, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+    }
+  }
   return [...pool.filter(struggled), ...pool.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
 }
 
@@ -1441,8 +1513,13 @@ function nextUnmasteredSkill(skills: SkillMap, kidId: string, band: number): Ski
   return filterSkills.find((s) => s.band === band && s.game && !skillMastered(skills, kidId, s.id));
 }
 
-/** Adaptive starting level index for a kid + skill, from their BKT mastery state. */
+/** Adaptive starting level index for a kid + skill, from their BKT mastery state.
+ *  🧠 MONI overrides when it has a plan for this skill: the tutor's difficulty
+ *  tier beats the raw BKT ramp (it already accounts for gaps/misconceptions and
+ *  review timing). Falls back to BKT when Moni has no opinion. */
 function adaptiveLevelIndex(kidId: string, skillId: string, gameId: string): number {
+  const moniIdx = moniLevelIndex(kidId, skillId, gameId);
+  if (moniIdx >= 0) return moniIdx;
   const game = getGame(gameId);
   if (!game) return 0;
   const state = useKidStore.getState().skillFor(kidId, skillId);
