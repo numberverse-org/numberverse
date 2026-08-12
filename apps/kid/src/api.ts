@@ -1,4 +1,4 @@
-import { useKidStore, type RoundResult, type SyncEvent } from "./store";
+import { useKidStore, type KothaStory, type RoundResult, type SyncEvent } from "./store";
 
 /**
  * API base. Resolution order:
@@ -423,6 +423,87 @@ export async function syncStories(): Promise<void> {
   } finally {
     storySyncing = false;
   }
+}
+
+/** 🔍 KOTHA SEARCH — filter a kid's stories by skill / error kind / action /
+ *  misconception code. `filters` is a partial object; empty filters return
+ *  everything (newest first). Works online (server filter) — the store's local
+ *  copy is the offline mirror via filterLocalStories(). */
+export interface LearningStoryRow {
+  id: string;
+  skill_id: string;
+  game_id: string;
+  outcome: boolean;
+  error_kind: string | null;
+  misconception_code: string | null;
+  action: string | null;
+  difficulty: number | null;
+  response_ms: number | null;
+  wrong_streak: number | null;
+  context: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface StoryStats {
+  total: number;
+  by_skill: Record<string, number>;
+  by_error_kind: Record<string, number>;
+  by_misconception: Record<string, number>;
+}
+
+/** 🔍 KOTHA SEARCH — filter a kid's stories by skill / error kind / action /
+ *  misconception code. `filters` is a partial object; empty filters return
+ *  everything (newest first). Works online (server filter) — the store's local
+ *  copy is the offline mirror via filterLocalStories(). */
+export async function fetchStories(
+  kidId: string,
+  filters: { skillId?: string; errorKind?: string; action?: string; misconceptionCode?: string } = {},
+  limit = 100,
+): Promise<LearningStoryRow[]> {
+  const identity = await ensureIdentity();
+  const serverKid = identity?.kidFor(kidId);
+  if (!identity || !serverKid) return [];
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (filters.skillId) q.set("skill_id", filters.skillId);
+  if (filters.errorKind) q.set("error_kind", filters.errorKind);
+  if (filters.action) q.set("action", filters.action);
+  if (filters.misconceptionCode) q.set("misconception_code", filters.misconceptionCode);
+  const res = await fetch(`${API}/kids/${serverKid}/stories?${q}`, {
+    headers: { Authorization: `Bearer ${identity.token}` },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/** 📊 KOTHA COUNTS — totals grouped by skill / error kind / misconception, so a
+ *  parent or Moni can surface recurring trouble without paging through rows. */
+export async function fetchStoryStats(kidId: string): Promise<StoryStats | null> {
+  const identity = await ensureIdentity();
+  const serverKid = identity?.kidFor(kidId);
+  if (!identity || !serverKid) return null;
+  const res = await fetch(`${API}/kids/${serverKid}/stories/stats`, {
+    headers: { Authorization: `Bearer ${identity.token}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/** 🛜 OFFLINE KOTHA SEARCH — same filters, applied to the store's local stories
+ *  (the durable outbox + last-synced mirror). Works with no network at all. */
+export function filterLocalStories(
+  filters: { skillId?: string; errorKind?: string; action?: string; misconceptionCode?: string },
+  limit = 100,
+): KothaStory[] {
+  const { stories } = useKidStore.getState();
+  return stories
+    .filter((s) => {
+      if (filters.skillId && s.skillId !== filters.skillId) return false;
+      if (filters.errorKind && s.errorKind !== filters.errorKind) return false;
+      if (filters.action && s.action !== filters.action) return false;
+      if (filters.misconceptionCode && s.misconceptionCode !== filters.misconceptionCode) return false;
+      return true;
+    })
+    .slice(0, limit);
 }
 
 /** Kick off always-sync: immediate drain (clears offline backlog on open),
