@@ -604,6 +604,11 @@ interface Strings {
   settingsDictateClear: string;
   /* settings screen — grouped sections */
   settingsSecScreen: string;
+  projectorToggle: string;
+  projectorToggleSub: string;
+  projectorOn: string;
+  projectorOff: string;
+  projectorKeyHint: string;
   settingsSecParents: string;
   settingsReduceMotion: string;
   settingsMusicOff: string;
@@ -1071,6 +1076,11 @@ const STR: Record<Lang, Strings> = {
     settingsDictateClear: "Delete",
     settingsSecSound: "🔊 Sound & voice",
     settingsSecScreen: "🖥️ Screen",
+    projectorToggle: "📽️ Classroom projector",
+    projectorToggleSub: "Big, bright type for a classroom screen — the parent area is hidden.",
+    projectorOn: "Projector is on",
+    projectorOff: "Projector is off",
+    projectorKeyHint: "Press Enter to play · Esc to exit fullscreen",
     settingsReduceMotion: "Reduce motion",
     settingsSecLanguage: "🌐 Language",
     settingsSecLearning: "📚 My learning",
@@ -1535,6 +1545,11 @@ const STR: Record<Lang, Strings> = {
     settingsDictateClear: "মুছে ফেলো",
     settingsSecSound: "🔊 শব্দ ও ভয়েস",
     settingsSecScreen: "🖥️ স্ক্রিন",
+    projectorToggle: "📽️ ক্লাসরুম প্রজেক্টর",
+    projectorToggleSub: "ক্লাসরুমের জন্য বড়, উজ্জ্বল লেখা — বাবা-মার অংশ লুকানো থাকে।",
+    projectorOn: "প্রজেক্টর চালু",
+    projectorOff: "প্রজেক্টর বন্ধ",
+    projectorKeyHint: "খেলতে Enter চাপুন · ফুলস্ক্রিন বন্ধে Esc",
     settingsReduceMotion: "কম গতি",
     settingsSecLanguage: "🌐 ভাষা",
     settingsSecLearning: "📚 আমার শেখা",
@@ -2313,6 +2328,21 @@ export default function App() {
   const [mapView, setMapView] = useState(false);
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("nv_lang") as Lang) || "en");
   const [muted, setMuted] = useState(isMusicMuted());
+  // #136 — classroom projector mode: large-type, high-contrast, no parent UI.
+  const [projector, setProjector] = useState(() => {
+    try {
+      return localStorage.getItem("nv_projector") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("nv_projector", projector ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [projector]);
   // Which kid the parent panel is showing analytics for (defaults to the active kid).
   const [parentKidId, setParentKidId] = useState<string | null>(null);
   // #78 — which calendar day the wrong-answer heatmap drill-down shows (null = most recent day with wrongs).
@@ -2699,6 +2729,18 @@ export default function App() {
   const announce = useCallback((text: string) => {
     if (srLiveRef.current) srLiveRef.current.textContent = text;
   }, []);
+  // #136 — projector keyboard nav: Enter on home plays the next lesson.
+  const playRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && projector && screen === "home") {
+        e.preventDefault();
+        playRef.current();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [projector, screen]);
   const handleDictate = useCallback(async () => {
     if (recState === "recording") {
       const out = await stopRecording();
@@ -3584,6 +3626,7 @@ export default function App() {
         if (recSkill) startSingleSkill(recSkill);
         else startPlayWorld(BANDS[0]);
       };
+      playRef.current = onPlay; // #136 — projector keyboard nav uses this
       // "You are here" — the current spot on the one learning path.
       const stops = journeyState(skillsMap, kid.id);
       const doneCount = stops.filter((s) => s.done).length;
@@ -3636,7 +3679,7 @@ export default function App() {
       };
       const voiceOk = tts ? tts.available && tts.voiceCount > 0 : null;
       return (
-        <div className="app play-app">
+        <div className={`app play-app${projector ? " projector-mode" : ""}`}>
           {/* #133 — screen-reader live region: announces game + settings state. */}
           <div id="sr-live" aria-live="polite" className="sr-only" ref={srLiveRef} />
           <main className="screen play-screen">
@@ -3651,18 +3694,22 @@ export default function App() {
                 <span className="kid-chip-swap" aria-hidden="true">⇄</span>
               </button>
               <div className="play-top-right">
-                <button
-                  className={`voice-chip${voiceOk === false ? " warn" : ""}${neural.ready ? " neural-ready" : ""}`}
-                  onClick={() => setScreen("settings")}
-                  aria-label={t.settingsVoice}
-                  title={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100))) : undefined}
-                >
-                  {/* ⏳ downloading → 🎙️ neural voice ready (green dot) → 🔊 device voice */}
-                  {neural.state === "loading" ? "⏳" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
-                </button>
-                <button className="icon-btn settings-btn" onClick={() => setScreen("settings")} aria-label={t.settingsTitle}>
-                  ⚙️
-                </button>
+                {!projector && (
+                  <>
+                    <button
+                      className={`voice-chip${voiceOk === false ? " warn" : ""}${neural.ready ? " neural-ready" : ""}`}
+                      onClick={() => setScreen("settings")}
+                      aria-label={t.settingsVoice}
+                      title={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100))) : undefined}
+                    >
+                      {/* ⏳ downloading → 🎙️ neural voice ready (green dot) → 🔊 device voice */}
+                      {neural.state === "loading" ? "⏳" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
+                    </button>
+                    <button className="icon-btn settings-btn" onClick={() => setScreen("settings")} aria-label={t.settingsTitle}>
+                      ⚙️
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -4198,6 +4245,30 @@ export default function App() {
                 <span className="switch-thumb" />
               </button>
             </div>
+            {/* #136 — classroom projector: big, bright type for a big screen. */}
+            <div className="settings-row-line">
+              <span className="settings-row-icon">📽️</span>
+              <span className="settings-row-label">
+                <span>{t.projectorToggle}</span>
+                <span className="settings-row-sub">{t.projectorToggleSub}</span>
+              </span>
+              <button
+                className={`switch${projector ? " on" : ""}`}
+                role="switch"
+                aria-checked={projector}
+                aria-label={t.projectorToggle}
+                onClick={() => {
+                  const next = !projector;
+                  setProjector(next);
+                  announce(next ? t.projectorOn : t.projectorOff); // #133
+                  if (next) requestFullscreen();
+                  else if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+                }}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
+            {projector && <p className="settings-voice-note">🎹 {t.projectorKeyHint}</p>}
           </div>
 
           {/* 🌐 Language — two big pills, the current one is unmistakable. */}
