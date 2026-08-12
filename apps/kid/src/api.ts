@@ -398,6 +398,7 @@ export async function syncStories(): Promise<void> {
       body: JSON.stringify(
         mapped.map((st) => ({
           kid_id: identity.kidFor(st.kidId),
+          uid: st.uid, // dedup key — replayed batches are no-ops server-side (#331)
           skill_id: st.skillId,
           game_id: st.gameId,
           outcome: st.outcome,

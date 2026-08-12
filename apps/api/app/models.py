@@ -135,8 +135,16 @@ class LearningStory(Base):
     the exact Moni plan that ran, etc."""
 
     __tablename__ = "learning_stories"
+    # Dedup key (#331): the client's durable-outbox uid for this story. Unique
+    # per kid so a replayed batch (lost ACK → same uid re-posted) is a no-op.
+    # NULL for pre-dedup rows — Postgres lets many NULLs coexist in a unique
+    # constraint, so legacy rows never collide.
+    __table_args__ = (
+        UniqueConstraint("kid_id", "uid", name="uq_learning_story_kid_uid"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    uid: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), index=True)
     skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
     game_id: Mapped[str] = mapped_column(String)

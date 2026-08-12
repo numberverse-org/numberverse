@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -120,31 +121,41 @@ async def record_stories(
     """Persist learning moments as Kotha stories (including Moni's diagnoses).
 
     Fire-and-forget from the kid app: the client sends a small batch of stories
-    each sync, we verify ownership, store them, and return the count."""
+    each sync, we verify ownership, store them, and return the count.
+
+    Dedup (#331): every story carries the client's durable-outbox `uid`. We
+    INSERT ... ON CONFLICT DO NOTHING on (kid_id, uid), so a replayed batch
+    (lost ACK → same uid re-posted) is a silent no-op instead of a duplicate.
+    The response reports how many were actually new vs skipped as duplicates."""
     kid_ids = {s.kid_id for s in body}
     for kid_id in kid_ids:
         owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
 
-    for s in body:
-        db.add(
-            LearningStory(
-                kid_id=s.kid_id,
-                skill_id=s.skill_id,
-                game_id=s.game_id,
-                error_kind=s.error_kind,
-                misconception_code=s.misconception_code,
-                action=s.action,
-                outcome=s.outcome,
-                difficulty=s.difficulty,
-                response_ms=s.response_ms,
-                wrong_streak=s.wrong_streak,
-                context=s.context,
-            )
-        )
+    rows = [
+        {
+            "kid_id": s.kid_id,
+            "uid": s.uid,
+            "skill_id": s.skill_id,
+            "game_id": s.game_id,
+            "error_kind": s.error_kind,
+            "misconception_code": s.misconception_code,
+            "action": s.action,
+            "outcome": s.outcome,
+            "difficulty": s.difficulty,
+            "response_ms": s.response_ms,
+            "wrong_streak": s.wrong_streak,
+            "context": s.context,
+        }
+        for s in body
+    ]
+    stmt = pg_insert(LearningStory).values(rows)
+    stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"])
+    result = await db.execute(stmt)
     await db.commit()
-    return {"recorded": len(body)}
+    inserted = result.rowcount if result.rowcount is not None else len(body)
+    return {"recorded": inserted, "duplicates_skipped": len(body) - inserted}
 
 
 def _story_filters(kid_id: uuid.UUID, skill_id: str | None, error_kind: str | None, action: str | None, misconception_code: str | None):

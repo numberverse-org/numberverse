@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     # kid app shows "Continue with Google" and /auth/google verifies the ID
     # token server-side. Leave empty to hide Google sign-in entirely.
     google_client_id: str | None = None
+    # 📚 KOTHA retention policy (#331). Stories older than `kotha_retention_days`
+    # are pruned by the admin prune job — but never from a skill practiced in
+    # the last `kotha_active_skill_days` (active skills keep their full story
+    # history), and each kid always keeps its most recent
+    # `kotha_max_stories_per_kid` stories.
+    kotha_retention_days: int = 90
+    kotha_active_skill_days: int = 7
+    kotha_max_stories_per_kid: int = 1000
 
     @property
     def origins(self) -> list[str]:
