@@ -26,6 +26,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/deploy/Dockerfile.api
+    image: numberverse-demo-api:${NV_VERSION:-latest}   # #125 — version-tagged for rollback
     restart: unless-stopped
     env_file: .env.production
     environment:
@@ -43,6 +44,7 @@ services:
         # Google sign-in client id — baked into the kid PWA build. Empty
         # (default) → the "Continue with Google" button is hidden entirely.
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    image: numberverse-demo-web:${NV_VERSION:-latest}   # #125 — version-tagged for rollback
     restart: unless-stopped
     ports:
       - "8080:80"   # tunnel origin + LAN fallback: http://192.168.0.104:8080

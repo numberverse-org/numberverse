@@ -16,9 +16,11 @@ PR merged → CI green (build core → typecheck → audit → api compile+tests
             5. Push               (main + tag)  →  GitHub Actions:
                     • ci.yml        re-verifies the exact tagged commit
                     • release.yml   drafts a GitHub Release with auto-generated notes
-            6. Deploy             (rsync → docker compose build on box → live)
+            6. Deploy             (rsync → docker compose build `:VERSION`-tagged images on box → live)
             7. Smoke test         (#121: curl the live bundle, assert the new stamp)
-        → kids.munna-khan.xyz serves the new build stamp (or release.sh exits ✖)
+                • edge lag? origin-check says new version is live → wait for the edge, do NOT roll back
+                • origin broken? → AUTO-ROLLBACK to the previous version's image (#125)
+        → kids.munna-khan.xyz serves the new build stamp (or release.sh rolls back and exits ✖)
 ```
 
 ## How to ship (one command)
@@ -36,6 +38,26 @@ fix-only releases (`fix:` commits).
 The script aborts on the **first failing gate** — you cannot release with a
 broken audit, a red typecheck, an ✖ oracle check, or a failed post-deploy
 smoke test. That's the point.
+
+## Rollback on a bad deploy (#125)
+
+Every release builds **version-tagged images** (`numberverse-demo-{web,api}:<X.Y.Z>`)
+on the box, so the previous release's image is always locally available.
+
+If the post-deploy smoke fails, release.sh first probes the **origin**
+(`http://192.168.0.104:8080`, bypassing Cloudflare):
+
+- **Origin serves the new version** → the failure was edge-cache lag. release.sh
+  waits up to 90s for the edge to catch up and **does NOT roll back** (rolling
+  back would break a good deploy). If the edge is still stale it exits ✖ with a
+  "purge the Cloudflare cache" hint.
+- **Origin does NOT serve the new version** → genuine deploy fault. release.sh
+  runs `bash infra/deploy/scripts/rollback.sh <prev-version>`, which restarts
+  web+api from the previous image with **no rebuild** and re-verifies the live
+  stamp.
+
+Rollback is safe to re-run and is a no-op if the target image is missing (it
+fails loudly instead of pretending).
 
 ## CI gates (every PR must be green before merge)
 

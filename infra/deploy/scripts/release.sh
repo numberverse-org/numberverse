@@ -20,6 +20,9 @@ fi
 NO_DEPLOY="false"; [[ " $* " == *" --no-deploy "* ]] && NO_DEPLOY="true"
 TODAY=$(date '+%d %b %Y')
 ROOT="$(pwd)"
+# #125 — capture the previous semver tag BEFORE we create the new one. If the
+# post-deploy smoke fails we roll back web+api to this version's image.
+PREV_TAG=$(git tag --list '0.*' --sort=-v:refname | head -1 || true)
 
 echo "════════════════════════════════════════════════"
 echo "  Numberverse release  $VERSION — $SUMMARY"
@@ -84,7 +87,7 @@ if [ "$NO_DEPLOY" = "true" ]; then
   exit 0
 fi
 echo "── 6/6 Deploy to box ───────────────────────────"
-bash infra/deploy/scripts/deploy.sh
+NV_VERSION="$VERSION" bash infra/deploy/scripts/deploy.sh
 
 # #121 — post-deploy smoke test: the stamp MUST be live. curl the deployed
 # bundle and assert it carries this release's APP_BUILD string. Fail loudly
@@ -112,10 +115,62 @@ for i in 1 2 3 4 5 6 7 8; do
 done
 if [ "$HIT" != "1" ]; then
   echo "  ✖ POST-DEPLOY SMOKE FAILED: $LIVE does not serve $VERSION." >&2
-  echo "  ✖ The previous tag is still live. Rollback hint: the box was NOT" >&2
-  echo "     retagged (we never create a new tag for a failed deploy), so" >&2
-  echo "     re-run after fixing, or check: ssh munna@192.168.0.104 &&" >&2
-  echo "     cd numberverse-demo && docker compose logs api web" >&2
+  # #125 — before rolling back, check the ORIGIN directly (http://192.168.0.104:8080
+  # bypasses the Cloudflare edge). If the origin serves the new version the
+  # failure was edge-cache lag — rolling back would break a good deploy — so
+  # we wait for the edge and only roll back on a genuine origin fault.
+  echo "  ◆ probing origin (bypasses edge cache)…"
+  OBUST="nv$RANDOM$RANDOM"
+  OHTML=$(curl -sL --max-time 15 "http://192.168.0.104:8080/?$OBUST" || true)
+  OJS=$(printf '%s' "$OHTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+  ORIGIN_OK=0
+  if [ -n "$OJS" ]; then
+    OBODY=$(curl -sL --max-time 20 "http://192.168.0.104:8080/$OJS?$OBUST" || true)
+    printf '%s' "$OBODY" | grep -qF "$VERSION" && ORIGIN_OK=1
+  fi
+  if [ "$ORIGIN_OK" = "1" ]; then
+    echo "  ✓ origin SERVES $VERSION — the tunnel's edge cache is lagging, NOT a"
+    echo "    deploy fault. Waiting up to 90s for the edge to catch up…"
+    HIT2=0
+    for _ in 1 2 3 4 5 6; do
+      sleep 15
+      BUST="nv$RANDOM$RANDOM"
+      HTML=$(curl -sL --max-time 15 -H 'Cache-Control: no-cache' "$LIVE/?$BUST" || true)
+      JS=$(printf '%s' "$HTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+      if [ -n "$JS" ]; then
+        BODY=$(curl -sL --max-time 20 -H 'Cache-Control: no-cache' "$LIVE/$JS?$BUST" || true)
+        if printf '%s' "$BODY" | grep -qF "$VERSION"; then HIT2=1; break; fi
+      fi
+    done
+    if [ "$HIT2" = "1" ]; then
+      echo "  ✓ $LIVE serves $VERSION after edge catch-up — release live."
+      echo "════════════════════════════════════════════════"
+      echo "  ✅ $VERSION shipped + smoke-tested (edge-lag resolved). Live: $LIVE"
+      echo "════════════════════════════════════════════════"
+      exit 0
+    fi
+    echo "  ✖ edge still lagging after 90s. Release IS live at the origin; the" >&2
+    echo "    tunnel cache is stale. NOT rolling back (origin is healthy)." >&2
+    echo "    Check Cloudflare cache purging for $LIVE." >&2
+    exit 1
+  fi
+  # Genuine deploy fault — restore the previous release's image.
+  if [ -n "$PREV_TAG" ]; then
+    echo "  ✖ origin does NOT serve $VERSION — genuine deploy fault." >&2
+    echo "  ◆ rolling back to $PREV_TAG (#125)…"
+    if bash infra/deploy/scripts/rollback.sh "$PREV_TAG"; then
+      echo "  ✅ Rolled back to $PREV_TAG — live site restored."
+      echo "  Inspect the fault (docker compose logs api web) before re-releasing."
+      exit 1
+    else
+      echo "  ✖ ROLLBACK FAILED — manual intervention required." >&2
+      echo "    ssh munna@192.168.0.104 && cd numberverse-demo/infra/deploy &&" >&2
+      echo "    docker compose logs api web" >&2
+      exit 1
+    fi
+  fi
+  echo "  ✖ no previous tag to roll back to (first release?). Manual check:" >&2
+  echo "    ssh munna@192.168.0.104 && cd numberverse-demo && docker compose logs api web" >&2
   exit 1
 fi
 
