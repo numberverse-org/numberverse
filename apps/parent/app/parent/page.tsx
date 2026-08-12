@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  getProfile,
   getKids,
   getMastery,
   getKidSettings,
@@ -13,12 +14,20 @@ import {
   createKid,
   updateKid,
   deleteKid,
+  signout,
+  signoutAll,
+  getSessions,
+  revokeSession,
+  changePassword,
+  updateProfile,
+  type Profile,
   type Kid,
   type MasteryRow,
   type KidSettings as KidSettingsT,
   type ActivityRow,
   type WeeklyReport,
   type NewKid,
+  type SessionRow,
 } from "../../lib/api";
 
 const AVATARS = ["🛡️", "🔮", "🗡️", "🪓", "🏹", "🦊", "🐱", "🐼", "🐸", "🦄", "🐯", "🐰", "🐨", "🐹", "🦁"];
@@ -78,6 +87,20 @@ function fmtTime(iso: string): string {
   }
 }
 
+/** Turn a user-agent string into a short, human-friendly device label. */
+function friendlyDevice(ua: string | null): string {
+  if (!ua) return "Unknown device";
+  const s = ua.toLowerCase();
+  if (s.includes("iphone")) return "iPhone";
+  if (s.includes("ipad")) return "iPad";
+  if (s.includes("android")) return "Android phone";
+  if (s.includes("mac os") || s.includes("macintosh")) return "Mac";
+  if (s.includes("windows")) return "Windows PC";
+  if (s.includes("linux")) return "Linux";
+  if (s.includes("samsung")) return "Samsung";
+  return ua.split(" ")[0].slice(0, 30) || "Device";
+}
+
 function weekdayShort(iso: string): string {
   try {
     const d = new Date(iso + "T00:00:00");
@@ -120,6 +143,7 @@ function masteryPct(m: MasteryRow): number {
 
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [kids, setKids] = useState<Kid[]>([]);
   const [mastery, setMastery] = useState<Record<string, MasteryRow[]>>({});
   const [settings, setSettings] = useState<Record<string, KidSettingsT>>({});
@@ -137,26 +161,70 @@ export default function ParentDashboard() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // ── account & security ──
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [displayName, setDisplayName] = useState("");
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [acctMsg, setAcctMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [acctBusy, setAcctBusy] = useState(false);
+
+  /** End the session on this browser AND revoke it server-side, then land on
+   *  the login page. Everything in localStorage with a parent-session key dies
+   *  so no stale token can silently re-auth on a reload. */
+  const doSignout = useCallback(async (tok: string) => {
+    await signout(tok).catch(() => undefined);
+    localStorage.removeItem("nv_parent_token");
+    localStorage.removeItem("nv_parent_name");
+    localStorage.removeItem("nv_kid_id");
+    localStorage.removeItem("nv_kid_map");
+    setToken(null);
+    setProfile(null);
+  }, []);
+
   const refreshAll = useCallback(
-    async (tok: string, kidId: string | null) => {
+    async (tok: string) => {
       const k = await getKids(tok);
       setKids(k);
-      const id = kidId ?? (k[0]?.id ?? null);
-      setActiveId(id);
-      if (!id) return;
-      const [m, s, a, w] = await Promise.all([
-        getMastery(tok, id),
-        getKidSettings(tok, id).catch(() => DEFAULT_SETTINGS),
-        getActivity(tok, id).catch(() => []),
-        getWeekly(tok, id).catch(() => null),
-      ]);
-      setMastery((prev) => ({ ...prev, [id]: m }));
-      setSettings((prev) => ({ ...prev, [id]: s }));
-      setActivity((prev) => ({ ...prev, [id]: a }));
-      if (w) setWeekly((prev) => ({ ...prev, [id]: w }));
+      setActiveId((prev) => (prev && k.some((x) => x.id === prev) ? prev : (k[0]?.id ?? null)));
+      if (k.length === 0) return;
+      // Load every kid up-front so the family overview + switcher are instant.
+      const entries = await Promise.all(
+        k.map(async (kid) => {
+          const [m, s, a, w] = await Promise.all([
+            getMastery(tok, kid.id),
+            getKidSettings(tok, kid.id).catch(() => DEFAULT_SETTINGS),
+            getActivity(tok, kid.id).catch(() => []),
+            getWeekly(tok, kid.id).catch(() => null),
+          ]);
+          return [kid.id, { m, s, a, w }] as const;
+        })
+      );
+      const mm: Record<string, MasteryRow[]> = {};
+      const ss: Record<string, KidSettingsT> = {};
+      const aa: Record<string, ActivityRow[]> = {};
+      const ww: Record<string, WeeklyReport> = {};
+      for (const [id, { m, s, a, w }] of entries) {
+        mm[id] = m;
+        ss[id] = s;
+        aa[id] = a;
+        if (w) ww[id] = w;
+      }
+      setMastery(mm);
+      setSettings(ss);
+      setActivity(aa);
+      setWeekly(ww);
     },
     []
   );
+
+  const reloadAccount = useCallback(async (tok: string) => {
+    const [p, s] = await Promise.all([getProfile(tok), getSessions(tok)]);
+    setProfile(p);
+    setDisplayName(p.display_name ?? "");
+    setSessions(s);
+  }, []);
 
   useEffect(() => {
     const tok = localStorage.getItem("nv_parent_token");
@@ -165,14 +233,15 @@ export default function ParentDashboard() {
       return;
     }
     setToken(tok);
-    refreshAll(tok, null).catch(() => setError("Could not load progress. Is the API running?"));
-  }, [refreshAll]);
+    refreshAll(tok).catch(() => setError("Could not load progress. Is the API running?"));
+    reloadAccount(tok).catch(() => setError("Could not load account details."));
+  }, [refreshAll, reloadAccount]);
 
   const switchKid = useCallback(
     async (id: string) => {
       if (!token) return;
       setActiveId(id);
-      if (mastery[id]) return; // already loaded
+      if (mastery[id]) return; // already loaded (refreshAll fetches every kid)
       try {
         const [m, s, a, w] = await Promise.all([
           getMastery(token, id),
@@ -221,7 +290,7 @@ export default function ParentDashboard() {
     try {
       await resetKidProgress(token, activeId);
       setConfirmReset(false);
-      await refreshAll(token, activeId);
+      await refreshAll(token);
       setSavedTick((t) => t + 1);
     } catch {
       setError("Failed to reset progress.");
@@ -238,7 +307,7 @@ export default function ParentDashboard() {
       await deleteKid(token, activeId);
       setConfirmDelete(false);
       setShowAdd(false);
-      await refreshAll(token, null);
+      await refreshAll(token);
     } catch {
       setError("Failed to delete kid.");
     } finally {
@@ -259,7 +328,7 @@ export default function ParentDashboard() {
       setShowAdd(false);
       setEditName("");
       setEditAvatar("🦊");
-      await refreshAll(token, kid.id);
+      await refreshAll(token);
       setSavedTick((t) => t + 1);
     } catch {
       setError("Failed to add kid.");
@@ -279,7 +348,7 @@ export default function ParentDashboard() {
         birth_year: editBirthYear,
       } satisfies NewKid);
       setEditName("");
-      await refreshAll(token, activeId);
+      await refreshAll(token);
       setSavedTick((t) => t + 1);
     } catch {
       setError("Failed to save changes.");
@@ -288,12 +357,95 @@ export default function ParentDashboard() {
     }
   }
 
+  async function handleSaveName() {
+    if (!token || !displayName.trim()) return;
+    setAcctBusy(true);
+    setAcctMsg(null);
+    try {
+      const p = await updateProfile(token, displayName.trim());
+      setProfile(p);
+      localStorage.setItem("nv_parent_name", p.display_name ?? "Parent");
+      setAcctMsg({ kind: "ok", text: "Display name saved." });
+    } catch {
+      setAcctMsg({ kind: "err", text: "Could not save display name." });
+    } finally {
+      setAcctBusy(false);
+    }
+  }
+
+  async function handleChangePw() {
+    if (!token) return;
+    if (pwNew.length < 8) {
+      setAcctMsg({ kind: "err", text: "New password must be at least 8 characters." });
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      setAcctMsg({ kind: "err", text: "New passwords don't match." });
+      return;
+    }
+    setAcctBusy(true);
+    setAcctMsg(null);
+    try {
+      await changePassword(token, pwCurrent, pwNew);
+      setPwCurrent("");
+      setPwNew("");
+      setPwConfirm("");
+      setAcctMsg({ kind: "ok", text: "Password changed — every other device was signed out." });
+      await reloadAccount(token);
+    } catch {
+      setAcctMsg({ kind: "err", text: "Password change failed — check your current password." });
+    } finally {
+      setAcctBusy(false);
+    }
+  }
+
+  async function handleRevoke(sessionId: string, isCurrent: boolean) {
+    if (!token) return;
+    setAcctBusy(true);
+    setAcctMsg(null);
+    try {
+      await revokeSession(token, sessionId);
+      if (isCurrent) {
+        await doSignout(token); // revoked our own token → end the session here too
+        return;
+      }
+      await reloadAccount(token);
+      setAcctMsg({ kind: "ok", text: "That device was signed out." });
+    } catch {
+      setAcctMsg({ kind: "err", text: "Could not revoke that session." });
+    } finally {
+      setAcctBusy(false);
+    }
+  }
+
+  async function handleSignoutAll() {
+    if (!token) return;
+    setAcctBusy(true);
+    setAcctMsg(null);
+    try {
+      await signoutAll(token);
+    } catch {
+      /* even if the network call fails, the local sign-out below protects THIS
+         device — other sessions can be reset from any still-logged-in device */
+    }
+    await doSignout(token);
+  }
+
   const active = kids.find((k) => k.id === activeId);
   const activeMastery = activeId ? mastery[activeId] ?? [] : [];
   const masteredCount = activeMastery.filter((m) => m.mastery >= 0.8).length;
   const activeSettings = activeId ? settings[activeId] ?? DEFAULT_SETTINGS : DEFAULT_SETTINGS;
   const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], top_game: null };
   const activeWeekly = activeId ? weekly[activeId] ?? EMPTY_WEEKLY : EMPTY_WEEKLY;
+
+  // Family overview (aggregates every kid, not just the active one).
+  const famMastered = kids.reduce(
+    (sum, k) => sum + (mastery[k.id] ?? []).filter((m) => m.mastery >= 0.8).length,
+    0
+  );
+  const famRounds = kids.reduce((sum, k) => sum + ((weekly[k.id]?.rounds as number) ?? 0), 0);
+  const famMinutes = kids.reduce((sum, k) => sum + ((weekly[k.id]?.minutes as number) ?? 0), 0);
+  const famActive = kids.filter((k) => ((weekly[k.id]?.active_days as number) ?? 0) > 0).length;
 
   if (!token) {
     return (
@@ -312,12 +464,44 @@ export default function ParentDashboard() {
     <main className="shell">
       <header className="topbar">
         <span className="brand">🔢 <b>Numberverse</b> <span className="muted">Parent Portal</span></span>
-        <button className="btn btn-small ghost" onClick={() => { localStorage.removeItem("nv_parent_token"); setToken(null); }}>
+        <span className="topbar-user" title={profile?.email ?? "signed in"}>
+          {profile?.display_name ?? "Parent"} 👨‍👩‍👧
+        </span>
+        <button className="btn btn-small ghost" onClick={() => token && doSignout(token)}>
           Sign out
         </button>
       </header>
 
       {error && <p className="err banner">{error}</p>}
+
+      {/* ── family overview ── */}
+      {kids.length > 0 && (
+        <section className="card overview">
+          <h2>👨‍👩‍👧 Family overview</h2>
+          <div className="stat-tiles">
+            <div className="tile">
+              <span className="tile-num">{kids.length}</span>
+              <span className="tile-label">kids</span>
+            </div>
+            <div className="tile">
+              <span className="tile-num">{famMastered}</span>
+              <span className="tile-label">skills mastered</span>
+            </div>
+            <div className="tile">
+              <span className="tile-num">{famRounds}</span>
+              <span className="tile-label">rounds this week</span>
+            </div>
+            <div className="tile">
+              <span className="tile-num">{famMinutes}</span>
+              <span className="tile-label">min this week</span>
+            </div>
+            <div className="tile">
+              <span className="tile-num">{famActive}</span>
+              <span className="tile-label">active this week</span>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── kid switcher ── */}
       <section className="kids-row">
@@ -597,6 +781,105 @@ export default function ParentDashboard() {
                 </tbody>
               </table>
             )}
+          </section>
+
+          {/* ── account & security ── */}
+          <section className="card account">
+            <h2>🔐 Account & security</h2>
+            {acctMsg && (
+              <p className={acctMsg.kind === "ok" ? "ok-note" : "err"}>{acctMsg.text}</p>
+            )}
+
+            <div className="ctrl-block">
+              <h3>Display name</h3>
+              <p className="muted small">Shown in the portal and on the kid app's sign-in screen.</p>
+              <div className="form-grid">
+                <label>
+                  Name
+                  <input
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder={profile?.display_name ?? "Parent"}
+                  />
+                </label>
+              </div>
+              <div className="row-buttons">
+                <button className="btn primary" disabled={acctBusy || !displayName.trim()} onClick={handleSaveName}>
+                  {acctBusy ? "Saving…" : "Save name"}
+                </button>
+              </div>
+            </div>
+
+            <div className="ctrl-block">
+              <h3>Change password</h3>
+              <p className="muted small">
+                Changing it signs out every other device immediately — only this one stays in.
+              </p>
+              <div className="form-grid">
+                <label>
+                  Current password
+                  <input type="password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} autoComplete="current-password" />
+                </label>
+                <label>
+                  New password
+                  <input type="password" value={pwNew} onChange={(e) => setPwNew(e.target.value)} autoComplete="new-password" placeholder="8+ characters" />
+                </label>
+                <label>
+                  Confirm new password
+                  <input type="password" value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} autoComplete="new-password" />
+                </label>
+              </div>
+              <div className="row-buttons">
+                <button
+                  className="btn primary"
+                  disabled={acctBusy || !pwCurrent || pwNew.length < 8 || pwNew !== pwConfirm}
+                  onClick={handleChangePw}
+                >
+                  {acctBusy ? "Saving…" : "Change password"}
+                </button>
+              </div>
+            </div>
+
+            <div className="ctrl-block">
+              <h3>Active logins</h3>
+              <p className="muted small">Every device signed into this account. Revoke one you don't recognize.</p>
+              {sessions.length === 0 ? (
+                <p className="muted">Loading sessions…</p>
+              ) : (
+                <ul className="session-list">
+                  {sessions.map((s) => (
+                    <li key={s.id} className="session-row">
+                      <span className="session-icon">{s.current ? "🖥️" : "📱"}</span>
+                      <span className="session-meta">
+                        <span className="session-device">
+                          {s.current ? "This device" : friendlyDevice(s.user_agent)}
+                          {s.current && <span className="session-current-badge">current</span>}
+                        </span>
+                        <span className="muted small">
+                          {s.user_agent ? friendlyDevice(s.user_agent) : "Unknown device"}
+                          {s.ip ? ` · ${s.ip}` : ""} · signed in {fmtTime(s.created_at)}
+                          {!s.current && ` · last seen ${fmtTime(s.last_seen_at)}`}
+                        </span>
+                      </span>
+                      {!s.current && (
+                        <button
+                          className="btn btn-small danger-ghost"
+                          disabled={acctBusy}
+                          onClick={() => handleRevoke(s.id, false)}
+                        >
+                          Sign out
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="row-buttons" style={{ marginTop: 14 }}>
+                <button className="btn danger-ghost" disabled={acctBusy || sessions.length === 0} onClick={handleSignoutAll}>
+                  Sign out of all devices
+                </button>
+              </div>
+            </div>
           </section>
 
           {/* ── edit + danger zone ── */}

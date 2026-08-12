@@ -1,18 +1,20 @@
 import uuid
+from datetime import datetime, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_db
-from .models import Profile
+from .models import Profile, Session
 from .security import decode_token
 
 bearer = HTTPBearer(auto_error=False)
 
 
 async def get_current_profile(
+    request: Request,
     cred: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> Profile:
@@ -22,6 +24,28 @@ async def get_current_profile(
         payload = decode_token(cred.credentials)
     except Exception:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
+
+    # Revocable session — tokens minted after sessions shipped carry `sid`. The
+    # row must exist and not be revoked, else the token is dead even if the JWT
+    # itself hasn't expired. Legacy tokens (no sid) are accepted until expiry so
+    # the deploy doesn't force-log-out in-flight parent + device sessions.
+    sid = payload.get("sid")
+    if sid:
+        try:
+            session_id = uuid.UUID(str(sid))
+        except (ValueError, AttributeError, TypeError):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid session")
+        session = await db.scalar(select(Session).where(Session.id == session_id))
+        if session is None or session.revoked_at is not None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session revoked — sign in again")
+        # Throttled touch: a fresh last_seen for the "active logins" list without
+        # a write on every request.
+        now = datetime.now(timezone.utc)
+        if not session.last_seen_at or (now - session.last_seen_at).total_seconds() > 300:
+            session.last_seen_at = now
+            await db.commit()
+        request.state.session = session
+
     try:
         profile_id = uuid.UUID(payload.get("sub", ""))
     except (ValueError, AttributeError):

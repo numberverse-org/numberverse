@@ -269,6 +269,29 @@ export function clearParentSession(): void {
   resetIdentity();
 }
 
+/** Full sign-out: revoke the session server-side (so the token dies on the
+ *  API too, not just on this device), then clear the local parent session and
+ *  the kid→server mapping. Offline-safe — local clear always wins. After this
+ *  the app falls back to the guest/device account (progress stays local). */
+export async function signoutParent(): Promise<void> {
+  const token = localStorage.getItem(LS.parentToken);
+  if (token) {
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      /* offline — the local clear below still ends the session here */
+    }
+  }
+  localStorage.removeItem(LS.parentToken);
+  localStorage.removeItem(LS.parentName);
+  localStorage.removeItem(LS.parentKid);
+  localStorage.removeItem(LS.kidMap);
+  resetIdentity();
+}
+
 /** Drop the cached sync identity so the NEXT call picks up a new parent token
  *  (or the device account) — call after sign-in / sign-out / validation. */
 function resetIdentity(): void {

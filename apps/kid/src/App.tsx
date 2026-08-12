@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Game } from "phaser";
 import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, type Band, type Skill } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, type RoundResult, type MistakeState } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
@@ -438,6 +438,11 @@ interface Strings {
   settingsSigninBadge: string;
   settingsSigninSub: string;
   settingsSigninCta: string;
+  /* parent sign-out (Settings) */
+  settingsSignoutTitle: string;
+  settingsSignoutSub: string;
+  settingsSignoutCta: string;
+  settingsSignoutConfirm: string;
   /* about / version */
   settingsAbout: string;
   settingsAboutSub: string;
@@ -734,6 +739,10 @@ const STR: Record<Lang, Strings> = {
     settingsSigninBadge: "guest",
     settingsSigninSub: "You're in guest mode — progress lives on this device only. Sign in or create a parent account to keep it on every device.",
     settingsSigninCta: "🔓 Sign in / create parent account",
+    settingsSignoutTitle: "🚪 Sign out",
+    settingsSignoutSub: "Sign out of this parent account on this device. Local progress stays — sign back in anytime to keep it everywhere.",
+    settingsSignoutCta: "Sign out",
+    settingsSignoutConfirm: "Tap again to confirm",
     settingsAbout: "📦 About",
     settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
@@ -1022,6 +1031,10 @@ const STR: Record<Lang, Strings> = {
     settingsSigninBadge: "অতিথি",
     settingsSigninSub: "আপনি অতিথি মোডে আছেন — অগ্রগতি শুধু এই ডিভাইসে থাকে। সব ডিভাইসে রাখতে সাইন ইন করুন বা অভিভাবক অ্যাকাউন্ট খুলুন।",
     settingsSigninCta: "🔓 সাইন ইন / অভিভাবক অ্যাকাউন্ট খুলুন",
+    settingsSignoutTitle: "🚪 সাইন আউট",
+    settingsSignoutSub: "এই ডিভাইসে অভিভাবক অ্যাকাউন্ট থেকে সাইন আউট করুন। স্থানীয় অগ্রগতি থাকে — যেকোনো সময় আবার সাইন ইন করুন।",
+    settingsSignoutCta: "সাইন আউট",
+    settingsSignoutConfirm: "নিশ্চিত করতে আবার চাপুন",
     settingsAbout: "📦 এই অ্যাপ সম্পর্কে",
     settingsAboutSub: "নম্বরভার্স · কৌতূহলী শিশুদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
@@ -1696,6 +1709,22 @@ export default function App() {
   const openGateForUpgrade = () => {
     gateReturn.current = "home";
     setScreen("parentgate");
+  };
+  // Sign out of the parent account — revokes the session server-side, clears
+  // the local parent session, then lands on the gate (guest / sign-in /
+  // syllabus). Two taps (arm → confirm) so a stray tap can't log the parent out.
+  const [signoutArmed, setSignoutArmed] = useState(false);
+  const signOut = () => {
+    if (!signoutArmed) {
+      setSignoutArmed(true);
+      window.setTimeout(() => setSignoutArmed(false), 4000);
+      return;
+    }
+    void signoutParent().then(() => {
+      setSignoutArmed(false);
+      gateReturn.current = "home";
+      setScreen("parentgate");
+    });
   };
 
   // ── Parent controls ─────────────────────────────────────────────────────
@@ -3021,6 +3050,23 @@ export default function App() {
               <p className="syllabus-settings-sub">{t.settingsSigninSub}</p>
               <button className="big-btn settings-signin-btn" onClick={openGateForUpgrade}>
                 {t.settingsSigninCta}
+              </button>
+            </div>
+          )}
+
+          {/* Parent sign-out: revokes the session server-side, lands on the gate. */}
+          {hasParentSession() && (
+            <div className="parent-card settings-signout-card">
+              <div className="parent-head">
+                <span className="parent-name">{t.settingsSignoutTitle}</span>
+                <span className="parent-stats">{parentName() ?? "👨‍👩‍👧"}</span>
+              </div>
+              <p className="syllabus-settings-sub">{t.settingsSignoutSub}</p>
+              <button
+                className={`big-btn settings-signout-btn${signoutArmed ? " armed" : ""}`}
+                onClick={signOut}
+              >
+                {signoutArmed ? t.settingsSignoutConfirm : t.settingsSignoutCta}
               </button>
             </div>
           )}
