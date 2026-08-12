@@ -9,6 +9,7 @@ import {
   getGame,
   nextDifficulty,
   moni,
+  deriveLearningStyle,
   DEFAULT_MONI_PARAMS,
   type Band,
   type Skill,
@@ -596,6 +597,18 @@ interface Strings {
   breakBody: string;
   breakRest: string;
   breakKeepGoing: string;
+  moniWeek: string;
+  moniWeekRounds: string;
+  moniWeekAcc: string;
+  moniWeekPace: string;
+  moniWeekStyle: string;
+  moniWeekBestGame: string;
+  moniWeekPaceUp: string;
+  moniWeekPaceDown: string;
+  moniWeekPaceFlat: string;
+  moniStyleFast: string;
+  moniStyleSteady: string;
+  moniStyleSocial: string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -956,6 +969,18 @@ const STR: Record<Lang, Strings> = {
     breakBody: "Your brain just worked super hard, and Nova is proud. A little break makes the next game even more fun!",
     breakRest: "OK, stretch break",
     breakKeepGoing: "I'm good — keep going!",
+    moniWeek: "📅 This week",
+    moniWeekRounds: "Rounds",
+    moniWeekAcc: "Accuracy",
+    moniWeekPace: "Pace",
+    moniWeekStyle: "Learning style",
+    moniWeekBestGame: "Best game",
+    moniWeekPaceUp: "Stronger than usual 💪",
+    moniWeekPaceDown: "A bit softer this week 🐢",
+    moniWeekPaceFlat: "Steady as always ⚖️",
+    moniStyleFast: "⚡ Speed Sprinter",
+    moniStyleSteady: "🐢 Steady Pal",
+    moniStyleSocial: "🦉 Friend of All",
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1312,6 +1337,18 @@ const STR: Record<Lang, Strings> = {
     breakBody: "তোমার মস্তিষ্ক অনেক পরিশ্রম করেছে, আর নোভা খুব গর্বিত। একটু বিশ্রাম নিলে পরের খেলাটা আরও মজার হবে!",
     breakRest: "ঠিক আছে, একটু বিশ্রাম",
     breakKeepGoing: "আমি ফ্রেশ — চলো, খেলি!",
+    moniWeek: "📅 এই সপ্তাহে",
+    moniWeekRounds: "রাউন্ড",
+    moniWeekAcc: "নির্ভুলতা",
+    moniWeekPace: "গতি",
+    moniWeekStyle: "শেখার ধারা",
+    moniWeekBestGame: "সেরা খেলা",
+    moniWeekPaceUp: "সাধারণের চেয়ে জোরদার 💪",
+    moniWeekPaceDown: "এই সপ্তাহে কিছুটা নরম 🐢",
+    moniWeekPaceFlat: "সবসময়ের মতো স্থির ⚖️",
+    moniStyleFast: "⚡ দ্রুত তারা",
+    moniStyleSteady: "🐢 ধীরে সুস্থে",
+    moniStyleSocial: "🦉 সবার বন্ধু",
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -3827,6 +3864,65 @@ export default function App() {
                                   })}
                                 </ol>
                               </div>
+                            );
+                          })()}
+                          {/* 📅 #326 — weekly insight strip: every read derived
+                              purely from Moni's LOCAL profile — this week's
+                              rounds/accuracy from recent[] timestamps, pace vs
+                              the child's own lifetime accuracy, the learning
+                              style badge, and their best game. No network.
+                              Hidden when there's no play in the last 7 days
+                              (the card never invents a week). */}
+                          {(() => {
+                            const WEEK_MS = 7 * 86400000;
+                            const wk = mp.recent.filter((r) => r.ts >= Date.now() - WEEK_MS);
+                            if (!wk.length) return null;
+                            const wkCorrect = wk.filter((r) => r.correct).length;
+                            const wkAcc = Math.round((wkCorrect / wk.length) * 100);
+                            const lifeAcc = Math.round(mp.accuracy * 100);
+                            const pace =
+                              Math.abs(wkAcc - lifeAcc) <= 5
+                                ? t.moniWeekPaceFlat
+                                : wkAcc > lifeAcc
+                                  ? t.moniWeekPaceUp
+                                  : t.moniWeekPaceDown;
+                            const lStyle = deriveLearningStyle(mp.style);
+                            const styleLabel =
+                              lStyle === "fast"
+                                ? t.moniStyleFast
+                                : lStyle === "social"
+                                  ? t.moniStyleSocial
+                                  : t.moniStyleSteady;
+                            const topGame = Object.entries(mp.style.gameAffinity).sort((a, b) => b[1] - a[1])[0]?.[0];
+                            const gameLabel = topGame
+                              ? topGame.replace(/^game-/, "").replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                              : "—";
+                            return (
+                              <details className="moni-week" open>
+                                <summary>{t.moniWeek}</summary>
+                                <div className="moni-week-grid">
+                                  <div className="moni-cell">
+                                    <span className="moni-k">{t.moniWeekRounds}</span>
+                                    <span className="moni-v">{wk.length}</span>
+                                  </div>
+                                  <div className="moni-cell">
+                                    <span className="moni-k">{t.moniWeekAcc}</span>
+                                    <span className="moni-v">{wkAcc}%</span>
+                                  </div>
+                                  <div className="moni-cell">
+                                    <span className="moni-k">{t.moniWeekPace}</span>
+                                    <span className="moni-v">{pace}</span>
+                                  </div>
+                                  <div className="moni-cell">
+                                    <span className="moni-k">{t.moniWeekStyle}</span>
+                                    <span className="moni-v">{styleLabel}</span>
+                                  </div>
+                                  <div className="moni-cell">
+                                    <span className="moni-k">{t.moniWeekBestGame}</span>
+                                    <span className="moni-v">{gameLabel}</span>
+                                  </div>
+                                </div>
+                              </details>
                             );
                           })()}
                           <p className="moni-next">
