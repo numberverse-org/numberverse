@@ -95,6 +95,8 @@ class KidSettingsIn(BaseModel):
     weekday_limits_min: str | None = Field(default=None, pattern=r"^(\d{1,3},){6}\d{1,3}$")
     tts_enabled: bool = True
     music_enabled: bool = True
+    # #138 — voice recording is parent-gated, off by default.
+    voice_record_enabled: bool = False
 
 
 class KidSettingsOut(BaseModel):
@@ -104,6 +106,7 @@ class KidSettingsOut(BaseModel):
     weekday_limits_min: str | None = None
     tts_enabled: bool = True
     music_enabled: bool = True
+    voice_record_enabled: bool = False
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}

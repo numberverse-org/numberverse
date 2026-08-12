@@ -139,6 +139,7 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   weekday_limits_min: null,
   tts_enabled: true,
   music_enabled: true,
+  voice_record_enabled: false,
 };
 
 /** #6 — day names for the per-weekday playtime editor (Mon..Sun). */
@@ -833,7 +834,15 @@ export default function ParentDashboard() {
                 >
                   🎵 Background music
                 </button>
+                <button
+                  className={`toggle-chip${activeSettings.voice_record_enabled ? " on" : ""}`}
+                  onClick={() => patchSettings({ voice_record_enabled: !activeSettings.voice_record_enabled })}
+                  title="Kid can record their own voice and replay. Stays on this device — never synced."
+                >
+                  🎙️ Voice recording
+                </button>
               </div>
+              <p className="muted small">🎙️ Voice recording lets a kid record and replay their own voice. Recordings stay on this device and are never sent to the server.</p>
             </div>
 
             <div className="row-buttons save-row">

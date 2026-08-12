@@ -47,6 +47,8 @@ export interface KidSettings {
   weekday_limits_min: string | null;
   tts_enabled: boolean;
   music_enabled: boolean;
+  /** #138 — kid voice dictation, parent-gated, on-device only. */
+  voice_record_enabled: boolean;
   updated_at?: string | null;
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 // Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
 // `import type` is erased and the main bundle carries ZERO engine bytes.
 import type { Game } from "phaser";
@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, STORY_QUEUE_CAP, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -29,6 +29,7 @@ import { wrongLedger } from "./game/wrongLedger";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
+import { startRecording, stopRecording } from "./game/voiceRecorder";
 
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
@@ -584,6 +585,14 @@ interface Strings {
   settingsVoiceOk: (v: string) => string;
   settingsVoiceNone: string;
   settingsVoiceTest: string;
+  /* #138 — kid dictation (record own voice + replay, on-device) */
+  settingsDictate: string;
+  settingsDictateSub: string;
+  settingsDictateStart: string;
+  settingsDictateStop: string;
+  settingsDictateDenied: string;
+  settingsDictateUnsupported: string;
+  settingsDictateClear: string;
   /* settings screen — grouped sections */
   settingsSecScreen: string;
   settingsSecParents: string;
@@ -1028,6 +1037,13 @@ const STR: Record<Lang, Strings> = {
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
     settingsVoiceNone: "No voice found — install a voice in Settings → Accessibility → Spoken Content",
     settingsVoiceTest: "Test voice",
+    settingsDictate: "🎙️ Record my voice",
+    settingsDictateSub: "Record yourself saying your answer, then replay it. Stays on this device — never sent anywhere.",
+    settingsDictateStart: "⏺️ Record",
+    settingsDictateStop: "⏹ Stop",
+    settingsDictateDenied: "Mic permission was denied — allow the mic in your browser settings.",
+    settingsDictateUnsupported: "Recording isn't supported in this browser.",
+    settingsDictateClear: "Delete",
     settingsSecSound: "🔊 Sound & voice",
     settingsSecScreen: "🖥️ Screen",
     settingsReduceMotion: "Reduce motion",
@@ -1470,6 +1486,13 @@ const STR: Record<Lang, Strings> = {
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
     settingsVoiceNone: "কোনো ভয়েস পাওয়া যায়নি — সেটিংস → অ্যাক্সেসিবিলিটি → স্পোকেন কনটেন্ট-এ ভয়েস ইনস্টল করুন",
     settingsVoiceTest: "ভয়েস পরীক্ষা",
+    settingsDictate: "🎙️ নিজের কণ্ঠ রেকর্ড করো",
+    settingsDictateSub: "নিজের উত্তর বলো আর রেকর্ড করে শোনো। শুধু এই ডিভাইসেই থাকে — কোথাও পাঠানো হয় না।",
+    settingsDictateStart: "⏺️ রেকর্ড",
+    settingsDictateStop: "⏹ থামাও",
+    settingsDictateDenied: "মাইক অনুমতি দেওয়া হয়নি — ব্রাউজার সেটিংসে মাইক অনুমতি দিন।",
+    settingsDictateUnsupported: "এই ব্রাউজারে রেকর্ডিং সমর্থিত নয়।",
+    settingsDictateClear: "মুছে ফেলো",
     settingsSecSound: "🔊 শব্দ ও ভয়েস",
     settingsSecScreen: "🖥️ স্ক্রিন",
     settingsReduceMotion: "কম গতি",
@@ -2578,7 +2601,7 @@ export default function App() {
   // Per-kid settings come from the parent portal (api.ts). We fetch them on
   // the active kid (cache-first so offline play still respects the rules) and
   // apply: subject visibility, world cap, daily playtime, voice + music.
-  const [settings, setSettings] = useState<KidSettings>(() => (kid ? cachedKidSettings(kid.id) : { enabled_subjects: null, max_band: null, daily_limit_min: null, weekday_limits_min: null, tts_enabled: true, music_enabled: true }));
+  const [settings, setSettings] = useState<KidSettings>(() => (kid ? cachedKidSettings(kid.id) : { ...KID_SETTINGS_DEFAULT }));
   useEffect(() => {
     if (!kid) return;
     setSettings(cachedKidSettings(kid.id));
@@ -2610,6 +2633,25 @@ export default function App() {
       setMuted(true);
     }
   }, [settings.music_enabled]);
+  // #138 — kid dictation: record own voice + replay. Parent-gated (off by
+  // default); when enabled, recording stays ON-DEVICE only (voiceRecorder.ts).
+  const [recState, setRecState] = useState<"idle" | "recording" | "denied" | "unsupported">("idle");
+  const [recUrl, setRecUrl] = useState<string | null>(null);
+  const recAudioRef = useRef<HTMLAudioElement | null>(null);
+  const handleDictate = useCallback(async () => {
+    if (recState === "recording") {
+      const out = await stopRecording();
+      if (out.url) setRecUrl(out.url);
+      setRecState("idle");
+    } else {
+      if (recAudioRef.current) {
+        recAudioRef.current.pause();
+        recAudioRef.current.src = "";
+      }
+      const st = await startRecording();
+      setRecState(st);
+    }
+  }, [recState]);
   /** A skill is hidden when its subject is turned off by the parent. */
   const subjectAllowed = useRef<Set<string>>(new Set()).current;
   useEffect(() => {
@@ -3996,6 +4038,36 @@ export default function App() {
                 </>
               )}
             </div>
+
+            {settings.voice_record_enabled && (
+              <>
+                <div className="settings-divider" />
+                {/* #138 — kid dictation: record own voice + replay. On-device only. */}
+                <div className="settings-voice">
+                  <div className="settings-row-line">
+                    <span className="settings-row-icon">🎙️</span>
+                    <span className="settings-row-label">{t.settingsDictate}</span>
+                  </div>
+                  <p className="settings-voice-status">{t.settingsDictateSub}</p>
+                  <div className="dictate-row">
+                    <button
+                      className={`ghost-btn mini voice-test-btn${recState === "recording" ? " recording" : ""}`}
+                      onClick={() => void handleDictate()}
+                    >
+                      {recState === "recording" ? t.settingsDictateStop : t.settingsDictateStart}
+                    </button>
+                    {recState === "denied" && <p className="settings-voice-note warn">{t.settingsDictateDenied}</p>}
+                    {recState === "unsupported" && <p className="settings-voice-note warn">{t.settingsDictateUnsupported}</p>}
+                    {recUrl && (
+                      <>
+                        <audio ref={recAudioRef} src={recUrl} controls className="dictate-audio" preload="metadata" />
+                        <button className="ghost-btn mini" onClick={() => setRecUrl(null)}>{t.settingsDictateClear}</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* 🖥️ Screen — how the app fills the device. */}
