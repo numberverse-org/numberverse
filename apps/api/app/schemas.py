@@ -161,6 +161,9 @@ class LearningStoryIn(BaseModel):
     kid_id: uuid.UUID
     skill_id: str
     game_id: str
+    # Client durable-outbox uid — the dedup key (#331). Re-posting the same uid
+    # is a no-op server-side, so a lost ACK can't create duplicate stories.
+    uid: str | None = None
     outcome: bool
     error_kind: str | None = None
     misconception_code: str | None = None

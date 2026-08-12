@@ -4,9 +4,10 @@ from datetime import datetime, date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..db import get_db
 from ..deps import require_admin
 from ..models import (
@@ -188,6 +189,68 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
         "rate_limit_per_hour": STORY_RATE_LIMIT_PER_HOUR,
         "high_velocity_kids": high_velocity,
         "sanity": {"ok": not warnings, "warnings": warnings},
+    }
+
+
+@router.post("/stories/prune")
+async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """📚 KOTHA retention job (#331) — idempotent, admin-only.
+
+    Policy (from settings):
+      - Drop stories older than `kotha_retention_days` (default 90d) — EXCEPT
+        stories from skills practiced in the last `kotha_active_skill_days`
+        (7d): active skills keep their full story history, so we never lose
+        the evolution of what the kid is currently working on.
+      - Then, as a volume guard, trim every kid to its most recent
+        `kotha_max_stories_per_kid` (default 1000) stories — the active tail
+        is always the most recent, so active learning is never the overflow.
+    """
+    now = datetime.utcnow()
+    retention = timedelta(days=settings.kotha_retention_days)
+    active_window = timedelta(days=settings.kotha_active_skill_days)
+    cap = settings.kotha_max_stories_per_kid
+
+    # 1) Age prune — but protect active skills (any skill touched recently).
+    active_skills = (
+        select(LearningStory.skill_id)
+        .where(LearningStory.created_at >= now - active_window)
+        .distinct()
+        .scalar_subquery()
+    )
+    age_cutoff = now - retention
+    age_result = await db.execute(
+        delete(LearningStory)
+        .where(LearningStory.created_at < age_cutoff)
+        .where(LearningStory.skill_id.not_in(active_skills))
+    )
+    age_pruned = age_result.rowcount or 0
+
+    # 2) Volume guard — keep only the most recent `cap` stories per kid.
+    ranked = (
+        select(
+            LearningStory.id,
+            func.row_number().over(
+                partition_by=LearningStory.kid_id,
+                order_by=LearningStory.created_at.desc(),
+            ).label("rn"),
+        ).subquery()
+    )
+    over_cap = (
+        select(LearningStory.id)
+        .join(ranked, ranked.c.id == LearningStory.id)
+        .where(ranked.c.rn > cap)
+    )
+    cap_result = await db.execute(delete(LearningStory).where(LearningStory.id.in_(over_cap)))
+    cap_pruned = cap_result.rowcount or 0
+
+    await db.commit()
+    return {
+        "pruned": age_pruned + cap_pruned,
+        "age_pruned": age_pruned,
+        "cap_pruned": cap_pruned,
+        "retention_days": settings.kotha_retention_days,
+        "active_skill_days": settings.kotha_active_skill_days,
+        "max_stories_per_kid": cap,
     }
 
 
