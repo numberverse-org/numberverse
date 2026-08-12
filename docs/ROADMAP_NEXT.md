@@ -93,7 +93,7 @@
 - Parent: struggle-alert card (skill needs help)  _(priority: low, parent-facing)_
 - Parent: compare two kids side-by-side  _(priority: low, parent-facing)_
 - ~~Parent: export learning history (CSV/PDF)~~ ✅ #241 — shipped as #273 (0.26.16): CSV + JSON export, ISO-8601 UTC columns
-- Parent: printable worksheet generator from weak skills  _(priority: low, parent-facing)_
+- ~~Parent: printable worksheet generator from weak skills~~ ✅ #132 — merged #444 (#242 dup closed)
 - Parent: per-kid sound & music balance  _(priority: low, parent-facing)_
 - Parent: daily play summary  _(priority: low, parent-facing)_
 - Parent: share-card deep link per kid  _(priority: low, parent-facing)_
