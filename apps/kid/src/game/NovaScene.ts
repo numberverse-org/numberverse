@@ -17,6 +17,7 @@ import {
 import { ROOMS } from "./rooms";
 import { ACTIVITIES, type ActivityDef } from "./activities";
 import { enableSwipeRooms } from "./gestures";
+import { deriveLearningStyle, type LearningStyle } from "@numberverse/core";
 
 /* ─────────────────────────── Nova scene i18n ─────────────────────────── */
 
@@ -49,6 +50,8 @@ const NOVA_T = {
     streak: (n: number) => `${n}-day streak`,
     zzz: "Zzz…",
     wake: "Huh? Whoo? 😳",
+    /** 🏅 #332 learning-style badge labels — kid-safe, fun, one line each. */
+    styleBadge: { fast: "⚡ Speed Sprinter", steady: "🐢 Steady Pal", social: "🦉 Friend of All" },
   },
   bn: {
     greeting: (name: string) => `হু, ${name}! আমি নোভা 🦉`,
@@ -78,6 +81,8 @@ const NOVA_T = {
     streak: (n: number) => `${n} দিনের ধারা`,
     zzz: "ঘুম…",
     wake: "হুঁ? হু? 😳",
+    /** 🏅 #332 learning-style badge labels — kid-safe, fun, one line each. */
+    styleBadge: { fast: "⚡ দ্রুত তারা", steady: "🐢 ধীরে সুস্থে", social: "🦉 সবার বন্ধু" },
   },
 };
 type NovaLang = keyof typeof NOVA_T;
@@ -602,6 +607,10 @@ export class NovaScene extends Phaser.Scene {
   private streakStrip!: Phaser.GameObjects.Container;
   private streakText!: Phaser.GameObjects.Text;
   private streakDots: Phaser.GameObjects.Image[] = [];
+  // 🏅 #332 learning-style badge — a fun pill under the streak.
+  private styleBadge!: Phaser.GameObjects.Container;
+  private styleBadgeBg!: Phaser.GameObjects.Graphics;
+  private styleBadgeText!: Phaser.GameObjects.Text;
 
   // outfit on Nova's body
   private outfitNodes: Record<string, Phaser.GameObjects.GameObject[]> = {};
@@ -714,6 +723,7 @@ export class NovaScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => cancelSpeech());
 
     this.buildTopBar();
+    this.buildStyleBadge();
     this.buildRoom(this.roomIdx);
     // KID GESTURE — swipe LEFT/RIGHT on the open canvas flips the room.
     // Swipes that start ON a tappable thing (Nova, dock, chevrons, an open
@@ -1053,6 +1063,38 @@ export class NovaScene extends Phaser.Scene {
     const inner = w / 2 - 22;
     this.roomPrevBtn.setPosition(-inner, 0);
     this.roomNextBtn.setPosition(inner, 0);
+  }
+
+  /* ────────────────────────── learning-style badge (#332) ────────────────────────── */
+
+  /** 🏅 A small pill under the streak showing the kid's detected learning style
+   *  (⚡ fast / 🐢 steady / 🦉 social) — hidden until Moni has seen enough rounds
+   *  to have a real opinion. Fun, kid-safe, offline. */
+  private buildStyleBadge() {
+    this.styleBadgeText = this.add
+      .text(0, 0, "", txt(12, "#ffffff", { bold: true, shadow: false }))
+      .setOrigin(0.5)
+      .setDepth(401);
+    this.styleBadgeBg = this.add.graphics().setDepth(400);
+    this.styleBadge = this.add.container(0, 0, [this.styleBadgeBg, this.styleBadgeText]).setDepth(401);
+    this.styleBadge.setVisible(false);
+  }
+
+  private updateStyleBadge() {
+    const profile = useKidStore.getState().moni?.[this.kidId];
+    if (!profile || profile.totalRounds < 4) {
+      this.styleBadge.setVisible(false);
+      return;
+    }
+    const style: LearningStyle = deriveLearningStyle(profile.style);
+    this.styleBadgeText.setText(this.t().styleBadge[style]);
+    const w = Math.max(150, this.styleBadgeText.width + 40);
+    this.styleBadgeBg.clear();
+    this.styleBadgeBg.fillStyle(0x0f1935, 0.6);
+    this.styleBadgeBg.fillRoundedRect(-w / 2, -16, w, 32, 16);
+    this.styleBadgeBg.lineStyle(1.4, 0xffd166, 0.5);
+    this.styleBadgeBg.strokeRoundedRect(-w / 2, -16, w, 32, 16);
+    this.styleBadge.setVisible(true);
   }
 
   /* ────────────────────────── build pieces ────────────────────────── */
@@ -2374,6 +2416,7 @@ export class NovaScene extends Phaser.Scene {
 
     this.streakText.setText(`🔥 ${this.t().streak(nova.streak)}`);
     this.streakDots.forEach((d, i) => d.setPosition(this.streakText.width / 2 + 12 + i * 13, 0));
+    this.updateStyleBadge();
     // light the 7-day calendar (oldest → today): played days glow gold
     const days = nova.days ?? [];
     this.streakDots.forEach((d, i) => {
@@ -2438,6 +2481,8 @@ export class NovaScene extends Phaser.Scene {
     this.streakText.setPosition(0, 0);
     this.streakDots.forEach((d, i) => d.setPosition(this.streakText.width / 2 + 12 + i * 13, 0));
     this.streakStrip.setPosition(W / 2, 90 + this.topInset);
+    // 🏅 learning-style badge floats just below the streak
+    this.styleBadge.setPosition(W / 2, 132 + this.topInset);
 
     // one-time "swipe to explore" nudge floats under Nova, above the dock
     this.swipeHint.setPosition(W / 2, H * 0.7);

@@ -13,6 +13,7 @@ export * from "./diagnose.js";
 export * from "./profile.js";
 export * from "./planner.js";
 export * from "./fingerprint.js";
+export * from "./style.js";
 
 import {
   initialMoniProfile,
