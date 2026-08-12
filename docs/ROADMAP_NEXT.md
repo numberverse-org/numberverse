@@ -158,7 +158,7 @@
 
 - Kids: skill-tree map per land  _(priority: low, kid-first)_
 - Kids: land trophy room  _(priority: low, kid-first)_
-- Kids: Nova seasonal outfits (Eid, Boishakh)  _(priority: low, kid-first)_
+- ~~Kids: Nova seasonal outfits (Eid, Boishakh)~~ ✅ #278 — festival-gated Eid + Boishakh sets, coin-buy via festival-gated store, locale-config (#131) (PR pending)
 - Kids: pet evolution level 2 — new pet types  _(priority: low, kid-first)_
 - Kids: challenge Nova — beat-the-owl rounds  _(priority: low, kid-first)_
 - Kids: daily login calendar reward  _(priority: low, kid-first)_

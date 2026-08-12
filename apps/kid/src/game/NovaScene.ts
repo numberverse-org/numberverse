@@ -3,7 +3,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { cancelSpeech } from "./speech";
 import { txt } from "./ui";
-import { getAppLang } from "./locale";
+import { getAppLang, currentFestival } from "./locale";
 import { t } from "./i18n";
 import {
   useKidStore,
@@ -62,6 +62,10 @@ const NOVA_T = {
     wake: "Huh? Whoo? 😳",
     /** 🏅 #332 learning-style badge labels — kid-safe, fun, one line each. */
     styleBadge: { fast: "⚡ Speed Sprinter", steady: "🐢 Steady Pal", social: "🦉 Friend of All" },
+    /** #278 — limited seasonal outfits (festival-gated). */
+    seasonal: (festival: string) => `🎉 ${festival} only`,
+    festEid: "Eid",
+    festBoishakh: "Pohela Boishakh",
   },
   bn: {
     greeting: (name: string) => `হু, ${name}! আমি নোভা 🦉`,
@@ -99,6 +103,10 @@ const NOVA_T = {
     wake: "হুঁ? হু? 😳",
     /** 🏅 #332 learning-style badge labels — kid-safe, fun, one line each. */
     styleBadge: { fast: "⚡ দ্রুত তারা", steady: "🐢 ধীরে সুস্থে", social: "🦉 সবার বন্ধু" },
+    /** #278 — limited seasonal outfits (festival-gated). */
+    seasonal: (festival: string) => `🎉 শুধু ${festival}`,
+    festEid: "ঈদ",
+    festBoishakh: "পহেলা বৈশাখ",
   },
 };
 type NovaLang = keyof typeof NOVA_T;
@@ -730,6 +738,18 @@ export class NovaScene extends Phaser.Scene {
 
   private t() {
     return NOVA_T[this.lang];
+  }
+
+  /** #278 — the current locale's active festival key (null off-season). */
+  private festivalKey(): string | null {
+    return currentFestival()?.key ?? null;
+  }
+
+  /** #278 — localized festival label for the shop lock badge. */
+  private festivalLabel(key: string): string {
+    if (key === "eid_fitr") return this.t().festEid;
+    if (key === "boishakh") return this.t().festBoishakh;
+    return key;
   }
 
   create(data: {
@@ -1477,8 +1497,10 @@ export class NovaScene extends Phaser.Scene {
       ctx.lineWidth = 1.6;
       ctx.stroke();
     });
+    // #278 — seasonal outfits are locked (teaser) outside their festival window.
+    const seasonalLocked = !!outfit.festival && outfit.festival !== this.festivalKey();
     const face = this.add.image(0, 0, cardK);
-    face.setTint(wearing ? 0xffd166 : has ? 0xbdf0d0 : afford ? 0xdceeff : 0xd4dbe6);
+    face.setTint(wearing ? 0xffd166 : has ? 0xbdf0d0 : afford && !seasonalLocked ? 0xdceeff : 0xd4dbe6);
 
     const tile = this.add.image(0, -28, makeTex(this, "nv-shop-tile", 54, 54, (ctx, w) => {
       const g = ctx.createLinearGradient(0, 0, 0, w);
@@ -1494,8 +1516,14 @@ export class NovaScene extends Phaser.Scene {
     const emoji = this.add.text(0, -28, outfit.emoji, txt(26, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5).setDepth(302);
 
     const name = this.lang === "bn" ? outfit.nameBn : outfit.name;
-    const state = wearing ? `✅ ${this.t().wearing}` : has ? this.t().wear : `🪙 ${outfit.cost}`;
-    const stateColor = wearing ? "#8a5a00" : has ? "#0c7a3d" : afford ? "#0b4f7a" : "#7c8898";
+    const state = wearing
+      ? `✅ ${this.t().wearing}`
+      : has
+        ? this.t().wear
+        : seasonalLocked
+          ? `🔒 ${this.t().seasonal(this.festivalLabel(outfit.festival!))}`
+          : `🪙 ${outfit.cost}`;
+    const stateColor = wearing ? "#8a5a00" : has ? "#0c7a3d" : afford && !seasonalLocked ? "#0b4f7a" : "#7c8898";
 
     const c = this.add.container(0, 0, [
       face,
@@ -2355,11 +2383,16 @@ export class NovaScene extends Phaser.Scene {
   private buy(outfit: NovaOutfit) {
     const st = useKidStore.getState();
     const nova = st.nova[this.kidId] ?? defaultNova();
+    // #278 — seasonal sets are only purchasable during their festival window.
+    if (outfit.festival && outfit.festival !== this.festivalKey()) {
+      this.say(this.t().seasonal(this.festivalLabel(outfit.festival)), 2000);
+      return;
+    }
     if (nova.coins < outfit.cost) {
       this.say(this.t().needCoins, 2000);
       return;
     }
-    st.novaBuy(this.kidId, outfit.id);
+    st.novaBuy(this.kidId, outfit.id, this.festivalKey());
     win();
     this.say(this.t().boughtMsg, 1800);
     this.sparkle(this.baseX + 40, this.baseY - 60);
