@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import SessionLocal
 from .embeddings import embed_stories
+from .errorlog import install as install_errorlog
 from .routers import admin, auth, content, kids, progress
 from .scrub import ScrubFilter
 from .seed import create_tables, seed
@@ -16,6 +17,10 @@ logging.basicConfig(level=logging.INFO)
 # #266 — every log line is scrubbed for PII before it's written.
 for _h in logging.getLogger().handlers:
     _h.addFilter(ScrubFilter())
+# #124 — WARNING+ records also land in a rotating, PII-redacted JSON-lines
+# file (data/error.log) for local debugging. Zero analytics — nothing leaves
+# the box. Attaches at most once (uvicorn reload, tests).
+install_errorlog()
 log = logging.getLogger("numberverse")
 
 
