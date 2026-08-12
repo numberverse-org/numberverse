@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import Kid, KidSettings, Profile, ProgressEvent, SkillMastery
+from ..models import Kid, KidSettings, Profile, ProgressEvent, Skill, SkillMastery
 from ..schemas import (
     ActivityOut,
     KidIn,
@@ -16,6 +16,7 @@ from ..schemas import (
     KidSettingsIn,
     KidSettingsOut,
     KidUpdateIn,
+    WeakSkillOut,
     WeeklyDayOut,
     WeeklyOut,
 )
@@ -108,6 +109,41 @@ async def put_kid_settings(
     await db.commit()
     await db.refresh(s)
     return s
+
+
+@router.get("/{kid_id}/weak-skills", response_model=list[WeakSkillOut])
+async def get_kid_weak_skills(
+    kid_id: uuid.UUID,
+    threshold: float = 0.7,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Skills the kid hasn't mastered yet (mastery < threshold), weakest first,
+    joined with the catalog titles — powers the printable worksheet generator
+    (#132). Parents get a "what to practice" sheet, offline-printable."""
+    await _get_owned_kid(kid_id, profile, db)
+    rows = (
+        await db.execute(
+            select(SkillMastery, Skill)
+            .join(Skill, Skill.id == SkillMastery.skill_id)
+            .where(SkillMastery.kid_id == kid_id, SkillMastery.mastery < threshold)
+            .order_by(SkillMastery.mastery.asc())
+        )
+    ).all()
+    return [
+        WeakSkillOut(
+            skill_id=sm.skill_id,
+            band=sk.band,
+            subject=sk.subject,
+            title=sk.title,
+            title_bn=sk.title_bn,
+            description=sk.description,
+            mastery=sm.mastery,
+            attempts=sm.attempts,
+            correct=sm.correct,
+        )
+        for sm, sk in rows
+    ]
 
 
 @router.get("/{kid_id}/activity", response_model=list[ActivityOut])

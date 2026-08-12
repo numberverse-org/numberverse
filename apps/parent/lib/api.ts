@@ -39,6 +39,19 @@ export interface MasteryRow {
   streak: number;
 }
 
+/** #132 — a skill below mastery, with catalog titles for the worksheet. */
+export interface WeakSkillRow {
+  skill_id: string;
+  band: number;
+  subject: string;
+  title: string;
+  title_bn?: string | null;
+  description?: string | null;
+  mastery: number;
+  attempts: number;
+  correct: number;
+}
+
 export interface KidSettings {
   enabled_subjects: string[] | null;
   max_band: number | null;
@@ -177,6 +190,13 @@ export async function getKids(token: string): Promise<Kid[]> {
 export async function getMastery(token: string, kidId: string): Promise<MasteryRow[]> {
   const res = await authFetch(token, `${API}/kids/${kidId}/mastery`);
   if (!res.ok) throw new Error("Failed to load mastery");
+  return res.json();
+}
+
+/** #132 — skills below mastery, with catalog titles, weakest first. */
+export async function getWeakSkills(token: string, kidId: string): Promise<WeakSkillRow[]> {
+  const res = await authFetch(token, `${API}/kids/${kidId}/weak-skills`);
+  if (!res.ok) throw new Error("Failed to load weak skills");
   return res.json();
 }
 
