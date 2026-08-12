@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { comboChime } from "./audio";
+import { prefersReducedMotion } from "./reducedMotion";
 
 /**
  * Combo + celebration engine — the "juice" of a correct answer.
@@ -84,8 +85,11 @@ export function floatText(
   return t;
 }
 
-/** One burst of kid confetti — colored bits fly up, spin, and settle out. */
+/** One burst of kid confetti — colored bits fly up, spin, and settle out.
+ *  Honours reduced motion (#350): no particles, the moment still registers via
+ *  the floating text + chime the caller already fires. */
 export function confettiBurst(scene: Phaser.Scene, x: number, y: number, n = 24) {
+  if (prefersReducedMotion()) return;
   const colors = [0xffd166, 0x4cc9f0, 0xff8fa3, 0x2ec4b6, 0xc4b5fd, 0xffb35c];
   for (let i = 0; i < n; i++) {
     const w = Phaser.Math.Between(6, 12);
@@ -111,8 +115,10 @@ export function confettiBurst(scene: Phaser.Scene, x: number, y: number, n = 24)
   }
 }
 
-/** Star burst — a ring of little stars, for the big moments. */
+/** Star burst — a ring of little stars, for the big moments. Honours reduced
+ *  motion (#350) like confettiBurst. */
 export function starBurst(scene: Phaser.Scene, x: number, y: number, n = 10) {
+  if (prefersReducedMotion()) return;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
     const dist = Phaser.Math.Between(70, 120);
