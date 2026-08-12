@@ -506,10 +506,11 @@ interface Strings {
   gateEmailPh: string;
   gatePassLabel: string;
   gatePassPh: string;
+  gateShowPass: string;
+  gatePassHint: string;
+  gatePassOk: string;
   gateSubmitIn: string;
   gateSubmitUp: string;
-  gateToggleUp: string;
-  gateToggleIn: string;
   gateBusy: string;
   gateErrorInvalid: string;
   gateErrorSignup: string;
@@ -906,7 +907,7 @@ const STR: Record<Lang, Strings> = {
     parentPortalSub: "Manage everything from the portal — add & remove kids, set learning limits, see the weekly report, and secure the account.",
     parentPortalCta: "Open Parent Portal",
     gateTitle: "Welcome, parent!",
-    gateSub: "You're the captain — sign in to protect your child's learning, then see exactly what they'll learn.",
+    gateSub: "Sign in to keep your child's learning safe and see their progress.",
     gateSignin: "Sign in",
     gateSignup: "Create account",
     gateNameLabel: "Your name",
@@ -915,10 +916,11 @@ const STR: Record<Lang, Strings> = {
     gateEmailPh: "you@example.com",
     gatePassLabel: "Password",
     gatePassPh: "at least 6 characters",
-    gateSubmitIn: "🔓 Sign in & show the syllabus",
-    gateSubmitUp: "✨ Create account & show the syllabus",
-    gateToggleUp: "New here? Create a parent account",
-    gateToggleIn: "Already have an account? Sign in",
+    gateShowPass: "Show or hide password",
+    gatePassHint: "Use at least 6 characters — a mix of letters and numbers is even stronger.",
+    gatePassOk: "Great — that's long enough!",
+    gateSubmitIn: "🔓 Sign in",
+    gateSubmitUp: "✨ Create account",
     gateBusy: "Working…",
     gateErrorInvalid: "Sign-in failed — check the email and password.",
     gateErrorSignup: "Couldn't create the account — maybe that email is already registered.",
@@ -1309,7 +1311,7 @@ const STR: Record<Lang, Strings> = {
     parentPortalSub: "পোর্টাল থেকে সবকিছু পরিচালনা করুন — শিশু যোগ/মুছুন, শেখার সীমা নির্ধারণ, সাপ্তাহিক রিপোর্ট দেখুন, অ্যাকাউন্ট সুরক্ষিত করুন।",
     parentPortalCta: "অভিভাবক পোর্টাল খুলুন",
     gateTitle: "স্বাগতম, অভিভাবক!",
-    gateSub: "আপনিই ক্যাপ্টেন — সন্তানের শেখা সুরক্ষিত করতে সাইন ইন করুন, তারপর দেখুন তারা ঠিক কী শিখবে।",
+    gateSub: "সন্তানের শেখা নিরাপদ রাখতে ও অগ্রগতি দেখতে সাইন ইন করুন।",
     gateSignin: "সাইন ইন",
     gateSignup: "অ্যাকাউন্ট খুলুন",
     gateNameLabel: "আপনার নাম",
@@ -1318,10 +1320,11 @@ const STR: Record<Lang, Strings> = {
     gateEmailPh: "you@example.com",
     gatePassLabel: "পাসওয়ার্ড",
     gatePassPh: "অন্তত ৬ অক্ষর",
-    gateSubmitIn: "🔓 সাইন ইন করুন ও পাঠ্যক্রম দেখুন",
-    gateSubmitUp: "✨ অ্যাকাউন্ট খুলুন ও পাঠ্যক্রম দেখুন",
-    gateToggleUp: "নতুন? একটি অভিভাবক অ্যাকাউন্ট খুলুন",
-    gateToggleIn: "ইতিমধ্যে অ্যাকাউন্ট আছে? সাইন ইন করুন",
+    gateShowPass: "পাসওয়ার্ড দেখান বা লুকান",
+    gatePassHint: "অন্তত ৬ অক্ষর ব্যবহার করুন — অক্ষর আর সংখ্যা মিলালে আরও শক্তিশালী হবে।",
+    gatePassOk: "দারুণ — এতটুকুই যথেষ্ট!",
+    gateSubmitIn: "🔓 সাইন ইন",
+    gateSubmitUp: "✨ অ্যাকাউন্ট খুলুন",
     gateBusy: "চলছে…",
     gateErrorInvalid: "সাইন ইন ব্যর্থ — ইমেইল ও পাসওয়ার্ড যাচাই করুন।",
     gateErrorSignup: "অ্যাকাউন্ট তৈরি করা যায়নি — সম্ভবত ইমেইলটি ইতিমধ্যে নিবন্ধিত।",
@@ -2128,6 +2131,7 @@ export default function App() {
   const [gateName, setGateName] = useState("");
   const [gateEmail, setGateEmail] = useState("");
   const [gatePass, setGatePass] = useState("");
+  const [gateShowPass, setGateShowPass] = useState(false);
   const [gateBusy, setGateBusy] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
   // ── Interactive syllabus state: which band is expanded (default band 1). ──
@@ -3117,18 +3121,26 @@ export default function App() {
                   onChange={(e) => setGateEmail(e.target.value)} />
               </label>
               <label className="form-label">{t.gatePassLabel}
-                <input className="input-field" type="password" autoComplete={gateMode === "in" ? "current-password" : "new-password"} value={gatePass} placeholder={t.gatePassPh} enterKeyHint="go"
-                  onChange={(e) => setGatePass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && valid && !gateBusy) void submitGate(); }} />
+                <span className="pass-wrap">
+                  <input className="input-field pass-input" type={gateShowPass ? "text" : "password"} autoComplete={gateMode === "in" ? "current-password" : "new-password"} value={gatePass} placeholder={t.gatePassPh} enterKeyHint="go"
+                    onChange={(e) => setGatePass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && valid && !gateBusy) void submitGate(); }} />
+                  <button type="button" className="pass-toggle" aria-label={t.gateShowPass} aria-pressed={gateShowPass}
+                    onClick={() => setGateShowPass((v) => !v)}>
+                    {gateShowPass ? "🙈" : "👁️"}
+                  </button>
+                </span>
+                {/* Live password hint — one clear instruction, gone when it's long enough. */}
+                {gateMode === "up" && (
+                  <span className={`pass-hint${gatePass.length >= 6 ? " ok" : ""}`} role="status">
+                    {gatePass.length >= 6 ? t.gatePassOk : t.gatePassHint}
+                  </span>
+                )}
               </label>
 
               {gateError && <p className="gate-error" role="alert">{gateError}</p>}
 
               <button className="big-btn gate-submit" disabled={!valid || gateBusy} onClick={() => void submitGate()}>
                 {gateBusy ? t.gateBusy : gateMode === "in" ? t.gateSubmitIn : t.gateSubmitUp}
-              </button>
-
-              <button className="gate-toggle" onClick={() => { setGateMode((m) => (m === "in" ? "up" : "in")); setGateError(null); }}>
-                {gateMode === "in" ? t.gateToggleUp : t.gateToggleIn}
               </button>
             </div>
 
