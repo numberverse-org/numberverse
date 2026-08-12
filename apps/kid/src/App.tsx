@@ -373,6 +373,16 @@ interface Strings {
   leaveGame: string;
   parentTitle: string;
   parentSub: string;
+  parentWelcome: (name: string) => string;
+  parentFamTitle: string;
+  parentFamKids: (n: number) => string;
+  parentFamStars: (n: number) => string;
+  parentFamPoints: (n: number) => string;
+  parentFamSessions: (n: number) => string;
+  parentFamMastered: (n: number) => string;
+  parentPortalTitle: string;
+  parentPortalSub: string;
+  parentPortalCta: string;
   /* parent gate (first-load sign-in) */
   gateTitle: string;
   gateSub: string;
@@ -679,6 +689,16 @@ const STR: Record<Lang, Strings> = {
     leaveGame: "Exit game",
     parentTitle: "Parent Panel",
     parentSub: "See how each kid is growing, skill by skill",
+    parentWelcome: (name) => `Hi ${name} 👋`,
+    parentFamTitle: "Family overview",
+    parentFamKids: (n) => `${n} kids`,
+    parentFamStars: (n) => `${n} stars`,
+    parentFamPoints: (n) => `${n} points`,
+    parentFamSessions: (n) => `${n} sessions`,
+    parentFamMastered: (n) => `${n} mastered`,
+    parentPortalTitle: "🖥️ Parent Portal",
+    parentPortalSub: "Manage everything from the portal — add & remove kids, set learning limits, see the weekly report, and secure the account.",
+    parentPortalCta: "Open Parent Portal",
     gateTitle: "Welcome, parent!",
     gateSub: "You're the captain — sign in to protect your child's learning, then see exactly what they'll learn.",
     gateSignin: "Sign in",
@@ -971,6 +991,16 @@ const STR: Record<Lang, Strings> = {
     leaveGame: "খেলা থেকে ফিরুন",
     parentTitle: "অভিভাবক প্যানেল",
     parentSub: "দেখুন প্রতিটি সন্তান কীভাবে দক্ষতায় এগোচ্ছে",
+    parentWelcome: (name) => `হ্যালো, ${name} 👋`,
+    parentFamTitle: "পরিবারের সারসংক্ষেপ",
+    parentFamKids: (n) => `${n} জন শিশু`,
+    parentFamStars: (n) => `${n}টি তারা`,
+    parentFamPoints: (n) => `${n} পয়েন্ট`,
+    parentFamSessions: (n) => `${n}টি সেশন`,
+    parentFamMastered: (n) => `${n}টি আয়ত্ত`,
+    parentPortalTitle: "🖥️ অভিভাবক পোর্টাল",
+    parentPortalSub: "পোর্টাল থেকে সবকিছু পরিচালনা করুন — শিশু যোগ/মুছুন, শেখার সীমা নির্ধারণ, সাপ্তাহিক রিপোর্ট দেখুন, অ্যাকাউন্ট সুরক্ষিত করুন।",
+    parentPortalCta: "অভিভাবক পোর্টাল খুলুন",
     gateTitle: "স্বাগতম, অভিভাবক!",
     gateSub: "আপনিই ক্যাপ্টেন — সন্তানের শেখা সুরক্ষিত করতে সাইন ইন করুন, তারপর দেখুন তারা ঠিক কী শিখবে।",
     gateSignin: "সাইন ইন",
@@ -3089,10 +3119,18 @@ export default function App() {
   }
 
   if (screen === "parent") {
-    // A child picker keeps the panel compact — analytics belong to ONE kid at a time,
-    // and stacking every kid's full report is what made the panel unscrollable.
+    // Analytics for one kid at a time (compact), plus a family-summary hero
+    // and — for a signed-in parent — a deep link into the full parent portal
+    // (same origin → the nv_parent_token session carries straight over).
     const activeId = parentKidId && kids.some((k) => k.id === parentKidId) ? parentKidId : (kid?.id ?? kids[0]?.id ?? null);
     const activeKid = kids.find((k) => k.id === activeId);
+    const signedIn = hasParentSession();
+    const pBandName = (b: Band) => (lang === "bn" ? b.titleBn ?? b.title : b.title);
+    const famStars = kids.reduce((sum, k) => sum + (stats[k.id]?.stars ?? 0), 0);
+    const famPoints = kids.reduce((sum, k) => sum + (stats[k.id]?.score ?? 0), 0);
+    const famSessions = kids.reduce((sum, k) => sum + (stats[k.id]?.sessions ?? 0), 0);
+    const famMastered = kids.reduce((sum, k) => sum + totalMastered(skillsMap, k.id), 0);
+    const PARENT_PORTAL = "/parent/parent"; // full Next.js portal (same origin)
     return (
       <div className="app">
         <main className="screen worlds parent-screen">
@@ -3102,17 +3140,57 @@ export default function App() {
               <h2>{t.parentTitle}</h2>
               <p className="head-sub">{t.parentSub}</p>
             </div>
+            {signedIn && (
+              <a
+                className="parent-portal-quick"
+                href={PARENT_PORTAL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.parentPortalTitle}
+                title={t.parentPortalTitle}
+              >
+                🖥️
+              </a>
+            )}
           </header>
 
           {kids.length === 0 ? (
             <p className="note">{t.pickProfile}</p>
           ) : (
             <>
+              {/* ── Family summary hero: how the whole household is doing ── */}
+              <section className="parent-hero">
+                <div className="parent-hero-top">
+                  <span className="parent-hello">{t.parentWelcome(signedIn ? (parentName() ?? "Parent") : "Family")}</span>
+                  <span className="parent-hero-sub">{t.parentFamTitle}</span>
+                </div>
+                <div className="family-tiles">
+                  <div className="fam-tile"><span className="fam-num">{kids.length}</span><span className="fam-label">{t.parentFamKids(kids.length)}</span></div>
+                  <div className="fam-tile"><span className="fam-num">⭐ {famStars}</span><span className="fam-label">{t.parentFamStars(famStars)}</span></div>
+                  <div className="fam-tile"><span className="fam-num">🧠 {famPoints}</span><span className="fam-label">{t.parentFamPoints(famPoints)}</span></div>
+                  <div className="fam-tile"><span className="fam-num">🏆 {famMastered}</span><span className="fam-label">{t.parentFamMastered(famMastered)}</span></div>
+                </div>
+              </section>
+
+              {/* ── Deep link into the full portal for a signed-in parent ── */}
+              {signedIn && (
+                <a className="parent-card parent-portal-card" href={PARENT_PORTAL} target="_blank" rel="noopener noreferrer">
+                  <div className="parent-head">
+                    <span className="parent-name">{t.parentPortalTitle}</span>
+                    <span className="parent-stats">{t.parentFamSessions(famSessions)}</span>
+                  </div>
+                  <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
+                  <span className="big-btn parent-portal-btn">{t.parentPortalCta}</span>
+                </a>
+              )}
+
               {/* ── Child picker: tap an avatar to switch whose analytics you see ── */}
               <div className="parent-picker" role="tablist" aria-label={t.parentTitle}>
                 {kids.map((k) => {
                   const selected = k.id === activeId;
                   const st = stats[k.id];
+                  const kidTotal = filterSkills.filter((s) => s.game).length;
+                  const kidMastered = totalMastered(skillsMap, k.id);
                   return (
                     <button
                       key={k.id}
@@ -3125,6 +3203,9 @@ export default function App() {
                       <span className="chip-meta">
                         <span className="chip-name">{k.name}</span>
                         <span className="chip-stars">⭐ {st?.stars ?? 0}</span>
+                        <span className="chip-progress">
+                          <span className="chip-progress-fill" style={{ width: `${kidTotal ? Math.round((kidMastered / kidTotal) * 100) : 0}%` }} />
+                        </span>
                       </span>
                     </button>
                   );
@@ -3164,7 +3245,7 @@ export default function App() {
                         return (
                           <div key={b.key} className="parent-world">
                             <span className="world-emoji small"><Icon name={b.key} size={20} /></span>
-                            <span className="parent-world-name">{b.title}</span>
+                            <span className="parent-world-name">{pBandName(b)}</span>
                             <div className="progress-bar">
                               <div className="progress-fill" style={{ width: `${p.pct}%` }} />
                             </div>
@@ -3244,7 +3325,7 @@ export default function App() {
           )}
           {/* Guest → parent upgrade: analytics here are on this device only;
               sign in to keep them on every device via the parent's account. */}
-          {!hasParentSession() && (
+          {!signedIn && (
             <div className="parent-card settings-signin-card">
               <div className="parent-head">
                 <span className="parent-name">{t.settingsSigninTitle}</span>

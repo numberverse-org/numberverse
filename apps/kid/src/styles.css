@@ -2034,12 +2034,78 @@ body {
 .chip-meta { display: flex; flex-direction: column; align-items: flex-start; }
 .chip-name { font-size: 14px; font-weight: 800; }
 .chip-stars { font-size: 11px; color: #ffd166; }
+/* mini mastered-progress bar under each kid chip */
+.chip-progress {
+  width: 56px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  margin-top: 3px;
+}
+.chip-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4cc9f0, #2ec4b6);
+}
 /* analytics body — a normal-flow column; the OUTER .screen is the scroll
    container (see .parent-screen > * above), so nothing nests or overlaps. */
 .parent-list { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 520px; }
 /* the voice-config card below the analytics must match the column width so it
    never spills over or looks narrower than the progress it sits under. */
 .parent-screen .voice-check { width: 100%; max-width: 520px; box-sizing: border-box; }
+
+/* ── parent panel: family summary hero + portal deep-link (v26.1) ──────── */
+.parent-hero {
+  width: 100%;
+  max-width: 520px;
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.18), rgba(46, 196, 182, 0.1));
+  border: 1px solid rgba(125, 227, 255, 0.35);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.parent-hero-top { display: flex; flex-direction: column; gap: 2px; }
+.parent-hello { font-size: 22px; font-weight: 800; }
+.parent-hero-sub { font-size: 12px; color: #a7c4e2; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+.family-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.fam-tile {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.fam-num { font-size: 18px; font-weight: 800; color: #ffd166; line-height: 1.1; }
+.fam-label { font-size: 10px; color: #a7c4e2; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+/* portal deep-link card — an <a>, so the whole card is tappable */
+.parent-portal-card {
+  text-decoration: none;
+  color: inherit;
+  border-color: rgba(125, 227, 255, 0.45);
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.16), rgba(255, 255, 255, 0.04));
+  cursor: pointer;
+}
+.parent-portal-btn { width: 100%; text-align: center; }
+/* header quick-action icon → the portal */
+.parent-portal-quick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.4);
+  background: rgba(76, 201, 240, 0.14);
+  font-size: 18px;
+  text-decoration: none;
+}
 .parent-card {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
