@@ -179,6 +179,21 @@ class WeeklyOut(BaseModel):
 
 class ProgressBatchIn(BaseModel):
     events: list[ProgressEventIn]
+    # #9 — multi-device sync: the client's current coin balance per kid
+    # ("<kid_id>": int). The server keeps the max ever reported (newest-wins),
+    # so a kid's Nova wallet follows them across devices.
+    coins: dict[str, int] | None = None
+
+
+class KidSnapshotOut(BaseModel):
+    """#9 — the E2E-friendly aggregate profile a second device can restore from.
+    Only mastery + coins — never voice, face, or raw answers."""
+
+    kid_id: uuid.UUID
+    name: str
+    avatar: str | None = None
+    coins: int = 0
+    mastery: list[MasteryOut]
 
 
 # ── Kotha (কথা) — RAG knowledge lake ──

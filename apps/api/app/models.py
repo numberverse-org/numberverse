@@ -37,6 +37,10 @@ class Kid(Base):
     avatar: Mapped[str | None] = mapped_column(String, nullable=True)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # #9 — multi-device sync: the aggregate Nova coin balance (newest-wins max),
+    # carried so a kid's wallet follows them across devices. Auto-migrated on
+    # boot by migrations.py (server_default → populated rows get 0).
+    coins: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
 
     profile: Mapped[Profile] = relationship(back_populates="kids")
     mastery: Mapped[list["SkillMastery"]] = relationship(back_populates="kid", cascade="all, delete-orphan")

@@ -420,6 +420,13 @@ export async function syncProgress(): Promise<void> {
       return;
     }
     setSyncState("syncing");
+    // #9 — carry each kid's current coin wallet with the batch so the server
+    // keeps the max (newest-wins) and a second device can restore it.
+    const coins: Record<string, number> = {};
+    for (const e of mapped) {
+      const sid = identity.kidFor(e.kidId);
+      if (sid && !(sid in coins)) coins[sid] = useKidStore.getState().nova[e.kidId]?.coins ?? 0;
+    }
     const res = await fetch(`${API}/progress`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
@@ -433,6 +440,7 @@ export async function syncProgress(): Promise<void> {
           difficulty: e.difficulty,
           timestamp: e.ts,
         })),
+        coins,
       }),
     });
     if (res.ok) {
@@ -606,12 +614,54 @@ export function filterLocalStories(
     .slice(0, limit);
 }
 
+/** #9 — pull one kid's aggregate server profile (mastery + coins). Returns null
+ *  when there's no mapping / offline / server error — restore is always best-effort. */
+async function fetchSnapshot(localKidId: string): Promise<{
+  coins: number;
+  mastery: Array<{ skillId: string; mastery: number; correct: number; attempts: number; streak: number }>;
+} | null> {
+  const identity = await ensureIdentity();
+  const sid = identity?.kidFor(localKidId);
+  if (!identity || !sid) return null;
+  try {
+    const res = await fetch(`${API}/kids/${sid}/snapshot`, {
+      headers: { Authorization: `Bearer ${identity.token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return { coins: data.coins ?? 0, mastery: data.mastery ?? [] };
+  } catch {
+    return null; // offline — skip quietly, retry next tick
+  }
+}
+
+let lastRestoreAt = 0;
+
+/** #9 — multi-device sync, RESTORE side: on a second device after the parent
+ *  signs in, merge every mapped kid's server profile into the local store
+ *  (newest-wins). Offline-first unaffected — this never touches the outbox and
+ *  never blocks gameplay. Throttled to once per 5 min so the heartbeat stays
+ *  quiet on the primary device (where the merge is a no-op / equal-values). */
+export async function restoreServerState(): Promise<void> {
+  const now = Date.now();
+  if (now - lastRestoreAt < 5 * 60_000) return;
+  const identity = await ensureIdentity();
+  if (!identity) return; // offline — don't consume the throttle; retry on the online event
+  lastRestoreAt = now;
+  for (const k of localKids()) {
+    const snap = await fetchSnapshot(k.id);
+    if (snap) useKidStore.getState().restoreSnapshot(k.id, snap);
+  }
+}
+
 /** Kick off always-sync: immediate drain (clears offline backlog on open),
  *  a 30s heartbeat, plus instant retries on reconnect / app-foreground. */
 export function startAutoSync(): () => void {
   const tick = () => {
     void syncProgress();
     void syncStories();
+    // #9 — second-device catch-up: throttled inside.
+    void restoreServerState();
   };
   tick();
   const iv = window.setInterval(tick, 30_000);
