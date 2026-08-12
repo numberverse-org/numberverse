@@ -675,6 +675,15 @@ interface Strings {
   /* 🧠 MONI — the tiny tutor's insight card */
   moniTitle: string;
   moniTag: string;
+  /* ❌ #78 wrong-answer history (parent panel) — per-day heatmap + drill-down */
+  mistakesTitle: string;
+  mistakesSub: string;
+  mistakesHeatTitle: string;
+  mistakesDayLabel: (date: string, n: number) => string;
+  mistakesSkillWrong: (n: number) => string;
+  mistakesEmpty: string;
+  mistakesNoneDay: string;
+  mistakesWeekday: string;
   moniLearnStyle: string;
   moniBestGame: string;
   moniAttention: string;
@@ -1103,6 +1112,15 @@ const STR: Record<Lang, Strings> = {
     /* 🧠 MONI */
     moniTitle: "Moni the Tutor",
     moniTag: "What Moni learned about your child",
+    /* ❌ #78 wrong-answer history */
+    mistakesTitle: "❌ Wrong answers",
+    mistakesSub: "What your child is still working on — per day, per skill",
+    mistakesHeatTitle: "Last 28 days",
+    mistakesDayLabel: (date, n) => `${date} — ${n} ${n === 1 ? "wrong answer" : "wrong answers"}`,
+    mistakesSkillWrong: (n) => `${n} wrong`,
+    mistakesEmpty: "No wrong answers in the last 28 days — wonderful! 🎉",
+    mistakesNoneDay: "Nothing tricky on this day",
+    mistakesWeekday: "S M T W T F S",
     moniLearnStyle: "Learning style",
     moniBestGame: "Loves",
     moniAttention: "Focus",
@@ -1534,6 +1552,15 @@ const STR: Record<Lang, Strings> = {
     /* 🧠 MONI */
     moniTitle: "মনি টিউটর",
     moniTag: "মনি আপনার সন্তান সম্পর্কে যা শিখেছে",
+    /* ❌ #78 ভুল উত্তরের ইতিহাস */
+    mistakesTitle: "❌ ভুল উত্তর",
+    mistakesSub: "আপনার সন্তান এখনো কী নিয়ে কাজ করছে — প্রতিদিন, প্রতি দক্ষতায়",
+    mistakesHeatTitle: "সর্বশেষ ২৮ দিন",
+    mistakesDayLabel: (date, n) => `${date} — ${n}টি ভুল উত্তর`,
+    mistakesSkillWrong: (n) => `${n}টি ভুল`,
+    mistakesEmpty: "সর্বশেষ ২৮ দিনে কোনো ভুল উত্তর নেই — চমৎকার! 🎉",
+    mistakesNoneDay: "এই দিনে কিছুই কঠিন ছিল না",
+    mistakesWeekday: "র সো ম বু বৃ শু শ",
     moniLearnStyle: "শেখার ধরন",
     moniBestGame: "ভালোবাসে",
     moniAttention: "মনোযোগ",
@@ -2218,6 +2245,8 @@ export default function App() {
   const [muted, setMuted] = useState(isMusicMuted());
   // Which kid the parent panel is showing analytics for (defaults to the active kid).
   const [parentKidId, setParentKidId] = useState<string | null>(null);
+  // #78 — which calendar day the wrong-answer heatmap drill-down shows (null = most recent day with wrongs).
+  const [mistakeDay, setMistakeDay] = useState<string | null>(null);
   // #351 — kid-switcher chips are a real ARIA tablist: only the selected chip
   // sits in tab order (roving tabindex) and arrow keys move focus + selection.
   const parentChipRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -4656,6 +4685,96 @@ export default function App() {
                         </details>
                       );
                     })()}
+                    {/* ❌ #78 wrong-answer history — per-day heatmap + drill-down
+                        to skill. Everything is derived from the LOCAL mistakes
+                        ledger (byDay buckets), so it works fully offline — no
+                        network, no analytics. A 28-day grid (7×4, oldest→newest)
+                        colors each day by wrong-tap intensity; tapping a day
+                        lists the skills + wrong counts for that day. */}
+                    <details className="parent-help mistakes-card">
+                      <summary>{t.mistakesTitle}</summary>
+                      <p className="syllabus-settings-sub">{t.mistakesSub}</p>
+                      {(() => {
+                        const days: string[] = [];
+                        for (let i = 27; i >= 0; i--) days.push(dayIsoAgo(i));
+                        // day → skillId → wrong taps, for THIS kid only
+                        const daySkills = new Map<string, Map<string, number>>();
+                        let anyWrongs = false;
+                        const kidPrefix = `${activeKid.id}:`;
+                        for (const [key, m] of Object.entries(mistakes)) {
+                          if (!key.startsWith(kidPrefix)) continue;
+                          const skillId = key.slice(kidPrefix.length);
+                          for (const [day, n] of Object.entries(m.byDay ?? {})) {
+                            if (n <= 0) continue;
+                            anyWrongs = true;
+                            let perSkill = daySkills.get(day);
+                            if (!perSkill) { perSkill = new Map(); daySkills.set(day, perSkill); }
+                            perSkill.set(skillId, (perSkill.get(skillId) ?? 0) + n);
+                          }
+                        }
+                        if (!anyWrongs) return <p className="parent-help-caught">{t.mistakesEmpty}</p>;
+                        const dayTotal = (day: string) => {
+                          const m = daySkills.get(day);
+                          return m ? [...m.values()].reduce((a, b) => a + b, 0) : 0;
+                        };
+                        // Selected day = the user's pick when it has wrongs, else
+                        // the most recent day with any (never invent an empty day).
+                        const selDay =
+                          mistakeDay && daySkills.has(mistakeDay)
+                            ? mistakeDay
+                            : [...days].reverse().find((d) => daySkills.has(d)) ?? todayIso();
+                        const level = (n: number) => (n <= 0 ? "" : n === 1 ? " lv1" : n <= 3 ? " lv2" : " lv3");
+                        const drill = daySkills.has(selDay)
+                          ? [...(daySkills.get(selDay) ?? new Map()).entries()]
+                              .map(([skillId, wrong]) => {
+                                const skill = filterSkills.find((s) => s.id === skillId);
+                                return { skillId, wrong, skill: skill ?? null };
+                              })
+                              .sort((a, b) => b.wrong - a.wrong)
+                          : [];
+                        return (
+                          <>
+                            <p className="mistakes-heat-title">{t.mistakesHeatTitle}</p>
+                            <div className="mistakes-weekdays" aria-hidden>{t.mistakesWeekday}</div>
+                            <div className="mistakes-heat" role="grid" aria-label={t.mistakesHeatTitle}>
+                              {days.map((day) => {
+                                const n = dayTotal(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    role="gridcell"
+                                    aria-selected={day === selDay}
+                                    className={`mistakes-cell${level(n)}${day === selDay ? " selected" : ""}`}
+                                    onClick={() => setMistakeDay(day)}
+                                    aria-label={`${day} — ${n} ${n === 1 ? "wrong" : "wrongs"}`}
+                                    title={`${day} — ${n}`}
+                                  />
+                                );
+                              })}
+                            </div>
+                            <p className="mistakes-day-label" role="status">{t.mistakesDayLabel(selDay, dayTotal(selDay))}</p>
+                            {drill.length === 0 ? (
+                              <p className="parent-help-caught">{t.mistakesNoneDay}</p>
+                            ) : (
+                              <div className="skill-list">
+                                {drill.map(({ skillId, wrong, skill }) => (
+                                  <div key={skillId} className="skill-row">
+                                    <span className="skill-emoji"><Icon name={skill?.subject ?? "math"} size={30} /></span>
+                                    <span className="skill-meta">
+                                      <span className="skill-name">
+                                        {skill?.title ?? skillId}
+                                        {skill?.titleBn ? <span className="skill-bn">{skill.titleBn}</span> : null}
+                                      </span>
+                                    </span>
+                                    <span className="skill-state help">{t.mistakesSkillWrong(wrong)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </details>
                     {/* 📚 #322 — KOTHA story inspector — the per-kid learning
                         story log (offline mirror of learning_stories): what was
                         tried, how Moni read it, what we did. Own card so the

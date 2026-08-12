@@ -211,7 +211,9 @@ export function dayIsoAgo(daysAgo: number): string {
 
 /** Wrong-answer ledger for one kid+skill. `open` is the count of wrongs not yet
  *  offset by a correct solve — the resolve-to-complete signal the session uses
- *  to refuse advancing until the kid has actually solved it. */
+ *  to refuse advancing until the kid has actually solved it. `byDay` (#78) is a
+ *  per-calendar-day wrong-tap count (ISO 'YYYY-MM-DD' → count) that feeds the
+ *  parent panel's wrong-answer history — local only, no analytics. */
 export interface MistakeState {
   /** Lifetime wrong taps on this skill. */
   wrong: number;
@@ -220,10 +222,12 @@ export interface MistakeState {
   firstAt: number;
   lastAt: number;
   lastDifficulty: number;
+  /** Per-day wrong taps for the parent heatmap (#78). Keyed by ISO date. */
+  byDay: Record<string, number>;
 }
 
 function initialMistake(now: number, difficulty: number): MistakeState {
-  return { wrong: 0, open: 0, firstAt: now, lastAt: now, lastDifficulty: difficulty };
+  return { wrong: 0, open: 0, firstAt: now, lastAt: now, lastDifficulty: difficulty, byDay: {} };
 }
 
 interface KidState {
@@ -347,9 +351,13 @@ export const useKidStore = create<KidState>()(
           // completes) would add to them. The ledger keeps "open" so the
           // session refuses to advance until the kid has actually solved.
           const m0 = s.mistakes[mk] ?? initialMistake(now, e.difficulty);
+          // #78 — normalize so every ledger entry carries byDay (pre-#78
+          // persisted entries have no field; wrong taps land via recordWrong
+          // which buckets them, but keep the shape honest here too).
+          const mNorm: MistakeState = { ...m0, byDay: m0.byDay ?? {} };
           const mNext: MistakeState = e.correct
-            ? { ...m0, open: 0 }
-            : { ...m0, wrong: m0.wrong + 1, open: m0.open + 1, lastAt: now, lastDifficulty: e.difficulty };
+            ? { ...mNorm, open: 0 }
+            : { ...mNorm, wrong: mNorm.wrong + 1, open: mNorm.open + 1, lastAt: now, lastDifficulty: e.difficulty };
           return {
             events: [...s.events, e],
             // durable outbox — survives reloads; the sync drains it online
@@ -426,6 +434,7 @@ export const useKidStore = create<KidState>()(
         const misCode = fpMis?.code ?? mis?.code ?? null;
         set((s) => {
           const m = s.mistakes[mk] ?? initialMistake(now, difficulty);
+          const day = todayIso();
           return {
             mistakes: {
               ...(s.mistakes ?? {}),
@@ -435,6 +444,7 @@ export const useKidStore = create<KidState>()(
                 firstAt: m.firstAt || now,
                 lastAt: now,
                 lastDifficulty: difficulty,
+                byDay: { ...(m.byDay ?? {}), [day]: (m.byDay?.[day] ?? 0) + 1 }, // #78 heatmap bucket
               },
             },
             moni: { ...(s.moni ?? {}), [kidId]: moniNext },
