@@ -10,6 +10,7 @@ import {
   type SkillState,
   type MoniProfile,
   type ErrorKind,
+  fingerprintAnswer,
 } from "@numberverse/core";
 import { waterGarden, masteryPlant, emptyGarden, type GardenState } from "./game/garden";
 
@@ -253,7 +254,7 @@ interface KidState {
   /** A wrong tap happened for this kid+skill → bumps wrong + open. Called by the
    *  wrongLedger (hooked into hintWrong), so every drill scene reports
    *  automatically. */
-  recordWrong: (kidId: string, skillId: string, gameId: string, difficulty: number) => void;
+  recordWrong: (kidId: string, skillId: string, gameId: string, difficulty: number, correct?: unknown, wrong?: unknown) => void;
   recordSession: (kidId: string) => void;
   reset: () => void;
   novaAwardRound: (kidId: string, correct: boolean) => void;
@@ -368,7 +369,7 @@ export const useKidStore = create<KidState>()(
           };
         });
       },
-      recordWrong: (kidId, skillId, gameId, difficulty) => {
+      recordWrong: (kidId, skillId, gameId, difficulty, correct, wrong) => {
         const now = Date.now();
         const mk = keyOf(kidId, skillId);
         // 🧠 MONI — observe the wrong tap + track the wrong streak.
@@ -376,12 +377,32 @@ export const useKidStore = create<KidState>()(
         const wrongStreak = (get().moniWrongStreak[mk] ?? 0) + 1;
         const skill = get().skills[mk] ?? initialSkillState(kidId, skillId);
         const round = { kidId, skillId, gameId, correct: false, difficulty, responseMs: DEFAULT_MONI_PARAMS.slowMs, timestamp: now };
-        const moniNext = moni.observeWrong(moniPrev, round, { ...skill, wrongStreak }, DEFAULT_MONI_PARAMS, now);
+        let moniNext = moni.observeWrong(moniPrev, round, { ...skill, wrongStreak }, DEFAULT_MONI_PARAMS, now);
+        // 🖐️ FINGERPRINT — cluster the wrong VALUE into a misconception code
+        // ("picks 8 when 7 is right" → overcount-1) and log it into Moni's
+        // misconception ledger once it repeats (misconcOccurrences=2), so the
+        // diagnosis turns into a SPECIFIC contrast drill instead of a generic
+        // "repeated error". Only numeric answers fingerprint — never strings.
+        const fp = fingerprintAnswer(skillId, correct, wrong);
+        if (fp && wrongStreak >= DEFAULT_MONI_PARAMS.misconcOccurrences) {
+          moniNext = moni.recordMisconception(moniNext, skillId, fp.code, fp.label, now);
+          // The generic "repeated-error" is now redundant — drop it so the
+          // ledger names the real pattern only.
+          moniNext = {
+            ...moniNext,
+            misconceptions: moniNext.misconceptions?.filter(
+              (m) => !(m.skillId === skillId && m.code === "repeated-error"),
+            ),
+          };
+        }
         // 📚 KOTHA — a wrong tap is a learning moment too (drill-scene struggle).
         // responseMs=0 marks it as a tap, not a scored round; slowMs fed to the
         // diagnosis keeps it from being misclassified as a "fast guess".
-        const diag = moni.diagnose(moniPrev, round, { ...skill, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
+        const diag = moni.diagnose(moniNext, round, { ...skill, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
         const mis = moniNext.misconceptions?.find((m) => m.skillId === skillId);
+        // Prefer the SPECIFIC fingerprint code over the generic "repeated-error".
+        const fpMis = fp ? moniNext.misconceptions?.find((m) => m.skillId === skillId && m.code === fp.code) : null;
+        const misCode = fpMis?.code ?? mis?.code ?? null;
         set((s) => {
           const m = s.mistakes[mk] ?? initialMistake(now, difficulty);
           return {
@@ -406,12 +427,12 @@ export const useKidStore = create<KidState>()(
                 gameId,
                 outcome: false,
                 errorKind: diag.kind,
-                misconceptionCode: mis?.code ?? null,
+                misconceptionCode: misCode,
                 action: diag.action.type,
                 difficulty,
                 responseMs: 0,
                 wrongStreak,
-                context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap" },
+                context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null },
                 ts: now,
               },
             ],

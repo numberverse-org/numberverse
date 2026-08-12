@@ -83,10 +83,12 @@ export function hintWrong(
 ) {
   // Every wrong tap is recorded into the kid's ledger — the App set the current
   // attempt context, so this lands under the right kid+skill. Feeds the
-  // resolve-to-complete loop + the parent panel's "needs help" list.
-  wrongLedger.record();
-  const bn = getAppLang() === "bn";
+  // resolve-to-complete loop + the parent panel's "needs help" list. The tapped
+  // value (vs the correct one) is passed along for Moni's error fingerprinting.
   const correct = ctx.correct();
+  const tappedWrong = ctx.options?.()?.find((o) => o.sprite === container)?.value;
+  wrongLedger.record(correct, tappedWrong);
+  const bn = getAppLang() === "bn";
   const log = missLog(scene);
   const key = String(correct);
   const n = (log[key] ?? 0) + 1;
