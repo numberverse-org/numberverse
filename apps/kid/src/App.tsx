@@ -746,6 +746,14 @@ interface Strings {
   contrastTrigger: (name: string) => string;
   contrastTriggerSub: string;
   contrastRight: string;
+  /* #133 — screen-reader live-region announcements */
+  a11yRight: string;
+  a11yWrong: string;
+  a11yMastered: (title: string) => string;
+  a11yVoiceOn: string;
+  a11yVoiceOff: string;
+  a11yMusicOn: string;
+  a11yMusicOff: string;
   contrastOops: (correct: string) => string;
   contrastDoneTitle: string;
   contrastDoneBody: string;
@@ -1197,6 +1205,13 @@ const STR: Record<Lang, Strings> = {
     contrastTrigger: (name) => `Moni spotted a pattern in ${name} — fix it together!`,
     contrastTriggerSub: "A short side-by-side game, no pressure",
     contrastRight: "Correct! You spotted the pattern! 🎉",
+    a11yRight: "Nice — that's right!",
+    a11yWrong: "Not quite — try again, Nova will help.",
+    a11yMastered: (title) => `You mastered ${title}!`,
+    a11yVoiceOn: "Reading is on.",
+    a11yVoiceOff: "Reading is off.",
+    a11yMusicOn: "Background music is on.",
+    a11yMusicOff: "Background music is off.",
     contrastOops: (correct) => `That's the trick! The answer is ${correct}. Try again!`,
     contrastDoneTitle: "Pattern beaten! 🏆",
     contrastDoneBody: "You looked at them side by side and found the difference. Moni is SO proud — let's keep it sharp!",
@@ -1652,6 +1667,13 @@ const STR: Record<Lang, Strings> = {
     contrastTrigger: (name) => `মণি ${name}-এ একটা প্যাটার্ন ধরেছে — একসাথে ঠিক করি!`,
     contrastTriggerSub: "পাশাপাশি খেলা, কোনো চাপ নেই",
     contrastRight: "ঠিক! তুমি প্যাটার্নটা চিনে ফেললে! 🎉",
+    a11yRight: "দারুণ — ঠিক আছে!",
+    a11yWrong: "মোটামুটি — আবার চেষ্টা করো, নোভা সাহায্য করবে।",
+    a11yMastered: (title) => `তুমি ${title} আয়ত্ত করেছ!`,
+    a11yVoiceOn: "পড়া চালু আছে।",
+    a11yVoiceOff: "পড়া বন্ধ আছে।",
+    a11yMusicOn: "ব্যাকগ্রাউন্ড মিউজিক চালু আছে।",
+    a11yMusicOff: "ব্যাকগ্রাউন্ড মিউজিক বন্ধ আছে।",
     contrastOops: (correct) => `এইটাই কৌশল! উত্তর হলো ${correct}। আবার চেষ্টা করো!`,
     contrastDoneTitle: "প্যাটার্ন জয় করেছ! 🏆",
     contrastDoneBody: "পাশাপাশি দেখে তুমি পার্থক্যটা খুঁজে পেয়েছ। মণি খুব গর্বিত — ধার ধরে রাখো!",
@@ -2670,6 +2692,13 @@ export default function App() {
   const [recState, setRecState] = useState<"idle" | "recording" | "denied" | "unsupported">("idle");
   const [recUrl, setRecUrl] = useState<string | null>(null);
   const recAudioRef = useRef<HTMLAudioElement | null>(null);
+  // #133 — screen-reader live region: polite announcements of game/settings
+  // state (rounds, mastery, toggles). Kept in sync with the on-screen + spoken
+  // feedback so VoiceOver/TalkBack users get the same cues.
+  const srLiveRef = useRef<HTMLDivElement | null>(null);
+  const announce = useCallback((text: string) => {
+    if (srLiveRef.current) srLiveRef.current.textContent = text;
+  }, []);
   const handleDictate = useCallback(async () => {
     if (recState === "recording") {
       const out = await stopRecording();
@@ -3116,6 +3145,8 @@ export default function App() {
           const e: RoundResult = { gameId: step.gameId, skillId: step.skillId, correct, difficulty, responseMs: ms };
           addEvent(kid.id, e);
           novaAwardRound(kid.id, correct);
+          // #133 — screen-reader cue for every round (matches the on-screen flash).
+          announce(correct ? t.a11yRight : t.a11yWrong);
           // every completed round counts toward today's Daily Quest (play N → bonus)
           if (novaQuestRound(kid.id)) {
             // THE moment the quest finishes — cheer once, aloud, in the app's language.
@@ -3142,6 +3173,7 @@ export default function App() {
               tada();
               const bn = getAppLang() === "bn";
               speak(t.masterySpeak(step.title), { lang: bn ? "bn" : "en" });
+              announce(t.a11yMastered(step.title)); // #133 — screen-reader cue
               const sc = game.scene.getScene(step.scene);
               if (sc && sc.scale) {
                 confettiBurst(sc, sc.scale.width / 2, Math.min(sc.scale.height * 0.35, 240), 44);
@@ -3605,6 +3637,8 @@ export default function App() {
       const voiceOk = tts ? tts.available && tts.voiceCount > 0 : null;
       return (
         <div className="app play-app">
+          {/* #133 — screen-reader live region: announces game + settings state. */}
+          <div id="sr-live" aria-live="polite" className="sr-only" ref={srLiveRef} />
           <main className="screen play-screen">
             <div className="play-top">
               <button
@@ -3694,7 +3728,7 @@ export default function App() {
 
             {/* The ONE action — it says which stop + where, so a tap always
                 starts the right lesson with zero decision-making. */}
-            <button className="big-btn play-btn" onClick={onPlay}>
+            <button className="big-btn play-btn" onClick={onPlay} aria-label={recSkill ? t.playWith(kid.name) : t.play}>
               <span className="play-btn-main">{recSkill ? t.playWith(kid.name) : t.play}</span>
               {recSkill && (
                 <span className="play-btn-sub">
@@ -4005,7 +4039,11 @@ export default function App() {
                 aria-checked={!muted}
                 aria-label={t.settingsMusicRow}
                 disabled={musicLocked}
-                onClick={() => setMuted(toggleMusicMute())}
+                onClick={() => {
+                  const next = toggleMusicMute();
+                  setMuted(next);
+                  announce(next ? t.a11yMusicOff : t.a11yMusicOn); // #133
+                }}
               >
                 <span className="switch-thumb" />
               </button>
