@@ -1,3 +1,9 @@
+## 13 Aug 2026 — 0.26.13 (guardrail sweep: PII log scrubber, scheme allowlist, console-log scan, story context redaction, license gate)
+
+51c64bb 🛡️ Guardrail sweep: PII log scrubber (#266), scheme allowlist (#267), console scan (#268), story redaction (#270), license gate (#271) (#415)
+2fea4f2 docs: TRACKER entry for 0.26.12 release
+7b18356 docs: mark #274 #290 #350 #351 released in 0.26.12
+
 ## 13 Aug 2026 — 0.26.12 (rate-limit guardrail, mastery celebration, reduced-motion mode, keyboard navigation)
 
 121f021 🎨 #351 Keyboard navigation for parent area: focus-visible rings + roving-tabindex kid switcher (#414)
