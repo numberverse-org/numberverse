@@ -552,6 +552,10 @@ interface Strings {
   moniTone: string;
   moniSessionLength: string;
   moniSessionHint: (n: number) => string;
+  moniGoals: string;
+  moniGoalFocus: string;
+  moniGoalWeak: string;
+  moniGoalReview: (n: number) => string;
   moniTrendUp: string;
   moniTrendFlat: string;
   moniTrendDown: string;
@@ -884,6 +888,10 @@ const STR: Record<Lang, Strings> = {
     moniTone: "Tone",
     moniSessionLength: "Best session",
     moniSessionHint: (n) => `Moni saw you stay sharp for ~${n} rounds — keep going or take a break, your call 💛`,
+    moniGoals: "Moni's 3 next skills",
+    moniGoalFocus: "the main focus right now",
+    moniGoalWeak: "still needs work",
+    moniGoalReview: (n) => `brush up in ${n} day${n === 1 ? "" : "s"}`,
     moniTrendUp: "improving 📈",
     moniTrendFlat: "steady ➖",
     moniTrendDown: "needs support 📉",
@@ -1212,6 +1220,10 @@ const STR: Record<Lang, Strings> = {
     moniTone: "ভাষা",
     moniSessionLength: "সেরা সেশন",
     moniSessionHint: (n) => `মণি দেখল ~${n} রাউন্ড পর্যন্ত তোমার মনোযোগ ছিল — চালিয়ে যাও বা বিরতি নাও, তোমার পছন্দ 💛`,
+    moniGoals: "মনির পরবর্তী ৩ দক্ষতা",
+    moniGoalFocus: "এখনকার প্রধান লক্ষ্য",
+    moniGoalWeak: "এখনো অনুশীলন দরকার",
+    moniGoalReview: (n) => `${n} দিনে একবার ঝালাই`,
     moniTrendUp: "উন্নতি 📈",
     moniTrendFlat: "স্থির ➖",
     moniTrendDown: "সাহায্য দরকার 📉",
@@ -3494,6 +3506,37 @@ export default function App() {
                               <span className="moni-v">{mis}</span>
                             </div>
                           </div>
+                          {/* 🎯 MONI's top-3 practice goals — the planner's focus first,
+                              then weakest skills, then due reviews. Local + plain-language. */}
+                          {(() => {
+                            const plan = moniPlanFor(activeKid.id);
+                            if (!plan || plan.recommendations.length < 2) return null;
+                            const goalReason = (g: { reasonCode: "focus" | "weak" | "review"; inDays?: number }) =>
+                              g.reasonCode === "focus"
+                                ? t.moniGoalFocus
+                                : g.reasonCode === "weak"
+                                  ? t.moniGoalWeak
+                                  : t.moniGoalReview(g.inDays ?? 1);
+                            return (
+                              <div className="moni-goals">
+                                <p className="moni-goals-title">{t.moniGoals}</p>
+                                <ol>
+                                  {plan.recommendations.map((g) => {
+                                    const gs = filterSkills.find((s) => s.id === g.skillId);
+                                    return (
+                                      <li key={g.skillId}>
+                                        <span className="moni-goal-skill">
+                                          {gs?.title ?? g.skillId}
+                                          {gs?.titleBn ? <span className="skill-bn">{gs.titleBn}</span> : null}
+                                        </span>
+                                        <span className="moni-goal-why">{goalReason(g)}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ol>
+                              </div>
+                            );
+                          })()}
                           <p className="moni-next">
                             <strong>{t.moniNextMove}:</strong>{" "}
                             {mp.totalRounds >= 8 ? (
