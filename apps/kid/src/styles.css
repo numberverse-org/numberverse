@@ -2597,6 +2597,36 @@ body {
 .done-screen { position: relative; overflow-y: auto; gap: 14px; justify-content: flex-start; overscroll-behavior: contain; }
 .done-screen .mascot { margin-top: auto; }
 .done-screen > button:last-of-type { margin-bottom: auto; }
+/* 🧠 MONI break screen (#327) — soft, sky-themed pause; never a hard wall. */
+.break-screen { position: relative; overflow-y: auto; gap: 12px; justify-content: flex-start; text-align: center; padding-top: 28px; }
+.break-screen .title { margin: 4px 0 0; }
+.break-sky { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.break-sky-float {
+  position: absolute;
+  font-size: 30px;
+  opacity: 0.5;
+  animation: break-drift 9s ease-in-out infinite;
+}
+.break-sky-float.f0 { top: 8%; left: 8%; animation-delay: 0s; }
+.break-sky-float.f1 { top: 18%; right: 10%; animation-delay: 1.4s; }
+.break-sky-float.f2 { top: 6%; left: 40%; animation-delay: 2.6s; }
+.break-sky-float.f3 { top: 42%; left: 6%; animation-delay: 3.8s; }
+.break-sky-float.f4 { top: 38%; right: 6%; animation-delay: 5s; }
+.break-sky-float.f5 { top: 58%; left: 32%; animation-delay: 6.2s; }
+@keyframes break-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+.break-mascot { font-size: 0; line-height: 1; margin-top: 10px; animation: celebrate-bounce 2.2s ease-in-out infinite; filter: drop-shadow(0 10px 22px rgba(76, 201, 240, 0.3)); }
+.break-body { max-width: 340px; margin: 0 auto; font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.85); line-height: 1.5; }
+.break-stretch { font-size: 44px; line-height: 1; margin: 2px 0 4px; animation: break-stretch-y 2.6s ease-in-out infinite; }
+@keyframes break-stretch-y {
+  0%, 100% { transform: scale(1) rotate(-4deg); }
+  50% { transform: scale(1.12) rotate(4deg); }
+}
+.break-rest-btn { margin-top: 10px; }
+.break-go-btn { margin-bottom: auto; }
+.break-screen > * { z-index: 1; }
 .confetti { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
 .confetti-piece {
   position: absolute;
