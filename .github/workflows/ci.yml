@@ -106,6 +106,17 @@ jobs:
       - name: Dependency license gate (#271)
         run: node scripts/license-audit.mjs
 
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Secrets hygiene gate (#126)
+        run: node scripts/secret-scan.mjs
+
   oracle:
     name: oracle
     needs: build-core
