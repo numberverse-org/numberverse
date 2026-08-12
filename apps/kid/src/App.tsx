@@ -3732,7 +3732,7 @@ export default function App() {
             </div>
             <p className="syllabus-settings-sub">{t.parentPortalSub}</p>
             {hasParentSession() ? (
-              <a className="big-btn settings-portal-btn" href="/parent/parent">
+              <a className="big-btn settings-portal-btn" href="/parent/">
                 {t.parentPortalCta} →
               </a>
             ) : (
@@ -3978,7 +3978,7 @@ export default function App() {
     const famPoints = kids.reduce((sum, k) => sum + (stats[k.id]?.score ?? 0), 0);
     const famSessions = kids.reduce((sum, k) => sum + (stats[k.id]?.sessions ?? 0), 0);
     const famMastered = kids.reduce((sum, k) => sum + totalMastered(skillsMap, k.id), 0);
-    const PARENT_PORTAL = "/parent/parent"; // full Next.js portal (same origin)
+    const PARENT_PORTAL = "/parent/"; // full Next.js portal (same origin)
     return (
       <div className="app">
         <main className="screen worlds parent-screen">
