@@ -1,3 +1,7 @@
+## 12 Aug 2026 — 0.26.3 (Google button always in the app language (no more German))
+
+185f64a 🔤 #391 Auth: pin Google button language to the app (no more 'Weiter mit Google') (#392)
+
 ## 12 Aug 2026 — 0.26.2 (Bangla voice no-latin fallback + API schema-drift migrations)
 
 dc5ba13 🛡️ #388 API: idempotent column migrations — schema drift can't 502 the API (#390)
