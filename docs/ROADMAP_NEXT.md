@@ -106,7 +106,7 @@
 - ~~Parent: untouched-games view~~  ✅ #252 — "🎮 Games to try" card: per-kid coverage ("X of N games played" + per-subject bars) + list of untouched games (EN+বাংলা title, world-band chip), derived from already-loaded mastery → offline
 - ~~Parent: session-preserving kid switch~~  ✅ #253 — kid-switch snapshots the in-flight session (steps + step index + rounds done) per kid and RESUMES it from the home Play button on switch-back; cleared on real completion / explicit new session; co-op pass-the-device untouched; durable-outbox uid dedup keeps sync single-fire
 - ~~Parent: dashboard light/dark theme~~  ✅ #254 — "🌙/☀️ Light theme" topbar toggle (portal-only, persisted in `nv_parent_theme`): every ink/surface color in `globals.css` is now a CSS variable, `html.theme-light` swaps the whole dark-purple palette for a light one (native controls follow via `color-scheme`), EN+বাংলা labels, `storage`-listener sync across portal tabs; #250 high-contrast always wins over the theme so a11y stays maximum-contrast
-- Parent: session timeline per kid  _(priority: low, parent-facing)_
+- ~~Parent: session timeline per kid~~  ✅ #255 — "🧵 Session timeline" card: play blocks grouped client-side from the same full-history feed as the archive (≥30-min idle = new session); each row = start time, rounds, minutes, accuracy bar + the skills whose BKT mastery crossed 0.8 during that block (exact port of the server's `_bkt_update` replay) — fully offline; day-filter chips (All + last 14 days), EN+বাংলা, per-kid filter remembered
 - Parent: goal-setting screen (minutes/rounds per day)  _(priority: low, parent-facing)_
 - Parent: curriculum focus pin  _(priority: low, parent-facing)_
 - Parent: per-kid voice preference  _(priority: low, parent-facing)_

@@ -264,6 +264,89 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   padding: 3px 9px;
 }
 
+/* 🧵 #255 — session timeline card (per-kid play blocks, offline-derived). */
+.card.timeline-card { border-color: rgba(196, 181, 253, 0.32); }
+.timeline-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.timeline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--nv-border);
+  background: var(--nv-chip);
+  color: var(--nv-muted-strong);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.timeline-chip:hover { background: var(--nv-chip-hover); }
+.timeline-chip.on {
+  background: rgba(125, 227, 255, 0.18);
+  border-color: var(--nv-brand);
+  color: var(--nv-text);
+}
+.timeline-list { list-style: none; margin-top: 12px; }
+.timeline-row {
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--nv-border-soft);
+}
+.timeline-row:last-child { border-bottom: 0; }
+.timeline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.timeline-time { font-size: 14px; font-weight: 800; color: var(--nv-text); }
+.timeline-count { font-size: 12px; color: var(--nv-muted); }
+.timeline-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--nv-border);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.timeline-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4cc9f0, #2ec4b6, #ffd166);
+  transition: width 0.3s ease;
+}
+.timeline-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+.timeline-pct { font-size: 12.5px; font-weight: 800; color: var(--nv-gold); }
+.timeline-mastered {
+  font-size: 12px;
+  color: var(--nv-muted-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mastered-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--nv-ok);
+  background: rgba(46, 196, 182, 0.12);
+  border: 1px solid rgba(46, 196, 182, 0.32);
+}
+.mastered-chip .muted { font-weight: 500; font-size: 11px; }
+
 .reteach-qr {
   display: flex;
   flex-direction: column;

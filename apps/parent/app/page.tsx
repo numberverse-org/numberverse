@@ -133,6 +133,36 @@ const THEME_LANGS = {
 } as const;
 const THEME_KEY = "nv_parent_theme";
 
+/** 🧵 #255 — session timeline strings (EN + BN). Same country-pack seam. */
+const SESSION_LANGS = {
+  en: {
+    title: "🧵 Session timeline",
+    hint: "Play sessions (a 30-min pause starts a new one) with rounds, accuracy and the skills mastered in that block — generated right here in your browser from the history we already load, so it works offline.",
+    filterByDay: "Filter by day",
+    allDays: "All days",
+    rounds: "rounds",
+    min: "min",
+    accuracy: "correct",
+    mastered: "Mastered",
+    loading: "Loading full history…",
+    notLoaded: "The session timeline loads with the archive.",
+    empty: "No sessions yet — play a few rounds and they’ll show up here.",
+  },
+  bn: {
+    title: "🧵 সেশন টাইমলাইন",
+    hint: "৩০ মিনিট বিরতিতে আলাদা সেশন — রাউন্ড, নির্ভুলতা আর সেই অংশে আয়ত্ত করা দক্ষতা; আমরা আগে যে ইতিহাস লোড করি তা থেকেই ব্রাউজারে তৈরি হয়, তাই অফলাইনে কাজ করে।",
+    filterByDay: "দিন অনুযায়ী ফিল্টার",
+    allDays: "সব দিন",
+    rounds: "রাউন্ড",
+    min: "মিনিট",
+    accuracy: "সঠিক",
+    mastered: "আয়ত্ত",
+    loading: "সম্পূর্ণ ইতিহাস লোড হচ্ছে…",
+    notLoaded: "সেশন টাইমলাইন আর্কাইভের সাথে লোড হয়।",
+    empty: "এখনো কোনো সেশন নেই — কিছু রাউন্ড খেলুন, এখানে দেখা যাবে।",
+  },
+} as const;
+
 const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
@@ -421,6 +451,93 @@ function narrTitleBn(id: string): string {
   return s?.titleBn ?? narrTitleEn(id);
 }
 
+/** One kid's play session, derived client-side from the activity feed. */
+interface TimelineSession {
+  /** Unique key (ISO start). */
+  key: string;
+  startISO: string;
+  /** Local calendar day "YYYY-MM-DD" — what the parent sees in fmtTime. */
+  date: string;
+  rounds: number;
+  correct: number;
+  minutes: number;
+  /** Skill ids whose BKT mastery crossed the threshold during this session. */
+  mastered: string[];
+}
+
+/** Internal accumulator while grouping rounds into sessions. */
+interface TimelineAcc {
+  start: string;
+  rounds: number;
+  correct: number;
+  ms: number;
+  mastered: string[];
+}
+
+/** A 30-minute idle gap starts a new session. */
+const SESSION_GAP_MS = 30 * 60 * 1000;
+const SESSION_MASTERY = 0.8;
+
+/** Port of the API's BKT mastery update (routers/progress.py `_bkt_update`).
+ *  Replaying the activity feed with this reproduces server mastery exactly
+ *  (default params) so we can attribute "mastered" crossings to the session
+ *  they happened in — fully offline. */
+function bktUpdate(m: number, correct: boolean, pLearn = 0.1, pGuess = 0.15, pSlip = 0.1): number {
+  const p = m;
+  const pCorrect = p * (1 - pSlip) + (1 - p) * pGuess;
+  if (pCorrect <= 0) return p;
+  const pGiven = correct ? (p * (1 - pSlip)) / pCorrect : (p * pSlip) / (1 - pCorrect);
+  const g = Math.min(1, Math.max(0, pGiven));
+  return Math.min(1, g + (1 - g) * pLearn);
+}
+
+function localDayKey(iso: string): string {
+  const d = new Date(iso);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** Group a kid's rounds (newest-first, as the API returns them) into play
+ *  sessions and replay BKT to find which skills crossed mastery in each block.
+ *  Pure + offline — built from the same full-history fetch as the archive. */
+function buildSessionTimeline(activity: ActivityRow[]): TimelineSession[] {
+  const events = [...activity].reverse(); // oldest → newest for replay
+  const sessions: TimelineAcc[] = [];
+  const mastery = new Map<string, number>();
+  let cur: TimelineAcc | null = null;
+  let prevTs = 0;
+  for (const a of events) {
+    const ts = Date.parse(a.created_at);
+    if (cur && ts - prevTs > SESSION_GAP_MS) {
+      sessions.push(cur);
+      cur = null;
+    }
+    if (!cur) cur = { start: a.created_at, rounds: 0, correct: 0, ms: 0, mastered: [] };
+    cur.rounds += 1;
+    if (a.correct) cur.correct += 1;
+    cur.ms += a.response_ms ?? 0;
+    const before = mastery.get(a.skill_id) ?? 0;
+    const after = bktUpdate(before, a.correct);
+    mastery.set(a.skill_id, after);
+    if (before < SESSION_MASTERY && after >= SESSION_MASTERY && !cur.mastered.includes(a.skill_id)) {
+      cur.mastered.push(a.skill_id);
+    }
+    prevTs = ts;
+  }
+  if (cur) sessions.push(cur);
+  sessions.reverse(); // newest first for display
+  return sessions.map((s) => ({
+    key: s.start,
+    startISO: s.start,
+    date: localDayKey(s.start),
+    rounds: s.rounds,
+    correct: s.correct,
+    minutes: Math.round((s.ms / 60000) * 10) / 10,
+    mastered: s.mastered,
+  }));
+}
+
 /** i18n-extensible join for a list of titles. */
 function narrListEn(xs: string[]): string {
   if (xs.length <= 1) return xs[0] ?? "";
@@ -678,6 +795,8 @@ export default function ParentDashboard() {
   const [archActivity, setArchActivity] = useState<Record<string, ActivityRow[]>>({});
   const [archLoading, setArchLoading] = useState(false);
   const [archMonth, setArchMonth] = useState<Record<string, string>>({});
+  // 🧵 #255 — per-kid session-timeline day filter ("all" = no filter).
+  const [sessionDay, setSessionDay] = useState<Record<string, string>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1244,6 +1363,15 @@ export default function ParentDashboard() {
   const archiveLoaded = !!activeId && !!archActivity[activeId];
   const selMonth = activeId ? (archMonth[activeId] ?? activeArchive[0]?.key ?? null) : null;
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
+  // 🧵 #255 — session timeline, derived client-side from the SAME full-history
+  // feed as the archive (offline after load). Day filter is remembered per kid.
+  const activeSessions = activeId ? buildSessionTimeline(archActivity[activeId] ?? []) : [];
+  const sessionDays = [...new Set(activeSessions.map((s) => s.date))]
+    .sort((a, b) => (a < b ? 1 : -1))
+    .slice(0, 14);
+  const selSessionDay = activeId ? (sessionDay[activeId] ?? "all") : "all";
+  const visibleSessions =
+    selSessionDay === "all" ? activeSessions : activeSessions.filter((s) => s.date === selSessionDay);
   // 🎮 #252 — game coverage: which games (per skill) the kid has tried. Derived
   // from the already-loaded mastery (attempts > 0) → fully offline, per-kid.
   const playedSkills = new Set(activeMastery.filter((m) => m.attempts > 0).map((m) => m.skill_id));
@@ -2063,6 +2191,78 @@ export default function ParentDashboard() {
                     )}
                   </div>
                 )}
+              </>
+            )}
+          </section>
+
+          {/* 🧵 #255 — session timeline: play blocks (date, rounds, accuracy,
+              mastered skills) grouped client-side from the full history. */}
+          <section className="card timeline-card">
+            <h2>{SESSION_LANGS[wizLang].title}</h2>
+            <p className="muted small">{SESSION_LANGS[wizLang].hint}</p>
+            {!archiveLoaded ? (
+              <p className="muted">
+                {archLoading ? SESSION_LANGS[wizLang].loading : SESSION_LANGS[wizLang].notLoaded}
+              </p>
+            ) : activeSessions.length === 0 ? (
+              <p className="muted">{SESSION_LANGS[wizLang].empty}</p>
+            ) : (
+              <>
+                <div className="timeline-filter" role="tablist" aria-label={SESSION_LANGS[wizLang].filterByDay}>
+                  <button
+                    className={`timeline-chip${selSessionDay === "all" ? " on" : ""}`}
+                    onClick={() => activeId && setSessionDay((p) => ({ ...p, [activeId]: "all" }))}
+                  >
+                    {SESSION_LANGS[wizLang].allDays}
+                  </button>
+                  {sessionDays.map((d) => (
+                    <button
+                      key={d}
+                      className={`timeline-chip${selSessionDay === d ? " on" : ""}`}
+                      onClick={() => activeId && setSessionDay((p) => ({ ...p, [activeId]: d }))}
+                    >
+                      {new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </button>
+                  ))}
+                </div>
+                <ul className="timeline-list">
+                  {visibleSessions.map((s) => {
+                    const pct = s.rounds ? Math.round((s.correct / s.rounds) * 100) : 0;
+                    return (
+                      <li key={s.key} className="timeline-row">
+                        <div className="timeline-head">
+                          <span className="timeline-time">{fmtTime(s.startISO)}</span>
+                          <span className="timeline-count">
+                            {s.rounds} {SESSION_LANGS[wizLang].rounds} · {s.minutes} {SESSION_LANGS[wizLang].min}
+                          </span>
+                        </div>
+                        <div className="timeline-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                          <span className="timeline-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div className="timeline-foot">
+                          <span className="timeline-pct">{pct}% {SESSION_LANGS[wizLang].accuracy}</span>
+                          {s.mastered.length > 0 && (
+                            <span className="timeline-mastered">
+                              {SESSION_LANGS[wizLang].mastered}:{" "}
+                              {s.mastered.map((id) => (
+                                <span key={id} className="mastered-chip">
+                                  {narrTitleEn(id)}
+                                  {narrTitleBn(id) !== narrTitleEn(id) && (
+                                    <span className="muted"> · {narrTitleBn(id)}</span>
+                                  )}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </>
             )}
           </section>
