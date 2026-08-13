@@ -119,6 +119,10 @@ export const SKILLS: Skill[] = [
   { id: 'en-makechange', band: 3, subject: 'math', title: 'Making change (৳ notes)', titleBn: 'টাকা ফেরত (নোট)', description: 'Pay with a ৳50/৳100 note and compute the change, then make exact amounts by tapping ৳5/10/20/50', descriptionBn: '৳৫০/৳১০০ নোট দিয়ে দাম দিয়ে ফেরত বের করি, তারপর নোট ছাপিয়ে ঠিক অংক বানাই', commonCore: ['2.MD.C.8'], nctbCode: 'c3-math-11', classNumber: 3, game: 'game-makechange' },
   // Math — elapsed time: an analog clock + a digital target, "how many minutes until …?".
   { id: 'en-elapsed', band: 3, subject: 'math', title: 'Elapsed time (how long until…)', titleBn: 'সময়ের হিসাব (কতক্ষণ পরে…)', description: 'Watch an analog clock and find how many minutes until the digital target time', descriptionBn: 'ঘড়ি দেখে খুঁজি ডিজিটাল সময় পর্যন্ত কত মিনিট বাকি', commonCore: ['2.MD.C.7', '3.MD.A.1'], nctbCode: 'c3-math-12', classNumber: 3, game: 'game-elapsed' },
+  // Math — measurement: compare length (cm/m), weight (kg/g) and capacity (L/mL).
+  // NCTB class-3 math has a measurement unit (মাপজোক); the scene also teaches
+  // 1 m = 100 cm, 1 kg = 1000 g, 1 L = 1000 mL by mixing units at higher levels.
+  { id: 'math-measure', band: 3, subject: 'math', title: 'Measurement (compare)', titleBn: 'মাপজোক (তুলনা)', description: 'Tap the longer, heavier or larger — comparing cm/m, kg/g and L/mL', descriptionBn: 'লম্বা, ভারী বা বেশি কোনটা — ট্যাপ করে তুলনা করি, সেমি/মিটার, কেজি/গ্রাম আর লিটার/মিলি মেপে', commonCore: ['1.MD.1', '1.MD.2', '3.MD.2'], nctbCode: 'c3-math-15', classNumber: 3, game: 'game-measure' },
   // Math — perimeter intro: add the side lengths around a fence, unit cubes along every edge.
   { id: 'en-perim', band: 3, subject: 'math', title: 'Perimeter intro', titleBn: 'পরিসীমা শুরু', description: 'Count/add the unit-cube fence around a rectangle (4 sides) or right triangle (3 sides)', descriptionBn: 'আয়তক্ষেত্র (৪ বাহু) বা সমকোণী ত্রিভুজ (৩ বাহু) ঘিরে একক ঘনক বেড়া গুনি/যোগ করি', commonCore: ['3.MD.D.8'], nctbCode: 'c3-math-13', classNumber: 3, game: 'game-perim' },
   // Math — 2D → 3D shape pairing: match flat faces (square→cube) to rotating solids.
@@ -344,6 +348,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-dectenths', skillId: 'en-dectenths', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-makechange', skillId: 'en-makechange', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-elapsed', skillId: 'en-elapsed', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-measure', skillId: 'math-measure', difficultyLevels: [10, 20, 50, 100, 3, 5], targetSuccess: 0.8 },
   { id: 'game-perim', skillId: 'en-perim', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-solidmatch', skillId: 'en-solidmatch', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-symmetry', skillId: 'en-symmetry', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
@@ -502,6 +507,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-dectenths': 'DecTenths',
   'game-makechange': 'MakeChange',
   'game-elapsed': 'ElapsedTime',
+  'game-measure': 'Measurement',
   'game-perim': 'PerimFence',
   'game-solidmatch': 'SolidMatch',
   'game-symmetry': 'SymmetryMirror',
