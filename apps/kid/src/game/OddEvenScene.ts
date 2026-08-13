@@ -5,6 +5,7 @@ import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { speak, bnNumber, enNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -109,6 +110,15 @@ export class OddEvenScene extends Phaser.Scene {
     this.shownText.setText(bdDigits(this.shown));
     this.drawPairs();
     this.spawnButtons();
+    // Spoken feedback (#746): read the number, then the question — EN or BN
+    // follows the app language, so a band-2 non-reader never faces a silent
+    // prompt.
+    const bn = getAppLang() === "bn";
+    this.time.delayedCall(350, () => {
+      if (!this.scene.isActive()) return;
+      speak(bn ? bnNumber(this.shown) : enNumber(this.shown), { cancel: false });
+      speak(t("oddEvenPrompt"), { cancel: false });
+    });
   }
 
   /** Pair-aid: 2-column dots. Even → every dot has a partner; odd → the last
@@ -161,6 +171,9 @@ export class OddEvenScene extends Phaser.Scene {
     this.sparkle(container.x, container.y);
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
+    const bn = getAppLang() === "bn";
+    speak(t("oeGreat"), { cancel: false });
+    speak(this.answerEven ? t("oeEven") : t("oeOdd"), { cancel: false });
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(true, ms, this.shown);
