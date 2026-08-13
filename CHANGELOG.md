@@ -1,3 +1,10 @@
+## 14 Aug 2026 — 0.31.0 (decompose kid App.tsx monolith (#589): i18n + domain layer + 6 components; daily-hook above the fold)
+
+57d3ded ♻️ guardian checks scan full src tree (survive #589 extraction) + retention reorder
+1b463a8 🏠 #589 extract home screen → components/HomeScreen.tsx (App.tsx 5394→4618)
+50fb4ae ♻️ #589 extract pure domain layer → lib/journey.ts + avatar components
+3e9516b ♻️ #589 extract i18n pack + 4 components from App.tsx (8669→6360 lines)
+
 ## 14 Aug 2026 — 0.30.2 (parent portal: decompose dashboard into components/ + lib/portal (#620))
 
 ff23254 Merge pull request #696 from numberverse-org/fix/620-decompose-dashboard
