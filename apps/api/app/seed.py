@@ -107,6 +107,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("science-sink-float", 2, "science", "Sink or float", "ডুব না ভাসা"),
     ("science-food-chain", 2, "science", "Food chains", "খাদ্য শৃঙ্খল"),
     ("science-food-source", 2, "science", "Food from plants & animals", "খাবারের উৎস"),
+    ("science-materials", 2, "science", "Materials", "বস্তুর উপাদান"),
     ("science-day-night", 2, "science", "Day & night", "দিন ও রাত"),
     ("bgs-village-city", 2, "bgs", "Village & city life", "গ্রাম ও শহরের জীবন"),
     # Band 3 — extend arithmetic: two-digit → mult → div (share then facts) → place value → regroup
