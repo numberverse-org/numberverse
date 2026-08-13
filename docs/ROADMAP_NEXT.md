@@ -73,7 +73,7 @@
 - ~~English: irregular plurals (foot-feet, mouse-mice)~~  ✅ #222 — "Make it plural!" one foot 🦶 → "two ___?"; 14 irregular pairs (foot→feet, mouse→mice, child→children, ox→oxen, sheep→sheep, leaf→leaves…); 3 string-distinct options, shuffle-bag + round-level dedupe, correct says "Perfect! foot → feet" and speaks "one foot, two feet"; lvl [4,4,6,6,8,8] (ip* keys)
 - ~~English: irregular past tense (go-went, see-saw)~~  ✅ #223 — "Past time!" Today I go 🚶 → "Yesterday I ___ to school."; 16 irregular verbs (go→went, see→saw, eat→ate, buy→bought, sleep→slept, read→read…), sentence-context blank fill that speaks the whole sentence on correct; 3 string-distinct options, shuffle-bag + round-level dedupe; lvl [4,4,6,6,8,8] (iv* keys)
 - ~~English: long-vowel teams review~~  ✅ #224 — "Vowel teams!" hear "r____n" 🌧️ → tap the long-vowel team that makes the word; 8 mixed teams × 5 words = 40 (ai ay ee ea oa ow ie igh); every round covers all 8 teams, per-team shuffle-bags reach all 40; shrinking timer bar 10s→5s for speed, gentle "Faster!" on timeout; lvl [10000…5000]ms (lv* keys)
-- Math: skip-counting by 3s & 4s  _(priority: low, kid-first)_
+- ~~Math: skip-counting by 3s & 4s~~  ✅ #225 — "Skip count!" +3/+4 sequence on a number line: green dots at reached terms, pulsing "?" at the next; tap the next number, correct fills blank + speaks the full sequence; off-by-one/off-by-two distractors; terms ramp [2,3,3,4,4,5], starts ramp to 0–48; lvl [2,3,3,4,4,5] (sc* keys)
 - ~~Math: odd & even sort~~  ✅ #226
 - ~~Math: number bonds to 10 & 20~~  ✅ #227
 - ~~Math: place value to 9999 (thousands)~~  ✅ #228 (shipped via `game-placevalue` PlaceValueScene — build+read 4-digit numbers with blocks, spoken Bangla, i18n clean)
