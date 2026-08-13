@@ -137,6 +137,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-magnets", 2, "science", "Magnets", "চুম্বক"),
     ("en-water-cycle", 2, "science", "Water cycle", "পানিচক্র"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
+    ("fractions-compare", 3, "math", "Compare & order fractions", "ভগ্নাংশ তুলনা ও সাজানো"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("place-value-1000", 3, "math", "Place value to 9,999", "স্থানীয় মান"),
     ("round-nearest-10-100", 3, "math", "Round to 10 & 100", "নিকটতম দশ/শতকে পূর্ণ"),

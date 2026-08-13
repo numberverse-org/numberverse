@@ -192,6 +192,7 @@ export const SKILLS: Skill[] = [
   { id: 'div-facts-fair-share', band: 3, subject: 'math', title: 'Fair shares', titleBn: 'সমান ভাগ', description: 'Division taught by fair-sharing (12 ÷ 3 = share 12 into 3)', descriptionBn: 'সমান ভাগের মাধ্যমে ভাগ শিখি (১২ ÷ ৩ = ১২ কে ৩ ভাগ)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-share' },
   { id: 'div-facts-by-2-3', band: 3, subject: 'math', title: 'Divide by 2 and 3', titleBn: '২ ও ৩ দিয়ে ভাগ', description: 'Division facts with divisors 2 and 3', descriptionBn: 'ভাজক ২ ও ৩ দিয়ে ভাগ', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-div-23' },
   { id: 'fractions-intro', band: 3, subject: 'math', title: 'Halves and quarters', titleBn: 'অর্ধেক ও চতুর্থাংশ', description: 'Recognize ½, ¼, ¾ of a whole', descriptionBn: 'পুরোটার ½, ¼, ¾ চিনি', commonCore: ['3.NF.1'], nctbCode: 'c3-math-3', classNumber: 2, game: 'game-pizzafrac' },
+  { id: 'fractions-compare', band: 3, subject: 'math', title: 'Compare & order fractions', titleBn: 'ভগ্নাংশ তুলনা ও সাজানো', description: 'Tap the bigger pizza, then order three from smallest to biggest', descriptionBn: 'বড় পিজ্জাটা টিপো, তারপর ছোট থেকে বড় তিনটা সাজাও', commonCore: ['3.NF.A.3d'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-comparefrac' },
   { id: 'tell-time', band: 3, subject: 'math', title: 'Tell time', titleBn: 'ঘড়ি পড়া', description: 'Read an analog clock', descriptionBn: 'ঘড়ি পড়ি', commonCore: ['1.MD.3', '2.MD.7'], nctbCode: 'c2-math-3', classNumber: 2, game: 'game-clock' },
   { id: 'place-value-1000', band: 3, subject: 'math', title: 'Place value to 9,999', titleBn: 'স্থানীয় মান', description: 'Thousands, hundreds, tens and ones up to 9,999 — read the number from its blocks', descriptionBn: '৯৯৯৯ পর্যন্ত হাজার, শতক, দশক, একক — ব্লক দেখে সংখ্যা পড়া', commonCore: ['2.NBT.1', '3.NBT.1', '4.NBT.2'], nctbCode: 'c3-math-1', classNumber: 3, game: 'game-placevalue' },
   // Rounding rides place value: read how many tens/hundreds, then jump the number
@@ -406,6 +407,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-share', skillId: 'div-facts-fair-share', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-div-23', skillId: 'div-facts-by-2-3', difficultyLevels: [2, 2, 3, 3, 3, 3], targetSuccess: 0.8 },
   { id: 'game-pizzafrac', skillId: 'fractions-intro', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
+  { id: 'game-comparefrac', skillId: 'fractions-compare', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
   { id: 'game-clock', skillId: 'tell-time', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   { id: 'game-placevalue', skillId: 'place-value-1000', difficultyLevels: [3, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-round', skillId: 'round-nearest-10-100', difficultyLevels: [40, 80, 120, 400, 700, 999], targetSuccess: 0.8 },
@@ -551,6 +553,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-div-23': 'DivisionFacts',
   'game-regroup': 'Regroup',
   'game-pizzafrac': 'PizzaFrac',
+  'game-comparefrac': 'CompareFrac',
   'game-bnwords': 'BnWords',
   'game-conjunctfind': 'ConjunctFind',
   'game-bnsightwords': 'BnSightWords',
