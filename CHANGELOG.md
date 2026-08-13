@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.37.0 (3D Nova foundation: lazy three.js island + WebGL context lifecycle (#684))
+
+c937d03 🦉 #684 3D Nova foundation: lazy three.js island + WebGL context lifecycle
+
 ## 14 Aug 2026 — 0.36.0 (Pet mini-games batch 3: Hide & Seek + Pet Memory + Tuck-in (#604 #611 #601))
 
 b7fa638 🎮 pet mini-games batch 3: Hide & Seek + Pet Memory + Tuck-in (#604 #611 #601)
