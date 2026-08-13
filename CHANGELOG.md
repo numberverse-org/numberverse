@@ -1,3 +1,8 @@
+## 14 Aug 2026 — 0.32.0 (Measurement scene (#63): compare length (cm/m), weight (kg/g), capacity (L/mL) — EN+BN spoken)
+
+1ef715a 📚 ROADMAP_NEXT: refresh from clean 2026-08-12 oracle standup
+a6eeb5b 📏 #63 Measurement: compare length (cm/m), weight (kg/g), capacity (L/mL)
+
 ## 14 Aug 2026 — 0.31.1 (Odd & Even spoken EN+BN feedback (#746) + engagement pass 45/45)
 
 a22b3d7 🗣️ #746 Odd & Even: spoken EN+BN feedback on every state
