@@ -36,7 +36,7 @@
 - ~~English: alphabetical order race~~  ✅ #185 — 24 levelled word sets (4/5/6 words), drag to ABC order, instant green-glow check per drop
 - ~~English: word families (-at -an -ig -op)~~  ✅ #186 — 8 rhyming families × 4 words, drag each word to its bucket (correct fly-in / wrong bounce-back)
 - ~~English: yes/no listening comprehension~~  ✅ #187 — 22 spoken sentence+question pairs, tap ✅/❌, 🐢 slow-replay button
-- Math: addition facts to 20 fluency  _(priority: low, kid-first)_
+- ~~Math: addition facts to 20 fluency~~  ✅ #188 — timed 6s-per-fact sprint, fact range grows by level to 20, ⚡ speed (<2.5s) + accuracy tally
 - Math: subtraction facts to 20 fluency  _(priority: low, kid-first)_
 - Math: doubles & near-doubles  _(priority: low, kid-first)_
 - Math: making ten strategy  _(priority: low, kid-first)_
