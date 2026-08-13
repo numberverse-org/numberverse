@@ -113,6 +113,26 @@ const A11Y_LANGS = {
     highContrastOff: "উচ্চ কনট্রাস্ট বন্ধ",
   },
 } as const;
+
+/** 🎨 #254 — dashboard light/dark theme toggle strings (EN + BN). Portal-only
+ *  preference (unlike nv_a11y which is shared with the kid app), so its key
+ *  lives here as a config map — same country-pack seam as WIZARD_LANGS. */
+const THEME_LANGS = {
+  en: {
+    dark: "🌙 Dark",
+    light: "☀️ Light",
+    lightOn: "Light theme is on for the dashboard",
+    darkOn: "Dark theme is on for the dashboard",
+  },
+  bn: {
+    dark: "🌙 ডার্ক",
+    light: "☀️ লাইট",
+    lightOn: "ড্যাশবোর্ডে লাইট থিম চালু",
+    darkOn: "ড্যাশবোর্ডে ডার্ক থিম চালু",
+  },
+} as const;
+const THEME_KEY = "nv_parent_theme";
+
 const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
@@ -709,6 +729,33 @@ export default function ParentDashboard() {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // 🎨 #254 — dashboard light/dark theme. Persisted per-browser (portal-only,
+  // unlike nv_a11y). Applied as a `theme-light` class on <html>; a `storage`
+  // listener keeps other portal tabs in sync.
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    try {
+      return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  });
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("theme-light", theme === "light");
+  }, [theme]);
+  useEffect(() => {
+    const el = document.documentElement;
+    const onThemeStorage = (e: StorageEvent) => {
+      if (e.key === THEME_KEY) {
+        const next = e.newValue === "light" ? "light" : "dark";
+        el.classList.toggle("theme-light", next === "light");
+        setTheme(next);
+      }
+    };
+    window.addEventListener("storage", onThemeStorage);
+    return () => window.removeEventListener("storage", onThemeStorage);
   }, []);
 
   // #238 — weekly narrative language + editable draft (localStorage only).
@@ -1413,6 +1460,24 @@ export default function ParentDashboard() {
             aria-label={A11Y_LANGS[wizLang].highContrast}
           >
             🎨 <span className="a11y-toggle-label">{A11Y_LANGS[wizLang].highContrast}</span>
+          </button>
+          {/* 🎨 #254 — dashboard light/dark theme toggle (portal-only, persisted). */}
+          <button
+            className={`a11y-toggle${theme === "light" ? " on" : ""}`}
+            onClick={() => {
+              const next = theme === "light" ? "dark" : "light";
+              setTheme(next);
+              try {
+                localStorage.setItem(THEME_KEY, next);
+              } catch {
+                /* ignore */
+              }
+            }}
+            aria-pressed={theme === "light"}
+            title={THEME_LANGS[wizLang][theme === "light" ? "lightOn" : "darkOn"]}
+            aria-label={THEME_LANGS[wizLang][theme === "light" ? "lightOn" : "darkOn"]}
+          >
+            {theme === "light" ? "☀️" : "🌙"} <span className="a11y-toggle-label">{THEME_LANGS[wizLang][theme]}</span>
           </button>
         </span>
         <span className="topbar-user" title={profile?.email ?? "signed in"}>
