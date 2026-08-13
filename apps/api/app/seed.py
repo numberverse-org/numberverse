@@ -90,6 +90,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-matra-matrix", 2, "bangla", "Matra matrix", "মাত্রা মিশ্রণ"),
     ("bn-number-words", 2, "bangla", "Number words", "সংখ্যা শব্দ"),
     ("bn-riddle", 2, "bangla", "Riddle time", "ধাঁধা"),
+    ("bn-ordinals", 2, "bangla", "Ordinal words", "ক্রমবাচক শব্দ"),
     ("en-phonics", 2, "english", "Letter sounds", "বর্ণের উচ্চারণ"),
     ("en-rcontrolled", 2, "english", "Bossy R", "bossy-R"),
     ("en-magic-e", 2, "english", "Magic E", "জাদুর e"),

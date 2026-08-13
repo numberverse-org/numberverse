@@ -148,6 +148,7 @@ export const SKILLS: Skill[] = [
   { id: 'bn-number-words', band: 2, subject: 'bangla', title: 'Number words', titleBn: 'সংখ্যা শব্দ', description: 'Match Bangla number words to digits 1-100 (একুশ → 21)', descriptionBn: 'সংখ্যার শব্দ আর অঙ্ক মেলাই ১-১০০ (একুশ → ২১)', commonCore: ['RF.2.3e'], nctbCode: 'c2-bangla-10', classNumber: 2, game: 'game-numberwords' },
   // Language — riddles: spoken clue + picture answer, hint ladder (ধাঁধা).
   { id: 'bn-riddle', band: 2, subject: 'bangla', title: 'Riddle time', titleBn: 'ধাঁধা', description: 'Solve short spoken riddles by tapping the picture answer (কলা, কুকুর, রংধনু…)', descriptionBn: 'ছোট ধাঁধা শুনে ছবির উত্তর টিপি (কলা, কুকুর, রংধনু…)', commonCore: ['SL.2.3'], nctbCode: 'c2-bangla-11', classNumber: 2, game: 'game-riddle' },
+  { id: 'bn-ordinals', band: 2, subject: 'bangla', title: 'Ordinal words', titleBn: 'ক্রমবাচক শব্দ', description: 'Tap the runner in the position named by the Bangla ordinal word (প্রথম, দ্বিতীয়, তৃতীয়…)', descriptionBn: 'ক্রমবাচক শব্দ (প্রথম, দ্বিতীয়, তৃতীয়…) বলে দৌড়বিদকে টিপি', commonCore: ['L.2.1e'], nctbCode: 'c2-bangla-12', classNumber: 2, game: 'game-ordinals' },
   { id: 'en-phonics', band: 2, subject: 'english', title: 'Letter sounds', titleBn: 'বর্ণের উচ্চারণ', description: 'First letter sounds (A, B, C)', descriptionBn: 'প্রথম অক্ষরের উচ্চারণ (A, B, C)', commonCore: ['RF.K.3a'], nctbCode: 'c1-english-2', classNumber: 1, game: 'game-enphonics' },
   // Phonics — bossy-R vowels: hear the word, pick its spelling among ar/er/ir/or/ur word families.
   { id: 'en-rcontrolled', band: 2, subject: 'english', title: 'Bossy R', titleBn: 'bossy-R', description: 'Hear car/turn/bird, pick the right bossy-R spelling (ar er ir or ur)', descriptionBn: 'car/turn/bird শুনে সঠিক bossy-R বানান টিপি (ar er ir or ur)', commonCore: ['RF.1.3b'], nctbCode: 'c2-english-4', classNumber: 2, game: 'game-rcontrolled' },
@@ -308,6 +309,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-festivals', skillId: 'bgs-festivals', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-kindness', skillId: 'bgs-kindness', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-honesty', skillId: 'bgs-honesty', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-ordinals', skillId: 'bn-ordinals', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -430,6 +432,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-festivals': 'FestivalSort',
   'game-kindness': 'Kindness',
   'game-honesty': 'Truth',
+  'game-ordinals': 'Ordinals',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
