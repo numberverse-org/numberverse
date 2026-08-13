@@ -87,6 +87,9 @@ export const SKILLS: Skill[] = [
   // Rounding rides place value: read how many tens/hundreds, then jump the number
   // to the nearer fence-post. 3.NBT.1 (round to nearest 10 or 100).
   { id: 'round-nearest-10-100', band: 3, subject: 'math', title: 'Round to 10 & 100', titleBn: 'নিকটতম দশ/শতকে পূর্ণ', description: 'Round numbers to the nearest ten or hundred with a number-line jump', descriptionBn: 'সংখ্যারেখায় লাফিয়ে সংখ্যাকে নিকটতম দশ/শতকে পূর্ণ করি', commonCore: ['3.NBT.1'], nctbCode: 'c3-math-2', classNumber: 3, game: 'game-round' },
+  // Data — read bar charts: tallest → a given count → a given category.
+  // NCTB class-3 has a "data" strand; CC 2.MD.10 / 3.MD.3.
+  { id: 'data-barchart', band: 3, subject: 'math', title: 'Bar chart reading', titleBn: 'বার চার্ট পড়ি', description: 'Answer how-many questions by tapping bars on a chart', descriptionBn: 'চার্টের বার দেখে কতগুলো, ট্যাপ করে উত্তর দিই', commonCore: ['2.MD.10', '3.MD.3'], nctbCode: 'c3-math-6', classNumber: 3, game: 'game-barchart' },
   { id: 'add-sub-regroup', band: 3, subject: 'math', title: 'Carry & Borrow', titleBn: 'ক্যারি ও ধার', description: '3-digit addition and subtraction with carrying and borrowing (written method)', descriptionBn: '৩-অঙ্কের যোগ-বিয়োগ ক্যারি ও ধারসহ (লিখিত পদ্ধতি)', commonCore: ['2.NBT.7', '3.NBT.2'], nctbCode: 'c3-math-5', classNumber: 3, game: 'game-regroup' },
   // Language — STAGE 3: first words (mirrored: BN words then EN CVC)
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', descriptionBn: 'সহজ বাংলা শব্দ পড়ি (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
@@ -174,6 +177,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-clock', skillId: 'tell-time', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   { id: 'game-placevalue', skillId: 'place-value-1000', difficultyLevels: [3, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-round', skillId: 'round-nearest-10-100', difficultyLevels: [40, 80, 120, 400, 700, 999], targetSuccess: 0.8 },
+  { id: 'game-barchart', skillId: 'data-barchart', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-regroup', skillId: 'add-sub-regroup', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-bnwords', skillId: 'bn-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -235,6 +239,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-fracmatch': 'FractionMatch',
   'game-placevalue': 'PlaceValue',
   'game-round': 'Rounding',
+  'game-barchart': 'BarChart',
   'game-bnmatras': 'BnMatras',
   'game-sightwords': 'SightWords',
   'game-animalhome': 'AnimalHome',

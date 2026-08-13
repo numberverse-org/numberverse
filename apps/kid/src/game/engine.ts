@@ -30,6 +30,7 @@ import { FairShareScene } from "./FairShareScene";
 import { FractionMatchScene } from "./FractionMatchScene";
 import { PlaceValueScene } from "./PlaceValueScene";
 import { RoundingScene } from "./RoundingScene";
+import { BarChartScene } from "./BarChartScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -87,7 +88,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       GrowCountScene, FruitTreeScene,
       OddEvenScene, CountPopScene, Count100Scene, Build999Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
       RocketMultScene, TimesTableScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FairShareScene, FractionMatchScene,
-      PlaceValueScene, RoundingScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
+      PlaceValueScene, RoundingScene, BarChartScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
