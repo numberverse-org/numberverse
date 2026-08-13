@@ -111,6 +111,7 @@ import { MagnetPolesScene } from "./MagnetPolesScene";
 import { WaterCycleScene } from "./WaterCycleScene";
 import { KeyboardExplorerScene } from "./KeyboardExplorerScene";
 import { DeviceMannersScene } from "./DeviceMannersScene";
+import { ProfessionsMatchScene } from "./ProfessionsMatchScene";
 import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { CountingSongScene } from "./CountingSongScene";
@@ -151,7 +152,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
-      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, KeyboardExplorerScene, DeviceMannersScene, ClockTimeScene, BalanceScene,
+      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, KeyboardExplorerScene, DeviceMannersScene, ProfessionsMatchScene, ClockTimeScene, BalanceScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
       BnSightWordsScene,
