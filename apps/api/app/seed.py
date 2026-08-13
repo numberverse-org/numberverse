@@ -111,6 +111,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-makechange", 3, "math", "Making change (৳ notes)", "টাকা ফেরত (নোট)"),
     ("en-elapsed", 3, "math", "Elapsed time (how long until…)", "সময়ের হিসাব (কতক্ষণ পরে…)"),
     ("en-perim", 3, "math", "Perimeter intro", "পরিসীমা শুরু"),
+    ("en-solidmatch", 3, "math", "Flat faces & solids", "ভাঁজ ও ঘনবস্তু"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("place-value-1000", 3, "math", "Place value to 9,999", "স্থানীয় মান"),

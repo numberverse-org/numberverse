@@ -50,7 +50,7 @@
 - ~~Math: making change with ৳ notes~~  ✅ #199 — pay with ৳50/৳100 and compute the change (৳50−৳32=৳18) on note visuals; then tap ৳5/10/20/50 off a tray to make exact amounts + ✅
 - ~~Math: elapsed time (how long until…)~~  ✅ #200 — analog clock start + digital "until 2:45" chip; kid finds the minutes (5–59 by level); correct sweeps the hands to the target so the elapsed arc is the answer
 - ~~Math: perimeter intro (measure the fence)~~  ✅ #201 — unit-cube fence posts along every edge; kid adds labelled sides of rectangles (4 sides) / right triangles (3 sides) and taps the perimeter (peSpeak)
-- Math: 2D → 3D shape pairing  _(priority: low, kid-first)_
+- ~~Math: 2D → 3D shape pairing~~  ✅ #202 — six solids spin on a turntable; "which flat face belongs to this solid?" (cube→square) and the reverse; sphere + cone are the "no flat faces" distractors (sfSpeak confirms the pairing)
 - Math: symmetry mirror game  _(priority: low, kid-first)_
 - Science: animals — features & movement  _(priority: low, kid-first)_
 - Science: plant life cycle (seed→fruit)  _(priority: low, kid-first)_
