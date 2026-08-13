@@ -45,6 +45,8 @@ export const SKILLS: Skill[] = [
   { id: 'bn-rhymes', band: 1, subject: 'bangla', title: 'Nursery rhymes', titleBn: 'ছড়ার গান', description: 'Recite classic NCTB Bangla rhymes, tapping along word by word', descriptionBn: 'নোভার সাথে ছড়া গাই, শব্দ ধরে টিপে টিপে', commonCore: ['RF.K.2a'], nctbCode: 'c1-bangla-5', classNumber: 1, game: 'game-rhymes' },
   // Language — letter vs sound discrimination: hear a sound, pick the matching letter among confusable twins (ক/খ, প/ফ, স/শ).
   { id: 'bn-lettersound', band: 1, subject: 'bangla', title: 'Letter sounds', titleBn: 'বর্ণের ধ্বনি', description: 'Hear a letter sound, tap the matching Bangla letter (ক/খ, প/ফ, স/শ)', descriptionBn: 'বর্ণের ধ্বনি শুনে সঠিক বর্ণ টিপি (ক/খ, প/ফ, স/শ)', commonCore: ['RF.K.3a'], nctbCode: 'c1-bangla-3', classNumber: 1, game: 'game-lettersound' },
+  // Language — time words: order yesterday/today/tomorrow on a calendar timeline (কাল-আজ-আগামীকাল).
+  { id: 'bn-time-words', band: 1, subject: 'bangla', title: 'Time words', titleBn: 'কাল-আজ-আগামীকাল', description: 'Order গতকাল → আজ → আগামীকাল on a calendar timeline', descriptionBn: 'গতকাল → আজ → আগামীকাল ক্যালেন্ডারে সাজাই', commonCore: ['SL.K.6'], nctbCode: 'c1-bangla-6', classNumber: 1, game: 'game-timewords' },
   { id: 'en-abcs', band: 1, subject: 'english', title: 'ABCs', titleBn: 'ইংরেজি বর্ণমালা', description: 'Recognize uppercase letters A–F', descriptionBn: 'বড় হাতের ইংরেজি অক্ষর A–F চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-english-1', classNumber: 1, game: 'game-enletters' },
   // STAGE 1 vocabulary — first number/word names in each language
   { id: 'bn-numbers', band: 1, subject: 'bangla', title: 'Bangla numbers', titleBn: 'বাংলা সংখ্যা', description: 'Hear and recognize Bangla numerals ০–৯', descriptionBn: 'বাংলা সংখ্যা ০–৯ শুনে চিনি', commonCore: ['K.CC.1'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnnumbers' },
@@ -202,6 +204,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-balloonpop', skillId: 'add-to-20', difficultyLevels: [10, 12, 14, 16, 18, 20], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
+  { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
   { id: 'game-bncolors', skillId: 'bn-colors', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnsightwords', skillId: 'bn-sightwords', difficultyLevels: [6, 6, 8, 8, 9, 9], targetSuccess: 0.8 },
   { id: 'game-sentencebuilder', skillId: 'bn-sentence-builder', difficultyLevels: [1, 1, 2, 2, 2, 2], targetSuccess: 0.8 },
@@ -279,6 +282,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-bncolors': 'BnColors',
   'game-bdtaka': 'BdMoney',
   'game-coinvalues': 'CoinValue',
+  'game-timewords': 'TimeWords',
   'game-enphonics': 'EnPhonics',
   'game-balloonpop': 'BalloonPop',
   'game-balance': 'Balance',

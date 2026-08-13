@@ -19,7 +19,7 @@
 - ~~Bangla: graded read-a-story — 3 short stories~~  ✅ #168 — word-by-word audio chips, 3-question quiz per story
 - ~~Bangla: numbers 1-100 — see the word, tap the digit~~  ✅ #169 — full 1-100 word table, word↔digit stages, speaks every number
 - ~~Bangla: coin values (টাকার চেনা)~~  ✅ #170 — ৳1/2/5/10 recognition + count-to-total tray, names spoken
-- Bangla: time words ordering (কাল-আজ-আগামীকাল)  _(priority: low, kid-first)_
+- ~~Bangla: time words ordering (কাল-আজ-আগামীকাল)~~  ✅ #171 — calendar timeline, গতকাল→আজ→আগামীকাল ordering, distractor words
 - Bangla: direction words (উপরে-নিচে-ডানে-বামে)  _(priority: low, kid-first)_
 - Bangla: polite words social game (শিষ্টাচার)  _(priority: low, kid-first)_
 - Bangla: riddle time (ধাঁধা) fun reads  _(priority: low, kid-first)_
