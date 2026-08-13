@@ -122,6 +122,8 @@ export const SKILLS: Skill[] = [
   { id: 'bn-family-words', band: 3, subject: 'bangla', title: 'Family words', titleBn: 'পরিবারের শব্দ', description: 'Read Bangla family words (মা, বাবা, ভাই)', descriptionBn: 'পরিবারের বাংলা শব্দ পড়ি (মা, বাবা, ভাই)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-4', classNumber: 2, game: 'game-bnwords' },
   { id: 'bn-story-read', band: 3, subject: 'bangla', title: 'Story comprehension', titleBn: 'ছোট গল্প পড়ি', description: 'Read a mini-story, then answer a who/what question with pictures', descriptionBn: 'ছোট গল্প পড়ে ছবি দিয়ে উত্তর দিই (কে/কী)', commonCore: ['RL.2.1', 'RL.2.10'], nctbCode: 'c3-bangla-4', classNumber: 3, game: 'game-storyread' },
   { id: 'bn-punctuation', band: 3, subject: 'bangla', title: 'Punctuation', titleBn: 'যতি চিহ্ন', description: 'Tap the right punctuation to end each sentence (। ? !)', descriptionBn: 'বাক্য শেষ করার সঠিক যতি চিহ্ন টিপি (। ? !)', commonCore: ['L.3.2c'], nctbCode: 'c3-bangla-5', classNumber: 3, game: 'game-punct' },
+  // Language — graded read-a-story: tap-to-hear-word, comprehension quiz at the end.
+  { id: 'bn-read-story', band: 3, subject: 'bangla', title: 'Read a story', titleBn: 'গল্প পড়ি', description: 'Read 3 graded stories, tap any word to hear it, answer the quiz', descriptionBn: '৩টি গল্প পড়ি, শব্দ টিপলে শুনি, শেষে প্রশ্নের উত্তর দিই', commonCore: ['RL.2.10', 'RL.3.10'], nctbCode: 'c3-bangla-6', classNumber: 3, game: 'game-readstory' },
   { id: 'en-cvc', band: 3, subject: 'english', title: 'CVC words', titleBn: 'ইংরেজি শব্দ', description: 'Read cat, dog, sun, hat', descriptionBn: 'cat, dog, sun, hat পড়ি', commonCore: ['RF.2.3'], nctbCode: 'c2-english-3', classNumber: 2, game: 'game-cvc' },
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
@@ -205,6 +207,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-compounds', skillId: 'bn-compounds', difficultyLevels: [2, 2, 2, 3, 3, 3], targetSuccess: 0.8 },
   { id: 'game-lettersound', skillId: 'bn-lettersound', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-matramatrix', skillId: 'bn-matra-matrix', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-readstory', skillId: 'bn-read-story', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
@@ -294,6 +297,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-compounds': 'Compound',
   'game-lettersound': 'LetterSound',
   'game-matramatrix': 'MatraMatrix',
+  'game-readstory': 'ReadStory',
   'game-cvc': 'Cvc',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',
