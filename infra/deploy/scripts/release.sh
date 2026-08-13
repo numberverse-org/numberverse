@@ -57,7 +57,10 @@ grep -n "const APP_VERSION\|const APP_BUILD" apps/kid/src/App.tsx | sed 's/^/  �
 echo "── 3/6 Changelog since last tag ────────────────"
 LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)
 if [ -n "$LAST" ]; then
-  LOG=$(git log --oneline --no-decorate "$LAST..HEAD" 2>/dev/null | head -30)
+  # Cap on git's side (-30), NOT via `| head -30`: with pipefail a big range
+  # SIGPIPEs git log the moment head closes → the script died at step 3/6
+  # (exit 141) once >30 commits piled up since the last tag. 0.27.0 hit this.
+  LOG=$(git log --oneline --no-decorate -30 "$LAST..HEAD" 2>/dev/null)
   RANGE="$LAST → new"
 else
   LOG=$(git log --oneline --no-decorate -25 HEAD)
