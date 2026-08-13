@@ -66,6 +66,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-sightwords", 2, "bangla", "Bangla sight words", "দেখে বলো শব্দ"),
     ("bn-sentence-builder", 2, "bangla", "Sentence builder", "বাক্য সাজাই"),
     ("bn-word-pairs", 2, "bangla", "Word pairs", "বিপরীত ও সমার্থক"),
+    ("bn-compounds", 2, "bangla", "Compound words", "যোগে যোগে শব্দ"),
     ("en-phonics", 2, "english", "Letter sounds", "বর্ণের উচ্চারণ"),
     ("heavy-light", 2, "science", "Heavy or light", "ভারী না হালকা"),
     ("science-sink-float", 2, "science", "Sink or float", "ডুব না ভাসা"),
