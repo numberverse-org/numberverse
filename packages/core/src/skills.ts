@@ -155,6 +155,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-compounds', band: 2, subject: 'english', title: 'Compound words', titleBn: 'যৌগিক শব্দ', description: 'Tap the two halves that build the compound word (rain + bow = rainbow)', descriptionBn: 'যৌগিক শব্দ বানাতে দুটো অংশ চাপো (rain + bow = rainbow)', commonCore: ['L.1.4c'], nctbCode: 'c2-english-9', classNumber: 2, game: 'game-compounds-en' },
   // Reading — read-aloud comprehension lvl 2: 5-7 word sentence → picture answer.
   { id: 'en-readaloud', band: 2, subject: 'english', title: 'Read & answer', titleBn: 'পড়ে উত্তর দাও', description: 'Read a short sentence aloud, then tap the picture that answers the question', descriptionBn: 'ছোট বাক্যটা পড়ো, তারপর প্রশ্নের সঠিক ছবিটা চাপো', commonCore: ['RF.1.4a'], nctbCode: 'c2-english-10', classNumber: 2, game: 'game-readaloud' },
+  // Reading — alphabetical order: drag 4-6 words into ABC order (instant check).
+  { id: 'en-alphabet', band: 2, subject: 'english', title: 'Alphabet order', titleBn: 'বর্ণানুক্রম', description: 'Drag the words into alphabetical (ABC) order — each card glows green when it is home', descriptionBn: 'শব্দগুলো ABC ক্রমে সাজাও — সঠিক জায়গায় গেলে কার্ড সবুজ হয়ে যায়', commonCore: ['RF.1.1d'], nctbCode: 'c2-english-11', classNumber: 2, game: 'game-alphabet' },
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
   { id: 'division-facts', band: 4, subject: 'math', title: 'Division facts', titleBn: 'ভাগ করা', description: 'Division facts within 100 (24÷3, 45÷5)', descriptionBn: '১০০-এর মধ্যে ভাগের সত্যি (২৪÷৩, ৪৫÷৫)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 3, game: 'game-division' },
@@ -252,6 +254,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-story', skillId: 'en-story', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-compounds-en', skillId: 'en-compounds', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-readaloud', skillId: 'en-readaloud', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-alphabet', skillId: 'en-alphabet', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
@@ -329,6 +332,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-story': 'Story',
   'game-compounds-en': 'CompoundEn',
   'game-readaloud': 'ReadAloud',
+  'game-alphabet': 'AlphaOrder',
   'game-balloonpop': 'BalloonPop',
   'game-balance': 'Balance',
   'game-sinkfloat': 'SinkFloat',
