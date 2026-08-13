@@ -305,6 +305,36 @@ const PAUSE_LANGS = {
   },
 } as const;
 
+/** #4 — 🔥 weekly streak + today's playtime vs the daily cap, for the
+ *  "this week" card. EN + BN — same country-pack seam as PAUSE_LANGS. Fully
+ *  derived from the weekly + settings data already loaded with the dashboard. */
+const STREAK_LANGS = {
+  en: {
+    streakTitle: "🔥 {name}'s streak",
+    streakNone: "No streak yet — a little play every day lights it up.",
+    day: "day",
+    days: "days",
+    today: "Today",
+    of: "of",
+    minCap: "min · daily cap",
+    min: "min",
+    noCap: "no cap set",
+    minutesWeek: "minutes this week",
+  },
+  bn: {
+    streakTitle: "🔥 {name}-এর ধারাবাহিকতা",
+    streakNone: "এখনো ধারাবাহিকতা নেই — প্রতিদিন একটু খেললেই তা জ্বলে উঠবে।",
+    day: "দিন",
+    days: "দিন",
+    today: "আজ",
+    of: "এর মধ্যে",
+    minCap: "মিনিট · দৈনিক সীমা",
+    min: "মিনিট",
+    noCap: "সীমা নির্ধারিত নেই",
+    minutesWeek: "এই সপ্তাহের মিনিট",
+  },
+} as const;
+
 /** #89 — per-skill missed questions: what a kid got wrong, so re-teaching is
  *  transparent. EN + BN strings for the portal card — same country-pack seam.
  *  Built purely from the already-loaded story ledger (offline-first). */
@@ -1503,7 +1533,7 @@ export default function ParentDashboard() {
   const activeMastery = activeId ? mastery[activeId] ?? [] : [];
   const masteredCount = activeMastery.filter((m) => m.mastery >= 0.8).length;
   const activeSettings = activeId ? settings[activeId] ?? DEFAULT_SETTINGS : DEFAULT_SETTINGS;
-  const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], mastered_today: [], top_game: null };
+  const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], mastered_today: [], top_game: null, streak: 0 };
   const activeWeekly = activeId ? weekly[activeId] ?? EMPTY_WEEKLY : EMPTY_WEEKLY;
 
   // #244 — today's headline from the rolling weekly report (server UTC day
@@ -1514,6 +1544,12 @@ export default function ParentDashboard() {
   const todayRounds = todayEntry?.rounds ?? 0;
   const todayMinutes = todayEntry?.minutes ?? 0;
   const todayMastered = activeWeekly.mastered_today ?? [];
+
+  // #4 — 🔥 streak + today's playtime vs the DAY's cap. Uses the same
+  // weekdayLimits() as the portal's own limit editor → matches the kid app.
+  const weeklyStreak = activeWeekly.streak ?? 0;
+  const todayCap = weekdayLimits(activeSettings)[(new Date().getDay() + 6) % 7] ?? 0;
+  const todayCapPct = todayCap > 0 ? Math.min(100, Math.round((todayMinutes / todayCap) * 100)) : 0;
 
   // #238 — weekly narrative derived from the kid's Kotha stories.
   const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
@@ -2026,6 +2062,12 @@ export default function ParentDashboard() {
           <section className="card weekly">
             <div className="weekly-head">
               <h2>📊 This week</h2>
+              {weeklyStreak > 0 && (
+                <span className="streak-badge" title={STREAK_LANGS[wizLang].streakTitle.replace("{name}", active.name)}>
+                  🔥 {weeklyStreak}{" "}
+                  <span className="streak-days">{weeklyStreak === 1 ? STREAK_LANGS[wizLang].day : STREAK_LANGS[wizLang].days}</span>
+                </span>
+              )}
               {activeWeekly.rounds > 0 && (
                 <button
                   className="share-btn"
@@ -2073,13 +2115,27 @@ export default function ParentDashboard() {
                   </div>
                   <div className="tile">
                     <span className="tile-num">{activeWeekly.minutes}</span>
-                    <span className="tile-label">min played</span>
+                    <span className="tile-label">{STREAK_LANGS[wizLang].minutesWeek}</span>
                   </div>
                   <div className="tile">
                     <span className="tile-num">{activeWeekly.active_days}</span>
                     <span className="tile-label">days active</span>
                   </div>
                 </div>
+                {todayCap > 0 && (
+                  <div className="cap-row">
+                    <div className="cap-meta">
+                      <span>
+                        {STREAK_LANGS[wizLang].today} {Math.round(todayMinutes)} {STREAK_LANGS[wizLang].of}{" "}
+                        {todayCap} {STREAK_LANGS[wizLang].minCap}
+                      </span>
+                      <span className="cap-pct">{todayCapPct}%</span>
+                    </div>
+                    <div className="cap-track">
+                      <div className="cap-fill" style={{ width: `${todayCapPct}%` }} />
+                    </div>
+                  </div>
+                )}
                 <div className="week-bars">
                   {activeWeekly.days.map((d) => (
                     <div key={d.date} className="week-col" title={`${weekdayShort(d.date)}: ${d.rounds} rounds`}>

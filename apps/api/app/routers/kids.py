@@ -3,7 +3,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -254,6 +254,25 @@ async def get_kid_weekly(
     games = Counter(e.game_id for e in events)
     top_game = games.most_common(1)[0][0] if games else None
 
+    # #4 — 🔥 current streak: consecutive calendar days with ≥1 round, ending
+    # today, or yesterday when today isn't played yet (the streak stays alive
+    # until the day ends). Walks the FULL history (distinct dates only — cheap)
+    # so streaks longer than the 7-day window still count.
+    played_dates = set(
+        (
+            await db.execute(
+                select(func.date(ProgressEvent.created_at)).where(ProgressEvent.kid_id == kid_id).distinct()
+            )
+        ).scalars()
+    )
+    streak = 0
+    cursor = now
+    if cursor not in played_dates:
+        cursor = now - timedelta(days=1)  # today quiet → streak can still be alive from yesterday
+    while cursor in played_dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+
     # "mastered this week" = currently ≥80% AND last practiced inside the window
     mastered = (
         await db.scalars(
@@ -290,6 +309,7 @@ async def get_kid_weekly(
         mastered_this_week=mastered_ids,
         mastered_today=mastered_today_ids,
         top_game=top_game,
+        streak=streak,
     )
 
 

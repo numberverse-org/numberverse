@@ -328,6 +328,8 @@ export interface WeeklyReport {
   /** #244 — skill ids mastered today (≥80% + last practiced today). */
   mastered_today: string[];
   top_game: string | null;
+  /** #4 — 🔥 current streak: consecutive active days (ending today/yesterday). */
+  streak?: number;
 }
 
 export async function getWeekly(token: string, kidId: string): Promise<WeeklyReport> {

@@ -219,6 +219,7 @@ class WeeklyOut(BaseModel):
     mastered_this_week: list[str]  # skill ids now ≥80% + last practiced this week
     mastered_today: list[str] = []  # #244 — ≥80% + last practiced today
     top_game: str | None          # most-played game this week
+    streak: int = 0               # #4 — consecutive active days (ending today/yesterday)
 
 
 class ProgressBatchIn(BaseModel):
