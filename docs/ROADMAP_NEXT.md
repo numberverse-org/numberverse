@@ -24,7 +24,7 @@
 - ~~Bangla: polite words social game (শিষ্টাচার)~~  ✅ #173 — 12 scenario cards, tap ধন্যবাদ/দয়া করে/দুঃখিত, scenario spoken aloud
 - ~~Bangla: riddle time (ধাঁধা) fun reads~~  ✅ #174 — 18 spoken riddles, tap the emoji answer, hint ladder (category → first letter → reveal)
 - ~~English: R-controlled vowels (ar er ir or ur)~~  ✅ #175 — 5 word families × 5 words, hear the word + pick its bossy-R spelling
-- English: silent-e magic (make-a-word)  _(priority: low, kid-first)_
+- ~~English: silent-e magic (make-a-word)~~  ✅ #176 — 16 CVC→CVCe flips, tap the magic-e, word fuses + glows gold (visual reveal)
 - English: sight words level 3 (3rd 100)  _(priority: low, kid-first)_
 - English: contractions (I'm, don't, can't)  _(priority: low, kid-first)_
 - English: comparatives & superlatives (big-bigger-biggest)  _(priority: low, kid-first)_
