@@ -99,6 +99,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-fracset', band: 3, subject: 'math', title: 'Fractions of a set', titleBn: 'সমষ্টির ভগ্নাংশ', description: 'Find a fraction of a group by tapping the right number of fruits (1/2 of 8)', descriptionBn: 'গুচ্ছের ভগ্নাংশ খুঁজি — সঠিক সংখ্যক ফল তাপ করে (৮-এর ১/২)', commonCore: ['3.NF.A.1'], nctbCode: 'c3-math-8', classNumber: 3, game: 'game-fracset' },
   // Math — mixed numbers & improper fractions: bar + number line show 1½ = 3/2 (convert visually).
   { id: 'en-mixedfrac', band: 3, subject: 'math', title: 'Mixed numbers & improper fractions', titleBn: 'মিশ্র সংখ্যা ও অপ্রকৃত ভগ্নাংশ', description: 'See 1½ on a bar and a number line, then match it to its improper fraction 3/2', descriptionBn: 'বার আর সংখ্যা রেখায় ১½ দেখি, তারপর মিশিয়ে খুঁজি সমান ভগ্নাংশ ৩/২', commonCore: ['3.NF.A.3c'], nctbCode: 'c3-math-9', classNumber: 3, game: 'game-mixedfrac' },
+  // Math — decimals to tenths: shade/read a 10-cell strip in 0.1 steps (place-value speech).
+  { id: 'en-dectenths', band: 3, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Read a shaded 10-cell strip as a decimal (0.3) and build one by shading cells (tenths)', descriptionBn: 'ছাপানো ১০ ঘরের দশমিক পড়ি (০.৩) আর ঘর ছাপিয়ে বানাই (দশমাংশ)', commonCore: ['4.NF.C.6'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-dectenths' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -260,6 +262,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-shares2', skillId: 'en-shares2', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-fracset', skillId: 'en-fracset', difficultyLevels: [3, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-mixedfrac', skillId: 'en-mixedfrac', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-dectenths', skillId: 'en-dectenths', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -364,6 +367,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-shares2': 'ShareRem',
   'game-fracset': 'FracSet',
   'game-mixedfrac': 'MixedFrac',
+  'game-dectenths': 'DecTenths',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',

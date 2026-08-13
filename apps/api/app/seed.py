@@ -107,6 +107,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-shares2", 3, "math", "Fair shares 2 (remainders)", "সমান ভাগ ২ (ভাগশেষ)"),
     ("en-fracset", 3, "math", "Fractions of a set", "সমষ্টির ভগ্নাংশ"),
     ("en-mixedfrac", 3, "math", "Mixed numbers & improper fractions", "মিশ্র সংখ্যা ও অপ্রকৃত ভগ্নাংশ"),
+    ("en-dectenths", 3, "math", "Decimal tenths", "দশমিকের দশক"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("place-value-1000", 3, "math", "Place value to 9,999", "স্থানীয় মান"),

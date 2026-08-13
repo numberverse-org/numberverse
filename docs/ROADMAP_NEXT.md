@@ -46,7 +46,7 @@
 - ~~Math: division as sharing lvl 2~~  ✅ #195 — candies dealt round-robin into plates (sharing animation), leftover highlighted green "Left over!", then answer "each kid gets __" and "left over __"
 - ~~Math: fractions — parts of a set~~  ✅ #196 — group of 🍎 (4–16), tap the correct subset (green rings, toggle), ✅ checks the count; 1/2, 1/3, 2/3, 1/4…3/4 of the group
 - ~~Math: mixed numbers & improper fractions intro~~  ✅ #197 — bar models + 0..3 number line; kid converts 1½ ↔ 3/2 both directions; 4 option cards, value-distinct distractors
-- Math: decimals — tenths place value  _(priority: low, kid-first)_
+- ~~Math: decimals — tenths place value~~  ✅ #198 — 10-cell strip (each cell = 0.1); read the shaded decimal (0.3) from 4 cards, build it by shading cells + ✅; place-value speech "3 tenths"
 - Math: making change with ৳ notes  _(priority: low, kid-first)_
 - Math: elapsed time (how long until…)  _(priority: low, kid-first)_
 - Math: perimeter intro (measure the fence)  _(priority: low, kid-first)_
