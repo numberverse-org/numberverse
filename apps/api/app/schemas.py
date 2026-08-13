@@ -182,6 +182,7 @@ class WeeklyOut(BaseModel):
     minutes: float                # active learning minutes (≈ Σ response_ms)
     active_days: int              # distinct days with at least one round
     mastered_this_week: list[str]  # skill ids now ≥80% + last practiced this week
+    mastered_today: list[str] = []  # #244 — ≥80% + last practiced today
     top_game: str | None          # most-played game this week
 
 
