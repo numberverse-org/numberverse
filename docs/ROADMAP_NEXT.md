@@ -18,7 +18,7 @@
 - ~~Bangla: matra matrix challenge (মাত্রা মিশ্রণ)~~  ✅ #167 — 10 real-word matra combos, tap matra → word + matra named aloud
 - ~~Bangla: graded read-a-story — 3 short stories~~  ✅ #168 — word-by-word audio chips, 3-question quiz per story
 - ~~Bangla: numbers 1-100 — see the word, tap the digit~~  ✅ #169 — full 1-100 word table, word↔digit stages, speaks every number
-- Bangla: coin values (টাকার চেনা)  _(priority: low, kid-first)_
+- ~~Bangla: coin values (টাকার চেনা)~~  ✅ #170 — ৳1/2/5/10 recognition + count-to-total tray, names spoken
 - Bangla: time words ordering (কাল-আজ-আগামীকাল)  _(priority: low, kid-first)_
 - Bangla: direction words (উপরে-নিচে-ডানে-বামে)  _(priority: low, kid-first)_
 - Bangla: polite words social game (শিষ্টাচার)  _(priority: low, kid-first)_
