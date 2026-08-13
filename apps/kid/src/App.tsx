@@ -3135,6 +3135,47 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
   const sessionRef = useRef<SessionStep[]>([]);
+  /** #253 — the in-progress session survives a kid switch. `sessionRef` holds
+   *  the CURRENT kid's steps; this map holds abandoned mid-flight sessions keyed
+   *  by the kid they were left behind for, so switching back RESUMES instead of
+   *  restarting. Cleared on a completed session or an explicit new session. */
+  const savedSessionsRef = useRef<Record<string, { steps: SessionStep[]; idx: number; roundsDone: number }>>({});
+  /** #253 — snapshot the ACTIVE kid's in-flight session (mid-play) so a kid
+   *  switch can restore it later. No-op when nothing is actually mid-game. */
+  const snapshotSession = (kidId: string) => {
+    if (screen !== "playing" || sessionRef.current.length === 0) return;
+    savedSessionsRef.current[kidId] = {
+      steps: sessionRef.current,
+      idx: sessionIdx,
+      roundsDone,
+    };
+  };
+  /** #253 — drop a kid's saved session (session finished / new session chosen). */
+  const clearSavedSession = (kidId: string) => {
+    if (savedSessionsRef.current[kidId]) delete savedSessionsRef.current[kidId];
+  };
+  /** #253 — restore a saved session and jump straight back into play. */
+  const resumeSession = (saved: { steps: SessionStep[]; idx: number; roundsDone: number }) => {
+    if (!kid) return;
+    const step = saved.steps[saved.idx];
+    if (!step) return;
+    setLimitNotice(null);
+    requestFullscreen();
+    ensureAudio();
+    const band = SKILLS.find((s) => s.id === step.skillId)?.band ?? 1;
+    setMusicTheme(band);
+    startMusic();
+    whooshUp();
+    setSessionIdx(saved.idx);
+    setRoundsDone(saved.roundsDone);
+    sessionRef.current = saved.steps;
+    breakPendingRef.current = false;
+    masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
+    petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
+    setWorld(BANDS.find((b) => b.id === band) ?? null);
+    clearSavedSession(kid.id);
+    setScreen("playing");
+  };
   /** #327 — set when a finished session crossed Moni's fatigue threshold; the
    *  completion effect routes to the gentle break screen instead of straight
    *  to the done screen. Cleared at every session start and after a break. */
@@ -4230,6 +4271,15 @@ export default function App() {
     }
   };
 
+  /** #253 — the kid-pick switcher: snapshots the CURRENT kid's in-flight session
+   *  before switching (so switching back resumes it), then switches + goes home.
+   *  Never drops a mid-game state. */
+  const switchKidPreserving = (next: Kid) => {
+    if (kid && kid.id !== next.id) snapshotSession(kid.id);
+    selectKid(next);
+    setScreen("home");
+  };
+
   /* #22 — sibling co-op: hand the device to a sibling MID-SESSION. Swapping
      `kid` re-runs the playing effect (kid is a dep), which restarts the CURRENT
      step scene for the new kid with their own name, level ladder, and wrong-ledger
@@ -4678,6 +4728,9 @@ export default function App() {
       }
       tada();
       cancelSpeech();
+      // #253 — the session finished: drop any saved snapshot so a later switch
+      // back starts fresh (a completed session is nothing to resume).
+      if (kid) clearSavedSession(kid.id);
       setTimeout(() => setScreen(breakPendingRef.current ? "break" : "done"), 400);
     }
   }, [roundsDone, sessionIdx, screen, kid, mistakes, recordSession, novaCompleteSession]);
@@ -4703,6 +4756,7 @@ export default function App() {
     setRoundsDone(0);
     setSessionIdx(0);
     breakPendingRef.current = false;
+    clearSavedSession(kid.id); // #253 — explicit new session drops any saved one
     sessionRef.current = sessionForWorld(skillsMap, kid.id, b.id);
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
@@ -4726,6 +4780,7 @@ export default function App() {
     setRoundsDone(0);
     setSessionIdx(0);
     breakPendingRef.current = false;
+    clearSavedSession(kid.id); // #253 — explicit new session drops any saved one
     sessionRef.current = [stepForSkill(skill)];
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
@@ -5067,6 +5122,13 @@ export default function App() {
     if (kid) {
       const recSkill = recommendedSkill(skillsMap, kid.id);
       const onPlay = () => {
+        // #253 — if this kid left a mid-game session behind, RESUME it instead
+        // of starting fresh (never loses the current session on a kid switch).
+        const saved = savedSessionsRef.current[kid.id];
+        if (saved && saved.steps.length) {
+          resumeSession(saved);
+          return;
+        }
         if (recSkill) startSingleSkill(recSkill);
         else startPlayWorld(BANDS[0]);
       };
@@ -5162,7 +5224,10 @@ export default function App() {
             <div className="play-top">
               <button
                 className="kid-chip"
-                onClick={() => setScreen("kidpick")}
+                onClick={() => {
+                  snapshotSession(kid.id); // #253 — preserve the in-flight session
+                  setScreen("kidpick");
+                }}
                 aria-label={t.switchKid(kid.avatar, kid.name)}
               >
                 <AvatarIcon emoji={kid.avatar} size={30} />
@@ -7162,7 +7227,7 @@ export default function App() {
                 <button
                   key={k.id}
                   className={`world-card kidpick-card${kid?.id === k.id ? " active" : ""}`}
-                  onClick={() => { selectKid(k); setScreen("home"); }}
+                  onClick={() => switchKidPreserving(k)}
                 >
                   <span className="world-emoji"><KidAvatar kid={k} size={46} /></span>
                   <span className="world-meta">
