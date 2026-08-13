@@ -112,6 +112,18 @@ export interface StoryStats {
   by_misconception: Record<string, number>;
 }
 
+/** 🚀 #249 — one acceleration-plan entry: a skill the kid "skipped ahead" past
+ *  (already knew it / too easy / moved on — or parent-driven) with the band jump. */
+export interface AccelerationRow {
+  id: string;
+  kid_id: string;
+  skill_id: string;
+  reason: string; // easy | know | moving-on | parent
+  band_from: number;
+  band_to: number;
+  created_at: string;
+}
+
 export interface NewKid {
   name: string;
   avatar?: string | null;
@@ -355,6 +367,15 @@ export async function getStories(token: string, kidId: string, limit = 500): Pro
 export async function getStoryStats(token: string, kidId: string): Promise<StoryStats | null> {
   const res = await authFetch(token, `${API}/kids/${kidId}/stories/stats`);
   if (!res.ok) return null;
+  return res.json();
+}
+
+/** 🚀 #249 — a kid's acceleration plan (every "skipped ahead" entry, newest
+ *  first). The parent portal card reads these to show how far ahead the kid
+ *  jumped and why — nothing extra is sent anywhere beyond this read. */
+export async function getAcceleration(token: string, kidId: string): Promise<AccelerationRow[]> {
+  const res = await authFetch(token, `${API}/kids/${kidId}/acceleration`);
+  if (!res.ok) throw new Error("Failed to load acceleration plan");
   return res.json();
 }
 

@@ -98,6 +98,33 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
 .alert-row:last-child { border-bottom: 0; }
 .alert-main { min-width: 220px; flex: 1; }
 .alert-reason { margin-top: 3px; color: rgba(255,255,255,0.7); }
+
+/* 🚀 #249 — acceleration plan card (skills skipped ahead + why + band jump). */
+.card.accel-card { border-color: rgba(126, 217, 87, 0.32); }
+.accel-list { list-style: none; margin-top: 4px; }
+.accel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.accel-row:last-child { border-bottom: 0; }
+.accel-main { display: flex; align-items: flex-start; gap: 10px; min-width: 220px; flex: 1; }
+.accel-ico { font-size: 20px; line-height: 1.1; }
+.accel-reason { margin-top: 3px; color: rgba(255, 255, 255, 0.7); }
+.accel-jump {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a5f08b;
+  background: rgba(126, 217, 87, 0.12);
+  border: 1px solid rgba(126, 217, 87, 0.3);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
 .reteach-qr {
   display: flex;
   flex-direction: column;

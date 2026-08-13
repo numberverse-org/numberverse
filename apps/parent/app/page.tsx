@@ -16,6 +16,7 @@ import {
   getWeakSkills,
   getStories,
   getStoryStats,
+  getAcceleration,
   getShareToken,
   resetKidProgress,
   createKid,
@@ -38,6 +39,7 @@ import {
   type StoryStats,
   type NewKid,
   type SessionRow,
+  type AccelerationRow,
 } from "../lib/api";
 import { worksheetFor, type WorksheetProblem } from "../lib/worksheet";
 
@@ -271,6 +273,17 @@ const NARR_MIS: Record<string, { en: string; bn: string }> = {
   half: { en: "halving the answer", bn: "উত্তরটাকে অর্ধেক করে ফেলা" },
   reversal: { en: "writing digits the wrong way round (like 6 ↔ 9)", bn: "অঙ্ক উল্টো করে লেখা (যেমন ৬ ↔ ৯)" },
   "repeated-error": { en: "repeating the same mistake", bn: "একই ভুল বারবার করা" },
+};
+
+// ── 🚀 #249 ACCELERATION PLAN ─────────────────────────────────────────────
+// Why a skill was "skipped ahead" — the four reasons the kid app logs. The map
+// IS the country-pack seam (like WIZARD_LANGS): add a locale key and the plan
+// card follows — no component rewrites.
+const ACCEL_REASONS: Record<string, { en: string; bn: string }> = {
+  easy: { en: "Found it too easy — skipped ahead", bn: "খুব সহজ লেগেছে — এগিয়ে গিয়েছে" },
+  know: { en: "Already knew it — skipped ahead", bn: "আগে থেকেই জানত — এগিয়ে গিয়েছে" },
+  "moving-on": { en: "Moved on to the next lesson", bn: "পরের পাঠে এগিয়ে গিয়েছে" },
+  parent: { en: "Skipped by a parent", bn: "অভিভাবক এগিয়ে নিয়ে গেছেন" },
 };
 
 function narrTitleEn(id: string): string {
@@ -531,6 +544,8 @@ export default function ParentDashboard() {
   const [weekly, setWeekly] = useState<Record<string, WeeklyReport>>({});
   const [stories, setStories] = useState<Record<string, LearningStoryRow[]>>({});
   const [storyStats, setStoryStats] = useState<Record<string, StoryStats | null>>({});
+  // 🚀 #249 — per-kid acceleration plans (skills skipped ahead + why + band jump).
+  const [accel, setAccel] = useState<Record<string, AccelerationRow[]>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -619,15 +634,16 @@ export default function ParentDashboard() {
       // Load every kid up-front so the family overview + switcher are instant.
       const entries = await Promise.all(
         k.map(async (kid) => {
-          const [m, s, a, w, st, sts] = await Promise.all([
+          const [m, s, a, w, st, sts, ac] = await Promise.all([
             getMastery(tok, kid.id),
             getKidSettings(tok, kid.id).catch(() => DEFAULT_SETTINGS),
             getActivity(tok, kid.id).catch(() => []),
             getWeekly(tok, kid.id).catch(() => null),
             getStories(tok, kid.id).catch(() => []),
             getStoryStats(tok, kid.id).catch(() => null),
+            getAcceleration(tok, kid.id).catch(() => []),
           ]);
-          return [kid.id, { m, s, a, w, st, sts }] as const;
+          return [kid.id, { m, s, a, w, st, sts, ac }] as const;
         })
       );
       const mm: Record<string, MasteryRow[]> = {};
@@ -636,13 +652,15 @@ export default function ParentDashboard() {
       const ww: Record<string, WeeklyReport> = {};
       const stt: Record<string, LearningStoryRow[]> = {};
       const sst: Record<string, StoryStats | null> = {};
-      for (const [id, { m, s, a, w, st, sts }] of entries) {
+      const acc: Record<string, AccelerationRow[]> = {};
+      for (const [id, { m, s, a, w, st, sts, ac }] of entries) {
         mm[id] = m;
         ss[id] = s;
         aa[id] = a;
         if (w) ww[id] = w;
         stt[id] = st;
         sst[id] = sts;
+        acc[id] = ac;
       }
       setMastery(mm);
       setSettings(ss);
@@ -650,6 +668,7 @@ export default function ParentDashboard() {
       setWeekly(ww);
       setStories(stt);
       setStoryStats(sst);
+      setAccel(acc);
     },
     []
   );
@@ -703,13 +722,14 @@ export default function ParentDashboard() {
       setActiveId(id);
       if (mastery[id]) return; // already loaded (refreshAll fetches every kid)
       try {
-        const [m, s, a, w, st, sts] = await Promise.all([
+        const [m, s, a, w, st, sts, ac] = await Promise.all([
           getMastery(token, id),
           getKidSettings(token, id).catch(() => DEFAULT_SETTINGS),
           getActivity(token, id).catch(() => []),
           getWeekly(token, id).catch(() => null),
           getStories(token, id).catch(() => []),
           getStoryStats(token, id).catch(() => null),
+          getAcceleration(token, id).catch(() => []),
         ]);
         setMastery((prev) => ({ ...prev, [id]: m }));
         setSettings((prev) => ({ ...prev, [id]: s }));
@@ -717,6 +737,7 @@ export default function ParentDashboard() {
         if (w) setWeekly((prev) => ({ ...prev, [id]: w }));
         setStories((prev) => ({ ...prev, [id]: st }));
         setStoryStats((prev) => ({ ...prev, [id]: sts }));
+        setAccel((prev) => ({ ...prev, [id]: ac }));
       } catch {
         setError("Failed to load that kid.");
       }
@@ -1004,6 +1025,9 @@ export default function ParentDashboard() {
   const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
   // #239 — top Moni-flagged skills this week, derived from the same stories.
   const flags = activeId ? buildFlaggedSkills(stories[activeId] ?? []) : [];
+  // 🚀 #249 — the kid's acceleration plan (skills skipped ahead, newest first —
+  // the backend already sorts; offline-safe because it's already-loaded state).
+  const accelRows = activeId ? accel[activeId] ?? [] : [];
 
   // #240 — side-by-side comparison of two kids, purely from loaded state.
   const cmpAId = cmpA ?? kids[0]?.id ?? "";
@@ -1630,6 +1654,41 @@ export default function ParentDashboard() {
                         </span>
                       </div>
                     )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* 🚀 #249 — acceleration plan: skills the kid skipped ahead past + why */}
+          <section className="card accel-card">
+            <h2>🚀 Acceleration plan</h2>
+            <p className="muted small">
+              Skills {active.name} skipped ahead past in the kid app (marked “I already know
+              this”), with the world-band jump. Read from the dashboard’s already-loaded data —
+              it works offline.
+            </p>
+            {accelRows.length === 0 ? (
+              <p className="muted">
+                No skips yet — when {active.name} skips a lesson in the app it lands here.
+              </p>
+            ) : (
+              <ul className="accel-list">
+                {accelRows.map((row) => (
+                  <li key={row.id} className="accel-row">
+                    <div className="accel-main">
+                      <span className="accel-ico">⏭</span>
+                      <div>
+                        <strong>{narrTitleEn(row.skill_id)}</strong>
+                        {narrTitleBn(row.skill_id) !== narrTitleEn(row.skill_id) && (
+                          <span className="muted small"> · {narrTitleBn(row.skill_id)}</span>
+                        )}
+                        <p className="accel-reason small">
+                          {narrLang === "bn" ? ACCEL_REASONS[row.reason]?.bn : ACCEL_REASONS[row.reason]?.en}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="accel-jump">Band {row.band_from} → {row.band_to}</span>
                   </li>
                 ))}
               </ul>

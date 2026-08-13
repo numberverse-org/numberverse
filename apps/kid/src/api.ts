@@ -1,4 +1,4 @@
-import { useKidStore, STORY_QUEUE_CAP, type KothaStory, type RoundResult, type SyncEvent } from "./store";
+import { useKidStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncEvent } from "./store";
 
 /**
  * API base. Resolution order:
@@ -566,6 +566,69 @@ export function drainStoriesIfFull(): void {
   }
 }
 
+let accelSyncing = false;
+
+/** 🚀 #249 — drain the acceleration outbox to POST /acceleration.
+ *  Same durable-outbox contract as syncStories: maps local kid ids → server
+ *  kids, posts one batch, clears exactly what posted, and lets the
+ *  heartbeat/online/visibility events retry what was missed. */
+export async function syncAccel(): Promise<void> {
+  if (accelSyncing) return;
+  const { accel } = useKidStore.getState();
+  if (accel.length === 0) return;
+  const identity = await ensureIdentity();
+  if (!identity) {
+    useKidStore.getState().setSyncState("offline");
+    return;
+  }
+  accelSyncing = true;
+  try {
+    const batch = accel.slice(0, SYNC_LIMIT);
+    const mapped = batch.filter((a) => identity.kidFor(a.kidId) !== null);
+    const orphaned = batch.filter((a) => identity.kidFor(a.kidId) === null);
+    if (mapped.length === 0) {
+      // local kids were deleted — drop their orphaned acceleration entries
+      useKidStore.getState().clearAccel(new Set([...orphaned.map((a) => a.uid), ...batch.map((a) => a.uid)]));
+      return;
+    }
+    useKidStore.getState().setSyncState("syncing");
+    const res = await fetch(`${API}/acceleration`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
+      body: JSON.stringify(
+        mapped.map((a) => ({
+          kid_id: identity.kidFor(a.kidId),
+          uid: a.uid, // dedup key — replayed batches are no-ops server-side
+          skill_id: a.skillId,
+          reason: a.reason,
+          band_from: a.bandFrom,
+          band_to: a.bandTo,
+        })),
+      ),
+    });
+    if (res.ok) {
+      const done = new Set([...orphaned.map((a) => a.uid), ...mapped.map((a) => a.uid)]);
+      useKidStore.getState().clearAccel(done);
+      useKidStore.getState().setSyncState("ok");
+    } else {
+      useKidStore.getState().setSyncState("error");
+    }
+  } catch {
+    useKidStore.getState().setSyncState("offline");
+  } finally {
+    accelSyncing = false;
+  }
+}
+
+/** 🚀 #249 — eager drain when the acceleration queue hits its cap (same
+ *  best-effort contract as drainStoriesIfFull — nothing dropped pre-confirm). */
+export function drainAccelIfFull(): void {
+  const { accel, syncState } = useKidStore.getState();
+  if (accel.length >= STORY_QUEUE_CAP && syncState !== "syncing") {
+    void syncAccel();
+  }
+}
+
 /** 🔍 KOTHA SEARCH — filter a kid's stories by skill / error kind / action /
  *  misconception code. `filters` is a partial object; empty filters return
  *  everything (newest first). Works online (server filter) — the store's local
@@ -693,6 +756,7 @@ export function startAutoSync(): () => void {
   const tick = () => {
     void syncProgress();
     void syncStories();
+    void syncAccel(); // 🚀 #249 — acceleration outbox drains with the same heartbeat
     // #9 — second-device catch-up: throttled inside.
     void restoreServerState();
   };

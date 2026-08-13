@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..bandlock import skill_band_allowed
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
+from ..models import AccelerationLog, ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
-from ..schemas import KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
+from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
 from ..scrub import redact_context
 from ..seed import SKILLS_SEED
 
@@ -242,6 +242,49 @@ async def record_stories(
     return {"recorded": inserted, "duplicates_skipped": len(rows) - inserted, "band_skipped": band_skipped}
 
 
+@router.post("/acceleration", status_code=status.HTTP_202_ACCEPTED)
+async def record_acceleration(
+    body: list[AccelerationIn],
+    profile: Profile = Depends(WRITE_RATE_LIMIT),
+    db: AsyncSession = Depends(get_db),
+):
+    """🚀 #249 — persist a kid's "skipped ahead" entries (the acceleration plan).
+
+    Fire-and-forget from the kid app, same contract as /stories: ownership
+    checked per kid, band-lock applied, and dedup on the client's durable-outbox
+    uid so a replayed batch (lost ACK) is a silent no-op."""
+    kid_ids = {a.kid_id for a in body}
+    for kid_id in kid_ids:
+        owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+        if not owned:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
+
+    # #275 — band lock: a capped kid can't log skips beyond their max_band either.
+    caps = await _load_band_caps(db, kid_ids)
+    rows = [
+        {
+            "kid_id": a.kid_id,
+            "uid": a.uid,
+            "skill_id": a.skill_id,
+            "reason": a.reason,
+            "band_from": a.band_from,
+            "band_to": a.band_to,
+        }
+        for a in body
+        if skill_band_allowed(a.skill_id, SKILL_BANDS, caps.get(a.kid_id))
+    ]
+    band_skipped = len(body) - len(rows)
+    if rows:
+        stmt = pg_insert(AccelerationLog).values(rows)
+        stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"])
+        result = await db.execute(stmt)
+        await db.commit()
+        inserted = result.rowcount if result.rowcount is not None else len(rows)
+    else:
+        inserted = 0
+    return {"recorded": inserted, "duplicates_skipped": len(rows) - inserted, "band_skipped": band_skipped}
+
+
 def _story_filters(kid_id: uuid.UUID, skill_id: str | None, error_kind: str | None, action: str | None, misconception_code: str | None):
     """Shared WHERE clause for Kotha story search — filter by skill, error kind,
     action or misconception code. None = no filter on that axis."""
@@ -279,6 +322,22 @@ async def get_stories(
     offset = max(offset, 0)
     q = _story_filters(kid_id, skill_id, error_kind, action, misconception_code)
     result = await db.scalars(q.order_by(LearningStory.created_at.desc()).limit(limit).offset(offset))
+    return list(result)
+
+
+@router.get("/kids/{kid_id}/acceleration", response_model=list[AccelerationOut])
+async def get_acceleration(
+    kid_id: uuid.UUID,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """🚀 #249 — the kid's acceleration plan: every "skipped ahead" entry (newest
+    first), with the reason and the band jump. The parent portal renders this
+    card offline from the already-fetched payload."""
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    result = await db.scalars(select(AccelerationLog).where(AccelerationLog.kid_id == kid_id).order_by(AccelerationLog.created_at.desc()))
     return list(result)
 
 

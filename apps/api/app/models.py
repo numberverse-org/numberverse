@@ -200,6 +200,31 @@ class LearningStory(Base):
     kid: Mapped[Kid] = relationship()
 
 
+class AccelerationLog(Base):
+    """🚀 #249 — acceleration plan log: every skill a kid "skipped ahead" and WHY
+    (already-knew-it / too-easy / moving-on). The parent portal renders these as
+    the kid's acceleration plan so a grown-up can see (and trust) how far ahead
+    the kid jumped. `band_from`/`band_to` show the jump across world bands.
+    Dedup on the client's durable-outbox uid, exactly like learning_stories."""
+
+    __tablename__ = "acceleration_log"
+    __table_args__ = (
+        UniqueConstraint("kid_id", "uid", name="uq_accel_kid_uid"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    uid: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), index=True)
+    skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
+    # easy | know | moving-on | parent — why the kid (or parent) skipped it.
+    reason: Mapped[str] = mapped_column(String(32))
+    band_from: Mapped[int] = mapped_column(Integer)
+    band_to: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    kid: Mapped[Kid] = relationship()
+
+
 class ProgressEvent(Base):
     __tablename__ = "progress_events"
 

@@ -2542,6 +2542,42 @@ body {
 }
 .unlock-hint { font-size: 13px; color: #a8dcf0; font-weight: 600; }
 
+/* 🚀 #249 — skip-ahead chip ("I already know this") + toast on the world detail. */
+.skip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 440px;
+  margin-top: 4px;
+}
+.skip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 8px 16px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.skip-chip:hover { background: rgba(255, 255, 255, 0.16); }
+.skip-chip:active { transform: scale(0.97); }
+.skip-chip-ico { font-size: 16px; }
+.skip-chip-txt { line-height: 1; }
+.skip-toast {
+  font-size: 13px;
+  color: #ffe9a8;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  padding: 6px 12px;
+  animation: quietDimFade 0.3s ease;
+}
+
 .skill-list {
   display: flex;
   flex-direction: column;
