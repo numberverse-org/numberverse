@@ -544,6 +544,12 @@ interface Strings {
   trLocked: string;
   trEmpty: string;
   trNewSpeak: (name: string, land: string) => string;
+  /* #284 — mastery mystery boxes */
+  boxTile: string;
+  boxHint: (n: number) => string;
+  boxOpen: string;
+  boxCapSpeak: string;
+  boxRewardSpeak: (name: string, coins: number) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1076,6 +1082,12 @@ const STR: Record<Lang, Strings> = {
     trLocked: "Master every skill to earn",
     trEmpty: "No trophies yet — master a whole land!",
     trNewSpeak: (name, land) => `${name}, you conquered ${land}! 🏆`,
+    /* #284 — mastery mystery boxes */
+    boxTile: "🎁 Mystery Box",
+    boxHint: (n) => `${n} mystery ${n === 1 ? "box" : "boxes"} waiting to open!`,
+    boxOpen: "Open",
+    boxCapSpeak: "The box will open tomorrow — the daily reward is full!",
+    boxRewardSpeak: (name, coins) => `${name}, you found ${coins} coins in the box! 🎁`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1593,6 +1605,12 @@ const STR: Record<Lang, Strings> = {
     trLocked: "আয়ত্ত করলে পাবে",
     trEmpty: "এখনো ট্রফি নেই — পুরো ভূখণ্ড আয়ত্ত করো!",
     trNewSpeak: (name, land) => `${name}, তুমি ${land} জয় করেছ! 🏆`,
+    /* #284 — mastery mystery boxes */
+    boxTile: "🎁 মিস্ট্রি বক্স",
+    boxHint: (n) => `${bnNum(n)}টা মিস্ট্রি বক্স খোলার অপেক্ষায়!`,
+    boxOpen: "খোলো",
+    boxCapSpeak: "বক্সটা কাল খুলবে — আজকের পুরস্কার ভরে গেছে!",
+    boxRewardSpeak: (name, coins) => `${name}, বক্সে ${coins}টা কয়েন পেয়েছো! 🎁`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -2684,6 +2702,17 @@ export default function App() {
       });
     }
   }, [kid?.id, earnedTrophyKey]);
+  // #284 — mastery mystery boxes: every mastered skill that hasn't been boxed
+  // yet shows as an unopened box on home (newest mastery first).
+  const storedBoxes = useKidStore((s) => (kid ? s.nova[kid.id]?.boxes ?? [] : []));
+  const unclaimedBoxes = kid
+    ? filterSkills
+        .filter((s) => s.game && skillMastered(skillsMap, kid.id, s.id) && !storedBoxes.includes(s.id))
+        .sort(
+          (a, b) =>
+            ((skillsMap[`${kid.id}:${b.id}`]?.lastPractice ?? 0) - (skillsMap[`${kid.id}:${a.id}`]?.lastPractice ?? 0))
+        )
+    : [];
   // Streak kindness: the store only refreshes `streak` at session-complete, so
   // after a missed day the badge would show a STALE flame. Track the anchor day
   // so we can hide the stale flame and welcome the kid back warmly instead.
@@ -4389,6 +4418,33 @@ export default function App() {
                 {petFedToday ? t.petFedToday : t.petFeed}
               </button>
             </div>
+
+            {/* #284 — mastery mystery box: mastering a skill earns an unopened
+                box on home. Opening pays 2–5 coins (inside the daily cap —
+                a full cap keeps the box for another day). Kid-safe, offline. */}
+            {unclaimedBoxes.length > 0 ? (
+              <div className="box-card" role="status">
+                <span className="box-emoji" aria-hidden="true">🎁</span>
+                <div className="box-meta">
+                  <span className="box-title">{t.boxTile}</span>
+                  <span className="box-hint">{t.boxHint(unclaimedBoxes.length)}</span>
+                </div>
+                <button
+                  className="box-open"
+                  onClick={() => {
+                    const res = useKidStore.getState().novaOpenBox(kid.id, unclaimedBoxes.map((s) => s.id));
+                    if (res.coins > 0) {
+                      tada();
+                      speak(t.boxRewardSpeak(kid.name, res.coins));
+                    } else if (res.skillId) {
+                      speak(t.boxCapSpeak);
+                    }
+                  }}
+                >
+                  {t.boxOpen}
+                </button>
+              </div>
+            ) : null}
 
             {/* Secondary destinations + Nova's name-game, FOLDED away so the
                 landing stays ONE action: greet → big PLAY → path → pet. Tap

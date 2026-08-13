@@ -1653,6 +1653,57 @@ body {
   cursor: default;
 }
 
+/* #284 — mastery mystery box */
+.box-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  background: linear-gradient(135deg, rgba(255, 143, 163, 0.18), rgba(255, 209, 102, 0.16));
+  border: 1.5px solid rgba(255, 143, 163, 0.45);
+  border-radius: 16px;
+  padding: 10px 14px;
+}
+.box-emoji {
+  font-size: 30px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  animation: calPulse 2.2s ease-in-out infinite;
+}
+.box-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.box-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ff8fa3;
+  letter-spacing: 0.02em;
+}
+.box-hint {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.3;
+}
+.box-open {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a2332;
+  background: linear-gradient(135deg, #ff8fa3, #ffb347);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.box-open:active { transform: scale(0.94); }
+
 /* Nova plays with the kid's name in funny voices */
 .funny-voices {
   display: flex;

@@ -164,7 +164,7 @@
 - ~~Kids: daily login calendar reward~~ ✅ #281 — 7-day cycle, growing coin bonus per consecutive play day, claim once/day within the cap (PR pending)
 - ~~Kids: same-device sibling leaderboard~~ ✅ #282 — 🥇 screen ranks device kids by mastery with per-kid totals (mastery/rounds/stars), medals + "You" pill, empty state → add sibling, no cloud (PR pending)
 - ~~Kids: goal badges (10 rounds, 100% day)~~ ✅ #283 — Badge Book: 4 lifetime badges (sessions/stars/streak/land-champion), earned via local state, celebrate-once + spoken cheer (PR pending)
-- Kids: mastery mystery reward boxes  _(priority: low, kid-first)_
+- ~~Kids: mastery mystery reward boxes~~ ✅ #284 — 🎁 box per newly-mastered skill, opens for 2–5 coins inside the daily cap, cap-full waits (PR pending)
 - Kids: custom avatar builder  _(priority: low, kid-first)_
 - Kids: star-of-the-week recap card  _(priority: low, kid-first)_
 - Kids: quest mission variety  _(priority: low, kid-first)_
