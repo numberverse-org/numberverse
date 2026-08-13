@@ -14,6 +14,8 @@ import {
   getActivity,
   getWeekly,
   getWeakSkills,
+  getStories,
+  getStoryStats,
   resetKidProgress,
   createKid,
   updateKid,
@@ -31,6 +33,8 @@ import {
   type KidSettings as KidSettingsT,
   type ActivityRow,
   type WeeklyReport,
+  type LearningStoryRow,
+  type StoryStats,
   type NewKid,
   type SessionRow,
 } from "../lib/api";
@@ -186,6 +190,145 @@ function masteryPct(m: MasteryRow): number {
   return Math.min(100, Math.round(m.mastery * 100));
 }
 
+// ── #238 KOTHA weekly learning narrative ────────────────────────────────
+// A plain-language "what happened this week" paragraph generated from the
+// kid's Kotha stories. Pure + client-side: it takes only the stories the portal
+// already fetched and the skill catalog, and returns EN + BN text. Nothing is
+// re-sent to any server, so a parent's edits are edit-safe and stay local.
+
+/** Misconception fingerprint codes (packages/core/src/moni/fingerprint.ts) →
+ *  short parent-friendly phrasing, EN + BN. */
+const NARR_MIS: Record<string, { en: string; bn: string }> = {
+  "overcount-1": { en: "counts one too many", bn: "একটা বেশি গোনা" },
+  "undercount-1": { en: "counts one too few", bn: "একটা কম গোনা" },
+  "off-by-ten": { en: "mixing up tens and ones", bn: "দশকের ঘর আর এককের ঘর গুলিয়ে ফেলা" },
+  "off-by-hundred": { en: "mixing up hundreds with the tens", bn: "শতক আর দশকের ঘর গুলিয়ে ফেলা" },
+  double: { en: "doubling the answer", bn: "উত্তরটাকে দ্বিগুণ করে ফেলা" },
+  half: { en: "halving the answer", bn: "উত্তরটাকে অর্ধেক করে ফেলা" },
+  reversal: { en: "writing digits the wrong way round (like 6 ↔ 9)", bn: "অঙ্ক উল্টো করে লেখা (যেমন ৬ ↔ ৯)" },
+  "repeated-error": { en: "repeating the same mistake", bn: "একই ভুল বারবার করা" },
+};
+
+function narrTitleEn(id: string): string {
+  return SKILLS.find((s) => s.id === id)?.title ?? id.replace(/-/g, " ");
+}
+function narrTitleBn(id: string): string {
+  const s = SKILLS.find((x) => x.id === id);
+  return s?.titleBn ?? narrTitleEn(id);
+}
+
+/** i18n-extensible join for a list of titles. */
+function narrListEn(xs: string[]): string {
+  if (xs.length <= 1) return xs[0] ?? "";
+  if (xs.length === 2) return `${xs[0]} and ${xs[1]}`;
+  return `${xs.slice(0, -1).join(", ")}, and ${xs[xs.length - 1]}`;
+}
+function narrListBn(xs: string[]): string {
+  if (xs.length <= 1) return xs[0] ?? "";
+  if (xs.length === 2) return `${xs[0]} ও ${xs[1]}`;
+  return `${xs.slice(0, -1).join(", ")} ও ${xs[xs.length - 1]}`;
+}
+
+interface KothaNarrative {
+  en: string;
+  bn: string;
+}
+
+/** Build the EN+BN "this week" paragraph from the last 7 days of stories.
+ *  Returns null when there's nothing this week (the card then invites play). */
+function buildWeeklyNarrative(kidName: string, stories: LearningStoryRow[]): KothaNarrative | null {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const week = stories.filter((s) => Date.now() - new Date(s.created_at).getTime() <= WEEK_MS);
+  if (week.length === 0) return null;
+
+  const bySkill = new Map<string, { total: number; correct: number }>();
+  const byMis = new Map<string, number>();
+  for (const s of week) {
+    const e = bySkill.get(s.skill_id) ?? { total: 0, correct: 0 };
+    e.total++;
+    if (s.outcome) e.correct++;
+    bySkill.set(s.skill_id, e);
+    if (s.misconception_code) byMis.set(s.misconception_code, (byMis.get(s.misconception_code) ?? 0) + 1);
+  }
+
+  const ranked = [...bySkill.entries()].sort((a, b) => b[1].total - a[1].total);
+  const topSkills = ranked.slice(0, 3);
+  const highlight = [...bySkill.entries()].filter(([, e]) => e.correct > 0).sort((a, b) => b[1].correct - a[1].correct)[0];
+  const struggle = [...bySkill.entries()]
+    .filter(([, e]) => e.total - e.correct > 0)
+    .sort((a, b) => b[1].total - b[1].correct - (a[1].total - a[1].correct))[0];
+
+  // Most-repeated misconception on the struggle skill (if any).
+  let misCode: string | null = null;
+  if (struggle) {
+    let best = 0;
+    for (const s of week) {
+      if (s.skill_id === struggle[0] && s.misconception_code) {
+        const c = byMis.get(s.misconception_code) ?? 0;
+        if (c > best) {
+          best = c;
+          misCode = s.misconception_code;
+        }
+      }
+    }
+  }
+
+  const total = week.length;
+  const wrong = week.length - week.filter((s) => s.outcome).length;
+
+  // ── EN ──
+  let en = `This week ${kidName} had ${total} learning moment${total === 1 ? "" : "s"} across ${narrListEn(topSkills.map(([id]) => narrTitleEn(id)))}.`;
+  if (highlight) {
+    const hl = highlight[1];
+    en += ` ${kidName} was strongest at ${narrTitleEn(highlight[0])} — ${hl.correct}/${hl.total} right.`;
+  } else {
+    en += " Every correct answer is a win — lovely effort!";
+  }
+  if (struggle) {
+    const st = struggle[1];
+    en += ` ${narrTitleEn(struggle[0])} was trickiest (${st.total - st.correct} answer${st.total - st.correct === 1 ? "" : "s"} still to polish)`;
+    if (misCode && NARR_MIS[misCode]) en += ` — the pattern we noticed: ${NARR_MIS[misCode].en}`;
+    en += ". A little daily practice there will make it click.";
+  } else {
+    en += " No sticking points this week — smooth sailing!";
+  }
+  en += wrong > 0
+    ? ` Keep the gentle rhythm going — ${kidName} is building a solid foundation.`
+    : " Keep the daily rhythm going — consistency makes it stick!";
+
+  // ── BN (natural Bangla, not phonetic) ──
+  let bn = `এ সপ্তাহে ${kidName} করেছে ${total}টি শেখার মুহূর্ত — ${narrListBn(topSkills.map(([id]) => narrTitleBn(id)))}।`;
+  if (highlight) {
+    const hl = highlight[1];
+    bn += ` ${kidName} সবচেয়ে ভালো করেছে ${narrTitleBn(highlight[0])} — ${hl.correct}/${hl.total}টি সঠিক উত্তর।`;
+  } else {
+    bn += " প্রতিটা সঠিক উত্তরের জন্য অনেক ভালো — দারুণ পরিশ্রম করেছে!";
+  }
+  if (struggle) {
+    const st = struggle[1];
+    bn += ` ${narrTitleBn(struggle[0])} একটু কঠিন লেগেছে — ${st.total - st.correct}টি উত্তর এখনও ঠিক করা বাকি`;
+    if (misCode && NARR_MIS[misCode]) bn += ` — দেখা গেছে ${NARR_MIS[misCode].bn}`;
+    bn += "। প্রতিদিন সামান্য অনুশীলন করলেই ঠিক হয়ে যাবে।";
+  } else {
+    bn += " এ সপ্তাহে কোনো আটকে যাওয়া নেই — দুর্দান্ত!";
+  }
+  bn += wrong > 0
+    ? " ধীরে ধীরে এগিয়ে যাও — ভিত্তিটা মজবুত হচ্ছে।"
+    : " প্রতিদিনের ছোট্ট অনুশীলনটাই সবচেয়ে বড় জাদু — এগিয়ে চলো!";
+
+  return { en, bn };
+}
+
+/** Read a kid's saved narrative draft (edit-safe: localStorage only). */
+function readNarrDraft(kidId: string): { en: string; bn: string; edited: boolean } | null {
+  try {
+    const raw = localStorage.getItem(`nv_kotha_nar_${kidId}`);
+    return raw ? (JSON.parse(raw) as { en: string; bn: string; edited: boolean }) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
   /** Gate: "checking" → validating the stored token server-side,
@@ -198,6 +341,8 @@ export default function ParentDashboard() {
   const [settings, setSettings] = useState<Record<string, KidSettingsT>>({});
   const [activity, setActivity] = useState<Record<string, ActivityRow[]>>({});
   const [weekly, setWeekly] = useState<Record<string, WeeklyReport>>({});
+  const [stories, setStories] = useState<Record<string, LearningStoryRow[]>>({});
+  const [storyStats, setStoryStats] = useState<Record<string, StoryStats | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -209,6 +354,11 @@ export default function ParentDashboard() {
   const [editBirthYear, setEditBirthYear] = useState(2021);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // #238 — weekly narrative language + editable draft (localStorage only).
+  const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
+  const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
+  const [narrCopied, setNarrCopied] = useState(false);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -252,29 +402,37 @@ export default function ParentDashboard() {
       // Load every kid up-front so the family overview + switcher are instant.
       const entries = await Promise.all(
         k.map(async (kid) => {
-          const [m, s, a, w] = await Promise.all([
+          const [m, s, a, w, st, sts] = await Promise.all([
             getMastery(tok, kid.id),
             getKidSettings(tok, kid.id).catch(() => DEFAULT_SETTINGS),
             getActivity(tok, kid.id).catch(() => []),
             getWeekly(tok, kid.id).catch(() => null),
+            getStories(tok, kid.id).catch(() => []),
+            getStoryStats(tok, kid.id).catch(() => null),
           ]);
-          return [kid.id, { m, s, a, w }] as const;
+          return [kid.id, { m, s, a, w, st, sts }] as const;
         })
       );
       const mm: Record<string, MasteryRow[]> = {};
       const ss: Record<string, KidSettingsT> = {};
       const aa: Record<string, ActivityRow[]> = {};
       const ww: Record<string, WeeklyReport> = {};
-      for (const [id, { m, s, a, w }] of entries) {
+      const stt: Record<string, LearningStoryRow[]> = {};
+      const sst: Record<string, StoryStats | null> = {};
+      for (const [id, { m, s, a, w, st, sts }] of entries) {
         mm[id] = m;
         ss[id] = s;
         aa[id] = a;
         if (w) ww[id] = w;
+        stt[id] = st;
+        sst[id] = sts;
       }
       setMastery(mm);
       setSettings(ss);
       setActivity(aa);
       setWeekly(ww);
+      setStories(stt);
+      setStoryStats(sst);
     },
     []
   );
@@ -328,22 +486,32 @@ export default function ParentDashboard() {
       setActiveId(id);
       if (mastery[id]) return; // already loaded (refreshAll fetches every kid)
       try {
-        const [m, s, a, w] = await Promise.all([
+        const [m, s, a, w, st, sts] = await Promise.all([
           getMastery(token, id),
           getKidSettings(token, id).catch(() => DEFAULT_SETTINGS),
           getActivity(token, id).catch(() => []),
           getWeekly(token, id).catch(() => null),
+          getStories(token, id).catch(() => []),
+          getStoryStats(token, id).catch(() => null),
         ]);
         setMastery((prev) => ({ ...prev, [id]: m }));
         setSettings((prev) => ({ ...prev, [id]: s }));
         setActivity((prev) => ({ ...prev, [id]: a }));
         if (w) setWeekly((prev) => ({ ...prev, [id]: w }));
+        setStories((prev) => ({ ...prev, [id]: st }));
+        setStoryStats((prev) => ({ ...prev, [id]: sts }));
       } catch {
         setError("Failed to load that kid.");
       }
     },
     [token, mastery]
   );
+
+  // #238 — load the kid's saved narrative draft (edit-safe: localStorage).
+  useEffect(() => {
+    setNarrDraft(activeId ? readNarrDraft(activeId) : null);
+    setNarrCopied(false);
+  }, [activeId]);
 
   async function handleSaveSettings() {
     if (!token || !activeId) return;
@@ -571,6 +739,50 @@ export default function ParentDashboard() {
   const activeSettings = activeId ? settings[activeId] ?? DEFAULT_SETTINGS : DEFAULT_SETTINGS;
   const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], top_game: null };
   const activeWeekly = activeId ? weekly[activeId] ?? EMPTY_WEEKLY : EMPTY_WEEKLY;
+
+  // #238 — weekly narrative derived from the kid's Kotha stories.
+  const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
+  const narrText =
+    narrDraft && narrDraft.edited
+      ? narrLang === "en"
+        ? narrDraft.en
+        : narrDraft.bn
+      : narrLang === "en"
+        ? (weekNarrative?.en ?? "")
+        : (weekNarrative?.bn ?? "");
+
+  /** #238 — edit-safe: the parent's changes are stored in this browser only
+   *  (localStorage), never sent anywhere. */
+  function onNarrativeEdit(text: string) {
+    if (!activeId) return;
+    const next = { ...(narrDraft ?? { en: "", bn: "", edited: false }), edited: true, [narrLang]: text };
+    setNarrDraft(next);
+    try {
+      localStorage.setItem(`nv_kotha_nar_${activeId}`, JSON.stringify(next));
+    } catch {
+      /* private browsing — keep the draft in memory for this session */
+    }
+  }
+  function handleRegenerateNarr() {
+    if (!activeId) return;
+    const next = { en: weekNarrative?.en ?? "", bn: weekNarrative?.bn ?? "", edited: false };
+    setNarrDraft(next);
+    try {
+      localStorage.setItem(`nv_kotha_nar_${activeId}`, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+  async function handleCopyNarr() {
+    if (!narrText) return;
+    try {
+      await navigator.clipboard.writeText(narrText);
+      setNarrCopied(true);
+      window.setTimeout(() => setNarrCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable — nothing to show */
+    }
+  }
 
   // Family overview (aggregates every kid, not just the active one).
   const famMastered = kids.reduce(
@@ -835,6 +1047,59 @@ export default function ParentDashboard() {
                   })}
                 </tbody>
               </table>
+            )}
+          </section>
+
+          {/* #238 — auto-generated weekly learning narrative from Kotha */}
+          <section className="card narrative-card">
+            <div className="narrative-head">
+              <h2>📖 {active.name}'s week in words</h2>
+              <div className="row-buttons" role="group" aria-label="Narrative language">
+                <button
+                  className={`toggle-chip${narrLang === "en" ? " on" : ""}`}
+                  onClick={() => setNarrLang("en")}
+                >
+                  English
+                </button>
+                <button
+                  className={`toggle-chip${narrLang === "bn" ? " on" : ""}`}
+                  onClick={() => setNarrLang("bn")}
+                >
+                  বাংলা
+                </button>
+              </div>
+            </div>
+            <p className="muted small">
+              A plain-language summary of what {active.name} practiced and found tricky this week,
+              drawn from the learning stories the app recorded. It is written right here in your
+              browser — edit it freely, and nothing you type is ever sent to a server.
+            </p>
+            {weekNarrative ? (
+              <>
+                <textarea
+                  className="narrative-edit"
+                  rows={7}
+                  value={narrText}
+                  onChange={(e) => onNarrativeEdit(e.target.value)}
+                  aria-label="Weekly learning narrative (editable)"
+                />
+                <div className="row-buttons">
+                  <button className="btn ghost-btn" onClick={handleRegenerateNarr}>
+                    ↺ Regenerate
+                  </button>
+                  <button className="btn ghost-btn" onClick={() => void handleCopyNarr()}>
+                    {narrCopied ? "✓ Copied" : "📋 Copy text"}
+                  </button>
+                </div>
+                <p className="muted small" style={{ marginTop: 8 }}>
+                  💾 Your edits stay in this browser only — safe to tweak and share however you like.
+                </p>
+              </>
+            ) : (
+              <p className="muted">
+                No learning stories for this week yet — have {active.name} play a few rounds and a
+                summary appears here.
+              </p>
             )}
           </section>
 

@@ -89,7 +89,7 @@
 ## v25 — parent power 3
 
 - ~~Parent: per-kid reading & story progress view~~  ✅ #237 — "📚 Reading & stories" card: the 4 read-aloud/story skills (EN+BN titles) with mastery bar + % , correct/attempts score, and 🌱/🔶/✅ status; reads already-loaded mastery state → fully offline
-- Parent: weekly learning narrative from Kotha  _(priority: low, parent-facing)_
+- ~~Parent: weekly learning narrative from Kotha~~  ✅ #238 — "📖 {kid}'s week in words" card: EN+BN plain-language paragraph from the last 7 days of Kotha stories (top skills, strongest + trickiest skill, named misconception), editable in-browser + saved to localStorage only (edit-safe, never sent to cloud); stories fetched via GET /kids/{id}/stories
 - Parent: struggle-alert card (skill needs help)  _(priority: low, parent-facing)_
 - Parent: compare two kids side-by-side  _(priority: low, parent-facing)_
 - ~~Parent: export learning history (CSV/PDF)~~ ✅ #241 — shipped as #273 (0.26.16): CSV + JSON export, ISO-8601 UTC columns
