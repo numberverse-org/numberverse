@@ -104,7 +104,7 @@
 - ~~Parent: big-text & high-contrast mode~~  ✅ #250 — global accessibility toggles across BOTH areas: one `nv_a11y` localStorage key (same-origin portal + kid app) drives 🔍 big text (`html.nv-big-text` zoom 1.2×) + 🎨 high contrast (stronger borders/text/focus); settings switches in the kid app + portal topbar chips, EN+বাংলা, `storage`-listener live sync; pure shape/parsing shared via `@numberverse/core`
 - ~~Parent: monthly learning report archive~~  ✅ #251 — "🗓️ Monthly archive" card: rolling 12-month grid (rounds / % correct / minutes + top-3 skills per month, EN+বাংলা month names) generated client-side from a one-time full-history fetch (up to 2000 rounds, activity cap raised) — offline after load; ⬇️ CSV export via client-side blob
 - ~~Parent: untouched-games view~~  ✅ #252 — "🎮 Games to try" card: per-kid coverage ("X of N games played" + per-subject bars) + list of untouched games (EN+বাংলা title, world-band chip), derived from already-loaded mastery → offline
-- Parent: session-preserving kid switch  _(priority: low, parent-facing)_
+- ~~Parent: session-preserving kid switch~~  ✅ #253 — kid-switch snapshots the in-flight session (steps + step index + rounds done) per kid and RESUMES it from the home Play button on switch-back; cleared on real completion / explicit new session; co-op pass-the-device untouched; durable-outbox uid dedup keeps sync single-fire
 - Parent: dashboard light/dark theme  _(priority: low, parent-facing)_
 - Parent: session timeline per kid  _(priority: low, parent-facing)_
 - Parent: goal-setting screen (minutes/rounds per day)  _(priority: low, parent-facing)_
