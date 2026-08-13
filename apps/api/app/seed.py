@@ -104,6 +104,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-read-story", 3, "bangla", "Read a story", "গল্প পড়ি"),
     ("en-cvc", 3, "english", "CVC words", "ইংরেজি শব্দ"),
     ("en-contractions", 3, "english", "Contractions", "সংকোচন শব্দ"),
+    ("en-compare", 3, "english", "Big, Bigger, Biggest", "বড়, বড়ো, সবচেয়ে বড়"),
     # Band 4 — advanced operations
     ("division-facts", 4, "math", "Division facts", "ভাগ করা"),
     ("fractions-equiv", 4, "math", "Equivalent fractions", "সমান ভগ্নাংশ"),
