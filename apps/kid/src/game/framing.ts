@@ -57,6 +57,18 @@ const FRAME_BANK: Record<string, Array<(vars?: TVars) => string>> = {
     (vars) => t("oddEvenPrompt2", vars),
     (vars) => t("oddEvenPrompt3", vars),
   ],
+  // Rounding — nearest ten ("Round 47 to the nearest ten!")
+  round10Prompt: [
+    (vars) => t("roundTo10", vars),
+    (vars) => t("roundTo10B", vars),
+    (vars) => t("roundTo10C", vars),
+  ],
+  // Rounding — nearest hundred
+  round100Prompt: [
+    (vars) => t("roundTo100", vars),
+    (vars) => t("roundTo100B", vars),
+    (vars) => t("roundTo100C", vars),
+  ],
 };
 
 /** A stable hash of a skill id, so different skills drift through variants. */

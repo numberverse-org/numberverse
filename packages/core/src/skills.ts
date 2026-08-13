@@ -84,6 +84,9 @@ export const SKILLS: Skill[] = [
   { id: 'fractions-intro', band: 3, subject: 'math', title: 'Halves and quarters', titleBn: 'অর্ধেক ও চতুর্থাংশ', description: 'Recognize ½, ¼, ¾ of a whole', descriptionBn: 'পুরোটার ½, ¼, ¾ চিনি', commonCore: ['3.NF.1'], nctbCode: 'c3-math-3', classNumber: 2, game: 'game-pizzafrac' },
   { id: 'tell-time', band: 3, subject: 'math', title: 'Tell time', titleBn: 'ঘড়ি পড়া', description: 'Read an analog clock', descriptionBn: 'ঘড়ি পড়ি', commonCore: ['1.MD.3', '2.MD.7'], nctbCode: 'c2-math-3', classNumber: 2, game: 'game-clock' },
   { id: 'place-value-1000', band: 3, subject: 'math', title: 'Place value to 9,999', titleBn: 'স্থানীয় মান', description: 'Thousands, hundreds, tens and ones up to 9,999 — read the number from its blocks', descriptionBn: '৯৯৯৯ পর্যন্ত হাজার, শতক, দশক, একক — ব্লক দেখে সংখ্যা পড়া', commonCore: ['2.NBT.1', '3.NBT.1', '4.NBT.2'], nctbCode: 'c3-math-1', classNumber: 3, game: 'game-placevalue' },
+  // Rounding rides place value: read how many tens/hundreds, then jump the number
+  // to the nearer fence-post. 3.NBT.1 (round to nearest 10 or 100).
+  { id: 'round-nearest-10-100', band: 3, subject: 'math', title: 'Round to 10 & 100', titleBn: 'নিকটতম দশ/শতকে পূর্ণ', description: 'Round numbers to the nearest ten or hundred with a number-line jump', descriptionBn: 'সংখ্যারেখায় লাফিয়ে সংখ্যাকে নিকটতম দশ/শতকে পূর্ণ করি', commonCore: ['3.NBT.1'], nctbCode: 'c3-math-2', classNumber: 3, game: 'game-round' },
   { id: 'add-sub-regroup', band: 3, subject: 'math', title: 'Carry & Borrow', titleBn: 'ক্যারি ও ধার', description: '3-digit addition and subtraction with carrying and borrowing (written method)', descriptionBn: '৩-অঙ্কের যোগ-বিয়োগ ক্যারি ও ধারসহ (লিখিত পদ্ধতি)', commonCore: ['2.NBT.7', '3.NBT.2'], nctbCode: 'c3-math-5', classNumber: 3, game: 'game-regroup' },
   // Language — STAGE 3: first words (mirrored: BN words then EN CVC)
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', descriptionBn: 'সহজ বাংলা শব্দ পড়ি (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
@@ -170,6 +173,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-pizzafrac', skillId: 'fractions-intro', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-clock', skillId: 'tell-time', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   { id: 'game-placevalue', skillId: 'place-value-1000', difficultyLevels: [3, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-round', skillId: 'round-nearest-10-100', difficultyLevels: [40, 80, 120, 400, 700, 999], targetSuccess: 0.8 },
   { id: 'game-regroup', skillId: 'add-sub-regroup', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-bnwords', skillId: 'bn-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -230,6 +234,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',
   'game-placevalue': 'PlaceValue',
+  'game-round': 'Rounding',
   'game-bnmatras': 'BnMatras',
   'game-sightwords': 'SightWords',
   'game-animalhome': 'AnimalHome',
