@@ -15,7 +15,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
@@ -39,7 +39,7 @@ const APP_BUILD = "13 Aug 2026 · 0.26.16 (per-day wrong-answer history + playti
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.26.16";
 
-type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "leaderboard" | "trophyroom" | "cert" | "castle";
+type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -342,6 +342,50 @@ const BADGES: BadgeDef[] = [
   { id: "worldChamp", emoji: "👑", name: "Land Champion", nameBn: "ভূখণ্ড চ্যাম্পিয়ন", hint: "Master every skill in a land", hintBn: "একটি ভূখণ্ডের সব দক্ষতা আয়ত্ত করো", earned: (c) => c.worlds >= 1 },
 ];
 
+/* #289 — long-term achievements album: milestones ACROSS weeks, derived from
+ * lifetime local stats (same shape as Badges but bigger, slower goals). A new
+ * one fires the celebrate-once effect on home; the album grid pops the newly
+ * unlocked card with a glow animation. All offline. */
+interface AchCtx {
+  sessions: number; // completed sessions
+  stars: number; // lifetime stars
+  mastered: number; // skills mastered (lifetime)
+  streak: number; // standing day streak
+  coins: number; // lifetime coins earned
+  worlds: number; // fully-mastered lands
+  pets: number; // species adopted
+  petStage: number; // current pet growth 0..3
+}
+interface AchDef {
+  id: string;
+  emoji: string;
+  name: string;
+  nameBn: string;
+  hint: string;
+  hintBn: string;
+  earned: (c: AchCtx) => boolean;
+}
+const ACHIEVEMENTS: AchDef[] = [
+  { id: "firstRound", emoji: "🎈", name: "First Steps", nameBn: "প্রথম পদক্ষেপ", hint: "Complete your first session", hintBn: "প্রথম খেলাটি শেষ করো", earned: (c) => c.sessions >= 1 },
+  { id: "rounds25", emoji: "🎮", name: "25 Rounds", nameBn: "২৫ রাউন্ড", hint: "Complete 25 sessions", hintBn: "২৫টা খেলা শেষ করো", earned: (c) => c.sessions >= 25 },
+  { id: "rounds100", emoji: "💯", name: "100 Rounds", nameBn: "১০০ রাউন্ড", hint: "Complete 100 sessions", hintBn: "১০০টা খেলা শেষ করো", earned: (c) => c.sessions >= 100 },
+  { id: "rounds250", emoji: "🚀", name: "250 Rounds", nameBn: "২৫০ রাউন্ড", hint: "Complete 250 sessions", hintBn: "২৫০টা খেলা শেষ করো", earned: (c) => c.sessions >= 250 },
+  { id: "stars100", emoji: "⭐", name: "100 Stars", nameBn: "১০০ তারা", hint: "Earn 100 stars", hintBn: "১০০টা তারা জিতো", earned: (c) => c.stars >= 100 },
+  { id: "stars500", emoji: "🌟", name: "500 Stars", nameBn: "৫০০ তারা", hint: "Earn 500 stars", hintBn: "৫০০টা তারা জিতো", earned: (c) => c.stars >= 500 },
+  { id: "master5", emoji: "🧠", name: "5 Skills", nameBn: "৫ দক্ষতা", hint: "Master 5 skills", hintBn: "৫টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 5 },
+  { id: "master10", emoji: "📚", name: "10 Skills", nameBn: "১০ দক্ষতা", hint: "Master 10 skills", hintBn: "১০টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 10 },
+  { id: "master25", emoji: "🏅", name: "25 Skills", nameBn: "২৫ দক্ষতা", hint: "Master 25 skills", hintBn: "২৫টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 25 },
+  { id: "master40", emoji: "🎓", name: "40 Skills", nameBn: "৪০ দক্ষতা", hint: "Master 40 skills", hintBn: "৪০টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 40 },
+  { id: "streak14", emoji: "🔥", name: "14-Day Streak", nameBn: "১৪ দিনের ধারা", hint: "Play 14 days in a row", hintBn: "টানা ১৪ দিন খেলো", earned: (c) => c.streak >= 14 },
+  { id: "streak30", emoji: "🗓️", name: "30-Day Streak", nameBn: "৩০ দিনের ধারা", hint: "Play 30 days in a row", hintBn: "টানা ৩০ দিন খেলো", earned: (c) => c.streak >= 30 },
+  { id: "world1", emoji: "🌍", name: "First Land", nameBn: "প্রথম ভূখণ্ড", hint: "Fully master your first land", hintBn: "প্রথম ভূখণ্ড সম্পূর্ণ করো", earned: (c) => c.worlds >= 1 },
+  { id: "worldAll", emoji: "👑", name: "All Lands", nameBn: "সব ভূখণ্ড", hint: `Master every land (${BANDS.length})`, hintBn: `সব ভূখণ্ড আয়ত্ত করো (${bnNum(BANDS.length)})`, earned: (c) => c.worlds >= BANDS.length },
+  { id: "banker", emoji: "🪙", name: "Banker", nameBn: "ব্যাংকার", hint: "Earn 100 coins in total", hintBn: "মোট ১০০ কয়েন জিতো", earned: (c) => c.coins >= 100 },
+  { id: "collector", emoji: "💰", name: "Collector", nameBn: "সংগ্রাহক", hint: "Earn 500 coins in total", hintBn: "মোট ৫০০ কয়েন জিতো", earned: (c) => c.coins >= 500 },
+  { id: "grown", emoji: "🐣", name: "Fully Grown", nameBn: "সম্পূর্ণ বড়", hint: "Grow your pet to the last stage", hintBn: "পোষ্যকে শেষ ধাপে বড় করো", earned: (c) => c.petStage >= 3 },
+  { id: "zookeeper", emoji: "🐾", name: "Zookeeper", nameBn: "চিড়িয়াখানার রক্ষক", hint: "Adopt every pet species", hintBn: "সব পোষ্যের প্রজাতি দত্তক নাও", earned: (c) => c.pets >= NOVA_SPECIES.length },
+];
+
 /** How many lands the kid has FULLY mastered (every skill past the threshold). */
 function fullyMasteredWorlds(skillsMap: Record<string, SkillMapEntry>, kidId: string): number {
   return BANDS.filter((b) => {
@@ -530,6 +574,13 @@ interface Strings {
   badgeEarned: string;
   badgeLocked: string;
   badgeNewSpeak: (name: string, title: string) => string;
+  /* #289 — long-term achievements book */
+  achTile: string;
+  achTitle: string;
+  achSub: (n: number, total: number) => string;
+  achUnlocked: string;
+  achLocked: string;
+  achNewSpeak: (name: string, title: string) => string;
   /* #282 — same-device sibling leaderboard */
   lbTile: string;
   lbTitle: string;
@@ -1093,6 +1144,13 @@ const STR: Record<Lang, Strings> = {
     badgeEarned: "Earned!",
     badgeLocked: "Keep playing to unlock",
     badgeNewSpeak: (name, title) => `${name}, new badge — ${title}! 🎖️`,
+    /* #289 — long-term achievements book */
+    achTile: "Achievements",
+    achTitle: "📚 Achievements",
+    achSub: (n, total) => `${n} of ${total} achievements unlocked`,
+    achUnlocked: "Unlocked!",
+    achLocked: "A long-term goal",
+    achNewSpeak: (name, title) => `${name}, achievement unlocked — ${title}! 🏆`,
     /* #282 — same-device sibling leaderboard */
     lbTile: "Leaderboard",
     lbTitle: "🥇 Sibling Leaderboard",
@@ -1641,6 +1699,13 @@ const STR: Record<Lang, Strings> = {
     badgeEarned: "জিতেছো!",
     badgeLocked: "আনলক করতে খেলতে থাকো",
     badgeNewSpeak: (name, title) => `${name}, নতুন ব্যাজ — ${title}! 🎖️`,
+    /* #289 — long-term achievements book */
+    achTile: "কৃতিত্ব",
+    achTitle: "📚 কৃতিত্বের বই",
+    achSub: (n, total) => `${bnNum(n)}/${bnNum(total)}টা কৃতিত্ব আনলক করেছো`,
+    achUnlocked: "আনলক!",
+    achLocked: "দীর্ঘমেয়াদি লক্ষ্য",
+    achNewSpeak: (name, title) => `${name}, কৃতিত্ব আনলক হয়েছে — ${title}! 🏆`,
     /* #282 — same-device sibling leaderboard */
     lbTile: "লিডারবোর্ড",
     lbTitle: "🥇 ভাইবোন লিডারবোর্ড",
@@ -2771,6 +2836,43 @@ export default function App() {
       });
     }
   }, [kid?.id, earnedBadgeKey, storedBadges.join(",")]);
+  // #289 — long-term achievements: celebrating each NEWLY-unlocked milestone
+  // exactly once (the album grid shows the pop animation; home fires the cheer).
+  const achStats = useKidStore((s) => s.stats[kid?.id ?? ""] ?? { stars: 0, score: 0, sessions: 0 });
+  const achStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
+  const achCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.totalEarned ?? 0 : 0));
+  const achPets = useKidStore((s) => (kid ? s.nova[kid.id]?.adoptedPets?.length ?? 0 : 0));
+  const achPetStage = useKidStore((s) => (kid ? s.nova[kid.id]?.petStage ?? 0 : 0));
+  const storedAchs = useKidStore((s) => (kid ? s.nova[kid.id]?.achievements ?? [] : []));
+  const earnedAchKey = kid
+    ? ACHIEVEMENTS.filter((a) =>
+        a.earned({
+          sessions: achStats.sessions,
+          stars: achStats.stars,
+          mastered: totalMastered(skillsMap, kid.id),
+          streak: achStreak,
+          coins: achCoins,
+          worlds: fullyMasteredWorlds(skillsMap, kid.id),
+          pets: achPets,
+          petStage: achPetStage,
+        })
+      )
+        .map((a) => a.id)
+        .join(",")
+    : "";
+  useEffect(() => {
+    if (!kid || !earnedAchKey) return;
+    const earned = earnedAchKey.split(",").filter(Boolean);
+    const newly = useKidStore.getState().novaSyncAchievements(kid.id, earned);
+    if (newly.length) {
+      newly.forEach((id) => {
+        const a = ACHIEVEMENTS.find((x) => x.id === id);
+        if (!a) return;
+        tada();
+        speak(lang === "bn" ? t.achNewSpeak(kid.name, a.nameBn) : t.achNewSpeak(kid.name, a.name));
+      });
+    }
+  }, [kid?.id, earnedAchKey, storedAchs.join(",")]);
   // #277 — land trophies: celebrating a NEWLY fully-mastered land exactly once.
   const earnedTrophyKey = kid
     ? BANDS.filter((b) => {
@@ -3200,6 +3302,7 @@ export default function App() {
   const goGarden = () => setScreen(kid ? "garden" : "kidpick");
   const goCards = () => setScreen(kid ? "cards" : "kidpick");
   const goBadges = () => setScreen(kid ? "badges" : "kidpick");
+  const goAchievements = () => setScreen(kid ? "achievements" : "kidpick");
   const goTrophyRoom = () => setScreen(kid ? "trophyroom" : "kidpick");
   /** Open the printable certificate for a completed world. */
   const openCert = (b: Band) => {
@@ -4650,6 +4753,10 @@ export default function App() {
                 <button className="play-icon" onClick={goBadges}>
                   <span className="play-icon-emoji" aria-hidden="true">🏅</span>
                   <span>{t.badgeTile}</span>
+                </button>
+                <button className="play-icon" onClick={goAchievements}>
+                  <span className="play-icon-emoji" aria-hidden="true">📚</span>
+                  <span>{t.achTile}</span>
                 </button>
                 <button className="play-icon" onClick={() => setScreen(kid ? "leaderboard" : "kidpick")}>
                   <span className="play-icon-emoji" aria-hidden="true">🥇</span>
@@ -6647,6 +6754,59 @@ export default function App() {
                   <span className="tr-band-prog">{t.skillsProg(r.mastered, r.total)}</span>
                   <span className="tr-state">{r.earned ? t.trEarned : t.trLocked}</span>
                 </div>
+              );
+            })}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* #289 — Long-term Achievements Book: milestones ACROSS weeks (100 rounds,
+     10 skills, streaks, lands, coins, pets). A card pops with a glow when it
+     unlocks — the unlock animation. All offline (local stats only). */
+  if (screen === "achievements" && kid) {
+    const ctx: AchCtx = {
+      sessions: achStats.sessions,
+      stars: achStats.stars,
+      mastered: totalMastered(skillsMap, kid.id),
+      streak: achStreak,
+      coins: achCoins,
+      worlds: fullyMasteredWorlds(skillsMap, kid.id),
+      pets: achPets,
+      petStage: achPetStage,
+    };
+    const unlocked = storedAchs;
+    const justNew = earnedAchKey ? earnedAchKey.split(",").filter(Boolean) : [];
+    const unlockedCount = ACHIEVEMENTS.filter((a) => a.earned(ctx)).length;
+    return (
+      <div className="app">
+        <main className="screen ach-screen">
+          <header className="screen-head">
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <div className="head-title">
+              <h2>{t.achTitle}</h2>
+              <p className="head-sub">{t.achSub(unlockedCount, ACHIEVEMENTS.length)}</p>
+            </div>
+            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
+          </header>
+
+          <div className="ach-grid">
+            {ACHIEVEMENTS.map((a) => {
+              const earned = a.earned(ctx);
+              const isNew = earned && justNew.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  className={`ach-card${earned ? " earned" : " locked"}${isNew ? " pop" : ""}`}
+                  onClick={() => speak(lang === "bn" ? t.achNewSpeak(kid.name, a.nameBn) : t.achNewSpeak(kid.name, a.name))}
+                  aria-label={earned ? t.badgeEarned : t.badgeLocked}
+                >
+                  <span className="ach-emoji" aria-hidden="true">{earned ? a.emoji : "🔒"}</span>
+                  <span className="ach-name">{lang === "bn" ? a.nameBn : a.name}</span>
+                  <span className="ach-hint">{lang === "bn" ? a.hintBn : a.hint}</span>
+                  <span className={`ach-state${earned ? " earned" : ""}`}>{earned ? t.achUnlocked : t.achLocked}</span>
+                </button>
               );
             })}
           </div>

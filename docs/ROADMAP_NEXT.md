@@ -169,7 +169,7 @@
 - ~~Kids: star-of-the-week recap card~~ ✅ #286 — 🌟 weekly card (days/top-skill/biggest win), spoken option, offline, locale-packed (PR pending)
 - ~~Kids: quest mission variety~~ ✅ #287 — daily quest type rotates (rounds/stars/master/new-game), reward parity, offline (PR pending)
 - ~~Kids: kid-friendly voice settings~~ ✅ #288 — 🗣️ Nova's Voice panel in-game: Soft/Normal/Loud + one-tap reset, applies to both speech engines, kid-safe (PR pending)
-- Kids: long-term achievements book  _(priority: low, kid-first)_
+- ~~Kids: long-term achievements book~~ ✅ #289 — 📚 18 milestone achievements, pop unlock animation, celebrate-once spoken cheer, offline (PR pending)
 - Kids: mastery confetti + spoken cheer  _(priority: low, kid-first)_
 - Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_
 - Kids: Nova reaction pack v2  _(priority: low, kid-first)_
