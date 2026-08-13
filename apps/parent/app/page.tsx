@@ -305,6 +305,81 @@ const PAUSE_LANGS = {
   },
 } as const;
 
+/** #89 — per-skill missed questions: what a kid got wrong, so re-teaching is
+ *  transparent. EN + BN strings for the portal card — same country-pack seam.
+ *  Built purely from the already-loaded story ledger (offline-first). */
+const MISSED_LANGS = {
+  en: {
+    title: "❌ Missed questions",
+    hint: "What {name} got wrong, per skill — with the answer they picked and the right one, so you can see exactly where re-teaching is happening. Built right here from the story ledger we already load, so it works offline.",
+    empty: "No misses recorded yet — wrong taps and missed rounds show up here.",
+    picked: "picked",
+    answer: "answer",
+    reteaching: "🔁 reteaching",
+    game: "Game",
+  },
+  bn: {
+    title: "❌ ভুল উত্তর",
+    hint: "{name} কী ভুল করেছে, দক্ষতা অনুযায়ী — কোন উত্তর বেছে নিয়েছিল আর সঠিক উত্তর কী, যাতে আবার শেখানো কোথায় হচ্ছে তা স্পষ্ট দেখা যায়। আমরা আগে যে স্টোরি লেজার লোড করি তা থেকেই তৈরি হয়, তাই অফলাইনে কাজ করে।",
+    empty: "এখনো কোনো ভুল রেকর্ড হয়নি — ভুল ট্যাপ আর ভুল রাউন্ড এখানে দেখাবে।",
+    picked: "বেছে নিয়েছে",
+    answer: "উত্তর",
+    reteaching: "🔁 আবার শেখানো হচ্ছে",
+    game: "খেলা",
+  },
+} as const;
+
+/** #89 — one missed question from the story ledger. Wrong-tap stories carry
+ *  the exact two sides (picked vs answer) + Moni's fingerprint; scored-round
+ *  misses carry the game + diagnosis. `reteaching` = Moni's action was a
+ *  reteach that round. */
+interface MissedQ {
+  gameId: string;
+  at: string;
+  wrongAnswer: string | number | null;
+  correctAnswer: string | number | null;
+  errorKind: string | null;
+  fingerprint: string | null;
+  reteaching: boolean;
+}
+
+/** Per-skill group of recent misses (newest first, capped per skill). */
+interface MissedSkill {
+  skillId: string;
+  misses: MissedQ[];
+}
+
+/** #89 — derive the per-skill missed-question list from the loaded stories
+ *  (newest-first). Pure + client-side, offline-friendly, nothing fetched. */
+function buildMissedQuestions(stories: LearningStoryRow[]): MissedSkill[] {
+  const bySkill = new Map<string, MissedQ[]>();
+  let count = 0;
+  for (const s of stories) {
+    if (s.outcome) continue; // only misses
+    if (count++ >= 400) break; // cap the scan — newest first is what matters
+    const arr = bySkill.get(s.skill_id) ?? [];
+    arr.push({
+      gameId: s.game_id,
+      at: s.created_at,
+      wrongAnswer: (typeof s.context?.wrongAnswer === "number" ? s.context.wrongAnswer : null) as string | number | null,
+      correctAnswer: (typeof s.context?.correctAnswer === "number" ? s.context.correctAnswer : null) as string | number | null,
+      errorKind: s.error_kind,
+      fingerprint: (typeof s.context?.fingerprint === "string" ? s.context.fingerprint : null) as string | null,
+      reteaching: s.action === "reteach",
+    });
+    bySkill.set(s.skill_id, arr);
+  }
+  return [...bySkill.entries()]
+    .map(([skillId, misses]) => ({ skillId, misses: misses.slice(0, 5) }))
+    .sort((a, b) => b.misses.length - a.misses.length)
+    .slice(0, 8);
+}
+
+/** #89 — humanize a skill id ("count-pop-to-10" → "count pop to 10"). */
+function skillLabel(id: string): string {
+  return id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** #257 — world bands a focus pin can target (1..7). */
 const FOCUS_BANDS = [1, 2, 3, 4, 5, 6, 7];
 
@@ -1444,6 +1519,8 @@ export default function ParentDashboard() {
   const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
   // #239 — top Moni-flagged skills this week, derived from the same stories.
   const flags = activeId ? buildFlaggedSkills(stories[activeId] ?? []) : [];
+  // #89 — per-skill missed questions, derived from the same offline story ledger.
+  const missedSkills = activeId ? buildMissedQuestions(stories[activeId] ?? []) : [];
   // 🚀 #249 — the kid's acceleration plan (skills skipped ahead, newest first —
   // the backend already sorts; offline-safe because it's already-loaded state).
   const accelRows = activeId ? accel[activeId] ?? [] : [];
@@ -2926,6 +3003,46 @@ export default function ParentDashboard() {
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+
+          {/* #89 — per-skill missed questions, derived from the already-loaded
+              story ledger (offline-first). Shows the answer picked vs the right
+              one + Moni's diagnosis, grouped per skill, with a reteach badge. */}
+          <section className="card missed-card">
+            <h2>{MISSED_LANGS[wizLang].title}</h2>
+            <p className="muted small">{MISSED_LANGS[wizLang].hint.replace("{name}", active.name)}</p>
+            {missedSkills.length === 0 ? (
+              <p className="muted">{MISSED_LANGS[wizLang].empty}</p>
+            ) : (
+              <div className="missed-list">
+                {missedSkills.map((ms) => (
+                  <details key={ms.skillId} className="missed-skill" open>
+                    <summary>
+                      <span className="missed-skill-name">{skillLabel(ms.skillId)}</span>
+                      <span className="missed-count">{ms.misses.length}</span>
+                      {ms.misses.some((m) => m.reteaching) && (
+                        <span className="reteach-badge">{MISSED_LANGS[wizLang].reteaching}</span>
+                      )}
+                    </summary>
+                    <ul className="missed-rows">
+                      {ms.misses.map((m, i) => (
+                        <li key={i} className="missed-row">
+                          <span className="missed-game">{gameLabel(m.gameId)}</span>
+                          <span className="missed-time">{fmtTime(m.at)}</span>
+                          <span className="missed-detail">
+                            {m.wrongAnswer != null && `${MISSED_LANGS[wizLang].picked} ${m.wrongAnswer}`}
+                            {m.wrongAnswer != null && m.correctAnswer != null && " · "}
+                            {m.correctAnswer != null && `${MISSED_LANGS[wizLang].answer} ${m.correctAnswer}`}
+                            {m.fingerprint ? ` · ${m.fingerprint}` : ""}
+                          </span>
+                          {m.errorKind && <span className={`missed-kind kind-${m.errorKind}`}>{m.errorKind}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
             )}
           </section>
 

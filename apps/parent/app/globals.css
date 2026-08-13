@@ -772,6 +772,37 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .pause-block.on { border-color: rgba(255, 143, 163, 0.65); background: rgba(255, 143, 163, 0.12); }
 .pause-block .btn { margin-top: 10px; }
 
+/* #89 — per-skill missed questions card: answer-picked vs answer-right + Moni's
+   diagnosis, grouped per skill, with a reteach badge. */
+.missed-card { margin-top: 16px; }
+.missed-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.missed-skill { border: 1px solid var(--nv-border); border-radius: 12px; background: var(--nv-surface-soft); overflow: hidden; }
+.missed-skill summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 800;
+  color: var(--nv-muted-strong);
+}
+.missed-skill summary::-webkit-details-marker { display: none; }
+.missed-skill summary::before { content: "▸"; color: var(--nv-brand); transition: transform 0.15s; }
+.missed-skill[open] summary::before { transform: rotate(90deg); }
+.missed-skill-name { flex: 1; }
+.missed-count {
+  min-width: 22px; text-align: center; font-size: 12px; font-weight: 800;
+  background: rgba(255, 143, 163, 0.22); color: var(--nv-err); border-radius: 999px; padding: 2px 7px;
+}
+.reteach-badge { font-size: 11.5px; font-weight: 800; color: var(--nv-gold); background: rgba(255, 209, 102, 0.12); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.missed-rows { list-style: none; padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+.missed-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; padding: 7px 9px; border-radius: 9px; background: var(--nv-chip); }
+.missed-game { font-weight: 800; color: var(--nv-text-soft); }
+.missed-time { font-size: 11.5px; color: var(--nv-faint); }
+.missed-detail { flex: 1; color: var(--nv-muted-strong); }
+.missed-kind { font-size: 11px; font-weight: 800; text-transform: capitalize; color: var(--nv-amber); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.25); border-radius: 999px; padding: 2px 8px; }
+
 /* forms */
 input {
   display: block;
