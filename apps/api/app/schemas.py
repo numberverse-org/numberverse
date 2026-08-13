@@ -256,6 +256,31 @@ class LearningStoryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── 🚀 Acceleration plan (#249) ──
+class AccelerationIn(BaseModel):
+    """One "skipped ahead" entry. `uid` is the client's durable-outbox key —
+    re-posting the same uid is a no-op (same dedup as stories)."""
+    kid_id: uuid.UUID
+    skill_id: str
+    # easy | know | moving-on | parent — why this skill was skipped.
+    reason: str = Field(pattern=r"^(easy|know|moving-on|parent)$")
+    band_from: int = Field(ge=1, le=5)
+    band_to: int = Field(ge=1, le=5)
+    uid: str | None = None
+
+
+class AccelerationOut(BaseModel):
+    id: uuid.UUID
+    kid_id: uuid.UUID
+    skill_id: str
+    reason: str
+    band_from: int
+    band_to: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Kotha semantic retrieval (#323) ──
 class StorySearchIn(BaseModel):
     """A natural-language query for similar learning moments. The response is

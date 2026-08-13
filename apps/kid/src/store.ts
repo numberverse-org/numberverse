@@ -56,6 +56,22 @@ export interface KothaStory {
   ts: number;
 }
 
+/** 🚀 #249 — an acceleration entry: a skill the kid "skipped ahead" past (they
+ *  already knew it / it was too easy / they moved on — or the parent drove the
+ *  skip). Queued in the durable outbox and drained to POST /acceleration,
+ *  exactly like `stories` drains to /stories. `bandFrom`/`bandTo` record the
+ *  jump across world bands so the parent portal can show the acceleration plan. */
+export interface AccelEvent {
+  uid: string;
+  kidId: string; // LOCAL kid id — mapped to a server kid at sync time
+  skillId: string;
+  /** easy | know | moving-on | parent — why the skill was skipped. */
+  reason: "easy" | "know" | "moving-on" | "parent";
+  bandFrom: number;
+  bandTo: number;
+  ts: number;
+}
+
 /** Live indicator of the background sync (for the home/parent screens). */
 export type SyncState = "idle" | "syncing" | "ok" | "offline" | "error";
 
@@ -348,6 +364,8 @@ interface KidState {
   pending: SyncEvent[];
   /** 📚 KOTHA outbox — learning moments with Moni's diagnosis, drained to /stories. */
   stories: KothaStory[];
+  /** 🚀 KOTHA outbox — "skipped ahead" entries, drained to /acceleration (#249). */
+  accel: AccelEvent[];
   /** Live sync indicator (transient, not persisted). */
   syncState: SyncState;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
@@ -376,6 +394,19 @@ interface KidState {
   clearPending: (uids: Set<string>) => void;
   /** Drop the Kotha stories that were just posted (by uid). */
   clearStories: (uids: Set<string>) => void;
+  /** 🚀 #249 — mark a skill "skipped ahead" (durable outbox) AND mastered
+   *  locally so the journey/world advances past it. `reason` is why: the kid
+   *  already knew it / found it too easy / moved on. `bandFrom`/`bandTo` log
+   *  the jump across world bands (parent portal → acceleration plan). */
+  accelSkip: (
+    kidId: string,
+    skillId: string,
+    reason: "easy" | "know" | "moving-on" | "parent",
+    bandFrom: number,
+    bandTo: number
+  ) => void;
+  /** Drop the acceleration entries that were just posted (by uid). */
+  clearAccel: (uids: Set<string>) => void;
   setSyncState: (s: SyncState) => void;
   skillFor: (kidId: string, skillId: string) => SkillState;
   /** 🧠 MONI profile for a kid (empty profile if never seen). */
@@ -466,6 +497,7 @@ export const useKidStore = create<KidState>()(
       events: [],
       pending: [],
       stories: [],
+      accel: [],
       syncState: "idle",
       skills: {},
       mistakes: {},
@@ -632,6 +664,33 @@ export const useKidStore = create<KidState>()(
         set((s) => (uids.size ? { pending: s.pending.filter((e) => !uids.has(e.uid)) } : s)),
       clearStories: (uids) =>
         set((s) => (uids.size ? { stories: (s.stories ?? []).filter((st) => !uids.has(st.uid)) } : s)),
+      accelSkip: (kidId, skillId, reason, bandFrom, bandTo) => {
+        const now = Date.now();
+        set((s) => {
+          const mk = keyOf(kidId, skillId);
+          // The skip marks the skill as mastered locally (>= the mastery bar) so
+          // the journey/world honestly advances past it — AND it's logged so the
+          // parent can see (and trust) exactly what was skipped and why.
+          const prev = s.skills[mk] ?? initialSkillState(kidId, skillId, now);
+          const mastered: SkillState = {
+            ...prev,
+            pMastered: 1,
+            correct: Math.max(prev.correct, 3),
+            attempts: Math.max(prev.attempts, 3),
+            lastPractice: now,
+            lastDecay: now,
+          };
+          return {
+            skills: { ...s.skills, [mk]: mastered },
+            accel: [
+              ...(s.accel ?? []),
+              { uid: genUid(), kidId, skillId, reason, bandFrom, bandTo, ts: now },
+            ],
+          };
+        });
+      },
+      clearAccel: (uids) =>
+        set((s) => (uids.size ? { accel: (s.accel ?? []).filter((a) => !uids.has(a.uid)) } : s)),
       setSyncState: (syncState) => set({ syncState }),
       skillFor: (kidId, skillId) =>
         get().skills[keyOf(kidId, skillId)] ?? initialSkillState(kidId, skillId),
@@ -1145,6 +1204,6 @@ export const useKidStore = create<KidState>()(
           return { garden: { ...s.garden, [kidId]: next } };
         }),
     }),
-    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness }) }
+    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness }) }
   )
 );

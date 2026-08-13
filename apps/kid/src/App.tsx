@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -718,6 +718,11 @@ interface Strings {
   /** Home PLAY screen's "what will we play next" line. */
   nextLesson: (title: string) => string;
   practiceAgain: string;
+  /** 🚀 #249 — skip-ahead: the kid already knows the next lesson. */
+  skipAhead: string;
+  skipAheadHint: (title: string) => string;
+  skipDone: string;
+  skipLogged: (title: string) => string;
   /** #276 — per-land skill tree: mastered nodes glow, tap a leaf to jump in. */
   treeTitle: string;
   treeHint: string;
@@ -1377,6 +1382,11 @@ const STR: Record<Lang, Strings> = {
     playNext: (title) => `▶ Play next: ${title}`,
     nextLesson: (title) => `Next up: ${title}`,
     practiceAgain: "▶ Practice again",
+    // 🚀 #249 — skip-ahead (logged so the parent sees the acceleration plan).
+    skipAhead: "⏭ I already know this",
+    skipAheadHint: (title) => `Already know "${title}"? Skip it — we'll note it on your progress.`,
+    skipDone: "⏭ Skipped!",
+    skipLogged: (title) => `Noted — you skipped "${title}". Your parent can see it on the plan.`,
     treeTitle: "🌳 Skill Tree",
     treeHint: "Tap a leaf to jump straight to that lesson",
     homeHello: (name) => `Whoo! Hi ${name}!`,
@@ -2006,6 +2016,11 @@ const STR: Record<Lang, Strings> = {
     playNext: (title) => `▶ পরবর্তী: ${title}`,
     nextLesson: (title) => `পরের পাঠ: ${title}`,
     practiceAgain: "▶ আবার অনুশীলন",
+    // 🚀 #249 — skip-ahead (লগ হয়, অভিভাবক অ্যাকসেলারেশন প্ল্যানে দেখতে পাবেন)।
+    skipAhead: "⏭ আমি এটা জানি",
+    skipAheadHint: (title) => `"${title}" কি জানা আছে? বাদ দাও — আমরা তোমার অগ্রগতিতে লিখে দেব।`,
+    skipDone: "⏭ বাদ দেওয়া হয়েছে!",
+    skipLogged: (title) => `লেখা হয়েছে — "${title}" তুমি বাদ দিয়েছ। অভিভাবক প্ল্যানে দেখতে পাবেন।`,
     treeTitle: "🌳 দক্ষতা বৃক্ষ",
     treeHint: "সোজা সেই পাঠে যেতে পাতায় চাপ দাও",
     homeHello: (name) => `হু! হাই ${name}!`,
@@ -3453,6 +3468,11 @@ export default function App() {
   useEffect(() => {
     if (storyPending >= STORY_QUEUE_CAP) drainStoriesIfFull();
   }, [storyPending]);
+  // 🚀 #249 — acceleration queue quota: same eager-drain as stories.
+  const accelPending = useKidStore((s) => s.accel.length);
+  useEffect(() => {
+    if (accelPending >= STORY_QUEUE_CAP) drainAccelIfFull();
+  }, [accelPending]);
   // Offline-first cue: the service worker has fully installed (page now served
   // from cache) → the app genuinely works with NO network.
   const [swActive, setSwActive] = useState(false);
@@ -3874,6 +3894,8 @@ export default function App() {
   })();
   // A gentle child-facing banner when a play attempt hits the daily cap.
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  // 🚀 #249 — skip-ahead toast on the world detail screen.
+  const [skipNotice, setSkipNotice] = useState<string | null>(null);
   // Track minutes: a session start stamps this ref; the session-end effect adds
   // the elapsed minutes to the daily tracker.
   const sessionStartRef = useRef<number | null>(null);
@@ -4726,6 +4748,25 @@ export default function App() {
   const openWorld = (b: Band) => {
     setWorld(b);
     setScreen("worlddetail");
+  };
+
+  /** 🚀 #249 — skip-ahead: the kid already knows the next lesson. Marks the
+   *  skill mastered locally (journey advances past it) + logs an acceleration
+   *  entry with the band jump, so the parent portal's acceleration plan shows
+   *  exactly what was skipped and why. Purely additive — never silently deletes
+   *  content; the parent sees every skip. */
+  const skipAhead = (skill: Skill) => {
+    if (!kid) return;
+    click();
+    setLimitNotice(null);
+    const from = skill.band;
+    const to = Math.min(5, from + 1);
+    useKidStore.getState().accelSkip(kid.id, skill.id, "know", from, to);
+    announce(t.skipLogged(skill.title));
+    // If we just skipped the CURRENT journey stop, the journey advances to the
+    // next unmastered skill on its own (mastered = done). Show a quick toast.
+    setSkipNotice(t.skipDone);
+    window.setTimeout(() => setSkipNotice(null), 2200);
   };
 
   const addKid = (name: string, avatar: string, birthYear: number, birthMonth?: number, birthDay?: number) => {
@@ -7476,6 +7517,22 @@ export default function App() {
           <button className="big-btn" onClick={() => startPlayWorld(world)}>
             {nextSkill ? t.playNext(nextSkill.title) : t.practiceAgain}
           </button>
+
+          {/* 🚀 #249 — skip-ahead: "I already know this". Logs an acceleration
+              entry (band jump) so the parent portal's plan shows the skip. */}
+          {nextSkill && (
+            <div className="skip-row">
+              <button
+                className="skip-chip"
+                onClick={() => skipAhead(nextSkill)}
+                aria-label={t.skipAheadHint(nextSkill.title)}
+              >
+                <span className="skip-chip-ico">⏭</span>
+                <span className="skip-chip-txt">{t.skipAhead}</span>
+              </button>
+              {skipNotice && <span className="skip-toast" role="status">{skipNotice}</span>}
+            </div>
+          )}
 
           {/* #276 — per-land SKILL TREE: every skill is a leaf on the trunk,
               mastered leaves GLOW, the next lesson pulses, and tapping any leaf
