@@ -94,6 +94,11 @@ class KidSettings(Base):
     # kid toward it without pressure; the server clamps it to the day's cap so
     # a goal never exceeds the hard limit. null/0 = no goal. Auto-migrated.
     goal_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # #257 — curriculum focus pin: a subject + world band the parent wants the
+    # journey to prioritize. Both-or-neither (the router clears a lone half);
+    # null/null = normal journey order. Auto-migrated.
+    focus_subject: Mapped[str | None] = mapped_column(String, nullable=True)
+    focus_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kid: Mapped[Kid] = relationship(back_populates="settings")

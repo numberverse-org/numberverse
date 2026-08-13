@@ -76,6 +76,10 @@ export interface KidSettings {
   /** #256 — gentle daily playtime goal (minutes); Nova nudges toward it, never
    *  blocks. Clamped server-side to the day's cap. null/0 = no goal. */
   goal_min?: number | null;
+  /** #257 — curriculum focus pin: subject + world band to prioritize in the
+   *  journey. Both-or-neither; null/null = normal order. */
+  focus_subject?: string | null;
+  focus_band?: number | null;
   updated_at?: string | null;
 }
 

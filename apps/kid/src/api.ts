@@ -804,6 +804,10 @@ export interface KidSettings {
    *  toward it without pressure (a once-per-day celebration); the server clamps
    *  it to the day's cap so it never exceeds the hard limit. null/0 = no goal. */
   goal_min?: number | null;
+  /** #257 — curriculum focus pin: subject + world band the parent wants the
+   *  journey to prioritize. Both-or-neither; null/null = normal order. */
+  focus_subject?: string | null;
+  focus_band?: number | null;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -822,6 +826,8 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   quiet_volume: 0.15,
   voice_record_enabled: false,
   goal_min: null,
+  focus_subject: null,
+  focus_band: null,
 };
 
 /** #256 — "did we already celebrate today's goal?" flag (once per day, so the

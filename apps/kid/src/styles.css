@@ -1621,6 +1621,26 @@ body {
   background: linear-gradient(180deg, #6ee7ff, #2ec4b6);
   color: #062a3a;
 }
+/* 📌 #257 — parent-set focus pin: home chip + world-map marker. */
+.focus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 213, 102, 0.16);
+  border: 1px solid rgba(255, 213, 102, 0.45);
+  color: #ffe9ad;
+  font-size: 13px;
+  font-weight: 800;
+}
+.map-focus-pin {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 14px;
+  vertical-align: middle;
+}
 .quest-chip {
   display: flex;
   flex-direction: column;

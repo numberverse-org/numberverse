@@ -731,6 +731,11 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   margin: 0;
 }
 .goal-unit { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
+/* 📌 #257 — curriculum focus pin (subject + world) */
+.focus-subjects { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.focus-bands { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.focus-clear { margin-top: 10px; }
+.focus-clear .ghost-btn { color: var(--nv-err); border-color: rgba(255, 143, 163, 0.4); }
 
 /* forms */
 input {

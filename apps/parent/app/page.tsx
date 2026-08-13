@@ -279,7 +279,12 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   quiet_volume: 0.15,
   voice_record_enabled: false,
   goal_min: null,
+  focus_subject: null,
+  focus_band: null,
 };
+
+/** #257 — world bands a focus pin can target (1..7). */
+const FOCUS_BANDS = [1, 2, 3, 4, 5, 6, 7];
 
 /** #6 — day names for the per-weekday playtime editor (Mon..Sun). */
 const WEEKDAYS = [
@@ -2536,6 +2541,56 @@ export default function ParentDashboard() {
                 <p className="hint">
                   ↳ Saved as up to {activeSettings.goal_min} min — clamped to the daily cap if that's lower.
                 </p>
+              )}
+            </div>
+
+            {/* 📌 #257 — curriculum focus pin: a subject + world the journey
+                leads with. Both-or-neither; Clear restores the normal path. */}
+            <div className="ctrl-block">
+              <h3>📌 Focus</h3>
+              <p className="muted small">
+                Pin a subject + world so {active.name}’s journey leads with those skills.
+                Clear it anytime to go back to the normal path.
+              </p>
+              <div className="focus-subjects">
+                {SUBJECTS.map((sub) => (
+                  <button
+                    key={sub.id}
+                    className={`toggle-chip${activeSettings.focus_subject === sub.id ? " on" : ""}`}
+                    onClick={() => {
+                      if (activeSettings.focus_subject === sub.id) {
+                        patchSettings({ focus_subject: null, focus_band: null });
+                      } else {
+                        patchSettings({ focus_subject: sub.id, focus_band: null });
+                      }
+                    }}
+                  >
+                    {sub.emoji} {sub.label}
+                  </button>
+                ))}
+              </div>
+              {activeSettings.focus_subject && (
+                <div className="focus-bands" role="group" aria-label="Focus world">
+                  {FOCUS_BANDS.map((b) => (
+                    <button
+                      key={b}
+                      className={`toggle-chip${activeSettings.focus_band === b ? " on" : ""}`}
+                      onClick={() => patchSettings({ focus_band: b })}
+                    >
+                      World {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {(activeSettings.focus_subject || activeSettings.focus_band) && (
+                <div className="focus-clear">
+                  <button
+                    className="ghost-btn small"
+                    onClick={() => patchSettings({ focus_subject: null, focus_band: null })}
+                  >
+                    ✕ Clear focus
+                  </button>
+                </div>
               )}
             </div>
 
