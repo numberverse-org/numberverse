@@ -80,7 +80,7 @@
 - ~~Math: rounding to nearest 10/100~~  ✅ #229 — number-line jump game
 - ~~Math: bar-chart reading~~  ✅ #230 — 6 emoji charts, tap-the-bar
 - ~~Science: sink or float predict~~  ✅ #231 — 16 objects, predict-then-check
-- Science: animal food chains  _(priority: low, kid-first)_
+- ~~Science: animal food chains~~  ✅ #232 — 6 chains, arrow ordering
 - Science: day & night — earth rotation  _(priority: low, kid-first)_
 - ICT: tap/drag accuracy trainer  _(priority: low, kid-first)_
 - Social: village & city life sort  _(priority: low, kid-first)_
