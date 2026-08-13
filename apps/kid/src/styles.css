@@ -2802,7 +2802,7 @@ body {
   right: 10px;
   background: #ffd166;
   color: #0b2545;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.5px;
   border-radius: 999px;
@@ -3353,7 +3353,7 @@ body {
   gap: 2px;
 }
 .fam-num { font-size: 18px; font-weight: 800; color: #ffd166; line-height: 1.1; }
-.fam-label { font-size: 10px; color: #a7c4e2; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.fam-label { font-size: 11px; color: #a7c4e2; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
 /* portal deep-link card — an <a>, so the whole card is tappable */
 .parent-portal-card {
   text-decoration: none;
@@ -3451,7 +3451,7 @@ body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.35);
   font-weight: 700;
   text-align: center;
@@ -3522,7 +3522,7 @@ body {
 .kotha-name { font-size: 12.5px; font-weight: 800; color: #f4f9ff; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .kotha-line { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.6); line-height: 1.35; }
 .kotha-reason { font-size: 11px; font-weight: 500; color: rgba(255, 255, 255, 0.5); font-style: italic; line-height: 1.3; }
-.kotha-ago { margin-left: auto; flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, 0.4); white-space: nowrap; padding-top: 2px; }
+.kotha-ago { margin-left: auto; flex: 0 0 auto; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.4); white-space: nowrap; padding-top: 2px; }
 /* 🧠 MONI — the tiny tutor's insight card */
 .moni-card { border-top: 1px dashed rgba(124, 232, 210, 0.25); margin-top: 10px; padding-top: 8px; }
 .moni-card summary { color: #f2cc8f; }
@@ -3537,7 +3537,7 @@ body {
 .moni-strictness-help { font-size: 11px; color: #a9c9e0; margin: 5px 0 0; line-height: 1.35; }
 .moni-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-bottom: 8px; }
 .moni-cell { display: flex; flex-direction: column; background: rgba(76, 201, 240, 0.06); border-radius: 8px; padding: 6px 8px; }
-.moni-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fb8d6; }
+.moni-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fb8d6; }
 .moni-v { font-size: 13px; font-weight: 700; color: #f4f9ff; }
 .moni-next { font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border-radius: 8px; padding: 8px 10px; margin: 0; }
 /* 🎯 MONI top-3 practice goals — plain-language "next skills" for parents */
@@ -4021,7 +4021,7 @@ body {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 .rank-badge-label {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: #a8b2c7;
@@ -4358,7 +4358,7 @@ body {
   color: #fff;
 }
 .lb-you {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4440,7 +4440,7 @@ body {
 .tr-band-name { font-size: 13px; font-weight: 800; color: #fff; line-height: 1.2; }
 .tr-band-prog { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.6); }
 .tr-state {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.03em;
@@ -4562,7 +4562,7 @@ body {
 }
 .card-lock { font-size: 16px; line-height: 1; }
 .card-date {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.02em;
@@ -4590,12 +4590,12 @@ body {
   text-align: center;
 }
 .card-back-foot {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
   color: #8d99ae;
   text-align: center;
 }
-.card-back-date { font-size: 9px; font-weight: 700; color: #ffd166; text-align: center; }
+.card-back-date { font-size: 11px; font-weight: 700; color: #ffd166; text-align: center; }
 .card-back-emoji { line-height: 1; }
 
 /* the golden world-champion card — foil + moving shine */
@@ -4639,7 +4639,7 @@ body {
 }
 .gold-card-emoji { font-size: 30px; line-height: 1; }
 .gold-card-title { font-size: 12px; font-weight: 900; line-height: 1.15; }
-.gold-card-sub { font-size: 10px; font-weight: 800; color: rgba(74, 44, 0, 0.85); }
+.gold-card-sub { font-size: 12px; font-weight: 800; color: rgba(74, 44, 0, 0.85); }
 .gold-card-name {
   font-size: 11px;
   font-weight: 900;
@@ -4991,7 +4991,7 @@ body {
   line-height: 1.1;
 }
 .castle-sub {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(38, 64, 42, 0.72);
   margin-top: 2px;
@@ -5551,7 +5551,7 @@ body {
   background: rgba(0, 0, 0, 0.18);
 }
 .syllabus-chip {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.4px;
   color: #eaf7ff;
