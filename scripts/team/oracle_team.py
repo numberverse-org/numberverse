@@ -254,7 +254,10 @@ def l3_tsc():
     return (p.returncode == 0), ("tsc clean" if p.returncode == 0 else p.stdout[-200:] or p.stderr[-200:])
 
 def l3_progress():
-    texts = [(KID / "src" / "App.tsx").read_text(), (KID / "src" / "store.ts").read_text()]
+    # Thresholds moved to lib/journey.ts during #589; scan the whole src/ tree
+    # so the check survives future extractions.
+    texts = [f.read_text(errors="ignore") for f in (KID / "src").rglob("*")
+             if f.suffix in (".ts", ".tsx")]
     need = ["MASTERY_THRESHOLD", "UNLOCK_THRESHOLD", "NOVA_QUEST_REWARD", "NOVA_SHARE_REWARD", "NOVA_BIRTHDAY_COINS"]
     missing = [n for n in need if not any(n in t for t in texts)]
     return (not missing), ("all thresholds+rewards present" if not missing else f"missing {missing}")
@@ -282,17 +285,26 @@ def l3_release():
 
 # ══ LAYER 4 — Content & Experience ═══════════════════════════════════════════
 def l4_season():
-    app = (KID / "src" / "App.tsx").read_text()
+    # currentSeason moved to lib/journey.ts during #589; scan the whole src/
+    # tree so the check survives future extractions. APP_BUILD stays in App.tsx.
+    src_blob = "\n".join(
+        f.read_text(errors="ignore") for f in (KID / "src").rglob("*")
+        if f.suffix in (".ts", ".tsx"))
     css = (KID / "src" / "styles.css").read_text()
-    return ("currentSeason" in app and "season-snow" in css), "season system present"
+    return ("currentSeason" in src_blob and "season-snow" in css), "season system present"
 
 def l4_feedback():
     return (KID / "src" / "game" / "celebrate.ts").exists() and (KID / "src" / "game" / "feedback.ts").exists(), "celebrate+feedback present"
 
 # ══ LAYER 5 — Growth & Parent Care ═══════════════════════════════════════════
 def l5_captions():
-    app = (KID / "src" / "App.tsx").read_text()
-    return ("kids.munna-khan.xyz" in app), "share captions carry the URL"
+    # Share captions moved into i18n.ts during #589 decomposition; scan the
+    # whole src/ tree so the URL check survives future extractions.
+    url = "kids.munna-khan.xyz"
+    for f in (KID / "src").rglob("*"):
+        if f.suffix in (".ts", ".tsx") and url in f.read_text(errors="ignore"):
+            return True, f"share captions carry the URL ({url})"
+    return False, "share captions missing the URL"
 
 def l5_release_mgr():
     app = (KID / "src" / "App.tsx").read_text()
@@ -383,8 +395,14 @@ def l6_no_deadlock():
 
 # ══ LAYER 7 — Visual Inspection & UI (the eyes on every pixel) ════════════════
 def _world_lands_block():
-    src = (KID / "src" / "App.tsx").read_text()
-    return re.search(r"const WORLD_LANDS.*?\n\};", src, re.S)
+    """WORLD_LANDS moved out of App.tsx during #589 decomposition; scan the
+    whole src/ tree so the check survives future extractions."""
+    for f in (KID / "src").rglob("*"):
+        if f.suffix in (".ts", ".tsx"):
+            m = re.search(r"(?:export )?const WORLD_LANDS.*?\n\};", f.read_text(), re.S)
+            if m:
+                return m
+    return None
 
 def l7_palette():
     m = _world_lands_block()

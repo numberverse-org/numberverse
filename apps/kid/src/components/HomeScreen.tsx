@@ -430,6 +430,77 @@ export default function HomeScreen({
               );
             })()}
 
+            {/* Daily Quest — the visible "come back every day" goal. The mission
+                TYPE rotates per kid per day (play rounds / earn stars / master a
+                skill / try a new game), and every type pays the same bonus. When
+                the parent's playtime cap already blocks play, a "0/N" bar is an
+                unreachable goal → a warm rest line instead, never guilt. */}
+            <div className={`quest-chip${quest.done ? " done" : questBlocked ? " rest" : ""}`} role="status">
+              <span className="quest-title">{t.questTitle}</span>
+              {quest.done ? (
+                <span className="quest-line">
+                  {t.questDoneText} <span className="quest-reward">{t.questReward(NOVA_QUEST_REWARD)}</span>
+                </span>
+              ) : questBlocked ? (
+                <span className="quest-line">{t.questRest}</span>
+              ) : (
+                <span className="quest-line">
+                  <span className="quest-goal">
+                    {quest.type === "rounds" ? t.questTypeRounds(quest.target)
+                      : quest.type === "stars" ? t.questTypeStars(quest.target)
+                      : quest.type === "master" ? t.questTypeMaster(quest.target)
+                      : t.questTypeNewgame(quest.target)}
+                  </span>
+                  {t.questProgress(Math.min(quest.progress, quest.target), quest.target)}
+                  <span className="quest-bar"><span className="quest-fill" style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} /></span>
+                </span>
+              )}
+            </div>
+            {/* #281 — 7-day login calendar: a growing coin bonus per consecutive
+                play day. One tap per day, fully offline, inside the anti-grind cap.
+                Day 1..7 of the cycle; past tiles ✓, today's tile pulses when ready,
+                future tiles 🔒. */}
+            {calendar ? (
+              <div className="cal-chip" role="status" aria-label={t.calendarTitle}>
+                <div className="cal-head">
+                  <span className="cal-title">{t.calendarTitle}</span>
+                  <span className="cal-hint">
+                    {freezeCount > 0 && <span className="freeze-pill" title={t.freezePill(freezeCount)}>{t.freezePill(freezeCount)}</span>}
+                    {t.calendarHint}
+                  </span>
+                </div>
+                <div className="cal-strip" role="list">
+                  {NOVA_CALENDAR_REWARDS.map((coins, i) => {
+                    const day = i + 1;
+                    const isToday = day === calendar.pos;
+                    const past = day < calendar.pos;
+                    const state = isToday && calendar.claimable ? "claim" : past || calendar.claimedToday ? "done" : isToday ? "wait" : "future";
+                    return (
+                      <button
+                        key={day}
+                        className={`cal-tile ${state}`}
+                        disabled={!isToday || !calendar.claimable}
+                        onClick={() => {
+                          const before = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
+                          const add = useKidStore.getState().novaClaimCalendar(kid.id);
+                          const after = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
+                          if (add > 0) {
+                            tada();
+                            speak(t.calendarClaimSpeak(kid.name, add));
+                          }
+                          if (after > before) speak(t.freezeEarnedSpeak);
+                        }}
+                        aria-label={isToday ? (calendar.claimable ? t.calendarClaim(coins) : calendar.claimedToday ? t.calendarClaimed : t.calendarHint) : t.calendarLocked}
+                      >
+                        <span className="cal-tile-top">{past || calendar.claimedToday ? "✓" : isToday ? day : "🔒"}</span>
+                        <span className="cal-tile-coin">🪙{coins}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="cal-dayof">{t.calendarDayOf(calendar.pos)}</span>
+              </div>
+            ) : null}
             {/* Your path — the hero avatar stands on the glowing current node;
                 stops behind are ✓, the road ahead is ▶ until it locks 🔒 */}
             <section className={`home-path season-${season}`} aria-label={t.homePath}>
@@ -489,32 +560,6 @@ export default function HomeScreen({
               </div>
             </section>
 
-            {/* Daily Quest — the visible "come back every day" goal. The mission
-                TYPE rotates per kid per day (play rounds / earn stars / master a
-                skill / try a new game), and every type pays the same bonus. When
-                the parent's playtime cap already blocks play, a "0/N" bar is an
-                unreachable goal → a warm rest line instead, never guilt. */}
-            <div className={`quest-chip${quest.done ? " done" : questBlocked ? " rest" : ""}`} role="status">
-              <span className="quest-title">{t.questTitle}</span>
-              {quest.done ? (
-                <span className="quest-line">
-                  {t.questDoneText} <span className="quest-reward">{t.questReward(NOVA_QUEST_REWARD)}</span>
-                </span>
-              ) : questBlocked ? (
-                <span className="quest-line">{t.questRest}</span>
-              ) : (
-                <span className="quest-line">
-                  <span className="quest-goal">
-                    {quest.type === "rounds" ? t.questTypeRounds(quest.target)
-                      : quest.type === "stars" ? t.questTypeStars(quest.target)
-                      : quest.type === "master" ? t.questTypeMaster(quest.target)
-                      : t.questTypeNewgame(quest.target)}
-                  </span>
-                  {t.questProgress(Math.min(quest.progress, quest.target), quest.target)}
-                  <span className="quest-bar"><span className="quest-fill" style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} /></span>
-                </span>
-              )}
-            </div>
 
             {limitNotice ? <p className="limit-banner" role="status">{limitNotice}</p> : null}
 
@@ -560,51 +605,6 @@ export default function HomeScreen({
               </div>
             )}
 
-            {/* #281 — 7-day login calendar: a growing coin bonus per consecutive
-                play day. One tap per day, fully offline, inside the anti-grind cap.
-                Day 1..7 of the cycle; past tiles ✓, today's tile pulses when ready,
-                future tiles 🔒. */}
-            {calendar ? (
-              <div className="cal-chip" role="status" aria-label={t.calendarTitle}>
-                <div className="cal-head">
-                  <span className="cal-title">{t.calendarTitle}</span>
-                  <span className="cal-hint">
-                    {freezeCount > 0 && <span className="freeze-pill" title={t.freezePill(freezeCount)}>{t.freezePill(freezeCount)}</span>}
-                    {t.calendarHint}
-                  </span>
-                </div>
-                <div className="cal-strip" role="list">
-                  {NOVA_CALENDAR_REWARDS.map((coins, i) => {
-                    const day = i + 1;
-                    const isToday = day === calendar.pos;
-                    const past = day < calendar.pos;
-                    const state = isToday && calendar.claimable ? "claim" : past || calendar.claimedToday ? "done" : isToday ? "wait" : "future";
-                    return (
-                      <button
-                        key={day}
-                        className={`cal-tile ${state}`}
-                        disabled={!isToday || !calendar.claimable}
-                        onClick={() => {
-                          const before = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
-                          const add = useKidStore.getState().novaClaimCalendar(kid.id);
-                          const after = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
-                          if (add > 0) {
-                            tada();
-                            speak(t.calendarClaimSpeak(kid.name, add));
-                          }
-                          if (after > before) speak(t.freezeEarnedSpeak);
-                        }}
-                        aria-label={isToday ? (calendar.claimable ? t.calendarClaim(coins) : calendar.claimedToday ? t.calendarClaimed : t.calendarHint) : t.calendarLocked}
-                      >
-                        <span className="cal-tile-top">{past || calendar.claimedToday ? "✓" : isToday ? day : "🔒"}</span>
-                        <span className="cal-tile-coin">🪙{coins}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <span className="cal-dayof">{t.calendarDayOf(calendar.pos)}</span>
-              </div>
-            ) : null}
 
             {/* The pet — the kid's growing friend. Learning feeds it: every
                 session, every new mastery, and one daily snack. */}
