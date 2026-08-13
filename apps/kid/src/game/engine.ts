@@ -77,6 +77,10 @@ import { BanglaDaysScene } from "./BanglaDaysScene";
 import { BanglaSpellScene } from "./BanglaSpellScene";
 import { PronounScene } from "./PronounScene";
 import { CountBackScene } from "./CountBackScene";
+import { PluralsScene } from "./PluralsScene";
+import { PastEdScene } from "./PastEdScene";
+import { CaseMatchScene } from "./CaseMatchScene";
+import { CvcBuildScene } from "./CvcBuildScene";
 import { GrammarScene } from "./GrammarScene";
 import { BgsFactsScene } from "./BgsFactsScene";
 import { BnColorsScene } from "./BnColorsScene";
@@ -182,6 +186,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
       BanglaDaysScene, BanglaSpellScene, PronounScene, CountBackScene,
+      PluralsScene, PastEdScene, CaseMatchScene, CvcBuildScene,
       BnSightWordsScene,
       SentenceBuilderScene,
       StoryReadScene,

@@ -187,6 +187,11 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-spelling", 1, "bangla", "Bangla spelling", "বানান শিখি"),
     ("bn-pronouns", 3, "bangla", "Bangla pronouns", "সর্বনাম"),
     ("count-back-100", 2, "math", "Count back from 100", "উল্টো গোনা"),
+    # 2026 backlog content (#51, #53, #54, #56)
+    ("en-cvc-build", 1, "english", "Build CVC words", "শব্দ গড়ি"),
+    ("en-plurals-regular", 2, "english", "Plurals: -s -es -ies", "বহুবচন: -s -es -ies"),
+    ("en-past-ed", 3, "english", "Past tense: -ed", "অতীত কাল: -ed"),
+    ("en-case-match", 1, "english", "Big & small letters", "বড়-ছোট অক্ষর"),
 ]
 
 
