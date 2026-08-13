@@ -35,7 +35,7 @@
 - ~~English: read-aloud comprehension lvl 2~~  ✅ #184 — 18 spoken 5-7 word sentences, tap the picture that answers; 🔊/🔇 read-aloud toggle
 - ~~English: alphabetical order race~~  ✅ #185 — 24 levelled word sets (4/5/6 words), drag to ABC order, instant green-glow check per drop
 - ~~English: word families (-at -an -ig -op)~~  ✅ #186 — 8 rhyming families × 4 words, drag each word to its bucket (correct fly-in / wrong bounce-back)
-- English: yes/no listening comprehension  _(priority: low, kid-first)_
+- ~~English: yes/no listening comprehension~~  ✅ #187 — 22 spoken sentence+question pairs, tap ✅/❌, 🐢 slow-replay button
 - Math: addition facts to 20 fluency  _(priority: low, kid-first)_
 - Math: subtraction facts to 20 fluency  _(priority: low, kid-first)_
 - Math: doubles & near-doubles  _(priority: low, kid-first)_

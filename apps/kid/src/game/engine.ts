@@ -65,6 +65,7 @@ import { CompoundEnScene } from "./CompoundEnScene";
 import { ReadAloudScene } from "./ReadAloudScene";
 import { AlphaOrderScene } from "./AlphaOrderScene";
 import { WordFamilyScene } from "./WordFamilyScene";
+import { YesNoScene } from "./YesNoScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -156,6 +157,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       ReadAloudScene,
       AlphaOrderScene,
       WordFamilyScene,
+      YesNoScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
