@@ -19,8 +19,12 @@ export interface ActivityDef {
 
 export const ACTIVITIES: ActivityDef[] = [
   /* ── pet mini-games (#104): full scenes launched over NovaScene ── */
+  { id: "game-feed", scene: "PetFeed", emoji: "🍽️", name: "Feed", nameBn: "খাওয়াও" },
   { id: "game-catch", scene: "CatchFruit", emoji: "🍎", name: "Catch Fruit", nameBn: "ফল ধরো" },
   { id: "game-bubble", scene: "BubblePop", emoji: "🫧", name: "Bubble Pop", nameBn: "বুদবুদ ফুটাও" },
+  { id: "game-bath", scene: "BathNova", emoji: "🛁", name: "Bath Time", nameBn: "গোসল" },
+  { id: "game-stroke", scene: "PetStroke", emoji: "💛", name: "Pet Nova", nameBn: "আদর" },
+  { id: "game-sort", scene: "TreatSort", emoji: "🧺", name: "Sort Treats", nameBn: "খাবার সাজাও" },
   { id: "game-fetch", scene: "Fetch", emoji: "🎾", name: "Fetch", nameBn: "বল আনো" },
 
   /* ── pet-care: Nova is the kid's pet — bath, brush, cuddle, the works ── */
