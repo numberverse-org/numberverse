@@ -110,7 +110,7 @@
 - ~~Parent: goal-setting screen (minutes/rounds per day)~~  ✅ #256 — "🎯 Daily goal": parent sets a gentle minutes/day goal per kid (stored in `KidSettings.goal_min`); the server CLAMPS it to the day's cap so it respects the limits above; the kid app shows a home progress line (🎯 18/25 min) and a once-per-day dismissible Nova celebration when reached (EN+বাংলা), never blocks play
 - ~~Parent: curriculum focus pin~~  ✅ #257 — "📌 Focus": parent pins a subject + world per kid (`KidSettings.focus_subject`/`focus_band`, both-or-neither, server-normalized; ✕ Clear restores the normal path); the kid journey LEADS with that subject+world (Play + world sessions), home shows a "📌 Focus: Math · World 2" chip (EN+বাংলা), and the pinned world gets a 📌 on the map; Moni's tutor call still outranks it
 - ~~Parent: per-kid voice preference~~  ✅ #258 — "🗣️ Voice" block in Reading & sound: parent picks which TONE reads aloud per kid (Warm adult · Kid · Soft female · Friendly male → the neural Bangla speaker id + Web-Speech gender bias) and how FAST (Slower · Normal · Faster → Web-Speech rate multiplier; the Bangla voice keeps its own warm tempo), stored per kid in `KidSettings.voice_tone`/`voice_speed` (null = device default); a 🔈 Try button plays a real TTS sample with the chosen tone+speed; EN+বাংলা
-- Parent: bedtime wind-down config  _(priority: low, parent-facing)_
+- ~~Parent: bedtime wind-down config~~  ✅ #259 = duplicate of #248 (created 34s later) — per-kid quiet window, auto-soften + gentle dim, parent override all shipped in PR #562; closed without new code, see `docs/work-orders/259.md`
 
 ## v26 — Kotha & adaptive
 
