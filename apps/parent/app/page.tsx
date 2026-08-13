@@ -42,6 +42,46 @@ import {
 import { worksheetFor, type WorksheetProblem } from "../lib/worksheet";
 
 const AVATARS = ["🛡️", "🔮", "🗡️", "🪓", "🏹", "🦊", "🐱", "🐼", "🐸", "🦄", "🐯", "🐰", "🐨", "🐹", "🦁"];
+
+/** #246 — first-run onboarding wizard strings. EN + BN shipped today; the map
+ *  IS the country-pack seam: add a new key (e.g. "hi", "ar") with the same
+ *  shape and the wizard follows — no component rewrites. Selected via
+ *  localStorage `nv_parent_lang` (default "en"). */
+const WIZARD_LANGS = {
+  en: {
+    title: "👋 Welcome to Numberverse!",
+    step0: "Let's set up your kids so their progress has a home.",
+    stepN: "Add one at a time — you can add or edit more anytime.",
+    nameLabel: "Name",
+    birthLabel: "Birth year",
+    add: "Add kid",
+    adding: "Adding…",
+    err: "Couldn't add {name} right now — check your connection and try again.",
+    addedAll: "All set — add more below, or finish to see the dashboard.",
+    addAnother: "➕ Add another",
+    finish: "🚀 Finish →",
+    notNow: "Not now",
+    lang: "🌐 Language",
+    noKidsDone: "No kids on this account yet — add one to get started.",
+  },
+  bn: {
+    title: "👋 নাম্বারভার্সে স্বাগতম!",
+    step0: "আপনার বাচ্চাদের সেটআপ করা যাক — শেখার অগ্রগতির একটা জায়গা তৈরি হবে।",
+    stepN: "একজন করে যোগ করুন — পরে আরও যোগ বা সম্পাদনা করতে পারবেন।",
+    nameLabel: "নাম",
+    birthLabel: "জন্মসাল",
+    add: "বাচ্চা যোগ করুন",
+    adding: "যোগ হচ্ছে…",
+    err: "এখন {name} যোগ করা যায়নি — ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।",
+    addedAll: "সব ঠিক আছে — নিচে আরও যোগ করুন, অথবা শেষ করে ড্যাশবোর্ড দেখুন।",
+    addAnother: "➕ আরেকটি যোগ করুন",
+    finish: "🚀 শেষ করুন →",
+    notNow: "পরে করুন",
+    lang: "🌐 ভাষা",
+    noKidsDone: "এই অ্যাকাউন্টে এখনো কোনো বাচ্চা নেই — শুরু করতে একজন যোগ করুন।",
+  },
+} as const;
+type WizardLang = keyof typeof WIZARD_LANGS;
 const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
@@ -479,6 +519,17 @@ export default function ParentDashboard() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // #246 — guided multi-kid onboarding. Opens only when the account has NO kids
+  // and this browser hasn't finished onboarding before (`nv_parent_onboarded`).
+  const [onboarding, setOnboarding] = useState<"init" | "open" | "done">("init");
+  const [onboardBusy, setOnboardBusy] = useState(false);
+  const [onboardErr, setOnboardErr] = useState<string | null>(null);
+  const [wizLang, setWizLang] = useState<WizardLang>("en");
+  useEffect(() => {
+    const saved = localStorage.getItem("nv_parent_lang");
+    if (saved === "en" || saved === "bn") setWizLang(saved);
+  }, []);
+
   // #238 — weekly narrative language + editable draft (localStorage only).
   const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
   const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
@@ -535,7 +586,12 @@ export default function ParentDashboard() {
       const k = await getKids(tok);
       setKids(k);
       setActiveId((prev) => (prev && k.some((x) => x.id === prev) ? prev : (k[0]?.id ?? null)));
-      if (k.length === 0) return;
+      if (k.length === 0) {
+        // #246 — first run (or all kids deleted): open the guided setup wizard,
+        // but never nag a browser that already finished/skipped onboarding.
+        if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
+        return;
+      }
       // Load every kid up-front so the family overview + switcher are instant.
       const entries = await Promise.all(
         k.map(async (kid) => {
@@ -774,6 +830,40 @@ export default function ParentDashboard() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /** #246 — guided-first-run add. Same server call, but the wizard STAYS open so
+   *  the parent can add 2+ kids back-to-back; on failure the entered values are
+   *  kept (offline-friendly retry — nothing typed is ever lost). */
+  async function handleOnboardCreate() {
+    if (!token || !editName.trim() || onboardBusy) return;
+    setOnboardBusy(true);
+    setOnboardErr(null);
+    const name = editName.trim();
+    try {
+      await createKid(token, {
+        name,
+        avatar: editAvatar,
+        birth_year: editBirthYear,
+      } satisfies NewKid);
+      setEditName("");
+      setEditAvatar("🦊");
+      await refreshAll(token);
+      setSavedTick((t) => t + 1);
+    } catch {
+      // Keep the form values so "Add kid" is a one-click retry once online.
+      setOnboardErr(WIZARD_LANGS[wizLang].err.replace("{name}", name));
+    } finally {
+      setOnboardBusy(false);
+    }
+  }
+
+  /** #246 — leave the wizard for the dashboard. Marks this browser done so the
+   *  wizard never re-opens (even if all kids are deleted later). */
+  function finishOnboarding() {
+    localStorage.setItem("nv_parent_onboarded", "1");
+    setOnboarding("done");
+    setShowAdd(false);
   }
 
   async function handleRename() {
@@ -1055,6 +1145,111 @@ export default function ParentDashboard() {
       </header>
 
       {error && <p className="err banner">{error}</p>}
+
+      {/* #246 — guided multi-kid onboarding (first run with no kids) */}
+      {onboarding === "open" && !error && (
+        <section className="card onboarding-card">
+          <div className="onboard-head">
+            <h2>{WIZARD_LANGS[wizLang].title}</h2>
+            <button
+              className="onboard-lang"
+              onClick={() => {
+                const next: WizardLang = wizLang === "en" ? "bn" : "en";
+                setWizLang(next);
+                localStorage.setItem("nv_parent_lang", next);
+              }}
+              title="EN / বাংলা"
+            >
+              {WIZARD_LANGS[wizLang].lang}
+            </button>
+          </div>
+          <p className="onboard-step">
+            {kids.length === 0 ? WIZARD_LANGS[wizLang].step0 : WIZARD_LANGS[wizLang].stepN}
+          </p>
+
+          <div className="avatar-row">
+            {AVATARS.map((a) => (
+              <button
+                key={a}
+                className={`avatar-pick${editAvatar === a ? " on" : ""}`}
+                onClick={() => setEditAvatar(a)}
+                aria-label={a}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+          <div className="form-grid">
+            <label>
+              {WIZARD_LANGS[wizLang].nameLabel}
+              <input
+                id="onboard-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder={wizLang === "en" ? "e.g. Aria" : "যেমন: আরিয়া"}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && editName.trim() && !onboardBusy) void handleOnboardCreate();
+                }}
+              />
+            </label>
+            <label>
+              {WIZARD_LANGS[wizLang].birthLabel}
+              <input
+                type="number"
+                min={2010}
+                max={2030}
+                value={editBirthYear}
+                onChange={(e) => setEditBirthYear(Number(e.target.value) || 2021)}
+              />
+            </label>
+          </div>
+          <div className="row-buttons">
+            <button className="btn primary" disabled={onboardBusy || !editName.trim()} onClick={handleOnboardCreate}>
+              {onboardBusy ? WIZARD_LANGS[wizLang].adding : WIZARD_LANGS[wizLang].add}
+            </button>
+          </div>
+
+          {onboardErr && <p className="err inline">{onboardErr}</p>}
+
+          {kids.length >= 1 && (
+            <div className="onboard-added">
+              <div className="onboard-chips">
+                {kids.map((k) => (
+                  <span className="onboard-chip" key={k.id}>
+                    {k.avatar ?? "🧒"} {k.name}
+                  </span>
+                ))}
+              </div>
+              <p className="onboard-ok">{WIZARD_LANGS[wizLang].addedAll}</p>
+            </div>
+          )}
+
+          <div className="onboard-actions">
+            <button
+              className="btn ghost"
+              disabled={onboardBusy}
+              onClick={() => document.getElementById("onboard-name")?.focus()}
+            >
+              {WIZARD_LANGS[wizLang].addAnother}
+            </button>
+            <button className="btn primary" disabled={onboardBusy} onClick={finishOnboarding}>
+              {kids.length === 0 ? WIZARD_LANGS[wizLang].notNow : WIZARD_LANGS[wizLang].finish}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* After onboarding (or skipped): a plain empty state with a fast path in */}
+      {kids.length === 0 && onboarding === "done" && !error && (
+        <div className="empty-state">
+          <p className="hint center">{WIZARD_LANGS[wizLang].noKidsDone}</p>
+          <div className="row-buttons center">
+            <button className="btn primary" onClick={() => { setShowAdd(true); setEditName(""); setEditAvatar("🦊"); }}>
+              ＋ {wizLang === "en" ? "Add your first kid" : "প্রথম বাচ্চা যোগ করুন"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── family overview ── */}
       {kids.length > 0 && (
@@ -1901,10 +2096,6 @@ export default function ParentDashboard() {
           {/* ── #262 on-device data review (localStorage, offline) ── */}
           <OnDeviceData />
         </>
-      )}
-
-      {kids.length === 0 && !error && (
-        <p className="hint center">No kids on this account yet — add one above to get started.</p>
       )}
 
       {/* #132 — print-only worksheet. Rendered in the DOM so window.print()

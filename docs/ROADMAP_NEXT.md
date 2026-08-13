@@ -97,7 +97,7 @@
 - ~~Parent: per-kid sound & music balance~~  ✅ #243 — Voice/SFX/Music sliders per kid in Reading & sound, each with 🔊 Try (client-side WebAudio preview); persisted on kid_settings (voice_volume/sfx_volume/music_volume, auto-migrated) and applied by the kid app (audio.ts layers + speech.ts voice balance)
 - ~~Parent: daily play summary~~  ✅ #244 — "☀️ Today" headline card on open: rounds + minutes (weekly per-day buckets) + mastered today (new WeeklyOut.mastered_today field, ≥80% + practiced today); offline-derived from already-loaded weekly state
 - ~~Parent: share-card deep link per kid~~  ✅ #245 — per-kid unguessable share token + anonymous public snapshot (`/share/?t=`), weekly WhatsApp card carries `🔗 See the week:` link
-- Parent: multi-kid onboarding flow  _(priority: low, parent-facing)_
+- ~~Parent: multi-kid onboarding flow~~  ✅ #246 — guided first-run wizard (avatar + name + birth year, add 2+ kids back-to-back, editable later, offline-safe, EN+বাংলা country-pack strings)
 - Parent: PIN recovery flow  _(priority: low, parent-facing)_
 - Parent: quiet hours scheduling  _(priority: low, parent-facing)_
 - Parent: acceleration plan view  _(priority: low, parent-facing)_
