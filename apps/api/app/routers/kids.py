@@ -1,6 +1,6 @@
 import uuid
 from collections import Counter
-from datetime import date, timedelta, timezone
+from datetime import date, datetime, timedelta, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
@@ -226,6 +226,21 @@ async def get_kid_weekly(
     ).all()
     mastered_ids = sorted(m.skill_id for m in mastered)
 
+    # #244 — "mastered TODAY": ≥80% AND last practiced since local midnight.
+    # Feeds the portal's daily play-summary headline without a second query
+    # shape (the weekly fetch already carries it to the client).
+    today_start = datetime.combine(now, time.min)
+    mastered_today = (
+        await db.scalars(
+            select(SkillMastery).where(
+                SkillMastery.kid_id == kid_id,
+                SkillMastery.mastery >= 0.8,
+                SkillMastery.last_practice >= today_start,
+            )
+        )
+    ).all()
+    mastered_today_ids = sorted(m.skill_id for m in mastered_today)
+
     return WeeklyOut(
         days=days,
         rounds=rounds,
@@ -233,6 +248,7 @@ async def get_kid_weekly(
         minutes=minutes,
         active_days=active_days,
         mastered_this_week=mastered_ids,
+        mastered_today=mastered_today_ids,
         top_game=top_game,
     )
 

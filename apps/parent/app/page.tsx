@@ -872,8 +872,17 @@ export default function ParentDashboard() {
   const activeMastery = activeId ? mastery[activeId] ?? [] : [];
   const masteredCount = activeMastery.filter((m) => m.mastery >= 0.8).length;
   const activeSettings = activeId ? settings[activeId] ?? DEFAULT_SETTINGS : DEFAULT_SETTINGS;
-  const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], top_game: null };
+  const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], mastered_today: [], top_game: null };
   const activeWeekly = activeId ? weekly[activeId] ?? EMPTY_WEEKLY : EMPTY_WEEKLY;
+
+  // #244 — today's headline from the rolling weekly report (server UTC day
+  // buckets, matching the weekly endpoint). Fully offline: derived from data
+  // already loaded with the dashboard; a reload "refreshes daily".
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayEntry = activeWeekly.days.find((d) => d.date === todayKey);
+  const todayRounds = todayEntry?.rounds ?? 0;
+  const todayMinutes = todayEntry?.minutes ?? 0;
+  const todayMastered = activeWeekly.mastered_today ?? [];
 
   // #238 — weekly narrative derived from the kid's Kotha stories.
   const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
@@ -1125,6 +1134,33 @@ export default function ParentDashboard() {
             <div className="overall-bar">
               <div className="overall-fill" style={{ width: `${activeMastery.length ? Math.round((masteredCount / activeMastery.length) * 100) : 0}%` }} />
             </div>
+          </section>
+
+          {/* #244 — daily play summary: today's headline on open */}
+          <section className="card daily-card">
+            <div className="daily-head">
+              <h2>☀️ Today</h2>
+              <span className="muted small">
+                {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+              </span>
+            </div>
+            {todayRounds === 0 && todayMastered.length === 0 ? (
+              <p className="muted">
+                Nothing yet today — a little playtime lights up this card. 🌱
+              </p>
+            ) : (
+              <p className="daily-line">
+                <b>{todayRounds}</b> round{todayRounds === 1 ? "" : "s"} ·{" "}
+                <b>{todayMinutes}</b> min played
+                {todayMastered.length > 0 && (
+                  <>
+                    {" "}· 🏆 mastered <b>{todayMastered.length}</b>{" "}
+                    {todayMastered.length === 1 ? "skill" : "skills"}:{" "}
+                    <strong>{todayMastered.map((id) => narrTitleEn(id)).join(", ")}</strong>
+                  </>
+                )}
+              </p>
+            )}
           </section>
 
           {/* ── this week (the "show me my kid learned" card) ── */}

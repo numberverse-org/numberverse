@@ -290,6 +290,8 @@ export interface WeeklyReport {
   minutes: number;
   active_days: number;
   mastered_this_week: string[];
+  /** #244 — skill ids mastered today (≥80% + last practiced today). */
+  mastered_today: string[];
   top_game: string | null;
 }
 

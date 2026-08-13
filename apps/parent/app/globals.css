@@ -176,6 +176,22 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
 }
 .vol-try { white-space: nowrap; }
 
+/* #244 — daily play summary headline */
+.card.daily-card { border-color: rgba(255,209,102,0.3); }
+.daily-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.daily-line {
+  font-size: 16px;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.9);
+}
+.daily-line b { color: #ffd166; }
+
 .topbar {
   display: flex;
   align-items: center;
