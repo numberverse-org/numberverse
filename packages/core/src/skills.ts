@@ -93,6 +93,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-subborrow', band: 2, subject: 'math', title: 'Borrow subtraction (visual)', titleBn: 'ধার বিয়োগ (দৃশ্য)', description: 'Subtract two 2-digit numbers step by step with base-10 blocks and a borrow animation', descriptionBn: 'দুই অঙ্কের বিয়োগ করি ধাপে ধাপে, ব্লক দেখে ধার অ্যানিমেশনসহ', commonCore: ['2.NBT.B.5'], nctbCode: 'c2-math-11', classNumber: 2, game: 'game-subborrow' },
   // Math — multiplication arrays: countable dot arrays teach tables 2-5 before numbers.
   { id: 'en-array-mult', band: 2, subject: 'math', title: 'Array times tables', titleBn: 'বিন্যাসে গুণ', description: 'Match a dot array (rows × columns) to its equation — tables 2 to 5', descriptionBn: 'বিন্দুর বিন্যাস (সারি × কলাম) মিলিয়ে গুণের সমীকরণ — ২ থেকে ৫ এর নামতা', commonCore: ['2.OA.C.4', '3.OA.A.1'], nctbCode: 'c2-math-12', classNumber: 2, game: 'game-array-mult' },
+  // Math — division as sharing lvl 2: fair shares extended to the remainder concept.
+  { id: 'en-shares2', band: 3, subject: 'math', title: 'Fair shares 2 (remainders)', titleBn: 'সমান ভাগ ২ (ভাগশেষ)', description: 'Watch candies share round-robin into plates, then find each share and the leftover', descriptionBn: 'ক্যান্ডি ঘুরে ঘুরে ভাগ হয় দেখি, তারপর প্রত্যেকের ভাগ আর বাকি খুঁজি', commonCore: ['3.OA.A.2', '3.OA.C.7'], nctbCode: 'c3-math-7', classNumber: 3, game: 'game-shares2' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -251,6 +253,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-addregroup', skillId: 'en-addregroup', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-subborrow', skillId: 'en-subborrow', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-array-mult', skillId: 'en-array-mult', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-shares2', skillId: 'en-shares2', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -352,6 +355,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-addregroup': 'AddRegroup',
   'game-subborrow': 'SubBorrow',
   'game-array-mult': 'ArrayMult',
+  'game-shares2': 'ShareRem',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
