@@ -9,9 +9,20 @@ export interface ActivityDef {
   emoji: string;
   name: string;
   nameBn: string;
+  /**
+   * Full Phaser mini-game scene key (docs/plans/104-pet-minigames.md).
+   * When set, the Fun-panel card LAUNCHES that scene (with kidId + onBack)
+   * instead of playing a quick animation via runActivity().
+   */
+  scene?: string;
 }
 
 export const ACTIVITIES: ActivityDef[] = [
+  /* ── pet mini-games (#104): full scenes launched over NovaScene ── */
+  { id: "game-catch", scene: "CatchFruit", emoji: "🍎", name: "Catch Fruit", nameBn: "ফল ধরো" },
+  { id: "game-bubble", scene: "BubblePop", emoji: "🫧", name: "Bubble Pop", nameBn: "বুদবুদ ফুটাও" },
+  { id: "game-fetch", scene: "Fetch", emoji: "🎾", name: "Fetch", nameBn: "বল আনো" },
+
   /* ── pet-care: Nova is the kid's pet — bath, brush, cuddle, the works ── */
   { id: "bath", emoji: "🛁", name: "Bath", nameBn: "স্নান" },
   { id: "brush", emoji: "🪮", name: "Brush", nameBn: "চিরুনি" },

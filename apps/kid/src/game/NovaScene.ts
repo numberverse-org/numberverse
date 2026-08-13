@@ -1567,9 +1567,24 @@ export class NovaScene extends Phaser.Scene {
     c.on("pointerdown", () => {
       pop();
       this.hideAct();
-      this.runActivity(act.id);
+      if (act.scene) {
+        // full pet mini-game (#104) — launch over a paused Nova, return on close
+        this.scene.launch(act.scene, {
+          kidId: this.kidId,
+          onBack: () => this.returnFromMiniGame(act.scene!),
+        });
+        this.scene.pause("Nova");
+      } else {
+        this.runActivity(act.id);
+      }
     });
     return c;
+  }
+
+  /** Mini-game close → back to the (paused) Nova screen. */
+  private returnFromMiniGame(key: string) {
+    this.scene.stop(key);
+    this.scene.resume("Nova");
   }
 
   private renderShopPage() {
@@ -1791,7 +1806,9 @@ export class NovaScene extends Phaser.Scene {
       this.actDizzyEgg();
       return;
     }
-    const act = ACTIVITIES[Phaser.Math.Between(0, ACTIVITIES.length - 1)];
+    // mini-game cards launch whole scenes — keep the surprise pat to animations
+    const plain = ACTIVITIES.filter((a) => !a.scene);
+    const act = plain[Phaser.Math.Between(0, plain.length - 1)];
     this.runActivity(act.id);
   }
 

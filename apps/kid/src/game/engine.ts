@@ -147,6 +147,9 @@ import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { MeasurementScene } from "./MeasurementScene";
 import { PictoGraphScene } from "./PictoGraphScene";
+import { CatchFruitScene } from "./CatchFruitScene";
+import { BubblePopScene } from "./BubblePopScene";
+import { FetchScene } from "./FetchScene";
 import { CountingSongScene } from "./CountingSongScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
@@ -180,6 +183,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       NovaScene,
       GardenScene,
       PetFeedScene,
+      CatchFruitScene, BubblePopScene, FetchScene,
       GrowCountScene, FruitTreeScene,
       OddEvenScene, CountPopScene, Count100Scene, Build999Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
       RocketMultScene, TimesTableScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FairShareScene, FractionMatchScene,
