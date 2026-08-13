@@ -430,6 +430,33 @@ const DEBUG_LANGS = {
   },
 } as const;
 
+/** #85 — sync status chip + manual sync in the topbar. EN + BN — same
+ *  country-pack seam. Talks only to the app's own API; zero analytics. */
+const SYNC_LANGS = {
+  en: {
+    online: "Online",
+    offline: "Offline",
+    synced: "synced",
+    ago: "ago",
+    justNow: "just now",
+    syncNow: "↻ Sync now",
+    syncing: "Syncing…",
+    mins: "m",
+    hr: "h",
+  },
+  bn: {
+    online: "অনলাইন",
+    offline: "অফলাইন",
+    synced: "সিঙ্ক হয়েছে",
+    ago: "আগে",
+    justNow: "এইমাত্র",
+    syncNow: "↻ এখন সিঙ্ক করুন",
+    syncing: "সিঙ্ক হচ্ছে…",
+    mins: "মি",
+    hr: "ঘ",
+  },
+} as const;
+
 /** #89 — per-skill missed questions: what a kid got wrong, so re-teaching is
  *  transparent. EN + BN strings for the portal card — same country-pack seam.
  *  Built purely from the already-loaded story ledger (offline-first). */
@@ -723,6 +750,15 @@ function shortDate(iso: string, lang: "en" | "bn"): string {
     return `${num(d.getDate())} ${BN_M[d.getMonth()]}`;
   }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** #85 — "2m ago" / "৩মি আগে" for the sync chip. */
+function relTime(ms: number, lang: "en" | "bn"): string {
+  const mins = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (mins < 1) return lang === "bn" ? "এইমাত্র" : "just now";
+  if (mins < 60) return `${lang === "bn" ? String(mins).replace(/[0-9]/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]) : mins}${lang === "bn" ? "মি" : "m"}`;
+  const h = Math.round(mins / 60);
+  return `${lang === "bn" ? String(h).replace(/[0-9]/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]) : h}${lang === "bn" ? "ঘ" : "h"}`;
 }
 
 /** One kid's play session, derived client-side from the activity feed. */
@@ -1200,6 +1236,19 @@ export default function ParentDashboard() {
       });
   }, []);
 
+  // #85 — live online/offline for the sync chip (browser network events).
+  useEffect(() => {
+    setOnline(navigator.onLine);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
   // #238 — weekly narrative language + editable draft (localStorage only).
   const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
   const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
@@ -1225,6 +1274,10 @@ export default function ParentDashboard() {
   const [debugOpen, setDebugOpen] = useState(false);
   const [diagCopied, setDiagCopied] = useState(false);
   const [swVersion, setSwVersion] = useState<string | null>(null);
+  // #85 — topbar sync chip: live online/offline + "synced X ago". Tracked from
+  // the browser's network events; the manual button just re-runs refreshAll.
+  const [online, setOnline] = useState(true);
+  const [syncingNow, setSyncingNow] = useState(false);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -1825,6 +1878,20 @@ export default function ParentDashboard() {
     }
   }
 
+  /** #85 — manual sync: re-fetch every kid's progress from the app's own API.
+   *  Sets the chip to "Syncing…", then `lastSync` updates on success. */
+  const manualSync = useCallback(async () => {
+    if (!token || syncingNow) return;
+    setSyncingNow(true);
+    try {
+      await refreshAll(token);
+    } catch {
+      /* refreshAll surfaces its own error banner; chip just stays as-is */
+    } finally {
+      setSyncingNow(false);
+    }
+  }, [token, syncingNow, refreshAll]);
+
   /** #7 — export the local-only diagnostics as a plain-text blob (clipboard).
    *  No PII: kid names/ids/emails are never included — only browser/env facts. */
   async function exportDiagnostics() {
@@ -1990,6 +2057,33 @@ export default function ParentDashboard() {
             aria-label={THEME_LANGS[wizLang][theme === "light" ? "lightOn" : "darkOn"]}
           >
             {theme === "light" ? "☀️" : "🌙"} <span className="a11y-toggle-label">{THEME_LANGS[wizLang][theme]}</span>
+          </button>
+        </span>
+        {/* #85 — sync status chip + manual sync (own-API only, no analytics). */}
+        <span
+          className={`sync-chip${online ? " on" : " off"}`}
+          title={
+            lastSync
+              ? `${SYNC_LANGS[wizLang].synced} ${relTime(lastSync, wizLang)} ${SYNC_LANGS[wizLang].ago}`
+              : SYNC_LANGS[wizLang].justNow
+          }
+        >
+          <span className={`sync-dot ${online ? "ok" : "bad"}`} aria-hidden />
+          {online ? SYNC_LANGS[wizLang].online : SYNC_LANGS[wizLang].offline}
+          {lastSync && online && (
+            <span className="sync-when">
+              {" · "}
+              {SYNC_LANGS[wizLang].synced} {relTime(lastSync, wizLang)}
+            </span>
+          )}
+          <button
+            className="sync-btn"
+            disabled={syncingNow}
+            onClick={() => void manualSync()}
+            aria-label={SYNC_LANGS[wizLang].syncNow}
+            title={SYNC_LANGS[wizLang].syncNow}
+          >
+            {syncingNow ? SYNC_LANGS[wizLang].syncing : SYNC_LANGS[wizLang].syncNow}
           </button>
         </span>
         <span className="topbar-user" title={profile?.email ?? "signed in"}>
