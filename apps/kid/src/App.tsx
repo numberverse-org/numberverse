@@ -550,6 +550,10 @@ interface Strings {
   boxOpen: string;
   boxCapSpeak: string;
   boxRewardSpeak: (name: string, coins: number) => string;
+  /* #294 — streak-freeze tokens */
+  freezePill: (n: number) => string;
+  freezeEarnedSpeak: string;
+  freezeSpentSpeak: string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1088,6 +1092,10 @@ const STR: Record<Lang, Strings> = {
     boxOpen: "Open",
     boxCapSpeak: "The box will open tomorrow — the daily reward is full!",
     boxRewardSpeak: (name, coins) => `${name}, you found ${coins} coins in the box! 🎁`,
+    /* #294 — streak-freeze tokens */
+    freezePill: (n) => `🧊 ${n}`,
+    freezeEarnedSpeak: "You earned a freeze token — your streak is safe!",
+    freezeSpentSpeak: "A freeze token saved your streak — keep going!",
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1611,6 +1619,10 @@ const STR: Record<Lang, Strings> = {
     boxOpen: "খোলো",
     boxCapSpeak: "বক্সটা কাল খুলবে — আজকের পুরস্কার ভরে গেছে!",
     boxRewardSpeak: (name, coins) => `${name}, বক্সে ${coins}টা কয়েন পেয়েছো! 🎁`,
+    /* #294 — streak-freeze tokens */
+    freezePill: (n) => `🧊 ${bnNum(n)}`,
+    freezeEarnedSpeak: "তুমি ফ্রিজ টোকেন পেয়েছো — তোমার ধারা নিরাপদ!",
+    freezeSpentSpeak: "একটা ফ্রিজ টোকেন তোমার ধারা বাঁচিয়েছে — চালিয়ে যাও!",
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -2657,6 +2669,9 @@ export default function App() {
         : 1; // missed a day → fresh restart at day 1
     return { pos, claimable: playedToday && n.calendarDay !== today, claimedToday: n.calendarDay === today };
   });
+  // #294 — streak-freeze tokens (earned on the day-7 calendar tile; each saves
+  // one missed day). Shown as a 🧊 pill in the calendar chip.
+  const freezeCount = useKidStore((s) => (kid ? s.nova[kid.id]?.freezes ?? 0 : 0));
   // #283 — goal badges: currently-earned ids (from local stats/streak/worlds),
   // and the celebration effect that fires once per NEW badge.
   const badgeStats = useKidStore((s) => s.stats[kid?.id ?? ""] ?? { stars: 0, score: 0, sessions: 0 });
@@ -3677,8 +3692,15 @@ export default function App() {
       const threshold = prof?.attention.fatigueThreshold ?? 12;
       breakPendingRef.current = !!prof && prof.sessionRounds >= threshold;
       if (kid) {
+        // #294 — if this session's streak update SPENT a freeze token, cheer
+        // about it: the chain survived a missed day.
+        const freezesBefore = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
         novaCompleteSession(kid.id);
         recordSession(kid.id);
+        if ((useKidStore.getState().nova[kid.id]?.freezes ?? 0) < freezesBefore) {
+          tada();
+          speak(t.freezeSpentSpeak);
+        }
       }
       tada();
       cancelSpeech();
@@ -4368,7 +4390,10 @@ export default function App() {
               <div className="cal-chip" role="status" aria-label={t.calendarTitle}>
                 <div className="cal-head">
                   <span className="cal-title">{t.calendarTitle}</span>
-                  <span className="cal-hint">{t.calendarHint}</span>
+                  <span className="cal-hint">
+                    {freezeCount > 0 && <span className="freeze-pill" title={t.freezePill(freezeCount)}>{t.freezePill(freezeCount)}</span>}
+                    {t.calendarHint}
+                  </span>
                 </div>
                 <div className="cal-strip" role="list">
                   {NOVA_CALENDAR_REWARDS.map((coins, i) => {
@@ -4382,11 +4407,14 @@ export default function App() {
                         className={`cal-tile ${state}`}
                         disabled={!isToday || !calendar.claimable}
                         onClick={() => {
+                          const before = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
                           const add = useKidStore.getState().novaClaimCalendar(kid.id);
+                          const after = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
                           if (add > 0) {
                             tada();
                             speak(t.calendarClaimSpeak(kid.name, add));
                           }
+                          if (after > before) speak(t.freezeEarnedSpeak);
                         }}
                         aria-label={isToday ? (calendar.claimable ? t.calendarClaim(coins) : calendar.claimedToday ? t.calendarClaimed : t.calendarHint) : t.calendarLocked}
                       >

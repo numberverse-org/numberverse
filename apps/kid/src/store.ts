@@ -217,6 +217,9 @@ export interface NovaState {
   /** #284 — skill ids whose mastery mystery box has already been opened (the
    *  box appears on home for every mastered skill not in this list). */
   boxes: string[];
+  /** #294 — streak-freeze tokens: each covers ONE missed day (keeps the
+   *  streak alive). Earned on the day-7 login-calendar tile. */
+  freezes: number;
   /** The kid's pet — an egg that hatches + grows as they learn. */
   petStage: number; // 0 egg → 1 hatchling → 2 young → 3 grown (per species)
   petProgress: number; // 0..1 toward the next stage
@@ -248,6 +251,7 @@ export function defaultNova(): NovaState {
     badges: [],
     trophies: [],
     boxes: [],
+    freezes: 0,
     petStage: 0,
     petProgress: 0,
     petFed: "",
@@ -627,14 +631,27 @@ export const useKidStore = create<KidState>()(
 
       /**
        * Session complete → session coins + a first-of-the-day bonus, and the
-       * streak calendar updates. Losing a day resets the streak (gentle, no guilt).
+       * streak calendar updates. Losing a day resets the streak (gentle, no guilt)
+       * UNLESS a streak-freeze token (#294) covers exactly one missed day — then
+       * the chain survives and the token is spent.
        */
       novaCompleteSession: (kidId) => {
         const n = get().nova[kidId] ?? defaultNova();
         const today = todayIso();
         const earnedToday = n.earnDay === today ? n.earnedToday : 0;
         const newDay = n.lastDay !== today;
-        const streak = newDay ? (n.lastDay === dayIsoAgo(1) ? n.streak + 1 : 1) : n.streak;
+        // gap in days since the last session (1 = yesterday, 2 = one day missed).
+        const gap = n.lastDay ? Math.max(0, Math.round((new Date(today).getTime() - new Date(n.lastDay).getTime()) / 86400000)) : 0;
+        // #294 — a freeze token covers EXACTLY one missed day (gap === 2).
+        const usedFreeze = newDay && gap === 2 && (n.freezes ?? 0) > 0;
+        const streak = newDay
+          ? gap <= 1
+            ? n.streak + 1 // yesterday (or fresh start) → chain grows
+            : usedFreeze
+              ? n.streak + 1 // one missed day, token saves it
+              : 1 // ≥2 days missed → restart (gentle, no guilt)
+          : n.streak;
+        const freezes = usedFreeze ? Math.max(0, (n.freezes ?? 0) - 1) : n.freezes ?? 0;
         const days = n.days.includes(today) ? n.days : [...n.days, today].slice(-90);
         const add = Math.max(0, Math.min(NOVA_COINS_PER_SESSION + (newDay ? NOVA_DAILY_BONUS : 0), NOVA_DAILY_CAP - earnedToday));
         set((s) => {
@@ -651,6 +668,7 @@ export const useKidStore = create<KidState>()(
                 streak,
                 days,
                 lastDay: today,
+                freezes,
                 ...growPet({ petStage: cur.petStage, petProgress: cur.petProgress }, PET_GROW_SESSION),
               },
             },
@@ -864,7 +882,9 @@ export const useKidStore = create<KidState>()(
         const base = NOVA_CALENDAR_REWARDS[pos - 1] ?? 0;
         const earnedToday = n.earnDay === today ? n.earnedToday : 0;
         const add = Math.max(0, Math.min(base, NOVA_DAILY_CAP - earnedToday));
-        if (add <= 0) return 0;
+        // #294 — the day-7 tile also earns a streak-freeze token.
+        const token = pos === NOVA_CALENDAR_REWARDS.length;
+        if (add <= 0 && !token) return 0;
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           const todayEarned = cur.earnDay === today ? cur.earnedToday : 0;
@@ -878,6 +898,7 @@ export const useKidStore = create<KidState>()(
                 earnedToday: todayEarned + add,
                 earnDay: today,
                 calendarDay: today,
+                freezes: (cur.freezes ?? 0) + (token ? 1 : 0),
               },
             },
           };
