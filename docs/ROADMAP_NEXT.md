@@ -1,236 +1,126 @@
-# 🗺️ ROADMAP_NEXT — oracle-driven next-300 backlog
+# 🗺️ ROADMAP_NEXT — oracle-driven next 100 features
 
-> Generated 2026-08-12 from a CLEAN Oracle standup (35/35) + Council (70/70).
-> 8 new epics · ~190 new issues · every one scoped with acceptance criteria.
+> Generated from the clean 2026-08-12 Oracle standup + Council brief. 
+> Each issue is scoped with acceptance criteria and lives on the GitHub board.
 
 
-## v24 — content wave 3
+## v18 — content wave 2
 
-- ~~Bangla: consonant conjunct speed drill (ক্ষ ঞ্জ ঙ্ক ণ্ড)~~  ✅ #158 — 25 conjuncts in word context, timer streak
-- ~~Bangla: two-letter sight word wall (দেখে বলো)~~  ✅ #159 — 48 sight words, word pops → tap → warm read-aloud
-- ~~Bangla: sentence builder — subject + verb + object tiles~~  ✅ #160 — 12 SVO patterns, role-colored tiles snap in order
-- ~~Bangla: short-paragraph comprehension (ছোট গল্প)~~  ✅ #161 — 12 graded mini-stories, picture answers, 🔊 read-aloud
-- ~~Bangla: NCTB rhymes vol. 2 — tap-along~~  ✅ #162 — 5 classic rhymes, pentatonic tap-along, guide ladder
-- ~~Bangla: antonyms & synonyms pairs (বিপরীত/সমার্থক)~~  ✅ #163 — 22+22 picture-backed pairs, antonym ↔ synonym alternate
-- ~~Bangla: punctuation placement (। , ? !)~~  ✅ #164 — 22 sentences, tile snaps in, reads the difference aloud
-- ~~Bangla: compound word building (যোগে যোগে শব্দ)~~  ✅ #165 — 18 fused compounds, emoji clue → tap both parts → new word spoken
-- ~~Bangla: letter vs sound discrimination (অ-আ-ক-খ)~~  ✅ #166 — 14 confusable pairs, sound-first pick, 🔊 replay
-- ~~Bangla: matra matrix challenge (মাত্রা মিশ্রণ)~~  ✅ #167 — 10 real-word matra combos, tap matra → word + matra named aloud
-- ~~Bangla: graded read-a-story — 3 short stories~~  ✅ #168 — word-by-word audio chips, 3-question quiz per story
-- ~~Bangla: numbers 1-100 — see the word, tap the digit~~  ✅ #169 — full 1-100 word table, word↔digit stages, speaks every number
-- ~~Bangla: coin values (টাকার চেনা)~~  ✅ #170 — ৳1/2/5/10 recognition + count-to-total tray, names spoken
-- ~~Bangla: time words ordering (কাল-আজ-আগামীকাল)~~  ✅ #171 — calendar timeline, গতকাল→আজ→আগামীকাল ordering, distractor words
-- ~~Bangla: direction words (উপরে-নিচে-ডানে-বামে)~~  ✅ #172 — 🐱 follows spoken directions to a ⭐ on a 4×4 grid, path 3→5 steps
-- ~~Bangla: polite words social game (শিষ্টাচার)~~  ✅ #173 — 12 scenario cards, tap ধন্যবাদ/দয়া করে/দুঃখিত, scenario spoken aloud
-- ~~Bangla: riddle time (ধাঁধা) fun reads~~  ✅ #174 — 18 spoken riddles, tap the emoji answer, hint ladder (category → first letter → reveal)
-- ~~English: R-controlled vowels (ar er ir or ur)~~  ✅ #175 — 5 word families × 5 words, hear the word + pick its bossy-R spelling
-- ~~English: silent-e magic (make-a-word)~~  ✅ #176 — 16 CVC→CVCe flips, tap the magic-e, word fuses + glows gold (visual reveal)
-- ~~English: sight words level 3 (3rd 100)~~  ✅ #177 — full Fry 3rd-100 pool merged (124 words), hear-mode (hidden spelling) + read-mode alternate
-- ~~English: contractions (I'm, don't, can't)~~  ✅ #178 — 24 contraction↔full-form matches, both directions, pair re-read aloud
-- ~~English: comparatives & superlatives (big-bigger-biggest)~~  ✅ #179 — 5 adjectives × 8 items, demo rule strip (pulses + speaks), 2-pic → -er / 3-pic → -est
-- ~~English: prepositions (in, on, under, behind)~~  ✅ #180 — 8 prepositions, drag the object to the spoken spot (8 objects, snap-home + result sentence)
-- ~~English: question words (who what where when why)~~  ✅ #181 — 22 picture-context question slots, tap the word that fills the ___ blank, sentence spoken
-- ~~English: story sequencing (first then last)~~  ✅ #182 — 16 mini-stories, drag 3-4 picture cards into first→then→last order, solved story read aloud
-- ~~English: compound words (rain+bow=rainbow)~~  ✅ #183 — 16 compounds, tap the first half then the second, word fuses + spoken aloud
-- ~~English: read-aloud comprehension lvl 2~~  ✅ #184 — 18 spoken 5-7 word sentences, tap the picture that answers; 🔊/🔇 read-aloud toggle
-- ~~English: alphabetical order race~~  ✅ #185 — 24 levelled word sets (4/5/6 words), drag to ABC order, instant green-glow check per drop
-- ~~English: word families (-at -an -ig -op)~~  ✅ #186 — 8 rhyming families × 4 words, drag each word to its bucket (correct fly-in / wrong bounce-back)
-- ~~English: yes/no listening comprehension~~  ✅ #187 — 22 spoken sentence+question pairs, tap ✅/❌, 🐢 slow-replay button
-- ~~Math: addition facts to 20 fluency~~  ✅ #188 — timed 6s-per-fact sprint, fact range grows by level to 20, ⚡ speed (<2.5s) + accuracy tally
-- ~~Math: subtraction facts to 20 fluency~~  ✅ #189 — timed 6s-per-fact minus sprint, visual 0–20 number line hops back to the difference, ⚡ speed + accuracy tally
-- ~~Math: doubles & near-doubles~~  ✅ #190 — doubles chant 🎵 + dot-array drill (first half), then near-doubles transfer "double {d} + 1" (second half), correct answer speaks the strategy
-- ~~Math: making ten strategy~~  ✅ #191 — ten-frame visuals fill the make-ten dots green + leftover yellow frame, every sum bridges to a teen, strategy line + spoken confirmation
-- ~~Math: 2-digit addition with regrouping (visual)~~  ✅ #192 — written-method box with 2 steps: add ones (base-10 cubes), 10-cube regroup animation pops a carry chip, then add tens + carry (bars); active column highlighted
-- ~~Math: 2-digit subtraction with borrowing (visual)~~  ✅ #193 — written-method box, borrow animation (a bar breaks into 10 ones, 52→4|12), then step 1 subtract ones, step 2 subtract tens; base-10 blocks update after the borrow
-- ~~Math: multiplication arrays (visual times tables)~~  ✅ #194 — dot arrays (2–5 × 2–5) with row/column badges, kid taps the matching equation "3 × 4 = 12"; distractors are other valid arrays, never commutative twins
-- ~~Math: division as sharing lvl 2~~  ✅ #195 — candies dealt round-robin into plates (sharing animation), leftover highlighted green "Left over!", then answer "each kid gets __" and "left over __"
-- ~~Math: fractions — parts of a set~~  ✅ #196 — group of 🍎 (4–16), tap the correct subset (green rings, toggle), ✅ checks the count; 1/2, 1/3, 2/3, 1/4…3/4 of the group
-- ~~Math: mixed numbers & improper fractions intro~~  ✅ #197 — bar models + 0..3 number line; kid converts 1½ ↔ 3/2 both directions; 4 option cards, value-distinct distractors
-- ~~Math: decimals — tenths place value~~  ✅ #198 — 10-cell strip (each cell = 0.1); read the shaded decimal (0.3) from 4 cards, build it by shading cells + ✅; place-value speech "3 tenths"
-- ~~Math: making change with ৳ notes~~  ✅ #199 — pay with ৳50/৳100 and compute the change (৳50−৳32=৳18) on note visuals; then tap ৳5/10/20/50 off a tray to make exact amounts + ✅
-- ~~Math: elapsed time (how long until…)~~  ✅ #200 — analog clock start + digital "until 2:45" chip; kid finds the minutes (5–59 by level); correct sweeps the hands to the target so the elapsed arc is the answer
-- ~~Math: perimeter intro (measure the fence)~~  ✅ #201 — unit-cube fence posts along every edge; kid adds labelled sides of rectangles (4 sides) / right triangles (3 sides) and taps the perimeter (peSpeak)
-- ~~Math: 2D → 3D shape pairing~~  ✅ #202 — six solids spin on a turntable; "which flat face belongs to this solid?" (cube→square) and the reverse; sphere + cone are the "no flat faces" distractors (sfSpeak confirms the pairing)
-- ~~Math: symmetry mirror game~~  ✅ #203 — 13 pixel-pictures (heart, pine, house, castle…) each defined by its left half; dashed gold fold line; kid taps the true mirror half from 4 cards, correct snaps the full picture together (sySpeak)
-- ~~Science: animals — features & movement~~  ✅ #204 — drag 24 animals into Fly/Swim/Crawl/Walk bins; wrong drop shakes red + flashes the right bin green, animal retries; speaks the fact "The bee flies" / "মৌমাছি উড়ে" (tiered pool lvl 1→2→3)
-- ~~Science: plant life cycle (seed→fruit)~~  ✅ #205 — order seed 🫘 → sprout 🌱 → plant 🌿 → flower 🌸 → fruit 🍎; each correct tap springs the next stage out of a terracotta pot (grow tween + soil particles) while a timeline fills left→right
-- ~~Science: weather & seasons sorting~~  ✅ #206 — drag 20 items (sunscreen→summer, umbrella→rainy, scarf→winter, kite→spring) into 4 season bins; Bangla+EN labels everywhere, wrong drops flash the right bin green (wsSpeak)
-- ~~Science: light & shadows~~  ✅ #207 — predict the shadow: it falls opposite the light, low light → long far shadow, high → short near; light moves each round, real shadow grows in with a source→shadow beam (lshSpeak)
-- ~~Science: magnets — attract/repel~~  ✅ #208 — red N / blue S pole caps face each other; kid predicts attract/repel, then the movable magnet actually snaps together (✨ spark) or bounces back; wrong guesses still play the true animation (mg*Speak)
-- ~~Science: water cycle for kids~~  ✅ #209 — order water 💧 → vapor ♨️ → cloud ☁️ → rain 🌧️; a cartoon sun + pond scene animates each correct tap (pond ✨ sparkle, 💨 steam rising, cloud popping in, 💧 rain falling) while the timeline fills; lvl 1=3 steps, lvl 2+=4 (wc*Speak)
-- ~~ICT: keyboard explorer (letters & numbers)~~  ✅ #210 — find the key on a friendly blue QWERTY keyboard; a bouncing yellow badge speaks the target ("Find the B" / "B খুঁজো"); lvl 1–2 letters, lvl 3–4 numbers (Bangla digits ০১২৩… in bn), lvl 5–6 mixed; correct key flashes green + speaks it, wrong shakes red (kb* keys)
-- ~~ICT: device manners — on/off & wait~~  ✅ #211 — cartoon tablet with a real power button; turn on = tap power → wait for the boot bar (a tempting 👆 bubble from lvl 2 says "not yet!"), turn off = tap power → confirm → 😴; 100% offline, speaks every step in EN/BN (dm* keys)
-- ~~Social: professions & their tools~~  ✅ #212 — picture-match 12 Bangladeshi helpers to their tools (ডাক্তার→🩺, কৃষক→🌾…); helper shown big, tap the matching tool from a 2×2 grid; shuffle-bag guarantees every 12 matches show all 12; Bangla+EN names (pfh*/pft* keys)
-- ~~Social: our festivals — customs sort~~  ✅ #213 — drag 16 gentle customs (8 per festival, all non-religious-adjacent) into the right bin: Pohela Boishakh 🎉 (panta bhat, hilsa, alpana…) vs Eid 🎊 (semai, eidi, henna…); correct drop speaks "{item} for {festival}", wrong flashes the right bin green (fc* keys)
-- ~~Values: kindness & sharing scenarios~~  ✅ #214 — 12 everyday situations (friend forgot a crayon, one biscuit two friends…); tap the GREEN kind choice → 💚 heart burst + rotating praise spoken aloud; unkind taps get only a gentle "try the kind way" (never punished); each round shuffles all 12 so every kid meets them (kd* keys)
-- ~~Values: honesty — the truth game~~  ✅ #215 — 12 everyday situations (broke a vase, ate the last chocolate, found money…); tap the GREEN truthful response → ⭐ star burst + rotating praise spoken aloud; untruthful taps get only a gentle "try telling the truth" (never a penalty); each round shuffles all 12 so every kid meets them (hn* keys)
-- ~~Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)~~  ✅ #216 — race line of N runners 🏁 with a checkered finish flag; "Who is দ্বিতীয়?" → tap the 2nd-from-the-flag runner; wrong taps flash red + pulse the flag (where counting starts); each round asks every position exactly once, all 10 ordinals at lvl 6 (ord* keys)
-- ~~Bangla: simple idioms for kids~~  ✅ #217 — 12 বাগধারা (তালগাছে কুমড়ো 🌴🎃, চোখে আঙুল দিয়ে দেখা 👁️…) match their meaning; emoji picture hint + the idiom spoken aloud; 🔊 replay speaks a kid-friendly example; 3 meaning buttons, shuffle-bag guarantees all 12 met, lvl ladder [4,4,6,6,8,8] (id* keys)
-- ~~Bangla: verb-form gender agreement~~  ✅ #218 — 12 slots pick the agreeing verb for a pictured subject: ছেলেটি খেলছে 👦⚽, মা রান্না করেন 👩🍳, রাজা যান 👑…; emoji picture + subject blank + 3 verb buttons (wrong = wrong person/honorific), full sentence spoken on correct; shuffle-bag + dedupe, lvl [4,4,6,6,8,8] (vg* keys)
-- ~~Bangla: classifiers & postpositions (গুলো/টাকে)~~  ✅ #219 — 16 sentences with a blank ("আমার বই ___ পড়ে আছে।" 📚, "মেয়েটি স্কুল ___ আসছে।" 🏫); tap a word button to INSERT টি/গুলো/পাশে/থেকে…; correct fills the blank + speaks the full sentence; 3 distinct options, shuffle-bag + dedupe, lvl [4,4,6,6,8,8] (clf* keys)
-- ~~English: digraph review challenge (sh ch th wh ph)~~  ✅ #220 — hear "ship" 🚢 → tap the digraph that completes "__ip"; 25 words (5 per digraph, one per digraph per round = all 5 guaranteed); shrinking timer bar ramps 10s→5s, timeout = gentle "Faster!" (dg* keys)
-- ~~English: synonyms & antonyms pairs~~  ✅ #221 — "Same or opposite?" mode pill 🎨: target word + emoji (happy 😊 / big 🐘) asks for the same-meaning or opposite word; 16 synonym + 16 antonym pairs, each round mixes half/half; 3 string-distinct options, separate shuffle-bags with round-level dedupe, correct tap says "Yes! happy → glad"; lvl [6,6,8,8,10,10] (sa* keys)
-- ~~English: irregular plurals (foot-feet, mouse-mice)~~  ✅ #222 — "Make it plural!" one foot 🦶 → "two ___?"; 14 irregular pairs (foot→feet, mouse→mice, child→children, ox→oxen, sheep→sheep, leaf→leaves…); 3 string-distinct options, shuffle-bag + round-level dedupe, correct says "Perfect! foot → feet" and speaks "one foot, two feet"; lvl [4,4,6,6,8,8] (ip* keys)
-- ~~English: irregular past tense (go-went, see-saw)~~  ✅ #223 — "Past time!" Today I go 🚶 → "Yesterday I ___ to school."; 16 irregular verbs (go→went, see→saw, eat→ate, buy→bought, sleep→slept, read→read…), sentence-context blank fill that speaks the whole sentence on correct; 3 string-distinct options, shuffle-bag + round-level dedupe; lvl [4,4,6,6,8,8] (iv* keys)
-- ~~English: long-vowel teams review~~  ✅ #224 — "Vowel teams!" hear "r____n" 🌧️ → tap the long-vowel team that makes the word; 8 mixed teams × 5 words = 40 (ai ay ee ea oa ow ie igh); every round covers all 8 teams, per-team shuffle-bags reach all 40; shrinking timer bar 10s→5s for speed, gentle "Faster!" on timeout; lvl [10000…5000]ms (lv* keys)
-- ~~Math: skip-counting by 3s & 4s~~  ✅ #225 — "Skip count!" +3/+4 sequence on a number line: green dots at reached terms, pulsing "?" at the next; tap the next number, correct fills blank + speaks the full sequence; off-by-one/off-by-two distractors; terms ramp [2,3,3,4,4,5], starts ramp to 0–48; lvl [2,3,3,4,4,5] (sc* keys)
-- ~~Math: odd & even sort~~  ✅ #226
-- ~~Math: number bonds to 10 & 20~~  ✅ #227
-- ~~Math: place value to 9999 (thousands)~~  ✅ #228 (shipped via `game-placevalue` PlaceValueScene — build+read 4-digit numbers with blocks, spoken Bangla, i18n clean)
-- ~~Math: rounding to nearest 10/100~~  ✅ #229 — number-line jump game
-- ~~Math: bar-chart reading~~  ✅ #230 — 6 emoji charts, tap-the-bar
-- ~~Science: sink or float predict~~  ✅ #231 — 16 objects, predict-then-check
-- ~~Science: animal food chains~~  ✅ #232 — 6 chains, arrow ordering
-- ~~Science: day & night — earth rotation~~  ✅ #233 — spin visual + why questions
-- ~~ICT: tap/drag accuracy trainer~~  ✅ #234 — catch the bugs, drag the butterfly
-- ~~Social: village & city life sort~~  ✅ #235 — drag cards into village/city
-- ~~Values: patience & waiting game~~  ✅ #236 — 6 waiting scenarios, gentle rewards
+- Bangla: three-digit numbers 100–1000 (place value to hundreds)  _(priority: medium, kid-first)_
+- Bangla: opposites (বিপরীত শব্দ) matching game  _(priority: medium, kid-first)_
+- Bangla: conjunct letters (যুক্তাক্ষর) — ক্ষ, ঞ্জ, ঙ্ক etc.  _(priority: low, kid-first)_
+- Bangla: days & months (সপ্তাহের দিন, মাসের নাম) order game  _(priority: low, kid-first)_
+- Bangla: spelling (বানান) — common 2-3 letter words  _(priority: medium, kid-first)_
+- Bangla: advanced matras (ে/ো/ৈ/ৌ) tap game  _(priority: low, kid-first)_
+- Bangla: simple sentence → picture match  _(priority: medium, kid-first)_
+- Bangla: nursery rhyme tap-along (ছড়া)  _(priority: low, kid-first)_
+- Bangla: pronouns (সর্বনাম) fill-in  _(priority: low, kid-first)_
+- Bangla: count back from 100 (উল্টো গোনা)  _(priority: low, kid-first)_
+- English: long-vowel teams (ee/ea/ai/ay/oa/ow) phonics  _(priority: medium, kid-first)_
+- English: CVC word builder (drag letters)  _(priority: medium, kid-first)_
+- English: sight words level 2 (next 100)  _(priority: medium, kid-first)_
+- English: plurals -s/-es/-ies  _(priority: low, kid-first)_
+- English: regular past tense (-ed)  _(priority: low, kid-first)_
+- English: sentence reading comprehension (3-5 words)  _(priority: low, kid-first)_
+- English: uppercase ↔ lowercase match  _(priority: low, kid-first)_
+- Math: multiplication tables 2–10  _(priority: high, kid-first)_
+- Math: division facts (fair shares)  _(priority: high, kid-first)_
+- Math: 3-digit add/sub with regrouping  _(priority: medium, kid-first)_
+- Math: place value to 9999  _(priority: medium, kid-first)_
+- Math: compare & order fractions  _(priority: medium, kid-first)_
+- Math: 2D shapes — sides & corners  _(priority: low, kid-first)_
+- Math: measurement — length, weight, capacity  _(priority: low, kid-first)_
+- Math: clock to 5 minutes (analog + digital)  _(priority: low, kid-first)_
+- Math: pictographs (data handling)  _(priority: low, kid-first)_
+- Math: money change combos (৳2/৳5/৳10/৳20)  _(priority: medium, kid-first)_
+- Math: skip counting patterns (+2, +5, +10)  _(priority: low, kid-first)_
+- Science: living vs non-living sort  _(priority: medium, kid-first)_
+- Science: plants — parts & needs  _(priority: medium, kid-first)_
+- Science: animal homes & babies  _(priority: low, kid-first)_
+- Science: five senses  _(priority: low, kid-first)_
+- Science: food sources — plant or animal  _(priority: low, kid-first)_
+- Science: materials — wood, metal, plastic, glass  _(priority: low, kid-first)_
+- ICT: computer parts & safe offline habits  _(priority: low, kid-first)_
+- Social: family & community helpers  _(priority: low, kid-first)_
+- Social: Bangladesh national symbols  _(priority: low, kid-first)_
+- Values: good habits & hygiene  _(priority: low, kid-first)_
 
-## v25 — parent power 3
+## v19 — parent power 2
 
-- ~~Parent: per-kid reading & story progress view~~  ✅ #237 — "📚 Reading & stories" card: the 4 read-aloud/story skills (EN+BN titles) with mastery bar + % , correct/attempts score, and 🌱/🔶/✅ status; reads already-loaded mastery state → fully offline
-- ~~Parent: weekly learning narrative from Kotha~~  ✅ #238 — "📖 {kid}'s week in words" card: EN+BN plain-language paragraph from the last 7 days of Kotha stories (top skills, strongest + trickiest skill, named misconception), editable in-browser + saved to localStorage only (edit-safe, never sent to cloud); stories fetched via GET /kids/{id}/stories
-- ~~Parent: struggle-alert card (skill needs help)~~  ✅ #239 — "🚨 Needs a little help" card: top 3 Moni-flagged skills (misconception > fatigue > gap/guessing) from this week's stories, named misconception in EN/BN + a client-side `NV:<skillId>` Reteach QR the kid scans to jump into that skill's game
-- ~~Parent: compare two kids side-by-side~~  ✅ #240 — "⚖️ Compare two kids" card: two pickers + metric-by-metric table (mastered, current world, minutes/rounds/correct% this week, active days, mastered this week), leader highlighted, derived from already-loaded mastery/weekly → fully offline
-- ~~Parent: export learning history (CSV/PDF)~~ ✅ #241 — shipped as #273 (0.26.16): CSV + JSON export, ISO-8601 UTC columns
-- ~~Parent: printable worksheet generator from weak skills~~ ✅ #132 — merged #444 (#242 dup closed)
-- ~~Parent: per-kid sound & music balance~~  ✅ #243 — Voice/SFX/Music sliders per kid in Reading & sound, each with 🔊 Try (client-side WebAudio preview); persisted on kid_settings (voice_volume/sfx_volume/music_volume, auto-migrated) and applied by the kid app (audio.ts layers + speech.ts voice balance)
-- ~~Parent: daily play summary~~  ✅ #244 — "☀️ Today" headline card on open: rounds + minutes (weekly per-day buckets) + mastered today (new WeeklyOut.mastered_today field, ≥80% + practiced today); offline-derived from already-loaded weekly state
-- ~~Parent: share-card deep link per kid~~  ✅ #245 — per-kid unguessable share token + anonymous public snapshot (`/share/?t=`), weekly WhatsApp card carries `🔗 See the week:` link
-- ~~Parent: multi-kid onboarding flow~~  ✅ #246 — guided first-run wizard (avatar + name + birth year, add 2+ kids back-to-back, editable later, offline-safe, EN+বাংলা country-pack strings)
-- ~~Parent: PIN recovery flow~~  ✅ #247 — per-device security Q&A (set at first PIN use + changeable from the panel); forgotten/locked PIN resets IN PLACE — offline, no sign-out, no lockout (sign-out reset stays as no-Q&A fallback)
-- ~~Parent: quiet hours scheduling~~  ✅ #248 — per-day quiet windows (7-day editor, overnight-aware); app auto-lowers ALL sound + gently dims during them, never hard-blocks; 🌙 badge tap = session override, master toggle/softness/dim in the portal
-- ~~Parent: acceleration plan view~~  ✅ #249 — "🚀 Acceleration plan" card: every "skipped ahead" skill + why (easy/know/moving-on/parent, EN+BN) + the world-band jump chip; kid app logs skips via a durable outbox → POST /acceleration (uid-dedup, band-lock) and marks the skill mastered so the journey advances; offline via the already-loaded per-kid payload
-- ~~Parent: big-text & high-contrast mode~~  ✅ #250 — global accessibility toggles across BOTH areas: one `nv_a11y` localStorage key (same-origin portal + kid app) drives 🔍 big text (`html.nv-big-text` zoom 1.2×) + 🎨 high contrast (stronger borders/text/focus); settings switches in the kid app + portal topbar chips, EN+বাংলা, `storage`-listener live sync; pure shape/parsing shared via `@numberverse/core`
-- ~~Parent: monthly learning report archive~~  ✅ #251 — "🗓️ Monthly archive" card: rolling 12-month grid (rounds / % correct / minutes + top-3 skills per month, EN+বাংলা month names) generated client-side from a one-time full-history fetch (up to 2000 rounds, activity cap raised) — offline after load; ⬇️ CSV export via client-side blob
-- ~~Parent: untouched-games view~~  ✅ #252 — "🎮 Games to try" card: per-kid coverage ("X of N games played" + per-subject bars) + list of untouched games (EN+বাংলা title, world-band chip), derived from already-loaded mastery → offline
-- ~~Parent: session-preserving kid switch~~  ✅ #253 — kid-switch snapshots the in-flight session (steps + step index + rounds done) per kid and RESUMES it from the home Play button on switch-back; cleared on real completion / explicit new session; co-op pass-the-device untouched; durable-outbox uid dedup keeps sync single-fire
-- ~~Parent: dashboard light/dark theme~~  ✅ #254 — "🌙/☀️ Light theme" topbar toggle (portal-only, persisted in `nv_parent_theme`): every ink/surface color in `globals.css` is now a CSS variable, `html.theme-light` swaps the whole dark-purple palette for a light one (native controls follow via `color-scheme`), EN+বাংলা labels, `storage`-listener sync across portal tabs; #250 high-contrast always wins over the theme so a11y stays maximum-contrast
-- ~~Parent: session timeline per kid~~  ✅ #255 — "🧵 Session timeline" card: play blocks grouped client-side from the same full-history feed as the archive (≥30-min idle = new session); each row = start time, rounds, minutes, accuracy bar + the skills whose BKT mastery crossed 0.8 during that block (exact port of the server's `_bkt_update` replay) — fully offline; day-filter chips (All + last 14 days), EN+বাংলা, per-kid filter remembered
-- ~~Parent: goal-setting screen (minutes/rounds per day)~~  ✅ #256 — "🎯 Daily goal": parent sets a gentle minutes/day goal per kid (stored in `KidSettings.goal_min`); the server CLAMPS it to the day's cap so it respects the limits above; the kid app shows a home progress line (🎯 18/25 min) and a once-per-day dismissible Nova celebration when reached (EN+বাংলা), never blocks play
-- ~~Parent: curriculum focus pin~~  ✅ #257 — "📌 Focus": parent pins a subject + world per kid (`KidSettings.focus_subject`/`focus_band`, both-or-neither, server-normalized; ✕ Clear restores the normal path); the kid journey LEADS with that subject+world (Play + world sessions), home shows a "📌 Focus: Math · World 2" chip (EN+বাংলা), and the pinned world gets a 📌 on the map; Moni's tutor call still outranks it
-- ~~Parent: per-kid voice preference~~  ✅ #258 — "🗣️ Voice" block in Reading & sound: parent picks which TONE reads aloud per kid (Warm adult · Kid · Soft female · Friendly male → the neural Bangla speaker id + Web-Speech gender bias) and how FAST (Slower · Normal · Faster → Web-Speech rate multiplier; the Bangla voice keeps its own warm tempo), stored per kid in `KidSettings.voice_tone`/`voice_speed` (null = device default); a 🔈 Try button plays a real TTS sample with the chosen tone+speed; EN+বাংলা
-- ~~Parent: bedtime wind-down config~~  ✅ #259 = duplicate of #248 (created 34s later) — per-kid quiet window, auto-soften + gentle dim, parent override all shipped in PR #562; closed without new code, see `docs/work-orders/259.md`
-- ~~Parent: see exact questions each kid missed~~  ✅ #89 — "❌ Missed questions" card (after Recent activity): per-skill list of the answer a kid PICKED vs the RIGHT one (wrong-tap stories now also carry the correct answer in the context envelope), Moni's diagnosis kind + misconception fingerprint, a 🔁 reteaching badge when Moni's action was a reteach, grouped by skill (top 8, 5 misses each) — derived purely from the already-loaded story ledger, so it's offline-first and sends nothing new; EN+বাংলা
+- Parent panel: per-day wrong-answer history per kid  _(priority: high, parent-facing)_
+- Parent panel: mastery timeline  _(priority: medium, parent-facing)_
+- Parent: per-kid daily goal (minutes/rounds) + gentle nudge  _(priority: medium, parent-facing)_
+- Parent: curriculum band focus override  _(priority: medium, parent-facing)_
+- Parent: voice preference per kid  _(priority: low, parent-facing)_
+- Parent: kid profile avatar/photo management  _(priority: low, parent-facing)_
+- Parent: on-demand weekly digest  _(priority: low, parent-facing)_
+- Parent: offline sync indicator + manual sync  _(priority: low, parent-facing)_
+- Parent: PIN lock to enter parent area  _(priority: high, parent-facing)_
+- Parent: bedtime quiet mode  _(priority: low, parent-facing)_
+- Parent: skip-ahead for advanced kids  _(priority: low, parent-facing)_
+- Parent: see exact questions each kid missed  _(priority: medium, parent-facing)_
 
-## v26 — Kotha & adaptive
+## v20 — trust & safety
 
-- Kotha: story inspector in parent panel  _(priority: low, kid-first, adaptive)_
-- Kotha: semantic RAG retrieval endpoint  _(priority: low, kid-first, adaptive)_
-- Moni: plan-driven difficulty in gameplay  _(priority: low, kid-first, adaptive)_
-- Moni: misconception contrast drills  _(priority: low, kid-first, adaptive)_
-- Moni: weekly insight card for parents  _(priority: low, kid-first, adaptive)_
-- Moni: fatigue-aware session pacing  _(priority: low, kid-first, adaptive)_
-- Moni: confidence-based review schedule  _(priority: low, kid-first, adaptive)_
-- Kotha: batch-embed stories to pgvector  _(priority: low, kid-first, adaptive)_
-- Kotha: privacy-scrubbed cross-kid aggregates  _(priority: low, kid-first, adaptive)_
-- Kotha: story dedup + retention policy  _(priority: low, kid-first, adaptive)_
-- Moni: learning-style surface  _(priority: low, kid-first, adaptive)_
-- Moni: parent-adjustable strictness  _(priority: low, kid-first, adaptive)_
-- Kotha: offline story queue quota  _(priority: low, kid-first, adaptive)_
-- Moni: per-skill error fingerprinting  _(priority: low, kid-first, adaptive)_
-- Kotha: admin story health dashboard  _(priority: low, kid-first, adaptive)_
-- Adaptive: lesson-variation anti-boredom  _(priority: low, kid-first, adaptive)_
-- Moni: per-skill goal planner for parents  _(priority: low, kid-first, adaptive)_
-- Kotha: story search by skill/error-kind  _(priority: low, kid-first, adaptive)_
-- Kotha: weekly story digest export  _(priority: low, kid-first, adaptive)_
-- Moni: session-length recommendation surfacing  _(priority: low, kid-first, adaptive)_
-- Adaptive: hint-ladder depth by confidence  _(priority: low, kid-first, adaptive)_
+- Privacy: data-minimization audit (what's stored + why)  _(priority: high, guardrail)_
+- Safety: automated content scan as a CI gate  _(priority: medium, guardrail)_
+- No-ads: CI scan that no ad/tracker SDK ever lands  _(priority: high, guardrail)_
+- Kid-safe share images: strip kid name/photo metadata  _(priority: medium, guardrail)_
+- Encrypted sync payloads (when sync lands)  _(priority: low, guardrail)_
+- Gentle bedtime enforcement (not blocking)  _(priority: medium, parent-facing)_
+- API rate-limit + abuse guard  _(priority: low, guardrail)_
+- Local backup/restore (zip) for parents  _(priority: low, parent-facing)_
+- Privacy explainer card for parents  _(priority: low, parent-facing)_
+- Screen-time accuracy check (ties to playtime reports)  _(priority: low, guardrail)_
 
-## v27 — trust & safety 2
+## v21 — growth & retention
 
-- Safety: parent-area age gate (PIN)  _(priority: low, guardrail)_
-- ~~Privacy: on-device data review for parents~~ ✅ #262 — parent portal on-device data section (categories + per-category clear, offline)
-- Safety: content-scan allowlist governance  _(priority: low, guardrail)_
-- ~~Guardrail: no-network fallback verification test~~ ✅ #264 — Playwright cold+warm offline e2e, live 2/2 pass
-- ~~Guardrail: invalidate sessions on password change~~ ✅ #265 — session_guard revokes other sessions; 16-check CI gate
-- Privacy: PII scrubber for logs  _(priority: low, guardrail)_
-- Safety: scheme/link allowlist  _(priority: low, guardrail)_
-- Guardrail: no console.log in prod bundle  _(priority: low, guardrail)_
-- ~~Safety: gentle screen-time wind-down~~ ✅ #269 — parent-set cap (#6) gives gentle 'all done today' + rest, not a block
-- Privacy: Kotha story context redaction  _(priority: low, guardrail)_
-- Guardrail: dependency license audit gate  _(priority: low, guardrail)_
-- ~~Safety: instant pause (parent kill-switch)~~  ✅ #272 — "⏸️ Instant pause" block at the TOP of Learning controls: one tap stops every game for a kid (`KidSettings.paused`, server-backed); the app shows a kid-safe 😴 "learning break" screen (resting Nova, EN+বাংলা) instead of any play screen; survives reload (served with settings + cached on-device) and lands mid-session via a lightweight 30s visible-tab poll; resuming drops the kid back to a fresh home
-- Privacy: data-export for parents (own-API)  _(priority: low, guardrail)_
-- ~~Guardrail: rate-limit on story + progress endpoints~~ ✅ #96 — #274 per-account+IP limiter, HTTP 429 on breach
-- Safety: age-appropriate band lock for content  _(priority: low, guardrail)_
+- Skill-of-the-week challenge + badge  _(priority: medium, kid-first)_
+- Nova personality v2 — more reactions & micro-animations  _(priority: low, kid-first)_
+- Daily quest variety: skill-based quests  _(priority: low, kid-first)_
+- Collectible badge book per land  _(priority: low, kid-first)_
+- Pet mini-games with Nova  _(priority: low, kid-first)_
+- Streak freeze tokens  _(priority: low, kid-first)_
+- Per-skill share card: 'Look what I learned!'  _(priority: low, kid-first)_
+- Parent referral share (offline WhatsApp)  _(priority: low, parent-facing)_
+- Land-unlock celebration fireworks  _(priority: low, kid-first)_
+- Weekly recap for kid  _(priority: low, kid-first)_
 
-## v28 — growth & retention 2
+## v22 — polish & perf
 
-- ~~Kids: skill-tree map per land~~ ✅ #276 — 🌳 per-land skill tree (leaves branch off a trunk), mastered leaves glow, tap any leaf to jump in, locale-packed (PR pending)
-- ~~Kids: land trophy room~~ ✅ #277 — 🏆 Trophy Room shelf (7 lands), celebrate-once on full mastery, offline (PR pending)
-- ~~Kids: Nova seasonal outfits (Eid, Boishakh)~~ ✅ #278 — festival-gated Eid + Boishakh sets, coin-buy via festival-gated store, locale-config (#131) (PR pending)
-- ~~Kids: pet evolution level 2 — new pet types~~ ✅ #279 — already shipped via #19 (owl/cat/peacock/dragon, adoption flow, growth preserved), closed
-- ~~Kids: challenge Nova — beat-the-owl rounds~~ ✅ #280 — ⚔️ 5-round math duel vs Nova, fair adaptive ramp + fair owl, coin prize inside the cap, offline, locale-packed (PR pending)
-- ~~Kids: daily login calendar reward~~ ✅ #281 — 7-day cycle, growing coin bonus per consecutive play day, claim once/day within the cap (PR pending)
-- ~~Kids: same-device sibling leaderboard~~ ✅ #282 — 🥇 screen ranks device kids by mastery with per-kid totals (mastery/rounds/stars), medals + "You" pill, empty state → add sibling, no cloud (PR pending)
-- ~~Kids: goal badges (10 rounds, 100% day)~~ ✅ #283 — Badge Book: 4 lifetime badges (sessions/stars/streak/land-champion), earned via local state, celebrate-once + spoken cheer (PR pending)
-- ~~Kids: mastery mystery reward boxes~~ ✅ #284 — 🎁 box per newly-mastered skill, opens for 2–5 coins inside the daily cap, cap-full waits (PR pending)
-- ~~Kids: custom avatar builder~~ ✅ #285 — 🎨 mix-and-match base+hat+eyes+clothes, 7 parts each, persisted per kid, offline, locale-packed (PR pending)
-- ~~Kids: star-of-the-week recap card~~ ✅ #286 — 🌟 weekly card (days/top-skill/biggest win), spoken option, offline, locale-packed (PR pending)
-- ~~Kids: quest mission variety~~ ✅ #287 — daily quest type rotates (rounds/stars/master/new-game), reward parity, offline (PR pending)
-- ~~Kids: kid-friendly voice settings~~ ✅ #288 — 🗣️ Nova's Voice panel in-game: Soft/Normal/Loud + one-tap reset, applies to both speech engines, kid-safe (PR pending)
-- ~~Kids: long-term achievements book~~ ✅ #289 — 📚 18 milestone achievements, pop unlock animation, celebrate-once spoken cheer, offline (PR pending)
-- Kids: mastery confetti + spoken cheer  _(priority: low, kid-first)_
-- Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_
-- ~~Kids: Nova reaction pack v2~~ ✅ #292 — 🦉 10 in-game reactions for streaks/setbacks/reteach, priority chain, gentle speak, DOM overlay over every scene (PR pending)
-- ~~Kids: quest variety — mission types~~ ✅ #293 — duplicate of #287, closed (same 4 types, reward parity, i18n clean)
-- ~~Kids: streak-freeze token system~~ ✅ #294 — 🧊 token earned on the day-7 calendar tile; a single missed day spends it to keep the streak alive (PR pending)
+- Split main bundle below 1.5MB (more lazy chunks)  _(priority: medium, kid-first)_
+- Voice: per-kid gender/speed options  _(priority: low, kid-first)_
+- Voice: model download progress + retry  _(priority: low, kid-first)_
+- Voice: graceful fallback to system TTS  _(priority: low, kid-first)_
+- Offline: verify full offline on fresh install  _(priority: medium, guardrail)_
+- PWA: update banner with version notes  _(priority: low, kid-first)_
+- PWA: install-prompt timing polish  _(priority: low, kid-first)_
+- Cold start < 2s on mid-range Android  _(priority: medium, guardrail)_
+- Memory: scene pooling to cut GC jank  _(priority: low, kid-first)_
+- Haptics: subtle tap feedback where supported  _(priority: low, kid-first)_
 
-## v29 — polish & perf 2
+## v23 — infra & ops
 
-- Perf: lazy-load every game scene chunk  _(priority: low, kid-first, polish)_
-- Perf: 60fps on 2GB Android  _(priority: low, kid-first, polish)_
-- Polish: unified design tokens  _(priority: low, kid-first, polish)_
-- Polish: empty/loading/error states everywhere  _(priority: low, kid-first, polish)_
-- ~~PWA: iOS home-screen polish~~ ✅ #347 — 🍏 12 portrait startup splash PNGs (all iPhone/iPad sizes) wired via media queries, apple-touch-icon + meta verified (PR pending)
-- Voice: quantize on-device model  _(priority: low, kid-first, polish)_
-- ~~Perf: preconnect/priority for first paint~~ ✅ #349 — 🚀 preload the two first-paint fonts (Baloo/Nunito), swap-to-custom shrinks to one same-origin fetch; preconnect is a deliberate no-op (zero cross-origin by design) (PR pending)
-- Polish: reduced-motion mode  _(priority: low, kid-first, polish)_
-- Polish: keyboard navigation for parent area  _(priority: low, kid-first, polish)_
-- Perf: game-loop memory audit  _(priority: low, kid-first, polish)_
-- PWA: staged offline updates  _(priority: low, kid-first, polish)_
-- ~~Polish: sound-mixing balance~~ ✅ #354 — 🎚️ single MIX table (music 0.04–0.06 under sfx 0.05–0.16 under voice ~0.9), every SFX reads it, mutes verified (PR pending)
-- ~~Polish: haptic feedback on taps~~ ✅ #355 — 📳 subtle pulses on correct/wrong/win/UI via the shared audio path, Settings off-switch, auto no-op on unsupported devices, locale-packed (PR pending)
-- ~~Polish: onboarding tour for first play~~ ✅ #356 — 👋 4-step skippable core-loop tour on first home, once per device, locale-packed (PR pending)
-- Perf: scene preload strategy  _(priority: low, kid-first, polish)_
-
-## v30 — infra & ops 2
-
-- CI: oracle_team as PR gate job  _(priority: low, documentation)_
-- CI: post-deploy smoke test  _(priority: low, documentation)_
-- Infra: automated Postgres backups  _(priority: low, documentation)_
-- Infra: uptime monitor → Telegram  _(priority: low, documentation)_
-- Ops: structured error log + rotation  _(priority: low, documentation)_
-- Ops: auto-rollback on smoke failure  _(priority: low, documentation)_
-- CI: secret-scan job  _(priority: low, documentation)_
-- ~~Infra: second tunnel failover~~ ✅ #302 — tunnel watchdog cron-armed + standby unit + failover doc
-- Ops: container log cleanup  _(priority: low, documentation)_
-- Infra: restore-drill automation  _(priority: low, documentation)_
-- CI: bundle-size regression gate  _(priority: low, documentation)_
-- Docs: RELEASING.md update for new gates  _(priority: low, documentation)_
-- Ops: healthcheck + auto-restart policy  _(priority: low, documentation)_
-- CI: dependency-audit job (npm audit)  _(priority: low, documentation)_
-- ~~Infra: metrics dashboard (box CPU/RAM/disk)~~ ✅ #309 — homelab prometheus + node-exporter + grafana + uptime-kuma, self-hosted
-- ~~Ops: backup encryption at rest~~ ✅ #310 — AES-256-CBC at rest, drill proven on box (12/12)
-- ~~Docs: architecture diagram refresh~~ ✅ #311 — docs/ARCHITECTURE.md (Kotha + Moni + always-sync)
+- CI: run oracle_team as a PR gate job  _(priority: high, documentation)_
+- CI: post-deploy smoke test (stamp + tokens)  _(priority: high, documentation)_
+- Postgres backup schedule to box disk  _(priority: medium, documentation)_
+- Uptime monitor → Telegram alert  _(priority: medium, documentation)_
+- Structured error logging (no analytics)  _(priority: low, documentation)_
+- Auto-rollback if post-deploy check fails  _(priority: medium, documentation)_
+- CI secrets hygiene scan  _(priority: low, documentation)_
+- Second cloudflared tunnel failover  _(priority: low, documentation)_
+- TLS cert rotation check automation  _(priority: low, documentation)_
+- RELEASING.md update: mastery-gate + oracle gate notes  _(priority: low, documentation)_
 
 ## Backlog
 
-- ~~Deferred: multi-language scaffold research~~ ✅ #131 — locale packs shipped
-- ~~Deferred: kid voice recording (on-device)~~ ✅ #138 — merged #441
-- ~~Deferred: SVG animation library evaluation~~ ✅ #321 — no lib, doc only #442
-- ~~Deferred: printable worksheet generator~~ ✅ #132 — merged #444
-- ~~Deferred: seasonal festival decor~~ ✅ #137 — merged #443
-- ~~Deferred: AR number-camera experiment (spike)~~ ✅ #130 — spike doc #449: on-device digit CNN (ONNX), per-script model assets
-- Deferred: elder-girl voice recording  _(priority: low, deferred)_
-- ~~Deferred: multi-device profile sync~~ ✅ #9 — server snapshot (mastery+coins, no voice/face) + newest-wins restore on parent sign-in (PR pending)
-- ~~Deferred: garden/pet expansion (new species)~~ ✅ #19 — PR #448: owl/cat/peacock/dragon, growth-milestone + coin gates, companion in Nova room
-- ~~Deferred: new lands — Jungle + Polar themes~~ ✅ #20 — BANDS 6/7, 9 new skills, jungle/polar palettes+SVG+themes, conjuncts & heritage modes (PR pending)
-- ~~Deferred: parent phone notifications bridge~~ ✅ #135 — spike decision: Web Push (VAPID) on the existing SW; requires sync ✅#9; build wave scheduled (device + VAPID ops) — docs/PARENT_NOTIFS_EVAL.md
-- ~~Deferred: screen-reader deep support~~ ✅ #133 — merged #446
-- ~~Deferred: sound-design pack (per-land)~~ ✅ #134 — merged #445
-- ~~Deferred: classroom projector mode~~ ✅ #136 — merged #447
-- ~~Deferred: flashcard QR tie-in~~ ✅ #139 — parent-printed `NV:<skillId>` QR cards (client-side, offline) + kid 📷 scan / manual-code → launches the mini-game (PR pending)
-- Deferred: teacher mode — class roster  _(priority: low, deferred)_
-- ~~Deferred: sibling co-op play mode~~ ✅ #22 — pass-the-device HUD toggle, mid-session switch keeps per-kid progress separate (PR pending)
+- AR numbers camera experiment  _(priority: low, deferred)_
+- Multi-language scaffold (Arabic/Hindi) — research  _(priority: low, deferred)_
+- Printable worksheet generator (offline PDF)  _(priority: low, deferred)_
+- Screen-reader deep support (VoiceOver/TalkBack)  _(priority: low, deferred)_
+- Sound design: per-land ambient music + SFX pack  _(priority: low, deferred)_
+- Optional parent phone notifications bridge  _(priority: low, deferred)_
+- Big-screen / classroom projector mode  _(priority: low, deferred)_
+- Seasonal events (Eid, Pohela Boishakh) decor  _(priority: low, deferred)_
+- Kid dictation: record own voice + replay  _(priority: low, deferred)_
+- Physical flashcards QR → mini game tie-in  _(priority: low, deferred)_
