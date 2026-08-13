@@ -53,7 +53,7 @@
 - ~~Math: 2D → 3D shape pairing~~  ✅ #202 — six solids spin on a turntable; "which flat face belongs to this solid?" (cube→square) and the reverse; sphere + cone are the "no flat faces" distractors (sfSpeak confirms the pairing)
 - ~~Math: symmetry mirror game~~  ✅ #203 — 13 pixel-pictures (heart, pine, house, castle…) each defined by its left half; dashed gold fold line; kid taps the true mirror half from 4 cards, correct snaps the full picture together (sySpeak)
 - ~~Science: animals — features & movement~~  ✅ #204 — drag 24 animals into Fly/Swim/Crawl/Walk bins; wrong drop shakes red + flashes the right bin green, animal retries; speaks the fact "The bee flies" / "মৌমাছি উড়ে" (tiered pool lvl 1→2→3)
-- Science: plant life cycle (seed→fruit)  _(priority: low, kid-first)_
+- ~~Science: plant life cycle (seed→fruit)~~  ✅ #205 — order seed 🫘 → sprout 🌱 → plant 🌿 → flower 🌸 → fruit 🍎; each correct tap springs the next stage out of a terracotta pot (grow tween + soil particles) while a timeline fills left→right
 - Science: weather & seasons sorting  _(priority: low, kid-first)_
 - Science: light & shadows  _(priority: low, kid-first)_
 - Science: magnets — attract/repel  _(priority: low, kid-first)_
