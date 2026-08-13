@@ -109,6 +109,11 @@ async def put_kid_settings(
     s.voice_volume = body.voice_volume
     s.sfx_volume = body.sfx_volume
     s.music_volume = body.music_volume
+    # #248 — quiet hours schedule + softness (auto-soften, never block).
+    s.quiet_enabled = body.quiet_enabled
+    s.quiet_windows = body.quiet_windows
+    s.quiet_dim = body.quiet_dim
+    s.quiet_volume = body.quiet_volume
     s.voice_record_enabled = body.voice_record_enabled  # #138
     await db.commit()
     await db.refresh(s)

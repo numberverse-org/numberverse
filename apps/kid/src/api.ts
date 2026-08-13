@@ -726,6 +726,13 @@ export interface KidSettings {
   voice_volume?: number;
   sfx_volume?: number;
   music_volume?: number;
+  /** #248 — quiet hours: the app auto-lowers volume + gently dims during a
+   *  per-day schedule, never hard-blocks. `quiet_windows` is 7 comma-joined
+   *  "HH:MM-HH:MM" (Mon..Sun; "-" = off that day; start>end = overnight). */
+  quiet_enabled?: boolean;
+  quiet_windows?: string | null;
+  quiet_dim?: boolean;
+  quiet_volume?: number;
   /** #138 — kid records their own voice and replays. Parent-gated, OFF by
    *  default (privacy-first); when on, recordings stay ON-DEVICE only. */
   voice_record_enabled: boolean;
@@ -741,8 +748,32 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   voice_volume: 1,
   sfx_volume: 1,
   music_volume: 1,
+  quiet_enabled: false,
+  quiet_windows: null,
+  quiet_dim: true,
+  quiet_volume: 0.15,
   voice_record_enabled: false,
 };
+
+/** #248 — is "now" inside a quiet window for TODAY's weekday?
+ *  `quiet_windows` is 7 comma-joined "HH:MM-HH:MM" (Mon..Sun; "-" = off that
+ *  day). A window crosses midnight when start > end (e.g. "20:00-07:00"), so
+ *  "in window" is (start <= now < end) for same-day, OR (now < end OR now >=
+ *  start) for overnight. Pure + testable; matches the portal editor exactly. */
+export function quietTimeNow(settings: KidSettings, now: Date = new Date()): boolean {
+  if (!settings.quiet_enabled || !settings.quiet_windows) return false;
+  const parts = settings.quiet_windows.split(",");
+  const dow = (now.getDay() + 6) % 7; // 0=Mon..6=Sun
+  const entry = parts[dow];
+  if (!entry) return false;
+  const m = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(entry.trim());
+  if (!m) return false;
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const start = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  const end = parseInt(m[3], 10) * 60 + parseInt(m[4], 10);
+  if (start <= end) return cur >= start && cur < end;
+  return cur >= start || cur < end; // overnight window
+}
 
 /** #6 — the effective daily playtime cap (minutes) for the CURRENT weekday.
  *  Precedence: per-weekday caps (0 = unlimited that day) → the flat

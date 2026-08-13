@@ -64,6 +64,13 @@ export interface KidSettings {
   voice_volume?: number;
   sfx_volume?: number;
   music_volume?: number;
+  /** #248 — quiet hours: the app auto-lowers volume + gently dims during a
+   *  per-day schedule, never hard-blocks. `quiet_windows` is 7 comma-joined
+   *  "HH:MM-HH:MM" (Mon..Sun; "-" = off that day; start>end = overnight). */
+  quiet_enabled?: boolean;
+  quiet_windows?: string | null;
+  quiet_dim?: boolean;
+  quiet_volume?: number;
   /** #138 — kid voice dictation, parent-gated, on-device only. */
   voice_record_enabled: boolean;
   updated_at?: string | null;
