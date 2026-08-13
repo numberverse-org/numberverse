@@ -16,7 +16,7 @@
 - ~~Bangla: compound word building (যোগে যোগে শব্দ)~~  ✅ #165 — 18 fused compounds, emoji clue → tap both parts → new word spoken
 - ~~Bangla: letter vs sound discrimination (অ-আ-ক-খ)~~  ✅ #166 — 14 confusable pairs, sound-first pick, 🔊 replay
 - ~~Bangla: matra matrix challenge (মাত্রা মিশ্রণ)~~  ✅ #167 — 10 real-word matra combos, tap matra → word + matra named aloud
-- Bangla: graded read-a-story — 3 short stories  _(priority: low, kid-first)_
+- ~~Bangla: graded read-a-story — 3 short stories~~  ✅ #168 — word-by-word audio chips, 3-question quiz per story
 - Bangla: numbers 1-100 — see the word, tap the digit  _(priority: low, kid-first)_
 - Bangla: coin values (টাকার চেনা)  _(priority: low, kid-first)_
 - Bangla: time words ordering (কাল-আজ-আগামীকাল)  _(priority: low, kid-first)_
