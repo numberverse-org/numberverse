@@ -84,7 +84,7 @@
 - ~~Science: day & night — earth rotation~~  ✅ #233 — spin visual + why questions
 - ~~ICT: tap/drag accuracy trainer~~  ✅ #234 — catch the bugs, drag the butterfly
 - ~~Social: village & city life sort~~  ✅ #235 — drag cards into village/city
-- Values: patience & waiting game  _(priority: low, kid-first)_
+- ~~Values: patience & waiting game~~  ✅ #236 — 6 waiting scenarios, gentle rewards
 
 ## v25 — parent power 3
 
