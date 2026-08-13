@@ -210,6 +210,10 @@ export interface NovaState {
    *  far). The conditions live in App.tsx (they read the skill catalog);
    *  the store only PERSISTS the earned set. */
   badges: string[];
+  /** #277 — band ids whose land the kid fully mastered (trophy room). The
+   *  condition (mastered === total) lives in App.tsx; the store persists the
+   *  earned set so a NEW trophy can be celebrated exactly once. */
+  trophies: number[];
   /** The kid's pet — an egg that hatches + grows as they learn. */
   petStage: number; // 0 egg → 1 hatchling → 2 young → 3 grown (per species)
   petProgress: number; // 0..1 toward the next stage
@@ -239,6 +243,7 @@ export function defaultNova(): NovaState {
     shareDay: "",
     calendarDay: "",
     badges: [],
+    trophies: [],
     petStage: 0,
     petProgress: 0,
     petFed: "",
@@ -355,6 +360,9 @@ interface KidState {
   /** #283 — persist the currently-earned badge ids; returns the NEWLY-earned
    *  subset (so the UI can celebrate each once). */
   novaSyncBadges: (kidId: string, earned: string[]) => string[];
+  /** #277 — persist the currently-earned land trophy band-ids; returns the
+   *  NEWLY-earned subset (so the UI can celebrate each once). */
+  novaSyncTrophies: (kidId: string, earned: number[]) => number[];
   /** A parent shared this kid's progress → +NOVA_SHARE_REWARD coins, once per
    *  calendar day. Returns true when the reward was actually granted. */
   novaShareReward: (kidId: string) => boolean;
@@ -882,6 +890,23 @@ export const useKidStore = create<KidState>()(
           const cur = s.nova[kidId] ?? defaultNova();
           const merged = Array.from(new Set([...(cur.badges ?? []), ...earned]));
           return { nova: { ...s.nova, [kidId]: { ...cur, badges: merged } } };
+        });
+        return newly;
+      },
+
+      /* ── #277 land trophies: merge the fully-mastered band ids (computed in
+           App.tsx from the skill catalog) into the persisted set and return
+           the NEWLY-earned ones so the UI can celebrate each once. ── */
+
+      novaSyncTrophies: (kidId, earned) => {
+        const n = get().nova[kidId] ?? defaultNova();
+        const stored = n.trophies ?? [];
+        const newly = earned.filter((id) => !stored.includes(id));
+        if (newly.length === 0) return [];
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const merged = Array.from(new Set([...(cur.trophies ?? []), ...earned]));
+          return { nova: { ...s.nova, [kidId]: { ...cur, trophies: merged } } };
         });
         return newly;
       },
