@@ -168,7 +168,7 @@
 - Kids: custom avatar builder  _(priority: low, kid-first)_
 - Kids: star-of-the-week recap card  _(priority: low, kid-first)_
 - Kids: quest mission variety  _(priority: low, kid-first)_
-- Kids: kid-friendly voice settings  _(priority: low, kid-first)_
+- ~~Kids: kid-friendly voice settings~~ ✅ #288 — 🗣️ Nova's Voice panel in-game: Soft/Normal/Loud + one-tap reset, applies to both speech engines, kid-safe (PR pending)
 - Kids: long-term achievements book  _(priority: low, kid-first)_
 - Kids: mastery confetti + spoken cheer  _(priority: low, kid-first)_
 - Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_

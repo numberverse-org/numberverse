@@ -21,7 +21,7 @@ import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
-import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
+import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
@@ -554,6 +554,13 @@ interface Strings {
   freezePill: (n: number) => string;
   freezeEarnedSpeak: string;
   freezeSpentSpeak: string;
+  /* #288 — kid-friendly voice settings */
+  voiceFunTitle: string;
+  voiceFunSoft: string;
+  voiceFunNormal: string;
+  voiceFunLoud: string;
+  voiceFunReset: string;
+  voiceFunTest: string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1096,6 +1103,13 @@ const STR: Record<Lang, Strings> = {
     freezePill: (n) => `🧊 ${n}`,
     freezeEarnedSpeak: "You earned a freeze token — your streak is safe!",
     freezeSpentSpeak: "A freeze token saved your streak — keep going!",
+    /* #288 — kid-friendly voice settings */
+    voiceFunTitle: "🗣️ Nova's Voice",
+    voiceFunSoft: "🔉 Soft",
+    voiceFunNormal: "🔊 Normal",
+    voiceFunLoud: "🔔 Loud",
+    voiceFunReset: "🔄",
+    voiceFunTest: "Say hi",
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1623,6 +1637,13 @@ const STR: Record<Lang, Strings> = {
     freezePill: (n) => `🧊 ${bnNum(n)}`,
     freezeEarnedSpeak: "তুমি ফ্রিজ টোকেন পেয়েছো — তোমার ধারা নিরাপদ!",
     freezeSpentSpeak: "একটা ফ্রিজ টোকেন তোমার ধারা বাঁচিয়েছে — চালিয়ে যাও!",
+    /* #288 — kid-friendly voice settings */
+    voiceFunTitle: "🗣️ নোভার কণ্ঠ",
+    voiceFunSoft: "🔉 নরম",
+    voiceFunNormal: "🔊 স্বাভাবিক",
+    voiceFunLoud: "🔔 জোরে",
+    voiceFunReset: "🔄",
+    voiceFunTest: "হাই বলো",
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -2560,6 +2581,9 @@ export default function App() {
   const [mapView, setMapView] = useState(false);
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("nv_lang") as Lang) || "en");
   const [muted, setMuted] = useState(isMusicMuted());
+  // #288 — kid voice fun: device-local volume preference (re-renders so the
+  // active Soft/Normal/Loud button stays highlighted).
+  const [voiceFunVol, setVoiceFunVolState] = useState<number>(getVoiceFunVolume());
   // #136 — classroom projector mode: large-type, high-contrast, no parent UI.
   const [projector, setProjector] = useState(() => {
     try {
@@ -4519,6 +4543,45 @@ export default function App() {
                     <button className="funny-btn robot" onClick={() => speakFunny("robot")}>{t.funnyRobot}</button>
                     <button className="funny-btn whisper" onClick={() => speakFunny("whisper")}>{t.funnyWhisper}</button>
                     <button className="funny-btn shout" onClick={() => speakFunny("shout")}>{t.funnyShout}</button>
+                  </div>
+                </div>
+              )}
+
+              {/* #288 — kid-friendly voice settings: Nova's loudness, set
+                  in-game with one tap + easy reset. Applies to EVERY spoken
+                  line on both engines (web + neural). Kid-safe, offline. */}
+              {voiceOk && (
+                <div className="voice-fun" role="group" aria-label={t.voiceFunTitle}>
+                  <span className="voice-fun-title">{t.voiceFunTitle}</span>
+                  <div className="voice-fun-btns">
+                    {([0.55, 0.9, 1.0] as const).map((v, i) => {
+                      const label = i === 0 ? t.voiceFunSoft : i === 1 ? t.voiceFunNormal : t.voiceFunLoud;
+                      return (
+                        <button
+                          key={v}
+                          className={`voice-fun-btn${voiceFunVol === v ? " active" : ""}`}
+                          onClick={() => {
+                            setVoiceFunVolume(v);
+                            setVoiceFunVolState(v);
+                            speak(lang === "bn" ? "এক দুই তিন!" : "One two three!");
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      className="voice-fun-btn reset"
+                      onClick={() => {
+                        resetVoiceFunVolume();
+                        setVoiceFunVolState(getVoiceFunVolume());
+                        speak(lang === "bn" ? "হাই!" : "Hi!");
+                      }}
+                      aria-label={t.voiceFunReset}
+                      title={t.voiceFunReset}
+                    >
+                      {t.voiceFunReset}
+                    </button>
                   </div>
                 </div>
               )}
