@@ -12,7 +12,7 @@
 - ~~Bangla: short-paragraph comprehension (ছোট গল্প)~~  ✅ #161 — 12 graded mini-stories, picture answers, 🔊 read-aloud
 - ~~Bangla: NCTB rhymes vol. 2 — tap-along~~  ✅ #162 — 5 classic rhymes, pentatonic tap-along, guide ladder
 - ~~Bangla: antonyms & synonyms pairs (বিপরীত/সমার্থক)~~  ✅ #163 — 22+22 picture-backed pairs, antonym ↔ synonym alternate
-- Bangla: punctuation placement (। , ? !)  _(priority: low, kid-first)_
+- ~~Bangla: punctuation placement (। , ? !)~~  ✅ #164 — 22 sentences, tile snaps in, reads the difference aloud
 - Bangla: compound word building (যোগে যোগে শব্দ)  _(priority: low, kid-first)_
 - Bangla: letter vs sound discrimination (অ-আ-ক-খ)  _(priority: low, kid-first)_
 - Bangla: matra matrix challenge (মাত্রা মিশ্রণ)  _(priority: low, kid-first)_
