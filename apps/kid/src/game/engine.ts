@@ -50,6 +50,7 @@ import { MatraMatrixScene } from "./MatraMatrixScene";
 import { ReadStoryScene } from "./ReadStoryScene";
 import { NumberWordsScene } from "./NumberWordsScene";
 import { CoinValueScene } from "./CoinValueScene";
+import { TimeWordsScene } from "./TimeWordsScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -126,6 +127,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       ReadStoryScene,
       NumberWordsScene,
       CoinValueScene,
+      TimeWordsScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
