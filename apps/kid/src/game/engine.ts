@@ -153,6 +153,9 @@ import { FetchScene } from "./FetchScene";
 import { BathNovaScene } from "./BathNovaScene";
 import { PetStrokeScene } from "./PetStrokeScene";
 import { TreatSortScene } from "./TreatSortScene";
+import { HideSeekScene } from "./HideSeekScene";
+import { PetMemoryScene } from "./PetMemoryScene";
+import { TuckInScene } from "./TuckInScene";
 import { CountingSongScene } from "./CountingSongScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
@@ -186,7 +189,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       NovaScene,
       GardenScene,
       PetFeedScene,
-      CatchFruitScene, BubblePopScene, FetchScene, BathNovaScene, PetStrokeScene, TreatSortScene,
+      CatchFruitScene, BubblePopScene, FetchScene, BathNovaScene, PetStrokeScene, TreatSortScene, HideSeekScene, PetMemoryScene, TuckInScene,
       GrowCountScene, FruitTreeScene,
       OddEvenScene, CountPopScene, Count100Scene, Build999Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
       RocketMultScene, TimesTableScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FairShareScene, FractionMatchScene,

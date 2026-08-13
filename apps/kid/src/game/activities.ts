@@ -26,6 +26,9 @@ export const ACTIVITIES: ActivityDef[] = [
   { id: "game-stroke", scene: "PetStroke", emoji: "💛", name: "Pet Nova", nameBn: "আদর" },
   { id: "game-sort", scene: "TreatSort", emoji: "🧺", name: "Sort Treats", nameBn: "খাবার সাজাও" },
   { id: "game-fetch", scene: "Fetch", emoji: "🎾", name: "Fetch", nameBn: "বল আনো" },
+  { id: "game-hide", scene: "HideSeek", emoji: "🙈", name: "Hide & Seek", nameBn: "লুকোচুরি" },
+  { id: "game-memory", scene: "PetMemory", emoji: "🃏", name: "Pet Memory", nameBn: "মনে রাখো" },
+  { id: "game-tuckin", scene: "TuckIn", emoji: "🌙", name: "Tuck-in", nameBn: "ঘুম পাড়াও" },
 
   /* ── pet-care: Nova is the kid's pet — bath, brush, cuddle, the works ── */
   { id: "bath", emoji: "🛁", name: "Bath", nameBn: "স্নান" },
