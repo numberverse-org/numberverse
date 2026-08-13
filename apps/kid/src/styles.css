@@ -1547,6 +1547,80 @@ body {
   max-width: 100%;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
+/* 🎯 #256 — gentle daily goal: home progress line + once-per-day Nova nudge. */
+.goal-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(46, 196, 182, 0.14);
+  border: 1px solid rgba(46, 196, 182, 0.35);
+}
+.goal-progress-line {
+  font-size: 14px;
+  font-weight: 800;
+  color: #eafff4;
+  flex: 1;
+  min-width: 160px;
+}
+.goal-progress-bar {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  min-width: 100px;
+}
+.goal-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2ec4b6, #7de3ff);
+  transition: width 0.3s ease;
+}
+.goal-nudge {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(46, 196, 182, 0.25), rgba(125, 227, 255, 0.2));
+  border: 2px solid rgba(125, 227, 255, 0.5);
+  text-align: center;
+}
+.goal-nudge-text {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.goal-nudge-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.goal-nudge-btn {
+  display: inline-block;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.goal-nudge-btn.ghost {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.goal-nudge-btn.primary {
+  background: linear-gradient(180deg, #6ee7ff, #2ec4b6);
+  color: #062a3a;
+}
 .quest-chip {
   display: flex;
   flex-direction: column;

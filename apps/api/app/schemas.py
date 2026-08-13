@@ -111,6 +111,9 @@ class KidSettingsIn(BaseModel):
     quiet_volume: float = Field(default=0.15, ge=0.05, le=1.0)
     # #138 — voice recording is parent-gated, off by default.
     voice_record_enabled: bool = False
+    # #256 — gentle daily playtime goal (minutes); the router clamps it to the
+    # day's cap. 0/None = no goal.
+    goal_min: int | None = Field(default=None, ge=1, le=600)
 
 
 class KidSettingsOut(BaseModel):
@@ -130,6 +133,7 @@ class KidSettingsOut(BaseModel):
     quiet_dim: bool = True
     quiet_volume: float = 0.15
     voice_record_enabled: bool = False
+    goal_min: int | None = None
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}

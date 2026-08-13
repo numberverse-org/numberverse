@@ -800,6 +800,10 @@ export interface KidSettings {
   /** #138 — kid records their own voice and replays. Parent-gated, OFF by
    *  default (privacy-first); when on, recordings stay ON-DEVICE only. */
   voice_record_enabled: boolean;
+  /** #256 — gentle daily playtime GOAL (minutes) the parent sets. Nova nudges
+   *  toward it without pressure (a once-per-day celebration); the server clamps
+   *  it to the day's cap so it never exceeds the hard limit. null/0 = no goal. */
+  goal_min?: number | null;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -817,7 +821,28 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   quiet_dim: true,
   quiet_volume: 0.15,
   voice_record_enabled: false,
+  goal_min: null,
 };
+
+/** #256 — "did we already celebrate today's goal?" flag (once per day, so the
+ *  nudge stays gentle). Resets automatically when the date rolls over. */
+const LS_GOAL_NUDGE = "nv_goal_nudge_day";
+
+export function goalNudgedToday(): boolean {
+  try {
+    return localStorage.getItem(LS_GOAL_NUDGE) === new Date().toISOString().slice(0, 10);
+  } catch {
+    return false;
+  }
+}
+
+export function markGoalNudgedToday(): void {
+  try {
+    localStorage.setItem(LS_GOAL_NUDGE, new Date().toISOString().slice(0, 10));
+  } catch {
+    /* ignore */
+  }
+}
 
 /** #248 — is "now" inside a quiet window for TODAY's weekday?
  *  `quiet_windows` is 7 comma-joined "HH:MM-HH:MM" (Mon..Sun; "-" = off that
