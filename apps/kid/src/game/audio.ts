@@ -22,12 +22,28 @@ export function ensureAudio(): AudioContext | null {
   }
 }
 
+/* #243 — per-kid volume balance set by the parent portal. The MIX table and
+ * music theme gains stay the same; every note is scaled by its layer's knob
+ * (sfx for feedback, music for the ambient bed). Voice is handled in speech.ts
+ * via setVoiceBalance(). Default 1.0 = full volume, unchanged behavior. */
+let sfxVolume = 1;
+let musicVolume = 1;
+export function setSfxVolume(v: number) {
+  sfxVolume = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+}
+export function setMusicVolume(v: number) {
+  musicVolume = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+}
+
+type SoundLayer = "sfx" | "music";
+
 function tone(
   freq: number,
   dur: number,
   type: OscillatorType = "sine",
   vol = 0.15,
-  startDelay = 0
+  startDelay = 0,
+  layer: SoundLayer = "sfx"
 ) {
   const c = ensureAudio();
   if (!c) return;
@@ -36,7 +52,8 @@ function tone(
   const g = c.createGain();
   o.type = type;
   o.frequency.value = freq;
-  g.gain.setValueAtTime(vol, t);
+  const v = vol * (layer === "music" ? musicVolume : sfxVolume);
+  g.gain.setValueAtTime(v, t);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g);
   g.connect(c.destination);
@@ -152,7 +169,7 @@ export function whooshUp() {
   o.type = "sine";
   o.frequency.setValueAtTime(220, t);
   o.frequency.exponentialRampToValueAtTime(1180, t + 0.5);
-  g.gain.setValueAtTime(0.12, t);
+  g.gain.setValueAtTime(0.12 * sfxVolume, t); // #243 — respects the sfx balance
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
   o.connect(g);
   g.connect(c.destination);
@@ -303,9 +320,11 @@ function musicTick() {
     const m = mel[i % mel.length];
     const b = bass[Math.floor(i / 2) % bass.length];
     const at = i * stepDuration - c.currentTime; // delay until the note's absolute time
-    tone(m, stepDuration * 1.6, "triangle", vol, at + 0.02);
-    tone(b, stepDuration * 3, "sine", bassVol, at + 0.02);
-    if (i % 8 === 4) tone(m * 2, 0.22, "triangle", vol * 0.4, at);
+    // #243 — music notes carry the "music" layer so the parent's music-volume
+    // balance scales only the ambient bed (SFX feedback keeps its own knob).
+    tone(m, stepDuration * 1.6, "triangle", vol, at + 0.02, "music");
+    tone(b, stepDuration * 3, "sine", bassVol, at + 0.02, "music");
+    if (i % 8 === 4) tone(m * 2, 0.22, "triangle", vol * 0.4, at, "music");
     musicStep++;
   }
   musicTimer = window.setTimeout(musicTick, 200);

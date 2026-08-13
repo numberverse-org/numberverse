@@ -105,6 +105,10 @@ async def put_kid_settings(
     s.weekday_limits_min = body.weekday_limits_min  # #6 per-weekday caps
     s.tts_enabled = body.tts_enabled
     s.music_enabled = body.music_enabled
+    # #243 — per-kid volume balance (0..1).
+    s.voice_volume = body.voice_volume
+    s.sfx_volume = body.sfx_volume
+    s.music_volume = body.music_volume
     s.voice_record_enabled = body.voice_record_enabled  # #138
     await db.commit()
     await db.refresh(s)

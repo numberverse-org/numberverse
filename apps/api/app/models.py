@@ -68,6 +68,12 @@ class KidSettings(Base):
     weekday_limits_min: Mapped[str | None] = mapped_column(String, nullable=True)
     tts_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     music_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # #243 — per-kid volume balance (0..1). The parent portal sets these; the
+    # kid app scales voice / sfx / music by them. Auto-migrated (server_default
+    # "1" → existing rows get full volume, so nothing suddenly goes quiet).
+    voice_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+    sfx_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+    music_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
     # #138 — kid voice recording (record own voice + replay). PARENT-gated,
     # privacy-first: off by default, on-device only (never synced).
     voice_record_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
