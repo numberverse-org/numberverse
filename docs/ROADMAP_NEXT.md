@@ -45,7 +45,7 @@
 - ~~Math: multiplication arrays (visual times tables)~~  ✅ #194 — dot arrays (2–5 × 2–5) with row/column badges, kid taps the matching equation "3 × 4 = 12"; distractors are other valid arrays, never commutative twins
 - ~~Math: division as sharing lvl 2~~  ✅ #195 — candies dealt round-robin into plates (sharing animation), leftover highlighted green "Left over!", then answer "each kid gets __" and "left over __"
 - ~~Math: fractions — parts of a set~~  ✅ #196 — group of 🍎 (4–16), tap the correct subset (green rings, toggle), ✅ checks the count; 1/2, 1/3, 2/3, 1/4…3/4 of the group
-- Math: mixed numbers & improper fractions intro  _(priority: low, kid-first)_
+- ~~Math: mixed numbers & improper fractions intro~~  ✅ #197 — bar models + 0..3 number line; kid converts 1½ ↔ 3/2 both directions; 4 option cards, value-distinct distractors
 - Math: decimals — tenths place value  _(priority: low, kid-first)_
 - Math: making change with ৳ notes  _(priority: low, kid-first)_
 - Math: elapsed time (how long until…)  _(priority: low, kid-first)_
