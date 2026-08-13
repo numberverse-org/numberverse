@@ -1,0 +1,864 @@
+/* journey.ts — pure learning-domain logic + data for the kid app (extracted from
+ * App.tsx, #589). NO React, NO DOM, NO app state — every function here is a pure
+ * function of (skillsMap, kidId, ...) or static config. The kid app shell
+ * (App.tsx) and the screen components import from here.
+ *
+ * i18n seam: locale-sensitive labels (badges/achievements/ranks/tour) keep
+ * { en, bn } pairs here; the Strings/STR table lives in ../i18n.ts. */
+import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, moni, DEFAULT_MONI_PARAMS, type Band, type ErrorKind, type Skill } from "@numberverse/core";
+import { useKidStore, NOVA_SPECIES, type RoundResult, type MistakeState } from "../store";
+import { bnNum, BN_MONTHS, type Lang, type Strings } from "../i18n";
+import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "../game/ui";
+/** Max skills per guided play session — each skill gets a proper block.
+ *  World sessions now sweep every unmastered skill in the band (min 6). */
+export const SESSION_LEN = 6;
+/** A skill is "mastered" at this BKT P(mastered). Mirrors core masteryThreshold. */
+export const MASTERY_THRESHOLD = 0.8;
+/** Next world unlocks when ≥80% of the previous world's skills are mastered. */
+export const UNLOCK_THRESHOLD = 0.8;
+
+
+/** #247 — PIN-recovery security questions. Index = stored qid (so a locale
+ *  change never corrupts the pairing). Add a key to the locale map for any new
+ *  country pack — no rewrites. */
+export const SECURITY_QUESTIONS: Array<{ en: string; bn: string }> = [
+  { en: "What is your favourite colour?", bn: "আপনার প্রিয় রং কোনটি?" },
+  { en: "What is the name of your first pet?", bn: "আপনার প্রথম পোষা প্রাণীর নাম কী?" },
+  { en: "What is your mother's first name?", bn: "আপনার মায়ের প্রথম নাম কী?" },
+  { en: "Which city were you born in?", bn: "আপনি কোন শহরে জন্মেছেন?" },
+  { en: "What is your favourite food?", bn: "আপনার প্রিয় খাবার কোনটি?" },
+];
+
+/** 🎯 #325 — MONI contrast-drill templates, keyed by misconception CODE.
+ *  Each is a short side-by-side quiz: two big options (correct + the pattern's
+ *  trap) around a warm prompt. Bilingual (EN + BN) kid-facing copy; numerals
+ *  + emoji stay universal. Only codes with a template get a drill — a random
+ *  guess never triggers one. */
+export interface ContrastRound {
+  prompt: { en: string; bn: string };
+  correct: string;
+  trap: string;
+  tip: { en: string; bn: string };
+}
+export interface ContrastTemplate {
+  code: string;
+  intro: { en: string; bn: string };
+  rounds: ContrastRound[];
+}
+export const CONTRAST_TEMPLATES: Record<string, ContrastTemplate> = {
+  reversal: {
+    code: "reversal",
+    intro: { en: "6 and 9 love to turn upside down. Can you spot the difference?", bn: "৬ আর ৯ উল্টে ঘুরতে ভালোবাসে। তুমি পারবে চিনতে?" },
+    rounds: [
+      { prompt: { en: "Which one is six?", bn: "কোনটা ৬?" }, correct: "6", trap: "9", tip: { en: "Six has the swirl on top.", bn: "৬-এর মাথায় গোল ঘুর আছে।" } },
+      { prompt: { en: "Which one is two?", bn: "কোনটা ২?" }, correct: "2", trap: "5", tip: { en: "Two has a curly tail.", bn: "২-এর একটা কোঁকড়া লেজ।" } },
+      { prompt: { en: "Which one is three?", bn: "কোনটা ৩?" }, correct: "3", trap: "8", tip: { en: "Three has two bumps.", bn: "৩-এর দুটো ঢেউ আছে।" } },
+    ],
+  },
+  "overcount-1": {
+    code: "overcount-1",
+    intro: { en: "Let's count super carefully — one at a time.", bn: "একটা করে খুব মন দিয়ে গুনি।" },
+    rounds: [
+      { prompt: { en: "⭐⭐⭐⭐⭐ How many stars?", bn: "⭐⭐⭐⭐⭐ কতগুলো তারা?" }, correct: "5", trap: "6", tip: { en: "Point to each one as you count.", bn: "গোনার সময় প্রতিটায় আঙুল দাও।" } },
+      { prompt: { en: "🌸🌸🌸🌸 How many flowers?", bn: "🌸🌸🌸🌸 কতগুলো ফুল?" }, correct: "4", trap: "5", tip: { en: "Count slowly — no rushing!", bn: "ধীরে গুনো — তাড়াহুড়ো নয়!" } },
+      { prompt: { en: "🍎🍎🍎 How many apples?", bn: "🍎🍎🍎 কতগুলো আপেল?" }, correct: "3", trap: "4", tip: { en: "Tap each apple as you count it.", bn: "গোনার সময় প্রতিটা আপেল ছোঁও।" } },
+    ],
+  },
+  "undercount-1": {
+    code: "undercount-1",
+    intro: { en: "Let's make sure we didn't miss any!", bn: "নিশ্চিত করি — যেন কিছু মিস না হয়!" },
+    rounds: [
+      { prompt: { en: "🐠🐠🐠🐠🐠🐠 How many fish?", bn: "🐠🐠🐠🐠🐠🐠 কতগুলো মাছ?" }, correct: "6", trap: "5", tip: { en: "Count them one by one.", bn: "একটা একা করে গুনো।" } },
+      { prompt: { en: "🌳🌳🌳🌳🌳 How many trees?", bn: "🌳🌳🌳🌳🌳 কতগুলো গাছ?" }, correct: "5", trap: "4", tip: { en: "Take your time — no rush.", bn: "সময় আছে — তাড়া নেই।" } },
+      { prompt: { en: "⚽⚽⚽⚽ How many balls?", bn: "⚽⚽⚽⚽ কতগুলো বল?" }, correct: "4", trap: "3", tip: { en: "Every one counts!", bn: "প্রতিটাই গুনতে হবে!" } },
+    ],
+  },
+  "off-by-ten": {
+    code: "off-by-ten",
+    intro: { en: "Tens and ones live in different houses — let's check which house the number goes in.", bn: "দশ আর এককের বাড়ি আলাদা — দেখি সংখ্যাটা কোন বাড়িতে যায়।" },
+    rounds: [
+      { prompt: { en: "Which number is ten more than 24?", bn: "কোন সংখ্যাটা ২৪-এর চেয়ে ১০ বেশি?" }, correct: "34", trap: "24", tip: { en: "Add ten: 24 → 34.", bn: "১০ যোগ করো: ২৪ → ৩৪।" } },
+      { prompt: { en: "Which number is ten less than 51?", bn: "কোন সংখ্যাটা ৫১-এর চেয়ে ১০ কম?" }, correct: "41", trap: "51", tip: { en: "Take ten away: 51 → 41.", bn: "১০ বাদ দাও: ৫১ → ৪১।" } },
+      { prompt: { en: "Which number is ten more than 68?", bn: "কোন সংখ্যাটা ৬৮-এর চেয়ে ১০ বেশি?" }, correct: "78", trap: "68", tip: { en: "Only the tens digit grows by one.", bn: "শুধু দশের ঘরের অঙ্কটা এক বাড়ে।" } },
+    ],
+  },
+  double: {
+    code: "double",
+    intro: { en: "Doubling means two of everything — like magic!", bn: "দ্বিগুণ মানে সবকিছু দুবার — জাদুর মতো!" },
+    rounds: [
+      { prompt: { en: "What is double 4?", bn: "৪-এর দ্বিগুণ কত?" }, correct: "8", trap: "4", tip: { en: "Double 4 = 4 + 4.", bn: "৪-এর দ্বিগুণ = ৪ + ৪।" } },
+      { prompt: { en: "What is double 6?", bn: "৬-এর দ্বিগুণ কত?" }, correct: "12", trap: "6", tip: { en: "Double 6 = 6 + 6.", bn: "৬-এর দ্বিগুণ = ৬ + ৬।" } },
+      { prompt: { en: "What is double 9?", bn: "৯-এর দ্বিগুণ কত?" }, correct: "18", trap: "9", tip: { en: "Double 9 = 9 + 9.", bn: "৯-এর দ্বিগুণ = ৯ + ৯।" } },
+    ],
+  },
+  half: {
+    code: "half",
+    intro: { en: "Halving means splitting into two equal parts — share it fairly!", bn: "অর্ধেক মানে সমান দুভাগে ভাগ করা — সবার সমান!" },
+    rounds: [
+      { prompt: { en: "What is half of 10?", bn: "১০-এর অর্ধেক কত?" }, correct: "5", trap: "10", tip: { en: "Split 10 into two equal piles.", bn: "১০ টা সমান দুভাগে ভাগ করো।" } },
+      { prompt: { en: "What is half of 8?", bn: "৮-এর অর্ধেক কত?" }, correct: "4", trap: "8", tip: { en: "Split 8 into two equal piles.", bn: "৮ টা সমান দুভাগে ভাগ করো।" } },
+      { prompt: { en: "What is half of 14?", bn: "১৪-এর অর্ধেক কত?" }, correct: "7", trap: "14", tip: { en: "Split 14 into two equal piles.", bn: "১৪ টা সমান দুভাগে ভাগ করো।" } },
+    ],
+  },
+};
+
+/**
+ * Done-screen confetti field — computed ONCE at module load. This MUST NOT be
+ * a hook: it's rendered inside the `screen === "done"` branch, and a hook there
+ * would change the hook count vs every other screen, making React throw
+ * "Rendered more hooks than during the previous render" the instant a session
+ * completes → the whole app unmounts → the "complete all rounds then blank"
+ * bug. Module-level is stable, zero hooks, and 30 pieces are trivial to build.
+ */
+export const DONE_CONFETTI = Array.from({ length: 30 }, (_, i) => ({
+  left: Math.random() * 100,
+  delay: -Math.random() * 4, // negative → already mid-fall on mount
+  dur: 2.6 + Math.random() * 2.6,
+  drift: (Math.random() - 0.5) * 180,
+  rot: 360 + Math.random() * 540,
+  color: [NV_SKY, NV_GOLD, NV_PINK, "#2ec4b6", "#c4b5fd", NV_ORANGE][i % 6],
+}));
+
+/* ── Seasons — the journey path lives in the real world's season ───────────
+ * The path is decorated by the actual calendar month (Northern-ish cycle that
+ * still matches a Bangladeshi kid's year):
+ *   Dec–Feb ❄️ snow   Mar–May 🌸 spring flowers
+ *   Jun–Aug ✨ fireflies   Sep–Nov 🍂 autumn leaves
+ * The particles are stable module data (same pattern as DONE_CONFETTI), so the
+ * path doesn't reshuffle on every render. */
+export type SeasonKey = "snow" | "flowers" | "fireflies" | "leaves";
+export const SEASON_PARTICLES = Array.from({ length: 14 }, (_, i) => ({
+  left: (i * 7.3 + 3) % 96,
+  delay: (i % 7) * 0.6,
+  dur: 5 + (i % 5) * 1.6,
+  drift: (i % 2 ? 1 : -1) * (10 + (i % 4) * 8),
+  rot: (i % 3) * 120,
+}));
+export function currentSeason(): SeasonKey {
+  const m = new Date().getMonth(); // 0 = January
+  if (m >= 11 || m <= 1) return "snow";
+  if (m <= 4) return "flowers";
+  if (m <= 7) return "fireflies";
+  return "leaves";
+}
+export const SEASON_EMOJI: Record<SeasonKey, string> = { snow: "❄️", flowers: "🌸", fireflies: "✨", leaves: "🍂" };
+
+/** Fullscreen helpers — degrade gracefully when the Fullscreen API is missing
+ *  (iOS Safari reports fullscreenEnabled === false, and its webkit prefix only
+ *  works for <video>, not the page). The PWA manifest's "fullscreen" display +
+ *  the apple/mobile-web-app meta tags cover the installed-home-screen path.
+ *
+ *  DEFAULT FULLSCREEN: the app enters fullscreen on the very first tap
+ *  anywhere — a kid gets an immersive, edge-to-edge screen from the start and
+ *  it STAYS fullscreen through leaving a game (parents exit via the footer
+ *  toggle / "f" key). */
+export const fsSupported = () => {
+  if (typeof document === "undefined") return false;
+  const el = document.documentElement as unknown as {
+    webkitRequestFullscreen?: () => void;
+  };
+  return Boolean(document.fullscreenEnabled || el?.webkitRequestFullscreen);
+};
+
+export function requestFullscreen() {
+  const el = document.documentElement as unknown as {
+    requestFullscreen?: () => void | Promise<void>;
+    webkitRequestFullscreen?: () => void;
+  };
+  const req = el?.requestFullscreen?.bind(el) || el?.webkitRequestFullscreen?.bind(el);
+  if (!req) return;
+  if (document.fullscreenElement) return;
+  try {
+    void req();
+  } catch {
+    /* some browsers reject programmatic fullscreen (permissions / iframes) */
+  }
+}
+export function exitFullscreen() {
+  const d = document as unknown as {
+    fullscreenElement?: Element | null;
+    exitFullscreen?: () => void | Promise<void>;
+    webkitExitFullscreen?: () => void;
+  };
+  if (!d.fullscreenElement) return;
+  try {
+    const ex = d.exitFullscreen?.bind(d) || d.webkitExitFullscreen?.bind(d);
+    if (ex) void ex();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** One step in a guided session — a skill + the scene that teaches it. */
+export interface SessionStep {
+  skillId: string;
+  gameId: string;
+  scene: string;
+  title: string;
+  mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
+  /** Run the narrated Basket Math concept-demo before the drills (add/sub). */
+  teach?: boolean;
+  /** Mastery-gate count: how many remediation re-runs this step has had after
+   *  the kid left wrongs unresolved. >0 → re-teach (re-demo + easier tier)
+   *  until a block ends with open === 0, then advance. */
+  reteach?: number;
+}
+
+export interface Kid {
+  id: string;
+  name: string;
+  avatar: string;
+  birthYear: number;
+  /** Optional full birthday (month 1–12, day 1–31) — feeds the birthday party.
+   *  Kids created before this existed only have the year → no party (graceful). */
+  birthMonth?: number;
+  birthDay?: number;
+  /** #285 — mix-and-match avatar parts (built in the Customize screen). The
+   *  base stays in `avatar` so every older screen keeps working; this layers
+   *  the hat/glasses/outfit on top when present. Offline, persisted per kid. */
+  avatarParts?: AvatarParts;
+}
+
+/** Mastery state map (from the persisted store) — key `${kidId}:${skillId}`.
+ *  The store's real value is the full core SkillState (lastPractice/correct/
+ *  attempts/streak too) — the album reads those for card dates + flip stats. */
+export type SkillMapEntry = { pMastered: number; lastPractice?: number | null; correct?: number; attempts?: number; streak?: number };
+export type SkillMap = Record<string, SkillMapEntry>;
+
+
+/* #285 — custom avatar builder: mix-and-match parts to build a unique buddy.
+ * Base = the sticker hero (same AVATAR_KEYS as today); parts are emoji layers
+ * (hat/glasses/outfit) drawn OVER the sticker. 7 options each (6+ ✓), "none"
+ * to clear. Locale-packed labels (#131), persisted per kid, fully offline. */
+export interface AvatarParts {
+  base: string; // one of AVATAR_KEYS
+  hat: string; // emoji or "none"
+  glasses: string; // emoji or "none"
+  outfit: string; // emoji or "none"
+}
+export const AVATAR_PART_OPTIONS: Record<"hat" | "glasses" | "outfit", string[]> = {
+  hat: ["none", "🎩", "🧢", "👑", "🎀", "🌼", "🍄"],
+  glasses: ["none", "👓", "🕶️", "🥽", "🤓", "✨", "🌈"],
+  outfit: ["none", "👕", "👗", "🥼", "🦺", "🎽", "🧥"],
+};
+export const AVATAR_PART_LABELS: Record<"hat" | "glasses" | "outfit", string> = {
+  hat: "🎩",
+  glasses: "👓",
+  outfit: "👕",
+};
+/** Current buddy's parts (or null if the kid never customized). */
+export function kidParts(k: Kid | undefined | null): AvatarParts | null {
+  return k?.avatarParts ? { ...k.avatarParts } : null;
+}
+
+
+
+/* ── #280 beat-the-owl drill: question generator + fair Nova ──
+ *  Pure + locale-aware. `bnNum` is hoisted (same module) so the Bangla digit
+ *  conversion is available even though this block sits earlier in the file. */
+
+export const CHALLENGE_ROUNDS = 5;
+export const CHALLENGE_MIN_LEVEL = 1;
+export const CHALLENGE_MAX_LEVEL = 10;
+
+export interface ChallengeQ {
+  text: string;      // "3 + 4 = ?" (display digits already localized)
+  options: string[]; // 4 choices, localized digits
+  answer: number;    // index of the correct choice
+}
+
+export function challengeQ(level: number, lang: Lang): ChallengeQ {
+  const ri = (n: number) => Math.floor(Math.random() * n);
+  let a = 1, b = 1, op = "+", ans = 1;
+  const bump = ri(4) > 0 ? 1 + ri(level <= 3 ? 2 : 3) : 0; // small off-by-n distractor spread
+  if (level <= 2) {
+    a = 1 + ri(9); b = 1 + ri(9); op = ri(2) ? "+" : "-";
+    if (op === "-") { if (a < b) { const t = a; a = b; b = t; } ans = a - b; } else ans = a + b;
+  } else if (level <= 4) {
+    a = 10 + ri(40); b = 10 + ri(40); op = ri(2) ? "+" : "-";
+    if (op === "-") { if (a < b) { const t = a; a = b; b = t; } ans = a - b; } else ans = a + b;
+  } else if (level <= 6) {
+    a = 2 + ri(8); b = 2 + ri(8); op = "×"; ans = a * b;
+  } else if (level <= 8) {
+    const kind = ri(3);
+    if (kind === 0) { a = 10 + ri(50); b = 5 + ri(10); op = "+"; ans = a + b; }
+    else if (kind === 1) { a = 20 + ri(60); b = 2 + ri(15); op = "-"; ans = a - b; }
+    else { a = 3 + ri(9); b = 6 + ri(6); op = "×"; ans = a * b; }
+  } else {
+    const kind = ri(3);
+    if (kind === 0) { a = 40 + ri(60); b = 20 + ri(40); op = "+"; ans = a + b; }
+    else if (kind === 1) { a = 60 + ri(50); b = 12 + ri(20); op = "-"; ans = a - b; }
+    else { a = 7 + ri(6); b = 7 + ri(6); op = "×"; ans = a * b; }
+  }
+  // Distractors — near-correct values, always ≥ 0, never duplicates.
+  const set = new Set<number>([ans]);
+  let guard = 0;
+  while (set.size < 4 && guard++ < 50) {
+    const d = ans + (ri(5) - 2) * Math.max(1, bump + 1) + (ri(3) - 1);
+    if (d >= 0) set.add(d);
+  }
+  let fill = ans + 3;
+  while (set.size < 4) set.add(fill++);
+  const arr = [...set];
+  for (let i = arr.length - 1; i > 0; i--) { const j = ri(i + 1); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  const fmt = (n: number) => (lang === "bn" ? bnNum(n) : String(n));
+  return { text: `${fmt(a)} ${op} ${fmt(b)} = ?`, options: arr.map(fmt), answer: arr.indexOf(ans) };
+}
+
+/** Fair Nova: their hit-rate tracks the kid — a strong kid meets a strong owl
+ *  (still beatable), a struggling kid meets a gentler one. Always winnable. */
+export function challengeNovaChance(kidAccuracy: number): number {
+  return Math.min(0.65, Math.max(0.35, 0.5 + (kidAccuracy - 0.5) * 0.4));
+}
+
+/* ── #356 first-play tour: 4 steps. All copy lives in STR[lang] (never
+ *  hardcoded), so a new country is a config addition, not a rewrite (#131). */
+export const TOUR_STEPS = [{ emoji: "👋" }, { emoji: "🗺️" }, { emoji: "🦉" }, { emoji: "🧭" }] as const;
+
+/* ── rank ladder: mastery count → a fun title kids want to reach ── */
+export const RANKS = [
+  { min: 0, en: "🌱 Seedling", bn: "🌱 চারা" },
+  { min: 3, en: "🌿 Sprout", bn: "🌿 কচি" },
+  { min: 8, en: "🦊 Explorer", bn: "🦊 অভিযাত্রী" },
+  { min: 15, en: "🦉 Wise Owl", bn: "🦉 জ্ঞানী প্যাঁচা" },
+  { min: 22, en: "🚀 Star Pilot", bn: "🚀 স্টার পাইলট" },
+  { min: 28, en: "👑 Champion", bn: "👑 চ্যাম্পিয়ন" },
+];
+
+export function rankFor(mastered: number, lang: Lang): { title: string; nextTitle: string | null; need: number } {
+  let cur = RANKS[0];
+  for (const r of RANKS) {
+    if (mastered >= r.min) cur = r;
+    else break;
+  }
+  const i = RANKS.indexOf(cur);
+  const next = RANKS[i + 1] ?? null;
+  return {
+    title: lang === "bn" ? cur.bn : cur.en,
+    nextTitle: next ? (lang === "bn" ? next.bn : next.en) : null,
+    need: next ? Math.max(1, next.min - mastered) : 0,
+  };
+}
+
+/** Is today the kid's actual birthday? Needs the full month+day — kids created
+ *  before we collected it simply don't get a party (graceful, no crash). */
+export function isBirthday(kid: Kid | null | undefined): boolean {
+  if (!kid || typeof kid.birthMonth !== "number" || typeof kid.birthDay !== "number") return false;
+  const now = new Date();
+  return now.getMonth() + 1 === kid.birthMonth && now.getDate() === kid.birthDay;
+}
+
+/** Skill ids that have crossed the mastery bar for a kid right now. */
+export function masteredSkillIds(map: SkillMap, kidId: string): Set<string> {
+  const set = new Set<string>();
+  for (const key of Object.keys(map)) {
+    const sep = key.indexOf(":");
+    if (sep < 0 || key.slice(0, sep) !== kidId) continue;
+    if (map[key].pMastered >= MASTERY_THRESHOLD) set.add(key.slice(sep + 1));
+  }
+  return set;
+}
+
+/** Consecutive correct rounds at the tail of this session's events → the HUD 🔥. */
+export function sessionStreak(events: RoundResult[]): number {
+  let s = 0;
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (!events[i].correct) break;
+    s++;
+  }
+  return s;
+}
+
+/* ────────────────────────────── #283 goal badges ──────────────────────────────
+ * Small lifetime badges for real learning wins. Each condition reads only
+ * existing local state (stats, streak, world mastery) — fully offline. The
+ * earned set is persisted in the store (`NovaState.badges`); this config just
+ * DEFINES the badges + their conditions. Names are locale-packed like Nova
+ * outfits (name / nameBn — a new country adds its field, no rewrite). */
+
+export interface BadgeCtx {
+  sessions: number; // completed sessions (each = a playthrough)
+  stars: number;
+  streak: number;
+  worlds: number; // fully-mastered lands
+  weekDone: boolean; // #100 — skill-of-the-week challenge completed
+}
+export interface BadgeDef {
+  id: string;
+  emoji: string;
+  name: string;
+  nameBn: string;
+  hint: string;
+  hintBn: string;
+  earned: (c: BadgeCtx) => boolean;
+}
+export const BADGES: BadgeDef[] = [
+  { id: "rounds10", emoji: "🎮", name: "10 Rounds Hero", nameBn: "১০ রাউন্ড হিরো", hint: "Finish 10 sessions", hintBn: "১০টা খেলা শেষ করো", earned: (c) => c.sessions >= 10 },
+  { id: "stars50", emoji: "⭐", name: "Star Collector", nameBn: "তারকা সংগ্রহকারী", hint: "Earn 50 stars", hintBn: "৫০টা তারা জিতো", earned: (c) => c.stars >= 50 },
+  { id: "streak7", emoji: "🔥", name: "7-Day Streak", nameBn: "৭ দিনের ধারা", hint: "Play 7 days in a row", hintBn: "টানা ৭ দিন খেলো", earned: (c) => c.streak >= 7 },
+  { id: "worldChamp", emoji: "👑", name: "Land Champion", nameBn: "ভূখণ্ড চ্যাম্পিয়ন", hint: "Master every skill in a land", hintBn: "একটি ভূখণ্ডের সব দক্ষতা আয়ত্ত করো", earned: (c) => c.worlds >= 1 },
+  { id: "weekWarrior", emoji: "🏅", name: "Week Warrior", nameBn: "সপ্তাহের যোদ্ধা", hint: "Finish this week's challenge", hintBn: "এই সপ্তাহের চ্যালেঞ্জ শেষ করো", earned: (c) => c.weekDone },
+];
+
+/* #289 — long-term achievements album: milestones ACROSS weeks, derived from
+ * lifetime local stats (same shape as Badges but bigger, slower goals). A new
+ * one fires the celebrate-once effect on home; the album grid pops the newly
+ * unlocked card with a glow animation. All offline. */
+export interface AchCtx {
+  sessions: number; // completed sessions
+  stars: number; // lifetime stars
+  mastered: number; // skills mastered (lifetime)
+  streak: number; // standing day streak
+  coins: number; // lifetime coins earned
+  worlds: number; // fully-mastered lands
+  pets: number; // species adopted
+  petStage: number; // current pet growth 0..3
+}
+export interface AchDef {
+  id: string;
+  emoji: string;
+  name: string;
+  nameBn: string;
+  hint: string;
+  hintBn: string;
+  earned: (c: AchCtx) => boolean;
+}
+
+export const ACHIEVEMENTS: AchDef[] = [
+  { id: "firstRound", emoji: "🎈", name: "First Steps", nameBn: "প্রথম পদক্ষেপ", hint: "Complete your first session", hintBn: "প্রথম খেলাটি শেষ করো", earned: (c) => c.sessions >= 1 },
+  { id: "rounds25", emoji: "🎮", name: "25 Rounds", nameBn: "২৫ রাউন্ড", hint: "Complete 25 sessions", hintBn: "২৫টা খেলা শেষ করো", earned: (c) => c.sessions >= 25 },
+  { id: "rounds100", emoji: "💯", name: "100 Rounds", nameBn: "১০০ রাউন্ড", hint: "Complete 100 sessions", hintBn: "১০০টা খেলা শেষ করো", earned: (c) => c.sessions >= 100 },
+  { id: "rounds250", emoji: "🚀", name: "250 Rounds", nameBn: "২৫০ রাউন্ড", hint: "Complete 250 sessions", hintBn: "২৫০টা খেলা শেষ করো", earned: (c) => c.sessions >= 250 },
+  { id: "stars100", emoji: "⭐", name: "100 Stars", nameBn: "১০০ তারা", hint: "Earn 100 stars", hintBn: "১০০টা তারা জিতো", earned: (c) => c.stars >= 100 },
+  { id: "stars500", emoji: "🌟", name: "500 Stars", nameBn: "৫০০ তারা", hint: "Earn 500 stars", hintBn: "৫০০টা তারা জিতো", earned: (c) => c.stars >= 500 },
+  { id: "master5", emoji: "🧠", name: "5 Skills", nameBn: "৫ দক্ষতা", hint: "Master 5 skills", hintBn: "৫টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 5 },
+  { id: "master10", emoji: "📚", name: "10 Skills", nameBn: "১০ দক্ষতা", hint: "Master 10 skills", hintBn: "১০টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 10 },
+  { id: "master25", emoji: "🏅", name: "25 Skills", nameBn: "২৫ দক্ষতা", hint: "Master 25 skills", hintBn: "২৫টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 25 },
+  { id: "master40", emoji: "🎓", name: "40 Skills", nameBn: "৪০ দক্ষতা", hint: "Master 40 skills", hintBn: "৪০টি দক্ষতা আয়ত্ত করো", earned: (c) => c.mastered >= 40 },
+  { id: "streak14", emoji: "🔥", name: "14-Day Streak", nameBn: "১৪ দিনের ধারা", hint: "Play 14 days in a row", hintBn: "টানা ১৪ দিন খেলো", earned: (c) => c.streak >= 14 },
+  { id: "streak30", emoji: "🗓️", name: "30-Day Streak", nameBn: "৩০ দিনের ধারা", hint: "Play 30 days in a row", hintBn: "টানা ৩০ দিন খেলো", earned: (c) => c.streak >= 30 },
+  { id: "world1", emoji: "🌍", name: "First Land", nameBn: "প্রথম ভূখণ্ড", hint: "Fully master your first land", hintBn: "প্রথম ভূখণ্ড সম্পূর্ণ করো", earned: (c) => c.worlds >= 1 },
+  { id: "worldAll", emoji: "👑", name: "All Lands", nameBn: "সব ভূখণ্ড", hint: `Master every land (${BANDS.length})`, hintBn: `সব ভূখণ্ড আয়ত্ত করো (${bnNum(BANDS.length)})`, earned: (c) => c.worlds >= BANDS.length },
+  { id: "banker", emoji: "🪙", name: "Banker", nameBn: "ব্যাংকার", hint: "Earn 100 coins in total", hintBn: "মোট ১০০ কয়েন জিতো", earned: (c) => c.coins >= 100 },
+  { id: "collector", emoji: "💰", name: "Collector", nameBn: "সংগ্রাহক", hint: "Earn 500 coins in total", hintBn: "মোট ৫০০ কয়েন জিতো", earned: (c) => c.coins >= 500 },
+  { id: "grown", emoji: "🐣", name: "Fully Grown", nameBn: "সম্পূর্ণ বড়", hint: "Grow your pet to the last stage", hintBn: "পোষ্যকে শেষ ধাপে বড় করো", earned: (c) => c.petStage >= 3 },
+  { id: "zookeeper", emoji: "🐾", name: "Zookeeper", nameBn: "চিড়িয়াখানার রক্ষক", hint: "Adopt every pet species", hintBn: "সব পোষ্যের প্রজাতি দত্তক নাও", earned: (c) => c.pets >= NOVA_SPECIES.length },
+];
+
+/* #292 — Nova reaction pack v2: in-game learning-event reactions. A floating
+ * Nova face + a short line fires on win streaks, setbacks and reteach moments
+ * (exactly ONE per round, highest-priority wins). Pure visual bubble + gentle
+ * speak (speak skipped when a bigger spoken moment already owns that round).
+ * Lines are locale-packed EN/BN (#131) like Badges/Achievements. */
+export type NovaReaction = "cheer" | "amaze" | "superstar" | "streak" | "oops" | "gentle" | "setback" | "reteach" | "master" | "quest";
+export interface NovaReactionDef {
+  emoji: string;
+  lineEn: () => string;
+  lineBn: () => string;
+  /** Speak the line aloud? False when the round already has its own spoken moment. */
+  speak?: boolean;
+}
+export const NOVA_REACTIONS: Record<NovaReaction, NovaReactionDef> = {
+  cheer: { emoji: "🎉", lineEn: () => "3 in a row — nice!", lineBn: () => "টানা ৩টা — দারুণ!", speak: true },
+  amaze: { emoji: "🌟", lineEn: () => "AMAZING!", lineBn: () => "অসাধারণ!", speak: true },
+  superstar: { emoji: "⭐", lineEn: () => "SUPER STAR!", lineBn: () => "সুপার স্টার!", speak: true },
+  streak: { emoji: "🔥", lineEn: () => "You're on fire!", lineBn: () => "তুমি জ্বলছ!", speak: true },
+  oops: { emoji: "🤔", lineEn: () => "Oops! Try again — you've got this", lineBn: () => "ওহ! আবার চেষ্টা করো — পারবে", speak: true },
+  gentle: { emoji: "💛", lineEn: () => "Take a breath — you've got this", lineBn: () => "একটা নিঃশ্বাস নাও — পারবে", speak: true },
+  setback: { emoji: "😮", lineEn: () => "So close! Keep going", lineBn: () => "খুব কাছাকাছি! চালিয়ে যাও", speak: true },
+  reteach: { emoji: "🎯", lineEn: () => "Let's learn it together!", lineBn: () => "একসাথে শিখি!", speak: true },
+  master: { emoji: "🏆", lineEn: () => "Skill mastered!", lineBn: () => "দক্ষতা আয়ত্ত হয়েছে!", speak: false },
+  quest: { emoji: "🎁", lineEn: () => "Quest complete!", lineBn: () => "মিশন শেষ!", speak: false },
+};
+
+/** How many lands the kid has FULLY mastered (every skill past the threshold). */
+export function fullyMasteredWorlds(skillsMap: Record<string, SkillMapEntry>, kidId: string): number {
+  return BANDS.filter((b) => {
+    const prog = worldProgress(skillsMap, kidId, b.id);
+    return prog.total > 0 && prog.mastered === prog.total;
+  }).length;
+}
+
+
+/** Works in non-secure contexts (LAN/phone) where crypto.randomUUID() is unavailable. */
+export function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+/* ────────────────────────────── progress helpers ────────────────────────────── */
+
+// ── Parent-control filters (set by App on the active kid) ────────────────
+// These are module-level so the journey/world helpers can consult them without
+// threading a "settings" param through every call. `applyKidControls` is called
+// whenever the active kid's settings load or change.
+export let filterSkills: Skill[] = SKILLS; // subject filter applied
+export let filterMaxBand: number | null = null; // null = no cap
+// #257 — curriculum focus pin (parent-set subject + world the journey leads
+// with). Both set together or both null (clear default).
+export let filterFocusSubject: string | null = null;
+export let filterFocusBand: number | null = null;
+
+export function applyKidControls(
+  enabledSubjects: string[] | null,
+  maxBand: number | null,
+  focusSubject: string | null = null,
+  focusBand: number | null = null
+) {
+  filterSkills = enabledSubjects
+    ? SKILLS.filter((s) => enabledSubjects.includes(s.subject))
+    : SKILLS;
+  filterMaxBand = maxBand;
+  filterFocusSubject = focusSubject;
+  filterFocusBand = focusBand;
+}
+
+/** #257 — subject id of a skill (for focus-pin ordering in session pools). */
+export function subjectForSkill(skillId: string): string | undefined {
+  return SKILLS.find((s) => s.id === skillId)?.subject;
+}
+
+/** #257 — human subject labels for the focus chip (EN + BN). */
+export const FOCUS_SUBJECT_LABELS: Record<string, { en: string; bn: string }> = {
+  math: { en: "Math", bn: "গণিত" },
+  bangla: { en: "Bangla", bn: "বাংলা" },
+  english: { en: "English", bn: "ইংরেজি" },
+  science: { en: "Science", bn: "বিজ্ঞান" },
+  bgs: { en: "BGS", bn: "বিজিএস" },
+};
+
+export function skillMastered(skills: SkillMap, kidId: string, skillId: string): boolean {
+  const st = skills[`${kidId}:${skillId}`];
+  return !!st && st.pMastered >= MASTERY_THRESHOLD;
+}
+
+/** Skills a kid is currently struggling with: open (unresolved) wrongs right now,
+ *  OR ≥3 lifetime misses and not yet mastered. Feeds the parent panel's
+ *  "Needs a little help" list so a grown-up can guide the tough ones. */
+export function strugglingSkills(
+  skills: SkillMap,
+  kidId: string,
+  mistakes: Record<string, MistakeState>
+): Array<{ skill: Skill; open: number; wrong: number; lastAt: number }> {
+  const out: Array<{ skill: Skill; open: number; wrong: number; lastAt: number }> = [];
+  for (const skill of SKILLS) {
+    if (!skill.game) continue;
+    if (skillMastered(skills, kidId, skill.id)) continue;
+    const m = mistakes[`${kidId}:${skill.id}`];
+    if (!m) continue;
+    if (m.open > 0 || m.wrong >= 3) out.push({ skill, open: m.open, wrong: m.wrong, lastAt: m.lastAt });
+  }
+  return out.sort((a, b) => b.open - a.open || b.wrong - a.wrong);
+}
+
+export function worldProgress(skills: SkillMap, kidId: string, band: number): { mastered: number; total: number; pct: number } {
+  const all = filterSkills.filter((s) => s.band === band && s.game);
+  const total = all.length || 1;
+  const mastered = all.filter((s) => skillMastered(skills, kidId, s.id)).length;
+  return { mastered, total, pct: Math.round((mastered / total) * 100) };
+}
+
+/** World emblem emoji — matches the game's SVG assets (see svgs.ts WORLDS). */
+export function worldEmoji(key: string): string {
+  switch (key) {
+    case "sprout-grove": return "🌱";
+    case "cottage-fields": return "🐄";
+    case "river-town": return "🏞️";
+    case "sky-castle": return "🏰";
+    case "star-academy": return "🚀";
+    case "jungle-canopy": return "🌴";
+    case "polar-peaks": return "❄️";
+    default: return "⭐";
+  }
+}
+
+/* ── World map palette ─────────────────────────────────────────────────────
+ * Each world gets its own land colors + tiny terrain decorations. Used by the
+ * visual map (islands on a winding road) and the world-detail backdrop so the
+ * whole "worlds" experience shares one art language. */
+export const WORLD_LANDS: Record<
+  number,
+  { c1: string; c2: string; c3: string; c2_22: string; deco: string[] }
+> = {
+  1: { c1: "#0f3d33", c2: "#2ec4b6", c3: "#a7f3d0", c2_22: "rgba(46,196,182,0.16)", deco: ["🌱", "🍃", "🌿"] },      // Sprout Grove
+  2: { c1: "#5a2a1e", c2: "#f6c06a", c3: "#ffe8b0", c2_22: "rgba(246,192,106,0.16)", deco: ["🌾", "🐄", "🌻"] },      // Cottage Fields
+  3: { c1: "#0b3b6d", c2: "#5fb6e8", c3: "#bde8ff", c2_22: "rgba(95,182,232,0.16)", deco: ["🌊", "🐟", "🛶"] },      // River Town
+  4: { c1: "#4a1f2e", c2: "#e8b0a0", c3: "#ffd9c4", c2_22: "rgba(232,176,160,0.16)", deco: ["☁️", "🏰", "🕊️"] },      // Sky Castle
+  5: { c1: "#2b2350", c2: "#c4b5fd", c3: "#e6dcff", c2_22: "rgba(196,181,253,0.16)", deco: ["🚀", "⭐", "🌠"] },       // Star Academy
+  6: { c1: "#1e4d1f", c2: "#43d17c", c3: "#c8f7a9", c2_22: "rgba(67,209,124,0.16)", deco: ["🌴", "🦜", "🌿"] },        // Jungle Canopy (#20)
+  7: { c1: "#1f3a5f", c2: "#8fd3ff", c3: "#e3f4ff", c2_22: "rgba(143,211,255,0.16)", deco: ["❄️", "🐧", "🏔️"] },       // Polar Peaks (#20)
+};
+
+/** Worlds unlock by PROGRESS, not age — beat the previous world to open the next.
+ *  The parent's difficulty cap overrides everything: worlds above the cap are locked. */
+export function worldUnlocked(skills: SkillMap, kidId: string, band: number): boolean {
+  if (filterMaxBand != null && band > filterMaxBand) return false;
+  if (band <= 1) return true;
+  const prev = worldProgress(skills, kidId, band - 1);
+  return prev.mastered / prev.total >= UNLOCK_THRESHOLD;
+}
+
+export function totalMastered(skills: SkillMap, kidId: string): number {
+  return filterSkills.filter((s) => s.game && skillMastered(skills, kidId, s.id)).length;
+}
+
+/* ────────────────────────────── learning journey ──────────────────────────────
+ * The whole app is ONE path: every playable lesson is a stop, in world order.
+ * A stop unlocks when the stop right before it is mastered → linear, no
+ * age-gating, no dead-ends. The journey screen is the kid's map. */
+
+export interface JourneyStop {
+  skill: Skill;
+  done: boolean;
+  unlocked: boolean;
+  current: boolean;
+}
+
+export function journeyStops(): Skill[] {
+  return filterSkills.filter((s) => s.game);
+}
+
+export function journeyState(skills: SkillMap, kidId: string): JourneyStop[] {
+  let prevDone = true;
+  return journeyStops().map((skill) => {
+    const done = skillMastered(skills, kidId, skill.id);
+    const unlocked = prevDone;
+    prevDone = done;
+    return { skill, done, unlocked, current: unlocked && !done };
+  });
+}
+
+export function journeyCurrentIndex(stops: JourneyStop[]): number {
+  const i = stops.findIndex((s) => s.current);
+  return i < 0 ? stops.length : i;
+}
+
+/* ────────────────────────────── mastery card album ──────────────────────────────
+ * Every mastered lesson = a collectible trading card. Full-world mastery =
+ * a golden Champion card. Locked cards stay visible (the hunt) — dimmed, 🔒.
+ * The card "mastered date" is the skill's last practice time (the closest
+ * honest moment the store records; not shown for cards earned before the
+ * album existed). */
+
+/** "5 Aug 2026" / "৫ আগস্ট ২০২৬" — the card's mastered-date stamp. */
+export function cardDate(ts: number, lang: Lang): string {
+  const d = new Date(ts);
+  if (lang === "bn") return `${bnNum(d.getDate())} ${BN_MONTHS[d.getMonth()]} ${bnNum(d.getFullYear())}`;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** One collectible — mastered + all the flip-side stats. */
+export interface CardSkill {
+  skill: Skill;
+  mastered: boolean;
+  dateMs: number | null;
+  accuracy: number; // 0–100
+  attempts: number;
+  streak: number;
+}
+
+export function worldCards(skills: SkillMap, kidId: string, band: number): CardSkill[] {
+  return journeyStops()
+    .filter((s) => s.band === band)
+    .map((skill) => {
+      const st = skills[`${kidId}:${skill.id}`];
+      const mastered = !!st && st.pMastered >= MASTERY_THRESHOLD;
+      const attempts = st?.attempts ?? 0;
+      return {
+        skill,
+        mastered,
+        dateMs: mastered ? (st?.lastPractice ?? null) : null,
+        accuracy: attempts > 0 ? Math.round(((st?.correct ?? 0) / attempts) * 100) : 100,
+        attempts,
+        streak: st?.streak ?? 0,
+      };
+    });
+}
+
+/** Subject → trading-card gradient (top-left deep → bright). */
+export const SUBJECT_CARD: Record<string, [string, string]> = {
+  math: ["#2f6fd0", "#6ec6ff"],
+  bangla: ["#1f7a46", "#6cdb8e"],
+  english: ["#4b5eaa", "#9db4f0"],
+  science: ["#0e7490", "#5eead4"],
+  bgs: ["#b23a3a", "#f08a72"],
+  ict: ["#475569", "#9fb4c8"],
+};
+
+/** The single "next thing" a kid should play — the first unmastered journey
+ *  stop (world order). When the whole journey is done, replay the very first
+ *  stop so there's ALWAYS something to play. This is what the home PLAY button
+ *  starts — one tap, no choices, the app picks for the child. */
+export function recommendedSkill(skills: SkillMap, kidId: string): Skill | undefined {
+  const stops = journeyState(skills, kidId);
+  // #257 — focus pin leads the journey: the pinned subject+world's next
+  // unlocked stop plays first (falls back to the normal path if it's done).
+  if (filterFocusSubject && filterFocusBand) {
+    const focus = stops.find(
+      (s) => s.unlocked && !s.done && s.skill.subject === filterFocusSubject && s.skill.band === filterFocusBand
+    );
+    if (focus) return focus.skill;
+  }
+  const cur = stops.find((s) => s.current);
+  if (cur) return cur.skill;
+  return stops[0]?.skill;
+}
+
+/** #100 — skill-of-the-week: a deterministic, OFFLINE week index. Anchored to
+ *  Sun 2026-01-04; every Monday rolls to the next week. Same week number for
+ *  every device — the rotation needs no server. */
+export function weekNumber(d: Date = new Date()): number {
+  const anchor = Date.UTC(2026, 0, 4); // a Sunday
+  return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - anchor) / (7 * 86400e3));
+}
+
+/** #100 — the weekly highlight: cycles one skill per week through the kid's
+ *  RECOMMENDED (unmastered) journey stops, deterministic + offline. When the
+ *  whole journey is done it rotates the full path so there's always a focus. */
+export function skillOfWeek(skills: SkillMap, kidId: string): Skill | undefined {
+  const stops = journeyState(skills, kidId);
+  if (stops.length === 0) return undefined;
+  const pending = stops.filter((s) => !s.done);
+  const pool = pending.length > 0 ? pending : stops;
+  return pool[weekNumber() % pool.length].skill;
+}
+
+export function modeForSkill(skillId: string): SessionStep["mode"] {
+  if (skillId === "sub-within-10" || skillId === "sub-within-20") return "sub";
+  if (skillId === "bn-benjonborno") return "consonants";
+  if (skillId === "bn-family-words") return "family";
+  // #20 — Bangla conjuncts (ক্ষ ঞ্জ ঙ্ক ণ্ড): BnMatras' combine mechanic,
+  // fed a conjunct list instead of matras.
+  if (skillId === "bn-conjuncts") return "conjuncts";
+  return undefined;
+}
+
+export function stepForSkill(skill: Skill): SessionStep {
+  const gameId = skill.game!;
+  return {
+    skillId: skill.id,
+    gameId,
+    scene: GAME_SCENES[gameId],
+    title: skill.title,
+    mode: modeForSkill(skill.id),
+    // First exposure to + or − → the kid gets the narrated Basket Math demo
+    // round first, so the symbol means "put together / take away" before they
+    // ever face an abstract drill. (Replay sessions re-teach — harmless.)
+    teach: skill.id === "add-within-10" || skill.id === "sub-within-10" || skill.id === "add-within-20" || skill.id === "sub-within-20",
+  };
+}
+
+/** 🧠 MONI — the child's next move, from the tiny tutor.
+ *  Returns Moni's plan (focus skill, difficulty, game, tone) once the kid has
+ *  enough rounds for Moni to see a pattern (>= 4, same bar as the parent card).
+ *  Falls back to null before that — the journey logic is the default until
+ *  Moni earns its voice. */
+export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
+  const st = useKidStore.getState();
+  const profile = st.moni[kidId];
+  if (!profile || profile.totalRounds < 4) return null;
+
+  // Mastery map for every skill the app knows about (pMastered + streak +
+  // wrongStreak + lastPractice) — what Moni plans against. lastPractice feeds
+  // the confidence-based review schedule (#328).
+  const mastery: Record<string, { pMastered: number; streak: number; correct: number; attempts: number; wrongStreak: number; lastPractice: number | null }> = {};
+  for (const s of filterSkills) {
+    const key = `${kidId}:${s.id}`;
+    const skill = st.skills[key];
+    if (!skill) continue;
+    mastery[s.id] = {
+      pMastered: skill.pMastered,
+      streak: skill.streak ?? 0,
+      correct: skill.correct ?? 0,
+      attempts: skill.attempts ?? 0,
+      wrongStreak: st.moniWrongStreak[key] ?? 0,
+      lastPractice: skill.lastPractice ?? null,
+    };
+  }
+  // Catalog: every skill the app can actually teach, with its game.
+  const catalog: Record<string, { id: string; band: number; game: string; dependsOn?: string[] }> = {};
+  for (const s of filterSkills) {
+    if (!s.game) continue;
+    catalog[s.id] = { id: s.id, band: s.band, game: s.game };
+  }
+  try {
+    // Parent-set strictness (#333) shapes Moni's tone + difficulty deltas. It
+    // defaults to "steady" (Moni's own automatic read) when never set. `now`
+    // is passed explicitly so the review-due computation is deterministic.
+    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, st.moniStrictness?.[kidId] ?? "steady", Date.now());
+  } catch {
+    return null; // a malformed profile must never break the session loop
+  }
+}
+
+/** 🧠 MONI difficulty — the level index Moni wants for a skill (from its plan).
+ *  Moni's difficulty is an absolute 1–5 (mastery tier + delta); we normalize it
+ *  into the game's own level array. Returns -1 when Moni has no opinion. */
+export function moniLevelIndex(kidId: string, skillId: string, gameId: string): number {
+  const plan = moniPlanFor(kidId);
+  if (!plan || plan.focusSkillId !== skillId) return -1;
+  const game = getGame(gameId);
+  if (!game || game.difficultyLevels.length === 0) return -1;
+  // Map Moni's 1–5 tier onto the game's ascending levels (tier 3 of 5 → the
+  // middle level). Clamp so it can never leave the game's range.
+  const t = Math.min(1, Math.max(0, (plan.difficulty - 1) / 4));
+  const idx = Math.round(t * (game.difficultyLevels.length - 1));
+  return Math.min(Math.max(idx, 0), game.difficultyLevels.length - 1);
+}
+
+/** 🧠 MONI-guided session — Moni's focus skill leads the pool when it has an
+ *  opinion (else the classic journey order: struggled-first, then fresh). */
+export function sessionForWorld(skills: SkillMap, kidId: string, band: number): SessionStep[] {
+  const ordered = filterSkills.filter((s) => s.band === band && s.game).map(stepForSkill);
+  const unmastered = ordered.filter((st) => !skillMastered(skills, kidId, st.skillId));
+  const pool = unmastered.length ? unmastered : ordered;
+  const mistakes = useKidStore.getState().mistakes;
+  const struggled = (st: SessionStep) => (mistakes[`${kidId}:${st.skillId}`]?.wrong ?? 0) > 0;
+
+  // MONI: if the tutor has a recommended skill in THIS band, it leads the queue
+  // (it already accounts for gaps + misconceptions + review timing).
+  const plan = moniPlanFor(kidId);
+  if (plan && plan.focusSkillId) {
+    const focus = pool.find((st) => st.skillId === plan.focusSkillId);
+    if (focus) {
+      const rest = pool.filter((st) => st.skillId !== plan.focusSkillId);
+      return [focus, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+    }
+  }
+  // #257 — focus pin: inside the pinned world, the pinned subject's unmastered
+  // skills lead (Moni still outranks this, so the tutor's call wins above).
+  if (filterFocusSubject && filterFocusBand === band) {
+    const focused = pool.filter((st) => subjectForSkill(st.skillId) === filterFocusSubject);
+    const rest = pool.filter((st) => subjectForSkill(st.skillId) !== filterFocusSubject);
+    return [...focused, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+  }
+  return [...pool.filter(struggled), ...pool.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+}
+
+export function nextUnmasteredSkill(skills: SkillMap, kidId: string, band: number): Skill | undefined {
+  return filterSkills.find((s) => s.band === band && s.game && !skillMastered(skills, kidId, s.id));
+}
+
+/** Adaptive starting level index for a kid + skill, from their BKT mastery state.
+ *  🧠 MONI overrides when it has a plan for this skill: the tutor's difficulty
+ *  tier beats the raw BKT ramp (it already accounts for gaps/misconceptions and
+ *  review timing). Falls back to BKT when Moni has no opinion. */
+export function adaptiveLevelIndex(kidId: string, skillId: string, gameId: string): number {
+  const moniIdx = moniLevelIndex(kidId, skillId, gameId);
+  if (moniIdx >= 0) return moniIdx;
+  const game = getGame(gameId);
+  if (!game) return 0;
+  const state = useKidStore.getState().skillFor(kidId, skillId);
+  const target = nextDifficulty(state, game.difficultyLevels, game.targetSuccess);
+  const idx = game.difficultyLevels.indexOf(target);
+  return idx < 0 ? 0 : idx;
+}
+
+export function loadKids(): Kid[] {
+  try {
+    const raw = localStorage.getItem("nv_kids");
+    if (raw) return JSON.parse(raw) as Kid[];
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
