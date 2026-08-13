@@ -646,7 +646,10 @@ export const useKidStore = create<KidState>()(
                 difficulty,
                 responseMs: 0,
                 wrongStreak,
-                context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null },
+                // #89 — carry the CORRECT answer too so the parent panel can show
+                // "picked X → answer Y" (the exact question's two sides) from the
+                // same offline story ledger — no extra fetch, no schema change.
+                context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null, correctAnswer: typeof correct === "number" ? correct : null },
                 ts: now,
               },
             ],
