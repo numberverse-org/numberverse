@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
-import { speak } from "./speech";
+import { speak, bnNumber, enNumber, cancelSpeech } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_CORRECT, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
@@ -29,14 +29,18 @@ interface NoteTile {
 }
 
 /**
- * Making change with ৳ notes (#199).
- * Band 3: two alternating questions —
+ * Making change with ৳ notes (#199, #66).
+ * Band 3: three rotating questions —
  *  · CHANGE — a ৳50/৳100 note is shown with a price chip; the kid computes the
  *    change (৳50 − ৳32 = ৳18) and taps it from 4 cards. The spoken equation
- *    "৳50 minus ৳32 is ৳18" ties the note to the subtraction.
- *  · MAKE   — "Tap notes to make ৳45": the kid taps ৳5/৳10/৳20/৳50 notes off a
- *    tray (live ৳ total), then ✅ checks. Every target is buildable by
- *    construction (5..95 in steps of 5).
+ *    "fifty minus thirty-two is eighteen" ties the note to the subtraction.
+ *  · MAKE   — "Tap notes to make ৳45" (FREE mode): the kid taps ৳5/৳10/৳20/৳50
+ *    notes off a tray (live ৳ total), then ✅ checks. Any combo is accepted.
+ *  · FEWEST (#66) — "Make ৳70 with the FEWEST notes!": the same tray, but only
+ *    the minimum note count wins. A non-minimal attempt resets the tray with a
+ *    "try the big notes first" nudge; a second miss REVEALS the greedy combo
+ *    (biggest-first) so the lesson always completes.
+ * Every note tapped speaks its name — "পঞ্চাশ টাকার নোট" / "fifty taka note".
  * Real ৳5 coin + ৳10/20/50/100 note visuals (Bangladesh colours).
  */
 export class MakeChangeScene extends Phaser.Scene {
@@ -48,7 +52,11 @@ export class MakeChangeScene extends Phaser.Scene {
   private answered = 0;
   private correct = 0;
   private qIndex = 0;
-  private changeMode = true; // true: change; false: make exact
+  private changeMode = true; // mode 0: change; mode 1: make (free); mode 2: fewest
+  private fewestMode = false;
+  private fewestMin = 0;
+  private fewestMisses = 0;
+  private noteCount = 0;
   private pay = 50;
   private p = 30;
   private c = 20;
@@ -140,15 +148,20 @@ export class MakeChangeScene extends Phaser.Scene {
   private askQuestion() {
     this.clearAll();
     this.locked = false;
-    this.changeMode = this.qIndex % 2 === 0;
     const lvl = Math.min(this.levelIndex, LEVELS.length - 1);
+    const bn = getAppLang() === "bn";
     let guard = 0;
+    let mode = 0;
     do {
-      if (this.changeMode) this.genChange(lvl);
+      mode = this.qIndex % 3;
+      this.changeMode = mode === 0;
+      this.fewestMode = mode === 2;
+      if (mode === 0) this.genChange(lvl);
+      else if (mode === 2) this.genFewest(lvl);
       else this.genMake(lvl);
       guard++;
-    } while (this.lastQ === `${this.changeMode ? "c" : "m"}:${this.p}` && guard < 30);
-    this.lastQ = `${this.changeMode ? "c" : "m"}:${this.p}`;
+    } while (this.lastQ === `${mode}:${this.p}` && guard < 30);
+    this.lastQ = `${mode}:${this.p}`;
 
     if (this.changeMode) {
       this.prompt.setText(t("chQ", { pay: digit(this.pay) }));
@@ -157,6 +170,19 @@ export class MakeChangeScene extends Phaser.Scene {
       this.showBigNote(this.pay);
       this.noteVisual.setVisible(true);
       this.spawnChangeCards(lvl);
+    } else if (this.fewestMode) {
+      this.fewestMin = this.greedyMin(this.p);
+      this.fewestMisses = 0;
+      this.noteCount = 0;
+      this.prompt.setText(t("chFewest", { p: digit(this.p) }));
+      this.priceText.setVisible(false);
+      this.noteVisual.setVisible(false);
+      this.totalText.setText(`৳${digit(0)} · ${t("fewestCount", { n: digit(0) })}`);
+      this.totalText.setVisible(true);
+      this.buildTray();
+      this.layoutTray();
+      this.checkBtn.setVisible(false);
+      speak(t("chFewestSpeak", { p: bn ? bnNumber(this.p) : enNumber(this.p) }), { lang: bn ? "bn" : "en" });
     } else {
       this.prompt.setText(t("chMake", { p: digit(this.p) }));
       this.priceText.setVisible(false);
@@ -186,6 +212,29 @@ export class MakeChangeScene extends Phaser.Scene {
   private genMake(lvl: number) {
     const max = lvl < 2 ? 40 : lvl < 4 ? 70 : 95;
     this.p = Phaser.Math.Between(2, max / 5) * 5;
+  }
+
+  /** Fewest question: same targets — the lesson is WHICH notes you pick. */
+  private genFewest(lvl: number) {
+    const max = lvl < 2 ? 40 : lvl < 4 ? 70 : 95;
+    this.p = Phaser.Math.Between(2, max / 5) * 5;
+  }
+
+  /** Fewest note count for a target, greedy biggest-first over the TRAY. */
+  private greedyMin(target: number): number {
+    const tray = [...TRAY].sort((a, b) => b - a);
+    let rem = target, n = 0;
+    for (const d of tray) if (rem >= d) { rem -= d; n++; }
+    return n;
+  }
+
+  /** The greedy combo (denom list) that hits the target in the fewest notes. */
+  private greedyCombo(target: number): number[] {
+    const tray = [...TRAY].sort((a, b) => b - a);
+    const out: number[] = [];
+    let rem = target;
+    for (const d of tray) if (rem >= d) { rem -= d; out.push(d); }
+    return out;
   }
 
   private spawnChangeCards(lvl: number) {
@@ -222,7 +271,12 @@ export class MakeChangeScene extends Phaser.Scene {
       win();
       this.correct++;
       this.floatMsg(t("chGreat"));
-      speak(t("chSpeak", { pay: digit(this.pay), p: digit(this.p), c: digit(this.c) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+      const bn = getAppLang() === "bn";
+      speak(t("chSpeak", {
+        pay: bn ? bnNumber(this.pay) : enNumber(this.pay),
+        p: bn ? bnNumber(this.p) : enNumber(this.p),
+        c: bn ? bnNumber(this.c) : enNumber(this.c),
+      }), { lang: bn ? "bn" : "en" });
       this.tweens.add({ targets: tile, scale: 1.1, duration: 140, yoyo: true, ease: "Back.easeOut" });
       const ms = Math.max(1, this.time.now - this.startedAt);
       this.advance(ms);
@@ -304,8 +358,91 @@ export class MakeChangeScene extends Phaser.Scene {
     tile.on = !tile.on;
     tile.ring.setVisible(tile.on);
     pop();
-    const sum = this.tray.filter((o) => o.on).reduce((s, o) => s + o.denom, 0);
-    this.totalText.setText(`৳${digit(sum)}`);
+    this.sayNote(tile.denom);
+    const on = this.tray.filter((o) => o.on);
+    const sum = on.reduce((s, o) => s + o.denom, 0);
+    this.noteCount = on.length;
+    if (this.fewestMode) {
+      this.totalText.setText(`৳${digit(sum)} · ${t("fewestCount", { n: digit(this.noteCount) })}`);
+      if (sum === this.p) this.evaluateFewest();
+    } else {
+      this.totalText.setText(`৳${digit(sum)}`);
+    }
+  }
+
+  /** Speak a note's NAME in the app language — the #66 "Bangla note names spoken". */
+  private sayNote(denom: number) {
+    const bn = getAppLang() === "bn";
+    cancelSpeech();
+    speak(`${bn ? bnNumber(denom) : enNumber(denom)} ${t("noteWord")}`);
+  }
+
+  /** FEWEST check: hit the target AND with the minimum number of notes. */
+  private evaluateFewest() {
+    if (this.locked) return;
+    const bn = getAppLang() === "bn";
+    if (this.noteCount === this.fewestMin) {
+      this.locked = true;
+      win();
+      this.correct++;
+      const n = bn ? bnNumber(this.noteCount) : enNumber(this.noteCount);
+      this.floatMsg(t("fewestGreat", { n }), 0x4ade80);
+      speak(t("fewestGreat", { n }), { lang: bn ? "bn" : "en" });
+      const ms = Math.max(1, this.time.now - this.startedAt);
+      this.advance(ms);
+      return;
+    }
+    // Not fewest — first miss nudges toward the big notes, second reveals them.
+    this.fewestMisses++;
+    if (this.fewestMisses < 2) {
+      bad();
+      this.locked = true;
+      this.floatMsg(t("fewestTry", {
+        p: bn ? bnNumber(this.p) : enNumber(this.p),
+        n: bn ? bnNumber(this.noteCount) : enNumber(this.noteCount),
+        min: bn ? bnNumber(this.fewestMin) : enNumber(this.fewestMin),
+      }), 0xffd166);
+      this.time.delayedCall(1800, () => {
+        this.resetTray();
+        this.locked = false;
+      });
+    } else {
+      this.revealFewest();
+    }
+  }
+
+  /** Teaching reveal: switch on the greedy combo, speak its names, count as learned. */
+  private revealFewest() {
+    const bn = getAppLang() === "bn";
+    this.locked = true;
+    const need: Record<number, number> = {};
+    const combo = this.greedyCombo(this.p);
+    for (const d of combo) need[d] = (need[d] ?? 0) + 1;
+    this.tray.forEach((tile) => {
+      if (need[tile.denom] > 0) {
+        tile.on = true;
+        tile.ring.setVisible(true);
+        need[tile.denom]--;
+        this.tweens.add({ targets: tile.c, scale: 1.15, duration: 320, yoyo: true, ease: "Back.easeOut" });
+      }
+    });
+    this.noteCount = combo.length;
+    this.totalText.setText(`৳${digit(this.p)} · ${t("fewestCount", { n: digit(this.noteCount) })}`);
+    const names = combo.map((d) => `${bn ? bnNumber(d) : enNumber(d)} ${t("noteWord")}`).join(", ");
+    const vars = { p: bn ? bnNumber(this.p) : enNumber(this.p), n: bn ? bnNumber(combo.length) : enNumber(combo.length), names };
+    win();
+    this.floatMsg(t("fewestReveal", vars), 0x4ade80);
+    speak(t("fewestReveal", vars), { lang: bn ? "bn" : "en" });
+    this.correct++;
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    this.time.delayedCall(2200, () => this.advance(ms));
+  }
+
+  /** Turn every tray note back off (FEWEST "try again" reset). */
+  private resetTray() {
+    this.tray.forEach((t) => { t.on = false; t.ring.setVisible(false); });
+    this.noteCount = 0;
+    this.totalText.setText(`৳${digit(0)} · ${t("fewestCount", { n: digit(0) })}`);
   }
 
   private checkMake() {
@@ -316,7 +453,8 @@ export class MakeChangeScene extends Phaser.Scene {
       win();
       this.correct++;
       this.floatMsg(t("chGreat"), 0x4ade80);
-      speak(t("chMakeSpeak", { p: digit(this.p) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+      const bn = getAppLang() === "bn";
+      speak(t("chMakeSpeak", { p: bn ? bnNumber(this.p) : enNumber(this.p) }), { lang: bn ? "bn" : "en" });
       const ms = Math.max(1, this.time.now - this.startedAt);
       this.advance(ms);
       return;
@@ -387,6 +525,8 @@ export class MakeChangeScene extends Phaser.Scene {
     this.priceText.setVisible(false);
     this.totalText.setVisible(false);
     this.checkBtn.setVisible(false);
+    this.fewestMode = false;
+    this.noteCount = 0;
   }
 }
 

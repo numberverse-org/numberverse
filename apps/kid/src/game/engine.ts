@@ -146,6 +146,7 @@ import { SkipCountScene } from "./SkipCountScene";
 import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { MeasurementScene } from "./MeasurementScene";
+import { PictoGraphScene } from "./PictoGraphScene";
 import { CountingSongScene } from "./CountingSongScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
@@ -185,7 +186,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       PlaceValueScene, RoundingScene, BarChartScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
-      AddSub100Scene, RegroupScene, MeasurementScene,
+      AddSub100Scene, RegroupScene, MeasurementScene, PictoGraphScene,
       FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, KeyboardExplorerScene, DeviceMannersScene, ProfessionsMatchScene, FestivalSortScene, KindnessScene, TruthScene, OrdinalsScene, IdiomsScene, VerbGenderScene, ClassifiersScene, DigraphsScene, SynAntScene, IrregularPluralsScene, PastTenseScene, LongVowelScene, SkipCountScene, ClockTimeScene, BalanceScene, LivingSortScene, PlantPartsScene, FiveSensesScene, FoodSourceScene, MaterialSortScene, ComputerSafetyScene, HabitSortScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,

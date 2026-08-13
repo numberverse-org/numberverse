@@ -208,6 +208,9 @@ export const SKILLS: Skill[] = [
   // Data — read bar charts: tallest → a given count → a given category.
   // NCTB class-3 has a "data" strand; CC 2.MD.10 / 3.MD.3.
   { id: 'data-barchart', band: 3, subject: 'math', title: 'Bar chart reading', titleBn: 'বার চার্ট পড়ি', description: 'Answer how-many questions by tapping bars on a chart', descriptionBn: 'চার্টের বার দেখে কতগুলো, ট্যাপ করে উত্তর দিই', commonCore: ['2.MD.10', '3.MD.3'], nctbCode: 'c3-math-6', classNumber: 3, game: 'game-barchart' },
+  // Data — pictographs: ONE picture = 2/5/10, count pictures × key.
+  // NCTB class-3 "data" strand; CC 2.MD.10 / 3.MD.3 (same as bar charts).
+  { id: 'data-picto', band: 3, subject: 'math', title: 'Picture charts', titleBn: 'ছবির চার্ট', description: 'Read pictographs where one picture = 2, 5 or 10 and answer how-many questions', descriptionBn: 'ছবির চার্ট পড়ি — ১টা ছবি = ২/৫/১০, ছবি দেখে কতগুলো বলি', commonCore: ['2.MD.10', '3.MD.3'], nctbCode: 'c3-math-16', classNumber: 3, game: 'game-picto' },
   { id: 'add-sub-regroup', band: 3, subject: 'math', title: 'Carry & Borrow', titleBn: 'ক্যারি ও ধার', description: '3-digit addition and subtraction with carrying and borrowing (written method)', descriptionBn: '৩-অঙ্কের যোগ-বিয়োগ ক্যারি ও ধারসহ (লিখিত পদ্ধতি)', commonCore: ['2.NBT.7', '3.NBT.2'], nctbCode: 'c3-math-5', classNumber: 3, game: 'game-regroup' },
   // Language — STAGE 3: first words (mirrored: BN words then EN CVC)
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', descriptionBn: 'সহজ বাংলা শব্দ পড়ি (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
@@ -422,6 +425,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-round', skillId: 'round-nearest-10-100', difficultyLevels: [40, 80, 120, 400, 700, 999], targetSuccess: 0.8 },
   { id: 'game-barchart', skillId: 'data-barchart', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-regroup', skillId: 'add-sub-regroup', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
+  { id: 'game-picto', skillId: 'data-picto', difficultyLevels: [2, 2, 5, 5, 10, 10], targetSuccess: 0.8 },
   { id: 'game-bnwords', skillId: 'bn-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-conjunctfind', skillId: 'bn-conjunct-find', difficultyLevels: [12, 11, 10, 9, 8, 7], targetSuccess: 0.8 },
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -590,6 +594,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-placevalue': 'PlaceValue',
   'game-round': 'Rounding',
   'game-barchart': 'BarChart',
+  'game-picto': 'PictoGraph',
   'game-bnmatras': 'BnMatras',
   'game-sightwords': 'SightWords',
   'game-animalhome': 'AnimalHome',
