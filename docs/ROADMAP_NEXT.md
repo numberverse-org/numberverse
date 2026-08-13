@@ -184,7 +184,7 @@
 - Polish: empty/loading/error states everywhere  _(priority: low, kid-first, polish)_
 - ~~PWA: iOS home-screen polish~~ ✅ #347 — 🍏 12 portrait startup splash PNGs (all iPhone/iPad sizes) wired via media queries, apple-touch-icon + meta verified (PR pending)
 - Voice: quantize on-device model  _(priority: low, kid-first, polish)_
-- Perf: preconnect/priority for first paint  _(priority: low, kid-first, polish)_
+- ~~Perf: preconnect/priority for first paint~~ ✅ #349 — 🚀 preload the two first-paint fonts (Baloo/Nunito), swap-to-custom shrinks to one same-origin fetch; preconnect is a deliberate no-op (zero cross-origin by design) (PR pending)
 - Polish: reduced-motion mode  _(priority: low, kid-first, polish)_
 - Polish: keyboard navigation for parent area  _(priority: low, kid-first, polish)_
 - Perf: game-loop memory audit  _(priority: low, kid-first, polish)_

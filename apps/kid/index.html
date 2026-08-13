@@ -7,6 +7,14 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="theme-color" content="#0b2545" />
+    <!-- #349 first-paint priority: preload the two fonts the FIRST screen uses
+         (title face + body face). With font-display:swap this shrinks the
+         system-font→custom-font swap to a single fast same-origin fetch, so
+         first paint lands on the real look (no FOUC). Same-origin = zero
+         cross-origin requests by design (offline-first), so <preconnect> is a
+         deliberate no-op here — there's nothing external to warm up. -->
+    <link rel="preload" href="/fonts/Baloo2-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/Nunito-400.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- iOS home-screen (Safari ignores the manifest; these drive it) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
