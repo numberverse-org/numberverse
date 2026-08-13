@@ -283,7 +283,27 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   focus_band: null,
   voice_tone: null,
   voice_speed: null,
+  paused: false,
 };
+
+/** #272 — SAFETY: instant pause (parent kill-switch). EN + BN strings for the
+ *  portal block — same country-pack seam as VOICE_LANGS. */
+const PAUSE_LANGS = {
+  en: {
+    title: "⏸️ Instant pause",
+    offHint: "Tap Pause to instantly stop all of {name}'s games. The kid sees a friendly “come back soon” screen — it stays paused even after a reload.",
+    onHint: "{name}'s games are paused right now — the app blocks all play with a friendly “learning break” screen until you tap Resume.",
+    pause: "⏸️ Pause games now",
+    resume: "▶️ Resume games",
+  },
+  bn: {
+    title: "⏸️ সাথে সাথে বিরতি",
+    offHint: "{name}-এর সব খেলা সাথে সাথে থামাতে Pause চাপুন। বাচ্চাটি একটি বন্ধুত্বপূর্ণ “শীঘ্রই ফিরে এসো” স্ক্রিন দেখবে — রিলোড করলেও এটি পজড থাকবে।",
+    onHint: "{name}-এর খেলা এখন থামানো আছে — আপনি Resume চাপা পর্যন্ত অ্যাপ একটি বন্ধুত্বপূর্ণ “শেখার বিরতি” স্ক্রিন দেখাবে।",
+    pause: "⏸️ এখন খেলা থামান",
+    resume: "▶️ খেলা চালু করুন",
+  },
+} as const;
 
 /** #257 — world bands a focus pin can target (1..7). */
 const FOCUS_BANDS = [1, 2, 3, 4, 5, 6, 7];
@@ -2479,6 +2499,25 @@ export default function ParentDashboard() {
           {/* ── controls ── */}
           <section className="card controls">
             <h2>🎛️ Learning controls</h2>
+
+            {/* #272 — safety: instant pause (parent kill-switch). One tap stops
+                every game for this kid with a kid-safe screen; stays paused
+                through reloads until a parent resumes. */}
+            <div className={`ctrl-block pause-block${activeSettings.paused ? " on" : ""}`}>
+              <h3>{PAUSE_LANGS[wizLang].title}</h3>
+              <p className="muted small">
+                {activeSettings.paused
+                  ? PAUSE_LANGS[wizLang].onHint.replace("{name}", active.name)
+                  : PAUSE_LANGS[wizLang].offHint.replace("{name}", active.name)}
+              </p>
+              <button
+                className={`btn${activeSettings.paused ? " danger-ghost" : " danger"}`}
+                onClick={() => patchSettings({ paused: !activeSettings.paused })}
+                aria-pressed={activeSettings.paused}
+              >
+                {activeSettings.paused ? PAUSE_LANGS[wizLang].resume : PAUSE_LANGS[wizLang].pause}
+              </button>
+            </div>
 
             <div className="ctrl-block">
               <h3>Subjects</h3>

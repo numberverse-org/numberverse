@@ -149,7 +149,7 @@
 - ~~Safety: gentle screen-time wind-down~~ ✅ #269 — parent-set cap (#6) gives gentle 'all done today' + rest, not a block
 - Privacy: Kotha story context redaction  _(priority: low, guardrail)_
 - Guardrail: dependency license audit gate  _(priority: low, guardrail)_
-- Safety: instant pause (parent kill-switch)  _(priority: low, guardrail)_
+- ~~Safety: instant pause (parent kill-switch)~~  ✅ #272 — "⏸️ Instant pause" block at the TOP of Learning controls: one tap stops every game for a kid (`KidSettings.paused`, server-backed); the app shows a kid-safe 😴 "learning break" screen (resting Nova, EN+বাংলা) instead of any play screen; survives reload (served with settings + cached on-device) and lands mid-session via a lightweight 30s visible-tab poll; resuming drops the kid back to a fresh home
 - Privacy: data-export for parents (own-API)  _(priority: low, guardrail)_
 - ~~Guardrail: rate-limit on story + progress endpoints~~ ✅ #96 — #274 per-account+IP limiter, HTTP 429 on breach
 - Safety: age-appropriate band lock for content  _(priority: low, guardrail)_

@@ -3857,6 +3857,29 @@ body {
 .break-rest-btn { margin-top: 10px; }
 .break-go-btn { margin-bottom: auto; }
 .break-screen > * { z-index: 1; }
+/* ⏸️ #272 — SAFETY: parent kill-switch paused screen. Soft night-sky theme, a
+   resting Nova, gentle drifting floats — a calm "come back soon", never scary.
+   Reuses the break-screen drift animation + Nova bounce for zero new motion. */
+.pause-screen { position: relative; overflow-y: auto; gap: 12px; justify-content: center; text-align: center; padding-top: 28px; }
+.pause-screen .title { margin: 4px 0 0; }
+.pause-sky { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.pause-sky-float {
+  position: absolute;
+  font-size: 30px;
+  opacity: 0.5;
+  animation: break-drift 9s ease-in-out infinite;
+}
+.pause-sky-float.f0 { top: 10%; left: 10%; animation-delay: 0s; }
+.pause-sky-float.f1 { top: 20%; right: 12%; animation-delay: 1.4s; }
+.pause-sky-float.f2 { top: 8%; left: 42%; animation-delay: 2.6s; }
+.pause-sky-float.f3 { top: 46%; left: 8%; animation-delay: 3.8s; }
+.pause-sky-float.f4 { top: 42%; right: 10%; animation-delay: 5s; }
+.pause-sky-float.f5 { top: 60%; left: 34%; animation-delay: 6.2s; }
+.pause-mascot { font-size: 0; line-height: 1; margin-top: 10px; animation: celebrate-bounce 2.4s ease-in-out infinite; filter: drop-shadow(0 10px 22px rgba(76, 201, 240, 0.3)); }
+.pause-body { max-width: 340px; margin: 0 auto; font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.85); line-height: 1.5; }
+.pause-z { font-size: 42px; line-height: 1; margin: 2px 0 6px; animation: break-stretch-y 3s ease-in-out infinite; }
+.pause-note { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.55); margin-bottom: auto; }
+.pause-screen > * { z-index: 1; }
 /* 🎯 MONI contrast drill (#325) — side-by-side pattern quiz, warm + roomy. */
 .contrast-screen { position: relative; overflow-y: auto; gap: 12px; justify-content: flex-start; text-align: center; padding-top: 26px; }
 .contrast-screen .title { margin: 4px 0 0; }
