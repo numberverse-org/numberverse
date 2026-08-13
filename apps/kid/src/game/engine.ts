@@ -58,6 +58,7 @@ import { RControlledScene } from "./RControlledScene";
 import { MagicEScene } from "./MagicEScene";
 import { ContractsScene } from "./ContractsScene";
 import { CompareScene } from "./CompareScene";
+import { PrepositionsScene } from "./PrepositionsScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -142,6 +143,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       MagicEScene,
       ContractsScene,
       CompareScene,
+      PrepositionsScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
