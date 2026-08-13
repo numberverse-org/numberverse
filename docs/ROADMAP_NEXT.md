@@ -88,7 +88,7 @@
 
 ## v25 — parent power 3
 
-- Parent: per-kid reading & story progress view  _(priority: low, parent-facing)_
+- ~~Parent: per-kid reading & story progress view~~  ✅ #237 — "📚 Reading & stories" card: the 4 read-aloud/story skills (EN+BN titles) with mastery bar + % , correct/attempts score, and 🌱/🔶/✅ status; reads already-loaded mastery state → fully offline
 - Parent: weekly learning narrative from Kotha  _(priority: low, parent-facing)_
 - Parent: struggle-alert card (skill needs help)  _(priority: low, parent-facing)_
 - Parent: compare two kids side-by-side  _(priority: low, parent-facing)_
