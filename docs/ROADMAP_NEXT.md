@@ -27,7 +27,7 @@
 - ~~English: silent-e magic (make-a-word)~~  ✅ #176 — 16 CVC→CVCe flips, tap the magic-e, word fuses + glows gold (visual reveal)
 - ~~English: sight words level 3 (3rd 100)~~  ✅ #177 — full Fry 3rd-100 pool merged (124 words), hear-mode (hidden spelling) + read-mode alternate
 - ~~English: contractions (I'm, don't, can't)~~  ✅ #178 — 24 contraction↔full-form matches, both directions, pair re-read aloud
-- English: comparatives & superlatives (big-bigger-biggest)  _(priority: low, kid-first)_
+- ~~English: comparatives & superlatives (big-bigger-biggest)~~  ✅ #179 — 5 adjectives × 8 items, demo rule strip (pulses + speaks), 2-pic → -er / 3-pic → -est
 - English: prepositions (in, on, under, behind)  _(priority: low, kid-first)_
 - English: question words (who what where when why)  _(priority: low, kid-first)_
 - English: story sequencing (first then last)  _(priority: low, kid-first)_

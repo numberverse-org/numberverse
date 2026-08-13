@@ -1,0 +1,232 @@
+import Phaser from "phaser";
+import { t } from "./i18n";
+import { questionPanel, type QuestionPanelApi } from "./question";
+import { GAMES } from "@numberverse/core";
+import { pop, win } from "./audio";
+import { speak } from "./speech";
+import { hintWrong } from "./hints";
+import { gameBackground } from "./backgrounds";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { SAB } from "./safeArea";
+
+const LEVELS = GAMES.find((g) => g.id === "game-compare")?.difficultyLevels ?? [3, 3, 3, 3, 3, 3];
+const ROUNDS_TO_FINISH = 3;
+const QUESTIONS_PER_ROUND = 5;
+const CARD_W = 160;
+const CARD_H = 84;
+/** Degree forms of a size adjective — the rule taught by the demo strip. */
+interface AdjDegrees {
+  p: string;
+  c: string;
+  s: string;
+}
+const ADJS: AdjDegrees[] = [
+  { p: "big", c: "bigger", s: "biggest" },
+  { p: "small", c: "smaller", s: "smallest" },
+  { p: "tall", c: "taller", s: "tallest" },
+  { p: "short", c: "shorter", s: "shortest" },
+  { p: "long", c: "longer", s: "longest" },
+];
+const ITEMS = [
+  { e: "🐕", noun: "dog" },
+  { e: "🐈", noun: "cat" },
+  { e: "🌳", noun: "tree" },
+  { e: "🐟", noun: "fish" },
+  { e: "🚌", noun: "bus" },
+  { e: "✏️", noun: "pencil" },
+  { e: "🐍", noun: "snake" },
+  { e: "🪱", noun: "worm" },
+];
+
+/**
+ * Comparatives & superlatives (big → bigger → biggest) (#179).
+ * Band 3 grammar: the RULE is taught by a demo strip (three degree chips that
+ * pulse + speak in order when the adjective changes), then a PICTURE COMPARE
+ * asks the right form — two pictures (small vs big) → comparative, three
+ * pictures (small/medium/large) → superlative. Options are the 3 degree forms.
+ */
+export class CompareScene extends Phaser.Scene {
+  private levelIndex = 0;
+  private roundsDone = 0;
+  private qInRound = 0;
+  private startedAt = 0;
+  private locked = false;
+  private adj!: AdjDegrees;
+  private item!: { e: string; noun: string };
+  private superlative = false;
+  private tiles: { sprite: Phaser.GameObjects.Container; val: string }[] = [];
+  private pics: Phaser.GameObjects.Text[] = [];
+  private chips: Phaser.GameObjects.Container[] = [];
+  private chipVals: string[] = [];
+  private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
+  private background!: Phaser.GameObjects.Graphics;
+  private titleText!: Phaser.GameObjects.Text;
+  private prompt!: QuestionPanelApi;
+  private roundText!: Phaser.GameObjects.Text;
+  private meter!: RoundMeterApi;
+
+  constructor() {
+    super("Compare");
+  }
+
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+    this.onRoundDone = data.onRoundDone;
+    this.levelIndex = data.startLevelIndex ?? 0;
+    this.background = this.add.graphics();
+    gameBackground(this, "sunset");
+    this.titleText = this.add
+      .text(0, 0, t("titleCompare"), txt(34, "#ffffff", { bold: true }))
+      .setOrigin(0.5);
+    this.roundText = this.add
+      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .setOrigin(0.5);
+    this.meter = roundMeter(this);
+    this.prompt = questionPanel(this, 0, 0);
+    this.prompt.set(t("cmPrompt"));
+    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    this.layout();
+    this.startRound();
+  }
+
+  private layout() {
+    const { width, height } = this.scale;
+    this.titleText.setPosition(width / 2, 40);
+    this.roundText.setPosition(width / 2, 76);
+    this.meter.setPosition(width / 2, 100);
+    // rule strip chips sit at top-center under the meter
+    const n = this.chips.length;
+    this.chips.forEach((c, i) => c.setPosition(width / 2 + (i - (n - 1) / 2) * 120, height * 0.16));
+    this.prompt.setPosition(width / 2, height * 0.62);
+    // pictures sit between the strip and the prompt
+    const picN = this.pics.length;
+    const scales = picN === 2 ? [0.85, 1.25] : [0.7, 1.0, 1.35];
+    this.pics.forEach((p, i) => {
+      p.setPosition(width / 2 + (i - (picN - 1) / 2) * 150, height * 0.38);
+      p.setFontSize(40 + scales[i] * 44);
+    });
+  }
+
+  private startRound() {
+    this.clearTiles();
+    this.qInRound = 0;
+    this.startedAt = this.time.now;
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.askQuestion(true);
+  }
+
+  private buildStrip() {
+    this.chips.forEach((c) => c.destroy());
+    this.chips = [];
+    this.chipVals = [this.adj.p, this.adj.c, this.adj.s];
+    this.chipVals.forEach((val, i) => {
+      const chip = modernCardButton(this, 0, 0, 96, 48, val, BTN_NEUTRAL, 22);
+      chip.disableInteractive();
+      this.chips.push(chip);
+      // pulse + speak each chip in order — the rule demo
+      const delay = i * 650;
+      this.time.delayedCall(delay, () => {
+        this.tweens.add({ targets: chip, scale: 1.15, duration: 150, yoyo: true });
+        speak(val, { lang: "en" });
+      });
+    });
+    this.layout();
+  }
+
+  private askQuestion(demoFirst = false) {
+    this.clearTiles();
+    this.pics.forEach((p) => p.destroy());
+    this.pics = [];
+    this.locked = false;
+    let adj = ADJS[Phaser.Math.Between(0, ADJS.length - 1)];
+    if (adj.p === this.adj?.p) adj = ADJS[(ADJS.indexOf(adj) + 1) % ADJS.length];
+    const isNewAdj = adj.p !== this.adj?.p;
+    this.adj = adj;
+    // levels 1-2 teach the comparative (2 pictures); later levels alternate in
+    // the superlative (3 pictures) once the -er rule is grounded.
+    if (this.levelIndex < 2) this.superlative = false;
+    else this.superlative = !this.superlative;
+    this.item = ITEMS[Phaser.Math.Between(0, ITEMS.length - 1)];
+    const counts = this.superlative ? 3 : 2;
+    const scales = this.superlative ? [0.7, 1.0, 1.35] : [0.85, 1.25];
+    for (let i = 0; i < counts; i++) {
+      const p = this.add.text(0, 0, this.item.e, txt(0, "#ffffff", { outline: true })).setOrigin(0.5).setDepth(2);
+      p.setFontSize(40 + scales[i] * 44);
+      this.pics.push(p);
+    }
+    this.layout();
+    const correct = this.superlative ? adj.s : adj.c;
+    const sentence = this.superlative ? t("cmSupSentence", { noun: this.item.noun }) : t("cmCompSentence", { noun: this.item.noun });
+    this.prompt.set(sentence);
+    const bank = [adj.p, adj.c, adj.s].sort(() => Math.random() - 0.5);
+    const gl = gridLayout(this, {
+      cols: 3,
+      rows: 1,
+      preferredW: CARD_W,
+      minW: 110,
+      widthPad: 16,
+      topPad: this.scale.height * 0.7,
+      bottomY: this.scale.height - 88 - SAB(),
+      cardH: CARD_H,
+    });
+    bank.forEach((val, i) => {
+      const tile = modernCardButton(this, gl.startX + i * gl.spacingX, gl.cy, gl.cardW, gl.cardH, val, BTN_NEUTRAL, 30);
+      tile.on("pointerdown", () => this.tap(tile, val));
+      this.tiles.push({ sprite: tile, val });
+    });
+    if (isNewAdj || demoFirst) this.buildStrip();
+    this.time.delayedCall(350, () => speak(correct, { lang: "en" }));
+  }
+
+  private tap(container: Phaser.GameObjects.Container, val: string) {
+    if (this.locked) return;
+    const correct = this.superlative ? this.adj.s : this.adj.c;
+    if (val === correct) {
+      this.locked = true;
+      pop();
+      win();
+      this.tweens.add({ targets: container, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
+      // highlight the matching rule-strip chip
+      const idx = this.chipVals.indexOf(correct);
+      if (idx >= 0) this.tweens.add({ targets: this.chips[idx], scale: 1.25, duration: 150, yoyo: true });
+      this.time.delayedCall(200, () => speak(correct, { lang: "en" }));
+      this.floatMsg(t("cmGreat"));
+      this.qInRound++;
+      this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
+      return;
+    }
+    hintWrong(this, container, {
+      hint: () => "Two things → -er, three things → -est!",
+      hintBn: () => "দুই জিনিস → -er, তিন জিনিস → -est!",
+      correct: () => correct,
+      options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.val })),
+    });
+    this.time.delayedCall(500, () => speak(correct, { lang: "en" }));
+  }
+
+  private finishRound() {
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    this.roundsDone++;
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.floatMsg(t("cmDone"));
+    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.time.delayedCall(900, () => {
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private floatMsg(text: string) {
+    const m = this.add
+      .text(this.scale.width / 2, this.scale.height * 0.55, text, txt(28, "#ffd166", { bold: true, outline: true }))
+      .setOrigin(0.5)
+      .setDepth(30);
+    this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 1000, onComplete: () => m.destroy() });
+  }
+
+  private clearTiles() {
+    this.tiles.forEach((o) => o.sprite.destroy());
+    this.tiles = [];
+  }
+}
