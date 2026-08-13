@@ -103,6 +103,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-dectenths', band: 3, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Read a shaded 10-cell strip as a decimal (0.3) and build one by shading cells (tenths)', descriptionBn: 'ছাপানো ১০ ঘরের দশমিক পড়ি (০.৩) আর ঘর ছাপিয়ে বানাই (দশমাংশ)', commonCore: ['4.NF.C.6'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-dectenths' },
   // Math — making change with ৳ notes: pay with ৳50/৳100, compute the change; tap notes to make exact amounts.
   { id: 'en-makechange', band: 3, subject: 'math', title: 'Making change (৳ notes)', titleBn: 'টাকা ফেরত (নোট)', description: 'Pay with a ৳50/৳100 note and compute the change, then make exact amounts by tapping ৳5/10/20/50', descriptionBn: '৳৫০/৳১০০ নোট দিয়ে দাম দিয়ে ফেরত বের করি, তারপর নোট ছাপিয়ে ঠিক অংক বানাই', commonCore: ['2.MD.C.8'], nctbCode: 'c3-math-11', classNumber: 3, game: 'game-makechange' },
+  // Math — elapsed time: an analog clock + a digital target, "how many minutes until …?".
+  { id: 'en-elapsed', band: 3, subject: 'math', title: 'Elapsed time (how long until…)', titleBn: 'সময়ের হিসাব (কতক্ষণ পরে…)', description: 'Watch an analog clock and find how many minutes until the digital target time', descriptionBn: 'ঘড়ি দেখে খুঁজি ডিজিটাল সময় পর্যন্ত কত মিনিট বাকি', commonCore: ['2.MD.C.7', '3.MD.A.1'], nctbCode: 'c3-math-12', classNumber: 3, game: 'game-elapsed' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -266,6 +268,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-mixedfrac', skillId: 'en-mixedfrac', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-dectenths', skillId: 'en-dectenths', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-makechange', skillId: 'en-makechange', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-elapsed', skillId: 'en-elapsed', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -372,6 +375,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-mixedfrac': 'MixedFrac',
   'game-dectenths': 'DecTenths',
   'game-makechange': 'MakeChange',
+  'game-elapsed': 'ElapsedTime',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
