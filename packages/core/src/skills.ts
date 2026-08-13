@@ -202,6 +202,7 @@ export const SKILLS: Skill[] = [
   // Grammar — degrees of comparison: big → bigger → biggest with picture compare.
   { id: 'en-compare', band: 3, subject: 'english', title: 'Big, Bigger, Biggest', titleBn: 'বড়, বড়ো, সবচেয়ে বড়', description: 'Pick the right degree form for 2-picture (bigger) and 3-picture (biggest) compares', descriptionBn: '২ ছবিতে bigger, ৩ ছবিতে biggest — সঠিক তুলনার রূপ বাছো', commonCore: ['L.3.1g'], nctbCode: 'c3-english-5', classNumber: 3, game: 'game-compare' },
   { id: 'en-synant', band: 3, subject: 'english', title: 'Same or opposite?', titleBn: 'একই নাকি বিপরীত?', description: 'Match synonyms (happy → glad) and antonyms (big → small) with a picture hint', descriptionBn: 'সমার্থক (happy → glad) ও বিপরীতার্থক (big → small) শব্দ মেলাই — ছবির ইঙ্গিতসহ', commonCore: ['L.3.5c'], nctbCode: 'c3-english-6', classNumber: 3, game: 'game-synant' },
+  { id: 'en-irregulars', band: 3, subject: 'english', title: 'Make it plural!', titleBn: 'বহুবচন বানাও!', description: 'One foot 🦶 → two ___? Pick the irregular plural (feet, teeth, mice, children…)', descriptionBn: 'একটা foot 🦶 → দুটো ___? অনিয়মিত বহুবচন বাছো (feet, teeth, mice, children…)', commonCore: ['L.3.1b'], nctbCode: 'c3-english-7', classNumber: 3, game: 'game-irregulars' },
   // Grammar — prepositions: drag the object to the spoken place (in/on/under/behind…).
   { id: 'en-prepositions', band: 2, subject: 'english', title: 'Prepositions', titleBn: 'অব্যয়', description: 'Drag an object to the spoken place: in, on, under, behind, in front of, next to, above, between', descriptionBn: 'বলে দেওয়া জায়গায় জিনিসটা টেনে রাখি: in, on, under, behind, in front of, next to, above, between', commonCore: ['L.1.1i'], nctbCode: 'c2-english-6', classNumber: 2, game: 'game-prepositions' },
   // Grammar — question words: fill the ___ in a picture-context question (who/what/where…).
@@ -370,6 +371,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-contracts', skillId: 'en-contractions', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-compare', skillId: 'en-compare', difficultyLevels: [3, 3, 3, 3, 3, 3], targetSuccess: 0.8 },
   { id: 'game-synant', skillId: 'en-synant', difficultyLevels: [6, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
+  { id: 'game-irregulars', skillId: 'en-irregulars', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   // ── Band 4 ──
   { id: 'game-division', skillId: 'division-facts', difficultyLevels: [2, 3, 4, 6, 8, 12], targetSuccess: 0.8 },
   { id: 'game-fracmatch', skillId: 'fractions-equiv', difficultyLevels: [2, 3, 4, 6, 8, 12], targetSuccess: 0.8 },
@@ -493,6 +495,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-contracts': 'Contracts',
   'game-compare': 'Compare',
   'game-synant': 'SynAnt',
+  'game-irregulars': 'IrregularPlurals',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',
   'game-placevalue': 'PlaceValue',

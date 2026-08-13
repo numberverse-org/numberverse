@@ -70,7 +70,7 @@
 - ~~Bangla: classifiers & postpositions (গুলো/টাকে)~~  ✅ #219 — 16 sentences with a blank ("আমার বই ___ পড়ে আছে।" 📚, "মেয়েটি স্কুল ___ আসছে।" 🏫); tap a word button to INSERT টি/গুলো/পাশে/থেকে…; correct fills the blank + speaks the full sentence; 3 distinct options, shuffle-bag + dedupe, lvl [4,4,6,6,8,8] (clf* keys)
 - ~~English: digraph review challenge (sh ch th wh ph)~~  ✅ #220 — hear "ship" 🚢 → tap the digraph that completes "__ip"; 25 words (5 per digraph, one per digraph per round = all 5 guaranteed); shrinking timer bar ramps 10s→5s, timeout = gentle "Faster!" (dg* keys)
 - ~~English: synonyms & antonyms pairs~~  ✅ #221 — "Same or opposite?" mode pill 🎨: target word + emoji (happy 😊 / big 🐘) asks for the same-meaning or opposite word; 16 synonym + 16 antonym pairs, each round mixes half/half; 3 string-distinct options, separate shuffle-bags with round-level dedupe, correct tap says "Yes! happy → glad"; lvl [6,6,8,8,10,10] (sa* keys)
-- English: irregular plurals (foot-feet, mouse-mice)  _(priority: low, kid-first)_
+- ~~English: irregular plurals (foot-feet, mouse-mice)~~  ✅ #222 — "Make it plural!" one foot 🦶 → "two ___?"; 14 irregular pairs (foot→feet, mouse→mice, child→children, ox→oxen, sheep→sheep, leaf→leaves…); 3 string-distinct options, shuffle-bag + round-level dedupe, correct says "Perfect! foot → feet" and speaks "one foot, two feet"; lvl [4,4,6,6,8,8] (ip* keys)
 - English: irregular past tense (go-went, see-saw)  _(priority: low, kid-first)_
 - English: long-vowel teams review  _(priority: low, kid-first)_
 - Math: skip-counting by 3s & 4s  _(priority: low, kid-first)_
