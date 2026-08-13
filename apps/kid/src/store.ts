@@ -387,6 +387,10 @@ interface KidState {
   recordSession: (kidId: string) => void;
   reset: () => void;
   novaAwardRound: (kidId: string, correct: boolean) => void;
+  /** #280 — Beat-Nova challenge prize: a flat grant, still inside the daily
+   *  anti-grind cap (cap-full → 0, no carry-over). Returns the coins actually
+   *  granted so the UI can announce them. */
+  novaChallengeReward: (kidId: string, coins: number) => number;
   novaCompleteSession: (kidId: string) => void;
   /** #278 — `festivalKey` is the current locale's active festival (null
    *  off-season). Seasonal outfits are only purchasable while their festival
@@ -670,6 +674,34 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
+      },
+      /* #280 — Beat-Nova challenge prize: flat grant, daily cap still applies.
+       * A full cap grants 0 (the win still counts — learning is the reward). */
+      novaChallengeReward: (kidId, coins) => {
+        const today = todayIso();
+        const before = get().nova[kidId] ?? defaultNova();
+        const earnedToday = before.earnDay === today ? before.earnedToday : 0;
+        if (earnedToday >= NOVA_DAILY_CAP) return 0;
+        const granted = Math.min(coins, NOVA_DAILY_CAP - earnedToday);
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const te = cur.earnDay === today ? cur.earnedToday : 0;
+          const add = Math.min(coins, NOVA_DAILY_CAP - te);
+          if (add <= 0) return { nova: s.nova };
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: {
+                ...cur,
+                coins: cur.coins + add,
+                totalEarned: cur.totalEarned + add,
+                earnedToday: te + add,
+                earnDay: today,
+              },
+            },
+          };
+        });
+        return granted;
       },
 
       /**
