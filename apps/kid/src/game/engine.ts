@@ -38,6 +38,7 @@ import { CatchBugScene } from "./CatchBugScene";
 import { VillageCityScene } from "./VillageCityScene";
 import { PatienceScene } from "./PatienceScene";
 import { ConjunctFindScene } from "./ConjunctFindScene";
+import { BnSightWordsScene } from "./BnSightWordsScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -102,6 +103,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       FrogHopScene, MemoryPairsScene, BalloonPopScene, ClockTimeScene, BalanceScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
+      BnSightWordsScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
