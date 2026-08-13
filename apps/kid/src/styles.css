@@ -533,12 +533,12 @@ body {
 .map-island-meta { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .map-island-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 18px; font-weight: 800; }
 .map-here-chip {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   color: #0b2545;
   background: linear-gradient(135deg, #ffd166, #ffb35c);
   border-radius: 999px;
-  padding: 3px 9px;
+  padding: 8px 12px;
   box-shadow: 0 3px 8px rgba(255, 178, 92, 0.45);
 }
 .map-island-age { font-size: 13px; color: rgba(255, 255, 255, 0.65); font-weight: 600; }
@@ -642,7 +642,7 @@ body {
 }
 .hud-back:active { background: rgba(255, 255, 255, 0.22); }
 .hud-world { color: #c7d5e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
-.round-chip { background: rgba(255, 255, 255, 0.08); border-radius: 999px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.round-chip { background: rgba(255, 255, 255, 0.08); border-radius: 999px; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
 .stars { color: #ffd166; white-space: nowrap; }
 .game-wrap { flex: 1; min-height: 0; position: relative; }
 .game-wrap canvas { display: block; width: 100%; height: 100%; }
@@ -1043,7 +1043,7 @@ body {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
-  padding: 6px 14px 6px 6px;
+  padding: 8px 14px 8px 8px;
   color: #fff;
   font-weight: 800;
   font-size: 16px;
@@ -1051,7 +1051,7 @@ body {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .kid-chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kid-chip-swap { color: rgba(255, 255, 255, 0.6); font-size: 13px; flex: none; }
+.kid-chip-swap { color: rgba(255, 255, 255, 0.6); font-size: 14px; flex: none; }
 .play-top-right { display: flex; align-items: center; gap: 10px; flex: none; }
 .stars-pill {
   background: linear-gradient(135deg, rgba(255, 209, 102, 0.28), rgba(255, 166, 60, 0.18));
@@ -1301,7 +1301,7 @@ body {
   transform: scale(0.96);
 }
 .home-review-tap {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   color: rgba(255, 230, 179, 0.65);
 }
@@ -1460,13 +1460,13 @@ body {
 
 /* The real season decorates the journey path */
 .season-chip {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   color: #fff;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 8px 12px;
   flex: none;
   white-space: nowrap;
 }
@@ -1700,12 +1700,13 @@ body {
   align-items: center;
   gap: 6px;
   margin-top: 10px;
-  padding: 6px 14px;
+  min-height: 44px;
+  padding: 8px 16px;
   border-radius: 999px;
   background: rgba(255, 213, 102, 0.16);
   border: 1px solid rgba(255, 213, 102, 0.45);
   color: #ffe9ad;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
 }
 .map-focus-pin {
@@ -1805,8 +1806,9 @@ body {
   flex-shrink: 0;
   border: none;
   border-radius: 12px;
+  min-height: 44px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: #1a2332;
   background: linear-gradient(135deg, #ffd166, #ffb347);
@@ -1961,8 +1963,9 @@ body {
 .voice-fun-btn {
   border: 1.5px solid rgba(76, 201, 240, 0.4);
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 12.5px;
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 14px;
   font-weight: 800;
   color: #fff;
   background: rgba(76, 201, 240, 0.12);
@@ -2007,9 +2010,10 @@ body {
   border: 1.5px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   border-radius: 12px;
+  min-height: 44px;
   padding: 8px 6px;
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
@@ -2089,13 +2093,13 @@ body {
   display: inline-flex;
   align-items: center;
   margin-right: 6px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   color: #9bd8ff;
   background: rgba(76, 201, 240, 0.18);
   border: 1px solid rgba(76, 201, 240, 0.45);
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 8px 12px;
 }
 .cal-strip {
   display: grid;
@@ -2167,10 +2171,11 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 800;
   border-radius: 999px;
-  padding: 7px 14px;
+  min-height: 44px;
+  padding: 8px 16px;
   border: 1px solid rgba(46, 196, 182, 0.45);
   color: #7ee8d2;
   background: rgba(46, 196, 182, 0.12);
@@ -2387,7 +2392,7 @@ body {
   font-size: 26px;
   min-width: 52px;
   min-height: 52px;
-  padding: 6px 8px;
+  padding: 8px;
 }
 .avatar-save {
   margin-top: 6px;
@@ -3006,7 +3011,7 @@ body {
   .hud { gap: 6px; padding: 8px 10px; font-size: 14px; }
   .hud-streak { display: none; }
   .hud-coins { font-size: 13px; }
-  .round-chip { padding: 5px 8px; font-size: 12px; }
+  .round-chip { padding: 8px 8px; font-size: 14px; }
 }
 
 .lang-toggle {
@@ -3077,17 +3082,17 @@ body {
 .sync-pill {
   width: 100%;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   color: #7d93a8;
-  padding: 6px 0 2px;
+  padding: 8px 0 4px;
   font-variant-numeric: tabular-nums;
 }
 .sync-pill.sync-ok { color: #5ee2c0; }
 .sync-pill.sync-syncing { color: #a9e6ff; }
 .sync-pill.sync-offline { color: #ffd166; }
 .sync-pill.sync-error { color: #ff8fa3; }
-.sync-pill .sync-pill-count { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: rgba(255, 209, 102, 0.14); color: #ffd166; font-weight: 800; font-size: 11px; }
+.sync-pill .sync-pill-count { display: inline-block; margin-left: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 209, 102, 0.14); color: #ffd166; font-weight: 800; font-size: 14px; }
 /* 📚 KOTHA offline-queue note — shows the story backlog waiting to sync */
 .story-queue-note { font-size: 12px; color: #ffd166; background: rgba(255, 209, 102, 0.08); border: 1px dashed rgba(255, 209, 102, 0.3); border-radius: 8px; padding: 6px 10px; margin: 6px 0 0; text-align: left; }
 
@@ -3303,7 +3308,7 @@ body {
 .chip-avatar { font-size: 22px; line-height: 1; }
 .chip-meta { display: flex; flex-direction: column; align-items: flex-start; }
 .chip-name { font-size: 14px; font-weight: 800; }
-.chip-stars { font-size: 11px; color: #ffd166; }
+.chip-stars { font-size: 14px; color: #ffd166; }
 /* mini mastered-progress bar under each kid chip */
 .chip-progress {
   width: 56px;
@@ -3401,7 +3406,7 @@ body {
 .voice-line.warn { color: #ffb35c; }
 .voice-hint { font-size: 12px; color: #8fa9c9; line-height: 1.4; }
 .voice-hint.warn { color: #ffb35c; }
-.voice-test-btn { align-self: flex-start; font-size: 13px; }
+.voice-test-btn { align-self: flex-start; font-size: 14px; }
 .parent-head { display: flex; align-items: center; gap: 10px; }
 .parent-name { font-weight: 800; font-size: 18px; flex: 1; }
 .parent-stats { color: #ffd166; font-size: 13px; font-weight: 700; }
@@ -3492,13 +3497,14 @@ body {
 .kotha-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .kotha-chip {
   font: inherit;
-  font-size: 11.5px;
+  font-size: 14px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.75);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  padding: 4px 10px;
+  min-height: 44px;
+  padding: 8px 12px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -3526,7 +3532,7 @@ body {
 /* 🧠 MONI — the tiny tutor's insight card */
 .moni-card { border-top: 1px dashed rgba(124, 232, 210, 0.25); margin-top: 10px; padding-top: 8px; }
 .moni-card summary { color: #f2cc8f; }
-.moni-tag { font-size: 12px; color: #a9c9e0; margin: 2px 0 8px; }
+.moni-tag { font-size: 14px; color: #a9c9e0; margin: 2px 0 8px; }
 /* 🎚️ #333 parent-adjustable strictness selector */
 .moni-strictness { margin: 2px 0 10px; }
 .moni-strictness-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #f2cc8f; margin: 0 0 4px; font-weight: 800; display: block; }
@@ -4034,13 +4040,13 @@ body {
 .rank-chip {
   flex: none;
   margin-left: auto;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   color: #ffd166;
   background: rgba(255, 209, 102, 0.12);
   border: 1px solid rgba(255, 209, 102, 0.35);
   border-radius: 999px;
-  padding: 6px 11px;
+  padding: 8px 11px;
   white-space: nowrap;
 }
 
@@ -4104,7 +4110,7 @@ body {
   .done-stars { font-size: 38px; }
   .rank-badge { padding: 6px 14px; }
   .rank-badge-title { font-size: 16px; }
-  .done-screen .ghost-btn { min-height: 38px; padding: 8px 16px; }
+  .done-screen .ghost-btn { min-height: 44px; padding: 8px 16px; }
 }
 
 /* ── "new skill mastered" ribbon on the celebration screen ── */
@@ -5551,14 +5557,14 @@ body {
   background: rgba(0, 0, 0, 0.18);
 }
 .syllabus-chip {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.4px;
   color: #eaf7ff;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 8px 10px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .syllabus-start { width: 100%; }
@@ -5921,8 +5927,8 @@ body {
 .app.projector-mode .play-btn-sub { font-size: 15px; }
 .app.projector-mode .home-path-title { font-size: 15px; }
 .app.projector-mode .home-greet-name { font-size: 26px; }
-.app.projector-mode .rank-chip { font-size: 13px; padding: 6px 14px; }
-.app.projector-mode .season-chip { font-size: 13px; padding: 5px 12px; }
+.app.projector-mode .rank-chip { font-size: 14px; padding: 8px 14px; }
+.app.projector-mode .season-chip { font-size: 14px; padding: 8px 12px; }
 .app.projector-mode .festival-banner-text { font-size: 16px; }
 .app.projector-mode .home-path-link,
 .app.projector-mode .home-path-prog { font-size: 14px; }
