@@ -207,7 +207,7 @@ def l1_bands():
     src = (CORE / "skills.ts").read_text()
     bands = re.findall(r"\{\s*id:\s*(\d+),\s*key:\s*'([^']+)'[^}]*?ageRange:\s*'([^']+)'\s*\}", src)
     ids = [int(b[0]) for b in bands]
-    return (ids == [1,2,3,4,5] and len(bands) == 5), f"{len(bands)} bands {ids}"
+    return (ids == [1,2,3,4,5,6,7] and len(bands) == 7), f"{len(bands)} bands {ids}"
 
 # ══ LAYER 2 — Engineering Crew ═══════════════════════════════════════════════
 def l2_scenes():
@@ -235,7 +235,7 @@ def l2_share():
 def l2_core():
     src = (CORE / "skills.ts").read_text()
     keys = re.findall(r"key:\s*'([^']+)'", src)
-    return (set(keys) == {"sprout-grove","cottage-fields","river-town","sky-castle","star-academy"}), f"world keys: {keys}"
+    return (set(keys) == {"sprout-grove","cottage-fields","river-town","sky-castle","star-academy","jungle-canopy","polar-peaks"}), f"world keys: {keys}"
 
 def l2_deploy():
     return (ROOT / "infra" / "deploy" / "scripts" / "deploy.sh").exists(), "deploy.sh present"
@@ -392,9 +392,9 @@ def l7_palette():
         return False, "WORLD_LANDS missing from App.tsx"
     lands = re.findall(r"(\d+):\s*\{\s*c1:\s*\"[^\"]+\",\s*c2:\s*\"[^\"]+\",\s*c3:\s*\"[^\"]+\",\s*c2_22:\s*\"[^\"]+\",\s*deco:\s*\[[^\]]*\]", m.group(0))
     ids = sorted(int(x) for x in lands)
-    ok = ids == [1, 2, 3, 4, 5]
+    ok = ids == [1, 2, 3, 4, 5, 6, 7]
     return ok, (f"{len(lands)} lands {ids} — each c1/c2/c3/c2_22/deco present" if ok
-                else f"lands {ids} — expected [1,2,3,4,5]")
+                else f"lands {ids} — expected [1,2,3,4,5,6,7]")
 
 def _rel_lum(hexc):
     c = hexc.lstrip("#")
@@ -481,7 +481,7 @@ CHECKS = [
     ("🛠️ Eng",      "Scene Developer",            "catalog/seed audit", l2_scenes),
     ("🛠️ Eng",      "PWA Engineer",               "sw flags + og-card", l2_pwa),
     ("🛠️ Eng",      "Card/Share Engineer",        "share renderers present", l2_share),
-    ("🛠️ Eng",      "Core Package Engineer",      "5 world keys", l2_core),
+    ("🛠️ Eng",      "Core Package Engineer",      "7 world keys", l2_core),
     ("🛠️ Eng",      "Deployment Engineer",        "deploy.sh present", l2_deploy),
     ("🛠️ Eng",      "Performance Engineer",       "bundle budget", l2_perf),
     ("🛡️ Trust",    "QA Lead",                    "audit.mjs", l2_scenes),
@@ -502,7 +502,7 @@ CHECKS = [
     ("⚖️ Judge",    "Precedent Recorder",         "ruling trail in mem", l6_precedent),
     ("⚖️ Judge",    "Deadlock Breaker",           "all checks ruled", l6_no_deadlock),
     ("👁️ Visual",   "Visual QA Lead",             "baseline doc fresh", l7_baseline),
-    ("👁️ Visual",   "Palette Inspector",          "5 lands × 5 fields", l7_palette),
+    ("👁️ Visual",   "Palette Inspector",          "7 lands × 7 fields", l7_palette),
     ("👁️ Visual",   "Contrast Auditor",           "c1↔c3 ≥ 3.0:1", l7_contrast),
     ("👁️ Visual",   "Glyph Watch",                "no tofu chars", l7_tofu),
     ("👁️ Visual",   "Asset Librarian",            "icons/og/url resolve", l7_assets),

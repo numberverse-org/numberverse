@@ -282,6 +282,15 @@ export const SKILLS: Skill[] = [
   { id: 'bn-pronouns', band: 3, subject: 'bangla', title: 'Bangla pronouns', titleBn: 'সর্বনাম', description: 'Fill the right pronoun (আমি, তুমি, সে…) into a sentence', descriptionBn: 'বাক্যে সঠিক সর্বনাম বসাই (আমি, তুমি, সে…)', commonCore: ['L.3.1'], nctbCode: 'c3-bangla-10', classNumber: 3, game: 'game-bnpronouns' },
   // #49 — count DOWN from 100 by 1s (rocket blast-off; band 2)
   { id: 'count-back-100', band: 2, subject: 'math', title: 'Count back from 100', titleBn: 'উল্টো গোনা', description: 'Count down from 100 to 1 by ones — a rocket blast-off', descriptionBn: '১০০ থেকে ১ পর্যন্ত উল্টো গুনি — রকেট ওড়ে', commonCore: ['1.NBT.1'], nctbCode: 'c2-math-14', classNumber: 2, game: 'game-countback' },
+  // ── 2026 backlog content (#51, #53, #54, #56) — English pack ──
+  // #51 — drag 3 letters to build a CVC word (band 1)
+  { id: 'en-cvc-build', band: 1, subject: 'english', title: 'Build CVC words', titleBn: 'শব্দ গড়ি', description: 'See a CVC picture, drag its 3 letters into the slots to spell it', descriptionBn: 'ছবি দেখে ৩টা অক্ষর টেনে শব্দ গড়ি (cat, dog, sun)', commonCore: ['RF.1.2b'], nctbCode: 'c1-english-6', classNumber: 1, game: 'game-cvcbuild' },
+  // #53 — regular plurals -s / -es / -ies (band 2)
+  { id: 'en-plurals-regular', band: 2, subject: 'english', title: 'Plurals: -s -es -ies', titleBn: 'বহুবচন: -s -es -ies', description: 'One cat 🐱 → two cats! Regular plurals with rule demos (add -s, add -es, change y → -ies)', descriptionBn: 'একটা cat 🐱 → দুটো cats! নিয়মসহ নিয়মিত বহুবচন (add -s, add -es, y → -ies)', commonCore: ['L.2.1b'], nctbCode: 'c2-english-14', classNumber: 2, game: 'game-plurals' },
+  // #54 — regular past tense -ed (band 3)
+  { id: 'en-past-ed', band: 3, subject: 'english', title: 'Past tense: -ed', titleBn: 'অতীত কাল: -ed', description: 'Fill the blank with the -ed form — play → played, jump → jumped (read aloud)', descriptionBn: 'ফাঁকে -ed অতীত বসাও — play → played, jump → jumped (পড়ে শোনানো হয়)', commonCore: ['L.3.1d'], nctbCode: 'c3-english-9', classNumber: 3, game: 'game-pasted' },
+  // #56 — uppercase ↔ lowercase match (band 1)
+  { id: 'en-case-match', band: 1, subject: 'english', title: 'Big & small letters', titleBn: 'বড়-ছোট অক্ষর', description: 'Match a big letter B to its small partner b — 26 pairs, letter name spoken', descriptionBn: 'বড় অক্ষর B-এর ছোট জুটি b মেলাও — ২৬ জোড়া, অক্ষরের নাম শোনানো হয়', commonCore: ['RF.K.1d'], nctbCode: 'c1-english-7', classNumber: 1, game: 'game-casematch' },
 ];
 
 /** Game configs (mirrors content_items rows). Levels are ascending — engine picks an index by mastery.
@@ -428,11 +437,20 @@ export const GAMES: GameConfig[] = [
   { id: 'game-bnspelling', skillId: 'bn-spelling', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-bnpronouns', skillId: 'bn-pronouns', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-countback', skillId: 'count-back-100', difficultyLevels: [10, 20, 30, 40, 60, 100], targetSuccess: 0.8 },
+  // #51/#53/#54/#56 — new 2026 English games
+  { id: 'game-cvcbuild', skillId: 'en-cvc-build', difficultyLevels: [0, 0, 0, 1, 1, 1], targetSuccess: 0.8 },
+  { id: 'game-plurals', skillId: 'en-plurals-regular', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
+  { id: 'game-pasted', skillId: 'en-past-ed', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-casematch', skillId: 'en-case-match', difficultyLevels: [4, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
 ];
 
 /** gameId → Phaser scene key. Keeps the kid app and core in sync.
  *  A scene can back MULTIPLE games — each skill's ladder is its own game id. */
 export const GAME_SCENES: Record<string, string> = {
+  'game-cvcbuild': 'CvcBuild',
+  'game-plurals': 'Plurals',
+  'game-pasted': 'PastEd',
+  'game-casematch': 'CaseMatch',
   'game-bndaysmonths': 'BanglaDays',
   'game-bnspelling': 'BanglaSpell',
   'game-bnpronouns': 'Pronoun',
