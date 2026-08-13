@@ -44,13 +44,37 @@ function tone(
   o.stop(t + dur + 0.02);
 }
 
+/* #354 — THE MIX. One place that defines how the three layers sit together:
+ *
+ *   music  ≈ 0.04–0.06   the lowest bed — ducks under everything
+ *   sfx    ≈ 0.05–0.16   the feedback layer — sits above music, below voice
+ *   voice  ≈ 0.9–1.0     the STAR (neural 0.9 default; WebSpeech = system vol)
+ *
+ * Raising a layer is ONE knob here — never a magic number in a scene. Mute is
+ * respected separately (musicMuted in the scheduler, setSpeechEnabled in
+ * speech.ts), and this table is intentionally independent of both. */
+const MIX = {
+  sfxNote: 0.15, // xylophone melody notes
+  sfxPop: 0.15,
+  sfxStarPop: 0.05, // round-meter tick — the quietest layer
+  sfxCombo: 0.11,
+  sfxBad: 0.13, // "uh…"
+  sfxBadSecond: 0.1, // "oh"
+  sfxWin: 0.16, // victory chord
+  sfxWinSparkle: 0.08, // top sparkle note
+  sfxClick: 0.08,
+  sfxClickSecond: 0.06,
+  sfxTada: 0.1, // whole-session fanfare chord
+  sfxTadaSparkle: 0.12,
+} as const;
+
 /** Play one pitched note at `delay` seconds from now (Counting Song xylophone).
  *  Exported so scenes can schedule melodies (each number = a rising note). */
 export function playNote(
   freq: number,
   dur: number,
   type: OscillatorType = "sine",
-  vol = 0.15,
+  vol: number = MIX.sfxNote,
   delay = 0
 ) {
   tone(freq, dur, type, vol, delay);
@@ -60,27 +84,27 @@ export function playNote(
 export function pop() {
   const c = ensureAudio();
   if (!c) return;
-  tone(520 + Math.random() * 160, 0.13, "sine", 0.15);
+  tone(520 + Math.random() * 160, 0.13, "sine", MIX.sfxPop);
   haptic(12);
 }
 
 /** Round-meter star fills — a tiny, quiet "tick" so progress sounds rewarding. */
 export function starPop() {
-  tone(1700 + Math.random() * 400, 0.07, "sine", 0.05);
+  tone(1700 + Math.random() * 400, 0.07, "sine", MIX.sfxStarPop);
 }
 
 /** Combo chime — a rising three-note sparkle as the combo climbs. */
 export function comboChime(combo: number) {
   const base = 523.25 + Math.min(combo, 8) * 55;
-  [base, base * 1.26, base * 1.5].forEach((f, i) => tone(f, 0.2, "triangle", 0.11, i * 0.055));
+  [base, base * 1.26, base * 1.5].forEach((f, i) => tone(f, 0.2, "triangle", MIX.sfxCombo, i * 0.055));
 }
 
 /** Wrong tap — a gentle, warm "oops" nudge. Wrong answers are learning moments:
  * soft, descending, never alarming. Audible enough that the kid hears the cue,
  * but a warm sine pair — no harsh square-wave buzz. */
 export function bad() {
-  tone(392, 0.16, "sine", 0.13); // G4 — "uh…"
-  tone(311, 0.26, "sine", 0.1, 0.09); // E♭4 — "oh"
+  tone(392, 0.16, "sine", MIX.sfxBad); // G4 — "uh…"
+  tone(311, 0.26, "sine", MIX.sfxBadSecond, 0.09); // E♭4 — "oh"
   haptic([0, 28, 16, 24]); // short double-nudge: "try that again"
 }
 
@@ -89,15 +113,15 @@ let landRoot = 523.25;
 
 /** Round complete — a major fanfare rooted in the current land's key. */
 export function win() {
-  [1, 1.25, 1.5, 2].forEach((r, i) => tone(landRoot * r, 0.4, "triangle", 0.16, i * 0.1));
-  tone(landRoot * 2.52, 0.6, "sine", 0.08, 0.42);
+  [1, 1.25, 1.5, 2].forEach((r, i) => tone(landRoot * r, 0.4, "triangle", MIX.sfxWin, i * 0.1));
+  tone(landRoot * 2.52, 0.6, "sine", MIX.sfxWinSparkle, 0.42);
   haptic([0, 18, 12, 18, 12, 34]); // little three-beat victory pulse
 }
 
 /** Soft UI button tap — DOM navigation buttons (home/worlds/done). */
 export function click() {
-  tone(660, 0.05, "triangle", 0.08);
-  tone(880, 0.06, "triangle", 0.06, 0.02);
+  tone(660, 0.05, "triangle", MIX.sfxClick);
+  tone(880, 0.06, "triangle", MIX.sfxClickSecond, 0.02);
   haptic(8);
 }
 
@@ -138,9 +162,9 @@ export function whooshUp() {
 
 /** Whole-session complete — a full C–E–G–C chord + rising arpeggio + sparkle. */
 export function tada() {
-  [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, 0.5, "triangle", 0.1));
-  [1046.5, 1318.5, 1568.0].forEach((f, i) => tone(f, 0.35, "triangle", 0.12, 0.18 + i * 0.09));
-  tone(2093, 0.7, "sine", 0.08, 0.48);
+  [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, 0.5, "triangle", MIX.sfxTada));
+  [1046.5, 1318.5, 1568.0].forEach((f, i) => tone(f, 0.35, "triangle", MIX.sfxTadaSparkle, 0.18 + i * 0.09));
+  tone(2093, 0.7, "sine", MIX.sfxWinSparkle, 0.48);
   haptic([0, 20, 14, 20, 14, 20, 14, 50]); // grand finale — sparkle-pulse
 }
 
