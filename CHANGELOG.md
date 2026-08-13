@@ -1,3 +1,21 @@
+## 14 Aug 2026 — 0.30.1 (kid design tokens: 12 hardcoded colors centralized to NV_* / --nv-* palette (#591))
+
+ba23e81 🧹 chore: own 3D Nova roadmap-filing tool (three_d_nova.py)
+e6c1555 Merge pull request #695 from numberverse-org/fix/591-kid-tokens
+a96a515 🎨 kid tokens: centralize 12 hardcoded colors into NV_* / --nv-* (#591)
+c25fcb8 Merge pull request #694 from numberverse-org/fix/621-parent-tokens
+f309d88 🎨 parent: route hardcoded brand colors through --nv-* tokens (#621)
+a46d35a Merge pull request #693 from numberverse-org/fix/622-inline-styles
+ee9a0b0 🎨 parent: move static inline styles into spacing utility classes (#622)
+247eb03 Merge pull request #692 from numberverse-org/feat/619-parent-nav
+2047c8d 🧭 parent: persistent section navigation for all 26 portal sections (#619)
+f91e1d2 Merge pull request #683 from numberverse-org/fix/590-touch-targets
+cf26416 👆 fix: enlarge touch targets to ≥44px on small buttons (#590)
+36128e2 Merge pull request #682 from numberverse-org/fix/586-dep-advisory
+52ccff0 🔒 fix: upgrade nanoid to patched 3.3.18 via pnpm override (#586)
+35cbf2e Merge pull request #681 from numberverse-org/fix/585-small-text
+c7fe9ba ♿ fix: raise sub-11px font sizes to accessible minimum (#585)
+
 ## 14 Aug 2026 — 0.30.0 (skill of the week + compare & order fractions + shapes sides & corners)
 
 f3076c3 Merge pull request #680 from numberverse-org/feat/100-skill-of-week
