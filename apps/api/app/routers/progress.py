@@ -109,12 +109,17 @@ async def record_progress(
                 streak=0,
             )
             db.add(sm)
+        prev_mastery = sm.mastery
         sm.mastery = _bkt_update(sm.mastery, e.correct, **params)
         sm.correct = sm.correct + (1 if e.correct else 0)
         sm.attempts = sm.attempts + 1
         sm.streak = sm.streak + 1 if e.correct else 0
         sm.last_practice = datetime.now(timezone.utc)
         sm.last_decay = datetime.now(timezone.utc)
+        # #79 — stamp the FIRST crossing of ≥80% once (never overwritten). The
+        # parent portal's mastery timeline sorts skills by this moment.
+        if sm.mastered_at is None and prev_mastery < 0.8 and sm.mastery >= 0.8:
+            sm.mastered_at = datetime.now(timezone.utc)
 
     # #9 — multi-device sync: newest-wins coin wallet. The server keeps the max
     # coin balance ever reported per kid (aggregate only — no voice/face).
@@ -148,6 +153,7 @@ async def get_mastery(
             correct=m.correct,
             attempts=m.attempts,
             streak=m.streak,
+            mastered_at=m.mastered_at,
         )
         for m in result
     ]
@@ -181,6 +187,7 @@ async def get_kid_snapshot(
                 correct=m.correct,
                 attempts=m.attempts,
                 streak=m.streak,
+                mastered_at=m.mastered_at,
             )
             for m in mastery
         ],

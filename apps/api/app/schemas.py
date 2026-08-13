@@ -175,6 +175,7 @@ class MasteryOut(BaseModel):
     correct: int
     attempts: int
     streak: int
+    mastered_at: datetime | None = None  # #79 — when the skill first hit ≥80%
 
 
 class WeakSkillOut(BaseModel):

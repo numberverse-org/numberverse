@@ -335,6 +335,30 @@ const STREAK_LANGS = {
   },
 } as const;
 
+/** #79 — 🏆 mastery timeline: when each skill first hit ≥80%. EN + BN — same
+ *  country-pack seam. Purely derived from the already-loaded mastery rows
+ *  (their `mastered_at`), so it works offline after the dashboard loads. */
+const TIMELINE_LANGS = {
+  en: {
+    title: "🏆 Mastery timeline",
+    hint: "When {name} first mastered each skill — in order, newest first.",
+    empty: "No skills mastered yet — first mastery will appear here.",
+    mastered: "mastered",
+    stillGoing: "still going",
+    unknownDate: "earlier",
+    subjects: "all subjects",
+  },
+  bn: {
+    title: "🏆 দক্ষতা আয়ত্তের সময়রেখা",
+    hint: "{name} কখন প্রতিটি দক্ষতা প্রথমবার আয়ত্ত করেছে — নতুন থেকে পুরনো ক্রমে।",
+    empty: "এখনো কোনো দক্ষতা আয়ত্ত হয়নি — প্রথম আয়ত্ত এখানে দেখা যাবে।",
+    mastered: "আয়ত্ত করেছে",
+    stillGoing: "চলছে",
+    unknownDate: "আগে",
+    subjects: "সব বিষয়",
+  },
+} as const;
+
 /** #89 — per-skill missed questions: what a kid got wrong, so re-teaching is
  *  transparent. EN + BN strings for the portal card — same country-pack seam.
  *  Built purely from the already-loaded story ledger (offline-first). */
@@ -615,6 +639,19 @@ function narrTitleEn(id: string): string {
 function narrTitleBn(id: string): string {
   const s = SKILLS.find((x) => x.id === id);
   return s?.titleBn ?? narrTitleEn(id);
+}
+
+/** #79 — short "12 Aug" / "১২ আগস্ট" date for the mastery timeline. */
+function shortDate(iso: string, lang: "en" | "bn"): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  if (lang === "bn") {
+    const BN_M = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"];
+    const BN_N = "০১২৩৪৫৬৭৮৯";
+    const num = (n: number) => String(n).replace(/[0-9]/g, (x) => BN_N[Number(x)]);
+    return `${num(d.getDate())} ${BN_M[d.getMonth()]}`;
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 /** One kid's play session, derived client-side from the activity feed. */
@@ -1532,6 +1569,16 @@ export default function ParentDashboard() {
   const active = kids.find((k) => k.id === activeId);
   const activeMastery = activeId ? mastery[activeId] ?? [] : [];
   const masteredCount = activeMastery.filter((m) => m.mastery >= 0.8).length;
+  // #79 — 🏆 mastery timeline: every mastered skill, newest first by the moment
+  // it first hit ≥80% (`mastered_at`). Rows without a stamp (oldest data) sort
+  // last under "earlier". Purely from already-loaded mastery → offline after load.
+  const masteryTimeline = activeMastery
+    .filter((m) => m.mastery >= 0.8)
+    .map((m) => ({ id: m.skill_id, at: m.mastered_at ?? null }))
+    .sort((a, b) => {
+      if (a.at && b.at) return a.at < b.at ? 1 : -1;
+      return a.at ? -1 : b.at ? 1 : 0;
+    });
   const activeSettings = activeId ? settings[activeId] ?? DEFAULT_SETTINGS : DEFAULT_SETTINGS;
   const EMPTY_WEEKLY: WeeklyReport = { days: [], rounds: 0, correct_pct: 0, minutes: 0, active_days: 0, mastered_this_week: [], mastered_today: [], top_game: null, streak: 0 };
   const activeWeekly = activeId ? weekly[activeId] ?? EMPTY_WEEKLY : EMPTY_WEEKLY;
@@ -2151,6 +2198,38 @@ export default function ParentDashboard() {
                   </p>
                 )}
               </>
+            )}
+          </section>
+
+          {/* #79 — 🏆 mastery timeline: when each skill was won */}
+          <section className="card timeline-card">
+            <h2>{TIMELINE_LANGS[wizLang].title}</h2>
+            <p className="muted small">{TIMELINE_LANGS[wizLang].hint.replace("{name}", active.name)}</p>
+            {masteryTimeline.length === 0 ? (
+              <p className="muted">{TIMELINE_LANGS[wizLang].empty}</p>
+            ) : (
+              <ol className="timeline-list">
+                {masteryTimeline.map((m) => (
+                  <li key={m.id} className="timeline-row">
+                    <span className="timeline-dot" aria-hidden="true" />
+                    <span className="timeline-name">
+                      {narrTitleEn(m.id)}
+                      {narrTitleBn(m.id) !== narrTitleEn(m.id) && (
+                        <span className="muted small"> · {narrTitleBn(m.id)}</span>
+                      )}
+                    </span>
+                    <span className="timeline-date">
+                      {m.at ? (
+                        <>
+                          {shortDate(m.at, wizLang)} <span className="muted small">· {TIMELINE_LANGS[wizLang].mastered}</span>
+                        </>
+                      ) : (
+                        TIMELINE_LANGS[wizLang].unknownDate
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
             )}
           </section>
 

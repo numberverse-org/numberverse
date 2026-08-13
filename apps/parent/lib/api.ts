@@ -37,6 +37,8 @@ export interface MasteryRow {
   correct: number;
   attempts: number;
   streak: number;
+  /** #79 — when the skill FIRST crossed ≥80% (null for pre-#79 mastery). */
+  mastered_at?: string | null;
 }
 
 /** #132 — a skill below mastery, with catalog titles for the worksheet. */
