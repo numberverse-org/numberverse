@@ -41,7 +41,7 @@
 - ~~Math: doubles & near-doubles~~  ✅ #190 — doubles chant 🎵 + dot-array drill (first half), then near-doubles transfer "double {d} + 1" (second half), correct answer speaks the strategy
 - ~~Math: making ten strategy~~  ✅ #191 — ten-frame visuals fill the make-ten dots green + leftover yellow frame, every sum bridges to a teen, strategy line + spoken confirmation
 - ~~Math: 2-digit addition with regrouping (visual)~~  ✅ #192 — written-method box with 2 steps: add ones (base-10 cubes), 10-cube regroup animation pops a carry chip, then add tens + carry (bars); active column highlighted
-- Math: 2-digit subtraction with borrowing (visual)  _(priority: low, kid-first)_
+- ~~Math: 2-digit subtraction with borrowing (visual)~~  ✅ #193 — written-method box, borrow animation (a bar breaks into 10 ones, 52→4|12), then step 1 subtract ones, step 2 subtract tens; base-10 blocks update after the borrow
 - Math: multiplication arrays (visual times tables)  _(priority: low, kid-first)_
 - Math: division as sharing lvl 2  _(priority: low, kid-first)_
 - Math: fractions — parts of a set  _(priority: low, kid-first)_
