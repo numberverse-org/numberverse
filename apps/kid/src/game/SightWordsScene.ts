@@ -10,7 +10,8 @@ import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, 
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-sightwords")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
-const WORDS = [
+/** Base set (2nd-hundred friendly words) — the original pool stays for continuity. */
+const WORDS_BASE = [
   { word: "the" }, { word: "and" }, { word: "you" }, { word: "that" },
   { word: "with" }, { word: "have" }, { word: "from" }, { word: "were" },
   { word: "they" }, { word: "when" }, { word: "your" }, { word: "about" },
@@ -18,6 +19,30 @@ const WORDS = [
   { word: "would" }, { word: "could" }, { word: "should" }, { word: "people" },
   { word: "water" }, { word: "because" }, { word: "more" }, { word: "make" },
 ];
+/** Fry 3rd 100 — the level-3 sight word list (issue #177), all 100 words. */
+const WORDS_L3 = [
+  { word: "high" }, { word: "every" }, { word: "near" }, { word: "add" }, { word: "food" },
+  { word: "between" }, { word: "own" }, { word: "below" }, { word: "country" }, { word: "plant" },
+  { word: "last" }, { word: "school" }, { word: "father" }, { word: "keep" }, { word: "tree" },
+  { word: "never" }, { word: "start" }, { word: "city" }, { word: "earth" }, { word: "eyes" },
+  { word: "light" }, { word: "thought" }, { word: "head" }, { word: "under" }, { word: "story" },
+  { word: "saw" }, { word: "left" }, { word: "don't" }, { word: "few" }, { word: "while" },
+  { word: "along" }, { word: "might" }, { word: "close" }, { word: "something" }, { word: "seem" },
+  { word: "next" }, { word: "hard" }, { word: "open" }, { word: "example" }, { word: "begin" },
+  { word: "life" }, { word: "always" }, { word: "those" }, { word: "both" }, { word: "paper" },
+  { word: "together" }, { word: "got" }, { word: "group" }, { word: "often" }, { word: "run" },
+  { word: "important" }, { word: "until" }, { word: "children" }, { word: "side" }, { word: "feet" },
+  { word: "car" }, { word: "mile" }, { word: "night" }, { word: "walk" }, { word: "white" },
+  { word: "sea" }, { word: "began" }, { word: "grow" }, { word: "took" }, { word: "river" },
+  { word: "four" }, { word: "carry" }, { word: "state" }, { word: "once" }, { word: "book" },
+  { word: "hear" }, { word: "stop" }, { word: "without" }, { word: "second" }, { word: "late" },
+  { word: "miss" }, { word: "idea" }, { word: "enough" }, { word: "eat" }, { word: "face" },
+  { word: "watch" }, { word: "far" }, { word: "Indian" }, { word: "really" }, { word: "almost" },
+  { word: "let" }, { word: "above" }, { word: "girl" }, { word: "sometimes" }, { word: "mountain" },
+  { word: "cut" }, { word: "young" }, { word: "talk" }, { word: "soon" }, { word: "list" },
+  { word: "song" }, { word: "being" }, { word: "leave" }, { word: "family" }, { word: "it's" },
+];
+const WORDS = [...WORDS_BASE, ...WORDS_L3];
 const CARD_W = 110;
 const CARD_H = 64;
 const ROUNDS_TO_FINISH = 3;
@@ -25,12 +50,15 @@ const ROUNDS_TO_FINISH = 3;
 /**
  * Sight Words — read the sight word, tap the matching word card.
  * Band 4 (ages 8–10). High-frequency English words for fluent reading.
+ * Level 3 (issue #177): the Fry 3rd-100 pool is merged in, and rounds alternate
+ * between HEAR mode (word spoken, spelling hidden) and READ mode (spelling shown).
  */
 export class SightWordsScene extends Phaser.Scene {
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
   private target!: string;
+  private mode: "hear" | "read" = "read";
   private cards: Phaser.GameObjects.Container[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
@@ -39,6 +67,7 @@ export class SightWordsScene extends Phaser.Scene {
   private wordText!: Phaser.GameObjects.Text;
   private meter!: RoundMeterApi;
   private background!: Phaser.GameObjects.Graphics;
+  private replayBtn!: Phaser.GameObjects.Container;
 
   constructor() {
     super("SightWords");
@@ -61,6 +90,8 @@ export class SightWordsScene extends Phaser.Scene {
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("findWord"));
+    this.replayBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 28);
+    this.replayBtn.on("pointerdown", () => speak(this.target, { lang: "en" }));
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
     this.startRound();
@@ -77,6 +108,7 @@ export class SightWordsScene extends Phaser.Scene {
     this.meter.setPosition(width / 2, 104);
     this.wordText.setPosition(width / 2, height * 0.26);
     this.prompt.setPosition(width / 2, height - 150 - SAB());
+    this.replayBtn.setPosition(width - 64, 120);
   }
 
   private get answersY() {
@@ -88,11 +120,20 @@ export class SightWordsScene extends Phaser.Scene {
     this.cards = [];
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     this.target = WORDS[Phaser.Math.Between(0, WORDS.length - 1)].word;
+    this.mode = Math.random() < 0.5 ? "hear" : "read";
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.wordText.setText(this.target);
-    speak(this.target, { lang: "en" });
+    if (this.mode === "hear") {
+      // Tap-the-word mode: the spelling stays hidden — the kid must listen.
+      this.wordText.setText("🔊");
+      this.prompt.set(t("swHear"));
+      speak(this.target, { lang: "en" });
+    } else {
+      // Read mode: the word is shown, read it and find it.
+      this.wordText.setText(this.target);
+      this.prompt.set(t("swRead"));
+    }
     this.spawnCards(n);
   }
 
@@ -138,6 +179,9 @@ export class SightWordsScene extends Phaser.Scene {
     correctButton(container);
     this.cards.forEach((c) => c.disableInteractive());
     this.sparkle(container.x, container.y);
+    // Reveal + say the word in both modes (hear mode finally shows the spelling).
+    this.wordText.setText(this.target);
+    speak(this.target, { lang: "en" });
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
     this.roundsDone++;
