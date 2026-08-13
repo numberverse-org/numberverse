@@ -5005,6 +5005,64 @@ body {
   gap: 4px;
   margin-top: 4px;
 }
+/* #247 — PIN recovery Q&A (ask/set views on the pin card) */
+.gate-notice { margin: 4px 0 0; font-size: 13px; color: #9ef0c8; text-align: center; }
+.sec-view {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+.sec-q {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.sec-q-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #8d99ae; }
+.sec-q-text { font-size: 15px; color: #ffe9ad; }
+.sec-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  outline: none;
+}
+.sec-input:focus { border-color: #4cc9f0; }
+.sec-questions { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
+.sec-q-opt {
+  text-align: left;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+}
+.sec-q-opt.on { border-color: #ffd166; background: rgba(255, 209, 102, 0.16); }
+.pin-row { display: flex; gap: 10px; justify-content: space-between; margin-top: 4px; }
+.pin-btn {
+  flex: 1;
+  font-size: 15px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+}
+.pin-btn-primary { background: #4cc9f0; border-color: #4cc9f0; color: #05222b; font-weight: 700; }
+.pin-btn:active { transform: scale(0.97); }
 .pin-lock-card { border-color: rgba(76, 201, 240, 0.3); }
 .pin-lock-btn {
   background: rgba(76, 201, 240, 0.14);

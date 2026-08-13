@@ -48,6 +48,8 @@ const LS = {
   kidMap: "nv_kid_map", // { localKidId: serverKidId }
   parentAggregateOptIn: "nv_parent_aggregate_opt_in", // #330 privacy opt-in ("1"/"0")
   parentPin: "nv_parent_pin", // #86 — salted hash of the parent-area PIN (never the raw PIN)
+  parentSecQ: "nv_parent_sec_q", // #247 — PIN-recovery security question id (index into the i18n list)
+  parentSecA: "nv_parent_sec_a", // #247 — salted hash of the recovery answer (never the raw answer)
 } as const;
 
 function genId(): string {
@@ -302,6 +304,37 @@ export function verifyParentPin(pin: string): boolean {
 }
 export function clearParentPin(): void {
   localStorage.removeItem(LS.parentPin);
+}
+
+/* ── #247 PIN recovery Q&A ────────────────────────────────────────────────
+ * A per-device security question + answer so a parent who forgot the PIN (or
+ * hit the 3-try pad lock) can reset it IN PLACE — offline, no sign-out, no
+ * account lockout. Same trust model as the PIN itself: only the salted hash of
+ * the answer is stored; the question id is an index into the i18n list so a
+ * locale change never corrupts the pairing. The answer is normalized (trim,
+ * lower-case, collapse spaces) so "Blue " and "blue" both verify.
+ */
+function normalizeRecoveryAnswer(a: string): string {
+  return a.trim().toLowerCase().replace(/\s+/g, " ");
+}
+export function hasSecurityQA(): boolean {
+  return !!localStorage.getItem(LS.parentSecQ) && !!localStorage.getItem(LS.parentSecA);
+}
+/** The stored question id (index into SECURITY_QUESTIONS), or null if unset. */
+export function securityQuestionId(): string | null {
+  return localStorage.getItem(LS.parentSecQ);
+}
+export function setSecurityQA(qid: string, answer: string): void {
+  localStorage.setItem(LS.parentSecQ, qid);
+  localStorage.setItem(LS.parentSecA, pinHash(normalizeRecoveryAnswer(answer)));
+}
+export function verifySecurityQA(answer: string): boolean {
+  const stored = localStorage.getItem(LS.parentSecA);
+  return !!stored && stored === pinHash(normalizeRecoveryAnswer(answer));
+}
+export function clearSecurityQA(): void {
+  localStorage.removeItem(LS.parentSecQ);
+  localStorage.removeItem(LS.parentSecA);
 }
 
 /* ── #330 Kotha: privacy-scrubbed cross-kid aggregates ─────────────────── */
