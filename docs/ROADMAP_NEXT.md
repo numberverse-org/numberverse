@@ -63,7 +63,7 @@
 - ~~Social: professions & their tools~~  ✅ #212 — picture-match 12 Bangladeshi helpers to their tools (ডাক্তার→🩺, কৃষক→🌾…); helper shown big, tap the matching tool from a 2×2 grid; shuffle-bag guarantees every 12 matches show all 12; Bangla+EN names (pfh*/pft* keys)
 - ~~Social: our festivals — customs sort~~  ✅ #213 — drag 16 gentle customs (8 per festival, all non-religious-adjacent) into the right bin: Pohela Boishakh 🎉 (panta bhat, hilsa, alpana…) vs Eid 🎊 (semai, eidi, henna…); correct drop speaks "{item} for {festival}", wrong flashes the right bin green (fc* keys)
 - ~~Values: kindness & sharing scenarios~~  ✅ #214 — 12 everyday situations (friend forgot a crayon, one biscuit two friends…); tap the GREEN kind choice → 💚 heart burst + rotating praise spoken aloud; unkind taps get only a gentle "try the kind way" (never punished); each round shuffles all 12 so every kid meets them (kd* keys)
-- Values: honesty — the truth game  _(priority: low, kid-first)_
+- ~~Values: honesty — the truth game~~  ✅ #215 — 12 everyday situations (broke a vase, ate the last chocolate, found money…); tap the GREEN truthful response → ⭐ star burst + rotating praise spoken aloud; untruthful taps get only a gentle "try telling the truth" (never a penalty); each round shuffles all 12 so every kid meets them (hn* keys)
 - Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)  _(priority: low, kid-first)_
 - Bangla: simple idioms for kids  _(priority: low, kid-first)_
 - Bangla: verb-form gender agreement  _(priority: low, kid-first)_
