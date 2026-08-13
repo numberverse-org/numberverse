@@ -99,6 +99,14 @@ class KidSettings(Base):
     # null/null = normal journey order. Auto-migrated.
     focus_subject: Mapped[str | None] = mapped_column(String, nullable=True)
     focus_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # #258 — per-kid VOICE preference: which tone reads aloud + how fast.
+    # `voice_tone` is a stable handle ("female"|"kid"|"soft"|"warm"; null = the
+    # kid app's default warm-female). `voice_speed` is a Web-Speech rate
+    # multiplier (0.8/1.0/1.2; null = normal — the neural Bangla voice's tempo
+    # is baked into its model, so speed only scales the Web-Speech path).
+    # Auto-migrated (both nullable → existing rows keep their defaults).
+    voice_tone: Mapped[str | None] = mapped_column(String, nullable=True)
+    voice_speed: Mapped[float | None] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kid: Mapped[Kid] = relationship(back_populates="settings")

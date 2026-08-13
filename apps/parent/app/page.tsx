@@ -281,10 +281,45 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   goal_min: null,
   focus_subject: null,
   focus_band: null,
+  voice_tone: null,
+  voice_speed: null,
 };
 
 /** #257 — world bands a focus pin can target (1..7). */
 const FOCUS_BANDS = [1, 2, 3, 4, 5, 6, 7];
+
+/** #258 — per-kid VOICE preference. Tones are stable non-i18n handles that
+ *  mirror the kid app's neural picker (warm female = the default); speed is a
+ *  Web-Speech rate multiplier (1.0 = normal — the Bangla voice's own tempo is
+ *  baked into its model). Same country-pack seam as WIZARD_LANGS: a new
+ *  language = new en/bn keys, never a component rewrite. */
+const VOICE_TONES = [
+  { key: "female", en: "Warm adult (female)", bn: "উষ্ণ প্রাপ্তবয়স্ক (মেয়ে)" },
+  { key: "kid", en: "Kid voice", bn: "বাচ্চার ভয়েস" },
+  { key: "soft", en: "Soft female", bn: "নরম মেয়ে" },
+  { key: "warm", en: "Friendly male", bn: "বন্ধুত্বপূর্ণ ছেলে" },
+] as const;
+const VOICE_SPEEDS = [
+  { key: "slow", rate: 0.8, en: "Slower", bn: "ধীরে" },
+  { key: "normal", rate: 1.0, en: "Normal", bn: "স্বাভাবিক" },
+  { key: "fast", rate: 1.2, en: "Faster", bn: "দ্রুত" },
+] as const;
+const VOICE_LANGS = {
+  en: {
+    voice: "Voice",
+    toneHint: "Which voice reads aloud to this kid",
+    speed: "Speed",
+    speedHint: "How fast Nova talks — the Bangla voice keeps its own warm tempo",
+    try: "🔈 Try",
+  },
+  bn: {
+    voice: "ভয়েস",
+    toneHint: "এই বাচ্চার জন্য কোন ভয়েস পড়বে",
+    speed: "গতি",
+    speedHint: "নোভা কত দ্রুত কথা বলবে — বাংলা ভয়েসের নিজস্ব উষ্ণ গতি থাকে",
+    try: "🔈 শুনুন",
+  },
+} as const;
 
 /** #6 — day names for the per-weekday playtime editor (Mon..Sun). */
 const WEEKDAYS = [
@@ -778,6 +813,35 @@ function trySoundPreview(kind: "voice" | "sfx" | "music", vol: number) {
   } catch {
     /* audio unavailable — the Try button is a no-op, never an error */
   }
+}
+
+/** #258 — play a real TTS sample with the selected tone + speed so a parent
+ *  hears exactly what the kid would. Uses the portal's own language for the
+ *  line; tone biases WHICH installed voice wins (warm → a male-ish name,
+ *  female/soft → a female name, kid/any → best available), and speed scales
+ *  the rate. No-op when the browser has no speech engine — never an error. */
+function tryVoicePreview(tone: string, speed: number, lang: "en" | "bn") {
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
+  if (!synth) return;
+  const bn = lang === "bn";
+  const text = bn ? "এক, দুই, তিন — চলো পড়া শুরু করি!" : "One, two, three — let's begin reading!";
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = bn ? "bn-BD" : "en-US";
+  u.rate = Math.max(0.5, Math.min(2, 0.9 * (Number.isFinite(speed) ? speed : 1)));
+  u.pitch = 1.1;
+  const tag = bn ? "bn" : "en";
+  const pool = synth.getVoices().filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(tag));
+  if (pool.length) {
+    const maleName = (n: string) => /male|daniel|david|george|alex|john/i.test(n);
+    const femaleName = (n: string) => /female|feminine|woman|girl|samantha|siri|tessa|rani|karen/i.test(n);
+    let match = pool;
+    if (tone === "warm") match = pool.filter((v) => maleName(v.name));
+    else if (tone === "female" || tone === "soft") match = pool.filter((v) => femaleName(v.name));
+    if (!match.length) match = pool; // no gender-tagged voice — any same-language voice
+    u.voice = match.find((v) => v.localService) ?? match[0];
+  }
+  synth.cancel();
+  synth.speak(u);
 }
 
 export default function ParentDashboard() {
@@ -2652,6 +2716,62 @@ export default function ParentDashboard() {
                     </div>
                   );
                 })}
+              </div>
+              {/* #258 — per-kid VOICE preference: which tone reads + how fast, with a Try button */}
+              <div className="voice-pref">
+                <div className="vp-row">
+                  <span className="vp-label" title={VOICE_LANGS[wizLang].toneHint}>
+                    🗣️ {VOICE_LANGS[wizLang].voice}
+                  </span>
+                  <div className="vp-chips">
+                    {VOICE_TONES.map((t) => {
+                      const on = activeSettings.voice_tone === t.key;
+                      return (
+                        <button
+                          key={t.key}
+                          className={`toggle-chip${on ? " on" : ""}`}
+                          onClick={() => patchSettings({ voice_tone: on ? null : t.key })}
+                          aria-pressed={on}
+                        >
+                          {wizLang === "bn" ? t.bn : t.en}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="vp-row">
+                  <span className="vp-label" title={VOICE_LANGS[wizLang].speedHint}>
+                    ⚡ {VOICE_LANGS[wizLang].speed}
+                  </span>
+                  <div className="vp-chips">
+                    {VOICE_SPEEDS.map((sp) => {
+                      const on = (activeSettings.voice_speed ?? 1) === sp.rate;
+                      return (
+                        <button
+                          key={sp.key}
+                          className={`toggle-chip${on ? " on" : ""}`}
+                          onClick={() => patchSettings({ voice_speed: on ? null : sp.rate })}
+                          aria-pressed={on}
+                        >
+                          {wizLang === "bn" ? sp.bn : sp.en}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  className="ghost-btn small vol-try"
+                  type="button"
+                  onClick={() =>
+                    tryVoicePreview(
+                      activeSettings.voice_tone ?? "female",
+                      activeSettings.voice_speed ?? 1,
+                      wizLang
+                    )
+                  }
+                >
+                  {VOICE_LANGS[wizLang].try}
+                </button>
               </div>
               <p className="muted small">🎙️ Voice recording lets a kid record and replay their own voice. Recordings stay on this device and are never sent to the server.</p>
             </div>

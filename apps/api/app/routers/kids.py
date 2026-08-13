@@ -141,6 +141,11 @@ async def put_kid_settings(
     else:
         s.focus_subject = None
         s.focus_band = None
+    # #258 — per-kid VOICE preference: a known tone handle (or null for the
+    # kid app's default warm-female) + a Web-Speech rate multiplier.
+    _VOICE_TONES = {"female", "kid", "soft", "warm"}
+    s.voice_tone = body.voice_tone if body.voice_tone in _VOICE_TONES else None
+    s.voice_speed = body.voice_speed
     await db.commit()
     await db.refresh(s)
     return s
