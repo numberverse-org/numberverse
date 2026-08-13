@@ -75,6 +75,32 @@ export interface ActivityRow {
   created_at: string;
 }
 
+/** 📖 KOTHA (#238) — one learning story emitted by the kid app's story outbox
+ *  (a single round: what was tried, the outcome, and Moni's diagnosis of why). */
+export interface LearningStoryRow {
+  id: string;
+  kid_id: string;
+  skill_id: string;
+  game_id: string;
+  outcome: boolean;
+  error_kind: string | null;
+  misconception_code: string | null;
+  action: string | null;
+  difficulty: number | null;
+  response_ms: number | null;
+  wrong_streak: number | null;
+  context: Record<string, unknown>;
+  created_at: string;
+}
+
+/** 📖 KOTHA counts — totals grouped by skill / error kind / misconception. */
+export interface StoryStats {
+  total: number;
+  by_skill: Record<string, number>;
+  by_error_kind: Record<string, number>;
+  by_misconception: Record<string, number>;
+}
+
 export interface NewKid {
   name: string;
   avatar?: string | null;
@@ -266,6 +292,22 @@ export interface WeeklyReport {
 export async function getWeekly(token: string, kidId: string): Promise<WeeklyReport> {
   const res = await authFetch(token, `${API}/kids/${kidId}/weekly`);
   if (!res.ok) throw new Error("Failed to load weekly report");
+  return res.json();
+}
+
+/** #238 — a kid's Kotha learning stories (newest first). The weekly narrative
+ *  card reads these and summarizes client-side, so no story data is re-sent
+ *  anywhere (edit-safe: the parent's edits never leave the browser). */
+export async function getStories(token: string, kidId: string, limit = 500): Promise<LearningStoryRow[]> {
+  const res = await authFetch(token, `${API}/kids/${kidId}/stories?limit=${limit}`);
+  if (!res.ok) throw new Error("Failed to load learning stories");
+  return res.json();
+}
+
+/** #238 — Kotha story counts grouped by skill / error kind / misconception. */
+export async function getStoryStats(token: string, kidId: string): Promise<StoryStats | null> {
+  const res = await authFetch(token, `${API}/kids/${kidId}/stories/stats`);
+  if (!res.ok) return null;
   return res.json();
 }
 
