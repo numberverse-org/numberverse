@@ -80,6 +80,8 @@ export const SKILLS: Skill[] = [
   { id: 'science-food-chain', band: 2, subject: 'science', title: 'Food chains', titleBn: 'খাদ্য শৃঙ্খল', description: 'Order simple food chains — who eats whom', descriptionBn: 'সহজ খাদ্য শৃঙ্খল সাজাই — কে কাকে খায়', commonCore: [], nctbCode: 'c2-science-4', classNumber: 2, game: 'game-foodchain' },
   // Science — day & night: earth rotation makes day and night.
   { id: 'science-day-night', band: 2, subject: 'science', title: 'Day & night', titleBn: 'দিন ও রাত', description: 'Spin the Earth and see why day and night happen', descriptionBn: 'পৃথিবী ঘুরিয়ে দেখি কীভাবে দিন-রাত হয়', commonCore: [], nctbCode: 'c2-science-5', classNumber: 2, game: 'game-daynight' },
+  // BGS — village vs city life: sort everyday scenes into their world.
+  { id: 'bgs-village-city', band: 2, subject: 'bgs', title: 'Village & city life', titleBn: 'গ্রাম ও শহরের জীবন', description: 'Sort scenes — village or city?', descriptionBn: 'দৃশ্য সাজাই — গ্রাম নাকি শহর?', commonCore: [], nctbCode: 'c2-bgs-1', classNumber: 2, game: 'game-villagecity' },
 
   // ── Band 3 — River Town (ages 6–8, class 2–3): EXTEND ARITHMETIC ──
   // Two-digit add/sub (extends band-2 facts) → mult (repeated add) → division
@@ -157,6 +159,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-froghop', skillId: 'number-line', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-shapecatcher', skillId: 'shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
   { id: 'game-tapdrag', skillId: 'ict-tap-drag', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
+  { id: 'game-villagecity', skillId: 'bgs-village-city', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-bnletters', skillId: 'bn-swaroborno', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-enletters', skillId: 'en-abcs', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnnumbers', skillId: 'bn-numbers', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -225,6 +228,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-fruittree': 'FruitTree',
   'game-shapecatcher': 'ShapeCatcher',
   'game-tapdrag': 'CatchBug',
+  'game-villagecity': 'VillageCity',
   'game-froghop': 'FrogHop',
   'game-memorypairs': 'MemoryPairs',
   'game-countsong': 'CountingSong',
