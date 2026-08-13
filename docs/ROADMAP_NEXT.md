@@ -160,7 +160,7 @@
 - ~~Kids: land trophy room~~ ✅ #277 — 🏆 Trophy Room shelf (7 lands), celebrate-once on full mastery, offline (PR pending)
 - ~~Kids: Nova seasonal outfits (Eid, Boishakh)~~ ✅ #278 — festival-gated Eid + Boishakh sets, coin-buy via festival-gated store, locale-config (#131) (PR pending)
 - ~~Kids: pet evolution level 2 — new pet types~~ ✅ #279 — already shipped via #19 (owl/cat/peacock/dragon, adoption flow, growth preserved), closed
-- Kids: challenge Nova — beat-the-owl rounds  _(priority: low, kid-first)_
+- ~~Kids: challenge Nova — beat-the-owl rounds~~ ✅ #280 — ⚔️ 5-round math duel vs Nova, fair adaptive ramp + fair owl, coin prize inside the cap, offline, locale-packed (PR pending)
 - ~~Kids: daily login calendar reward~~ ✅ #281 — 7-day cycle, growing coin bonus per consecutive play day, claim once/day within the cap (PR pending)
 - ~~Kids: same-device sibling leaderboard~~ ✅ #282 — 🥇 screen ranks device kids by mastery with per-kid totals (mastery/rounds/stars), medals + "You" pill, empty state → add sibling, no cloud (PR pending)
 - ~~Kids: goal badges (10 rounds, 100% day)~~ ✅ #283 — Badge Book: 4 lifetime badges (sessions/stars/streak/land-champion), earned via local state, celebrate-once + spoken cheer (PR pending)

@@ -382,6 +382,64 @@ function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
   );
 }
 
+/* ── #280 beat-the-owl drill: question generator + fair Nova ──
+ *  Pure + locale-aware. `bnNum` is hoisted (same module) so the Bangla digit
+ *  conversion is available even though this block sits earlier in the file. */
+
+const CHALLENGE_ROUNDS = 5;
+const CHALLENGE_MIN_LEVEL = 1;
+const CHALLENGE_MAX_LEVEL = 10;
+
+interface ChallengeQ {
+  text: string;      // "3 + 4 = ?" (display digits already localized)
+  options: string[]; // 4 choices, localized digits
+  answer: number;    // index of the correct choice
+}
+
+function challengeQ(level: number, lang: Lang): ChallengeQ {
+  const ri = (n: number) => Math.floor(Math.random() * n);
+  let a = 1, b = 1, op = "+", ans = 1;
+  const bump = ri(4) > 0 ? 1 + ri(level <= 3 ? 2 : 3) : 0; // small off-by-n distractor spread
+  if (level <= 2) {
+    a = 1 + ri(9); b = 1 + ri(9); op = ri(2) ? "+" : "-";
+    if (op === "-") { if (a < b) { const t = a; a = b; b = t; } ans = a - b; } else ans = a + b;
+  } else if (level <= 4) {
+    a = 10 + ri(40); b = 10 + ri(40); op = ri(2) ? "+" : "-";
+    if (op === "-") { if (a < b) { const t = a; a = b; b = t; } ans = a - b; } else ans = a + b;
+  } else if (level <= 6) {
+    a = 2 + ri(8); b = 2 + ri(8); op = "×"; ans = a * b;
+  } else if (level <= 8) {
+    const kind = ri(3);
+    if (kind === 0) { a = 10 + ri(50); b = 5 + ri(10); op = "+"; ans = a + b; }
+    else if (kind === 1) { a = 20 + ri(60); b = 2 + ri(15); op = "-"; ans = a - b; }
+    else { a = 3 + ri(9); b = 6 + ri(6); op = "×"; ans = a * b; }
+  } else {
+    const kind = ri(3);
+    if (kind === 0) { a = 40 + ri(60); b = 20 + ri(40); op = "+"; ans = a + b; }
+    else if (kind === 1) { a = 60 + ri(50); b = 12 + ri(20); op = "-"; ans = a - b; }
+    else { a = 7 + ri(6); b = 7 + ri(6); op = "×"; ans = a * b; }
+  }
+  // Distractors — near-correct values, always ≥ 0, never duplicates.
+  const set = new Set<number>([ans]);
+  let guard = 0;
+  while (set.size < 4 && guard++ < 50) {
+    const d = ans + (ri(5) - 2) * Math.max(1, bump + 1) + (ri(3) - 1);
+    if (d >= 0) set.add(d);
+  }
+  let fill = ans + 3;
+  while (set.size < 4) set.add(fill++);
+  const arr = [...set];
+  for (let i = arr.length - 1; i > 0; i--) { const j = ri(i + 1); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  const fmt = (n: number) => (lang === "bn" ? bnNum(n) : String(n));
+  return { text: `${fmt(a)} ${op} ${fmt(b)} = ?`, options: arr.map(fmt), answer: arr.indexOf(ans) };
+}
+
+/** Fair Nova: their hit-rate tracks the kid — a strong kid meets a strong owl
+ *  (still beatable), a struggling kid meets a gentler one. Always winnable. */
+function challengeNovaChance(kidAccuracy: number): number {
+  return Math.min(0.65, Math.max(0.35, 0.5 + (kidAccuracy - 0.5) * 0.4));
+}
+
 /* ── rank ladder: mastery count → a fun title kids want to reach ── */
 const RANKS = [
   { min: 0, en: "🌱 Seedling", bn: "🌱 চারা" },
@@ -788,6 +846,28 @@ interface Strings {
   recapEmpty: string;
   recapHomeLine: (days: number, title: string) => string;
   recapSpeak: (name: string, days: number, title: string, win: string) => string;
+  /* #280 — beat-the-owl challenge drill */
+  chTile: string;
+  chCard: string;
+  chStart: string;
+  chRound: (n: number, total: number) => string;
+  chYou: string;
+  chNova: string;
+  chLevel: (n: number) => string;
+  chQuestion: string;
+  chCorrect: string;
+  chWrong: string;
+  chNovaGot: string;
+  chNovaMiss: string;
+  chWin: (name: string) => string;
+  chTie: string;
+  chLose: (name: string) => string;
+  chCoins: (n: number) => string;
+  chAgain: string;
+  chClose: string;
+  chSpeakWin: (name: string) => string;
+  chSpeakTie: string;
+  chSpeakLose: (name: string) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1370,6 +1450,28 @@ const STR: Record<Lang, Strings> = {
     recapEmpty: "No play this week — come play!",
     recapHomeLine: (days, title) => `${days} day${days === 1 ? "" : "s"} · ⭐ ${title}`,
     recapSpeak: (name, days, title, win) => `${name}, this week you played ${days} day${days === 1 ? "" : "s"}, your top skill is ${title}. ${win}`,
+    /* #280 — beat-the-owl challenge drill */
+    chTile: "⚔️ Beat Nova",
+    chCard: "Challenge Nova to a math duel — 5 quick rounds",
+    chStart: "Start",
+    chRound: (n, total) => `Round ${n}/${total}`,
+    chYou: "You",
+    chNova: "Nova",
+    chLevel: (n) => `Level ${n}`,
+    chQuestion: "Math duel",
+    chCorrect: "✅ Correct!",
+    chWrong: "❌ Not quite",
+    chNovaGot: "🦉 Nova got it!",
+    chNovaMiss: "🦉 Nova missed it!",
+    chWin: (name) => `🎉 You beat Nova, ${name}!`,
+    chTie: "😮 It's a tie!",
+    chLose: (name) => `💪 So close, ${name}! Try again!`,
+    chCoins: (n) => `🪙 +${n} coins`,
+    chAgain: "Play again",
+    chClose: "Back",
+    chSpeakWin: (name) => `${name}, you beat Nova! Amazing!`,
+    chSpeakTie: "Wow, it is a tie! So close!",
+    chSpeakLose: (name) => `${name}, so close! Try again, you can beat Nova!`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1937,6 +2039,28 @@ const STR: Record<Lang, Strings> = {
     recapEmpty: "এই সপ্তাহে খেলা হয়নি — এসো খেলি!",
     recapHomeLine: (days, title) => `${bnNum(days)} দিন · ⭐ ${title}`,
     recapSpeak: (name, days, title, win) => `${name}, এই সপ্তাহে তুমি ${bnNum(days)} দিন খেলেছ, তোমার সেরা দক্ষতা ${title}। ${win}`,
+    /* #280 — beat-the-owl challenge drill */
+    chTile: "⚔️ নোভাকে হারাও",
+    chCard: "গণিতের লড়াইয়ে নোভাকে চ্যালেঞ্জ করো — ৫টা দ্রুত রাউন্ড",
+    chStart: "শুরু",
+    chRound: (n, total) => `রাউন্ড ${bnNum(n)}/${bnNum(total)}`,
+    chYou: "তুমি",
+    chNova: "নোভা",
+    chLevel: (n) => `লেভেল ${bnNum(n)}`,
+    chQuestion: "গণিত লড়াই",
+    chCorrect: "✅ সঠিক!",
+    chWrong: "❌ ঠিক হয়নি",
+    chNovaGot: "🦉 নোভা পেয়েছে!",
+    chNovaMiss: "🦉 নোভা মিস করেছে!",
+    chWin: (name) => `🎉 ${name}, তুমি নোভাকে হারিয়েছ!`,
+    chTie: "😮 সমান সমান!",
+    chLose: (name) => `💪 প্রায় পেরেছিলে, ${name}! আবার চেষ্টা করো!`,
+    chCoins: (n) => `🪙 +${bnNum(n)} কয়েন`,
+    chAgain: "আবার খেলো",
+    chClose: "ফিরে যাও",
+    chSpeakWin: (name) => `${name}, তুমি নোভাকে হারিয়েছ! অসাধারণ!`,
+    chSpeakTie: "বাহ, সমান সমান! প্রায় পেরেছিলে!",
+    chSpeakLose: (name) => `${name}, প্রায় পেরেছিলে! আবার চেষ্টা করো, তুমি নোভাকে হারাতে পারবে!`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -3507,6 +3631,70 @@ export default function App() {
   const goAchievements = () => setScreen(kid ? "achievements" : "kidpick");
   const goTrophyRoom = () => setScreen(kid ? "trophyroom" : "kidpick");
   const goAvatar = () => setScreen(kid ? "avatar" : "kidpick");
+
+  /* ── #280 beat-the-owl challenge: 5-round math duel vs Nova ── */
+  const [challenge, setChallenge] = useState<{
+    round: number;
+    myScore: number;
+    novaScore: number;
+    level: number;
+    q: ChallengeQ;
+    pick: number | null;
+    correct: boolean;
+    novaGot: boolean;
+    won: "win" | "tie" | "lose" | null;
+    coins: number;
+  } | null>(null);
+  const challengeTimerRef = useRef<number | undefined>(undefined);
+
+  const startChallenge = () => {
+    if (!kid) return;
+    const st = useKidStore.getState();
+    const prefix = `${kid.id}:`;
+    const mine = Object.entries(st.skills).filter(([k]) => k.startsWith(prefix));
+    const avg = mine.length ? mine.reduce((s, [, m]) => s + m.pMastered, 0) / mine.length : 0.25;
+    const base = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, Math.round(avg * 10)));
+    setChallenge({
+      round: 1, myScore: 0, novaScore: 0, level: base,
+      q: challengeQ(base, lang), pick: null, correct: false, novaGot: false, won: null, coins: 0,
+    });
+  };
+
+  const pickChallenge = (i: number) => {
+    if (!challenge || !kid || challenge.pick !== null) return;
+    const correct = i === challenge.q.answer;
+    const myScore = challenge.myScore + (correct ? 1 : 0);
+    // Fair Nova: their hit-rate tracks the kid's accuracy so far — always winnable.
+    const novaGot = Math.random() < challengeNovaChance(myScore / challenge.round);
+    setChallenge({ ...challenge, pick: i, correct, myScore, novaScore: challenge.novaScore + (novaGot ? 1 : 0), novaGot });
+    window.clearTimeout(challengeTimerRef.current);
+    challengeTimerRef.current = window.setTimeout(() => {
+      setChallenge((prev) => {
+        if (!prev || prev.pick === null) return prev;
+        if (prev.round >= CHALLENGE_ROUNDS) {
+          const won = prev.myScore > prev.novaScore ? "win" : prev.myScore < prev.novaScore ? "lose" : "tie";
+          const grant = useKidStore.getState().novaChallengeReward(kid.id, won === "win" ? 3 : won === "tie" ? 2 : 1);
+          if (won === "win") {
+            tada();
+            speak(t.chSpeakWin(kid.name));
+          } else if (won === "tie") {
+            speak(t.chSpeakTie);
+          } else {
+            speak(t.chSpeakLose(kid.name));
+          }
+          return { ...prev, won, coins: grant };
+        }
+        // Fair difficulty ramp: +1 after a hit (up to max), −1 after a miss.
+        const level = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, prev.level + (prev.correct ? 1 : -1)));
+        return { ...prev, round: prev.round + 1, pick: null, correct: false, novaGot: false, level, q: challengeQ(level, lang) };
+      });
+    }, 1800);
+  };
+
+  const closeChallenge = () => {
+    window.clearTimeout(challengeTimerRef.current);
+    setChallenge(null);
+  };
   /** Open the printable certificate for a completed world. */
   const openCert = (b: Band) => {
     if (!kid) return;
@@ -4973,6 +5161,18 @@ export default function App() {
               )}
             </div>
 
+            {/* #280 — beat-the-owl challenge: an OPTIONAL head-to-head drill
+                vs Nova. 5 fair rounds, adaptive questions, coins stay inside
+                the daily cap. Kid-safe, offline, no ads. */}
+            <button className="challenge-card" onClick={startChallenge} aria-label={t.chCard}>
+              <span className="challenge-emoji" aria-hidden="true">⚔️</span>
+              <span className="challenge-meta">
+                <span className="challenge-title">{t.chTile}</span>
+                <span className="challenge-sub">{t.chCard}</span>
+              </span>
+              <span className="challenge-go">{t.chStart} →</span>
+            </button>
+
             {/* Secondary destinations + Nova's name-game, FOLDED away so the
                 landing stays ONE action: greet → big PLAY → path → pet. Tap
                 "More ▾" and everything else is still one tap away. */}
@@ -5105,6 +5305,83 @@ export default function App() {
                 <button className="scan-close" onClick={() => { stopScanner(); setScanOpen(false); }}>
                   {t.scanClose}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* #280 — beat-the-owl drill sheet: Nova vs kid, 5 fair rounds.
+              DOM overlay (like #292) so it floats over the home screen with
+              zero Phaser changes. */}
+          {challenge && (
+            <div className="challenge-overlay" onClick={closeChallenge}>
+              <div className="challenge-sheet" role="dialog" aria-label={t.chTile} onClick={(e) => e.stopPropagation()}>
+                {challenge.won ? (
+                  <>
+                    <div className="challenge-result" role="status">
+                      <span className="challenge-result-emoji" aria-hidden="true">
+                        {challenge.won === "win" ? "🏆" : challenge.won === "tie" ? "🤝" : "💪"}
+                      </span>
+                      <span className="challenge-result-line">
+                        {challenge.won === "win"
+                          ? t.chWin(kid?.name ?? "")
+                          : challenge.won === "tie"
+                            ? t.chTie
+                            : t.chLose(kid?.name ?? "")}
+                      </span>
+                      <span className="challenge-scoreline">
+                        {t.chYou} {bnNum(challenge.myScore)} · {t.chNova} {bnNum(challenge.novaScore)}
+                      </span>
+                      {challenge.coins > 0 && (
+                        <span className="challenge-coins">{t.chCoins(challenge.coins)}</span>
+                      )}
+                    </div>
+                    <div className="challenge-btns">
+                      <button className="big-btn" onClick={startChallenge}>{t.chAgain}</button>
+                      <button className="ghost-btn" onClick={closeChallenge}>{t.chClose}</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="challenge-top">
+                      <span className="challenge-round">{t.chRound(challenge.round, CHALLENGE_ROUNDS)}</span>
+                      <span className="challenge-level">{t.chLevel(challenge.level)}</span>
+                    </div>
+                    <div className="challenge-score" role="status" aria-label={`${t.chYou} ${challenge.myScore}, ${t.chNova} ${challenge.novaScore}`}>
+                      <span className="challenge-score-you"><Icon name="nova" size={20} /> <b>{t.chYou}</b> {bnNum(challenge.myScore)}</span>
+                      <span className="challenge-vs">VS</span>
+                      <span className="challenge-score-nova"><Icon name="nova" size={20} /> <b>{t.chNova}</b> {bnNum(challenge.novaScore)}</span>
+                    </div>
+                    <div className="challenge-q" aria-label={t.chQuestion}>{challenge.q.text}</div>
+                    <div className="challenge-options">
+                      {challenge.q.options.map((opt, i) => {
+                        const picked = challenge.pick === i;
+                        const reveal = challenge.pick !== null;
+                        let cls = "challenge-option";
+                        if (reveal) {
+                          if (i === challenge.q.answer) cls += " reveal";
+                          if (picked && challenge.correct) cls += " correct";
+                          else if (picked) cls += " wrong";
+                        }
+                        return (
+                          <button
+                            key={`${challenge.round}-${i}`}
+                            className={cls}
+                            disabled={reveal}
+                            onClick={() => pickChallenge(i)}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {challenge.pick !== null && (
+                      <div className="challenge-feedback" role="status">
+                        <span>{challenge.correct ? t.chCorrect : t.chWrong}</span>
+                        <span className="challenge-nova-line">{challenge.novaGot ? t.chNovaGot : t.chNovaMiss}</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
