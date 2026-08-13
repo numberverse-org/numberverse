@@ -91,7 +91,7 @@
 - ~~Parent: per-kid reading & story progress view~~  ✅ #237 — "📚 Reading & stories" card: the 4 read-aloud/story skills (EN+BN titles) with mastery bar + % , correct/attempts score, and 🌱/🔶/✅ status; reads already-loaded mastery state → fully offline
 - ~~Parent: weekly learning narrative from Kotha~~  ✅ #238 — "📖 {kid}'s week in words" card: EN+BN plain-language paragraph from the last 7 days of Kotha stories (top skills, strongest + trickiest skill, named misconception), editable in-browser + saved to localStorage only (edit-safe, never sent to cloud); stories fetched via GET /kids/{id}/stories
 - ~~Parent: struggle-alert card (skill needs help)~~  ✅ #239 — "🚨 Needs a little help" card: top 3 Moni-flagged skills (misconception > fatigue > gap/guessing) from this week's stories, named misconception in EN/BN + a client-side `NV:<skillId>` Reteach QR the kid scans to jump into that skill's game
-- Parent: compare two kids side-by-side  _(priority: low, parent-facing)_
+- ~~Parent: compare two kids side-by-side~~  ✅ #240 — "⚖️ Compare two kids" card: two pickers + metric-by-metric table (mastered, current world, minutes/rounds/correct% this week, active days, mastered this week), leader highlighted, derived from already-loaded mastery/weekly → fully offline
 - ~~Parent: export learning history (CSV/PDF)~~ ✅ #241 — shipped as #273 (0.26.16): CSV + JSON export, ISO-8601 UTC columns
 - ~~Parent: printable worksheet generator from weak skills~~ ✅ #132 — merged #444 (#242 dup closed)
 - Parent: per-kid sound & music balance  _(priority: low, parent-facing)_
