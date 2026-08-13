@@ -100,6 +100,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-compounds", 2, "english", "Compound words", "যৌগিক শব্দ"),
     ("en-readaloud", 2, "english", "Read & answer", "পড়ে উত্তর দাও"),
     ("en-alphabet", 2, "english", "Alphabet order", "বর্ণানুক্রম"),
+    ("en-digraphs", 2, "english", "Digraph review", "ডাইগ্রাফ পর্যালোচনা"),
     ("heavy-light", 2, "science", "Heavy or light", "ভারী না হালকা"),
     ("science-sink-float", 2, "science", "Sink or float", "ডুব না ভাসা"),
     ("science-food-chain", 2, "science", "Food chains", "খাদ্য শৃঙ্খল"),
