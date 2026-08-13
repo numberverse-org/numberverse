@@ -250,6 +250,13 @@ export interface NovaState {
   petFed: string; // last ISO date the pet was fed (once daily)
   /** #19 — pet species (owl = starter, free; others adopted with coins). */
   species: string;
+  /** #19 — every species this kid has ADOPTED (feeds #289's zookeeper
+   *  achievement). Adopting appends; re-adopting dedupes. */
+  adoptedPets: string[];
+  /** #289 — achievement ids already unlocked (long-term milestones). The
+   *  condition lives in App.tsx (reads the skill catalog); the store persists
+   *  the earned set so a NEW achievement can be celebrated exactly once. */
+  achievements: string[];
 }
 
 export function defaultNova(): NovaState {
@@ -282,6 +289,8 @@ export function defaultNova(): NovaState {
     petProgress: 0,
     petFed: "",
     species: "owl",
+    adoptedPets: [],
+    achievements: [],
   };
 }
 
@@ -402,6 +411,9 @@ interface KidState {
   /** #277 — persist the currently-earned land trophy band-ids; returns the
    *  NEWLY-earned subset (so the UI can celebrate each once). */
   novaSyncTrophies: (kidId: string, earned: number[]) => number[];
+  /** #289 — persist the currently-unlocked long-term achievement ids; returns
+   *  the NEWLY-earned subset (so the UI can celebrate each once). */
+  novaSyncAchievements: (kidId: string, earned: string[]) => string[];
   /** #284 — open the next unclaimed mastery mystery box. Coins stay inside the
    *  daily anti-grind cap (cap-full → the box waits for another day; no real
    *  money, kid-safe). Returns { skillId, coins } — skillId null = no boxes. */
@@ -751,12 +763,15 @@ export const useKidStore = create<KidState>()(
           if (cur.petStage < species.unlockStage) return { nova: s.nova };
           // Coin gate: starter owl is free; the rest cost coins once.
           if (species.cost > 0 && cur.coins < species.cost) return { nova: s.nova };
+          // #19 — every adopted species is recorded (feeds #289's zookeeper).
+          const adopted = Array.from(new Set([...(cur.adoptedPets ?? []), speciesId]));
           return {
             nova: {
               ...s.nova,
               [kidId]: {
                 ...cur,
                 species: speciesId,
+                adoptedPets: adopted,
                 coins: species.cost > 0 ? cur.coins - species.cost : cur.coins,
               },
             },
@@ -985,6 +1000,22 @@ export const useKidStore = create<KidState>()(
           const cur = s.nova[kidId] ?? defaultNova();
           const merged = Array.from(new Set([...(cur.trophies ?? []), ...earned]));
           return { nova: { ...s.nova, [kidId]: { ...cur, trophies: merged } } };
+        });
+        return newly;
+      },
+
+      /* ── #289 long-term achievements: same celebrate-once merge for the
+           achievements album (milestones across weeks). ── */
+
+      novaSyncAchievements: (kidId, earned) => {
+        const n = get().nova[kidId] ?? defaultNova();
+        const stored = n.achievements ?? [];
+        const newly = earned.filter((id) => !stored.includes(id));
+        if (newly.length === 0) return [];
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const merged = Array.from(new Set([...(cur.achievements ?? []), ...earned]));
+          return { nova: { ...s.nova, [kidId]: { ...cur, achievements: merged } } };
         });
         return newly;
       },
