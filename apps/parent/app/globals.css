@@ -125,6 +125,52 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
   border-radius: 999px;
   padding: 4px 10px;
 }
+
+/* 🗓️ #251 — monthly archive card. */
+.card.archive-card { border-color: rgba(76, 201, 240, 0.32); }
+.archive-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.archive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.archive-month {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #e8eef7;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.archive-month:hover { background: rgba(255, 255, 255, 0.1); }
+.archive-month.on { background: rgba(76, 201, 240, 0.18); border-color: #4cc9f0; }
+.archive-month.empty { opacity: 0.55; }
+.archive-month-label { font-size: 13px; font-weight: 700; }
+.archive-month-num { font-size: 11px; color: rgba(255, 255, 255, 0.65); }
+.archive-detail { margin-top: 14px; }
+.archive-stats { display: flex; gap: 18px; flex-wrap: wrap; }
+.archive-stat { font-size: 14px; color: rgba(255, 255, 255, 0.8); }
+.archive-stat b { color: #7de3ff; font-size: 17px; }
+.archive-top { list-style: none; margin-top: 10px; }
+.archive-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.archive-top-row:last-child { border-bottom: 0; }
+.archive-top-title { font-weight: 600; font-size: 14px; }
+.archive-top-count { font-size: 12px; color: rgba(255, 255, 255, 0.65); }
+
 .reteach-qr {
   display: flex;
   flex-direction: column;

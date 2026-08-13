@@ -315,6 +315,84 @@ const ACCEL_REASONS: Record<string, { en: string; bn: string }> = {
   parent: { en: "Skipped by a parent", bn: "অভিভাবক এগিয়ে নিয়ে গেছেন" },
 };
 
+// ── 🗓️ #251 MONTHLY REPORT ARCHIVE ────────────────────────────────────────
+// A rolling 12-month archive of monthly learning summaries, generated
+// CLIENT-SIDE from the activity feed (a large lazy fetch) — "offline-generated":
+// after the fetch, every month is derived in-browser, nothing stored server-side.
+// The month-name map IS the country-pack seam (like WIZARD_LANGS / ACCEL_REASONS).
+
+const MONTH_NAMES_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_NAMES_BN = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
+
+/** The last `months` calendar months as `{ key, year, month, labelEn, labelBn }`
+ *  (newest first, zero-filled so an idle month shows honestly). */
+function rollingMonths(months = 12, now = new Date()): Array<{ key: string; labelEn: string; labelBn: string }> {
+  const out: Array<{ key: string; labelEn: string; labelBn: string }> = [];
+  for (let i = 0; i < months; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    out.push({
+      key,
+      labelEn: `${MONTH_NAMES_EN[d.getMonth()]} ${d.getFullYear()}`,
+      labelBn: `${MONTH_NAMES_BN[d.getMonth()]} ${d.getFullYear()}`,
+    });
+  }
+  return out;
+}
+
+interface MonthSummary {
+  key: string;
+  rounds: number;
+  correct: number;
+  minutes: number;
+  /** Top skills by rounds played that month (skill id + counts). */
+  top: Array<{ id: string; rounds: number; correct: number }>;
+}
+
+/** Bucket activity rounds into the rolling 12-month archive. `activity` must be
+ *  sorted newest-first (as the API returns it). Pure + offline. */
+function buildMonthlyArchive(activity: ActivityRow[]): MonthSummary[] {
+  const byKey = new Map<string, { rounds: number; correct: number; ms: number; skills: Map<string, { rounds: number; correct: number }> }>();
+  for (const a of activity) {
+    const key = a.created_at.slice(0, 7); // "2026-07-08…" → "2026-07"
+    let b = byKey.get(key);
+    if (!b) {
+      b = { rounds: 0, correct: 0, ms: 0, skills: new Map() };
+      byKey.set(key, b);
+    }
+    b.rounds += 1;
+    if (a.correct) b.correct += 1;
+    b.ms += a.response_ms ?? 0;
+    const s = b.skills.get(a.skill_id) ?? { rounds: 0, correct: 0 };
+    s.rounds += 1;
+    if (a.correct) s.correct += 1;
+    b.skills.set(a.skill_id, s);
+  }
+  return rollingMonths(12).map((m) => {
+    const b = byKey.get(m.key);
+    if (!b) return { key: m.key, rounds: 0, correct: 0, minutes: 0, top: [] };
+    const top = [...b.skills.entries()]
+      .map(([id, s]) => ({ id, ...s }))
+      .sort((x, y) => y.rounds - x.rounds)
+      .slice(0, 3);
+    return { key: m.key, rounds: b.rounds, correct: b.correct, minutes: Math.round((b.ms / 60000) * 10) / 10, top };
+  });
+}
+
+/** CSV export of the 12-month archive (and, if a month is selected, its top
+ *  skills). Pure string builder — the caller owns the download blob. */
+function archiveToCsv(rows: MonthSummary[]): string {
+  const head = ["Month", "Rounds", "Correct", "Accuracy %", "Minutes", "Top skills"];
+  const lines = rows.map((r) => {
+    const acc = r.rounds ? Math.round((r.correct / r.rounds) * 100) : 0;
+    const topTxt = r.top.map((t) => narrTitleEn(t.id)).join("; ");
+    return [r.key, r.rounds, r.correct, acc, r.minutes, topTxt]
+      .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+      .join(",");
+  });
+  return [head.join(","), ...lines].join("\n");
+}
+
 function narrTitleEn(id: string): string {
   return SKILLS.find((s) => s.id === id)?.title ?? id.replace(/-/g, " ");
 }
@@ -575,6 +653,11 @@ export default function ParentDashboard() {
   const [storyStats, setStoryStats] = useState<Record<string, StoryStats | null>>({});
   // 🚀 #249 — per-kid acceleration plans (skills skipped ahead + why + band jump).
   const [accel, setAccel] = useState<Record<string, AccelerationRow[]>>({});
+  // 🗓️ #251 — monthly archive: the FULL activity feed per kid (lazy, up to 2000
+  // rounds) + the selected month key. Summaries are derived client-side.
+  const [archActivity, setArchActivity] = useState<Record<string, ActivityRow[]>>({});
+  const [archLoading, setArchLoading] = useState(false);
+  const [archMonth, setArchMonth] = useState<Record<string, string>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -738,6 +821,27 @@ export default function ParentDashboard() {
     setDisplayName(p.display_name ?? "");
     setSessions(s);
   }, []);
+
+  // 🗓️ #251 — lazily fetch a kid's FULL activity history (up to 2000 rounds)
+  // once per kid, then derive all 12 monthly summaries client-side (offline).
+  const loadArchive = useCallback(async (kidId: string) => {
+    if (!token || archActivity[kidId]) return;
+    setArchLoading(true);
+    try {
+      const rows = await getActivity(token, kidId, 2000);
+      setArchActivity((prev) => ({ ...prev, [kidId]: rows }));
+    } catch {
+      setError("Could not load the full history for the monthly archive.");
+    } finally {
+      setArchLoading(false);
+    }
+  }, [token, archActivity]);
+
+  // Auto-load the archive once per kid (cached; the dashboard stays snappy for
+  // accounts with many kids because it's the ONLY big activity fetch).
+  useEffect(() => {
+    if (activeId && token && !archActivity[activeId] && !archLoading) void loadArchive(activeId);
+  }, [activeId, token, archActivity, archLoading, loadArchive]);
 
   useEffect(() => {
     const tok = localStorage.getItem("nv_parent_token");
@@ -1087,6 +1191,24 @@ export default function ParentDashboard() {
   // 🚀 #249 — the kid's acceleration plan (skills skipped ahead, newest first —
   // the backend already sorts; offline-safe because it's already-loaded state).
   const accelRows = activeId ? accel[activeId] ?? [] : [];
+  // 🗓️ #251 — the 12-month archive derived client-side from the full activity
+  // feed (once loaded, fully offline). Selected month defaults to the newest.
+  const activeArchive = activeId ? buildMonthlyArchive(archActivity[activeId] ?? []) : [];
+  const archiveLoaded = !!activeId && !!archActivity[activeId];
+  const selMonth = activeId ? (archMonth[activeId] ?? activeArchive[0]?.key ?? null) : null;
+  const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
+  const exportArchive = () => {
+    if (!activeId || !active?.name || !activeArchive.length) return;
+    const blob = new Blob([archiveToCsv(activeArchive)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `numberverse-monthly-${active.name}-${activeId.slice(0, 8)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // #240 — side-by-side comparison of two kids, purely from loaded state.
   const cmpAId = cmpA ?? kids[0]?.id ?? "";
@@ -1788,6 +1910,82 @@ export default function ParentDashboard() {
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+
+          {/* 🗓️ #251 — rolling 12-month archive, derived client-side from the
+              full activity history (offline-generated after one lazy fetch). */}
+          <section className="card archive-card">
+            <div className="archive-head">
+              <h2>🗓️ Monthly archive</h2>
+              <button
+                className="btn ghost-btn small"
+                onClick={exportArchive}
+                disabled={!archiveLoaded || activeArchive.length === 0}
+              >
+                ⬇️ Export CSV
+              </button>
+            </div>
+            <p className="muted small">
+              The last 12 months of {active.name}’s learning at a glance — rounds, time and the
+              skills that got the most play. Generated right here in your browser from the
+              history we load once, so it works offline after that.
+            </p>
+            {!archiveLoaded ? (
+              <p className="muted">
+                {archLoading ? "Loading full history…" : "The archive needs the full history — it loads automatically."}
+              </p>
+            ) : (
+              <>
+                <div className="archive-grid" role="tablist" aria-label="Select a month">
+                  {activeArchive.map((m) => {
+                    const mm = rollingMonths(12).find((x) => x.key === m.key);
+                    const active = m.key === selMonth;
+                    return (
+                      <button
+                        key={m.key}
+                        className={`archive-month${active ? " on" : ""}${m.rounds === 0 ? " empty" : ""}`}
+                        onClick={() => setArchMonth((prev) => ({ ...prev, [activeId]: m.key }))}
+                        role="tab"
+                        aria-selected={active}
+                      >
+                        <span className="archive-month-label">
+                          {narrLang === "bn" ? mm?.labelBn : mm?.labelEn}
+                        </span>
+                        <span className="archive-month-num">
+                          {m.rounds === 0 ? "—" : `${m.rounds} rounds`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selSummary && (
+                  <div className="archive-detail">
+                    <div className="archive-stats">
+                      <span className="archive-stat"><b>{selSummary.rounds}</b> rounds</span>
+                      <span className="archive-stat"><b>{selSummary.rounds ? Math.round((selSummary.correct / selSummary.rounds) * 100) : 0}%</b> correct</span>
+                      <span className="archive-stat"><b>{selSummary.minutes}</b> min</span>
+                    </div>
+                    {selSummary.top.length > 0 && (
+                      <ul className="archive-top">
+                        {selSummary.top.map((t) => (
+                          <li key={t.id} className="archive-top-row">
+                            <span className="archive-top-title">
+                              {narrTitleEn(t.id)}
+                              {narrTitleBn(t.id) !== narrTitleEn(t.id) && (
+                                <span className="muted small"> · {narrTitleBn(t.id)}</span>
+                              )}
+                            </span>
+                            <span className="archive-top-count">
+                              {t.rounds} rounds · {t.rounds ? Math.round((t.correct / t.rounds) * 100) : 0}%
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </section>
 

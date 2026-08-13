@@ -163,9 +163,11 @@ async def get_kid_activity(
     db: AsyncSession = Depends(get_db),
 ):
     """Recent rounds for a kid — newest first. The parent portal renders this
-    as an activity feed ("played Fruit Tree, got it right")."""
+    as an activity feed ("played Fruit Tree, got it right") and, with a large
+    limit, as the raw material for the client-side 12-month archive (#251)."""
     await _get_owned_kid(kid_id, profile, db)
-    limit = max(1, min(limit, 200))
+    # #251 — cap raised 200 → 2000 so one fetch covers a full year of rounds.
+    limit = max(1, min(limit, 2000))
     result = await db.scalars(
         select(ProgressEvent)
         .where(ProgressEvent.kid_id == kid_id)
