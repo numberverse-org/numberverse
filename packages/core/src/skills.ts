@@ -43,6 +43,8 @@ export const SKILLS: Skill[] = [
   // Language — STAGE 1: first letters (both tracks, mirrored)
   { id: 'bn-swaroborno', band: 1, subject: 'bangla', title: 'Bangla vowels', titleBn: 'স্বরবর্ণ', description: 'Recognize Bangla vowel letters অ আ ই ঈ উ ঊ', descriptionBn: 'বাংলা স্বরবর্ণ অ আ ই ঈ উ ঊ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-1', classNumber: 1, game: 'game-bnletters' },
   { id: 'bn-rhymes', band: 1, subject: 'bangla', title: 'Nursery rhymes', titleBn: 'ছড়ার গান', description: 'Recite classic NCTB Bangla rhymes, tapping along word by word', descriptionBn: 'নোভার সাথে ছড়া গাই, শব্দ ধরে টিপে টিপে', commonCore: ['RF.K.2a'], nctbCode: 'c1-bangla-5', classNumber: 1, game: 'game-rhymes' },
+  // Language — letter vs sound discrimination: hear a sound, pick the matching letter among confusable twins (ক/খ, প/ফ, স/শ).
+  { id: 'bn-lettersound', band: 1, subject: 'bangla', title: 'Letter sounds', titleBn: 'বর্ণের ধ্বনি', description: 'Hear a letter sound, tap the matching Bangla letter (ক/খ, প/ফ, স/শ)', descriptionBn: 'বর্ণের ধ্বনি শুনে সঠিক বর্ণ টিপি (ক/খ, প/ফ, স/শ)', commonCore: ['RF.K.3a'], nctbCode: 'c1-bangla-3', classNumber: 1, game: 'game-lettersound' },
   { id: 'en-abcs', band: 1, subject: 'english', title: 'ABCs', titleBn: 'ইংরেজি বর্ণমালা', description: 'Recognize uppercase letters A–F', descriptionBn: 'বড় হাতের ইংরেজি অক্ষর A–F চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-english-1', classNumber: 1, game: 'game-enletters' },
   // STAGE 1 vocabulary — first number/word names in each language
   { id: 'bn-numbers', band: 1, subject: 'bangla', title: 'Bangla numbers', titleBn: 'বাংলা সংখ্যা', description: 'Hear and recognize Bangla numerals ০–৯', descriptionBn: 'বাংলা সংখ্যা ০–৯ শুনে চিনি', commonCore: ['K.CC.1'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnnumbers' },
@@ -199,6 +201,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-wordpairs', skillId: 'bn-word-pairs', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-punct', skillId: 'bn-punctuation', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-compounds', skillId: 'bn-compounds', difficultyLevels: [2, 2, 2, 3, 3, 3], targetSuccess: 0.8 },
+  { id: 'game-lettersound', skillId: 'bn-lettersound', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
@@ -286,6 +289,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-wordpairs': 'WordPairs',
   'game-punct': 'Punct',
   'game-compounds': 'Compound',
+  'game-lettersound': 'LetterSound',
   'game-cvc': 'Cvc',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',

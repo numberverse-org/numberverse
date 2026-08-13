@@ -41,6 +41,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     # Language stage 1 — letters
     ("bn-swaroborno", 1, "bangla", "Bangla vowels", "স্বরবর্ণ"),
     ("bn-rhymes", 1, "bangla", "Nursery rhymes", "ছড়ার গান"),
+    ("bn-lettersound", 1, "bangla", "Letter sounds", "বর্ণের ধ্বনি"),
     ("en-abcs", 1, "english", "ABCs", "ইংরেজি বর্ণমালা"),
     ("bn-numbers", 1, "bangla", "Bangla numbers", "বাংলা সংখ্যা"),
     ("en-shapes", 1, "english", "Shape names", "আকৃতির নাম"),
