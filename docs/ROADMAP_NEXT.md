@@ -22,7 +22,7 @@
 - ~~Bangla: time words ordering (কাল-আজ-আগামীকাল)~~  ✅ #171 — calendar timeline, গতকাল→আজ→আগামীকাল ordering, distractor words
 - ~~Bangla: direction words (উপরে-নিচে-ডানে-বামে)~~  ✅ #172 — 🐱 follows spoken directions to a ⭐ on a 4×4 grid, path 3→5 steps
 - ~~Bangla: polite words social game (শিষ্টাচার)~~  ✅ #173 — 12 scenario cards, tap ধন্যবাদ/দয়া করে/দুঃখিত, scenario spoken aloud
-- Bangla: riddle time (ধাঁধা) fun reads  _(priority: low, kid-first)_
+- ~~Bangla: riddle time (ধাঁধা) fun reads~~  ✅ #174 — 18 spoken riddles, tap the emoji answer, hint ladder (category → first letter → reveal)
 - English: R-controlled vowels (ar er ir or ur)  _(priority: low, kid-first)_
 - English: silent-e magic (make-a-word)  _(priority: low, kid-first)_
 - English: sight words level 3 (3rd 100)  _(priority: low, kid-first)_
