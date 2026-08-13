@@ -1,3 +1,36 @@
+## 14 Aug 2026 — 0.27.0 (7 new science/ICT/BGS games + parent streak & mastery timeline)
+
+3ac3a0b Merge pull request #588 from numberverse-org/fix/release-sigpipe
+df8faf8 🐛 fix: release changelog SIGPIPE when >30 commits since last tag (#release-train)
+a5acaeb Merge pull request #587 from numberverse-org/feat/79-mastery-timeline
+8b488bb 🏆 parent: mastery timeline — when each skill was won (#79)
+882fe92 Merge pull request #584 from numberverse-org/feat/4-streak-playtime
+e7d1b52 🔥 parent: weekly streak + playtime vs cap (#4)
+3266702 Merge pull request #583 from numberverse-org/feat/77-habits
+8d79737 🌟 feat: Good habits & hygiene game (#77)
+e4eb2a5 Merge pull request #582 from numberverse-org/feat/74-computer-safety
+2bde49f 🖥️ feat: Computer parts & safety game (#74)
+1719980 Merge pull request #581 from numberverse-org/feat/73-materials
+c0f3175 🧱 feat: Materials — wood/metal/plastic/glass sort game (#73)
+a6abfc8 Merge pull request #580 from numberverse-org/feat/72-food-source
+94dfc5a 🍎 feat: Food sources — plant or animal game (#72)
+904d79c Merge pull request #579 from numberverse-org/feat/71-five-senses
+375b300 👀 feat: Five Senses game (#71)
+9c108d7 Merge pull request #578 from numberverse-org/feat/69-plant-parts
+2e29fb5 🌱 feat: Plants — parts & needs game (#69)
+7b852f9 Merge pull request #577 from numberverse-org/feat/68-living-sort
+c562e44 🧬 feat: Living & Non-living sort game (#68)
+d4cf3f7 Merge pull request #576 from numberverse-org/docs/backlog-hygiene
+fb2a737 📚 docs: backlog hygiene — 22 duplicate issues closed
+1bfa755 Merge pull request #575 from numberverse-org/feat/89-missed-questions
+b856d68 ❌ feat: per-skill missed questions for parents (#89)
+0607902 Merge pull request #574 from numberverse-org/feat/272-instant-pause
+fa06f1e ⏸️ feat: instant pause — parent kill-switch (#272)
+654b4e0 Merge pull request #573 from numberverse-org/feat/259-bedtime-winddown
+777474b 📚 docs: close #259 as duplicate of #248
+23e65e5 Merge pull request #572 from numberverse-org/feat/258-voice-preference
+caf33cd 🗣️ feat: per-kid voice preference (#258)
+
 ## 13 Aug 2026 — 0.26.16 (per-day wrong-answer history + playtime caps + band lock + data export)
 
 be0df42 docs: mark #273 work order done (merged #432)
