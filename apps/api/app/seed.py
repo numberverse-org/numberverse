@@ -148,6 +148,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-compare", 3, "english", "Big, Bigger, Biggest", "বড়, বড়ো, সবচেয়ে বড়"),
     ("en-synant", 3, "english", "Same or opposite?", "একই নাকি বিপরীত?"),
     ("en-irregulars", 3, "english", "Make it plural!", "বহুবচন বানাও!"),
+    ("en-pasttense", 3, "english", "Past time!", "অতীত কাল!"),
     # Band 4 — advanced operations
     ("division-facts", 4, "math", "Division facts", "ভাগ করা"),
     ("fractions-equiv", 4, "math", "Equivalent fractions", "সমান ভগ্নাংশ"),
