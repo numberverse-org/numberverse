@@ -169,6 +169,8 @@ export const SKILLS: Skill[] = [
   { id: 'science-sink-float', band: 2, subject: 'science', title: 'Sink or float', titleBn: 'ডুব না ভাসা', description: 'Predict whether objects sink or float, then check in water', descriptionBn: 'ডুববে নাকি ভাসবে ভবিষ্যদ্বাণী করি, তারপর জলে দেখি', commonCore: [], nctbCode: 'c2-science-3', classNumber: 2, game: 'game-sinkfloat' },
   // Science — food chains: who-eats-whom, ordered producer → eater → predator.
   { id: 'science-food-chain', band: 2, subject: 'science', title: 'Food chains', titleBn: 'খাদ্য শৃঙ্খল', description: 'Order simple food chains — who eats whom', descriptionBn: 'সহজ খাদ্য শৃঙ্খল সাজাই — কে কাকে খায়', commonCore: [], nctbCode: 'c2-science-4', classNumber: 2, game: 'game-foodchain' },
+  // Science — food sources: sort 28 foods into from-plants / from-animals.
+  { id: 'science-food-source', band: 2, subject: 'science', title: 'Food from plants & animals', titleBn: 'খাবারের উৎস', description: 'Sort foods by where they come from — plants or animals', descriptionBn: 'খাবার সাজাই কোথা থেকে আসে — গাছ নাকি প্রাণী', commonCore: [], nctbCode: 'c2-science-12', classNumber: 2, game: 'game-foodsource' },
   // Science — day & night: earth rotation makes day and night.
   { id: 'science-day-night', band: 2, subject: 'science', title: 'Day & night', titleBn: 'দিন ও রাত', description: 'Spin the Earth and see why day and night happen', descriptionBn: 'পৃথিবী ঘুরিয়ে দেখি কীভাবে দিন-রাত হয়', commonCore: [], nctbCode: 'c2-science-5', classNumber: 2, game: 'game-daynight' },
   // BGS — village vs city life: sort everyday scenes into their world.
@@ -367,6 +369,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
+  { id: 'game-foodsource', skillId: 'science-food-source', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-daynight', skillId: 'science-day-night', difficultyLevels: [2, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   // ── Band 3 arithmetic: add-sub-100 → mult → div (share then facts) → fractions → time → place value → regroup ──
   { id: 'game-addsub100', skillId: 'add-sub-100', difficultyLevels: [20, 40, 60, 80, 90, 100], targetSuccess: 0.8 },
@@ -489,6 +492,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-balance': 'Balance',
   'game-sinkfloat': 'SinkFloat',
   'game-foodchain': 'FoodChain',
+  'game-foodsource': 'FoodSource',
   'game-daynight': 'DayNight',
   'game-addsub100': 'AddSub100',
   'game-clock': 'ClockTime',
