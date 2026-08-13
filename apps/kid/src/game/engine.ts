@@ -42,6 +42,7 @@ import { BnSightWordsScene } from "./BnSightWordsScene";
 import { SentenceBuilderScene } from "./SentenceBuilderScene";
 import { StoryReadScene } from "./StoryReadScene";
 import { RhymeTimeScene } from "./RhymeTimeScene";
+import { WordPairsScene } from "./WordPairsScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -110,6 +111,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       SentenceBuilderScene,
       StoryReadScene,
       RhymeTimeScene,
+      WordPairsScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },

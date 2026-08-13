@@ -11,7 +11,7 @@
 - ~~Bangla: sentence builder — subject + verb + object tiles~~  ✅ #160 — 12 SVO patterns, role-colored tiles snap in order
 - ~~Bangla: short-paragraph comprehension (ছোট গল্প)~~  ✅ #161 — 12 graded mini-stories, picture answers, 🔊 read-aloud
 - ~~Bangla: NCTB rhymes vol. 2 — tap-along~~  ✅ #162 — 5 classic rhymes, pentatonic tap-along, guide ladder
-- Bangla: antonyms & synonyms pairs (বিপরীত/সমার্থক)  _(priority: low, kid-first)_
+- ~~Bangla: antonyms & synonyms pairs (বিপরীত/সমার্থক)~~  ✅ #163 — 22+22 picture-backed pairs, antonym ↔ synonym alternate
 - Bangla: punctuation placement (। , ? !)  _(priority: low, kid-first)_
 - Bangla: compound word building (যোগে যোগে শব্দ)  _(priority: low, kid-first)_
 - Bangla: letter vs sound discrimination (অ-আ-ক-খ)  _(priority: low, kid-first)_
