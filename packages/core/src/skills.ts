@@ -55,6 +55,7 @@ export const SKILLS: Skill[] = [
   // STAGE 1 vocabulary — first number/word names in each language
   { id: 'bn-numbers', band: 1, subject: 'bangla', title: 'Bangla numbers', titleBn: 'বাংলা সংখ্যা', description: 'Hear and recognize Bangla numerals ০–৯', descriptionBn: 'বাংলা সংখ্যা ০–৯ শুনে চিনি', commonCore: ['K.CC.1'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnnumbers' },
   { id: 'en-shapes', band: 1, subject: 'english', title: 'Shape names', titleBn: 'আকৃতির নাম', description: 'English names of shapes (circle, square, triangle)', descriptionBn: 'আকৃতির ইংরেজি নাম (বৃত্ত, বর্গ, ত্রিভুজ)', commonCore: ['L.K.5c'], nctbCode: 'c1-english-3', classNumber: 1, game: 'game-shapecatcher' },
+  { id: 'en-wordfamilies', band: 1, subject: 'english', title: 'Word families', titleBn: 'শব্দ পরিবার', description: 'Sort words into rhyming families (-at, -an, -ig, -op)', descriptionBn: 'মিলিয়ে লেখা শব্দগুলো পরিবারে সাজাও (-at, -an, -ig, -op)', commonCore: ['RF.K.3d'], nctbCode: 'c1-english-4', classNumber: 1, game: 'game-wordfam' },
   // ICT — fine tap/drag motor skills (band 1 foundational, #234)
   { id: 'ict-tap-drag', band: 1, subject: 'ict', title: 'Tap & drag accuracy', titleBn: 'টিপা-টানা অনুশীলন', description: 'Tap the bugs, drag the butterfly into the net', descriptionBn: 'পোকা টিপি, প্রজাপতি নেটে নিই', commonCore: [], nctbCode: 'c1-ict-1', classNumber: 1, game: 'game-tapdrag' },
   // Values — patience & waiting (band 1, BGS moral/values strand).
@@ -255,6 +256,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-compounds-en', skillId: 'en-compounds', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-readaloud', skillId: 'en-readaloud', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-alphabet', skillId: 'en-alphabet', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
+  { id: 'game-wordfam', skillId: 'en-wordfamilies', difficultyLevels: [2, 2, 3, 3, 3, 3], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
@@ -333,6 +335,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-compounds-en': 'CompoundEn',
   'game-readaloud': 'ReadAloud',
   'game-alphabet': 'AlphaOrder',
+  'game-wordfam': 'WordFamily',
   'game-balloonpop': 'BalloonPop',
   'game-balance': 'Balance',
   'game-sinkfloat': 'SinkFloat',

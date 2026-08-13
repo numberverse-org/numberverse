@@ -34,7 +34,7 @@
 - ~~English: compound words (rain+bow=rainbow)~~  ✅ #183 — 16 compounds, tap the first half then the second, word fuses + spoken aloud
 - ~~English: read-aloud comprehension lvl 2~~  ✅ #184 — 18 spoken 5-7 word sentences, tap the picture that answers; 🔊/🔇 read-aloud toggle
 - ~~English: alphabetical order race~~  ✅ #185 — 24 levelled word sets (4/5/6 words), drag to ABC order, instant green-glow check per drop
-- English: word families (-at -an -ig -op)  _(priority: low, kid-first)_
+- ~~English: word families (-at -an -ig -op)~~  ✅ #186 — 8 rhyming families × 4 words, drag each word to its bucket (correct fly-in / wrong bounce-back)
 - English: yes/no listening comprehension  _(priority: low, kid-first)_
 - Math: addition facts to 20 fluency  _(priority: low, kid-first)_
 - Math: subtraction facts to 20 fluency  _(priority: low, kid-first)_
