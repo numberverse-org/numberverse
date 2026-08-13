@@ -44,6 +44,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-numbers", 1, "bangla", "Bangla numbers", "বাংলা সংখ্যা"),
     ("en-shapes", 1, "english", "Shape names", "আকৃতির নাম"),
     ("ict-tap-drag", 1, "ict", "Tap & drag accuracy", "টিপা-টানা অনুশীলন"),
+    ("bgs-patience", 1, "bgs", "Patience & waiting", "ধৈর্য ও অপেক্ষা"),
     # Band 2 — finish numbers, then concrete arithmetic
     ("count-to-50", 2, "math", "Count to 50", "৫০ পর্যন্ত গুনি"),
     ("count-to-100", 2, "math", "Count to 100", "১০০ পর্যন্ত গুনি"),
