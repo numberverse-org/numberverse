@@ -33,7 +33,7 @@
 - ~~English: story sequencing (first then last)~~  ✅ #182 — 16 mini-stories, drag 3-4 picture cards into first→then→last order, solved story read aloud
 - ~~English: compound words (rain+bow=rainbow)~~  ✅ #183 — 16 compounds, tap the first half then the second, word fuses + spoken aloud
 - ~~English: read-aloud comprehension lvl 2~~  ✅ #184 — 18 spoken 5-7 word sentences, tap the picture that answers; 🔊/🔇 read-aloud toggle
-- English: alphabetical order race  _(priority: low, kid-first)_
+- ~~English: alphabetical order race~~  ✅ #185 — 24 levelled word sets (4/5/6 words), drag to ABC order, instant green-glow check per drop
 - English: word families (-at -an -ig -op)  _(priority: low, kid-first)_
 - English: yes/no listening comprehension  _(priority: low, kid-first)_
 - Math: addition facts to 20 fluency  _(priority: low, kid-first)_
