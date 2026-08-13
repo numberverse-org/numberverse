@@ -7,7 +7,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, ringCorrect, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, ringCorrect, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { ensureAssets, assetIcon } from "./svgAssets";
 import { makeDraggableTo } from "./gestures";
@@ -104,7 +104,7 @@ export class AnimalHomeScene extends Phaser.Scene {
       .text(0, 0, t("titleAnimalHome"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.animalBox = this.add.container(0, 0);
     this.meter = roundMeter(this);

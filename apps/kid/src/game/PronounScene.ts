@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, modernAnswerButton, correctButton, ringCorrect, roundMeter, BTN_PRIMARY, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, modernAnswerButton, correctButton, ringCorrect, roundMeter, BTN_PRIMARY, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnpronouns")?.difficultyLevels ?? [3, 3, 4, 4, 5, 5];
@@ -64,7 +64,7 @@ export class PronounScene extends Phaser.Scene {
       .text(0, 0, t("titlePronoun"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);

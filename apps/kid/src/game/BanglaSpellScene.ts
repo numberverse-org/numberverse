@@ -6,7 +6,7 @@ import { bad, pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, correctButton, ringCorrect, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, correctButton, ringCorrect, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnspelling")?.difficultyLevels ?? [2, 3, 3, 4, 4, 5];
@@ -77,7 +77,7 @@ export class BanglaSpellScene extends Phaser.Scene {
       .text(0, 0, t("titleBnSpell"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -165,7 +165,7 @@ export class BanglaSpellScene extends Phaser.Scene {
     const slot = this.slots[this.solvedCount];
     slot.destroy();
     const label = this.add
-      .text(slot.x, slot.y, letter, txt(26, "#4ade80", { bold: true }))
+      .text(slot.x, slot.y, letter, txt(26, NV_GREEN, { bold: true }))
       .setOrigin(0.5).setDepth(5);
     this.slots[this.solvedCount] = label as unknown as Phaser.GameObjects.Container;
     this.solvedCount++;
@@ -197,7 +197,7 @@ export class BanglaSpellScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.72, text, txt(30, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.72, text, txt(30, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 800, onComplete: () => m.destroy() });
   }

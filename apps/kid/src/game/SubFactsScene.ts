@@ -5,7 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-subfacts")?.difficultyLevels ?? [6, 8, 10, 10, 12, 12];
@@ -71,7 +71,7 @@ export class SubFactsScene extends Phaser.Scene {
       .text(0, 0, t("titleSubFacts"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -247,7 +247,7 @@ export class SubFactsScene extends Phaser.Scene {
     const hops = Math.min(this.b, 6);
     const dot = this.add.circle(this.x(this.a), this.yLine - 6, 8, 0x4ade80).setDepth(9);
     const badge = this.add
-      .text(this.x(this.a), this.yLine - 34, `−${digit(this.b)}`, txt(16, "#ffd166", { bold: true, outline: true }))
+      .text(this.x(this.a), this.yLine - 34, `−${digit(this.b)}`, txt(16, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(9);
     const seq: object[] = [];
@@ -266,7 +266,7 @@ export class SubFactsScene extends Phaser.Scene {
       onComplete: () => {
         this.placeMarker(ans, 0x4ade80);
         badge.setText(`= ${digit(ans)}`);
-        badge.setColor("#4ade80");
+        badge.setColor(NV_GREEN);
         this.tweens.add({ targets: dot, alpha: 0, duration: 300, onComplete: () => dot.destroy() });
         this.tweens.add({ targets: badge, y: badge.y - 16, alpha: 0, duration: 500, onComplete: () => badge.destroy() });
       },
@@ -300,7 +300,7 @@ export class SubFactsScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.68, text, txt(24, "#ffd166", { bold: true, outline: true, wrap: 300 }))
+      .text(this.scale.width / 2, this.scale.height * 0.68, text, txt(24, NV_GOLD, { bold: true, outline: true, wrap: 300 }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
@@ -318,7 +318,7 @@ function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container,
   tile.setAlpha(0.4);
   tile.disableInteractive();
   const m = scene.add
-    .text(tile.x, tile.y - 40, correct(), txt(22, "#4ade80", { bold: true, outline: true }))
+    .text(tile.x, tile.y - 40, correct(), txt(22, NV_GREEN, { bold: true, outline: true }))
     .setOrigin(0.5)
     .setDepth(40);
   scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });

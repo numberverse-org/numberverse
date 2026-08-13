@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-story")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
@@ -103,7 +103,7 @@ export class StoryScene extends Phaser.Scene {
       .text(0, 0, t("titleStory"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -246,7 +246,7 @@ export class StoryScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.42, text, txt(26, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.42, text, txt(26, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(40);
     this.tweens.add({ targets: m, y: m.y - 26, alpha: 0, duration: 1000, onComplete: () => m.destroy() });

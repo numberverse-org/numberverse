@@ -5,6 +5,7 @@ import { Icon } from "./components/Icon";
 import { getAppLang } from "./game/locale";
 import "./styles.css";
 import { registerSW } from "virtual:pwa-register";
+import { NV_GOLD, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
 
 /**
  * SERVICE WORKER + "PWA always gets the new update".
@@ -100,14 +101,14 @@ function RotateOverlay() {
  * tagline leads with it.)
  */
 const SPLASH_FLOAT = [
-  { left: 6, size: 12, delay: 0, dur: 8, color: "#4cc9f0" },
-  { left: 18, size: 18, delay: 1.2, dur: 9.5, color: "#ffd166" },
+  { left: 6, size: 12, delay: 0, dur: 8, color: NV_SKY },
+  { left: 18, size: 18, delay: 1.2, dur: 9.5, color: NV_GOLD },
   { left: 30, size: 10, delay: 0.5, dur: 7.5, color: "#2ec4b6" },
-  { left: 42, size: 16, delay: 2, dur: 10, color: "#ff8fa3" },
+  { left: 42, size: 16, delay: 2, dur: 10, color: NV_PINK },
   { left: 54, size: 12, delay: 0.9, dur: 8.5, color: "#c4b5fd" },
-  { left: 66, size: 20, delay: 1.6, dur: 9, color: "#4cc9f0" },
-  { left: 78, size: 10, delay: 0.2, dur: 7, color: "#ffd166" },
-  { left: 88, size: 16, delay: 1, dur: 9.5, color: "#ff8fa3" },
+  { left: 66, size: 20, delay: 1.6, dur: 9, color: NV_SKY },
+  { left: 78, size: 10, delay: 0.2, dur: 7, color: NV_GOLD },
+  { left: 88, size: 16, delay: 1, dur: 9.5, color: NV_PINK },
 ];
 
 function SplashScreen() {

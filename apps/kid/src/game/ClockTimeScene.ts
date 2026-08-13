@@ -7,7 +7,7 @@ import { speak, bnNumber, enNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, BTN_PRIMARY, ringCorrect, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, BTN_PRIMARY, ringCorrect, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-clock")?.difficultyLevels ?? [1, 2, 3, 4, 5, 6];
@@ -78,7 +78,7 @@ export class ClockTimeScene extends Phaser.Scene {
       .text(0, 0, t("titleClock"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -158,7 +158,7 @@ export class ClockTimeScene extends Phaser.Scene {
       const rr = r * 0.74;
       const label = getAppLang() === "bn" ? bdDigits(i) : String(i);
       const n = this.add
-        .text(cx + rr * Math.sin(a), cy - rr * Math.cos(a), label, txt(16, "#0b2545", { bold: true, shadow: false }))
+        .text(cx + rr * Math.sin(a), cy - rr * Math.cos(a), label, txt(16, NV_NAVY, { bold: true, shadow: false }))
         .setOrigin(0.5);
       this.numLayer.add(n);
     }

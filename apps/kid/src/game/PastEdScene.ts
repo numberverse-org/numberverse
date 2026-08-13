@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-pasted")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
 const ROUNDS_TO_FINISH = 3;
@@ -81,7 +81,7 @@ export class PastEdScene extends Phaser.Scene {
       .text(0, 0, t("titlePastEd"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.promptText = this.add

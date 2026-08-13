@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak, speakMath, bnNumber, enNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, roundMeter, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
 import { answerRow } from "./layout";
 import { getAppLang } from "./locale";
@@ -105,18 +105,18 @@ export class RegroupScene extends Phaser.Scene {
     this.boardG = this.add.graphics();
     gameBackground(this, "sky");
     this.titleText = this.add.text(0, 0, t("titleRegroup"), txt(34, "#ffffff", { bold: true })).setOrigin(0.5);
-    this.roundText = this.add.text(0, 0, "", txt(18, "#ffd166", { bold: true })).setOrigin(0.5);
+    this.roundText = this.add.text(0, 0, "", txt(18, NV_GOLD, { bold: true })).setOrigin(0.5);
     this.meter = roundMeter(this);
     this.signT = this.add.text(0, 0, "+", txt(40, "#ffffff", { bold: true })).setOrigin(0.5);
     for (let i = 0; i < 3; i++) {
       this.headerTs.push(this.add.text(0, 0, "", txt(16, "#8ecae6", { bold: true })).setOrigin(0.5));
       this.rowAT.push(this.add.text(0, 0, "", txt(40, "#ffffff", { bold: true })).setOrigin(0.5));
       this.rowBT.push(this.add.text(0, 0, "", txt(40, "#ffffff", { bold: true })).setOrigin(0.5));
-      this.slotTs.push(this.add.text(0, 0, "", txt(36, "#ffd166", { bold: true })).setOrigin(0.5));
+      this.slotTs.push(this.add.text(0, 0, "", txt(36, NV_GOLD, { bold: true })).setOrigin(0.5));
     }
     this.carryT = this.add.text(0, 0, "1", txt(20, "#052e3f", { bold: true })).setOrigin(0.5).setAlpha(0);
     this.borrowT = this.add.text(0, 0, "+10", txt(15, "#ff6b6b", { bold: true })).setOrigin(0.5).setAlpha(0);
-    this.lentT = this.add.text(0, 0, "", txt(15, "#4ade80", { bold: true })).setOrigin(0.5).setAlpha(0);
+    this.lentT = this.add.text(0, 0, "", txt(15, NV_GREEN, { bold: true })).setOrigin(0.5).setAlpha(0);
     this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("solveIt"));
     this.scale.on(Phaser.Scale.Events.RESIZE, () => { this.layout(); this.drawBoard(); });

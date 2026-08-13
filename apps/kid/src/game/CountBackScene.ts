@@ -7,7 +7,7 @@ import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, ringCorrect, roundMeter, BTN_PRIMARY, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, ringCorrect, roundMeter, BTN_PRIMARY, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-countback")?.difficultyLevels ?? [10, 20, 30, 40, 60, 100];
@@ -58,12 +58,12 @@ export class CountBackScene extends Phaser.Scene {
       .text(0, 0, t("titleCountBack"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
     this.currentText = this.add
-      .text(0, 0, "", txt(92, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(92, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(2);
     this.rocket = this.add
       .text(0, 0, "🚀", txt(52, "#ffffff", { bold: true }))
@@ -185,7 +185,7 @@ export class CountBackScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(30, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(30, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 900, onComplete: () => m.destroy() });
   }

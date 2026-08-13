@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, roundMeter, BTN_PRIMARY, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, roundMeter, BTN_PRIMARY, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-shapeparts")?.difficultyLevels ?? [1, 2, 3, 4, 5, 6];
 const ROUNDS_TO_FINISH = 3;
@@ -88,14 +88,14 @@ export class ShapePartsScene extends Phaser.Scene {
       .text(0, 0, t("titleShapeParts"), txt(32, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.promptText = this.add
       .text(0, 0, "", txt(26, "#fff8e1", { bold: true, outline: true, wrap: 340 }))
       .setOrigin(0.5);
     this.nameText = this.add
-      .text(0, 0, "", txt(22, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(22, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.tallyText = this.add
       .text(0, 0, "", txt(20, "#ffffff", { bold: true, outline: true }))

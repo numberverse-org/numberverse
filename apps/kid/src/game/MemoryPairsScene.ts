@@ -7,7 +7,7 @@ import { speak, bnNumber, enNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { assetIcon } from "./svgAssets";
-import { txt, ringCorrect, gridLayout, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, ringCorrect, gridLayout, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-memorypairs")?.difficultyLevels ?? [2, 3, 4, 5, 6, 7];
@@ -65,7 +65,7 @@ export class MemoryPairsScene extends Phaser.Scene {
       .text(0, 0, t("titleMemory"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -167,7 +167,7 @@ export class MemoryPairsScene extends Phaser.Scene {
     front.add(cardFace(this, 0xffffff, 0x0b2545));
     if (kind === "num") {
       const label = this.add
-        .text(0, 0, String(value), txt(34, "#0b2545", { bold: true, shadow: false }))
+        .text(0, 0, String(value), txt(34, NV_NAVY, { bold: true, shadow: false }))
         .setOrigin(0.5);
       front.add(label);
     } else {

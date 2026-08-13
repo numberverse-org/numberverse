@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_CORRECT, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_CORRECT, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN, NV_RED } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-honesty")?.difficultyLevels ?? [2, 2, 3, 3, 4, 4];
 const ROUNDS_TO_FINISH = 3;
@@ -82,7 +82,7 @@ export class TruthScene extends Phaser.Scene {
       .text(0, 0, t("titleTruth"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.emojiText = this.add.text(0, 0, "", txt(72, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
@@ -202,7 +202,7 @@ export class TruthScene extends Phaser.Scene {
   private floatMsg(text: string, color = 0xffd166) {
     const m = this.add
       .text(this.scale.width / 2, this.scale.height * 0.52, text, txt(26, "#ffffff", { bold: true, outline: true, wrap: 320 }))
-      .setColor(color === 0xffd166 ? "#ffd166" : color === 0x4ade80 ? "#4ade80" : "#f87171")
+      .setColor(color === 0xffd166 ? NV_GOLD : color === 0x4ade80 ? NV_GREEN : NV_RED)
       .setOrigin(0.5)
       .setDepth(40);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });

@@ -7,7 +7,7 @@ import { speak, speakMath } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, BTN_PRIMARY, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, BTN_PRIMARY, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { correctCelebrate } from "./celebrate";
 import { SAB } from "./safeArea";
 import { ensureAssets, assetIcon } from "./svgAssets";
@@ -57,7 +57,7 @@ export class FruitTreeScene extends Phaser.Scene {
       .text(0, 0, t("titleFruitTree"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
         this.prompt = questionPanel(this, 0, 0);
@@ -188,7 +188,7 @@ export class FruitTreeScene extends Phaser.Scene {
       pile.add(a);
     }
     const label = this.add
-      .text(bx, 0, `+${count}`, txt(30, "#ffd166", { bold: true, outline: true }))
+      .text(bx, 0, `+${count}`, txt(30, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.bag.add([pile, label]);
     this.bobBag(this.bag);

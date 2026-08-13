@@ -7,7 +7,7 @@ import { pop, win } from "./audio";
 import { speak, bnNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-barchart")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
@@ -131,7 +131,7 @@ export class BarChartScene extends Phaser.Scene {
       .text(0, 0, t("titleBarChart"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
@@ -232,7 +232,7 @@ export class BarChartScene extends Phaser.Scene {
       const label = this.add.text(0, this.baselineY + 26, bn ? cat.bn : cat.en, txt(15, "#ffffff", { align: "center" })).setOrigin(0.5, 0);
       c.add(label);
       // count badge on the bar top
-      const badge = this.add.text(0, topY + 14, bdDigits(cat.count), txt(16, "#0b2545", { bold: true })).setOrigin(0.5);
+      const badge = this.add.text(0, topY + 14, bdDigits(cat.count), txt(16, NV_NAVY, { bold: true })).setOrigin(0.5);
       c.add(badge);
       // tap target = the whole column (emoji + bar + word)
       const hitH = this.baselineY - topY + 52;

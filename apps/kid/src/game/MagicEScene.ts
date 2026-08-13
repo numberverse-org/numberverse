@@ -5,7 +5,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-magice")?.difficultyLevels ?? [3, 3, 3, 4, 4, 4];
@@ -79,14 +79,14 @@ export class MagicEScene extends Phaser.Scene {
       .text(0, 0, t("titleMagicE"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.emojiText = this.add
       .text(0, 0, "", txt(68, "#ffffff", { outline: true }))
       .setOrigin(0.5).setDepth(2);
     this.promptText = this.add
-      .text(0, 0, t("mePrompt"), txt(20, "#ffd166", { bold: true, align: "center" }))
+      .text(0, 0, t("mePrompt"), txt(20, NV_GOLD, { bold: true, align: "center" }))
       .setOrigin(0.5);
     // Word box: base word + a dashed slot for the magic letter.
     this.eSlot = this.add.container(0, 0);
@@ -94,7 +94,7 @@ export class MagicEScene extends Phaser.Scene {
     slotBg.lineStyle(3, 0xffd166, 1);
     slotBg.strokeRoundedRect(-26, -34, 52, 68, 12);
     this.eSlot.add(slotBg);
-    this.eText = this.add.text(0, 0, "?", txt(40, "#ffd166", { bold: true })).setOrigin(0.5);
+    this.eText = this.add.text(0, 0, "?", txt(40, NV_GOLD, { bold: true })).setOrigin(0.5);
     this.eSlot.add(this.eText);
     this.baseText = this.add.text(0, 0, "", txt(48, "#ffffff", { bold: true, outline: true })).setOrigin(0, 0.5);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
@@ -132,7 +132,7 @@ export class MagicEScene extends Phaser.Scene {
     this.tr = tr;
     this.emojiText.setText(tr.e);
     this.baseText.setText(tr.s);
-    this.eText.setText("?").setColor("#ffd166");
+    this.eText.setText("?").setColor(NV_GOLD);
     this.eSlot.setScale(1);
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     const others = VOWELS.filter((v) => v !== "e").sort(() => Math.random() - 0.5).slice(0, n - 1);
@@ -165,7 +165,7 @@ export class MagicEScene extends Phaser.Scene {
       pop();
       win();
       // The magic-e reveal: the e flies into the slot, fuses, and glows gold.
-      this.eText.setText("e").setColor("#ffd166");
+      this.eText.setText("e").setColor(NV_GOLD);
       this.tweens.add({ targets: this.eSlot, scale: 1.25, duration: 160, yoyo: true, ease: "Back.easeOut" });
       this.tweens.add({ targets: container, scale: 1.15, duration: 140, yoyo: true, ease: "Back.easeOut" });
       this.tweens.add({ targets: this.emojiText, scale: 1.2, duration: 160, yoyo: true, ease: "Back.easeOut" });
@@ -203,7 +203,7 @@ export class MagicEScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(28, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(28, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 1000, onComplete: () => m.destroy() });

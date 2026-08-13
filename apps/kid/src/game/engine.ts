@@ -147,6 +147,7 @@ import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { CountingSongScene } from "./CountingSongScene";
 import { ensureAssets } from "./svgAssets";
+import { NV_NAVY } from "./ui";  // tokenized #591
 
 /**
  * No-op boot scene. Phaser auto-starts the FIRST scene in the `scene:` array on
@@ -171,7 +172,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    backgroundColor: "#0b2545",
+    backgroundColor: NV_NAVY,
     scene: [
       BootScene,
       NovaScene,

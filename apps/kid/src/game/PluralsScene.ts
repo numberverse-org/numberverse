@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-plurals")?.difficultyLevels ?? [4, 4, 6, 6, 8, 8];
 const ROUNDS_TO_FINISH = 3;
@@ -99,14 +99,14 @@ export class PluralsScene extends Phaser.Scene {
       .text(0, 0, t("titlePlurals"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.promptText = this.add
       .text(0, 0, t("plurPrompt"), txt(24, "#fff8e1", { bold: true, outline: true, wrap: 340 }))
       .setOrigin(0.5);
     this.ruleText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true, wrap: 320 }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true, wrap: 320 }))
       .setOrigin(0.5);
     this.emojiText = this.add.text(0, 0, "", txt(56, "#ffffff", { shadow: false })).setOrigin(0.5);
     this.wordText = this.add

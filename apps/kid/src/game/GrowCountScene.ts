@@ -5,7 +5,7 @@ import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, BTN_PRIMARY, BTN_NEUTRAL, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, BTN_PRIMARY, BTN_NEUTRAL, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { correctCelebrate } from "./celebrate";
 import { SAB } from "./safeArea";
 
@@ -49,7 +49,7 @@ export class GrowCountScene extends Phaser.Scene {
       .text(0, 0, t("titleGrowCount"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.counterText = this.add

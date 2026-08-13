@@ -6,7 +6,7 @@ import { bad, pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { answerRow } from "./layout";
 import { SAB } from "./safeArea";
 
@@ -90,10 +90,10 @@ export class BnMatrasScene extends Phaser.Scene {
       .text(0, 0, t(this.conjunctMode ? "titleBnConjunct" : "titleBnMatras"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.factText = this.add
-      .text(0, 0, "", txt(56, "#ffd166", {bold: true, outline: true}))
+      .text(0, 0, "", txt(56, NV_GOLD, {bold: true, outline: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t(this.conjunctMode ? "tapConjunct" : "tapMatra"));

@@ -6,7 +6,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
-import { txt, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-tapdrag")?.difficultyLevels ?? [4, 4, 5, 5, 6, 6];
 /** Skill seed for deterministic framing rotation. */
@@ -56,7 +56,7 @@ export class CatchBugScene extends Phaser.Scene {
       .text(0, 0, t("titleCatchBug"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.countText = this.add
       .text(0, 0, "", txt(16, "#ffffff", { bold: true }))
@@ -252,13 +252,13 @@ export class CatchBugScene extends Phaser.Scene {
   }
 
   private floatSmall(x: number, y: number, text: string) {
-    const m = this.add.text(x, y, text, txt(18, "#ffd166", { bold: true })).setOrigin(0.5).setDepth(30);
+    const m = this.add.text(x, y, text, txt(18, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: m, y: y - 24, alpha: 0, duration: 800, onComplete: () => m.destroy() });
   }
 
   private floatBig(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.42, text, txt(30, "#ffd166", { bold: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.42, text, txt(30, NV_GOLD, { bold: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 32, alpha: 0, duration: 900, onComplete: () => m.destroy() });

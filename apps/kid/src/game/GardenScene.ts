@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { useKidStore } from "../store";
 import { STAGE_EMOJI, STAGE_NAME_EN, STAGE_NAME_BN, type GardenState } from "./garden";
 import { gameBackground } from "./backgrounds";
-import { txt, promptTxt } from "./ui";
+import { txt, promptTxt, NV_GOLD } from "./ui";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { SAT, SAB } from "./safeArea";
@@ -41,7 +41,7 @@ export class GardenScene extends Phaser.Scene {
       .text(0, 0, bn ? `🌱 ${this.kidName}-এর বাগান` : `🌱 ${this.kidName}'s Garden`, txt(28, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.sub = this.add
-      .text(0, 0, "", txt(16, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.emptyHint = this.add
       .text(0, 0, bn ? "খেলো আর গাছ বাড়াও!" : "Play and watch your garden grow!", promptTxt(17))

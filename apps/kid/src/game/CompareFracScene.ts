@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-comparefrac")?.difficultyLevels ?? [0, 0, 1, 1, 2, 2];
 const ROUNDS_TO_FINISH = 3;
@@ -116,7 +116,7 @@ export class CompareFracScene extends Phaser.Scene {
       .text(0, 0, t("titleCompareFrac"), txt(32, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.promptText = this.add
@@ -230,7 +230,7 @@ export class CompareFracScene extends Phaser.Scene {
     const by = y - r * 0.68;
     const ring = this.add.circle(bx, by, 18, 0xffd166).setDepth(19);
     const num = this.add
-      .text(bx, by, digit(n), txt(28, "#0b2545", { bold: true }))
+      .text(bx, by, digit(n), txt(28, NV_NAVY, { bold: true }))
       .setOrigin(0.5)
       .setDepth(20);
     this.badges.push(ring, num);

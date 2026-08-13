@@ -7,7 +7,7 @@ import { pop, win, starPop } from "./audio";
 import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, BTN_PRIMARY, BTN_ORANGE } from "./ui";
+import { txt, modernAnswerButton, BTN_PRIMARY, BTN_ORANGE, NV_GOLD } from "./ui";
 import { correctCelebrate } from "./celebrate";
 import { SAB } from "./safeArea";
 
@@ -60,7 +60,7 @@ export class Count100Scene extends Phaser.Scene {
 
     gameBackground(this, "forest");
     this.titleText = this.add.text(0, 0, t("titleCount100"), txt(30, "#ffffff", { bold: true })).setOrigin(0.5);
-    this.roundText = this.add.text(0, 0, "", txt(18, "#ffd166", { bold: true })).setOrigin(0.5);
+    this.roundText = this.add.text(0, 0, "", txt(18, NV_GOLD, { bold: true })).setOrigin(0.5);
     this.progressBar = this.add.graphics();
     this.progressText = this.add.text(0, 0, "", txt(17, "#ffffff", { bold: true })).setOrigin(0.5);
     this.breakdownText = this.add.text(0, 0, "", txt(24, "#ffffff", { bold: true, shadow: true })).setOrigin(0.5);

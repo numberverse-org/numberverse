@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, correctButton, roundMeter, gridLayout, BTN_PRIMARY, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, correctButton, roundMeter, gridLayout, BTN_PRIMARY, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnsightwords")?.difficultyLevels ?? [6, 6, 8, 8, 9, 9];
@@ -89,7 +89,7 @@ export class BnSightWordsScene extends Phaser.Scene {
       .text(0, 0, t("titleSightWall"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.streakText = this.add
       .text(0, 0, "", txt(18, "#ffffff", { bold: true }))
@@ -282,14 +282,14 @@ export class BnSightWordsScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.55, text, txt(26, "#ffd166", { bold: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.55, text, txt(26, NV_GOLD, { bold: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 900, onComplete: () => m.destroy() });
   }
 
   private floatSmall(x: number, y: number, text: string) {
-    const m = this.add.text(x, y, text, txt(18, "#ffd166", { bold: true })).setOrigin(0.5).setDepth(30);
+    const m = this.add.text(x, y, text, txt(18, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: m, y: y - 24, alpha: 0, duration: 800, onComplete: () => m.destroy() });
   }
 

@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bndaysmonths")?.difficultyLevels ?? [4, 5, 6, 7, 7, 7];
@@ -72,7 +72,7 @@ export class BanglaDaysScene extends Phaser.Scene {
       .text(0, 0, t("titleBdDays"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -139,7 +139,7 @@ export class BanglaDaysScene extends Phaser.Scene {
 
     for (let i = 0; i < m; i++) {
       const lbl = this.add
-        .text(this.slotX[i], gl.cy - CARD_H / 2 - 20, digit(i + 1), txt(18, "#ffd166", { bold: true, outline: true }))
+        .text(this.slotX[i], gl.cy - CARD_H / 2 - 20, digit(i + 1), txt(18, NV_GOLD, { bold: true, outline: true }))
         .setOrigin(0.5);
       this.stepLabels.push(lbl);
     }
@@ -219,7 +219,7 @@ export class BanglaDaysScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.44, text, txt(26, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.44, text, txt(26, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(40);
     this.tweens.add({ targets: m, y: m.y - 26, alpha: 0, duration: 1000, onComplete: () => m.destroy() });

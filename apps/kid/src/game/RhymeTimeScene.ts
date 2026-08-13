@@ -5,7 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { win, pop, playNote } from "./audio";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, correctButton, ringCorrect, roundMeter, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, correctButton, ringCorrect, roundMeter, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-rhymes")?.difficultyLevels ?? [2, 2, 1, 1, 0, 0];
@@ -74,13 +74,13 @@ export class RhymeTimeScene extends Phaser.Scene {
       .text(0, 0, t("titleRhymes"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("ryPrompt"));
     this.meter = roundMeter(this);
     this.rhymeTitle = this.add
-      .text(0, 0, "", txt(24, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(24, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.ringGfx = this.add.graphics().setDepth(6);
     this.readBtn = modernCardButton(this, 0, 0, 84, 60, "🔊", BTN_ORANGE, 32);
@@ -245,7 +245,7 @@ export class RhymeTimeScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(26, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(26, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 900, onComplete: () => m.destroy() });

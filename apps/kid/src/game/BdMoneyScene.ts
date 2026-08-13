@@ -7,7 +7,7 @@ import { speak, bnNumber, enNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, ringCorrect, roundMeter, btnFromColor, BTN_NEUTRAL, gridLayout, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, ringCorrect, roundMeter, btnFromColor, BTN_NEUTRAL, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bdtaka")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
@@ -111,11 +111,11 @@ export class BdMoneyScene extends Phaser.Scene {
       .text(0, 0, t("titleBdMoney"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.amountText = this.add
-      .text(0, 0, "", txt(62, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(62, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.priceText = this.add
       .text(0, 0, "", txt(24, "#ffffff", { bold: true }))

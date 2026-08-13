@@ -7,7 +7,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { answerRow } from "./layout";
 
 const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
@@ -61,12 +61,12 @@ export class OddEvenScene extends Phaser.Scene {
       .text(0, 0, t("titleOddEven"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(frameText("oddEvenPrompt", SKILL_ID, 0));
     this.shownText = this.add
-      .text(0, 0, "", txt(64, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(64, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.pairBox = this.add.container(0, 0);
     this.meter = roundMeter(this);
