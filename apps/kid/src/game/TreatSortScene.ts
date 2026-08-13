@@ -175,8 +175,8 @@ export class TreatSortScene extends Phaser.Scene {
         .setDepth(200)
         .setInteractive({ useHandCursor: true, draggable: true });
       tr.setData("key", t.key);
-      tr.setData("homeX", x);
-      tr.setData("homeY", y);
+      tr.setData("homex", x);
+      tr.setData("homey", y);
       tr.setData("placed", false);
       // gentle idle bob so they look alive
       this.tweens.add({ targets: tr, y: y - 6, duration: 900 + i * 80, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
@@ -209,8 +209,8 @@ export class TreatSortScene extends Phaser.Scene {
         bestD = d;
       }
     }
-    const homeX: number = go.getData("homeX");
-    const homeY: number = go.getData("homeY");
+    const homeX: number = go.getData("homex");
+    const homeY: number = go.getData("homey");
     if (best && best.key === key) {
       // correct bowl — drop it in
       go.setData("placed", true);
