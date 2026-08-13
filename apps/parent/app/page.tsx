@@ -2093,10 +2093,10 @@ export default function ParentDashboard() {
         ) : (
           <>
             <p className="center muted">Sign in to manage your children’s learning.</p>
-            {authNote && <p className="center err" style={{ marginTop: 8 }}>{authNote}</p>}
+            {authNote && <p className="center err mt-8">{authNote}</p>}
           </>
         )}
-        <div className="center" style={{ marginTop: 24 }}>
+        <div className="center mt-24">
           {authState === "checking" ? (
             <Link className="btn btn-small ghost" href="/login">Sign in instead →</Link>
           ) : (
@@ -2548,7 +2548,7 @@ export default function ParentDashboard() {
                   ))}
                 </div>
                 {activeWeekly.mastered_this_week.length > 0 && (
-                  <p className="muted small" style={{ marginTop: "10px" }}>
+                  <p className="muted small mt-10">
                     🏆 Mastered this week:{" "}
                     <strong>{activeWeekly.mastered_this_week.map((s) => s.replace(/-/g, " ")).join(", ")}</strong>
                   </p>
@@ -2682,7 +2682,7 @@ export default function ParentDashboard() {
                     {narrCopied ? "✓ Copied" : "📋 Copy text"}
                   </button>
                 </div>
-                <p className="muted small" style={{ marginTop: 8 }}>
+                <p className="muted small mt-8">
                   💾 Your edits stay in this browser only — safe to tweak and share however you like.
                 </p>
               </>
@@ -3033,7 +3033,7 @@ export default function ParentDashboard() {
               )}
             </div>
             {sheet && (
-              <p className="muted small" style={{ marginTop: "8px" }}>
+              <p className="muted small mt-8">
                 {sheet.items.length} practice lines for {sheet.name} · generated {sheet.date} · tap Print for a clean A4 sheet.
               </p>
             )}
@@ -3058,7 +3058,7 @@ export default function ParentDashboard() {
               )}
             </div>
             {qrCards && qrCards.length === 0 && (
-              <p className="muted small" style={{ marginTop: "8px" }}>
+              <p className="muted small mt-8">
                 No games played yet — {active.name} needs a session first (mastery builds from rounds).
               </p>
             )}
@@ -3662,7 +3662,7 @@ export default function ParentDashboard() {
                   ))}
                 </ul>
               )}
-              <div className="row-buttons" style={{ marginTop: 14 }}>
+              <div className="row-buttons mt-14">
                 <button className="btn danger-ghost" disabled={acctBusy || sessions.length === 0} onClick={handleSignoutAll}>
                   Sign out of all devices
                 </button>

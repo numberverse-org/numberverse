@@ -151,6 +151,11 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .muted { color: var(--nv-muted); }
 .small { font-size: 13px; line-height: 1.5; }
 .center { text-align: center; }
+/* #622 — spacing utilities replacing one-off inline marginTop styles. */
+.mt-8 { margin-top: 8px; }
+.mt-10 { margin-top: 10px; }
+.mt-14 { margin-top: 14px; }
+.mt-24 { margin-top: 24px; }
 
 /* Session-check spinner — shown while the stored token is validated server-side
    so "Checking your session…" never reads as a frozen page. */
