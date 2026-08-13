@@ -1704,6 +1704,69 @@ body {
 }
 .box-open:active { transform: scale(0.94); }
 
+/* #286 — star-of-the-week recap (weekly summary, spoken option, offline) */
+.recap-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  background: linear-gradient(135deg, rgba(255, 215, 130, 0.2), rgba(196, 181, 253, 0.18));
+  border: 1.5px solid rgba(255, 215, 130, 0.5);
+  border-radius: 16px;
+  padding: 10px 14px;
+}
+.recap-emoji {
+  font-size: 30px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  animation: calPulse 2.2s ease-in-out infinite;
+}
+.recap-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.recap-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffd782;
+  letter-spacing: 0.02em;
+}
+.recap-sub {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.3;
+}
+.recap-line {
+  font-size: 12px;
+  font-weight: 800;
+  color: #c4b5fd;
+  line-height: 1.3;
+}
+.recap-win {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #ff8fa3;
+  line-height: 1.3;
+}
+.recap-hear {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #1a2332;
+  background: linear-gradient(135deg, #ffd782, #c4b5fd);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.recap-hear:active { transform: scale(0.94); }
+
 /* #288 — kid-friendly voice settings (loudness, one tap + reset) */
 .voice-fun {
   display: flex;
