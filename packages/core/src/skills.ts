@@ -115,6 +115,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-animals-move', band: 2, subject: 'science', title: 'Animal moves', titleBn: 'প্রাণীর চলাফেরা', description: 'Sort animals by how they move — fly, swim, crawl, walk (bee, fish, snake, elephant…)', descriptionBn: 'প্রাণীকে তার চলাফেরা অনুযায়ী সাজাই — উড়ে, সাঁতার, হামাগুড়ি, হেঁটে (মৌমাছি, মাছ, সাপ, হাতি…)', commonCore: ['1.LS.1'], nctbCode: 'c2-science-6', classNumber: 2, game: 'game-animalsmove' },
   // Science — plant life cycle: order seed → sprout → plant → flower → fruit with a growing pot.
   { id: 'en-plant-life', band: 2, subject: 'science', title: 'Plant life cycle', titleBn: 'গাছের জীবনচক্র', description: 'Order the plant life cycle — seed, sprout, plant, flower, fruit — and watch it grow in a pot', descriptionBn: 'গাছের জীবনচক্র সাজাই — বীজ, চারা, গাছ, ফুল, ফল — আর পাত্রে বাড়তে দেখি', commonCore: ['1.LS.1'], nctbCode: 'c2-science-7', classNumber: 2, game: 'game-plantlife' },
+  // Science — weather & seasons: sort clothes/activities into summer/rainy/winter/spring bins.
+  { id: 'en-weather-seasons', band: 1, subject: 'science', title: 'Weather & seasons', titleBn: 'আবহাওয়া ও ঋতু', description: 'Sort clothes and activities by season — sunscreen for summer, umbrella for rainy, scarf for winter, kite for spring', descriptionBn: 'ঋতু অনুযায়ী পোশাক-কাজ সাজাই — গ্রীষ্মে সানস্ক্রিন, বর্ষায় ছাতা, শীতে স্কার্ফ, বসন্তে ঘুড়ি', commonCore: ['K.ESS.2'], nctbCode: 'c1-science-2', classNumber: 1, game: 'game-seasons' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -284,6 +286,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-symmetry', skillId: 'en-symmetry', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-animalsmove', skillId: 'en-animals-move', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-plantlife', skillId: 'en-plant-life', difficultyLevels: [4, 4, 5, 5, 5, 5], targetSuccess: 0.8 },
+  { id: 'game-seasons', skillId: 'en-weather-seasons', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -396,6 +399,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-symmetry': 'SymmetryMirror',
   'game-animalsmove': 'AnimalsMove',
   'game-plantlife': 'PlantLife',
+  'game-seasons': 'WeatherSeasons',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
