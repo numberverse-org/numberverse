@@ -83,6 +83,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-addfacts', band: 2, subject: 'math', title: 'Add facts to 20', titleBn: '২০-এর মধ্যে যোগ অনুশীলন', description: 'Rapid-fire addition facts to 20 with speed + accuracy tracking', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে যোগ, গতি ও নির্ভুলতা দেখা হয়', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-6', classNumber: 2, game: 'game-addfacts' },
   // Math — subtraction facts fluency: timed drill to 20 with a number-line aid (the minus twin).
   { id: 'en-subfacts', band: 2, subject: 'math', title: 'Subtract facts to 20', titleBn: '২০-এর মধ্যে বিয়োগ অনুশীলন', description: 'Rapid-fire subtraction facts to 20 with a number-line hop and speed + accuracy tracking', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে বিয়োগ, সংখ্যারেখায় লাফিয়ে গতি ও নির্ভুলতা দেখা হয়', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-7', classNumber: 2, game: 'game-subfacts' },
+  // Math — doubles strategy: chant the doubles, then transfer to near-doubles (+1) with dot arrays.
+  { id: 'en-doubles', band: 2, subject: 'math', title: 'Doubles & near-doubles', titleBn: 'দ্বিগুণ ও প্রায় দ্বিগুণ', description: 'Learn doubles facts with a spoken chant and dot arrays, then solve near-doubles as double + 1', descriptionBn: 'গান ও বিন্দু দিয়ে দ্বিগুণ শিখি, তারপর দ্বিগুণ + ১ দিয়ে প্রায় দ্বিগুণ করি', commonCore: ['1.OA.C.6', '2.OA.B.2'], nctbCode: 'c2-math-8', classNumber: 2, game: 'game-doubles' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -236,6 +238,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-balloonpop', skillId: 'add-to-20', difficultyLevels: [10, 12, 14, 16, 18, 20], targetSuccess: 0.8 },
   { id: 'game-addfacts', skillId: 'en-addfacts', difficultyLevels: [6, 8, 10, 10, 12, 12], targetSuccess: 0.8 },
   { id: 'game-subfacts', skillId: 'en-subfacts', difficultyLevels: [6, 8, 10, 10, 12, 12], targetSuccess: 0.8 },
+  { id: 'game-doubles', skillId: 'en-doubles', difficultyLevels: [6, 8, 10, 10, 12, 12], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -332,6 +335,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-bdtaka': 'BdMoney',
   'game-addfacts': 'FactsAdd',
   'game-subfacts': 'SubFacts',
+  'game-doubles': 'Doubles',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
