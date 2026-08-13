@@ -112,6 +112,7 @@ export const SKILLS: Skill[] = [
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', descriptionBn: 'সহজ বাংলা শব্দ পড়ি (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
   { id: 'bn-conjunct-find', band: 3, subject: 'bangla', title: 'Conjunct speed drill', titleBn: 'যুক্তবর্ণ দ্রুত অনুশীলন', description: 'Find common conjuncts in real words (ক্ষ, ঞ্জ, ঙ্ক)', descriptionBn: 'বাস্তব শব্দে যুক্তবর্ণ খুঁজি (ক্ষ, ঞ্জ, ঙ্ক)', commonCore: ['RF.3.3'], nctbCode: 'c3-bangla-3', classNumber: 3, game: 'game-conjunctfind' },
   { id: 'bn-family-words', band: 3, subject: 'bangla', title: 'Family words', titleBn: 'পরিবারের শব্দ', description: 'Read Bangla family words (মা, বাবা, ভাই)', descriptionBn: 'পরিবারের বাংলা শব্দ পড়ি (মা, বাবা, ভাই)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-4', classNumber: 2, game: 'game-bnwords' },
+  { id: 'bn-story-read', band: 3, subject: 'bangla', title: 'Story comprehension', titleBn: 'ছোট গল্প পড়ি', description: 'Read a mini-story, then answer a who/what question with pictures', descriptionBn: 'ছোট গল্প পড়ে ছবি দিয়ে উত্তর দিই (কে/কী)', commonCore: ['RL.2.1', 'RL.2.10'], nctbCode: 'c3-bangla-4', classNumber: 3, game: 'game-storyread' },
   { id: 'en-cvc', band: 3, subject: 'english', title: 'CVC words', titleBn: 'ইংরেজি শব্দ', description: 'Read cat, dog, sun, hat', descriptionBn: 'cat, dog, sun, hat পড়ি', commonCore: ['RF.2.3'], nctbCode: 'c2-english-3', classNumber: 2, game: 'game-cvc' },
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
@@ -188,6 +189,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-bncolors', skillId: 'bn-colors', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnsightwords', skillId: 'bn-sightwords', difficultyLevels: [6, 6, 8, 8, 9, 9], targetSuccess: 0.8 },
   { id: 'game-sentencebuilder', skillId: 'bn-sentence-builder', difficultyLevels: [1, 1, 2, 2, 2, 2], targetSuccess: 0.8 },
+  { id: 'game-storyread', skillId: 'bn-story-read', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
@@ -270,6 +272,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-conjunctfind': 'ConjunctFind',
   'game-bnsightwords': 'BnSightWords',
   'game-sentencebuilder': 'SentenceBuilder',
+  'game-storyread': 'StoryRead',
   'game-cvc': 'Cvc',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',
