@@ -5982,3 +5982,142 @@ html.nv-high-contrast .skip-chip { border-width: 2px; border-color: rgba(255, 25
 html.nv-high-contrast .j-node,
 html.nv-high-contrast .tree-node-emoji,
 html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4)); }
+
+/* ── 🦉 3D Nova island (#684) ──────────────────────────────
+   Opt-in lazy three.js surface. Full-screen, on top of everything.
+   The 2D Nova home stays the default; the island never breaks it. */
+.island-fab {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: 12px;
+  z-index: 60;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 14px;
+  background: rgba(8, 14, 34, 0.72);
+  color: #fff;
+  font: 700 14px/1 var(--nv-font, system-ui, sans-serif);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.island-fab:hover { background: rgba(20, 32, 70, 0.9); }
+.island-fab:active { transform: scale(0.96); }
+
+.island-root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: #8ed0f2;
+  color: #fff;
+  font-family: var(--nv-font, system-ui, sans-serif);
+}
+.island-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 10px;
+  background: linear-gradient(180deg, rgba(10, 22, 48, 0.85), rgba(10, 22, 48, 0));
+  z-index: 10;
+}
+.island-title {
+  flex: 1;
+  margin: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.island-beta {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffd166;
+  color: #23203f;
+  font-size: 11px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.island-back {
+  border: 0;
+  background: rgba(8, 14, 34, 0.55);
+  color: #fff;
+  border-radius: 999px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 14px;
+  font: 800 20px/1 var(--nv-font, system-ui, sans-serif);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.island-back.island-right { font-size: 20px; }
+.island-back:hover { background: rgba(20, 32, 70, 0.8); }
+.island-canvas { flex: 1; min-height: 0; position: relative; }
+.island-canvas canvas { display: block; width: 100%; height: 100%; }
+.island-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.island-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: nv-spin 0.9s linear infinite;
+}
+@keyframes nv-spin { to { transform: rotate(360deg); } }
+.island-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: rgba(10, 22, 48, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10;
+}
+.island-hint { font-size: 13px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+.island-play {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #ffd166;
+  color: #23203f;
+  font: 800 14px/1 var(--nv-font, system-ui, sans-serif);
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+.island-play:active { transform: scale(0.96); }
+.island-fallback {
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 24px;
+}
+.island-msg { font-size: 18px; font-weight: 700; line-height: 1.5; text-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.island-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 22px;
+  background: #ffd166;
+  color: #23203f;
+  font: 800 15px/1 var(--nv-font, system-ui, sans-serif);
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .island-spinner { animation-duration: 2s; }
+}

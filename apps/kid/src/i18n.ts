@@ -707,6 +707,16 @@ export interface Strings {
   /* growth garden */
   gardenTile: string;
   gardenHint: string;
+  /* 🦉 3D Nova island (#684) — lazy three.js surface */
+  island3dBtn: string;
+  islandTitle: string;
+  islandLoading: string;
+  islandBeta: string;
+  islandHint: string;
+  islandNoWebgl: string;
+  islandBack: string;
+  islandPlayGames: string;
+  islandBack2d: string;
 }
 
 export const STR: Record<Lang, Strings> = {
@@ -1363,6 +1373,16 @@ export const STR: Record<Lang, Strings> = {
     masterySpeak: (title) => `Wow! You mastered ${title}! 🎉`,
     gardenTile: "My Garden",
     gardenHint: "Answer right — plants grow!",
+    /* 🦉 3D Nova island (#684) */
+    island3dBtn: "✨ 3D Island",
+    islandTitle: "🦉 Nova's 3D Island",
+    islandLoading: "Building the island…",
+    islandBeta: "New · beta",
+    islandHint: "Drag to look around · pinch to zoom",
+    islandNoWebgl: "3D isn't supported on this device — back to 2D Nova!",
+    islandBack: "‹ Back",
+    islandPlayGames: "🎮 Play games (2D)",
+    islandBack2d: "Return to 2D Nova",
   },
   bn: {
     appTagline: "আপনার সন্তানরা স্মার্টভাবে শিখুক — বাংলা, ইংরেজি, গণিত ও আরও।",
@@ -2017,6 +2037,16 @@ export const STR: Record<Lang, Strings> = {
     masterySpeak: (title) => `বাহ! তুমি ${title} আয়ত্ত করেছ! 🎉`,
     gardenTile: "আমার বাগান",
     gardenHint: "ঠিক উত্তর দাও — গাছ বাড়বে!",
+    /* 🦉 3D Nova island (#684) */
+    island3dBtn: "✨ ৩ডি দ্বীপ",
+    islandTitle: "🦉 নোভার ৩ডি দ্বীপ",
+    islandLoading: "দ্বীপ তৈরি হচ্ছে…",
+    islandBeta: "নতুন · বিটা",
+    islandHint: "ঘুরাতে টেনে ধরো · জুম করতে চিমটি",
+    islandNoWebgl: "এই ডিভাইসে ৩ডি নেই — ২ডি নোভায় ফিরে গেছি!",
+    islandBack: "‹ ফিরে",
+    islandPlayGames: "🎮 খেলা করো (২ডি)",
+    islandBack2d: "২ডি নোভায় ফিরে যাও",
   },
 };
 

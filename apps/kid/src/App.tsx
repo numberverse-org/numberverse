@@ -54,6 +54,7 @@ import {
   type ChallengeQ, type ContrastTemplate, type ContrastRound, type AvatarParts, type SeasonKey,
 } from "./lib/journey";
 import { KidAvatar, AvatarBuilder, QuietChrome } from "./components/Avatar";
+import Nova3DHome from "./nova3d/Nova3DHome";
 
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
@@ -63,7 +64,7 @@ const APP_BUILD = "14 Aug 2026 · 0.36.0 (Pet mini-games batch 3: Hide & Seek + 
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.36.0";
 
-export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
+export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -4518,11 +4519,38 @@ export default function App() {
     );
   }
 
+  /* 🦉 #684 — the 3D island is its own screen (no Phaser mounts here; the
+     R3F canvas owns the WebGL context). onBack2d returns to the 2D Nova home
+     where the pet games live. */
+  if (screen === "nova3d") {
+    return (
+      <Nova3DHome
+        kidName={kid?.name ?? ""}
+        onBack2d={() => setScreen("nova")}
+        onExit={() => setScreen("home")}
+      />
+    );
+  }
+
   if (screen === "nova" || screen === "playing" || screen === "garden") {
     const inGame = screen === "playing";
     const inGarden = screen === "garden";
+    const inNova = screen === "nova";
     return (
       <div className="app game-app">
+        {/* #684 — the 3D island is an OPT-IN surface on top of 2D Nova: it
+            stops Phaser first (single WebGL context) and falls back if the
+            device has no WebGL. The 2D Nova home stays the default. */}
+        {inNova && kid && (
+          <button
+            className="island-fab"
+            onClick={() => setScreen("nova3d")}
+            aria-label={t.island3dBtn}
+            title={t.island3dBtn}
+          >
+            {t.island3dBtn}
+          </button>
+        )}
         {/* HUD is always present so the canvas div below keeps its DOM identity across screens */}
         <div className="hud" hidden={!inGame}>
           {inGame && (
