@@ -79,6 +79,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-rcontrolled", 2, "english", "Bossy R", "bossy-R"),
     ("en-magic-e", 2, "english", "Magic E", "জাদুর e"),
     ("en-prepositions", 2, "english", "Prepositions", "অব্যয়"),
+    ("en-qwords", 2, "english", "Question words", "প্রশ্নবোধক শব্দ"),
     ("heavy-light", 2, "science", "Heavy or light", "ভারী না হালকা"),
     ("science-sink-float", 2, "science", "Sink or float", "ডুব না ভাসা"),
     ("science-food-chain", 2, "science", "Food chains", "খাদ্য শৃঙ্খল"),

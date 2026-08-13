@@ -147,6 +147,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-compare', band: 3, subject: 'english', title: 'Big, Bigger, Biggest', titleBn: 'বড়, বড়ো, সবচেয়ে বড়', description: 'Pick the right degree form for 2-picture (bigger) and 3-picture (biggest) compares', descriptionBn: '২ ছবিতে bigger, ৩ ছবিতে biggest — সঠিক তুলনার রূপ বাছো', commonCore: ['L.3.1g'], nctbCode: 'c3-english-5', classNumber: 3, game: 'game-compare' },
   // Grammar — prepositions: drag the object to the spoken place (in/on/under/behind…).
   { id: 'en-prepositions', band: 2, subject: 'english', title: 'Prepositions', titleBn: 'অব্যয়', description: 'Drag an object to the spoken place: in, on, under, behind, in front of, next to, above, between', descriptionBn: 'বলে দেওয়া জায়গায় জিনিসটা টেনে রাখি: in, on, under, behind, in front of, next to, above, between', commonCore: ['L.1.1i'], nctbCode: 'c2-english-6', classNumber: 2, game: 'game-prepositions' },
+  // Grammar — question words: fill the ___ in a picture-context question (who/what/where…).
+  { id: 'en-qwords', band: 2, subject: 'english', title: 'Question words', titleBn: 'প্রশ্নবোধক শব্দ', description: 'Fill the blank with the right question word (who, what, where, when, why, how, whose)', descriptionBn: 'সঠিক প্রশ্নবোধক শব্দ দিয়ে শূন্যস্থান পূরণ করি (who, what, where, when, why, how, whose)', commonCore: ['L.1.1j'], nctbCode: 'c2-english-7', classNumber: 2, game: 'game-qwords' },
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
   { id: 'division-facts', band: 4, subject: 'math', title: 'Division facts', titleBn: 'ভাগ করা', description: 'Division facts within 100 (24÷3, 45÷5)', descriptionBn: '১০০-এর মধ্যে ভাগের সত্যি (২৪÷৩, ৪৫÷৫)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 3, game: 'game-division' },
@@ -240,6 +242,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-rcontrolled', skillId: 'en-rcontrolled', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-magice', skillId: 'en-magic-e', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-prepositions', skillId: 'en-prepositions', difficultyLevels: [0, 0, 0, 0, 0, 0], targetSuccess: 0.8 },
+  { id: 'game-qwords', skillId: 'en-qwords', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
@@ -313,6 +316,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-rcontrolled': 'RControlled',
   'game-magice': 'MagicE',
   'game-prepositions': 'Prepositions',
+  'game-qwords': 'QuestionWords',
   'game-balloonpop': 'BalloonPop',
   'game-balance': 'Balance',
   'game-sinkfloat': 'SinkFloat',
