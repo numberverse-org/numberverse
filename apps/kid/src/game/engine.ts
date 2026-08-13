@@ -10,6 +10,7 @@
  * moved verbatim so the game boots identically.
  */
 import Phaser from "phaser";
+import { OddEvenScene } from "./OddEvenScene";
 import { CountPopScene } from "./CountPopScene";
 import { Count100Scene } from "./Count100Scene";
 import { Build999Scene } from "./Build999Scene";
@@ -83,7 +84,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       NovaScene,
       GardenScene,
       GrowCountScene, FruitTreeScene,
-      CountPopScene, Count100Scene, Build999Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
+      OddEvenScene, CountPopScene, Count100Scene, Build999Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
       RocketMultScene, TimesTableScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FairShareScene, FractionMatchScene,
       PlaceValueScene, BnMatrasScene, SightWordsScene, AnimalHomeScene, DecimalsScene, PercentScene,
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,

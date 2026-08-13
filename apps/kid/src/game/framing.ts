@@ -51,6 +51,12 @@ const FRAME_BANK: Record<string, Array<(vars?: TVars) => string>> = {
     (vars) => t("count100Round2", vars),
     (vars) => t("count100Round3", vars),
   ],
+  // Odd & even — "Odd or even?"
+  oddEvenPrompt: [
+    (vars) => t("oddEvenPrompt1", vars),
+    (vars) => t("oddEvenPrompt2", vars),
+    (vars) => t("oddEvenPrompt3", vars),
+  ],
 };
 
 /** A stable hash of a skill id, so different skills drift through variants. */
