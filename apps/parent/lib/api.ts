@@ -80,6 +80,11 @@ export interface KidSettings {
    *  journey. Both-or-neither; null/null = normal order. */
   focus_subject?: string | null;
   focus_band?: number | null;
+  /** #258 — per-kid VOICE preference: stable tone handle ("female"|"kid"|
+   *  "soft"|"warm") + Web-Speech rate multiplier (0.8/1.0/1.2; 1.0 = normal).
+   *  null/null = the kid app's own default warm-female at normal speed. */
+  voice_tone?: string | null;
+  voice_speed?: number | null;
   updated_at?: string | null;
 }
 

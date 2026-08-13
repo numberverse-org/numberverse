@@ -808,6 +808,11 @@ export interface KidSettings {
    *  journey to prioritize. Both-or-neither; null/null = normal order. */
   focus_subject?: string | null;
   focus_band?: number | null;
+  /** #258 — per-kid VOICE preference from the parent portal: stable tone handle
+   *  ("female"|"kid"|"soft"|"warm") + Web-Speech rate multiplier (1.0 = normal).
+   *  null/null = this device's own warm-female voice at normal speed. */
+  voice_tone?: string | null;
+  voice_speed?: number | null;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -828,6 +833,8 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   goal_min: null,
   focus_subject: null,
   focus_band: null,
+  voice_tone: null,
+  voice_speed: null,
 };
 
 /** #256 — "did we already celebrate today's goal?" flag (once per day, so the

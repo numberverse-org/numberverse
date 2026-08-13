@@ -155,6 +155,12 @@ function voiceScore(v: SpeechSynthesisVoice, lang: "en" | "bn", platform: Speech
 
   // Warm / female voices anywhere — proven to hold kids' attention better.
   if (/female|feminine|woman|girl|samantha|siri|tessa|rani|karen/.test(name)) s += 8;
+  // #258 — the parent's per-kid TONE biases which INSTALLED voice wins on the
+  // Web-Speech path (the neural Bangla path is handled separately by speaker
+  // id): "Friendly male" lifts male-ish names; female/soft lift the female
+  // names; kid/any = no extra bias (best available wins).
+  if (parentVoiceTone === "warm" && /male|daniel|david|george|alex|john/.test(name)) s += 8;
+  if ((parentVoiceTone === "female" || parentVoiceTone === "soft") && /female|feminine|woman|girl|samantha|siri|tessa|rani|karen/.test(name)) s += 8;
   return s;
 }
 
@@ -488,6 +494,30 @@ export function setQuietLevel(v: number) {
   quietLevel = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
 }
 
+/* #258 — per-kid VOICE preference set by the parent portal. The TONE picks
+ * which neural Bangla speaker reads (and biases Web Speech's gender on the
+ * English path); the SPEED scales every Web-Speech line (the neural model's
+ * tempo is baked in — length_scale 1.0 — so it only ever scales the web path).
+ * null/null = this device's own warm-female voice at normal speed. */
+export type VoiceTone = "female" | "kid" | "soft" | "warm" | null;
+/** Stable tone handle → neural Piper speaker id (mirrors NEURAL_VOICES). */
+const TONE_SPEAKER: Record<"female" | "kid" | "soft" | "warm", number> = {
+  female: 11,
+  kid: 12,
+  soft: 3,
+  warm: 7,
+};
+let parentVoiceTone: "female" | "kid" | "soft" | "warm" | null = null;
+/** Accepts any string (settings arrive as JSON); unknown/null → the device's
+ *  own default warm-female, never a wrong tone. */
+export function setVoiceTone(tone: string | null) {
+  parentVoiceTone = tone === "female" || tone === "kid" || tone === "soft" || tone === "warm" ? tone : null;
+}
+let parentVoiceRate = 1; // multiplier, 1 = normal speed
+export function setVoiceSpeed(rate: number | null | undefined) {
+  parentVoiceRate = Number.isFinite(rate) ? Math.max(0.5, Math.min(2, rate as number)) : 1;
+}
+
 export function speak(text: string, opts: SpeakOpts = {}) {
   if (!speechEnabled) return;
   const raw = String(text);
@@ -530,8 +560,11 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // the voice-picker preview — or webSpeak's neuralCancel on a newer web line).
   // Falling back then makes the OLD line speak on Web Speech WHILE the new line
   // speaks on neural → the both-voices-at-once bug. "superseded" must stay silent.
+  // #258 — the parent's per-kid TONE picks WHICH neural speaker reads (the
+  // portal tone overrides this device's own picker; null = the device choice).
+  const toneSpk = parentVoiceTone ? TONE_SPEAKER[parentVoiceTone] : undefined;
   if (lang === "bn" && isNeuralReady()) {
-    void neuralSpeak(clean, { queue: opts.cancel === false, volume: vol }).then(
+    void neuralSpeak(clean, { queue: opts.cancel === false, volume: vol, speaker: toneSpk }).then(
       (outcome) => {
         if (outcome === "failed" && token === speakToken) webSpeak(clean, lang, opts, token);
       },
@@ -577,7 +610,9 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
     neuralCancel();
     primeSpeech(); // no-op once proven unlocked — safety if we're inside a gesture
     try {
-      u.rate = opts.rate ?? 0.9; // a touch slower — small ears
+      // #258 — the parent's per-kid SPEED scales the Web-Speech rate on top of
+      // the app's warm 0.9 base (caller overrides like math still keep theirs).
+      u.rate = (opts.rate ?? 0.9) * parentVoiceRate; // a touch slower — small ears
       // Brighter than adult speech, but capped on Android so Google's voices
       // stay warm instead of chipmunk; Apple's voices take the higher pitch.
       u.pitch = opts.pitch ?? (platform === "android" ? 1.05 : 1.12);

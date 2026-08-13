@@ -425,6 +425,35 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 }
 .vol-try { white-space: nowrap; }
 
+/* #258 — per-kid VOICE preference: tone + speed chips with a Try button */
+.voice-pref {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--nv-border);
+}
+.vp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vp-label {
+  min-width: 92px;
+  padding-top: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--nv-muted-strong);
+}
+.vp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
 /* ── #248 quiet hours schedule editor ──────────────────────────────────── */
 .quiet-block { border-top: 1px dashed var(--nv-border); padding-top: 14px; }
 .quiet-schedule { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 6px; }

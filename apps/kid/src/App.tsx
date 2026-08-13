@@ -21,7 +21,7 @@ import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
-import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
+import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setVoiceTone, setVoiceSpeed, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { readA11y, writeA11y, initA11y, type A11yPrefs } from "./game/a11y";
@@ -3942,6 +3942,13 @@ export default function App() {
   useEffect(() => {
     setVoiceBalance(settings.voice_volume ?? 1);
   }, [settings.voice_volume]);
+  // #258 — per-kid VOICE preference: the parent's tone (neural Bangla speaker +
+  // Web-Speech gender bias) and speed (Web-Speech rate multiplier). Flip the
+  // moment the parent saves them.
+  useEffect(() => {
+    setVoiceTone(settings.voice_tone ?? null);
+    setVoiceSpeed(settings.voice_speed ?? 1);
+  }, [settings.voice_tone, settings.voice_speed]);
   useEffect(() => {
     setSfxVolume(settings.sfx_volume ?? 1);
   }, [settings.sfx_volume]);

@@ -118,6 +118,10 @@ class KidSettingsIn(BaseModel):
     # lone half clears the pin. Band 1..7.
     focus_subject: str | None = Field(default=None, max_length=16)
     focus_band: int | None = Field(default=None, ge=1, le=7)
+    # #258 — per-kid VOICE preference: stable tone handle ("female"|"kid"|"soft"|
+    # "warm") + Web-Speech rate multiplier (1.0 = normal). null = kid app default.
+    voice_tone: str | None = Field(default=None, max_length=8)
+    voice_speed: float | None = Field(default=None, ge=0.5, le=2.0)
 
 
 class KidSettingsOut(BaseModel):
@@ -140,6 +144,8 @@ class KidSettingsOut(BaseModel):
     goal_min: int | None = None
     focus_subject: str | None = None
     focus_band: int | None = None
+    voice_tone: str | None = None
+    voice_speed: float | None = None
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
