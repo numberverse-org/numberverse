@@ -61,12 +61,16 @@ export const SKILLS: Skill[] = [
   { id: 'ict-tap-drag', band: 1, subject: 'ict', title: 'Tap & drag accuracy', titleBn: 'টিপা-টানা অনুশীলন', description: 'Tap the bugs, drag the butterfly into the net', descriptionBn: 'পোকা টিপি, প্রজাপতি নেটে নিই', commonCore: [], nctbCode: 'c1-ict-1', classNumber: 1, game: 'game-tapdrag' },
   { id: 'ict-keyboard', band: 1, subject: 'ict', title: 'Keyboard explorer', titleBn: 'কীবোর্ড এক্সপ্লোরার', description: 'Find letters and numbers on a friendly on-screen keyboard', descriptionBn: 'কার্টুন কীবোর্ডে বর্ণ ও সংখ্যা খুঁজি', commonCore: [], nctbCode: 'c1-ict-2', classNumber: 1, game: 'game-keyboard' },
   { id: 'ict-device-manners', band: 1, subject: 'ict', title: 'Device manners', titleBn: 'ডিভাইসের আদব', description: 'Turn a device on and off safely and wait patiently', descriptionBn: 'ডিভাইস চালু-বন্ধ করি আর ধৈর্য ধরি', commonCore: [], nctbCode: 'c1-ict-3', classNumber: 1, game: 'game-device' },
+  // ICT — computer parts & safe offline habits: tap the part, sort safe/unsafe.
+  { id: 'ict-computer-safety', band: 3, subject: 'ict', title: 'Computer parts & safety', titleBn: 'কম্পিউটার ও নিরাপদ অভ্যাস', description: 'Tap computer parts and sort safe, offline-first habits', descriptionBn: 'কম্পিউটারের যন্ত্রাংশ চেনো আর নিরাপদ অভ্যাস সাজাও — সম্পূর্ণ অফলাইন', commonCore: [], nctbCode: 'c3-ict-1', classNumber: 3, game: 'game-computer' },
   { id: 'bgs-professions', band: 2, subject: 'bgs', title: 'Community helpers', titleBn: 'সমাজের সাহায্যকারী', description: 'Match 12 community helpers to their tools', descriptionBn: '১২ জন সাহায্যকারীকে তাঁদের সরঞ্জামের সঙ্গে মেলাই', commonCore: [], nctbCode: 'c2-bgs-2', classNumber: 2, game: 'game-professions' },
   { id: 'bgs-festivals', band: 2, subject: 'bgs', title: 'Our festivals', titleBn: 'আমাদের উৎসব', description: 'Sort Pohela Boishakh and Eid customs and items', descriptionBn: 'পহেলা বৈশাখ ও ঈদের রীতিনীতি সাজাই', commonCore: [], nctbCode: 'c2-bgs-3', classNumber: 2, game: 'game-festivals' },
   { id: 'bgs-kindness', band: 1, subject: 'bgs', title: 'Kind heart', titleBn: 'দয়ালু হৃদয়', description: 'Choose kind responses in everyday situations', descriptionBn: 'দৈনন্দিন পরিস্থিতিতে দয়ালু উত্তর বাছাই', commonCore: [], nctbCode: 'c1-bgs-2', classNumber: 1, game: 'game-kindness' },
   { id: 'bgs-honesty', band: 2, subject: 'bgs', title: 'Truth star', titleBn: 'সত্যের তারকা', description: 'Choose the truthful response in everyday situations — no shame, just soft encouragement', descriptionBn: 'দৈনন্দিন পরিস্থিতিতে সত্যিকারের উত্তর বাছাই — লজ্জা নয়, কেবল আন্তরিক উৎসাহ', commonCore: [], nctbCode: 'c2-bgs-4', classNumber: 2, game: 'game-honesty' },
   // Values — patience & waiting (band 1, BGS moral/values strand).
   { id: 'bgs-patience', band: 1, subject: 'bgs', title: 'Patience & waiting', titleBn: 'ধৈর্য ও অপেক্ষা', description: 'Wait for the reward — patience pays', descriptionBn: 'পুরস্কার পেতে অপেক্ষা করি — ধৈর্যের ফসল', commonCore: [], nctbCode: 'c1-bgs-1', classNumber: 1, game: 'game-patience' },
+  // Values — good habits & hygiene: sort good/healthy habits with gentle, no-shame feedback.
+  { id: 'bgs-habits', band: 1, subject: 'bgs', title: 'Good habits & hygiene', titleBn: 'ভালো অভ্যাস ও পরিচ্ছন্নতা', description: 'Sort healthy habits — brushing, washing hands, sharing — with gentle encouragement', descriptionBn: 'ভালো অভ্যাস সাজাই — দাঁত মাজা, হাত ধোয়া, ভাগ করে খেলা — আন্তরিক উৎসাহে', commonCore: [], nctbCode: 'c1-bgs-3', classNumber: 1, game: 'game-habits' },
 
   // ── Band 2 — Cottage Fields (ages 4–6): FINISH NUMBERS, THEN CALCULATE ──
   // The counting ladder first (a kid must KNOW numbers before adding them) …
@@ -285,6 +289,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-tapdrag', skillId: 'ict-tap-drag', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-villagecity', skillId: 'bgs-village-city', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-patience', skillId: 'bgs-patience', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
+  { id: 'game-habits', skillId: 'bgs-habits', difficultyLevels: [3, 3, 4, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-bnletters', skillId: 'bn-swaroborno', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-enletters', skillId: 'en-abcs', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnnumbers', skillId: 'bn-numbers', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -329,6 +334,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-watercycle', skillId: 'en-water-cycle', difficultyLevels: [3, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-keyboard', skillId: 'ict-keyboard', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-device', skillId: 'ict-device-manners', difficultyLevels: [2200, 2400, 2600, 2800, 3000, 3200], targetSuccess: 0.8 },
+  { id: 'game-computer', skillId: 'ict-computer-safety', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-professions', skillId: 'bgs-professions', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-festivals', skillId: 'bgs-festivals', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-kindness', skillId: 'bgs-kindness', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
@@ -466,6 +472,8 @@ export const GAME_SCENES: Record<string, string> = {
   'game-watercycle': 'WaterCycle',
   'game-keyboard': 'KeyboardExplorer',
   'game-device': 'DeviceManners',
+  'game-computer': 'ComputerSafety',
+  'game-habits': 'HabitSort',
   'game-professions': 'ProfessionsMatch',
   'game-festivals': 'FestivalSort',
   'game-kindness': 'Kindness',
