@@ -55,7 +55,7 @@
 - ~~Science: animals — features & movement~~  ✅ #204 — drag 24 animals into Fly/Swim/Crawl/Walk bins; wrong drop shakes red + flashes the right bin green, animal retries; speaks the fact "The bee flies" / "মৌমাছি উড়ে" (tiered pool lvl 1→2→3)
 - ~~Science: plant life cycle (seed→fruit)~~  ✅ #205 — order seed 🫘 → sprout 🌱 → plant 🌿 → flower 🌸 → fruit 🍎; each correct tap springs the next stage out of a terracotta pot (grow tween + soil particles) while a timeline fills left→right
 - ~~Science: weather & seasons sorting~~  ✅ #206 — drag 20 items (sunscreen→summer, umbrella→rainy, scarf→winter, kite→spring) into 4 season bins; Bangla+EN labels everywhere, wrong drops flash the right bin green (wsSpeak)
-- Science: light & shadows  _(priority: low, kid-first)_
+- ~~Science: light & shadows~~  ✅ #207 — predict the shadow: it falls opposite the light, low light → long far shadow, high → short near; light moves each round, real shadow grows in with a source→shadow beam (lshSpeak)
 - Science: magnets — attract/repel  _(priority: low, kid-first)_
 - Science: water cycle for kids  _(priority: low, kid-first)_
 - ICT: keyboard explorer (letters & numbers)  _(priority: low, kid-first)_
