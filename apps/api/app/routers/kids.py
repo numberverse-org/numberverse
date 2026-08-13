@@ -87,6 +87,22 @@ async def get_kid_settings(
     return s or KidSettingsOut()
 
 
+def _clamp_goal(goal: int | None, daily_cap: int | None, weekday_caps: str | None) -> int | None:
+    """#256 — a gentle goal never exceeds the day's hard cap. Clamp to the flat
+    `daily_limit_min` when set, else to the highest per-weekday cap, else keep
+    it as-is (no cap configured → the goal is the only rule). 0/None = no goal."""
+    if not goal or goal <= 0:
+        return None
+    if daily_cap and daily_cap > 0:
+        return min(goal, daily_cap)
+    if weekday_caps:
+        vals = [int(v) for v in weekday_caps.split(",") if v.strip().isdigit()]
+        mx = max(vals, default=0)
+        if mx > 0:
+            return min(goal, mx)
+    return goal
+
+
 @router.put("/{kid_id}/settings", response_model=KidSettingsOut)
 async def put_kid_settings(
     kid_id: uuid.UUID,
@@ -115,6 +131,8 @@ async def put_kid_settings(
     s.quiet_dim = body.quiet_dim
     s.quiet_volume = body.quiet_volume
     s.voice_record_enabled = body.voice_record_enabled  # #138
+    # #256 — clamp the gentle daily goal to the day's cap ("respects caps").
+    s.goal_min = _clamp_goal(body.goal_min, body.daily_limit_min, body.weekday_limits_min)
     await db.commit()
     await db.refresh(s)
     return s

@@ -90,6 +90,10 @@ class KidSettings(Base):
     # #138 — kid voice recording (record own voice + replay). PARENT-gated,
     # privacy-first: off by default, on-device only (never synced).
     voice_record_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # #256 — gentle daily playtime GOAL (minutes), parent-set. Nova nudges the
+    # kid toward it without pressure; the server clamps it to the day's cap so
+    # a goal never exceeds the hard limit. null/0 = no goal. Auto-migrated.
+    goal_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kid: Mapped[Kid] = relationship(back_populates="settings")

@@ -278,6 +278,7 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   quiet_dim: true,
   quiet_volume: 0.15,
   voice_record_enabled: false,
+  goal_min: null,
 };
 
 /** #6 — day names for the per-weekday playtime editor (Mon..Sun). */
@@ -2504,6 +2505,38 @@ export default function ParentDashboard() {
                   No limit
                 </button>
               </div>
+            </div>
+
+            {/* 🎯 #256 — gentle daily goal: Nova nudges toward it, never blocks.
+                The server clamps it to the day's cap, so it respects the limits
+                set just above. */}
+            <div className="ctrl-block">
+              <h3>🎯 Daily goal</h3>
+              <p className="muted small">
+                A gentle goal {active.name} can aim for each day. Nova cheers it on
+                without pressure — it never blocks play, and it always stays at or
+                below the day's limit above.
+              </p>
+              <div className="goal-row">
+                <input
+                  className="goal-input"
+                  type="number"
+                  min={0}
+                  max={600}
+                  value={activeSettings.goal_min ?? ""}
+                  placeholder="No goal"
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    patchSettings({ goal_min: v === "" ? null : Math.max(0, parseInt(v, 10) || 0) });
+                  }}
+                />
+                <span className="goal-unit">minutes / day</span>
+              </div>
+              {activeSettings.goal_min != null && activeSettings.goal_min > 0 && (
+                <p className="hint">
+                  ↳ Saved as up to {activeSettings.goal_min} min — clamped to the daily cap if that's lower.
+                </p>
+              )}
             </div>
 
             <div className="ctrl-block">

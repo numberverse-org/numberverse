@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -1199,6 +1199,11 @@ interface Strings {
   inProgress: string;
   notStarted: string;
   playLimitReached: string;
+  /* 🎯 #256 — gentle daily goal (parent-set): progress line + at-goal nudge */
+  goalLine: (cur: number, goal: number) => string;
+  goalNudge: string;
+  goalNudgeTakeBreak: string;
+  goalNudgeKeepGoing: string;
   /* wrong-answer ledger — parent panel "needs help" */
   parentHelpTitle: string;
   parentHelpNone: string;
@@ -1838,6 +1843,10 @@ const STR: Record<Lang, Strings> = {
     voicePickListen: "Listen",
     mastered: "Mastered",
     playLimitReached: "🦉 Wow, you played so much today! Come back tomorrow 💤",
+    goalLine: (cur, goal) => `🎯 Daily goal: ${cur}/${goal} min`,
+    goalNudge: "🎉 You reached today's goal — amazing! Nova's proud of you. Want a quick break or keep going?",
+    goalNudgeTakeBreak: "Take a break",
+    goalNudgeKeepGoing: "Keep playing",
     parentHelpTitle: "Needs a little help",
     parentHelpNone: "All caught up! 🎉",
     parentHelpOpen: (n) => `${n} to finish`,
@@ -2481,6 +2490,10 @@ const STR: Record<Lang, Strings> = {
     voicePickListen: "শোনো",
     mastered: "আয়ত্ত",
     playLimitReached: "🦉 বাহ, আজ তুমি অনেক খেলেছ! কাল আবার এসো 💤",
+    goalLine: (cur, goal) => `🎯 দৈনিক লক্ষ্য: ${bnNum(cur)}/${bnNum(goal)} মিনিট`,
+    goalNudge: "🎉 আজকের লক্ষ্যে পৌঁছে গেছ! দারুণ! একটু বিরতি চাও নাকি খেলা চালিয়ে যাবে?",
+    goalNudgeTakeBreak: "বিরতি নিই",
+    goalNudgeKeepGoing: "খেলা চালাই",
     parentHelpTitle: "একটু সাহায্য দরকার",
     parentHelpNone: "সব ঠিক আছে! 🎉",
     parentHelpOpen: (n) => `শেষ করতে ${n}টা বাকি`,
@@ -3978,6 +3991,21 @@ export default function App() {
   })();
   // A gentle child-facing banner when a play attempt hits the daily cap.
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  // 🎯 #256 — gentle daily goal (parent-set minutes). Shown as a home progress
+  // line, and celebrated ONCE per day when reached. `goalReached` excludes the
+  // cap block so the two banners never fight; the nudge is fully dismissible.
+  const goalMin = settings.goal_min && settings.goal_min > 0 ? settings.goal_min : 0;
+  const todayPlayed = todayMinutes();
+  const goalReached = goalMin > 0 && todayPlayed >= goalMin && !playLimitReached;
+  const goalPct = goalMin > 0 ? Math.min(100, Math.round((todayPlayed / goalMin) * 100)) : 0;
+  const [goalNotice, setGoalNotice] = useState(false);
+  useEffect(() => {
+    if (goalReached && !goalNotice && !goalNudgedToday()) {
+      setGoalNotice(true);
+      markGoalNudgedToday();
+    }
+    if (!goalReached && goalNotice) setGoalNotice(false);
+  }, [goalReached, goalNotice]);
   // 🚀 #249 — skip-ahead toast on the world detail screen.
   const [skipNotice, setSkipNotice] = useState<string | null>(null);
   // Track minutes: a session start stamps this ref; the session-end effect adds
@@ -5502,6 +5530,37 @@ export default function App() {
             </div>
 
             {limitNotice ? <p className="limit-banner" role="status">{limitNotice}</p> : null}
+
+            {/* 🎯 #256 — gentle daily goal (parent-set): a small progress line on
+                home ("nudges toward it") + a once-per-day Nova celebration when
+                the goal is reached. Never blocks — both stay fully dismissible. */}
+            {goalMin > 0 && (
+              <div className="goal-progress" role="status">
+                <span className="goal-progress-line">{t.goalLine(Math.min(todayPlayed, goalMin), goalMin)}</span>
+                <span className="goal-progress-bar">
+                  <span className="goal-progress-fill" style={{ width: `${goalPct}%` }} />
+                </span>
+              </div>
+            )}
+            {goalNotice && (
+              <div className="goal-nudge" role="status">
+                <p className="goal-nudge-text">{t.goalNudge}</p>
+                <div className="goal-nudge-actions">
+                  <button
+                    className="goal-nudge-btn ghost"
+                    onClick={() => setGoalNotice(false)}
+                  >
+                    {t.goalNudgeTakeBreak}
+                  </button>
+                  <button
+                    className="goal-nudge-btn primary"
+                    onClick={() => setGoalNotice(false)}
+                  >
+                    {t.goalNudgeKeepGoing}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* #281 — 7-day login calendar: a growing coin bonus per consecutive
                 play day. One tap per day, fully offline, inside the anti-grind cap.
