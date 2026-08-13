@@ -63,6 +63,7 @@ export const SKILLS: Skill[] = [
   { id: 'ict-device-manners', band: 1, subject: 'ict', title: 'Device manners', titleBn: 'ডিভাইসের আদব', description: 'Turn a device on and off safely and wait patiently', descriptionBn: 'ডিভাইস চালু-বন্ধ করি আর ধৈর্য ধরি', commonCore: [], nctbCode: 'c1-ict-3', classNumber: 1, game: 'game-device' },
   { id: 'bgs-professions', band: 2, subject: 'bgs', title: 'Community helpers', titleBn: 'সমাজের সাহায্যকারী', description: 'Match 12 community helpers to their tools', descriptionBn: '১২ জন সাহায্যকারীকে তাঁদের সরঞ্জামের সঙ্গে মেলাই', commonCore: [], nctbCode: 'c2-bgs-2', classNumber: 2, game: 'game-professions' },
   { id: 'bgs-festivals', band: 2, subject: 'bgs', title: 'Our festivals', titleBn: 'আমাদের উৎসব', description: 'Sort Pohela Boishakh and Eid customs and items', descriptionBn: 'পহেলা বৈশাখ ও ঈদের রীতিনীতি সাজাই', commonCore: [], nctbCode: 'c2-bgs-3', classNumber: 2, game: 'game-festivals' },
+  { id: 'bgs-kindness', band: 1, subject: 'bgs', title: 'Kind heart', titleBn: 'দয়ালু হৃদয়', description: 'Choose kind responses in everyday situations', descriptionBn: 'দৈনন্দিন পরিস্থিতিতে দয়ালু উত্তর বাছাই', commonCore: [], nctbCode: 'c1-bgs-2', classNumber: 1, game: 'game-kindness' },
   // Values — patience & waiting (band 1, BGS moral/values strand).
   { id: 'bgs-patience', band: 1, subject: 'bgs', title: 'Patience & waiting', titleBn: 'ধৈর্য ও অপেক্ষা', description: 'Wait for the reward — patience pays', descriptionBn: 'পুরস্কার পেতে অপেক্ষা করি — ধৈর্যের ফসল', commonCore: [], nctbCode: 'c1-bgs-1', classNumber: 1, game: 'game-patience' },
 
@@ -304,6 +305,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-device', skillId: 'ict-device-manners', difficultyLevels: [2200, 2400, 2600, 2800, 3000, 3200], targetSuccess: 0.8 },
   { id: 'game-professions', skillId: 'bgs-professions', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-festivals', skillId: 'bgs-festivals', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
+  { id: 'game-kindness', skillId: 'bgs-kindness', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -424,6 +426,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-device': 'DeviceManners',
   'game-professions': 'ProfessionsMatch',
   'game-festivals': 'FestivalSort',
+  'game-kindness': 'Kindness',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
