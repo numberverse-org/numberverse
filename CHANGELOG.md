@@ -1,3 +1,8 @@
+## 14 Aug 2026 — 0.30.2 (parent portal: decompose dashboard into components/ + lib/portal (#620))
+
+ff23254 Merge pull request #696 from numberverse-org/fix/620-decompose-dashboard
+7cd3f87 ♻️ refactor: decompose parent dashboard into components/ + lib/portal (#620)
+
 ## 14 Aug 2026 — 0.30.1 (kid design tokens: 12 hardcoded colors centralized to NV_* / --nv-* palette (#591))
 
 ba23e81 🧹 chore: own 3D Nova roadmap-filing tool (three_d_nova.py)
