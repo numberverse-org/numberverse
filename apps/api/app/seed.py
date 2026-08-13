@@ -46,6 +46,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("count-to-50", 2, "math", "Count to 50", "৫০ পর্যন্ত গুনি"),
     ("count-to-100", 2, "math", "Count to 100", "১০০ পর্যন্ত গুনি"),
     ("count-to-999", 2, "math", "Build to 999", "৯৯৯ পর্যন্ত গঠন"),
+    ("odd-even", 2, "math", "Odd & even", "জোড় ও বিজোড়"),
     ("fruit-tree-add", 2, "math", "Fruit tree addition", "ফলের গাছ যোগ"),
     ("add-within-10", 2, "math", "Add within 10", "১০-এর মধ্যে যোগ"),
     ("sub-within-10", 2, "math", "Subtract within 10", "১০-এর মধ্যে বিয়োগ"),
