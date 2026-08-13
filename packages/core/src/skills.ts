@@ -193,6 +193,7 @@ export const SKILLS: Skill[] = [
   { id: 'bn-punctuation', band: 3, subject: 'bangla', title: 'Punctuation', titleBn: 'যতি চিহ্ন', description: 'Tap the right punctuation to end each sentence (। ? !)', descriptionBn: 'বাক্য শেষ করার সঠিক যতি চিহ্ন টিপি (। ? !)', commonCore: ['L.3.2c'], nctbCode: 'c3-bangla-5', classNumber: 3, game: 'game-punct' },
   // Language — graded read-a-story: tap-to-hear-word, comprehension quiz at the end.
   { id: 'bn-read-story', band: 3, subject: 'bangla', title: 'Read a story', titleBn: 'গল্প পড়ি', description: 'Read 3 graded stories, tap any word to hear it, answer the quiz', descriptionBn: '৩টি গল্প পড়ি, শব্দ টিপলে শুনি, শেষে প্রশ্নের উত্তর দিই', commonCore: ['RL.2.10', 'RL.3.10'], nctbCode: 'c3-bangla-6', classNumber: 3, game: 'game-readstory' },
+  { id: 'bn-idioms', band: 3, subject: 'bangla', title: 'Simple idioms', titleBn: 'সহজ বাগধারা', description: 'Match simple Bangla idioms to kid-friendly meanings (তালগাছে কুমড়ো → অসম্ভব)', descriptionBn: 'সহজ বাংলা বাগধারার মানে মেলাই (তালগাছে কুমড়ো → অসম্ভব)', commonCore: ['L.3.5'], nctbCode: 'c3-bangla-7', classNumber: 3, game: 'game-idioms' },
   { id: 'en-cvc', band: 3, subject: 'english', title: 'CVC words', titleBn: 'ইংরেজি শব্দ', description: 'Read cat, dog, sun, hat', descriptionBn: 'cat, dog, sun, hat পড়ি', commonCore: ['RF.2.3'], nctbCode: 'c2-english-3', classNumber: 2, game: 'game-cvc' },
   // Grammar — contractions: match I'm→I am, don't→do not, can't→cannot.
   { id: 'en-contractions', band: 3, subject: 'english', title: 'Contractions', titleBn: 'সংকোচন শব্দ', description: 'Match contractions to their two-word forms (I\x27m → I am, don\x27t → do not)', descriptionBn: 'সংকোচন শব্দের সঠিক জোড়া মেলাই (I\x27m → I am, don\x27t → do not)', commonCore: ['L.2.2c'], nctbCode: 'c3-english-4', classNumber: 3, game: 'game-contracts' },
@@ -310,6 +311,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-kindness', skillId: 'bgs-kindness', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-honesty', skillId: 'bgs-honesty', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-ordinals', skillId: 'bn-ordinals', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-idioms', skillId: 'bn-idioms', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -433,6 +435,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-kindness': 'Kindness',
   'game-honesty': 'Truth',
   'game-ordinals': 'Ordinals',
+  'game-idioms': 'Idioms',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',

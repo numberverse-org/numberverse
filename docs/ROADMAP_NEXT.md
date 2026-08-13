@@ -65,7 +65,7 @@
 - ~~Values: kindness & sharing scenarios~~  ✅ #214 — 12 everyday situations (friend forgot a crayon, one biscuit two friends…); tap the GREEN kind choice → 💚 heart burst + rotating praise spoken aloud; unkind taps get only a gentle "try the kind way" (never punished); each round shuffles all 12 so every kid meets them (kd* keys)
 - ~~Values: honesty — the truth game~~  ✅ #215 — 12 everyday situations (broke a vase, ate the last chocolate, found money…); tap the GREEN truthful response → ⭐ star burst + rotating praise spoken aloud; untruthful taps get only a gentle "try telling the truth" (never a penalty); each round shuffles all 12 so every kid meets them (hn* keys)
 - ~~Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)~~  ✅ #216 — race line of N runners 🏁 with a checkered finish flag; "Who is দ্বিতীয়?" → tap the 2nd-from-the-flag runner; wrong taps flash red + pulse the flag (where counting starts); each round asks every position exactly once, all 10 ordinals at lvl 6 (ord* keys)
-- Bangla: simple idioms for kids  _(priority: low, kid-first)_
+- ~~Bangla: simple idioms for kids~~  ✅ #217 — 12 বাগধারা (তালগাছে কুমড়ো 🌴🎃, চোখে আঙুল দিয়ে দেখা 👁️…) match their meaning; emoji picture hint + the idiom spoken aloud; 🔊 replay speaks a kid-friendly example; 3 meaning buttons, shuffle-bag guarantees all 12 met, lvl ladder [4,4,6,6,8,8] (id* keys)
 - Bangla: verb-form gender agreement  _(priority: low, kid-first)_
 - Bangla: classifiers & postpositions (গুলো/টাকে)  _(priority: low, kid-first)_
 - English: digraph review challenge (sh ch th wh ph)  _(priority: low, kid-first)_
