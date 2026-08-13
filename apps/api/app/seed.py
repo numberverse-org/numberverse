@@ -113,6 +113,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-perim", 3, "math", "Perimeter intro", "পরিসীমা শুরু"),
     ("en-solidmatch", 3, "math", "Flat faces & solids", "ভাঁজ ও ঘনবস্তু"),
     ("en-symmetry", 2, "math", "Symmetry mirror", "আয়নার প্রতিসাম্য"),
+    ("en-animals-move", 2, "science", "Animal moves", "প্রাণীর চলাফেরা"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("place-value-1000", 3, "math", "Place value to 9,999", "স্থানীয় মান"),
