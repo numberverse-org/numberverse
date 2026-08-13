@@ -97,6 +97,8 @@ const EN: Record<string, Entry> = {
   fuelRocket: "Fuel the rocket!",
   tapThe: "Tap the {target}!",
   findWord: "Find the word!",
+  swHear: "Tap the word you hear!",
+  swRead: "Read the word, then tap it!",
 
   /* ── spoken math questions ── */
   qAdd: "What is {a} plus {b}?",
@@ -469,6 +471,8 @@ const BN: Record<string, Entry> = {
   fuelRocket: "রকেটে জ্বালানি দাও!",
   tapThe: "ট্যাপ করো {target}!",
   findWord: "শব্দটা খুঁজে বের করো!",
+  swHear: "যে শব্দটা শুনলে, সেটা টিপো!",
+  swRead: "শব্দটা পড়ো, তারপর টিপো!",
 
   /* ── spoken math questions ── */
   qAdd: "{x} যোগ {y} কত?",
