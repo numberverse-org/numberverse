@@ -20,7 +20,7 @@
 - ~~Bangla: numbers 1-100 — see the word, tap the digit~~  ✅ #169 — full 1-100 word table, word↔digit stages, speaks every number
 - ~~Bangla: coin values (টাকার চেনা)~~  ✅ #170 — ৳1/2/5/10 recognition + count-to-total tray, names spoken
 - ~~Bangla: time words ordering (কাল-আজ-আগামীকাল)~~  ✅ #171 — calendar timeline, গতকাল→আজ→আগামীকাল ordering, distractor words
-- Bangla: direction words (উপরে-নিচে-ডানে-বামে)  _(priority: low, kid-first)_
+- ~~Bangla: direction words (উপরে-নিচে-ডানে-বামে)~~  ✅ #172 — 🐱 follows spoken directions to a ⭐ on a 4×4 grid, path 3→5 steps
 - Bangla: polite words social game (শিষ্টাচার)  _(priority: low, kid-first)_
 - Bangla: riddle time (ধাঁধা) fun reads  _(priority: low, kid-first)_
 - English: R-controlled vowels (ar er ir or ur)  _(priority: low, kid-first)_
