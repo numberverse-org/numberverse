@@ -538,6 +538,35 @@ td { font-size: 14px; }
 }
 .hint { color: rgba(255,255,255,0.55); font-size: 13px; margin-top: 10px; }
 
+/* ── #246 guided multi-kid onboarding wizard ───────────────────────────── */
+.card.onboarding-card { border-color: rgba(255, 209, 102, 0.45); }
+.onboard-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.onboard-head h2 { margin: 0; font-size: 22px; }
+.onboard-lang {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: inherit;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.onboard-step { color: rgba(255, 255, 255, 0.7); margin: 6px 0 4px; }
+.onboard-added { margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(255, 255, 255, 0.16); }
+.onboard-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.onboard-chip {
+  background: rgba(125, 227, 255, 0.14);
+  border: 1px solid rgba(125, 227, 255, 0.35);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 14px;
+}
+.onboard-ok { color: #9ef0c8; font-size: 13px; margin: 8px 0 0; }
+.onboard-actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.empty-state { margin-top: 6px; }
+.empty-state .row-buttons { justify-content: center; }
+.err.inline { margin-top: 8px; font-size: 13px; }
+
 /* ── account & security / family overview (v26) ────────────────────────── */
 .card.overview { border-color: rgba(125, 227, 255, 0.4); }
 .card.account { border-color: rgba(255, 233, 173, 0.32); }
