@@ -301,6 +301,40 @@ export async function getWeekly(token: string, kidId: string): Promise<WeeklyRep
   return res.json();
 }
 
+/** #245 — the anonymized weekly snapshot a share-card link opens. Deliberately
+ *  carries NO identity: rounds/minutes/accuracy/days, mastered count, top game. */
+export interface ShareSnapshot {
+  rounds: number;
+  minutes: number;
+  correct_pct: number;
+  active_days: number;
+  mastered_count: number;
+  top_game: string | null;
+  week_of: string;
+}
+
+/** #245 — mint (or return) the kid's opaque share token. Auth-protected; only
+ *  the parent can request it. The token is unguessable (24-byte URL-safe). */
+export async function getShareToken(token: string, kidId: string): Promise<string> {
+  const res = await authFetch(token, `${API}/kids/${kidId}/share-token`);
+  if (!res.ok) throw new Error("Failed to create share link");
+  const data = (await res.json()) as { token: string };
+  return data.token;
+}
+
+/** #245 — PUBLIC read of a share snapshot (no auth — the token IS the key).
+ *  Returns null for unknown links / offline, so the share page can degrade
+ *  gracefully. No tracking: this page makes exactly this one fetch. */
+export async function fetchShareSnapshot(shareToken: string): Promise<ShareSnapshot | null> {
+  try {
+    const res = await fetch(`${API}/share/${encodeURIComponent(shareToken)}`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 /** #238 — a kid's Kotha learning stories (newest first). The weekly narrative
  *  card reads these and summarizes client-side, so no story data is re-sent
  *  anywhere (edit-safe: the parent's edits never leave the browser). */

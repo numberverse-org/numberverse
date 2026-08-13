@@ -16,6 +16,7 @@ import {
   getWeakSkills,
   getStories,
   getStoryStats,
+  getShareToken,
   resetKidProgress,
   createKid,
   updateKid,
@@ -139,10 +140,6 @@ function weeklyShareText(kidName: string, w: WeeklyReport): string {
     `🎯 ${w.correct_pct}% correct`,
     mastered,
   ].join("\n");
-}
-
-function waShare(kidName: string, w: WeeklyReport): string {
-  return `https://wa.me/?text=${encodeURIComponent(weeklyShareText(kidName, w))}`;
 }
 
 const DEFAULT_SETTINGS: KidSettingsT = {
@@ -494,6 +491,11 @@ export default function ParentDashboard() {
   // #240 — side-by-side kid comparison (offline: derives from loaded state).
   const [cmpA, setCmpA] = useState<string | null>(null);
   const [cmpB, setCmpB] = useState<string | null>(null);
+
+  // #245 — per-kid share-card deep link (minted lazily on first share).
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -964,6 +966,29 @@ export default function ParentDashboard() {
     }
   }
 
+  /** #245 — share-card deep link: mint the kid's opaque token (first share
+   *  only) and append a UNIQUE per-kid link to the WhatsApp weekly card. The
+   *  link opens an ANONYMOUS snapshot page — no name, no skill data, no
+   *  tracking; only the parent can mint the token. */
+  async function handleShareWeekly() {
+    if (!token || !activeId || shareBusy) return;
+    setShareBusy(true);
+    setError(null);
+    try {
+      const shareToken = await getShareToken(token, activeId);
+      const base = (typeof window !== "undefined" ? window.location.origin : "") + (process.env.NEXT_PUBLIC_BASE_PATH ?? "");
+      const link = `${base}/share/?t=${encodeURIComponent(shareToken)}`;
+      const text = weeklyShareText(active?.name ?? "My kid", activeWeekly) + `\n🔗 See the week: ${link}`;
+      const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      if (isAllowedExternalUrl(wa)) window.open(wa, "_blank", "noopener,noreferrer");
+      setShareLink(link);
+    } catch {
+      setError("Couldn't create the share link.");
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
   /** #239 — a reteach hook for a flagged skill: a QR the kid scans in the app
    *  (`NV:<skillId>`) to jump straight into that skill's game. Pure client-side
    *  QR, no network needed — matches the existing flashcard-card pattern. */
@@ -1168,18 +1193,35 @@ export default function ParentDashboard() {
             <div className="weekly-head">
               <h2>📊 This week</h2>
               {activeWeekly.rounds > 0 && (
-                <a
+                <button
                   className="share-btn"
-                  href={waShare(active.name, activeWeekly)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    // #267 — never launch an app outside the scheme allowlist.
-                    if (!isAllowedExternalUrl(waShare(active.name, activeWeekly))) e.preventDefault();
-                  }}
+                  disabled={shareBusy}
+                  onClick={() => void handleShareWeekly()}
+                  title="Share this week on WhatsApp with a private, anonymous link"
                 >
-                  Share on WhatsApp
-                </a>
+                  {shareBusy ? "Preparing…" : "Share on WhatsApp"}
+                </button>
+              )}
+              {shareLink && (
+                <span className="share-link-note">
+                  🔗{" "}
+                  <code>{shareLink}</code>{" "}
+                  <button
+                    className="ghost-btn small"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(shareLink);
+                        setShareCopied(true);
+                        window.setTimeout(() => setShareCopied(false), 1500);
+                      } catch {
+                        /* clipboard unavailable */
+                      }
+                    }}
+                  >
+                    {shareCopied ? "✓ Copied" : "Copy link"}
+                  </button>
+                  <span className="muted small">opens a private, anonymous week snapshot</span>
+                </span>
               )}
             </div>
             {activeWeekly.rounds === 0 ? (
