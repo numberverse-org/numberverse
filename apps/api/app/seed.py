@@ -118,6 +118,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-weather-seasons", 1, "science", "Weather & seasons", "আবহাওয়া ও ঋতু"),
     ("en-light-shadows", 2, "science", "Light & shadows", "আলো ও ছায়া"),
     ("en-magnets", 2, "science", "Magnets", "চুম্বক"),
+    ("en-water-cycle", 2, "science", "Water cycle", "পানিচক্র"),
     ("fractions-intro", 3, "math", "Halves and quarters", "অর্ধেক ও চতুর্থাংশ"),
     ("tell-time", 3, "math", "Tell time", "ঘড়ি পড়া"),
     ("place-value-1000", 3, "math", "Place value to 9,999", "স্থানীয় মান"),
