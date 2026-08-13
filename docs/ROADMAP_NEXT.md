@@ -82,7 +82,7 @@
 - ~~Science: sink or float predict~~  ✅ #231 — 16 objects, predict-then-check
 - ~~Science: animal food chains~~  ✅ #232 — 6 chains, arrow ordering
 - ~~Science: day & night — earth rotation~~  ✅ #233 — spin visual + why questions
-- ICT: tap/drag accuracy trainer  _(priority: low, kid-first)_
+- ~~ICT: tap/drag accuracy trainer~~  ✅ #234 — catch the bugs, drag the butterfly
 - Social: village & city life sort  _(priority: low, kid-first)_
 - Values: patience & waiting game  _(priority: low, kid-first)_
 
