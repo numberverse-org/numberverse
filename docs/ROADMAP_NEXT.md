@@ -37,7 +37,7 @@
 - ~~English: word families (-at -an -ig -op)~~  ✅ #186 — 8 rhyming families × 4 words, drag each word to its bucket (correct fly-in / wrong bounce-back)
 - ~~English: yes/no listening comprehension~~  ✅ #187 — 22 spoken sentence+question pairs, tap ✅/❌, 🐢 slow-replay button
 - ~~Math: addition facts to 20 fluency~~  ✅ #188 — timed 6s-per-fact sprint, fact range grows by level to 20, ⚡ speed (<2.5s) + accuracy tally
-- Math: subtraction facts to 20 fluency  _(priority: low, kid-first)_
+- ~~Math: subtraction facts to 20 fluency~~  ✅ #189 — timed 6s-per-fact minus sprint, visual 0–20 number line hops back to the difference, ⚡ speed + accuracy tally
 - Math: doubles & near-doubles  _(priority: low, kid-first)_
 - Math: making ten strategy  _(priority: low, kid-first)_
 - Math: 2-digit addition with regrouping (visual)  _(priority: low, kid-first)_
