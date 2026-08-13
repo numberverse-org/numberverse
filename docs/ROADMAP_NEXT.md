@@ -47,7 +47,7 @@
 - ~~Math: fractions — parts of a set~~  ✅ #196 — group of 🍎 (4–16), tap the correct subset (green rings, toggle), ✅ checks the count; 1/2, 1/3, 2/3, 1/4…3/4 of the group
 - ~~Math: mixed numbers & improper fractions intro~~  ✅ #197 — bar models + 0..3 number line; kid converts 1½ ↔ 3/2 both directions; 4 option cards, value-distinct distractors
 - ~~Math: decimals — tenths place value~~  ✅ #198 — 10-cell strip (each cell = 0.1); read the shaded decimal (0.3) from 4 cards, build it by shading cells + ✅; place-value speech "3 tenths"
-- Math: making change with ৳ notes  _(priority: low, kid-first)_
+- ~~Math: making change with ৳ notes~~  ✅ #199 — pay with ৳50/৳100 and compute the change (৳50−৳32=৳18) on note visuals; then tap ৳5/10/20/50 off a tray to make exact amounts + ✅
 - Math: elapsed time (how long until…)  _(priority: low, kid-first)_
 - Math: perimeter intro (measure the fence)  _(priority: low, kid-first)_
 - Math: 2D → 3D shape pairing  _(priority: low, kid-first)_
