@@ -97,6 +97,8 @@ export const SKILLS: Skill[] = [
   // Language — riddles: spoken clue + picture answer, hint ladder (ধাঁধা).
   { id: 'bn-riddle', band: 2, subject: 'bangla', title: 'Riddle time', titleBn: 'ধাঁধা', description: 'Solve short spoken riddles by tapping the picture answer (কলা, কুকুর, রংধনু…)', descriptionBn: 'ছোট ধাঁধা শুনে ছবির উত্তর টিপি (কলা, কুকুর, রংধনু…)', commonCore: ['SL.2.3'], nctbCode: 'c2-bangla-11', classNumber: 2, game: 'game-riddle' },
   { id: 'en-phonics', band: 2, subject: 'english', title: 'Letter sounds', titleBn: 'বর্ণের উচ্চারণ', description: 'First letter sounds (A, B, C)', descriptionBn: 'প্রথম অক্ষরের উচ্চারণ (A, B, C)', commonCore: ['RF.K.3a'], nctbCode: 'c1-english-2', classNumber: 1, game: 'game-enphonics' },
+  // Phonics — bossy-R vowels: hear the word, pick its spelling among ar/er/ir/or/ur word families.
+  { id: 'en-rcontrolled', band: 2, subject: 'english', title: 'Bossy R', titleBn: 'bossy-R', description: 'Hear car/turn/bird, pick the right bossy-R spelling (ar er ir or ur)', descriptionBn: 'car/turn/bird শুনে সঠিক bossy-R বানান টিপি (ar er ir or ur)', commonCore: ['RF.1.3b'], nctbCode: 'c2-english-4', classNumber: 2, game: 'game-rcontrolled' },
   // Science — heavier / lighter (direct comparison)
   { id: 'heavy-light', band: 2, subject: 'science', title: 'Heavy or light', titleBn: 'ভারী না হালকা', description: 'Which side of the seesaw is heavier?', descriptionBn: 'দোলনার কোন দিক ভারী?', commonCore: ['K.MD.2'], nctbCode: 'c1-science-1', classNumber: 1, game: 'game-balance' },
   // Science — sink vs float: predict, then watch the object's TRUE behavior.
@@ -227,6 +229,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-numberwords', skillId: 'bn-number-words', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-riddle', skillId: 'bn-riddle', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
+  { id: 'game-rcontrolled', skillId: 'en-rcontrolled', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
@@ -295,6 +298,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-directionwords': 'DirectionWords',
   'game-polite': 'Polite',
   'game-enphonics': 'EnPhonics',
+  'game-rcontrolled': 'RControlled',
   'game-balloonpop': 'BalloonPop',
   'game-balance': 'Balance',
   'game-sinkfloat': 'SinkFloat',
