@@ -190,7 +190,7 @@
 - Perf: game-loop memory audit  _(priority: low, kid-first, polish)_
 - PWA: staged offline updates  _(priority: low, kid-first, polish)_
 - Polish: sound-mixing balance  _(priority: low, kid-first, polish)_
-- Polish: haptic feedback on taps  _(priority: low, kid-first, polish)_
+- ~~Polish: haptic feedback on taps~~ ✅ #355 — 📳 subtle pulses on correct/wrong/win/UI via the shared audio path, Settings off-switch, auto no-op on unsupported devices, locale-packed (PR pending)
 - Polish: onboarding tour for first play  _(priority: low, kid-first, polish)_
 - Perf: scene preload strategy  _(priority: low, kid-first, polish)_
 
