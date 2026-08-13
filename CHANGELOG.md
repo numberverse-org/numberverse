@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.36.0 (Pet mini-games batch 3: Hide & Seek + Pet Memory + Tuck-in (#604 #611 #601))
+
+b7fa638 🎮 pet mini-games batch 3: Hide & Seek + Pet Memory + Tuck-in (#604 #611 #601)
+
 ## 14 Aug 2026 — 0.35.0 (Pet mini-games batch 2: Bath Time + Pet Stroke + Sort Treats (#600 #599 #614))
 
 45ba285 🐛 audit: rename TreatSort data keys to lowercase (avoid camelCase i18n false positive)
