@@ -214,6 +214,9 @@ export interface NovaState {
    *  condition (mastered === total) lives in App.tsx; the store persists the
    *  earned set so a NEW trophy can be celebrated exactly once. */
   trophies: number[];
+  /** #284 — skill ids whose mastery mystery box has already been opened (the
+   *  box appears on home for every mastered skill not in this list). */
+  boxes: string[];
   /** The kid's pet — an egg that hatches + grows as they learn. */
   petStage: number; // 0 egg → 1 hatchling → 2 young → 3 grown (per species)
   petProgress: number; // 0..1 toward the next stage
@@ -244,6 +247,7 @@ export function defaultNova(): NovaState {
     calendarDay: "",
     badges: [],
     trophies: [],
+    boxes: [],
     petStage: 0,
     petProgress: 0,
     petFed: "",
@@ -363,6 +367,10 @@ interface KidState {
   /** #277 — persist the currently-earned land trophy band-ids; returns the
    *  NEWLY-earned subset (so the UI can celebrate each once). */
   novaSyncTrophies: (kidId: string, earned: number[]) => number[];
+  /** #284 — open the next unclaimed mastery mystery box. Coins stay inside the
+   *  daily anti-grind cap (cap-full → the box waits for another day; no real
+   *  money, kid-safe). Returns { skillId, coins } — skillId null = no boxes. */
+  novaOpenBox: (kidId: string, unclaimed: string[]) => { skillId: string | null; coins: number };
   /** A parent shared this kid's progress → +NOVA_SHARE_REWARD coins, once per
    *  calendar day. Returns true when the reward was actually granted. */
   novaShareReward: (kidId: string) => boolean;
@@ -909,6 +917,38 @@ export const useKidStore = create<KidState>()(
           return { nova: { ...s.nova, [kidId]: { ...cur, trophies: merged } } };
         });
         return newly;
+      },
+
+      /* ── #284 mastery mystery boxes: opening one awards 2–5 coins inside the
+           daily cap. The boxed skill ids the kid has mastered come from App.tsx
+           (it knows the catalog); the store just marks them opened + pays. ── */
+
+      novaOpenBox: (kidId, unclaimed) => {
+        const n = get().nova[kidId] ?? defaultNova();
+        const stored = n.boxes ?? [];
+        const next = unclaimed.find((id) => !stored.includes(id));
+        if (!next) return { skillId: null, coins: 0 };
+        const today = todayIso();
+        const earnedToday = n.earnDay === today ? n.earnedToday : 0;
+        if (earnedToday >= NOVA_DAILY_CAP) return { skillId: next, coins: 0 }; // cap full → box waits
+        const add = Math.min(2 + Math.floor(Math.random() * 4), NOVA_DAILY_CAP - earnedToday); // 2..5
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: {
+                ...cur,
+                boxes: [...(cur.boxes ?? []), next],
+                coins: cur.coins + add,
+                totalEarned: cur.totalEarned + add,
+                earnedToday: (cur.earnDay === today ? cur.earnedToday : 0) + add,
+                earnDay: today,
+              },
+            },
+          };
+        });
+        return { skillId: next, coins: add };
       },
 
       /* ── Share reward: parent shared this kid's progress → once/day bonus ── */
