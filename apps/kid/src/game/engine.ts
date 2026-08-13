@@ -48,6 +48,7 @@ import { CompoundScene } from "./CompoundScene";
 import { LetterSoundScene } from "./LetterSoundScene";
 import { MatraMatrixScene } from "./MatraMatrixScene";
 import { ReadStoryScene } from "./ReadStoryScene";
+import { NumberWordsScene } from "./NumberWordsScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -122,6 +123,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       LetterSoundScene,
       MatraMatrixScene,
       ReadStoryScene,
+      NumberWordsScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },

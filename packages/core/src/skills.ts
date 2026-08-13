@@ -84,6 +84,8 @@ export const SKILLS: Skill[] = [
   { id: 'bn-compounds', band: 2, subject: 'bangla', title: 'Compound words', titleBn: 'যোগে যোগে শব্দ', description: 'Tap the two small words that join to make a new Bangla word (গোলাপ + ফুল = গোলাপফুল)', descriptionBn: 'দুটি ছোট শব্দ মিলিয়ে নতুন শব্দ বানাই (গোলাপ + ফুল = গোলাপফুল)', commonCore: ['RF.2.3d'], nctbCode: 'c2-bangla-8', classNumber: 2, game: 'game-compounds' },
   // Language — matra matrix: mixed matras inside real words (মাত্রা মিশ্রণ).
   { id: 'bn-matra-matrix', band: 2, subject: 'bangla', title: 'Matra matrix', titleBn: 'মাত্রা মিশ্রণ', description: 'Complete real words by picking the right matra (ক + ◻ + টা = কাটা)', descriptionBn: 'সঠিক মাত্রা দিয়ে শব্দ শেষ করি (ক + ◻ + টা = কাটা)', commonCore: ['RF.2.3c'], nctbCode: 'c2-bangla-9', classNumber: 2, game: 'game-matramatrix' },
+  // Language — number words 1-100: map the Bangla word to its digit and back.
+  { id: 'bn-number-words', band: 2, subject: 'bangla', title: 'Number words', titleBn: 'সংখ্যা শব্দ', description: 'Match Bangla number words to digits 1-100 (একুশ → 21)', descriptionBn: 'সংখ্যার শব্দ আর অঙ্ক মেলাই ১-১০০ (একুশ → ২১)', commonCore: ['RF.2.3e'], nctbCode: 'c2-bangla-10', classNumber: 2, game: 'game-numberwords' },
   { id: 'en-phonics', band: 2, subject: 'english', title: 'Letter sounds', titleBn: 'বর্ণের উচ্চারণ', description: 'First letter sounds (A, B, C)', descriptionBn: 'প্রথম অক্ষরের উচ্চারণ (A, B, C)', commonCore: ['RF.K.3a'], nctbCode: 'c1-english-2', classNumber: 1, game: 'game-enphonics' },
   // Science — heavier / lighter (direct comparison)
   { id: 'heavy-light', band: 2, subject: 'science', title: 'Heavy or light', titleBn: 'ভারী না হালকা', description: 'Which side of the seesaw is heavier?', descriptionBn: 'দোলনার কোন দিক ভারী?', commonCore: ['K.MD.2'], nctbCode: 'c1-science-1', classNumber: 1, game: 'game-balance' },
@@ -208,6 +210,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-lettersound', skillId: 'bn-lettersound', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-matramatrix', skillId: 'bn-matra-matrix', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-readstory', skillId: 'bn-read-story', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-numberwords', skillId: 'bn-number-words', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
@@ -298,6 +301,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-lettersound': 'LetterSound',
   'game-matramatrix': 'MatraMatrix',
   'game-readstory': 'ReadStory',
+  'game-numberwords': 'NumberWords',
   'game-cvc': 'Cvc',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',
