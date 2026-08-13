@@ -122,6 +122,9 @@ export const SKILLS: Skill[] = [
   { id: 'en-animals-move', band: 2, subject: 'science', title: 'Animal moves', titleBn: 'প্রাণীর চলাফেরা', description: 'Sort animals by how they move — fly, swim, crawl, walk (bee, fish, snake, elephant…)', descriptionBn: 'প্রাণীকে তার চলাফেরা অনুযায়ী সাজাই — উড়ে, সাঁতার, হামাগুড়ি, হেঁটে (মৌমাছি, মাছ, সাপ, হাতি…)', commonCore: ['1.LS.1'], nctbCode: 'c2-science-6', classNumber: 2, game: 'game-animalsmove' },
   // Science — plant life cycle: order seed → sprout → plant → flower → fruit with a growing pot.
   { id: 'en-plant-life', band: 2, subject: 'science', title: 'Plant life cycle', titleBn: 'গাছের জীবনচক্র', description: 'Order the plant life cycle — seed, sprout, plant, flower, fruit — and watch it grow in a pot', descriptionBn: 'গাছের জীবনচক্র সাজাই — বীজ, চারা, গাছ, ফুল, ফল — আর পাত্রে বাড়তে দেখি', commonCore: ['1.LS.1'], nctbCode: 'c2-science-7', classNumber: 2, game: 'game-plantlife' },
+  // Science — plants parts & needs: tap the part (root/stem/leaf/flower) and
+  // sort what a plant needs (water/sun/soil/air) — a seed grows as you answer.
+  { id: 'science-plants', band: 2, subject: 'science', title: 'Plants: parts & needs', titleBn: 'গাছ: অঙ্গ ও প্রয়োজন', description: 'Tap the plant part and pick what a plant needs to grow', descriptionBn: 'গাছের অঙ্গ চেপে দেখাই আর গাছের কী দরকার বাছাই করি', commonCore: ['1.LS.1'], nctbCode: 'c2-science-11', classNumber: 2, game: 'game-plants' },
   // Science — weather & seasons: sort clothes/activities into summer/rainy/winter/spring bins.
   { id: 'en-weather-seasons', band: 1, subject: 'science', title: 'Weather & seasons', titleBn: 'আবহাওয়া ও ঋতু', description: 'Sort clothes and activities by season — sunscreen for summer, umbrella for rainy, scarf for winter, kite for spring', descriptionBn: 'ঋতু অনুযায়ী পোশাক-কাজ সাজাই — গ্রীষ্মে সানস্ক্রিন, বর্ষায় ছাতা, শীতে স্কার্ফ, বসন্তে ঘুড়ি', commonCore: ['K.ESS.2'], nctbCode: 'c1-science-2', classNumber: 1, game: 'game-seasons' },
   // Science — living & non-living: sort 36 pictures into জীব (living) / জড় (non-living).
@@ -311,6 +314,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-symmetry', skillId: 'en-symmetry', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-animalsmove', skillId: 'en-animals-move', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-plantlife', skillId: 'en-plant-life', difficultyLevels: [4, 4, 5, 5, 5, 5], targetSuccess: 0.8 },
+  { id: 'game-plants', skillId: 'science-plants', difficultyLevels: [3, 3, 4, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-seasons', skillId: 'en-weather-seasons', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-living', skillId: 'science-living', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-shadows', skillId: 'en-light-shadows', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
@@ -444,6 +448,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-symmetry': 'SymmetryMirror',
   'game-animalsmove': 'AnimalsMove',
   'game-plantlife': 'PlantLife',
+  'game-plants': 'PlantParts',
   'game-seasons': 'WeatherSeasons',
   'game-living': 'LivingSort',
   'game-shadows': 'ShadowGuess',
