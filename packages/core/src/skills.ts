@@ -217,6 +217,7 @@ export const SKILLS: Skill[] = [
   // Reading — alphabetical order: drag 4-6 words into ABC order (instant check).
   { id: 'en-alphabet', band: 2, subject: 'english', title: 'Alphabet order', titleBn: 'বর্ণানুক্রম', description: 'Drag the words into alphabetical (ABC) order — each card glows green when it is home', descriptionBn: 'শব্দগুলো ABC ক্রমে সাজাও — সঠিক জায়গায় গেলে কার্ড সবুজ হয়ে যায়', commonCore: ['RF.1.1d'], nctbCode: 'c2-english-11', classNumber: 2, game: 'game-alphabet' },
   { id: 'en-digraphs', band: 2, subject: 'english', title: 'Digraph review', titleBn: 'ডাইগ্রাফ পর্যালোচনা', description: 'Hear ship/chair/three/whale/phone and tap the digraph that makes the word (sh ch th wh ph)', descriptionBn: 'ship/chair/three/whale/phone শুনে শব্দটি তৈরি করা ডাইগ্রাফ টিপি (sh ch th wh ph)', commonCore: ['RF.1.3a'], nctbCode: 'c2-english-12', classNumber: 2, game: 'game-digraphs' },
+  { id: 'en-longvowels', band: 2, subject: 'english', title: 'Vowel teams', titleBn: 'স্বর দল', description: 'Hear rain/play/tree/sea/boat/snow/pie/night and tap the long-vowel team that makes the word (ai ay ee ea oa ow ie igh)', descriptionBn: 'rain/play/tree/sea/boat/snow/pie/night শুনে শব্দটি তৈরি করা স্বর দল টিপি (ai ay ee ea oa ow ie igh)', commonCore: ['RF.1.3c'], nctbCode: 'c2-english-13', classNumber: 2, game: 'game-longvowels' },
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
   { id: 'division-facts', band: 4, subject: 'math', title: 'Division facts', titleBn: 'ভাগ করা', description: 'Division facts within 100 (24÷3, 45÷5)', descriptionBn: '১০০-এর মধ্যে ভাগের সত্যি (২৪÷৩, ৪৫÷৫)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 3, game: 'game-division' },
@@ -321,6 +322,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-verbgender', skillId: 'bn-verbgender', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-classifiers', skillId: 'bn-classifiers', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-digraphs', skillId: 'en-digraphs', difficultyLevels: [10000, 9000, 8000, 7000, 6000, 5000], targetSuccess: 0.8 },
+  { id: 'game-longvowels', skillId: 'en-longvowels', difficultyLevels: [10000, 9000, 8000, 7000, 6000, 5000], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -451,6 +453,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-verbgender': 'VerbGender',
   'game-classifiers': 'Classifiers',
   'game-digraphs': 'Digraphs',
+  'game-longvowels': 'LongVowel',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',

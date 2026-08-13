@@ -72,7 +72,7 @@
 - ~~English: synonyms & antonyms pairs~~  ✅ #221 — "Same or opposite?" mode pill 🎨: target word + emoji (happy 😊 / big 🐘) asks for the same-meaning or opposite word; 16 synonym + 16 antonym pairs, each round mixes half/half; 3 string-distinct options, separate shuffle-bags with round-level dedupe, correct tap says "Yes! happy → glad"; lvl [6,6,8,8,10,10] (sa* keys)
 - ~~English: irregular plurals (foot-feet, mouse-mice)~~  ✅ #222 — "Make it plural!" one foot 🦶 → "two ___?"; 14 irregular pairs (foot→feet, mouse→mice, child→children, ox→oxen, sheep→sheep, leaf→leaves…); 3 string-distinct options, shuffle-bag + round-level dedupe, correct says "Perfect! foot → feet" and speaks "one foot, two feet"; lvl [4,4,6,6,8,8] (ip* keys)
 - ~~English: irregular past tense (go-went, see-saw)~~  ✅ #223 — "Past time!" Today I go 🚶 → "Yesterday I ___ to school."; 16 irregular verbs (go→went, see→saw, eat→ate, buy→bought, sleep→slept, read→read…), sentence-context blank fill that speaks the whole sentence on correct; 3 string-distinct options, shuffle-bag + round-level dedupe; lvl [4,4,6,6,8,8] (iv* keys)
-- English: long-vowel teams review  _(priority: low, kid-first)_
+- ~~English: long-vowel teams review~~  ✅ #224 — "Vowel teams!" hear "r____n" 🌧️ → tap the long-vowel team that makes the word; 8 mixed teams × 5 words = 40 (ai ay ee ea oa ow ie igh); every round covers all 8 teams, per-team shuffle-bags reach all 40; shrinking timer bar 10s→5s for speed, gentle "Faster!" on timeout; lvl [10000…5000]ms (lv* keys)
 - Math: skip-counting by 3s & 4s  _(priority: low, kid-first)_
 - ~~Math: odd & even sort~~  ✅ #226
 - ~~Math: number bonds to 10 & 20~~  ✅ #227
