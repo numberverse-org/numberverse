@@ -16,7 +16,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
@@ -64,6 +64,17 @@ const MISCONCEPTION_LABELS: Record<string, { en: string; bn: string }> = {
   reversal: { en: "Writes the digit backwards", bn: "অঙ্ক উল্টে লেখে" },
   "repeated-error": { en: "Same mistake keeps repeating", bn: "একই ভুল বারবার হয়" },
 };
+
+/** #247 — PIN-recovery security questions. Index = stored qid (so a locale
+ *  change never corrupts the pairing). Add a key to the locale map for any new
+ *  country pack — no rewrites. */
+const SECURITY_QUESTIONS: Array<{ en: string; bn: string }> = [
+  { en: "What is your favourite colour?", bn: "আপনার প্রিয় রং কোনটি?" },
+  { en: "What is the name of your first pet?", bn: "আপনার প্রথম পোষা প্রাণীর নাম কী?" },
+  { en: "What is your mother's first name?", bn: "আপনার মায়ের প্রথম নাম কী?" },
+  { en: "Which city were you born in?", bn: "আপনি কোন শহরে জন্মেছেন?" },
+  { en: "What is your favourite food?", bn: "আপনার প্রিয় খাবার কোনটি?" },
+];
 
 /** 🎯 #325 — MONI contrast-drill templates, keyed by misconception CODE.
  *  Each is a short side-by-side quiz: two big options (correct + the pattern's
@@ -1015,6 +1026,29 @@ interface Strings {
   pinLockCardSub: string;
   pinSet: string;
   pinChange: string;
+  /* #247 — PIN recovery Q&A */
+  secPanelTitle: string;
+  secPanelSub: string;
+  secPanelSet: string;
+  secPanelChange: string;
+  secPanelHas: string;
+  secPickTitle: string;
+  secPickSub: string;
+  secAnswerTitle: string;
+  secAnswerSub: string;
+  secConfirmTitle: string;
+  secNext: string;
+  secSave: string;
+  secSkip: string;
+  secCancel: string;
+  secAskTitle: string;
+  secAskSub: string;
+  secQuestion: string;
+  secAnswerPlaceholder: string;
+  secWrong: string;
+  secEmpty: string;
+  secRecovered: string;
+  secMismatch: string;
   /* about / version */
   settingsAboutSub: string;
   settingsVoice: string;
@@ -1613,9 +1647,9 @@ const STR: Record<Lang, Strings> = {
     pinNewTitle: "New PIN",
     pinWrong: (n) => (n === 1 ? "Wrong PIN — 1 try left" : `Wrong PIN — ${n} tries left`),
     pinLocked: "PIN pad locked",
-    pinLockedSub: "Too many wrong tries. Reset the PIN below — you'll sign back in and set a new one.",
+    pinLockedSub: "Too many wrong tries. Answer your security question to reset the PIN here.",
     pinForgot: "Forgot PIN?",
-    pinForgotSub: "Resets the lock and signs you out of the parent account.",
+    pinForgotSub: "Answer your security question to reset it here — no sign-out needed.",
     pinResetArmed: "Reset PIN & sign out?",
     pinResetCta: "Reset & sign out",
     pinMismatch: "PINs don't match — start over",
@@ -1625,6 +1659,29 @@ const STR: Record<Lang, Strings> = {
     pinLockCardSub: "The parent area opens with a 4-digit PIN",
     pinSet: "Set PIN",
     pinChange: "Change PIN",
+    /* #247 — PIN recovery Q&A */
+    secPanelTitle: "🔐 PIN recovery question",
+    secPanelSub: "A security question lets you reset a forgotten PIN right here — no sign-out needed.",
+    secPanelSet: "Set recovery question",
+    secPanelChange: "Change question",
+    secPanelHas: "Recovery question set ✓",
+    secPickTitle: "Pick a recovery question",
+    secPickSub: "You'll answer this to reset the PIN if you ever forget it.",
+    secAnswerTitle: "Your answer",
+    secAnswerSub: "Type something only you know.",
+    secConfirmTitle: "Repeat your answer",
+    secNext: "Next",
+    secSave: "Save",
+    secSkip: "Skip for now",
+    secCancel: "Cancel",
+    secAskTitle: "Recover your PIN",
+    secAskSub: "Answer your security question to reset the PIN on this device.",
+    secQuestion: "Your question",
+    secAnswerPlaceholder: "Type your answer",
+    secWrong: "That doesn't match — try again.",
+    secEmpty: "Type an answer first.",
+    secRecovered: "PIN reset — now set a new 4-digit PIN below.",
+    secMismatch: "Answers don't match — start over.",
     settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
@@ -2216,9 +2273,9 @@ const STR: Record<Lang, Strings> = {
     pinNewTitle: "নতুন পিন",
     pinWrong: (n) => (n === 1 ? "ভুল পিন — ১ বার চেষ্টা বাকি" : `ভুল পিন — ${n} বার চেষ্টা বাকি`),
     pinLocked: "পিন প্যাড লক হয়ে গেছে",
-    pinLockedSub: "অনেকবার ভুল পিন দেওয়া হয়েছে। নিচে থেকে পিন রিসেট করুন — আবার সাইন ইন করে নতুন পিন সেট করবেন।",
+    pinLockedSub: "অনেকবার ভুল পিন। নিরাপত্তা প্রশ্নের উত্তর দিয়ে এখানে পিন রিসেট করুন।",
     pinForgot: "পিন ভুলে গেছেন?",
-    pinForgotSub: "লক রিসেট করে মা-বাবার অ্যাকাউন্ট থেকে সাইন আউট হবে।",
+    pinForgotSub: "নিরাপত্তা প্রশ্নের উত্তর দিয়ে এখানেই রিসেট করুন — সাইন আউট লাগবে না।",
     pinResetArmed: "পিন রিসেট করে সাইন আউট করবেন?",
     pinResetCta: "রিসেট ও সাইন আউট",
     pinMismatch: "পিন মেলেনি — আবার শুরু করুন",
@@ -2228,6 +2285,29 @@ const STR: Record<Lang, Strings> = {
     pinLockCardSub: "মা-বাবার অংশ ৪ অঙ্কের পিন দিয়ে খোলে",
     pinSet: "পিন সেট করুন",
     pinChange: "পিন পরিবর্তন করুন",
+    /* #247 — PIN recovery Q&A */
+    secPanelTitle: "🔐 পিন পুনরুদ্ধারের প্রশ্ন",
+    secPanelSub: "নিরাপত্তা প্রশ্ন দিয়ে ভুলে যাওয়া পিন এখানেই রিসেট করতে পারবেন — সাইন আউট লাগবে না।",
+    secPanelSet: "পুনরুদ্ধারের প্রশ্ন সেট করুন",
+    secPanelChange: "প্রশ্ন পরিবর্তন করুন",
+    secPanelHas: "পুনরুদ্ধারের প্রশ্ন সেট আছে ✓",
+    secPickTitle: "একটি পুনরুদ্ধারের প্রশ্ন বেছে নিন",
+    secPickSub: "পিন ভুলে গেলে এই প্রশ্নের উত্তর দিয়ে রিসেট করতে পারবেন।",
+    secAnswerTitle: "আপনার উত্তর",
+    secAnswerSub: "শুধু আপনি জানেন এমন কিছু লিখুন।",
+    secConfirmTitle: "উত্তরটি আবার লিখুন",
+    secNext: "পরবর্তী",
+    secSave: "সংরক্ষণ",
+    secSkip: "এখন বাদ দিন",
+    secCancel: "বাতিল",
+    secAskTitle: "পিন পুনরুদ্ধার করুন",
+    secAskSub: "নিরাপত্তা প্রশ্নের উত্তর দিয়ে এই ডিভাইসে পিন রিসেট করুন।",
+    secQuestion: "আপনার প্রশ্ন",
+    secAnswerPlaceholder: "আপনার উত্তর লিখুন",
+    secWrong: "উত্তর মেলেনি — আবার চেষ্টা করুন।",
+    secEmpty: "আগে উত্তর লিখুন।",
+    secRecovered: "পিন রিসেট হয়েছে — নিচে নতুন ৪ অঙ্কের পিন সেট করুন।",
+    secMismatch: "উত্তর দুটি মেলেনি — আবার শুরু করুন।",
     settingsAboutSub: "নম্বরভার্স · কৌতূহলী বাচ্চাদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,
@@ -3468,7 +3548,7 @@ export default function App() {
   // bypass it. The PIN is stored as a salted hash in api.ts (per-device only).
   //   · no PIN set yet        → mandatory setup pad on first panel entry
   //   · PIN set + not verified → unlock pad (3 wrong tries → locked → recover
-  //     via sign-out-and-back-in, which resets the PIN)
+  //     via the security question (#247), or sign-out-and-back-in as fallback)
   //   · PIN verified          → panel; a "Change PIN" card re-arms the pad
   const [pinOk, setPinOk] = useState(false);
   const [pinMode, setPinMode] = useState<"unlock" | "setup" | "change">("unlock");
@@ -3476,6 +3556,7 @@ export default function App() {
   const [pinDigits, setPinDigits] = useState("");
   const [pinPending, setPinPending] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
+  const [pinNotice, setPinNotice] = useState<string | null>(null);
   const [pinTries, setPinTries] = useState(0);
   const [pinLocked, setPinLocked] = useState(false);
   const [pinForgotArmed, setPinForgotArmed] = useState(false);
@@ -3488,11 +3569,55 @@ export default function App() {
     setPinLocked(false);
     pinResetPad();
   };
+
+  // #247 — PIN recovery Q&A. Set at first PIN use (or from the panel card),
+  // asked on the unlock/locked pad to reset the PIN IN PLACE — fully offline,
+  // no sign-out, no account lockout. Stored as a salted hash in api.ts.
+  const [secView, setSecView] = useState<"none" | "set" | "ask">("none");
+  const [secStep, setSecStep] = useState<"pick" | "answer" | "confirm">("pick");
+  const [secQid, setSecQid] = useState(0);
+  const [secAnswer, setSecAnswer] = useState("");
+  const [secConfirm, setSecConfirm] = useState("");
+  const [secError, setSecError] = useState<string | null>(null);
+  const resetSec = () => { setSecStep("pick"); setSecQid(0); setSecAnswer(""); setSecConfirm(""); setSecError(null); };
+  const openSecAsk = () => { resetSec(); setSecView("ask"); };
+  /** #247 — leave the Q&A view (skip first-use setup, or cancel an edit). */
+  const secSkip = () => { setSecView("none"); resetSec(); };
+  /** #247 — save the Q&A (confirm step). */
+  const secSave = () => {
+    if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
+    if (secAnswer.trim() !== secConfirm.trim()) {
+      setSecError(t.secMismatch);
+      setSecStep("answer");
+      setSecConfirm("");
+      return;
+    }
+    setSecurityQA(String(secQid), secAnswer.trim());
+    setSecView("none");
+    resetSec();
+  };
+  /** #247 — answer the recovery question → reset the PIN here, in place. */
+  const secRecover = () => {
+    if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
+    if (verifySecurityQA(secAnswer.trim())) {
+      clearParentPin(); // QA stays — reuse it for the next reset.
+      setSecView("none");
+      resetSec();
+      setPinNotice(t.secRecovered);
+      pinNewFlow("unlock");
+      setPinOk(false);
+      setPinForgotArmed(false);
+    } else {
+      setSecError(t.secWrong);
+    }
+  };
+
   /** Append a digit; auto-submit once 4 digits are entered. */
   const appendPinDigit = (d: string) => {
     const next = (pinDigits + d).slice(0, 4);
     setPinDigits(next);
     setPinError(null);
+    setPinNotice(null);
     if (next.length === 4) pinSubmit(next);
   };
   /** The 4-digit value is complete → run the step logic. `hasParentPin()` is
@@ -3500,6 +3625,7 @@ export default function App() {
    *  meaningless, so the first entry is treated as the new-PIN stage. A device
    *  with no PIN can never accidentally hit the verify branch. */
   const pinSubmit = (value: string) => {
+    const setupWasFirst = !hasParentPin(); // before any new-PIN save below
     const hasPin = hasParentPin();
     const step = hasPin ? pinStep : pinStep === "confirm" ? "confirm" : "new";
     // Verify the current PIN (unlock, or change-current) — only when one exists.
@@ -3537,6 +3663,17 @@ export default function App() {
       setPinMode("unlock");
       setPinStep("current");
       setPinOk(true);
+      // #247 — first-time setup: step straight into the recovery-question flow
+      // so a forgotten PIN is recoverable from day one. (Change-mode and the
+      // post-recovery setup skip it — the Q&A is already in place.)
+      if (setupWasFirst && !hasSecurityQA()) {
+        setSecView("set");
+        setSecStep("pick");
+        setSecQid(0);
+        setSecAnswer("");
+        setSecConfirm("");
+        setSecError(null);
+      }
     } else {
       pinResetPad();
       setPinPending("");
@@ -3544,9 +3681,11 @@ export default function App() {
       setPinError(t.pinMismatch);
     }
   };
-  /** Recovery: a parent who forgot the PIN (or a locked pad) resets the lock
-   *  and signs out — signing back in lands on the parent page, which (with no
-   *  PIN set) prompts for a fresh PIN. Two taps (arm → confirm). */
+  /** Recovery fallback (#247): when NO security question is set, a parent who
+   *  forgot the PIN (or hit the locked pad) resets the lock and signs out —
+   *  signing back in lands on the parent page, which (with no PIN set) prompts
+   *  for a fresh PIN. Two taps (arm → confirm). With Q&A set, "Forgot PIN?"
+   *  instead opens `secRecover` and never leaves the screen. */
   const pinForgot = () => {
     if (!pinForgotArmed) {
       setPinForgotArmed(true);
@@ -5967,7 +6106,7 @@ export default function App() {
     // Enforced HERE so EVERY path to the panel (goParent, a fresh sign-in, a
     // session restore) passes through it; there is no bypass path.
     const pinRequired = hasParentPin() && !pinOk;
-    if (!hasParentPin() || pinMode === "change" || pinRequired) {
+    if (secView !== "none" || !hasParentPin() || pinMode === "change" || pinRequired) {
       let pinTitle = t.pinTitle;
       let pinSub = t.pinUnlockSub;
       if (pinLocked) {
@@ -5981,6 +6120,8 @@ export default function App() {
         pinTitle = pinStep === "new" ? t.pinNewTitle : pinStep === "confirm" ? t.pinConfirmTitle : t.pinChangeTitle;
         pinSub = pinStep === "new" ? t.pinSetSub : pinStep === "confirm" ? t.pinConfirmSub : t.pinChangeSub;
       }
+      const secQ = SECURITY_QUESTIONS[Math.min(Math.max(Number(securityQuestionId()) || 0, 0), SECURITY_QUESTIONS.length - 1)];
+      const secStepSub = secStep === "pick" ? t.secPickSub : secStep === "answer" ? t.secAnswerSub : "";
       return (
         <div className="app">
           <main className="screen worlds parent-screen">
@@ -5993,42 +6134,140 @@ export default function App() {
             </header>
             <div className="gate-card pin-card">
               <div className="gate-logo" aria-hidden>🔒</div>
-              <h2 className="gate-title">{pinTitle}</h2>
-              <p className="gate-sub">{pinSub}</p>
 
-              {/* 4 digit dots */}
-              <div className="pin-dots" role="status" aria-label={`${pinDigits.length}/4`}>
-                {[0, 1, 2, 3].map((i) => (
-                  <span key={i} className={`pin-dot${i < pinDigits.length ? " filled" : ""}`} />
-                ))}
-              </div>
-
-              {pinError && <p className="gate-error" role="alert">{pinError}</p>}
-
-              {/* keypad — hidden once the pad locks (3 wrong tries in unlock) */}
-              {!pinLocked && (
-                <div className="pin-pad">
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-                    <button key={d} className="pin-key" onClick={() => appendPinDigit(d)}>{d}</button>
-                  ))}
-                  <span className="pin-key pin-key-spacer" aria-hidden />
-                  <button className="pin-key" onClick={() => appendPinDigit("0")}>0</button>
-                  <button className="pin-key pin-key-back" aria-label="⌫" onClick={() => { setPinDigits((v) => v.slice(0, -1)); setPinError(null); }}>⌫</button>
+              {/* #247 — ASK view: recover a forgotten PIN via the security question */}
+              {secView === "ask" ? (
+                <div className="sec-view">
+                  <h2 className="gate-title">{t.secAskTitle}</h2>
+                  <p className="gate-sub">{t.secAskSub}</p>
+                  <div className="sec-q">
+                    <span className="sec-q-label">{t.secQuestion}</span>
+                    <span className="sec-q-text">{secQ ? (lang === "bn" ? secQ.bn : secQ.en) : "—"}</span>
+                  </div>
+                  <input
+                    className="sec-input"
+                    type="text"
+                    value={secAnswer}
+                    placeholder={t.secAnswerPlaceholder}
+                    autoFocus
+                    onChange={(e) => { setSecAnswer(e.target.value); setSecError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") secRecover(); }}
+                  />
+                  {secError && <p className="gate-error" role="alert">{secError}</p>}
+                  <div className="pin-row">
+                    <button className="pin-btn" onClick={() => { setSecView("none"); resetSec(); }}>{t.secCancel}</button>
+                    <button className="pin-btn pin-btn-primary" onClick={secRecover}>{t.secSave}</button>
+                  </div>
                 </div>
-              )}
-
-              {/* recovery: forgot PIN / locked pad → reset lock + sign out.
-                  Only on the unlock pad (setup has no PIN to forget yet). */}
-              {hasParentPin() && pinMode === "unlock" && (
-                <div className="pin-recovery">
-                  <button className="syllabus-banner-link" onClick={pinForgot}>
-                    {pinForgotArmed ? t.pinResetArmed : t.pinForgot}
-                  </button>
-                  <p className="gate-guest-sub">{t.pinForgotSub}</p>
+              ) : secView === "set" ? (
+                <div className="sec-view">
+                  {/* #247 — SET view: pick a question, then answer + confirm */}
+                  <h2 className="gate-title">
+                    {secStep === "pick" ? t.secPickTitle : secStep === "answer" ? t.secAnswerTitle : t.secConfirmTitle}
+                  </h2>
+                  <p className="gate-sub">{secStepSub}</p>
+                  {secStep === "pick" && (
+                    <div className="sec-questions">
+                      {SECURITY_QUESTIONS.map((q, i) => (
+                        <button
+                          key={i}
+                          className={`sec-q-opt${secQid === i ? " on" : ""}`}
+                          onClick={() => { setSecQid(i); setSecError(null); }}
+                        >
+                          {lang === "bn" ? q.bn : q.en}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {secStep === "answer" && (
+                    <input
+                      className="sec-input"
+                      type="text"
+                      value={secAnswer}
+                      placeholder={t.secAnswerPlaceholder}
+                      autoFocus
+                      onChange={(e) => { setSecAnswer(e.target.value); setSecError(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") setSecStep("confirm"); }}
+                    />
+                  )}
+                  {secStep === "confirm" && (
+                    <input
+                      className="sec-input"
+                      type="text"
+                      value={secConfirm}
+                      placeholder={t.secConfirmTitle}
+                      autoFocus
+                      onChange={(e) => { setSecConfirm(e.target.value); setSecError(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") secSave(); }}
+                    />
+                  )}
+                  {secError && <p className="gate-error" role="alert">{secError}</p>}
+                  <div className="pin-row">
+                    <button className="pin-btn" onClick={secSkip}>
+                      {secStep === "pick" ? t.secSkip : t.secCancel}
+                    </button>
+                    <button
+                      className="pin-btn pin-btn-primary"
+                      onClick={() => {
+                        if (secStep === "pick") { setSecStep("answer"); setSecError(null); }
+                        else if (secStep === "answer") {
+                          if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
+                          setSecStep("confirm");
+                          setSecError(null);
+                        } else secSave();
+                      }}
+                    >
+                      {secStep === "confirm" ? t.secSave : t.secNext}
+                    </button>
+                  </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  <h2 className="gate-title">{pinTitle}</h2>
+                  <p className="gate-sub">{pinSub}</p>
 
-              <p className="gate-privacy">{t.pinKeep}</p>
+                  {/* 4 digit dots */}
+                  <div className="pin-dots" role="status" aria-label={`${pinDigits.length}/4`}>
+                    {[0, 1, 2, 3].map((i) => (
+                      <span key={i} className={`pin-dot${i < pinDigits.length ? " filled" : ""}`} />
+                    ))}
+                  </div>
+
+                  {pinError && <p className="gate-error" role="alert">{pinError}</p>}
+                  {pinNotice && <p className="gate-notice" role="status">{pinNotice}</p>}
+
+                  {/* keypad — hidden once the pad locks (3 wrong tries in unlock) */}
+                  {!pinLocked && (
+                    <div className="pin-pad">
+                      {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+                        <button key={d} className="pin-key" onClick={() => appendPinDigit(d)}>{d}</button>
+                      ))}
+                      <span className="pin-key pin-key-spacer" aria-hidden />
+                      <button className="pin-key" onClick={() => appendPinDigit("0")}>0</button>
+                      <button className="pin-key pin-key-back" aria-label="⌫" onClick={() => { setPinDigits((v) => v.slice(0, -1)); setPinError(null); setPinNotice(null); }}>⌫</button>
+                    </div>
+                  )}
+
+                  {/* recovery: forgot PIN / locked pad. With a security question
+                      set, "Forgot PIN?" opens the Q&A and resets IN PLACE — no
+                      sign-out. Without one, the two-tap sign-out reset remains.
+                      Only on the unlock pad (setup has no PIN to forget yet). */}
+                  {hasParentPin() && pinMode === "unlock" && (
+                    <div className="pin-recovery">
+                      {hasSecurityQA() ? (
+                        <button className="syllabus-banner-link" onClick={openSecAsk}>{t.pinForgot}</button>
+                      ) : (
+                        <button className="syllabus-banner-link" onClick={pinForgot}>
+                          {pinForgotArmed ? t.pinResetArmed : t.pinForgot}
+                        </button>
+                      )}
+                      <p className="gate-guest-sub">{t.pinForgotSub}</p>
+                    </div>
+                  )}
+
+                  <p className="gate-privacy">{t.pinKeep}</p>
+                </>
+              )}
             </div>
           </main>
         </div>
@@ -6123,6 +6362,28 @@ export default function App() {
                   onClick={() => { pinNewFlow("change"); }}
                 >
                   {t.pinChange}
+                </button>
+              </div>
+
+              {/* #247 — PIN recovery question. Set/changed from here (the panel
+                  is already PIN-verified); when the QA view opens, the pin gate
+                  renders it over the panel. */}
+              <div className="parent-card settings-signout-card pin-lock-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.secPanelTitle}</span>
+                  <span className="parent-stats">{hasSecurityQA() ? "✓" : "❓"}</span>
+                </div>
+                <p className="syllabus-settings-sub">
+                  {hasSecurityQA() ? `${t.secPanelHas} — ${t.secPanelSub}` : t.secPanelSub}
+                </p>
+                <button
+                  className="big-btn settings-signout-btn pin-lock-btn"
+                  onClick={() => {
+                    resetSec();
+                    setSecView("set");
+                  }}
+                >
+                  {hasSecurityQA() ? t.secPanelChange : t.secPanelSet}
                 </button>
               </div>
 

@@ -98,7 +98,7 @@
 - ~~Parent: daily play summary~~  ✅ #244 — "☀️ Today" headline card on open: rounds + minutes (weekly per-day buckets) + mastered today (new WeeklyOut.mastered_today field, ≥80% + practiced today); offline-derived from already-loaded weekly state
 - ~~Parent: share-card deep link per kid~~  ✅ #245 — per-kid unguessable share token + anonymous public snapshot (`/share/?t=`), weekly WhatsApp card carries `🔗 See the week:` link
 - ~~Parent: multi-kid onboarding flow~~  ✅ #246 — guided first-run wizard (avatar + name + birth year, add 2+ kids back-to-back, editable later, offline-safe, EN+বাংলা country-pack strings)
-- Parent: PIN recovery flow  _(priority: low, parent-facing)_
+- ~~Parent: PIN recovery flow~~  ✅ #247 — per-device security Q&A (set at first PIN use + changeable from the panel); forgotten/locked PIN resets IN PLACE — offline, no sign-out, no lockout (sign-out reset stays as no-Q&A fallback)
 - Parent: quiet hours scheduling  _(priority: low, parent-facing)_
 - Parent: acceleration plan view  _(priority: low, parent-facing)_
 - Parent: big-text & high-contrast mode  _(priority: low, parent-facing)_
