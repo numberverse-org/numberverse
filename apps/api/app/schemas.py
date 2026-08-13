@@ -122,6 +122,9 @@ class KidSettingsIn(BaseModel):
     # "warm") + Web-Speech rate multiplier (1.0 = normal). null = kid app default.
     voice_tone: str | None = Field(default=None, max_length=8)
     voice_speed: float | None = Field(default=None, ge=0.5, le=2.0)
+    # #272 — SAFETY: parent kill-switch. True = this kid's games are paused
+    # until a parent resumes (one-tap, kid-safe message, survives reload).
+    paused: bool = False
 
 
 class KidSettingsOut(BaseModel):
@@ -146,6 +149,7 @@ class KidSettingsOut(BaseModel):
     focus_band: int | None = None
     voice_tone: str | None = None
     voice_speed: float | None = None
+    paused: bool = False
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}

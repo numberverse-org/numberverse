@@ -813,6 +813,10 @@ export interface KidSettings {
    *  null/null = this device's own warm-female voice at normal speed. */
   voice_tone?: string | null;
   voice_speed?: number | null;
+  /** #272 — SAFETY: parent kill-switch. True = ALL games paused for this kid
+   *  (kid-safe "learning break" screen, survives reload) until a parent
+   *  resumes. Off by default. */
+  paused: boolean;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -835,6 +839,7 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   focus_band: null,
   voice_tone: null,
   voice_speed: null,
+  paused: false,
 };
 
 /** #256 — "did we already celebrate today's goal?" flag (once per day, so the

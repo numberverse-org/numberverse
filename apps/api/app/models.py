@@ -107,6 +107,11 @@ class KidSettings(Base):
     # Auto-migrated (both nullable → existing rows keep their defaults).
     voice_tone: Mapped[str | None] = mapped_column(String, nullable=True)
     voice_speed: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # #272 — SAFETY: parent kill-switch. One-tap instant pause of a kid's
+    # games; the app shows a kid-safe "learning break" screen and blocks play
+    # until the parent resumes. Survives reload (served with settings, cached
+    # on-device). Auto-migrated (server_default "false" → existing kids run).
+    paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     kid: Mapped[Kid] = relationship(back_populates="settings")

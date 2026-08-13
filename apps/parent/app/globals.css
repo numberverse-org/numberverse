@@ -766,6 +766,12 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .focus-clear { margin-top: 10px; }
 .focus-clear .ghost-btn { color: var(--nv-err); border-color: rgba(255, 143, 163, 0.4); }
 
+/* #272 — SAFETY: instant pause (parent kill-switch). Red-tinted when active so
+   a paused kid is unmistakable at a glance. */
+.pause-block { padding: 14px; border: 1px solid rgba(255, 143, 163, 0.35); border-radius: 14px; background: rgba(255, 143, 163, 0.06); }
+.pause-block.on { border-color: rgba(255, 143, 163, 0.65); background: rgba(255, 143, 163, 0.12); }
+.pause-block .btn { margin-top: 10px; }
+
 /* forms */
 input {
   display: block;

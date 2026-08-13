@@ -146,6 +146,8 @@ async def put_kid_settings(
     _VOICE_TONES = {"female", "kid", "soft", "warm"}
     s.voice_tone = body.voice_tone if body.voice_tone in _VOICE_TONES else None
     s.voice_speed = body.voice_speed
+    # #272 — SAFETY: parent kill-switch. Instant pause / resume, per kid.
+    s.paused = body.paused
     await db.commit()
     await db.refresh(s)
     return s

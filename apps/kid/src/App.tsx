@@ -1254,6 +1254,10 @@ interface Strings {
   breakBody: string;
   breakRest: string;
   breakKeepGoing: string;
+  /** #272 — SAFETY: parent kill-switch paused screen (kid-safe message). */
+  pauseTitle: string;
+  pauseBody: string;
+  pauseBackSoon: string;
   moniWeek: string;
   moniWeekRounds: string;
   moniWeekAcc: string;
@@ -1898,6 +1902,9 @@ const STR: Record<Lang, Strings> = {
     breakBody: "Your brain just worked super hard, and Nova is proud. A little break makes the next game even more fun!",
     breakRest: "OK, stretch break",
     breakKeepGoing: "I'm good — keep going!",
+    pauseTitle: "😴 A short learning break",
+    pauseBody: "Your grown-up paused learning for a little while. Come back soon — Nova will be right here waiting!",
+    pauseBackSoon: "⏳ Grown-ups can tap Resume whenever you're ready.",
     moniWeek: "📅 This week",
     moniWeekRounds: "Rounds",
     moniWeekAcc: "Accuracy",
@@ -2544,6 +2551,9 @@ const STR: Record<Lang, Strings> = {
     breakBody: "তোমার মস্তিষ্ক অনেক পরিশ্রম করেছে, আর নোভা খুব গর্বিত। একটু বিশ্রাম নিলে পরের খেলাটা আরও মজার হবে!",
     breakRest: "ঠিক আছে, একটু বিশ্রাম",
     breakKeepGoing: "আমি ফ্রেশ — চলো, খেলি!",
+    pauseTitle: "😴 একটু শেখার বিরতি",
+    pauseBody: "বড়রা একটু বিরতির জন্য শেখা থামিয়ে দিয়েছেন। শীঘ্রই ফিরে এসো — নোভা এখানেই অপেক্ষা করবে!",
+    pauseBackSoon: "⏳ প্রস্তুত হলে বড়রা Resume চেপে আবার চালু করে দেবেন।",
     moniWeek: "📅 এই সপ্তাহে",
     moniWeekRounds: "রাউন্ড",
     moniWeekAcc: "নির্ভুলতা",
@@ -3918,6 +3928,33 @@ export default function App() {
       alive = false;
     };
   }, [kid?.id]);
+  // #272 — SAFETY: parent kill-switch. Light online poll (only while the tab is
+  // visible) so a parent's one-tap pause lands INSTANTLY, even mid-session —
+  // not just on the next boot. Only re-applies settings when the pause flag
+  // actually flips (no needless re-renders mid-play); offline the cached value
+  // stands and the pause still holds (it survives reload).
+  useEffect(() => {
+    if (!kid) return;
+    const iv = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void fetchKidSettings(kid.id).then((s) => {
+        setSettings((prev) => (prev.paused === s.paused ? prev : s));
+      });
+    }, 30_000);
+    return () => window.clearInterval(iv);
+  }, [kid?.id]);
+  // #272 — "restart screen": when the parent RESUMES (paused flips true→false),
+  // drop the kid back to a fresh home rather than resuming mid-game.
+  const wasPaused = useRef(false);
+  useEffect(() => {
+    if (settings.paused) {
+      wasPaused.current = true;
+    } else if (wasPaused.current) {
+      wasPaused.current = false;
+      cancelSpeech();
+      setScreen("home");
+    }
+  }, [settings.paused]);
   // Recompute the journey/world skill filters whenever subject/band settings land.
   // (Runs on first paint from cache AND again when the fresh server copy arrives.)
   // The tick state forces a re-render so journey/worlds pick up the new filters
@@ -7315,6 +7352,32 @@ export default function App() {
               })}
             </div>
           )}
+        </main>
+      </div>
+    );
+  }
+
+  // #272 — SAFETY: parent kill-switch. When the parent pauses this kid, show a
+  // kid-safe "learning break" screen INSTEAD of any play screen (home, worlds,
+  // games, everything). `settings.paused` comes from the server AND the
+  // on-device cache, so the pause holds across reloads and offline. The resume
+  // effect above drops the kid back to a fresh home when it flips off.
+  if (settings.paused && kid) {
+    return (
+      <div className="app">
+        <main className="screen pause-screen">
+          <div className="pause-sky" aria-hidden="true">
+            {["☁️", "⭐", "🌙", "☁️", "⭐", "☁️"].map((e, i) => (
+              <span key={i} className={`pause-sky-float f${i}`}>{e}</span>
+            ))}
+          </div>
+          <div className="pause-mascot" role="img" aria-label="Nova resting">
+            <Icon name="nova" size={96} />
+          </div>
+          <h1 className="title">{t.pauseTitle}</h1>
+          <p className="pause-body">{t.pauseBody}</p>
+          <div className="pause-z" aria-hidden="true">💤</div>
+          <p className="pause-note">{t.pauseBackSoon}</p>
         </main>
       </div>
     );

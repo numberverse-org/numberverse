@@ -85,6 +85,10 @@ export interface KidSettings {
    *  null/null = the kid app's own default warm-female at normal speed. */
   voice_tone?: string | null;
   voice_speed?: number | null;
+  /** #272 — SAFETY: parent kill-switch. True = all games paused for this kid
+   *  (kid-safe "learning break" screen; survives reload) until a parent
+   *  resumes. Off by default. */
+  paused?: boolean;
   updated_at?: string | null;
 }
 
