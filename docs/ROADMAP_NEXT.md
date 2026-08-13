@@ -189,7 +189,7 @@
 - Polish: keyboard navigation for parent area  _(priority: low, kid-first, polish)_
 - Perf: game-loop memory audit  _(priority: low, kid-first, polish)_
 - PWA: staged offline updates  _(priority: low, kid-first, polish)_
-- Polish: sound-mixing balance  _(priority: low, kid-first, polish)_
+- ~~Polish: sound-mixing balance~~ ✅ #354 — 🎚️ single MIX table (music 0.04–0.06 under sfx 0.05–0.16 under voice ~0.9), every SFX reads it, mutes verified (PR pending)
 - ~~Polish: haptic feedback on taps~~ ✅ #355 — 📳 subtle pulses on correct/wrong/win/UI via the shared audio path, Settings off-switch, auto no-op on unsupported devices, locale-packed (PR pending)
 - ~~Polish: onboarding tour for first play~~ ✅ #356 — 👋 4-step skippable core-loop tour on first home, once per device, locale-packed (PR pending)
 - Perf: scene preload strategy  _(priority: low, kid-first, polish)_
