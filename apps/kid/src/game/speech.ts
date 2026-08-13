@@ -445,6 +445,34 @@ function bnNormalize(text: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+/* #288 — kid voice fun: a device-local volume preference (Soft / Normal /
+ * Loud) that applies to EVERY spoken line on BOTH engines (web + neural).
+ * Soft = 0.55, Normal = 0.9 (the app default), Loud = 1.0. Zero-config reset. */
+const VOICE_FUN_VOL_KEY = "nv_voice_fun_vol";
+const VOICE_FUN_VOLUMES = [0.55, 0.9, 1.0] as const;
+export function getVoiceFunVolume(): number {
+  try {
+    const v = Number(localStorage.getItem(VOICE_FUN_VOL_KEY));
+    return (VOICE_FUN_VOLUMES as readonly number[]).includes(v) ? v : 0.9;
+  } catch {
+    return 0.9;
+  }
+}
+export function setVoiceFunVolume(v: number): void {
+  try {
+    localStorage.setItem(VOICE_FUN_VOL_KEY, String(v));
+  } catch {
+    /* storage unavailable — the default (Normal) stays active */
+  }
+}
+export function resetVoiceFunVolume(): void {
+  try {
+    localStorage.removeItem(VOICE_FUN_VOL_KEY);
+  } catch {
+    /* noop */
+  }
+}
+
 export function speak(text: string, opts: SpeakOpts = {}) {
   if (!speechEnabled) return;
   const raw = String(text);
@@ -455,6 +483,9 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // code (#131).
   const appLang = getAppLang() === "bn" ? "bn" : "en";
   const lang = opts.lang ?? (bnLike ? "bn" : appLang);
+  // #288 — kid voice fun: a device-local volume preference (Soft/Normal/Loud)
+  // applies to EVERY line on BOTH engines unless a caller overrides volume.
+  const vol = opts.volume ?? getVoiceFunVolume();
   // Symbols → words, then never speak pure emoji / whitespace.
   let clean = naturalize(raw, lang)
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, " ")
@@ -483,7 +514,7 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // Falling back then makes the OLD line speak on Web Speech WHILE the new line
   // speaks on neural → the both-voices-at-once bug. "superseded" must stay silent.
   if (lang === "bn" && isNeuralReady()) {
-    void neuralSpeak(clean, { queue: opts.cancel === false, volume: opts.volume ?? 0.9 }).then(
+    void neuralSpeak(clean, { queue: opts.cancel === false, volume: vol }).then(
       (outcome) => {
         if (outcome === "failed" && token === speakToken) webSpeak(clean, lang, opts, token);
       },
@@ -533,7 +564,7 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
       // Brighter than adult speech, but capped on Android so Google's voices
       // stay warm instead of chipmunk; Apple's voices take the higher pitch.
       u.pitch = opts.pitch ?? (platform === "android" ? 1.05 : 1.12);
-      u.volume = opts.volume ?? 0.9; // warm, never shouty — unless asked (funny voices)
+      u.volume = opts.volume ?? getVoiceFunVolume(); // #288 — kid volume pref; warm, never shouty unless asked
       synth.resume?.(); // some Android builds pause after idle
       if (opts.cancel !== false) {
         // WebKit/Chrome cancel→speak race: a speak() called immediately after
