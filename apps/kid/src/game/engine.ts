@@ -53,6 +53,7 @@ import { CoinValueScene } from "./CoinValueScene";
 import { TimeWordsScene } from "./TimeWordsScene";
 import { DirectionWordsScene } from "./DirectionWordsScene";
 import { PoliteScene } from "./PoliteScene";
+import { RiddleScene } from "./RiddleScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -132,6 +133,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       TimeWordsScene,
       DirectionWordsScene,
       PoliteScene,
+      RiddleScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
