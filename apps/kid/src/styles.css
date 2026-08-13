@@ -2141,6 +2141,92 @@ body {
   background: rgba(76, 201, 240, 0.18);
   transform: scale(1.08);
 }
+
+/* #285 — custom avatar builder: layered mix-and-match buddy + picker screen. */
+.avatar-parts {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  overflow: visible;
+}
+.avatar-parts .ap-base {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.ap-hat {
+  position: absolute;
+  top: -0.18em;
+  right: 0.05em;
+  transform: rotate(8deg);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+  z-index: 2;
+  pointer-events: none;
+}
+.ap-glasses {
+  position: absolute;
+  top: 0.34em;
+  right: 0.02em;
+  transform: rotate(-4deg);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  z-index: 2;
+  pointer-events: none;
+}
+.ap-outfit {
+  position: absolute;
+  bottom: -0.08em;
+  left: 0.06em;
+  transform: rotate(-6deg);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  z-index: 2;
+  pointer-events: none;
+}
+.avatar-screen { justify-content: flex-start; gap: 10px; }
+.avatar-preview {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 240px;
+  padding: 16px;
+  margin: 0 auto;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+}
+.avatar-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+  padding: 2px 6px;
+}
+.avatar-part-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9bd8ff;
+}
+.avatar-part-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.avatar-part-row .avatar-btn {
+  font-size: 26px;
+  min-width: 52px;
+  min-height: 52px;
+  padding: 6px 8px;
+}
+.avatar-save {
+  margin-top: 6px;
+  max-width: 560px;
+  width: 100%;
+}
 .input-field {
   width: 100%;
   background: rgba(0, 0, 0, 0.35);

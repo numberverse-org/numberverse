@@ -39,7 +39,7 @@ const APP_BUILD = "13 Aug 2026 · 0.26.16 (per-day wrong-answer history + playti
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.26.16";
 
-type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle";
+type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -249,6 +249,10 @@ interface Kid {
    *  Kids created before this existed only have the year → no party (graceful). */
   birthMonth?: number;
   birthDay?: number;
+  /** #285 — mix-and-match avatar parts (built in the Customize screen). The
+   *  base stays in `avatar` so every older screen keeps working; this layers
+   *  the hat/glasses/outfit on top when present. Offline, persisted per kid. */
+  avatarParts?: AvatarParts;
 }
 
 /** Mastery state map (from the persisted store) — key `${kidId}:${skillId}`.
@@ -258,6 +262,125 @@ type SkillMapEntry = { pMastered: number; lastPractice?: number | null; correct?
 type SkillMap = Record<string, SkillMapEntry>;
 
 const AVATARS = AVATAR_KEYS;
+
+/* #285 — custom avatar builder: mix-and-match parts to build a unique buddy.
+ * Base = the sticker hero (same AVATAR_KEYS as today); parts are emoji layers
+ * (hat/glasses/outfit) drawn OVER the sticker. 7 options each (6+ ✓), "none"
+ * to clear. Locale-packed labels (#131), persisted per kid, fully offline. */
+interface AvatarParts {
+  base: string; // one of AVATAR_KEYS
+  hat: string; // emoji or "none"
+  glasses: string; // emoji or "none"
+  outfit: string; // emoji or "none"
+}
+const AVATAR_PART_OPTIONS: Record<"hat" | "glasses" | "outfit", string[]> = {
+  hat: ["none", "🎩", "🧢", "👑", "🎀", "🌼", "🍄"],
+  glasses: ["none", "👓", "🕶️", "🥽", "🤓", "✨", "🌈"],
+  outfit: ["none", "👕", "👗", "🥼", "🦺", "🎽", "🧥"],
+};
+const AVATAR_PART_LABELS: Record<"hat" | "glasses" | "outfit", string> = {
+  hat: "🎩",
+  glasses: "👓",
+  outfit: "👕",
+};
+/** Current buddy's parts (or null if the kid never customized). */
+function kidParts(k: Kid | undefined | null): AvatarParts | null {
+  return k?.avatarParts ? { ...k.avatarParts } : null;
+}
+/** Render a kid's buddy — the full mix-and-match look when set, else the base sticker. */
+function KidAvatar({ kid, size, className }: { kid: Kid; size: number; className?: string }) {
+  const parts = kidParts(kid);
+  if (!parts) return <AvatarIcon emoji={kid.avatar} size={size} className={className} />;
+  return (
+    <span className={`avatar-parts ${className ?? ""}`} style={{ width: size, height: size }} aria-hidden="true">
+      <AvatarIcon emoji={parts.base} size={size} className="ap-base" />
+      {parts.hat !== "none" && (
+        <span className="ap-hat" style={{ fontSize: Math.round(size * 0.44), lineHeight: 1 }}>{parts.hat}</span>
+      )}
+      {parts.glasses !== "none" && (
+        <span className="ap-glasses" style={{ fontSize: Math.round(size * 0.34), lineHeight: 1 }}>{parts.glasses}</span>
+      )}
+      {parts.outfit !== "none" && (
+        <span className="ap-outfit" style={{ fontSize: Math.round(size * 0.3), lineHeight: 1 }}>{parts.outfit}</span>
+      )}
+    </span>
+  );
+}
+
+/** #285 — the Customize screen itself (module-level component so its useState
+ *  is a proper hook — the App only mounts it when the avatar screen opens). */
+function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
+  kid: Kid;
+  t: Strings;
+  lang: Lang;
+  onSave: (parts: AvatarParts) => void;
+  onBack: () => void;
+  onNova: () => void;
+}) {
+  const startParts = kidParts(kid) ?? { base: kid.avatar, hat: "none", glasses: "none", outfit: "none" };
+  const [draft, setDraft] = useState<AvatarParts>(startParts);
+  const pick = (cat: "hat" | "glasses" | "outfit", val: string) => setDraft((d) => ({ ...d, [cat]: val }));
+  const setBase = (base: string) => setDraft((d) => ({ ...d, base }));
+  return (
+    <div className="app">
+      <main className="screen avatar-screen">
+        <header className="screen-head">
+          <button className="icon-btn" onClick={onBack} aria-label={t.back}>‹</button>
+          <div className="head-title">
+            <h2>{t.avatarTitle}</h2>
+            <p className="head-sub">{t.avatarSub}</p>
+          </div>
+          <button className="icon-btn nova-hud-btn" onClick={onNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
+        </header>
+
+        <div className="avatar-preview" role="status" aria-label={t.avatarPreview}>
+          <KidAvatar kid={{ ...kid, avatarParts: draft }} size={120} />
+        </div>
+
+        <section className="avatar-part" role="group" aria-label={t.avatarFace}>
+          <span className="avatar-part-label">{t.avatarFace}</span>
+          <div className="avatar-part-row">
+            {AVATARS.map((a) => (
+              <button
+                key={a}
+                className={`avatar-btn${a === draft.base ? " selected" : ""}`}
+                onClick={() => setBase(a)}
+                aria-label={`${t.avatarFace}: ${a}`}
+              >
+                <AvatarIcon emoji={AVATAR_EMOJI[a]} size={34} />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {(["hat", "glasses", "outfit"] as const).map((cat) => (
+          <section key={cat} className="avatar-part" role="group" aria-label={AVATAR_PART_LABELS[cat]}>
+            <span className="avatar-part-label">{AVATAR_PART_LABELS[cat]} {t.avatarPartsLabels[cat]}</span>
+            <div className="avatar-part-row">
+              {AVATAR_PART_OPTIONS[cat].map((opt) => (
+                <button
+                  key={opt}
+                  className={`avatar-btn${draft[cat] === opt ? " selected" : ""}`}
+                  onClick={() => pick(cat, opt)}
+                  aria-label={opt === "none" ? t.avatarNone : opt}
+                >
+                  {opt === "none" ? t.avatarNone : opt}
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+
+        <button
+          className="big-btn avatar-save"
+          onClick={() => onSave(draft)}
+        >
+          {t.avatarSave}
+        </button>
+      </main>
+    </div>
+  );
+}
 
 /* ── rank ladder: mastery count → a fun title kids want to reach ── */
 const RANKS = [
@@ -610,6 +733,16 @@ interface Strings {
   achUnlocked: string;
   achLocked: string;
   achNewSpeak: (name: string, title: string) => string;
+  /* #285 — custom avatar builder */
+  avatarTile: string;
+  avatarTitle: string;
+  avatarSub: string;
+  avatarPreview: string;
+  avatarFace: string;
+  avatarPartsLabels: Record<"hat" | "glasses" | "outfit", string>;
+  avatarNone: string;
+  avatarSave: string;
+  avatarSaveSpeak: (name: string) => string;
   /* #282 — same-device sibling leaderboard */
   lbTile: string;
   lbTitle: string;
@@ -1182,6 +1315,16 @@ const STR: Record<Lang, Strings> = {
     achUnlocked: "Unlocked!",
     achLocked: "A long-term goal",
     achNewSpeak: (name, title) => `${name}, achievement unlocked — ${title}! 🏆`,
+    /* #285 — custom avatar builder */
+    avatarTile: "Customize",
+    avatarTitle: "🎨 Build Your Buddy",
+    avatarSub: "Mix hair, eyes and clothes to make it yours",
+    avatarPreview: "Your buddy",
+    avatarFace: "Face",
+    avatarPartsLabels: { hat: "Hat / Hair", glasses: "Eyes", outfit: "Clothes" },
+    avatarNone: "none",
+    avatarSave: "✅ Save my look",
+    avatarSaveSpeak: (name) => `${name}, your buddy looks amazing! 🎉`,
     /* #282 — same-device sibling leaderboard */
     lbTile: "Leaderboard",
     lbTitle: "🥇 Sibling Leaderboard",
@@ -1739,6 +1882,16 @@ const STR: Record<Lang, Strings> = {
     achUnlocked: "আনলক!",
     achLocked: "দীর্ঘমেয়াদি লক্ষ্য",
     achNewSpeak: (name, title) => `${name}, কৃতিত্ব আনলক হয়েছে — ${title}! 🏆`,
+    /* #285 — custom avatar builder */
+    avatarTile: "সাজাও",
+    avatarTitle: "🎨 তোমার বন্ধু সাজাও",
+    avatarSub: "চুল, চোখ আর পোশাক মিলিয়ে তোমার মতো করো",
+    avatarPreview: "তোমার বন্ধু",
+    avatarFace: "মুখ",
+    avatarPartsLabels: { hat: "টুপি / চুল", glasses: "চোখ", outfit: "পোশাক" },
+    avatarNone: "কিছু না",
+    avatarSave: "✅ আমার সাজানোটা রাখো",
+    avatarSaveSpeak: (name) => `${name}, তোমার বন্ধু দারুণ লাগছে! 🎉`,
     /* #282 — same-device sibling leaderboard */
     lbTile: "লিডারবোর্ড",
     lbTitle: "🥇 ভাইবোন লিডারবোর্ড",
@@ -3353,6 +3506,7 @@ export default function App() {
   const goBadges = () => setScreen(kid ? "badges" : "kidpick");
   const goAchievements = () => setScreen(kid ? "achievements" : "kidpick");
   const goTrophyRoom = () => setScreen(kid ? "trophyroom" : "kidpick");
+  const goAvatar = () => setScreen(kid ? "avatar" : "kidpick");
   /** Open the printable certificate for a completed world. */
   const openCert = (b: Band) => {
     if (!kid) return;
@@ -4089,6 +4243,21 @@ export default function App() {
     setScreen("home");
   };
 
+  // #285 — save a kid's mix-and-match avatar look (persisted per kid, offline).
+  const updateKidAvatar = (kidId: string, parts: AvatarParts) => {
+    const next = kids.map((k) => (k.id === kidId ? { ...k, avatarParts: parts } : k));
+    setKids(next);
+    try {
+      localStorage.setItem("nv_kids", JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    // If the look changed for the active kid, refresh the selectKid cache too.
+    if (kid?.id === kidId) {
+      selectKid({ ...kid, avatarParts: parts });
+    }
+  };
+
   const curStep = sessionRef.current[sessionIdx];
   const curReteach = (curStep?.reteach ?? 0) > 0;
   // #292 — reteach moment: when a step flips into its remediation re-run,
@@ -4638,7 +4807,7 @@ export default function App() {
                     >
                       <span className="home-node-ring">
                         {st.current ? (
-                          <AvatarIcon emoji={kid.avatar} size={30} />
+                          <KidAvatar kid={kid} size={30} />
                         ) : st.done ? (
                           "✓"
                         ) : st.unlocked ? (
@@ -4833,6 +5002,10 @@ export default function App() {
                 <button className="play-icon" onClick={goAchievements}>
                   <span className="play-icon-emoji" aria-hidden="true">📚</span>
                   <span>{t.achTile}</span>
+                </button>
+                <button className="play-icon" onClick={goAvatar}>
+                  <span className="play-icon-emoji" aria-hidden="true">🎨</span>
+                  <span>{t.avatarTile}</span>
                 </button>
                 <button className="play-icon" onClick={() => setScreen(kid ? "leaderboard" : "kidpick")}>
                   <span className="play-icon-emoji" aria-hidden="true">🥇</span>
@@ -6085,7 +6258,7 @@ export default function App() {
                   className={`world-card kidpick-card${kid?.id === k.id ? " active" : ""}`}
                   onClick={() => { selectKid(k); setScreen("home"); }}
                 >
-                  <span className="world-emoji"><AvatarIcon emoji={k.avatar} size={46} /></span>
+                  <span className="world-emoji"><KidAvatar kid={k} size={46} /></span>
                   <span className="world-meta">
                     <span className="world-name">{k.name}</span>
                     <span className="world-age">⭐ {t.skillsMastered(mastered)} · {t.worldsOpen(worldsOpen)}</span>
@@ -6110,6 +6283,27 @@ export default function App() {
 
   if (screen === "addkid") {
     return <AddKidForm t={t} lang={lang} onSave={addKid} onCancel={() => setScreen("kidpick")} />;
+  }
+
+  /* #285 — Custom avatar builder: mix-and-match base + hat + glasses + outfit
+     to build a unique buddy. Live preview, per-part rows (7 options each +
+     "none"), saved per kid, fully offline. */
+  if (screen === "avatar" && kid) {
+    return (
+      <AvatarBuilder
+        kid={kid}
+        t={t}
+        lang={lang}
+        onSave={(parts) => {
+          updateKidAvatar(kid.id, parts);
+          tada();
+          speak(lang === "bn" ? t.avatarSaveSpeak(kid.name) : t.avatarSaveSpeak(kid.name));
+          setScreen("home");
+        }}
+        onBack={() => setScreen("home")}
+        onNova={() => setScreen("nova")}
+      />
+    );
   }
 
   /* ── Mastery Card Album: every mastered lesson = a collectible card. ── */
