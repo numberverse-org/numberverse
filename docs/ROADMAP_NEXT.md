@@ -174,7 +174,7 @@
 - Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_
 - Kids: Nova reaction pack v2  _(priority: low, kid-first)_
 - Kids: quest variety — mission types  _(priority: low, kid-first)_
-- Kids: streak-freeze token system  _(priority: low, kid-first)_
+- ~~Kids: streak-freeze token system~~ ✅ #294 — 🧊 token earned on the day-7 calendar tile; a single missed day spends it to keep the streak alive (PR pending)
 
 ## v29 — polish & perf 2
 
