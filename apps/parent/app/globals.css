@@ -34,8 +34,17 @@
   --nv-err: #ffc1cf;
   --nv-gold: #ffd166;
   --nv-ok: #9ef0c8;
+  --nv-mint: #2ec4b6;
+  --nv-sky: #4cc9f0;
   --nv-amber: #ffd27a;
-}
+}* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* 🎨 #254 — dashboard light/dark theme. All surface/ink colors are CSS
+   variables; `html.theme-light` swaps the whole palette (dark is the default
+   so nothing changes for existing users). Native controls follow suit via
+   color-scheme. The #250 high-contrast class re-declares the dark palette so
+   a11y mode always renders with maximum contrast, regardless of theme. */
+
 
 html.theme-light {
   color-scheme: light;
@@ -281,7 +290,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 .archive-month:hover { background: var(--nv-chip-hover); }
-.archive-month.on { background: rgba(76, 201, 240, 0.18); border-color: #4cc9f0; }
+.archive-month.on { background: rgba(76, 201, 240, 0.18); border-color: var(--nv-sky); }
 .archive-month.empty { opacity: 0.55; }
 .archive-month-label { font-size: 13px; font-weight: 700; }
 .archive-month-num { font-size: 11px; color: var(--nv-muted); }
@@ -382,7 +391,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #4cc9f0, #2ec4b6, #ffd166);
+  background: linear-gradient(90deg, var(--nv-sky), var(--nv-mint), var(--nv-gold));
   transition: width 0.3s ease;
 }
 .timeline-foot {
@@ -592,12 +601,12 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   border-radius: 50%;
   flex-shrink: 0;
 }
-.sync-dot.ok { background: #2ec4b6; box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.18); }
+.sync-dot.ok { background: var(--nv-mint); box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.18); }
 .sync-dot.bad { background: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18); }
 .sync-when { color: var(--nv-muted-soft); font-weight: 600; }
 .sync-btn {
   border: none;
-  background: linear-gradient(135deg, #4cc9f0, #2ec4b6);
+  background: linear-gradient(135deg, var(--nv-sky), var(--nv-mint));
   color: #fff;
   font: inherit;
   font-weight: 800;
@@ -632,7 +641,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .a11y-toggle:hover { background: var(--nv-chip-hover); }
 .a11y-toggle.on {
   background: rgba(76, 201, 240, 0.22);
-  border-color: #4cc9f0;
+  border-color: var(--nv-sky);
   color: var(--nv-text);
 }
 .a11y-toggle-label { line-height: 1; }
@@ -692,7 +701,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .overall-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #4cc9f0, #2ec4b6, #ffd166);
+  background: linear-gradient(90deg, var(--nv-sky), var(--nv-mint), var(--nv-gold));
   transition: width 0.4s ease;
 }
 
@@ -749,7 +758,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .cap-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #4cc9f0, #2ec4b6);
+  background: linear-gradient(90deg, var(--nv-sky), var(--nv-mint));
   transition: width 0.4s ease;
 }
 /* #79 — 🏆 mastery timeline card */
@@ -842,7 +851,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   border-radius: 50%;
   margin-right: 6px;
 }
-.dot.ok { background: #2ec4b6; }
+.dot.ok { background: var(--nv-mint); }
 .dot.off { background: #f87171; }
 .diag-err-head {
   font-size: 13px;
@@ -925,7 +934,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   max-width: 26px;
   margin: 0 auto;
   border-radius: 5px 5px 2px 2px;
-  background: linear-gradient(180deg, #4cc9f0, #2ec4b6);
+  background: linear-gradient(180deg, var(--nv-sky), var(--nv-mint));
 }
 .share-btn {
   display: inline-flex;
@@ -1013,7 +1022,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   width: 100%;
   max-width: 30px;
   border-radius: 7px 7px 3px 3px;
-  background: linear-gradient(180deg, #4cc9f0, #2ec4b6);
+  background: linear-gradient(180deg, var(--nv-sky), var(--nv-mint));
 }
 .week-day {
   font-size: 10.5px;
@@ -1167,7 +1176,7 @@ label { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
   background: var(--nv-chip);
   cursor: pointer;
 }
-.avatar-pick.on { border-color: #ffd166; background: rgba(255,209,102,0.2); transform: scale(1.08); }
+.avatar-pick.on { border-color: var(--nv-gold); background: rgba(255,209,102,0.2); transform: scale(1.08); }
 
 /* buttons */
 .btn {
@@ -1188,7 +1197,7 @@ label { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
 }
 .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #164e9e; }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-.btn.primary { background: linear-gradient(180deg, #ffd166 0%, #ff9f43 40%, #ff6b6b 100%); color: #3d0a1c; box-shadow: 0 5px 0 #b23a3a, inset 0 2px 0 rgba(255,255,255,0.4); }
+.btn.primary { background: linear-gradient(180deg, var(--nv-gold) 0%, #ff9f43 40%, #ff6b6b 100%); color: #3d0a1c; box-shadow: 0 5px 0 #b23a3a, inset 0 2px 0 rgba(255,255,255,0.4); }
 .btn.primary:active { box-shadow: 0 2px 0 #b23a3a; }
 .btn.danger { background: linear-gradient(180deg, #ff8fa3, #e11d48); color: #4c0519; box-shadow: 0 5px 0 #9f1239, inset 0 2px 0 rgba(255,255,255,0.4); }
 .btn.danger:active { box-shadow: 0 2px 0 #9f1239; }
@@ -1230,8 +1239,8 @@ th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--nv-b
 th { color: var(--nv-muted); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
 td { font-size: 14px; }
 .bar { display: inline-block; width: 110px; height: 9px; background: var(--nv-border); border-radius: 999px; margin-right: 8px; vertical-align: middle; overflow: hidden; }
-.fill { height: 100%; background: linear-gradient(90deg, #4cc9f0, #2ec4b6); border-radius: 999px; }
-.fill.done { background: linear-gradient(90deg, #2ec4b6, #ffd166); }
+.fill { height: 100%; background: linear-gradient(90deg, var(--nv-sky), var(--nv-mint)); border-radius: 999px; }
+.fill.done { background: linear-gradient(90deg, var(--nv-mint), var(--nv-gold)); }
 
 /* danger zone */
 .danger-row {
@@ -1318,7 +1327,7 @@ td { font-size: 14px; }
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: #2a1652;
-  background: linear-gradient(90deg, #7de3ff, #2ec4b6);
+  background: linear-gradient(90deg, #7de3ff, var(--nv-mint));
   border-radius: 999px;
   padding: 2px 8px;
 }
