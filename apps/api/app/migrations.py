@@ -61,4 +61,16 @@ async def apply_column_migrations() -> list[str]:
                 await conn.execute(text(ddl))
                 added.append(f"{table.name}.{col.name}")
                 log.warning("migrated missing column %s.%s", table.name, col.name)
+    # #79 — one-time backfill: skills already ≥80% before the mastered_at column
+    # existed get the best proxy we have (their last practice). Future crossings
+    # are stamped exactly at the moment mastery first hits 80%. Runs every boot
+    # but only touches NULL rows, so it's idempotent.
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE skill_mastery "
+                "SET mastered_at = last_practice "
+                "WHERE mastered_at IS NULL AND mastery >= 0.8 AND last_practice IS NOT NULL"
+            )
+        )
     return added

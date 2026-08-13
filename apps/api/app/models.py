@@ -175,6 +175,9 @@ class SkillMastery(Base):
     streak: Mapped[int] = mapped_column(Integer, default=0)
     last_practice: Mapped[datetime | None] = mapped_column(nullable=True)
     last_decay: Mapped[datetime] = mapped_column(server_default=func.now())
+    # #79 — the moment the skill FIRST crossed ≥80% mastery (set once, never
+    # cleared). Feeds the parent's "mastery timeline" — when each skill was won.
+    mastered_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     kid: Mapped[Kid] = relationship(back_populates="mastery")
 
