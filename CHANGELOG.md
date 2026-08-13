@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.31.1 (Odd & Even spoken EN+BN feedback (#746) + engagement pass 45/45)
+
+a22b3d7 🗣️ #746 Odd & Even: spoken EN+BN feedback on every state
+
 ## 14 Aug 2026 — 0.31.0 (decompose kid App.tsx monolith (#589): i18n + domain layer + 6 components; daily-hook above the fold)
 
 57d3ded ♻️ guardian checks scan full src tree (survive #589 extraction) + retention reorder
