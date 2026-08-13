@@ -33,6 +33,7 @@ import { RoundingScene } from "./RoundingScene";
 import { BarChartScene } from "./BarChartScene";
 import { SinkFloatScene } from "./SinkFloatScene";
 import { FoodChainScene } from "./FoodChainScene";
+import { DayNightScene } from "./DayNightScene";
 import { BnMatrasScene } from "./BnMatrasScene";
 import { SightWordsScene } from "./SightWordsScene";
 import { AnimalHomeScene } from "./AnimalHomeScene";
@@ -95,7 +96,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
       FrogHopScene, MemoryPairsScene, BalloonPopScene, ClockTimeScene, BalanceScene,
-      SinkFloatScene, FoodChainScene,
+      SinkFloatScene, FoodChainScene, DayNightScene,
       CountingSongScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
