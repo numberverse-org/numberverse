@@ -75,7 +75,7 @@
 - English: long-vowel teams review  _(priority: low, kid-first)_
 - Math: skip-counting by 3s & 4s  _(priority: low, kid-first)_
 - ~~Math: odd & even sort~~  ✅ #226
-- Math: number bonds to 10 & 20  _(priority: low, kid-first)_
+- ~~Math: number bonds to 10 & 20~~  ✅ #227
 - Math: place value to 9999 (thousands)  _(priority: low, kid-first)_
 - Math: rounding to nearest 10/100  _(priority: low, kid-first)_
 - Math: bar-chart reading  _(priority: low, kid-first)_
