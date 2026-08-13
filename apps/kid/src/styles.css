@@ -3447,6 +3447,71 @@ body {
   color: rgba(255, 255, 255, 0.75);
   line-height: 1.4;
 }
+/* #277 — land trophy room */
+.tr-screen { justify-content: flex-start; gap: 10px; }
+.tr-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 18px 12px;
+  width: 100%;
+  max-width: 560px;
+  padding: 4px 6px 24px;
+  overflow-y: auto;
+}
+.tr-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 16px 8px 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+.tr-slot.earned {
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.2), rgba(255, 143, 163, 0.13));
+  border-color: rgba(255, 209, 102, 0.5);
+  box-shadow: 0 0 14px rgba(255, 209, 102, 0.2);
+}
+.tr-slot.locked { filter: saturate(0.3) brightness(0.75); }
+.tr-shelf-top {
+  width: 86px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+}
+.tr-slot.earned .tr-shelf-top { background: rgba(255, 209, 102, 0.55); }
+.tr-trophy { font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)); }
+.tr-slot.earned .tr-trophy { animation: calPulse 2.6s ease-in-out infinite; }
+.tr-band-name { font-size: 13px; font-weight: 800; color: #fff; line-height: 1.2; }
+.tr-band-prog { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.6); }
+.tr-state {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.tr-slot.earned .tr-state { color: #ffd166; }
+.tr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+  padding: 26px 16px;
+  text-align: center;
+}
+.tr-empty-emoji { font-size: 40px; }
+.tr-empty-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.4;
+}
 .cards-scroll {
   display: flex;
   flex-direction: column;

@@ -157,7 +157,7 @@
 ## v28 — growth & retention 2
 
 - Kids: skill-tree map per land  _(priority: low, kid-first)_
-- Kids: land trophy room  _(priority: low, kid-first)_
+- ~~Kids: land trophy room~~ ✅ #277 — 🏆 Trophy Room shelf (7 lands), celebrate-once on full mastery, offline (PR pending)
 - ~~Kids: Nova seasonal outfits (Eid, Boishakh)~~ ✅ #278 — festival-gated Eid + Boishakh sets, coin-buy via festival-gated store, locale-config (#131) (PR pending)
 - Kids: pet evolution level 2 — new pet types  _(priority: low, kid-first)_
 - Kids: challenge Nova — beat-the-owl rounds  _(priority: low, kid-first)_

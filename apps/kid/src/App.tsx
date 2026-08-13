@@ -39,7 +39,7 @@ const APP_BUILD = "13 Aug 2026 · 0.26.16 (per-day wrong-answer history + playti
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.26.16";
 
-type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "leaderboard" | "cert" | "castle";
+type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "leaderboard" | "trophyroom" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -537,6 +537,13 @@ interface Strings {
   lbEmpty: string;
   lbAddSibling: string;
   lbSpeak: (name: string, rank: number) => string;
+  /* #277 — land trophy room */
+  trTitle: string;
+  trSub: (n: number, total: number) => string;
+  trEarned: string;
+  trLocked: string;
+  trEmpty: string;
+  trNewSpeak: (name: string, land: string) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1062,6 +1069,13 @@ const STR: Record<Lang, Strings> = {
     lbEmpty: "Add a sibling to start comparing progress!",
     lbAddSibling: "➕ Add sibling",
     lbSpeak: (name, rank) => `${name}, you're #${rank} on this device!`,
+    /* #277 — land trophy room */
+    trTitle: "🏆 Trophy Room",
+    trSub: (n, total) => `${n} of ${total} lands conquered`,
+    trEarned: "Earned",
+    trLocked: "Master every skill to earn",
+    trEmpty: "No trophies yet — master a whole land!",
+    trNewSpeak: (name, land) => `${name}, you conquered ${land}! 🏆`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1572,6 +1586,13 @@ const STR: Record<Lang, Strings> = {
     lbEmpty: "তুলনা শুরু করতে ভাইবোন যোগ করো!",
     lbAddSibling: "➕ ভাইবোন যোগ করো",
     lbSpeak: (name, rank) => `${name}, এই ডিভাইসে তোমার স্থান #${bnNum(rank)}!`,
+    /* #277 — land trophy room */
+    trTitle: "🏆 ট্রফি রুম",
+    trSub: (n, total) => `${bnNum(n)}/${bnNum(total)} ভূখণ্ড জয় করেছো`,
+    trEarned: "জিতেছো",
+    trLocked: "আয়ত্ত করলে পাবে",
+    trEmpty: "এখনো ট্রফি নেই — পুরো ভূখণ্ড আয়ত্ত করো!",
+    trNewSpeak: (name, land) => `${name}, তুমি ${land} জয় করেছ! 🏆`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -2641,6 +2662,28 @@ export default function App() {
       });
     }
   }, [kid?.id, earnedBadgeKey, storedBadges.join(",")]);
+  // #277 — land trophies: celebrating a NEWLY fully-mastered land exactly once.
+  const earnedTrophyKey = kid
+    ? BANDS.filter((b) => {
+        const p = worldProgress(skillsMap, kid.id, b.id);
+        return p.total > 0 && p.mastered === p.total;
+      })
+        .map((b) => b.id)
+        .join(",")
+    : "";
+  useEffect(() => {
+    if (!kid || !earnedTrophyKey) return;
+    const earned = earnedTrophyKey.split(",").filter(Boolean).map(Number);
+    const newly = useKidStore.getState().novaSyncTrophies(kid.id, earned);
+    if (newly.length) {
+      newly.forEach((bandId) => {
+        const b = BANDS.find((x) => x.id === bandId);
+        if (!b) return;
+        tada();
+        speak(lang === "bn" ? t.trNewSpeak(kid.name, b.titleBn ?? b.title) : t.trNewSpeak(kid.name, b.title));
+      });
+    }
+  }, [kid?.id, earnedTrophyKey]);
   // Streak kindness: the store only refreshes `streak` at session-complete, so
   // after a missed day the badge would show a STALE flame. Track the anchor day
   // so we can hide the stale flame and welcome the kid back warmly instead.
@@ -3037,6 +3080,7 @@ export default function App() {
   const goGarden = () => setScreen(kid ? "garden" : "kidpick");
   const goCards = () => setScreen(kid ? "cards" : "kidpick");
   const goBadges = () => setScreen(kid ? "badges" : "kidpick");
+  const goTrophyRoom = () => setScreen(kid ? "trophyroom" : "kidpick");
   /** Open the printable certificate for a completed world. */
   const openCert = (b: Band) => {
     if (!kid) return;
@@ -5736,6 +5780,7 @@ export default function App() {
             <span className="rank-chip" title={t.rankLabel}>
               {rankFor(totalMastered(skillsMap, kid!.id), lang).title}
             </span>
+            <button className="icon-btn" onClick={goTrophyRoom} aria-label={t.trTitle} title={t.trTitle}>🏆</button>
             <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
           </header>
 
@@ -6281,6 +6326,53 @@ export default function App() {
                   <span className="badge-hint">{lang === "bn" ? b.hintBn : b.hint}</span>
                   <span className={`badge-state${earned ? " earned" : ""}`}>{earned ? t.badgeEarned : t.badgeLocked}</span>
                 </button>
+              );
+            })}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* #277 — Land Trophy Room: fully mastering a whole land earns a trophy that
+     sits on a shelf. Offline (reads local mastery only); a newly-earned trophy
+     gets a confetti + spoken cheer exactly once (via the store's sync). */
+  if (screen === "trophyroom" && kid) {
+    const rows = BANDS.map((b) => {
+      const p = worldProgress(skillsMap, kid.id, b.id);
+      return { band: b, earned: p.total > 0 && p.mastered === p.total, mastered: p.mastered, total: p.total };
+    });
+    const trophyCount = rows.filter((r) => r.earned).length;
+    return (
+      <div className="app">
+        <main className="screen tr-screen">
+          <header className="screen-head">
+            <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label={t.back}>‹</button>
+            <div className="head-title">
+              <h2>{t.trTitle}</h2>
+              <p className="head-sub">{t.trSub(trophyCount, rows.length)}</p>
+            </div>
+            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
+          </header>
+
+          {trophyCount === 0 ? (
+            <div className="tr-empty">
+              <span className="tr-empty-emoji" aria-hidden="true">🏆</span>
+              <span className="tr-empty-text">{t.trEmpty}</span>
+            </div>
+          ) : null}
+
+          <div className="tr-shelf">
+            {rows.map((r) => {
+              const title = lang === "bn" ? r.band.titleBn ?? r.band.title : r.band.title;
+              return (
+                <div key={r.band.id} className={`tr-slot${r.earned ? " earned" : " locked"}`} role="status" aria-label={r.earned ? t.trEarned : t.trLocked}>
+                  <span className="tr-shelf-top" aria-hidden="true" />
+                  <span className="tr-trophy" aria-hidden="true">{r.earned ? "🏆" : "🔒"}</span>
+                  <span className="tr-band-name">{title}</span>
+                  <span className="tr-band-prog">{t.skillsProg(r.mastered, r.total)}</span>
+                  <span className="tr-state">{r.earned ? t.trEarned : t.trLocked}</span>
+                </div>
               );
             })}
           </div>
