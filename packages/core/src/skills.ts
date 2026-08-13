@@ -129,6 +129,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-weather-seasons', band: 1, subject: 'science', title: 'Weather & seasons', titleBn: 'আবহাওয়া ও ঋতু', description: 'Sort clothes and activities by season — sunscreen for summer, umbrella for rainy, scarf for winter, kite for spring', descriptionBn: 'ঋতু অনুযায়ী পোশাক-কাজ সাজাই — গ্রীষ্মে সানস্ক্রিন, বর্ষায় ছাতা, শীতে স্কার্ফ, বসন্তে ঘুড়ি', commonCore: ['K.ESS.2'], nctbCode: 'c1-science-2', classNumber: 1, game: 'game-seasons' },
   // Science — living & non-living: sort 36 pictures into জীব (living) / জড় (non-living).
   { id: 'science-living', band: 1, subject: 'science', title: 'Living & non-living', titleBn: 'জীব ও জড়', description: 'Sort pictures into living (grows, breathes) or non-living things', descriptionBn: 'ছবি সাজাই জীব (বাঁচে, বাড়ে) নাকি জড়', commonCore: ['1.LS.1'], nctbCode: 'c1-science-3', classNumber: 1, game: 'game-living' },
+  // Science — five senses: which sense do we use for each sound/smell/taste/picture.
+  { id: 'science-senses', band: 1, subject: 'science', title: 'Five senses', titleBn: 'পাঁচ ইন্দ্রিয়', description: 'Pick the sense we use — see, hear, smell, taste, touch', descriptionBn: 'কোন ইন্দ্রিয় ব্যবহার করি — দেখা, শোনা, গন্ধ, স্বাদ, স্পর্শ', commonCore: ['1.LS.1'], nctbCode: 'c1-science-4', classNumber: 1, game: 'game-senses' },
   // Science — light & shadows: predict where the shadow falls as the light moves.
   { id: 'en-light-shadows', band: 2, subject: 'science', title: 'Light & shadows', titleBn: 'আলো ও ছায়া', description: 'Predict the shadow — it falls opposite the light; low light makes a long shadow, high light a short one', descriptionBn: 'ছায়া কোথায় পড়বে ভবিষ্যদ্বাণী করি — আলোর বিপরীতে; নিচু আলো লম্বা ছায়া, উঁচু আলো ছোট ছায়া', commonCore: ['1.PS.3'], nctbCode: 'c2-science-8', classNumber: 2, game: 'game-shadows' },
   // Science — magnets: predict attract/repel from the facing poles, then try it.
@@ -317,6 +319,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-plants', skillId: 'science-plants', difficultyLevels: [3, 3, 4, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-seasons', skillId: 'en-weather-seasons', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-living', skillId: 'science-living', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
+  { id: 'game-senses', skillId: 'science-senses', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-shadows', skillId: 'en-light-shadows', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-magnets', skillId: 'en-magnets', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-watercycle', skillId: 'en-water-cycle', difficultyLevels: [3, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
@@ -451,6 +454,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-plants': 'PlantParts',
   'game-seasons': 'WeatherSeasons',
   'game-living': 'LivingSort',
+  'game-senses': 'FiveSenses',
   'game-shadows': 'ShadowGuess',
   'game-magnets': 'MagnetPoles',
   'game-watercycle': 'WaterCycle',
