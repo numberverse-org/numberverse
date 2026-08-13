@@ -77,6 +77,7 @@ export const SKILLS: Skill[] = [
   { id: 'bn-sightwords', band: 2, subject: 'bangla', title: 'Bangla sight words', titleBn: 'দেখে বলো শব্দ', description: 'Read short high-frequency Bangla words on sight (আমি, তুমি, সে, না)', descriptionBn: 'দেখেই বাংলা শব্দ পড়ি (আমি, তুমি, সে, না)', commonCore: ['RF.2.3g'], nctbCode: 'c2-bangla-5', classNumber: 2, game: 'game-bnsightwords' },
   // Language — sentence building: SVO word-order grammar with role-colored tiles.
   { id: 'bn-sentence-builder', band: 2, subject: 'bangla', title: 'Sentence builder', titleBn: 'বাক্য সাজাই', description: 'Arrange colored tiles into a simple subject-verb-object sentence', descriptionBn: 'রঙিন টাইল সাজিয়ে সহজ বাক্য বানাই (কর্তা-ক্রিয়া-কর্ম)', commonCore: ['L.2.1'], nctbCode: 'c2-bangla-6', classNumber: 2, game: 'game-sentencebuilder' },
+  { id: 'bn-word-pairs', band: 2, subject: 'bangla', title: 'Word pairs', titleBn: 'বিপরীত ও সমার্থক', description: 'Match opposite (বিপরীত) and same-meaning (সমার্থক) Bangla words', descriptionBn: 'বিপরীত ও সমার্থক শব্দের জুটি মেলাই', commonCore: ['L.2.5'], nctbCode: 'c2-bangla-7', classNumber: 2, game: 'game-wordpairs' },
   { id: 'en-phonics', band: 2, subject: 'english', title: 'Letter sounds', titleBn: 'বর্ণের উচ্চারণ', description: 'First letter sounds (A, B, C)', descriptionBn: 'প্রথম অক্ষরের উচ্চারণ (A, B, C)', commonCore: ['RF.K.3a'], nctbCode: 'c1-english-2', classNumber: 1, game: 'game-enphonics' },
   // Science — heavier / lighter (direct comparison)
   { id: 'heavy-light', band: 2, subject: 'science', title: 'Heavy or light', titleBn: 'ভারী না হালকা', description: 'Which side of the seesaw is heavier?', descriptionBn: 'দোলনার কোন দিক ভারী?', commonCore: ['K.MD.2'], nctbCode: 'c1-science-1', classNumber: 1, game: 'game-balance' },
@@ -192,6 +193,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-sentencebuilder', skillId: 'bn-sentence-builder', difficultyLevels: [1, 1, 2, 2, 2, 2], targetSuccess: 0.8 },
   { id: 'game-storyread', skillId: 'bn-story-read', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-rhymes', skillId: 'bn-rhymes', difficultyLevels: [2, 2, 1, 1, 0, 0], targetSuccess: 0.8 },
+  { id: 'game-wordpairs', skillId: 'bn-word-pairs', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
@@ -276,6 +278,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-sentencebuilder': 'SentenceBuilder',
   'game-storyread': 'StoryRead',
   'game-rhymes': 'RhymeTime',
+  'game-wordpairs': 'WordPairs',
   'game-cvc': 'Cvc',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',
