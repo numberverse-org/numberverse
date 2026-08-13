@@ -87,6 +87,7 @@ import { GardenScene } from "./GardenScene";
 import { FrogHopScene } from "./FrogHopScene";
 import { MemoryPairsScene } from "./MemoryPairsScene";
 import { BalloonPopScene } from "./BalloonPopScene";
+import { FactsAddScene } from "./FactsAddScene";
 import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { CountingSongScene } from "./CountingSongScene";
@@ -127,7 +128,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
-      FrogHopScene, MemoryPairsScene, BalloonPopScene, ClockTimeScene, BalanceScene,
+      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, ClockTimeScene, BalanceScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
       BnSightWordsScene,

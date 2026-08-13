@@ -79,6 +79,8 @@ export const SKILLS: Skill[] = [
   { id: 'add-within-20', band: 2, subject: 'math', title: 'Add within 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Addition facts with sums to 20 (apples shown)', descriptionBn: 'যোগফল ২০-এর মধ্যে (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruitadd-20' },
   { id: 'sub-within-20', band: 2, subject: 'math', title: 'Subtract within 20', titleBn: '২০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 20 (apples shown)', descriptionBn: '২০-এর মধ্যে বিয়োগ (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-5', classNumber: 1, game: 'game-fruitsub-20' },
   { id: 'add-to-20', band: 2, subject: 'math', title: 'Add to 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Pop balloons with the right sums — abstract speed drill', descriptionBn: 'সঠিক যোগফলের বেলুন ফুটাই — দ্রুত অনুশীলন', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-balloonpop' },
+  // Math — addition facts fluency: rapid-fire timed drill to 20 with speed ⚡ + accuracy tally.
+  { id: 'en-addfacts', band: 2, subject: 'math', title: 'Add facts to 20', titleBn: '২০-এর মধ্যে যোগ অনুশীলন', description: 'Rapid-fire addition facts to 20 with speed + accuracy tracking', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে যোগ, গতি ও নির্ভুলতা দেখা হয়', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-6', classNumber: 2, game: 'game-addfacts' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -230,6 +232,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-fruitadd-20', skillId: 'add-within-20', difficultyLevels: [6, 8, 10, 12, 15, 20], targetSuccess: 0.8 },
   { id: 'game-fruitsub-20', skillId: 'sub-within-20', difficultyLevels: [6, 8, 10, 12, 15, 20], targetSuccess: 0.8 },
   { id: 'game-balloonpop', skillId: 'add-to-20', difficultyLevels: [10, 12, 14, 16, 18, 20], targetSuccess: 0.8 },
+  { id: 'game-addfacts', skillId: 'en-addfacts', difficultyLevels: [6, 8, 10, 10, 12, 12], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -324,6 +327,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-oddeven': 'OddEven',
   'game-bncolors': 'BnColors',
   'game-bdtaka': 'BdMoney',
+  'game-addfacts': 'FactsAdd',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
