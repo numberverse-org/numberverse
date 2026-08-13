@@ -1158,6 +1158,66 @@ function tryVoicePreview(tone: string, speed: number, lang: "en" | "bn") {
   synth.speak(u);
 }
 
+/** #619 — persistent section navigation. Every dashboard card carries an
+ *  `id` matching one of these anchors so parents can jump straight to the
+ *  report, the learning controls, or account settings instead of scrolling
+ *  blind through 26 sections. Grouped into six top-level areas. */
+const NAV_GROUPS: { label: string; items: { id: string; label: string }[] }[] = [
+  {
+    label: "Overview",
+    items: [
+      { id: "overview", label: "Family overview" },
+      { id: "today", label: "Today" },
+      { id: "week", label: "This week" },
+      { id: "review", label: "Week in review" },
+      { id: "sessions", label: "Sessions" },
+      { id: "activity", label: "Recent activity" },
+      { id: "compare", label: "Compare kids" },
+    ],
+  },
+  {
+    label: "Reading & stories",
+    items: [
+      { id: "stories", label: "Reading & stories" },
+      { id: "week-words", label: "Week in words" },
+      { id: "archive", label: "Monthly archive" },
+    ],
+  },
+  {
+    label: "Learning",
+    items: [
+      { id: "controls", label: "Learning controls" },
+      { id: "games", label: "Games to try" },
+      { id: "mastery", label: "Skill mastery" },
+      { id: "accel", label: "Acceleration plan" },
+      { id: "help-needed", label: "Needs a little help" },
+      { id: "missed", label: "Missed sessions" },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { id: "worksheet", label: "Printable worksheet" },
+      { id: "flashcards", label: "Flashcard QR cards" },
+    ],
+  },
+  {
+    label: "Family",
+    items: [
+      { id: "add-kid", label: "Add a new kid" },
+      { id: "edit-kid", label: "Edit child" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { id: "account", label: "Account & security" },
+      { id: "help", label: "Help & setup" },
+      { id: "on-device", label: "On-device data" },
+    ],
+  },
+];
+
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
   /** Gate: "checking" → validating the stored token server-side,
@@ -2248,9 +2308,30 @@ export default function ParentDashboard() {
         </div>
       )}
 
+      {/* #619 — persistent section navigation (sticky sidebar on desktop,
+          horizontal tab strip on mobile). Every section carries an id anchor
+          from NAV_GROUPS. */}
+      {kids.length > 0 && (
+        <div className="portal-layout">
+          <aside className="portal-nav" aria-label="Portal sections">
+            <p className="portal-nav-title">Jump to</p>
+            {NAV_GROUPS.map((g) => (
+              <div className="portal-nav-group" key={g.label}>
+                <span className="portal-nav-head">{g.label}</span>
+                <ul>
+                  {g.items.map((it) => (
+                    <li key={it.id}>
+                      <a href={`#${it.id}`}>{it.label}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </aside>
+          <div className="portal-content">
       {/* ── family overview ── */}
       {kids.length > 0 && (
-        <section className="card overview">
+        <section className="card overview" id="overview">
           <h2>👨‍👩‍👧 Family overview</h2>
           <div className="stat-tiles">
             <div className="tile">
@@ -2301,7 +2382,7 @@ export default function ParentDashboard() {
 
       {/* ── add-kid form ── */}
       {showAdd && (
-        <section className="card add-kid">
+        <section className="card add-kid" id="add-kid">
           <h2>Add a new kid</h2>
           <div className="avatar-row">
             {AVATARS.map((a) => (
@@ -2354,7 +2435,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #244 — daily play summary: today's headline on open */}
-          <section className="card daily-card">
+          <section className="card daily-card" id="today">
             <div className="daily-head">
               <h2>☀️ Today</h2>
               <span className="muted small">
@@ -2381,7 +2462,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── this week (the "show me my kid learned" card) ── */}
-          <section className="card weekly">
+          <section className="card weekly" id="week">
             <div className="weekly-head">
               <h2>📊 This week</h2>
               {weeklyStreak > 0 && (
@@ -2477,7 +2558,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #79 — 🏆 mastery timeline: when each skill was won */}
-          <section className="card timeline-card">
+          <section className="card timeline-card" id="review">
             <h2>{TIMELINE_LANGS[wizLang].title}</h2>
             <p className="muted small">{TIMELINE_LANGS[wizLang].hint.replace("{name}", active.name)}</p>
             {masteryTimeline.length === 0 ? (
@@ -2509,7 +2590,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #237 — per-kid reading & story progress view */}
-          <section className="card reading-card">
+          <section className="card reading-card" id="stories">
             <h2>📚 Reading & stories</h2>
             <p className="muted small">
               Which read-aloud books and story quizzes {active.name} has finished — and how they scored.
@@ -2561,7 +2642,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #238 — auto-generated weekly learning narrative from Kotha */}
-          <section className="card narrative-card">
+          <section className="card narrative-card" id="week-words">
             <div className="narrative-head">
               <h2>📖 {active.name}'s week in words</h2>
               <div className="row-buttons" role="group" aria-label="Narrative language">
@@ -2614,7 +2695,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #239 — struggle alert: top Moni-flagged skills this week */}
-          <section className="card alert-card">
+          <section className="card alert-card" id="help-needed">
             <h2>🚨 Needs a little help</h2>
             <p className="muted small">
               Skills where Moni flagged a misconception or tiredness this week — read from{" "}
@@ -2662,7 +2743,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* 🚀 #249 — acceleration plan: skills the kid skipped ahead past + why */}
-          <section className="card accel-card">
+          <section className="card accel-card" id="accel">
             <h2>🚀 Acceleration plan</h2>
             <p className="muted small">
               Skills {active.name} skipped ahead past in the kid app (marked “I already know
@@ -2698,7 +2779,7 @@ export default function ParentDashboard() {
 
           {/* 🗓️ #251 — rolling 12-month archive, derived client-side from the
               full activity history (offline-generated after one lazy fetch). */}
-          <section className="card archive-card">
+          <section className="card archive-card" id="archive">
             <div className="archive-head">
               <h2>🗓️ Monthly archive</h2>
               <button
@@ -2774,7 +2855,7 @@ export default function ParentDashboard() {
 
           {/* 🧵 #255 — session timeline: play blocks (date, rounds, accuracy,
               mastered skills) grouped client-side from the full history. */}
-          <section className="card timeline-card">
+          <section className="card timeline-card" id="sessions">
             <h2>{SESSION_LANGS[wizLang].title}</h2>
             <p className="muted small">{SESSION_LANGS[wizLang].hint}</p>
             {!archiveLoaded ? (
@@ -2845,7 +2926,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* 🎮 #252 — game coverage: which games the kid hasn't tried yet (nudge variety). */}
-          <section className="card coverage-card">
+          <section className="card coverage-card" id="games">
             <h2>🎮 Games to try</h2>
             <p className="muted small">
               Which of the catalog’s games {active.name} has played — and which are still
@@ -2889,7 +2970,7 @@ export default function ParentDashboard() {
 
           {/* #240 — compare two kids side-by-side (offline) */}
           {kids.length >= 2 && (
-            <section className="card compare-card">
+            <section className="card compare-card" id="compare">
               <h2>⚖️ Compare two kids</h2>
               <p className="muted small">
                 How {mtrA.name} and {mtrB.name} stack up, metric by metric. Everything here is
@@ -2934,7 +3015,7 @@ export default function ParentDashboard() {
           )}
 
           {/* #132 — printable worksheet from weak skills */}
-          <section className="card worksheet-card">
+          <section className="card worksheet-card" id="worksheet">
             <h2>📄 Printable worksheet</h2>
             <p className="muted small">
               A practice sheet built from what {active.name} hasn't mastered yet — perfect for offline
@@ -2959,7 +3040,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #139 — printable flashcard QR sheet (offline-first) */}
-          <section className="card worksheet-card">
+          <section className="card worksheet-card" id="flashcards">
             <h2>🎴 Flashcard QR cards</h2>
             <p className="muted small">
               Printable QR codes for the games {active.name} has played. A kid scans a card
@@ -2984,7 +3065,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── controls ── */}
-          <section className="card controls">
+          <section className="card controls" id="controls">
             <h2>🎛️ Learning controls</h2>
 
             {/* #272 — safety: instant pause (parent kill-switch). One tap stops
@@ -3399,7 +3480,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── activity feed ── */}
-          <section className="card">
+          <section className="card" id="activity">
             <h2>📈 Recent activity</h2>
             {(activity[active.id] ?? []).length === 0 ? (
               <p className="muted">Nothing yet — have {active.name} play a round to see it here.</p>
@@ -3419,7 +3500,7 @@ export default function ParentDashboard() {
           {/* #89 — per-skill missed questions, derived from the already-loaded
               story ledger (offline-first). Shows the answer picked vs the right
               one + Moni's diagnosis, grouped per skill, with a reteach badge. */}
-          <section className="card missed-card">
+          <section className="card missed-card" id="missed">
             <h2>{MISSED_LANGS[wizLang].title}</h2>
             <p className="muted small">{MISSED_LANGS[wizLang].hint.replace("{name}", active.name)}</p>
             {missedSkills.length === 0 ? (
@@ -3457,7 +3538,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── mastery table ── */}
-          <section className="card">
+          <section className="card" id="mastery">
             <h2>🧠 Skill mastery</h2>
             {activeMastery.length === 0 ? (
               <p className="muted">No practice yet — play the kid app to record progress.</p>
@@ -3491,7 +3572,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── account & security ── */}
-          <section className="card account">
+          <section className="card account" id="account">
             <h2>🔐 Account & security</h2>
             {acctMsg && (
               <p className={acctMsg.kind === "ok" ? "ok-note" : "err"}>{acctMsg.text}</p>
@@ -3590,7 +3671,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── edit + danger zone ── */}
-          <section className="card danger">
+          <section className="card danger" id="edit-kid">
             <h2>⚙️ Edit {active.name}</h2>
             <div className="avatar-row">
               {AVATARS.map((a) => (
@@ -3713,7 +3794,7 @@ export default function ParentDashboard() {
           </section>
 
           {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}
-          <section className="card help-card">
+          <section className="card help-card" id="help">
             <button className="help-toggle" onClick={() => setHelpOpen((o) => !o)} aria-expanded={helpOpen}>
               {HELP_LANGS[wizLang].toggle}
               <span className="help-caret">{helpOpen ? "▾" : "▸"}</span>
@@ -3744,8 +3825,13 @@ export default function ParentDashboard() {
           </section>
 
           {/* ── #262 on-device data review (localStorage, offline) ── */}
-          <OnDeviceData />
+          <div id="on-device">
+            <OnDeviceData />
+          </div>
         </>
+      )}
+          </div>
+        </div>
       )}
 
       {/* #132 — print-only worksheet. Rendered in the DOM so window.print()
