@@ -1860,6 +1860,10 @@ body {
   gap: 10px;
   width: 100%;
 }
+.quest-goal {
+  color: #7ee8d2;
+  white-space: nowrap;
+}
 .quest-reward {
   color: #ffd166;
   margin-left: 2px;

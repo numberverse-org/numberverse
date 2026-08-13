@@ -167,13 +167,13 @@
 - ~~Kids: mastery mystery reward boxes~~ ✅ #284 — 🎁 box per newly-mastered skill, opens for 2–5 coins inside the daily cap, cap-full waits (PR pending)
 - Kids: custom avatar builder  _(priority: low, kid-first)_
 - ~~Kids: star-of-the-week recap card~~ ✅ #286 — 🌟 weekly card (days/top-skill/biggest win), spoken option, offline, locale-packed (PR pending)
-- Kids: quest mission variety  _(priority: low, kid-first)_
+- ~~Kids: quest mission variety~~ ✅ #287 — daily quest type rotates (rounds/stars/master/new-game), reward parity, offline (PR pending)
 - ~~Kids: kid-friendly voice settings~~ ✅ #288 — 🗣️ Nova's Voice panel in-game: Soft/Normal/Loud + one-tap reset, applies to both speech engines, kid-safe (PR pending)
 - Kids: long-term achievements book  _(priority: low, kid-first)_
 - Kids: mastery confetti + spoken cheer  _(priority: low, kid-first)_
 - Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_
 - Kids: Nova reaction pack v2  _(priority: low, kid-first)_
-- Kids: quest variety — mission types  _(priority: low, kid-first)_
+- ~~Kids: quest variety — mission types~~ ✅ #293 — duplicate of #287, closed (same 4 types, reward parity, i18n clean)
 - ~~Kids: streak-freeze token system~~ ✅ #294 — 🧊 token earned on the day-7 calendar tile; a single missed day spends it to keep the streak alive (PR pending)
 
 ## v29 — polish & perf 2

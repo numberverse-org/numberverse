@@ -120,6 +120,24 @@ export const NOVA_CARE_COINS = 1;
 /** Daily Quest — play NOVA_QUEST_TARGET rounds in one calendar day to win a bonus. */
 export const NOVA_QUEST_TARGET = 3;
 export const NOVA_QUEST_REWARD = 5;
+/* #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
+ * (deterministic hash of kid+date → stable offline, no server). All types pay
+ * the same NOVA_QUEST_REWARD — reward parity by design. */
+export type QuestType = "rounds" | "stars" | "master" | "newgame";
+export const QUEST_TYPES: readonly QuestType[] = ["rounds", "stars", "master", "newgame"];
+export const QUEST_TARGETS: Record<QuestType, number> = {
+  rounds: NOVA_QUEST_TARGET, // play N rounds
+  stars: 8, // earn N stars (correct answers)
+  master: 1, // master one skill
+  newgame: 1, // try a brand-new game (a skill never attempted before)
+};
+/** Deterministic per-kid-per-day quest type — same type all day, every reload. */
+export function questTypeFor(kidId: string, dateIso: string): QuestType {
+  let h = 5381;
+  const s = `${kidId}:${dateIso}`;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return QUEST_TYPES[Math.abs(h) % QUEST_TYPES.length];
+}
 /** #281 — 7-day login calendar: growing coin bonuses for consecutive play days.
  *  Every reward sits inside the daily anti-grind cap (NOVA_DAILY_CAP). */
 export const NOVA_CALENDAR_REWARDS = [3, 4, 5, 6, 7, 8, 10] as const;
@@ -196,10 +214,16 @@ export interface NovaState {
   /** Coins earned today (capped at NOVA_DAILY_CAP). */
   earnedToday: number;
   earnDay: string;
-  /** Daily Quest state — "play N rounds today" pays a bonus. */
+  /** Daily Quest state — a ROTATING mission (rounds/stars/master/new-game)
+   *  pays a bonus. `questType` = the day's deterministic type, `questProgress`
+   *  = type-specific progress (questRounds kept for older-save migration). */
   questDay: string;
   questRounds: number;
   questDone: boolean;
+  /** #287/#293 — the day's quest TYPE (rotates per kid per day). */
+  questType: string;
+  /** #287/#293 — progress toward today's quest target (type-specific). */
+  questProgress: number;
   /** Calendar year the birthday gift was last claimed ("" = never). */
   bdayYear: string;
   /** Last ISO date the parent shared this kid's progress (share reward, once/day). */
@@ -245,6 +269,8 @@ export function defaultNova(): NovaState {
     questDay: "",
     questRounds: 0,
     questDone: false,
+    questType: "",
+    questProgress: 0,
     bdayYear: "",
     shareDay: "",
     calendarDay: "",
@@ -359,9 +385,14 @@ interface KidState {
   novaBuy: (kidId: string, outfitId: string, festivalKey: string | null) => void;
   novaEquip: (kidId: string, outfitId: string) => void;
   novaCare: (kidId: string, action: "feed" | "play") => void;
-  /** Every completed round counts toward today's Daily Quest. Returns true the
-   *  moment the quest completes (so the caller can celebrate once). */
-  novaQuestRound: (kidId: string) => boolean;
+  /** Every completed round advances today's Daily Quest — the mission TYPE
+   *  rotates per kid per day (rounds / stars / master / new-game). Progress
+   *  counts only when the round matches today's type. Returns true the moment
+   *  the quest completes (so the caller can celebrate once). */
+  novaQuestProgress: (
+    kidId: string,
+    sig: { correct?: boolean; mastered?: boolean; freshSkill?: boolean }
+  ) => boolean;
   /** #281 — claim today's 7-day login-calendar bonus (once per day, after the
    *  day's first session, inside the daily cap). Returns coins granted (0 = none). */
   novaClaimCalendar: (kidId: string) => number;
@@ -836,15 +867,31 @@ export const useKidStore = create<KidState>()(
           };
         }),
 
-      /* ── Daily Quest: play N rounds today → bonus coins ── */
+      /* ── Daily Quest: a ROTATING mission (rounds / stars / master / new-game)
+           pays a bonus. Same reward for every type — parity by design. ── */
 
-      novaQuestRound: (kidId) => {
+      novaQuestProgress: (kidId, sig) => {
         const n = get().nova[kidId] ?? defaultNova();
         const today = todayIso();
         const fresh = n.questDay !== today;
         if (!fresh && n.questDone) return false; // already finished today — no grind
-        const rounds = (fresh ? 0 : n.questRounds ?? 0) + 1;
-        const reached = rounds >= NOVA_QUEST_TARGET;
+        const type: QuestType = fresh
+          ? questTypeFor(kidId, today)
+          : (n.questType as QuestType) || questTypeFor(kidId, today);
+        const hit =
+          type === "rounds"
+            ? true
+            : type === "stars"
+              ? !!sig.correct
+              : type === "master"
+                ? !!sig.mastered
+                : !!sig.freshSkill;
+        // Older saves have questRounds but no questProgress → migrate the
+        // rounds-type progress from it for one day.
+        const base = fresh ? 0 : n.questProgress ?? (type === "rounds" ? n.questRounds ?? 0 : 0);
+        const progress = base + (hit ? 1 : 0);
+        const target = QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET;
+        const reached = progress >= target;
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           const earnedToday = cur.earnDay === today ? cur.earnedToday : 0;
@@ -857,7 +904,9 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 questDay: today,
-                questRounds: rounds,
+                questRounds: type === "rounds" ? progress : n.questRounds ?? 0,
+                questType: type,
+                questProgress: progress,
                 questDone: reached,
                 coins: cur.coins + reward,
                 totalEarned: cur.totalEarned + reward,
