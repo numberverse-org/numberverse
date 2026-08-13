@@ -133,7 +133,7 @@ if (skills.length) {
     "grow-count": 12, "quantity-match": 7, "number-line": 10, "number-song": 10,
     "fruit-tree-add": 15, "add-within-10": 10, "sub-within-10": 10,
     "add-within-20": 20, "sub-within-20": 20, "add-to-20": 20,
-    "number-bonds-10": 12, "bd-taka": 10, "add-sub-100": 100,
+    "number-bonds-10": 12, "number-bonds-20": 20, "bd-taka": 10, "add-sub-100": 100,
   };
   for (const g of games) {
     const cap = SCOPE_CAP[g.skillId];

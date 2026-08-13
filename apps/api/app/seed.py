@@ -51,6 +51,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("add-within-10", 2, "math", "Add within 10", "১০-এর মধ্যে যোগ"),
     ("sub-within-10", 2, "math", "Subtract within 10", "১০-এর মধ্যে বিয়োগ"),
     ("number-bonds-10", 2, "math", "Number bonds to 10", "১০-এর জোড়া সংখ্যা"),
+    ("number-bonds-20", 2, "math", "Number bonds to 20", "২০-এর জোড়া সংখ্যা"),
     ("add-within-20", 2, "math", "Add within 20", "২০-এর মধ্যে যোগ"),
     ("sub-within-20", 2, "math", "Subtract within 20", "২০-এর মধ্যে বিয়োগ"),
     ("add-to-20", 2, "math", "Add to 20", "২০-এর মধ্যে যোগ"),
