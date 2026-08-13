@@ -504,6 +504,42 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .brand b { color: var(--nv-brand); }
 .brand .muted { font-weight: 600; }
 
+/* #85 — sync status chip + manual sync button in the topbar */
+.sync-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid var(--nv-border);
+  background: var(--nv-chip);
+  color: var(--nv-text);
+}
+.sync-chip.off { opacity: 0.75; }
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sync-dot.ok { background: #2ec4b6; box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.18); }
+.sync-dot.bad { background: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18); }
+.sync-when { color: var(--nv-muted-soft); font-weight: 600; }
+.sync-btn {
+  border: none;
+  background: linear-gradient(135deg, #4cc9f0, #2ec4b6);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  font-size: 11.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sync-btn:disabled { opacity: 0.6; cursor: wait; }
+
 /* 🧏 #250 — global accessibility toggles (big text + high contrast). */
 .a11y-toggle-group {
   display: inline-flex;
