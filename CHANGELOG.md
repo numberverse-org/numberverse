@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.33.0 (PictoGraph (#65): one picture = 2/5/10 · fewest-notes money lesson + spoken note names (#66))
+
+efaf304 📊💵 #65 + #66: PictoGraph (one picture = 2/5/10) + fewest-notes money lesson
+
 ## 14 Aug 2026 — 0.32.0 (Measurement scene (#63): compare length (cm/m), weight (kg/g), capacity (L/mL) — EN+BN spoken)
 
 1ef715a 📚 ROADMAP_NEXT: refresh from clean 2026-08-12 oracle standup
