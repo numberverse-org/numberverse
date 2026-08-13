@@ -6,3 +6,8 @@ packages:
 # esbuild's postinstall is REQUIRED for vite to work.
 allowBuilds:
   esbuild: true
+
+# #586 — force patched nanoid (≥3.3.18) for GHSA-2v37-7h3g-55p8
+# (transitive via postcss from next/vite; 3.3.17 is in the vulnerable range).
+overrides:
+  nanoid: ^3.3.18
