@@ -108,6 +108,7 @@ import { PlantLifeScene } from "./PlantLifeScene";
 import { WeatherSeasonsScene } from "./WeatherSeasonsScene";
 import { ShadowGuessScene } from "./ShadowGuessScene";
 import { MagnetPolesScene } from "./MagnetPolesScene";
+import { WaterCycleScene } from "./WaterCycleScene";
 import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { CountingSongScene } from "./CountingSongScene";
@@ -148,7 +149,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
-      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, ClockTimeScene, BalanceScene,
+      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, ClockTimeScene, BalanceScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
       BnSightWordsScene,
