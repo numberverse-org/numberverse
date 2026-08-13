@@ -1,0 +1,353 @@
+import Phaser from "phaser";
+import { t } from "./i18n";
+import { GAMES } from "@numberverse/core";
+import { pop, win, bad } from "./audio";
+import { speak } from "./speech";
+import { getAppLang } from "./locale";
+import { gameBackground } from "./backgrounds";
+import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { SAB } from "./safeArea";
+import { makeDraggableTo } from "./gestures";
+
+/**
+ * Shared config-driven SORT-INTO-BINS game engine (#68/#72/#73/#77).
+ *
+ * A drag-to-bin scene: the kid drags each item emoji into one of 2 or 4 bins.
+ * Correct lands the item with a spoken "{name} {verdict}"; wrong returns the
+ * item to its perch and flashes the RIGHT bin green as a hint. Tiered item
+ * pools grow with level (lvl 1–2 → famous tier 1, lvl 3–4 → + tier 2, all at 5+).
+ *
+ * Each concrete scene is a thin subclass supplying its config (title/prompt/
+ * feedback i18n keys + bins + item list). Every key lives as a double-quoted
+ * camelCase literal in the scene file so the audit scanner sees it.
+ */
+export interface SortBin {
+  /** Machine value items match against. */
+  value: string;
+  /** i18n label key for the bin. */
+  key: string;
+  /** Bin icon emoji. */
+  icon: string;
+  /** i18n spoken-verdict template on a correct drop, e.g. "{name} is living!". */
+  verdictKey: string;
+}
+
+export interface SortItem {
+  id: string;
+  emoji: string;
+  value: string;
+  /** 1..3 — pool grows with level (1 = famous first). */
+  tier: number;
+}
+
+export interface BinSortConfig {
+  /** The game id whose difficulty ladder this scene follows. */
+  gameId: string;
+  /** i18n header key. */
+  titleKey: string;
+  /** i18n question template: "{name} — …?" (shown + spoken). */
+  promptKey: string;
+  /** i18n praise float message. */
+  greatKey: string;
+  /** i18n round-end message. */
+  doneKey: string;
+  /** i18n spoken hint on wrong (name the right bin's verdict). */
+  speakWrongKey: string;
+  /** gameBackground() theme. */
+  background: string;
+  bins: SortBin[];
+  items: SortItem[];
+  /** item id → i18n name key. */
+  nameKeys: Record<string, string>;
+  /** 2×1 row (2 bins) or 2×2 grid (4 bins). */
+  grid: 2 | 4;
+  /** Rounds to finish per level. */
+  rounds: number;
+}
+
+const BN_D = "০১২৩৪৫৬৭৮৯";
+
+function digit(n: number): string {
+  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
+}
+
+export abstract class BinSortScene extends Phaser.Scene {
+  private levelIndex = 0;
+  private roundsDone = 0;
+  private startedAt = 0;
+  private queue: SortItem[] = [];
+  private qIdx = 0;
+  private correct = 0;
+  private wrongThisItem = false;
+  private busy = false;
+  private bins: { c: Phaser.GameObjects.Container; bin: SortBin }[] = [];
+  private itemBox!: Phaser.GameObjects.Container;
+  private itemEmoji!: Phaser.GameObjects.Text;
+  private itemName!: Phaser.GameObjects.Text;
+  private titleText!: Phaser.GameObjects.Text;
+  private roundText!: Phaser.GameObjects.Text;
+  private meter!: RoundMeterApi;
+  private prompt!: Phaser.GameObjects.Text;
+  private tallyText!: Phaser.GameObjects.Text;
+  private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
+  private perch = { x: 0, y: 0 };
+  private binGeom = { cardW: 0, cardH: 0, startX: 0, c0: 0, c1: 0 };
+
+  protected abstract cfg(): BinSortConfig;
+
+  constructor(key: string) {
+    super(key);
+  }
+
+  protected ladder(): number[] {
+    return GAMES.find((g) => g.id === this.cfg().gameId)?.difficultyLevels ?? [];
+  }
+
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+    const cfg = this.cfg();
+    this.onRoundDone = data.onRoundDone;
+    this.levelIndex = data.startLevelIndex ?? 0;
+    gameBackground(this, cfg.background as never);
+    this.titleText = this.add
+      .text(0, 0, t(cfg.titleKey), txt(34, "#ffffff", { bold: true }))
+      .setOrigin(0.5);
+    this.roundText = this.add
+      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .setOrigin(0.5);
+    this.meter = roundMeter(this);
+    this.prompt = this.add
+      .text(0, 0, "", txt(26, "#ffffff", { bold: true, outline: true, wrap: 340 }))
+      .setOrigin(0.5);
+    this.tallyText = this.add
+      .text(0, 0, "", txt(20, "#ffffff", { bold: true, outline: true }))
+      .setOrigin(0.5);
+
+    this.itemBox = this.add.container(0, 0).setDepth(20).setSize(120, 120);
+    this.itemEmoji = this.add.text(0, -16, "✨", txt(74, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
+    this.itemName = this.add.text(0, 44, "", txt(22, "#ffffff", { bold: true, outline: true, shadow: false })).setOrigin(0.5);
+    this.itemBox.add([this.itemEmoji, this.itemName]);
+    makeDraggableTo(this, this.itemBox, {
+      getTargets: () => this.bins.map((b) => b.c),
+      onDrop: (target) => {
+        if (this.busy) return;
+        const hit = this.bins.find((b) => b.c === target);
+        this.dropOn(hit?.bin ?? null);
+      },
+    });
+
+    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    this.layout();
+    this.startRound();
+  }
+
+  private layout() {
+    const cfg = this.cfg();
+    const { width, height } = this.scale;
+    this.titleText.setPosition(width / 2, 40);
+    this.roundText.setPosition(width / 2, 76);
+    this.meter.setPosition(width / 2, 100);
+    this.tallyText.setPosition(width - 42, 100);
+    this.prompt.setPosition(width / 2, height * 0.14);
+    this.prompt.setWordWrapWidth(Math.max(200, width - 60));
+    this.perch = { x: width / 2, y: height * 0.35 };
+    this.itemBox.setPosition(this.perch.x, this.perch.y);
+
+    const gap = 14;
+    if (cfg.grid === 2) {
+      const cardW = Math.max(130, Math.min(230, (width - 3 * gap) / 2));
+      const cardH = 150;
+      const startX = width / 2 - (cardW + gap) / 2;
+      const bandTop = height * 0.55;
+      const y = Math.max(bandTop, height - cardH - 20 - SAB());
+      this.binGeom = { cardW, cardH, startX, c0: y + cardH / 2, c1: y + cardH / 2 };
+      this.bins.forEach((b, i) => b.c.setPosition(i === 0 ? startX : startX + cardW + gap, y + cardH / 2));
+    } else {
+      const cardW = Math.max(100, Math.min(200, (width - 3 * gap) / 2));
+      const cardH = 124;
+      const startX = width / 2 - (cardW + gap) / 2;
+      const bandTop = height * 0.5;
+      const bandBottom = height - 18 - SAB();
+      const totalH = 2 * cardH + gap;
+      const topY = Math.max(bandTop, bandBottom - totalH);
+      const c0 = topY + cardH / 2;
+      this.binGeom = { cardW, cardH, startX, c0, c1: c0 + cardH + gap };
+      this.bins.forEach((b, i) =>
+        b.c.setPosition(i % 2 === 0 ? startX : startX + cardW + gap, i < 2 ? c0 : c0 + cardH + gap)
+      );
+    }
+  }
+
+  private queueSize(level: number): number {
+    const cfg = this.cfg();
+    const ladder = this.ladder();
+    const n = ladder[Math.min(level, ladder.length - 1)] ?? cfg.bins.length + 2;
+    return Math.min(n, cfg.items.length);
+  }
+
+  private startRound() {
+    this.clearRound();
+    const cfg = this.cfg();
+    const pool = cfg.items.filter((it) => it.tier <= (this.levelIndex < 2 ? 1 : this.levelIndex < 4 ? 2 : 3));
+    Phaser.Utils.Array.Shuffle(pool);
+    this.queue = pool.slice(0, Math.min(pool.length, this.queueSize(this.levelIndex)));
+    this.qIdx = 0;
+    this.correct = 0;
+    this.wrongThisItem = false;
+    this.startedAt = this.time.now;
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
+    this.meter.set(this.roundsDone, cfg.rounds);
+    this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
+    this.spawnBins();
+    this.showCurrent();
+  }
+
+  private spawnBins() {
+    this.clearBins();
+    const cfg = this.cfg();
+    const { cardW, cardH, startX, c0, c1 } = this.binGeom;
+    const GAP = 14;
+    cfg.bins.forEach((bin, i) => {
+      const x = cfg.grid === 2 ? (i === 0 ? startX : startX + cardW + GAP) : i % 2 === 0 ? startX : startX + cardW + GAP;
+      const y = cfg.grid === 2 ? c0 : i < 2 ? c0 : c1;
+      this.bins.push({ c: this.makeBin(x, y, bin), bin });
+    });
+  }
+
+  private makeBin(x: number, y: number, bin: SortBin): Phaser.GameObjects.Container {
+    const { cardW, cardH } = this.binGeom;
+    const bg = this.add.graphics();
+    bg.fillStyle(BTN_NEUTRAL.top, 1);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 18);
+    bg.fillStyle(BTN_NEUTRAL.bottom, 1);
+    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 18);
+    bg.fillStyle(0x93a3b8, 0.5);
+    bg.fillRoundedRect(-cardW / 2, cardH / 2 - 10, cardW, 10, 5);
+    const icon = this.add.text(0, -20, bin.icon, txt(40, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
+    const label = this.add.text(0, 28, t(bin.key), txt(24, "#1e293b", { bold: true, shadow: false, wrap: cardW - 20 })).setOrigin(0.5);
+    const c = this.add.container(x, y, [bg, icon, label]);
+    c.setSize(cardW, cardH);
+    c.setInteractive({ useHandCursor: true });
+    return c;
+  }
+
+  private showCurrent() {
+    const cfg = this.cfg();
+    const it = this.queue[this.qIdx];
+    this.wrongThisItem = false;
+    this.itemEmoji.setText(it.emoji);
+    this.itemName.setText(t(cfg.nameKeys[it.id]));
+    this.itemBox.setPosition(this.perch.x, this.perch.y);
+    this.itemBox.setAlpha(1);
+    this.itemBox.setScale(1);
+    const name = t(cfg.nameKeys[it.id]);
+    this.prompt.setText(t(cfg.promptKey, { name }));
+    speak(t(cfg.promptKey, { name }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+  }
+
+  private dropOn(bin: SortBin | null) {
+    const cfg = this.cfg();
+    const it = this.queue[this.qIdx];
+    if (bin === null) {
+      this.flyBack();
+      return;
+    }
+    const hit = this.bins.find((b) => b.bin === bin)!;
+    if (bin.value === it.value) {
+      this.correctPlace(cfg, it, hit);
+      return;
+    }
+    this.wrongPlace(cfg, it, hit);
+  }
+
+  private correctPlace(cfg: BinSortConfig, it: SortItem, bin: { c: Phaser.GameObjects.Container; bin: SortBin }) {
+    this.busy = true;
+    if (!this.wrongThisItem) this.correct++;
+    this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
+    pop();
+    win();
+    this.floatMsg(t(cfg.greatKey));
+    speak(t(bin.bin.verdictKey, { name: t(cfg.nameKeys[it.id]) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    this.flashBin(bin, 0x4ade80);
+    this.tweens.add({
+      targets: this.itemBox,
+      x: bin.c.x,
+      y: bin.c.y,
+      scale: 0.7,
+      alpha: 0.6,
+      duration: 260,
+      ease: "Back.easeIn",
+      onComplete: () => this.advance(),
+    });
+  }
+
+  private wrongPlace(cfg: BinSortConfig, it: SortItem, bin: { c: Phaser.GameObjects.Container; bin: SortBin }) {
+    this.wrongThisItem = true;
+    bad();
+    this.floatMsg(t(cfg.speakWrongKey, { name: t(cfg.nameKeys[it.id]) }));
+    this.flashBin(bin, 0xf87171);
+    this.tweens.add({ targets: bin.c, x: bin.c.x + 8, duration: 60, yoyo: true, repeat: 3, ease: "Sine.easeInOut" });
+    const right = this.bins.find((b) => b.bin.value === it.value)!;
+    this.flashBin(right, 0x4ade80, 0.45);
+    this.flyBack();
+  }
+
+  private flyBack() {
+    this.itemBox.setPosition(this.perch.x, this.perch.y);
+    this.itemBox.setScale(1);
+    this.itemBox.setAlpha(1);
+  }
+
+  private flashBin(bin: { c: Phaser.GameObjects.Container; bin: SortBin }, color: number, alpha = 0.9) {
+    const g = this.add.graphics();
+    const { cardW, cardH } = this.binGeom;
+    g.lineStyle(5, color, alpha);
+    g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 18);
+    bin.c.addAt(g, 0);
+    this.time.delayedCall(900, () => g.destroy());
+  }
+
+  private advance() {
+    this.itemBox.setAlpha(1);
+    this.itemBox.setScale(1);
+    this.qIdx++;
+    if (this.qIdx < this.queue.length) {
+      this.busy = false;
+      this.time.delayedCall(200, () => this.showCurrent());
+      return;
+    }
+    this.finishRound();
+  }
+
+  private finishRound() {
+    const cfg = this.cfg();
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    this.floatMsg(`${t(cfg.doneKey)}  ${digit(this.correct)}/${digit(this.queue.length)}`);
+    this.roundsDone++;
+    this.meter.set(this.roundsDone, cfg.rounds);
+    this.onRoundDone?.(this.correct === this.queue.length, ms, this.levelIndex + 1);
+    this.time.delayedCall(2000, () => {
+      if (this.roundsDone >= cfg.rounds) this.roundsDone = 0;
+      this.levelIndex++;
+      this.busy = false;
+      this.startRound();
+    });
+  }
+
+  private floatMsg(text: string) {
+    const m = this.add
+      .text(this.scale.width / 2, this.scale.height * 0.28, text, txt(26, "#ffd166", { bold: true, outline: true, wrap: 320 }))
+      .setOrigin(0.5)
+      .setDepth(40);
+    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
+  }
+
+  private clearBins() {
+    this.bins.forEach((b) => b.c.destroy());
+    this.bins = [];
+  }
+
+  private clearRound() {
+    this.clearBins();
+    this.queue = [];
+  }
+}
