@@ -2,6 +2,29 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+
+/** #7 — local-only diagnostics ring buffer. The portal has ZERO analytics, so
+ *  the parent's browser is the only error log. We keep the last 20 window
+ *  errors + unhandled rejections in memory and let the parent export them as a
+ *  plain-text blob — nothing is sent anywhere; the buffer dies on reload. */
+const NV_DIAG_MAX = 20;
+const nvDiagErrors: { at: string; msg: string }[] = [];
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (e) => {
+    nvDiagErrors.push({
+      at: new Date().toISOString(),
+      msg: `${e.message}${e.filename ? ` @ ${e.filename}:${e.lineno}` : ""}`,
+    });
+    if (nvDiagErrors.length > NV_DIAG_MAX) nvDiagErrors.shift();
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    nvDiagErrors.push({
+      at: new Date().toISOString(),
+      msg: `unhandled rejection: ${String((e.reason as { message?: string } | undefined)?.message ?? e.reason ?? e)}`,
+    });
+    if (nvDiagErrors.length > NV_DIAG_MAX) nvDiagErrors.shift();
+  });
+}
 import {
   isAllowedExternalUrl,
   SKILLS,
@@ -356,6 +379,50 @@ const TIMELINE_LANGS = {
     stillGoing: "চলছে",
     unknownDate: "আগে",
     subjects: "সব বিষয়",
+  },
+} as const;
+
+/** #7 — 🩺 local-only diagnostics card. EN + BN. Every line is read from THIS
+ *  browser (error buffer, service worker, last sync, voice engine) and the
+ *  export button downloads a text blob — nothing leaves the device. */
+const DEBUG_LANGS = {
+  en: {
+    title: "🩺 Diagnostics",
+    hint: "Reads only this browser — last errors, sync state, voice engine. Nothing leaves your device.",
+    toggle: "🩺 Diagnostics",
+    lastSync: "Last sync",
+    never: "never",
+    online: "online",
+    offline: "offline",
+    serviceWorker: "Service worker",
+    notInstalled: "not installed",
+    voice: "Voice engine",
+    voices: "voices available",
+    noVoice: "no voices on this device",
+    errors: "Errors (last 20)",
+    noErrors: "No errors recorded.",
+    export: "📋 Export as text",
+    exported: "Copied diagnostics to clipboard ✓",
+    missing: "missing",
+  },
+  bn: {
+    title: "🩺 ডায়াগনস্টিকস",
+    hint: "শুধু এই ব্রাউজার পড়ে — শেষ ত্রুটি, সিঙ্ক অবস্থা, ভয়েস ইঞ্জিন। কিছুই আপনার ডিভাইস থেকে বের হয় না।",
+    toggle: "🩺 ডায়াগনস্টিকস",
+    lastSync: "সর্বশেষ সিঙ্ক",
+    never: "কখনোই না",
+    online: "অনলাইন",
+    offline: "অফলাইন",
+    serviceWorker: "সার্ভিস ওয়ার্কার",
+    notInstalled: "ইনস্টল নেই",
+    voice: "ভয়েস ইঞ্জিন",
+    voices: "টি ভয়েস পাওয়া যায়",
+    noVoice: "এই ডিভাইসে কোনো ভয়েস নেই",
+    errors: "ত্রুটি (সর্বশেষ ২০টি)",
+    noErrors: "কোনো ত্রুটি রেকর্ড হয়নি।",
+    export: "📋 টেক্সট হিসেবে কপি করুন",
+    exported: "ডায়াগনস্টিকস ক্লিপবোর্ডে কপি হয়েছে ✓",
+    missing: "অনুপস্থিত",
   },
 } as const;
 
@@ -1109,6 +1176,26 @@ export default function ParentDashboard() {
     return () => window.removeEventListener("storage", onThemeStorage);
   }, []);
 
+  // #7 — read the service-worker version (if any) for the diagnostics card.
+  // Guarded: registration can reject (older browsers / private mode) → keep null.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const ctrl = navigator.serviceWorker.controller;
+    if (ctrl) {
+      setSwVersion(ctrl.scriptURL.split("/").pop() ?? ctrl.scriptURL);
+      return;
+    }
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => {
+        const url = reg?.active?.scriptURL ?? reg?.installing?.scriptURL;
+        if (url) setSwVersion(url.split("/").pop() ?? url);
+      })
+      .catch(() => {
+        /* no SW — keep null */
+      });
+  }, []);
+
   // #238 — weekly narrative language + editable draft (localStorage only).
   const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
   const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
@@ -1126,6 +1213,14 @@ export default function ParentDashboard() {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+
+  // #7/#85 — local diagnostics: when the dashboard data last synced (set on
+  // every successful refreshAll), whether the diagnostics card is open, and the
+  // SW version (read lazily; null until a service worker controls this page).
+  const [lastSync, setLastSync] = useState<number | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [diagCopied, setDiagCopied] = useState(false);
+  const [swVersion, setSwVersion] = useState<string | null>(null);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -1209,6 +1304,9 @@ export default function ParentDashboard() {
       setStories(stt);
       setStoryStats(sst);
       setAccel(acc);
+      // #7/#85 — record when the dashboard data last came from the API, so the
+      // diagnostics card + sync chip can say "synced X ago" (offline-safe).
+      setLastSync(Date.now());
     },
     []
   );
@@ -1720,6 +1818,38 @@ export default function ParentDashboard() {
       window.setTimeout(() => setNarrCopied(false), 1500);
     } catch {
       /* clipboard unavailable — nothing to show */
+    }
+  }
+
+  /** #7 — export the local-only diagnostics as a plain-text blob (clipboard).
+   *  No PII: kid names/ids/emails are never included — only browser/env facts. */
+  async function exportDiagnostics() {
+    const rows: string[] = [
+      "Numberverse parent portal diagnostics",
+      `time: ${new Date().toISOString()}`,
+      `online: ${navigator.onLine ? "yes" : "no"}`,
+      `last sync: ${lastSync ? new Date(lastSync).toISOString() : "never"}`,
+      `service worker: ${swVersion ?? "not installed"}`,
+      `user agent: ${navigator.userAgent}`,
+      "--- errors (last 20) ---",
+      ...(nvDiagErrors.length ? nvDiagErrors.map((e) => `${e.at}  ${e.msg}`) : ["(none)"]),
+    ];
+    const text = rows.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setDiagCopied(true);
+      window.setTimeout(() => setDiagCopied(false), 2000);
+    } catch {
+      // Clipboard blocked → fall back to a download (still stays on-device).
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `numberverse-diagnostics-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   }
 
@@ -3376,6 +3506,65 @@ export default function ParentDashboard() {
                 <button className="btn danger-ghost" onClick={() => { setConfirmDelete(true); setConfirmReset(false); }}>Delete…</button>
               )}
             </div>
+          </section>
+
+          {/* #7 — 🩺 local-only diagnostics (never leaves the device) */}
+          <section className="card diag-card">
+            <button className="diag-toggle" onClick={() => setDebugOpen((o) => !o)} aria-expanded={debugOpen}>
+              {DEBUG_LANGS[wizLang].toggle}
+              <span className="diag-caret">{debugOpen ? "▾" : "▸"}</span>
+            </button>
+            {debugOpen && (
+              <div className="diag-body">
+                <p className="muted small">{DEBUG_LANGS[wizLang].hint}</p>
+                <dl className="diag-grid">
+                  <div>
+                    <dt>{DEBUG_LANGS[wizLang].lastSync}</dt>
+                    <dd>
+                      {lastSync
+                        ? new Date(lastSync).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                        : DEBUG_LANGS[wizLang].never}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{DEBUG_LANGS[wizLang].online}</dt>
+                    <dd>
+                      <span className={`dot ${navigator.onLine ? "ok" : "off"}`} aria-hidden />
+                      {navigator.onLine ? DEBUG_LANGS[wizLang].online : DEBUG_LANGS[wizLang].offline}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{DEBUG_LANGS[wizLang].serviceWorker}</dt>
+                    <dd>{swVersion ?? DEBUG_LANGS[wizLang].notInstalled}</dd>
+                  </div>
+                  <div>
+                    <dt>{DEBUG_LANGS[wizLang].voice}</dt>
+                    <dd>
+                      {typeof speechSynthesis !== "undefined" && speechSynthesis.getVoices().length > 0
+                        ? `${speechSynthesis.getVoices().length} ${DEBUG_LANGS[wizLang].voices}`
+                        : DEBUG_LANGS[wizLang].noVoice}
+                    </dd>
+                  </div>
+                </dl>
+                <h3 className="diag-err-head">{DEBUG_LANGS[wizLang].errors}</h3>
+                {nvDiagErrors.length === 0 ? (
+                  <p className="muted small">{DEBUG_LANGS[wizLang].noErrors}</p>
+                ) : (
+                  <ul className="diag-errors">
+                    {nvDiagErrors.slice(-NV_DIAG_MAX).reverse().map((e, i) => (
+                      <li key={`${e.at}-${i}`}>
+                        <code>{e.at.slice(0, 16)}</code> {e.msg}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="row-buttons">
+                  <button className="btn ghost small" onClick={() => void exportDiagnostics()}>
+                    {diagCopied ? DEBUG_LANGS[wizLang].exported : DEBUG_LANGS[wizLang].export}
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ── #262 on-device data review (localStorage, offline) ── */}
