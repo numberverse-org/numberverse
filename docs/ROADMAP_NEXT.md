@@ -67,7 +67,7 @@
 - ~~Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)~~  ✅ #216 — race line of N runners 🏁 with a checkered finish flag; "Who is দ্বিতীয়?" → tap the 2nd-from-the-flag runner; wrong taps flash red + pulse the flag (where counting starts); each round asks every position exactly once, all 10 ordinals at lvl 6 (ord* keys)
 - ~~Bangla: simple idioms for kids~~  ✅ #217 — 12 বাগধারা (তালগাছে কুমড়ো 🌴🎃, চোখে আঙুল দিয়ে দেখা 👁️…) match their meaning; emoji picture hint + the idiom spoken aloud; 🔊 replay speaks a kid-friendly example; 3 meaning buttons, shuffle-bag guarantees all 12 met, lvl ladder [4,4,6,6,8,8] (id* keys)
 - ~~Bangla: verb-form gender agreement~~  ✅ #218 — 12 slots pick the agreeing verb for a pictured subject: ছেলেটি খেলছে 👦⚽, মা রান্না করেন 👩🍳, রাজা যান 👑…; emoji picture + subject blank + 3 verb buttons (wrong = wrong person/honorific), full sentence spoken on correct; shuffle-bag + dedupe, lvl [4,4,6,6,8,8] (vg* keys)
-- Bangla: classifiers & postpositions (গুলো/টাকে)  _(priority: low, kid-first)_
+- ~~Bangla: classifiers & postpositions (গুলো/টাকে)~~  ✅ #219 — 16 sentences with a blank ("আমার বই ___ পড়ে আছে।" 📚, "মেয়েটি স্কুল ___ আসছে।" 🏫); tap a word button to INSERT টি/গুলো/পাশে/থেকে…; correct fills the blank + speaks the full sentence; 3 distinct options, shuffle-bag + dedupe, lvl [4,4,6,6,8,8] (clf* keys)
 - English: digraph review challenge (sh ch th wh ph)  _(priority: low, kid-first)_
 - English: synonyms & antonyms pairs  _(priority: low, kid-first)_
 - English: irregular plurals (foot-feet, mouse-mice)  _(priority: low, kid-first)_
