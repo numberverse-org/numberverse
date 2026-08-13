@@ -15,7 +15,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
@@ -507,6 +507,10 @@ interface Strings {
   fest_holi: string;
   /* daily quest */
   questTitle: string;
+  questTypeRounds: (n: number) => string;
+  questTypeStars: (n: number) => string;
+  questTypeMaster: (n: number) => string;
+  questTypeNewgame: (n: number) => string;
   questProgress: (n: number, target: number) => string;
   questDoneText: string;
   questReward: (n: number) => string;
@@ -1066,7 +1070,11 @@ const STR: Record<Lang, Strings> = {
     fest_holi: "Holi",
     /* daily quest */
     questTitle: "🎯 Today's Quest",
-    questProgress: (n, target) => `Play ${n}/${target} rounds`,
+    questTypeRounds: (n) => `Play ${n} round${n === 1 ? "" : "s"}`,
+    questTypeStars: (n) => `Earn ${n} star${n === 1 ? "" : "s"}`,
+    questTypeMaster: (n) => `Master ${n} skill`,
+    questTypeNewgame: (n) => `Try ${n} new game`,
+    questProgress: (n, target) => `${n}/${target}`,
     questDoneText: "✅ Quest complete!",
     questReward: (n) => `+${n} 🪙 bonus`,
     questCompleteSpeak: (n) => `Quest complete! You won ${n} bonus coins! 🎉`,
@@ -1610,7 +1618,11 @@ const STR: Record<Lang, Strings> = {
     fest_holi: "হোলি",
     /* daily quest */
     questTitle: "🎯 আজকের মিশন",
-    questProgress: (n, target) => `${n}/${target}টা খেলা খেলো`,
+    questTypeRounds: (n) => `${bnNum(n)}টা রাউন্ড খেলো`,
+    questTypeStars: (n) => `${bnNum(n)}টা তারা জিতো`,
+    questTypeMaster: (n) => `${bnNum(n)}টি দক্ষতা আয়ত্ত করো`,
+    questTypeNewgame: (n) => `${bnNum(n)}টা নতুন খেলা খেলো`,
+    questProgress: (n, target) => `${bnNum(n)}/${bnNum(target)}`,
     questDoneText: "✅ মিশন শেষ!",
     questReward: (n) => `+${n} 🪙 বোনাস`,
     questCompleteSpeak: (n) => `মিশন শেষ! তুমি ${n}টা বোনাস কয়েন জিতেছ! 🎉`,
@@ -2694,17 +2706,27 @@ export default function App() {
     const id = window.setTimeout(() => setNeuralFlash(false), 5000);
     return () => window.clearTimeout(id);
   }, [neural.ready]);
-  const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestRound, gardenWater, gardenMastery } = useKidStore();
+  const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestProgress, gardenWater, gardenMastery } = useKidStore();
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
   const kothaStories = useKidStore((s) => s.stories);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
+  // #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
+  // (deterministic, offline). Progress counts only when a round matches today's
+  // type; every type pays the same bonus (reward parity).
   const quest = useKidStore((s) => {
     const n = s.nova[kid?.id ?? ""];
-    if (!n) return { rounds: 0, done: false, today: false };
+    if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false };
     const today = todayIso();
     const todayFresh = n.questDay === today;
-    return { rounds: todayFresh ? n.questRounds ?? 0 : 0, done: todayFresh ? !!n.questDone : false, today: todayFresh };
+    const type: QuestType = todayFresh && n.questType ? (n.questType as QuestType) : questTypeFor(kid?.id ?? "", today);
+    return {
+      type,
+      progress: todayFresh ? n.questProgress ?? (type === "rounds" ? n.questRounds ?? 0 : 0) : 0,
+      target: QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET,
+      done: todayFresh ? !!n.questDone : false,
+      today: todayFresh,
+    };
   });
   const sessionStreakCount = sessionStreak(events);
   const novaDayStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
@@ -3659,13 +3681,22 @@ export default function App() {
         // count-to-10 AND count-to-50 — the scene reads its own levels here).
         levels: getGame(step.gameId)?.difficultyLevels,
         onRoundDone: (correct: boolean, ms: number, difficulty: number) => {
+          // Was this skill NEVER attempted before this round? (feeds the
+          // "try a new game" quest type — must be captured BEFORE the event
+          // lands, or the fresh state is already consumed.)
+          const pre = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
+          const freshSkill = !pre || (pre.attempts ?? 0) === 0;
           const e: RoundResult = { gameId: step.gameId, skillId: step.skillId, correct, difficulty, responseMs: ms };
           addEvent(kid.id, e);
           novaAwardRound(kid.id, correct);
           // #133 — screen-reader cue for every round (matches the on-screen flash).
           announce(correct ? t.a11yRight : t.a11yWrong);
-          // every completed round counts toward today's Daily Quest (play N → bonus)
-          if (novaQuestRound(kid.id)) {
+          // every completed round advances today's Daily Quest — the mission
+          // TYPE rotates per day (play rounds / earn stars / master a skill /
+          // try a new game). Progress counts only when this round matches it.
+          const st = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
+          const mastered = !!(st && st.pMastered >= MASTERY_THRESHOLD);
+          if (novaQuestProgress(kid.id, { correct, mastered, freshSkill })) {
             // THE moment the quest finishes — cheer once, aloud, in the app's language.
             cancelSpeech();
             tada();
@@ -3677,8 +3708,7 @@ export default function App() {
           // …and a skill that just crossed the mastery bar plants a trophy flower.
           // (masteryPlant dedupes per skill — one flower, ever. masteredBeforeRef
           //  is left untouched so the done-screen "New skill mastered!" still cheers.)
-          const st = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
-          if (st && st.pMastered >= MASTERY_THRESHOLD) {
+          if (mastered) {
             gardenMastery(kid.id, step.skillId, step.title);
             // PET + 🎉 #290 IN-THE-MOMENT: a brand-new mastery is the BIG moment —
             // the pet takes a step AND we celebrate RIGHT NOW with a confetti burst
@@ -3710,7 +3740,7 @@ export default function App() {
       // skill attempts. Any wrongs recorded so far stay in the ledger.
       wrongLedger.setContext(null);
     };
-  }, [screen, world, kid, sessionIdx, reteachNonce, addEvent, novaAwardRound, novaQuestRound, gardenWater, gardenMastery]);
+  }, [screen, world, kid, sessionIdx, reteachNonce, addEvent, novaAwardRound, novaQuestProgress, gardenWater, gardenMastery]);
 
   /* ── Advance to the next skill after ROUNDS_TO_FINISH rounds — BUT only if
      the current step's wrongs are RESOLVED (open === 0). If the kid still has
@@ -4445,9 +4475,11 @@ export default function App() {
               </div>
             </section>
 
-            {/* Daily Quest — the visible "come back every day" goal. When the
-                parent's playtime cap already blocks play, a "0/3 rounds" bar is
-                an unreachable goal → a warm rest line instead, never guilt. */}
+            {/* Daily Quest — the visible "come back every day" goal. The mission
+                TYPE rotates per kid per day (play rounds / earn stars / master a
+                skill / try a new game), and every type pays the same bonus. When
+                the parent's playtime cap already blocks play, a "0/N" bar is an
+                unreachable goal → a warm rest line instead, never guilt. */}
             <div className={`quest-chip${quest.done ? " done" : questBlocked ? " rest" : ""}`} role="status">
               <span className="quest-title">{t.questTitle}</span>
               {quest.done ? (
@@ -4458,8 +4490,14 @@ export default function App() {
                 <span className="quest-line">{t.questRest}</span>
               ) : (
                 <span className="quest-line">
-                  {t.questProgress(Math.min(quest.rounds, NOVA_QUEST_TARGET), NOVA_QUEST_TARGET)}
-                  <span className="quest-bar"><span className="quest-fill" style={{ width: `${Math.min(100, (quest.rounds / NOVA_QUEST_TARGET) * 100)}%` }} /></span>
+                  <span className="quest-goal">
+                    {quest.type === "rounds" ? t.questTypeRounds(quest.target)
+                      : quest.type === "stars" ? t.questTypeStars(quest.target)
+                      : quest.type === "master" ? t.questTypeMaster(quest.target)
+                      : t.questTypeNewgame(quest.target)}
+                  </span>
+                  {t.questProgress(Math.min(quest.progress, quest.target), quest.target)}
+                  <span className="quest-bar"><span className="quest-fill" style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} /></span>
                 </span>
               )}
             </div>
