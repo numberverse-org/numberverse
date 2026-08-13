@@ -253,6 +253,38 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
 .brand b { color: #7de3ff; }
 .brand .muted { font-weight: 600; }
 
+/* 🧏 #250 — global accessibility toggles (big text + high contrast). */
+.a11y-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.a11y-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: #e8eef7;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.a11y-toggle:hover { background: rgba(255, 255, 255, 0.12); }
+.a11y-toggle.on {
+  background: rgba(76, 201, 240, 0.22);
+  border-color: #4cc9f0;
+  color: #fff;
+}
+.a11y-toggle-label { line-height: 1; }
+@media (max-width: 640px) {
+  .a11y-toggle-label { display: none; } /* icons-only on small screens */
+}
+
 /* kid switcher chips */
 .kids-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .kid-chip {
@@ -713,3 +745,21 @@ td { font-size: 14px; }
   .qr-title { font-size: 13px; font-weight: 700; color: #111; margin: 6px 0 2px; }
   .qr-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; color: #555; }
 }
+
+/* 🧏 #250 — GLOBAL accessibility classes (on <html>, shared with the kid app
+   via the nv_a11y localStorage key). `zoom` scales the whole portal for big
+   text; high contrast boosts borders + text + focus. */
+html.nv-big-text { zoom: 1.2; }
+
+html.nv-high-contrast body { background: #00121f; }
+html.nv-high-contrast .shell { background: #00121f; }
+html.nv-high-contrast :focus { outline: 3px solid #ffd60a; outline-offset: 2px; }
+html.nv-high-contrast .card,
+html.nv-high-contrast .kid-card,
+html.nv-high-contrast .onboarding-card { border-color: rgba(255, 255, 255, 0.55); }
+html.nv-high-contrast .muted,
+html.nv-high-contrast .small,
+html.nv-high-contrast .hint { color: #e6f1fb; }
+html.nv-high-contrast .btn,
+html.nv-high-contrast .toggle-chip,
+html.nv-high-contrast .a11y-toggle { border-width: 2px; border-color: rgba(255, 255, 255, 0.6); }
