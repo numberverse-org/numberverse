@@ -440,6 +440,10 @@ function challengeNovaChance(kidAccuracy: number): number {
   return Math.min(0.65, Math.max(0.35, 0.5 + (kidAccuracy - 0.5) * 0.4));
 }
 
+/* ── #356 first-play tour: 4 steps. All copy lives in STR[lang] (never
+ *  hardcoded), so a new country is a config addition, not a rewrite (#131). */
+const TOUR_STEPS = [{ emoji: "👋" }, { emoji: "🗺️" }, { emoji: "🦉" }, { emoji: "🧭" }] as const;
+
 /* ── rank ladder: mastery count → a fun title kids want to reach ── */
 const RANKS = [
   { min: 0, en: "🌱 Seedling", bn: "🌱 চারা" },
@@ -868,6 +872,19 @@ interface Strings {
   chSpeakWin: (name: string) => string;
   chSpeakTie: string;
   chSpeakLose: (name: string) => string;
+  /* #356 — first-play onboarding tour */
+  tourTitle: string;
+  tourSkip: string;
+  tourNext: string;
+  tourDone: string;
+  tourStep1Title: (name: string) => string;
+  tourStep1Sub: string;
+  tourStep2Title: string;
+  tourStep2Sub: string;
+  tourStep3Title: string;
+  tourStep3Sub: string;
+  tourStep4Title: string;
+  tourStep4Sub: string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1474,6 +1491,19 @@ const STR: Record<Lang, Strings> = {
     chSpeakWin: (name) => `${name}, you beat Nova! Amazing!`,
     chSpeakTie: "Wow, it is a tie! So close!",
     chSpeakLose: (name) => `${name}, so close! Try again, you can beat Nova!`,
+    /* #356 — first-play onboarding tour */
+    tourTitle: "How to play",
+    tourSkip: "Skip",
+    tourNext: "Next",
+    tourDone: "Let's go!",
+    tourStep1Title: (name) => `Hi ${name}! Welcome to your home`,
+    tourStep1Sub: "Tap the big PLAY button to start a fun round.",
+    tourStep2Title: "Your learning path",
+    tourStep2Sub: "Play through every world — the more you learn, the more lands you unlock.",
+    tourStep3Title: "Your buddy Nova",
+    tourStep3Sub: "Nova is your pet owl. Play and learn, and it grows with you!",
+    tourStep4Title: "And everything else",
+    tourStep4Sub: "Tap More for cards, badges, the garden, fun voices and more.",
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -2064,6 +2094,19 @@ const STR: Record<Lang, Strings> = {
     chSpeakWin: (name) => `${name}, তুমি নোভাকে হারিয়েছ! অসাধারণ!`,
     chSpeakTie: "বাহ, সমান সমান! প্রায় পেরেছিলে!",
     chSpeakLose: (name) => `${name}, প্রায় পেরেছিলে! আবার চেষ্টা করো, তুমি নোভাকে হারাতে পারবে!`,
+    /* #356 — first-play onboarding tour */
+    tourTitle: "কীভাবে খেলতে হয়",
+    tourSkip: "বাদ দাও",
+    tourNext: "পরবর্তী",
+    tourDone: "চলো খেলি!",
+    tourStep1Title: (name) => `হাই ${name}! তোমার বাড়িতে স্বাগতম`,
+    tourStep1Sub: "মজার রাউন্ড শুরু করতে বড় PLAY বাটনে চাপ দাও।",
+    tourStep2Title: "তোমার শেখার পথ",
+    tourStep2Sub: "সব ভূখণ্ডে খেলো — তুমি যত শিখবে, তত নতুন জগৎ খুলবে।",
+    tourStep3Title: "তোমার বন্ধু নোভা",
+    tourStep3Sub: "নোভা তোমার পোষা প্যাঁচা। খেলে-শিখলে ও তোমার সাথে বড় হবে!",
+    tourStep4Title: "আরও অনেক কিছু",
+    tourStep4Sub: "More চেপে দেখো কার্ড, ব্যাজ, বাগান, মজার কণ্ঠস্বর আরও অনেক কিছু।",
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -3722,6 +3765,30 @@ export default function App() {
   const closeChallenge = () => {
     window.clearTimeout(challengeTimerRef.current);
     setChallenge(null);
+  };
+
+  /* ── #356 first-play tour: 4-step, skippable core-loop walkthrough. Shows
+   *  once per device the first time a kid lands on home; "Skip" always works. */
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  useEffect(() => {
+    if (screen !== "home" || !kid || tourStep !== null) return;
+    let done = true;
+    try {
+      done = localStorage.getItem("nv_tour_done") === "1";
+    } catch {
+      /* ignore */
+    }
+    if (!done) setTourStep(0);
+  }, [screen, kid, tourStep]);
+  const closeTour = (finished = false) => {
+    setTourStep(null);
+    if (finished) {
+      try {
+        localStorage.setItem("nv_tour_done", "1");
+      } catch {
+        /* ignore */
+      }
+    }
   };
   /** Open the printable certificate for a completed world. */
   const openCert = (b: Band) => {
@@ -5410,6 +5477,53 @@ export default function App() {
                     )}
                   </>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* #356 — first-play tour: 4 skippable steps teaching the core loop.
+              Shows once per device; Skip exits without marking done (a future
+              session can still finish it). Tapping the dim closes it too. */}
+          {tourStep !== null && (
+            <div className="tour-overlay" onClick={() => closeTour()}>
+              <div
+                className="tour-card"
+                role="dialog"
+                aria-label={t.tourTitle}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="tour-emoji" aria-hidden="true">{TOUR_STEPS[tourStep].emoji}</div>
+                <div className="tour-title">
+                  {tourStep === 0
+                    ? t.tourStep1Title(kid?.name ?? "")
+                    : tourStep === 1
+                      ? t.tourStep2Title
+                      : tourStep === 2
+                        ? t.tourStep3Title
+                        : t.tourStep4Title}
+                </div>
+                <div className="tour-body">
+                  {tourStep === 0
+                    ? t.tourStep1Sub
+                    : tourStep === 1
+                      ? t.tourStep2Sub
+                      : tourStep === 2
+                        ? t.tourStep3Sub
+                        : t.tourStep4Sub}
+                </div>
+                <div className="tour-dots" aria-hidden="true">
+                  {TOUR_STEPS.map((_, i) => (
+                    <span key={i} className={`tour-dot${i === tourStep ? " active" : ""}`} />
+                  ))}
+                </div>
+                <div className="tour-btns">
+                  <button className="ghost-btn mini" onClick={() => closeTour()}>{t.tourSkip}</button>
+                  {tourStep < TOUR_STEPS.length - 1 ? (
+                    <button className="big-btn" onClick={() => setTourStep((s) => (s ?? 0) + 1)}>{t.tourNext}</button>
+                  ) : (
+                    <button className="big-btn" onClick={() => closeTour(true)}>{t.tourDone}</button>
+                  )}
+                </div>
               </div>
             </div>
           )}
