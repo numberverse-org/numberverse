@@ -56,7 +56,7 @@
 - ~~Science: plant life cycle (seed→fruit)~~  ✅ #205 — order seed 🫘 → sprout 🌱 → plant 🌿 → flower 🌸 → fruit 🍎; each correct tap springs the next stage out of a terracotta pot (grow tween + soil particles) while a timeline fills left→right
 - ~~Science: weather & seasons sorting~~  ✅ #206 — drag 20 items (sunscreen→summer, umbrella→rainy, scarf→winter, kite→spring) into 4 season bins; Bangla+EN labels everywhere, wrong drops flash the right bin green (wsSpeak)
 - ~~Science: light & shadows~~  ✅ #207 — predict the shadow: it falls opposite the light, low light → long far shadow, high → short near; light moves each round, real shadow grows in with a source→shadow beam (lshSpeak)
-- Science: magnets — attract/repel  _(priority: low, kid-first)_
+- ~~Science: magnets — attract/repel~~  ✅ #208 — red N / blue S pole caps face each other; kid predicts attract/repel, then the movable magnet actually snaps together (✨ spark) or bounces back; wrong guesses still play the true animation (mg*Speak)
 - Science: water cycle for kids  _(priority: low, kid-first)_
 - ICT: keyboard explorer (letters & numbers)  _(priority: low, kid-first)_
 - ICT: device manners — on/off & wait  _(priority: low, kid-first)_
