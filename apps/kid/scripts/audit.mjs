@@ -134,6 +134,7 @@ if (skills.length) {
     "fruit-tree-add": 15, "add-within-10": 10, "sub-within-10": 10,
     "add-within-20": 20, "sub-within-20": 20, "add-to-20": 20,
     "number-bonds-10": 12, "number-bonds-20": 20, "bd-taka": 10, "add-sub-100": 100,
+    "round-nearest-10-100": 999,
   };
   for (const g of games) {
     const cap = SCOPE_CAP[g.skillId];

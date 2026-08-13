@@ -76,8 +76,8 @@
 - Math: skip-counting by 3s & 4s  _(priority: low, kid-first)_
 - ~~Math: odd & even sort~~  ✅ #226
 - ~~Math: number bonds to 10 & 20~~  ✅ #227
-- Math: place value to 9999 (thousands)  _(priority: low, kid-first)_
-- Math: rounding to nearest 10/100  _(priority: low, kid-first)_
+- ~~Math: place value to 9999 (thousands)~~  ✅ #228 (shipped via `game-placevalue` PlaceValueScene — build+read 4-digit numbers with blocks, spoken Bangla, i18n clean)
+- ~~Math: rounding to nearest 10/100~~  ✅ #229 — number-line jump game
 - Math: bar-chart reading  _(priority: low, kid-first)_
 - Science: sink or float predict  _(priority: low, kid-first)_
 - Science: animal food chains  _(priority: low, kid-first)_
