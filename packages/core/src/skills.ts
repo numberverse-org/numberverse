@@ -60,6 +60,7 @@ export const SKILLS: Skill[] = [
   // ICT — fine tap/drag motor skills (band 1 foundational, #234)
   { id: 'ict-tap-drag', band: 1, subject: 'ict', title: 'Tap & drag accuracy', titleBn: 'টিপা-টানা অনুশীলন', description: 'Tap the bugs, drag the butterfly into the net', descriptionBn: 'পোকা টিপি, প্রজাপতি নেটে নিই', commonCore: [], nctbCode: 'c1-ict-1', classNumber: 1, game: 'game-tapdrag' },
   { id: 'ict-keyboard', band: 1, subject: 'ict', title: 'Keyboard explorer', titleBn: 'কীবোর্ড এক্সপ্লোরার', description: 'Find letters and numbers on a friendly on-screen keyboard', descriptionBn: 'কার্টুন কীবোর্ডে বর্ণ ও সংখ্যা খুঁজি', commonCore: [], nctbCode: 'c1-ict-2', classNumber: 1, game: 'game-keyboard' },
+  { id: 'ict-device-manners', band: 1, subject: 'ict', title: 'Device manners', titleBn: 'ডিভাইসের আদব', description: 'Turn a device on and off safely and wait patiently', descriptionBn: 'ডিভাইস চালু-বন্ধ করি আর ধৈর্য ধরি', commonCore: [], nctbCode: 'c1-ict-3', classNumber: 1, game: 'game-device' },
   // Values — patience & waiting (band 1, BGS moral/values strand).
   { id: 'bgs-patience', band: 1, subject: 'bgs', title: 'Patience & waiting', titleBn: 'ধৈর্য ও অপেক্ষা', description: 'Wait for the reward — patience pays', descriptionBn: 'পুরস্কার পেতে অপেক্ষা করি — ধৈর্যের ফসল', commonCore: [], nctbCode: 'c1-bgs-1', classNumber: 1, game: 'game-patience' },
 
@@ -298,6 +299,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-magnets', skillId: 'en-magnets', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-watercycle', skillId: 'en-water-cycle', difficultyLevels: [3, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-keyboard', skillId: 'ict-keyboard', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
+  { id: 'game-device', skillId: 'ict-device-manners', difficultyLevels: [2200, 2400, 2600, 2800, 3000, 3200], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -415,6 +417,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-magnets': 'MagnetPoles',
   'game-watercycle': 'WaterCycle',
   'game-keyboard': 'KeyboardExplorer',
+  'game-device': 'DeviceManners',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
