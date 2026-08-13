@@ -3594,6 +3594,55 @@ body {
 }
 .ach-state.earned { color: #7ee8d2; }
 
+/* #292 — Nova reaction pack v2: floating Nova face bubble during play. */
+.nova-react {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(78vw, 300px);
+  background: rgba(6, 18, 40, 0.92);
+  border: 1.5px solid rgba(255, 215, 130, 0.55);
+  border-radius: 16px;
+  padding: 8px 12px;
+  pointer-events: none;
+  animation: novaReactPop 0.34s cubic-bezier(0.22, 1.4, 0.36, 1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+.nova-react-owl {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  animation: novaReactBob 0.7s ease-in-out infinite;
+}
+.nova-react-emoji {
+  font-size: 22px;
+  line-height: 1;
+  animation: calPulse 0.9s ease-in-out infinite;
+}
+.nova-react-line {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.25;
+}
+@keyframes novaReactPop {
+  0% { transform: scale(0.5) translateY(-8px); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes novaReactBob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-4px) rotate(3deg); }
+}
+
 /* #282 — sibling leaderboard (same device, no cloud) */
 .lb-screen { justify-content: flex-start; gap: 10px; }
 .lb-list {
