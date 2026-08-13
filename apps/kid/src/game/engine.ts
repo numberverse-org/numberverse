@@ -98,6 +98,7 @@ import { ShareRemScene } from "./ShareRemScene";
 import { FracSetScene } from "./FracSetScene";
 import { MixedFracScene } from "./MixedFracScene";
 import { DecTenthsScene } from "./DecTenthsScene";
+import { MakeChangeScene } from "./MakeChangeScene";
 import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { CountingSongScene } from "./CountingSongScene";
@@ -138,7 +139,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
-      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, ClockTimeScene, BalanceScene,
+      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ClockTimeScene, BalanceScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
       BnSightWordsScene,
