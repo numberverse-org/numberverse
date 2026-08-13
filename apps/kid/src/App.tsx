@@ -552,6 +552,7 @@ interface BadgeCtx {
   stars: number;
   streak: number;
   worlds: number; // fully-mastered lands
+  weekDone: boolean; // #100 — skill-of-the-week challenge completed
 }
 interface BadgeDef {
   id: string;
@@ -567,6 +568,7 @@ const BADGES: BadgeDef[] = [
   { id: "stars50", emoji: "⭐", name: "Star Collector", nameBn: "তারকা সংগ্রহকারী", hint: "Earn 50 stars", hintBn: "৫০টা তারা জিতো", earned: (c) => c.stars >= 50 },
   { id: "streak7", emoji: "🔥", name: "7-Day Streak", nameBn: "৭ দিনের ধারা", hint: "Play 7 days in a row", hintBn: "টানা ৭ দিন খেলো", earned: (c) => c.streak >= 7 },
   { id: "worldChamp", emoji: "👑", name: "Land Champion", nameBn: "ভূখণ্ড চ্যাম্পিয়ন", hint: "Master every skill in a land", hintBn: "একটি ভূখণ্ডের সব দক্ষতা আয়ত্ত করো", earned: (c) => c.worlds >= 1 },
+  { id: "weekWarrior", emoji: "🏅", name: "Week Warrior", nameBn: "সপ্তাহের যোদ্ধা", hint: "Finish this week's challenge", hintBn: "এই সপ্তাহের চ্যালেঞ্জ শেষ করো", earned: (c) => c.weekDone },
 ];
 
 /* #289 — long-term achievements album: milestones ACROSS weeks, derived from
@@ -909,6 +911,10 @@ interface Strings {
   recapEmpty: string;
   recapHomeLine: (days: number, title: string) => string;
   recapSpeak: (name: string, days: number, title: string, win: string) => string;
+  /* #100 — skill of the week (weekly challenge + Week Warrior badge) */
+  weekTitle: string;
+  weekSub: string;
+  weekDone: string;
   /* #280 — beat-the-owl challenge drill */
   chTile: string;
   chCard: string;
@@ -1579,6 +1585,9 @@ const STR: Record<Lang, Strings> = {
     recapEmpty: "No play this week — come play!",
     recapHomeLine: (days, title) => `${days} day${days === 1 ? "" : "s"} · ⭐ ${title}`,
     recapSpeak: (name, days, title, win) => `${name}, this week you played ${days} day${days === 1 ? "" : "s"}, your top skill is ${title}. ${win}`,
+    weekTitle: "Skill of the Week",
+    weekSub: "Complete it to earn the Week Warrior badge 🏅",
+    weekDone: "Week Warrior badge earned! 🏅",
     /* #280 — beat-the-owl challenge drill */
     chTile: "⚔️ Beat Nova",
     chCard: "Challenge Nova to a math duel — 5 quick rounds",
@@ -2230,6 +2239,9 @@ const STR: Record<Lang, Strings> = {
     recapEmpty: "এই সপ্তাহে খেলা হয়নি — এসো খেলি!",
     recapHomeLine: (days, title) => `${bnNum(days)} দিন · ⭐ ${title}`,
     recapSpeak: (name, days, title, win) => `${name}, এই সপ্তাহে তুমি ${bnNum(days)} দিন খেলেছ, তোমার সেরা দক্ষতা ${title}। ${win}`,
+    weekTitle: "সপ্তাহের দক্ষতা",
+    weekSub: "শেষ করলে পাবে সপ্তাহের যোদ্ধা ব্যাজ 🏅",
+    weekDone: "সপ্তাহের যোদ্ধা ব্যাজ জিতেছো! 🏅",
     /* #280 — beat-the-owl challenge drill */
     chTile: "⚔️ নোভাকে হারাও",
     chCard: "গণিতের লড়াইয়ে নোভাকে চ্যালেঞ্জ করো — ৫টা দ্রুত রাউন্ড",
@@ -2876,6 +2888,25 @@ function recommendedSkill(skills: SkillMap, kidId: string): Skill | undefined {
   return stops[0]?.skill;
 }
 
+/** #100 — skill-of-the-week: a deterministic, OFFLINE week index. Anchored to
+ *  Sun 2026-01-04; every Monday rolls to the next week. Same week number for
+ *  every device — the rotation needs no server. */
+function weekNumber(d: Date = new Date()): number {
+  const anchor = Date.UTC(2026, 0, 4); // a Sunday
+  return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - anchor) / (7 * 86400e3));
+}
+
+/** #100 — the weekly highlight: cycles one skill per week through the kid's
+ *  RECOMMENDED (unmastered) journey stops, deterministic + offline. When the
+ *  whole journey is done it rotates the full path so there's always a focus. */
+function skillOfWeek(skills: SkillMap, kidId: string): Skill | undefined {
+  const stops = journeyState(skills, kidId);
+  if (stops.length === 0) return undefined;
+  const pending = stops.filter((s) => !s.done);
+  const pool = pending.length > 0 ? pending : stops;
+  return pool[weekNumber() % pool.length].skill;
+}
+
 function modeForSkill(skillId: string): SessionStep["mode"] {
   if (skillId === "sub-within-10" || skillId === "sub-within-20") return "sub";
   if (skillId === "bn-benjonborno") return "consonants";
@@ -3490,8 +3521,12 @@ export default function App() {
   const badgeStats = useKidStore((s) => s.stats[kid?.id ?? ""] ?? { stars: 0, score: 0, sessions: 0 });
   const badgeStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
   const storedBadges = useKidStore((s) => (kid ? s.nova[kid.id]?.badges ?? [] : []));
+  // #100 — skill of the week: the highlighted skill this week + whether it's
+  // mastered. Feeds the Week Warrior badge and the home card (both offline).
+  const weekSkill = kid ? skillOfWeek(skillsMap, kid.id) : undefined;
+  const weekDone = !!kid && !!weekSkill && skillMastered(skillsMap, kid.id, weekSkill.id);
   const earnedBadgeKey = kid
-    ? BADGES.filter((b) => b.earned({ sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id) }))
+    ? BADGES.filter((b) => b.earned({ sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone }))
         .map((b) => b.id)
         .join(",")
     : "";
@@ -5458,6 +5493,22 @@ export default function App() {
                 </span>
               )}
             </button>
+
+            {/* 🏅 #100 — skill of the week: one highlighted skill each week
+                (deterministic rotation, offline-safe). Tap it to play; finishing
+                it earns the Week Warrior badge. */}
+            {weekSkill && (
+              <div className={`week-card${weekDone ? " done" : ""}`} role="status" aria-label={t.weekTitle}>
+                <span className="week-card-icon" aria-hidden="true">{weekDone ? "🏅" : "🗓️"}</span>
+                <div className="week-card-body">
+                  <span className="week-card-title">{t.weekTitle}</span>
+                  <button className="week-card-skill" onClick={() => startSingleSkill(weekSkill)} aria-label={t.playWith(weekSkill.title)}>
+                    {weekDone ? `✓ ${weekSkill.title}` : `▶ ${weekSkill.title}`}
+                  </button>
+                  <span className="week-card-line">{weekDone ? t.weekDone : t.weekSub}</span>
+                </div>
+              </div>
+            )}
 
             {/* 🦉 Moni's gentle review prompt (#328) — skills mastered but DUE
                 for a spaced-review brush-up. Soft, non-blocking, offline-safe
@@ -8156,7 +8207,8 @@ export default function App() {
   /* #283 — Badge Book: small trophies for real learning wins (sessions, stars,
      streak, full-land mastery). Conditions read only local state — offline. */
   if (screen === "badges" && kid) {
-    const ctx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id) };
+    const wk = skillOfWeek(skillsMap, kid.id);
+    const ctx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone: !!wk && skillMastered(skillsMap, kid.id, wk.id) };
     const earnedCount = BADGES.filter((b) => b.earned(ctx)).length;
     return (
       <div className="app">
