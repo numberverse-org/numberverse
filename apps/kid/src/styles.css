@@ -2317,6 +2317,162 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* #276 — per-land skill tree: mastered leaves glow, next pulses, tap to jump. */
+.tree-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+  padding: 2px 4px 24px;
+}
+.tree-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 6px;
+}
+.tree-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #7ee8d2;
+  letter-spacing: 0.02em;
+}
+.tree-hint {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+.skill-tree {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  margin-top: 6px;
+}
+.tree-trunk {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  bottom: 6px;
+  width: 5px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, var(--c2, #2ec4b6), rgba(255, 255, 255, 0.14));
+  border-radius: 999px;
+  z-index: 0;
+}
+.tree-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.tree-row.left { justify-content: flex-start; }
+.tree-row.right { justify-content: flex-end; }
+.tree-node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(50% - 22px);
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tree-row.right .tree-node { text-align: right; }
+.tree-row.left .tree-node::after,
+.tree-row.right .tree-node::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-50%);
+}
+.tree-row.left .tree-node::after { right: -16px; }
+.tree-row.right .tree-node::after { left: -16px; }
+.tree-node:active { transform: scale(0.96); }
+.tree-node.done {
+  background: linear-gradient(135deg, rgba(126, 232, 210, 0.22), rgba(126, 232, 210, 0.08));
+  border-color: rgba(126, 232, 210, 0.55);
+  box-shadow: 0 0 14px rgba(126, 232, 210, 0.35);
+}
+.tree-node.next {
+  border-color: rgba(255, 209, 102, 0.7);
+  background: rgba(255, 209, 102, 0.1);
+  box-shadow: 0 0 0 rgba(255, 209, 102, 0);
+  animation: treePulse 1.8s ease-in-out infinite;
+}
+@keyframes treePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 209, 102, 0.45); }
+  50% { box-shadow: 0 0 14px 3px rgba(255, 209, 102, 0.35); }
+}
+.tree-node-emoji {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 22px;
+}
+.tree-node.done .tree-node-emoji { background: rgba(126, 232, 210, 0.2); }
+.tree-node-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tree-row.right .tree-node-meta { align-items: flex-end; }
+.tree-node-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+.tree-node-bn {
+  font-size: 11px;
+  color: #8d99ae;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.tree-node-bar {
+  height: 5px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.tree-node-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4cc9f0, #2ec4b6);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.tree-node-fill.done { background: linear-gradient(90deg, #2ec4b6, #ffd166); }
+.tree-node-state {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #4cc9f0;
+}
+.tree-node.done .tree-node-state { color: #7ee8d2; }
+.tree-node.next .tree-node-state { color: #ffd166; }
+
 .hud-skill {
   color: #ffd166;
   font-size: 13px;

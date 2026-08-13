@@ -492,6 +492,9 @@ interface Strings {
   /** Home PLAY screen's "what will we play next" line. */
   nextLesson: (title: string) => string;
   practiceAgain: string;
+  /** #276 — per-land skill tree: mastered nodes glow, tap a leaf to jump in. */
+  treeTitle: string;
+  treeHint: string;
   /** Journey-first home: Nova greets the kid by name on the path. */
   homeHello: (name: string) => string;
   homePath: string;
@@ -1075,6 +1078,8 @@ const STR: Record<Lang, Strings> = {
     playNext: (title) => `▶ Play next: ${title}`,
     nextLesson: (title) => `Next up: ${title}`,
     practiceAgain: "▶ Practice again",
+    treeTitle: "🌳 Skill Tree",
+    treeHint: "Tap a leaf to jump straight to that lesson",
     homeHello: (name) => `Whoo! Hi ${name}!`,
     homePath: "Your path",
     homeViewJourney: "Full journey ›",
@@ -1630,6 +1635,8 @@ const STR: Record<Lang, Strings> = {
     playNext: (title) => `▶ পরবর্তী: ${title}`,
     nextLesson: (title) => `পরের পাঠ: ${title}`,
     practiceAgain: "▶ আবার অনুশীলন",
+    treeTitle: "🌳 দক্ষতা বৃক্ষ",
+    treeHint: "সোজা সেই পাঠে যেতে পাতায় চাপ দাও",
     homeHello: (name) => `হু! হাই ${name}!`,
     homePath: "তোমার পথ",
     homeViewJourney: "সম্পূর্ণ যাত্রা ›",
@@ -6494,31 +6501,46 @@ export default function App() {
             {nextSkill ? t.playNext(nextSkill.title) : t.practiceAgain}
           </button>
 
-          <div className="skill-list">
-            {bandSkills.map((skill) => {
-              const st = skillsMap[`${kid.id}:${skill.id}`];
-              const pct = st ? Math.round(st.pMastered * 100) : 0;
-              const mastered = pct >= MASTERY_THRESHOLD * 100;
-              const isNext = nextSkill?.id === skill.id;
-              return (
-                <button key={skill.id} className={`skill-row${isNext ? " next" : ""}`} onClick={() => startSingleSkill(skill)}>
-                  <span className="skill-emoji"><Icon name={skill.subject} size={30} /></span>
-                  <span className="skill-meta">
-                    <span className="skill-name">
-                      {skill.title}
-                      {skill.titleBn ? <span className="skill-bn">{skill.titleBn}</span> : null}
-                    </span>
-                    <div className="skill-bar">
-                      <div className={`skill-fill${mastered ? " done" : ""}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </span>
-                  <span className="skill-state">
-                    {mastered ? "✓" : isNext ? "▶" : `${pct}%`}
-                  </span>
-                  {isNext && <span className="next-badge">{t.nextBadge}</span>}
-                </button>
-              );
-            })}
+          {/* #276 — per-land SKILL TREE: every skill is a leaf on the trunk,
+              mastered leaves GLOW, the next lesson pulses, and tapping any leaf
+              jumps straight into that lesson. Locale-packed (#131), offline. */}
+          <div className="tree-wrap" role="status" aria-label={t.treeTitle}>
+            <div className="tree-head">
+              <span className="tree-title">{t.treeTitle}</span>
+              <span className="tree-hint">{t.treeHint}</span>
+            </div>
+            <div className="skill-tree">
+              <div className="tree-trunk" aria-hidden="true" />
+              {bandSkills.map((skill, i) => {
+                const st = skillsMap[`${kid.id}:${skill.id}`];
+                const pct = st ? Math.round(st.pMastered * 100) : 0;
+                const mastered = pct >= MASTERY_THRESHOLD * 100;
+                const isNext = nextSkill?.id === skill.id;
+                const side = i % 2 === 0 ? "left" : "right";
+                const title = lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
+                return (
+                  <div key={skill.id} className={`tree-row ${side}`}>
+                    <button
+                      className={`tree-node${mastered ? " done" : isNext ? " next" : " open"}${isNext ? " is-next" : ""}`}
+                      onClick={() => startSingleSkill(skill)}
+                      aria-label={`${title} · ${mastered ? pct + "%" : isNext ? t.nextBadge : pct + "%"}`}
+                    >
+                      <span className="tree-node-emoji"><Icon name={skill.subject} size={26} /></span>
+                      <span className="tree-node-meta">
+                        <span className="tree-node-title">{title}</span>
+                        {skill.titleBn ? <span className="tree-node-bn">{skill.titleBn}</span> : null}
+                        <span className="tree-node-bar"><span className={`tree-node-fill${mastered ? " done" : ""}`} style={{ width: `${pct}%` }} /></span>
+                      </span>
+                      <span className="tree-node-state">
+                        {mastered ? "✓" : isNext ? "▶" : `${pct}%`}
+                      </span>
+                      {isNext && <span className="next-badge">{t.nextBadge}</span>}
+                    </button>
+                    <span className="tree-spacer" aria-hidden="true" />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </main>
       </div>

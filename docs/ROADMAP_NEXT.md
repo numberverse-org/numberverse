@@ -156,7 +156,7 @@
 
 ## v28 — growth & retention 2
 
-- Kids: skill-tree map per land  _(priority: low, kid-first)_
+- ~~Kids: skill-tree map per land~~ ✅ #276 — 🌳 per-land skill tree (leaves branch off a trunk), mastered leaves glow, tap any leaf to jump in, locale-packed (PR pending)
 - ~~Kids: land trophy room~~ ✅ #277 — 🏆 Trophy Room shelf (7 lands), celebrate-once on full mastery, offline (PR pending)
 - ~~Kids: Nova seasonal outfits (Eid, Boishakh)~~ ✅ #278 — festival-gated Eid + Boishakh sets, coin-buy via festival-gated store, locale-config (#131) (PR pending)
 - ~~Kids: pet evolution level 2 — new pet types~~ ✅ #279 — already shipped via #19 (owl/cat/peacock/dragon, adoption flow, growth preserved), closed
