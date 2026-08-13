@@ -133,6 +133,14 @@ async def put_kid_settings(
     s.voice_record_enabled = body.voice_record_enabled  # #138
     # #256 — clamp the gentle daily goal to the day's cap ("respects caps").
     s.goal_min = _clamp_goal(body.goal_min, body.daily_limit_min, body.weekday_limits_min)
+    # #257 — curriculum focus pin: both halves together; a lone value clears it
+    # ("clear default" = send null/null).
+    if body.focus_subject and body.focus_band:
+        s.focus_subject = body.focus_subject
+        s.focus_band = body.focus_band
+    else:
+        s.focus_subject = None
+        s.focus_band = None
     await db.commit()
     await db.refresh(s)
     return s

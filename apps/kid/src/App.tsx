@@ -1204,6 +1204,8 @@ interface Strings {
   goalNudge: string;
   goalNudgeTakeBreak: string;
   goalNudgeKeepGoing: string;
+  /* 📌 #257 — curriculum focus pin (parent-set subject+world leads the journey) */
+  focusChip: (label: string, band: number) => string;
   /* wrong-answer ledger — parent panel "needs help" */
   parentHelpTitle: string;
   parentHelpNone: string;
@@ -1847,6 +1849,7 @@ const STR: Record<Lang, Strings> = {
     goalNudge: "🎉 You reached today's goal — amazing! Nova's proud of you. Want a quick break or keep going?",
     goalNudgeTakeBreak: "Take a break",
     goalNudgeKeepGoing: "Keep playing",
+    focusChip: (label, band) => `📌 Focus: ${label} · World ${band}`,
     parentHelpTitle: "Needs a little help",
     parentHelpNone: "All caught up! 🎉",
     parentHelpOpen: (n) => `${n} to finish`,
@@ -2494,6 +2497,7 @@ const STR: Record<Lang, Strings> = {
     goalNudge: "🎉 আজকের লক্ষ্যে পৌঁছে গেছ! দারুণ! একটু বিরতি চাও নাকি খেলা চালিয়ে যাবে?",
     goalNudgeTakeBreak: "বিরতি নিই",
     goalNudgeKeepGoing: "খেলা চালাই",
+    focusChip: (label, band) => `📌 ফোকাস: ${label} · বিশ্ব ${bnNum(band)}`,
     parentHelpTitle: "একটু সাহায্য দরকার",
     parentHelpNone: "সব ঠিক আছে! 🎉",
     parentHelpOpen: (n) => `শেষ করতে ${n}টা বাকি`,
@@ -2640,13 +2644,38 @@ function genId(): string {
 // whenever the active kid's settings load or change.
 let filterSkills: Skill[] = SKILLS; // subject filter applied
 let filterMaxBand: number | null = null; // null = no cap
+// #257 — curriculum focus pin (parent-set subject + world the journey leads
+// with). Both set together or both null (clear default).
+let filterFocusSubject: string | null = null;
+let filterFocusBand: number | null = null;
 
-function applyKidControls(enabledSubjects: string[] | null, maxBand: number | null) {
+function applyKidControls(
+  enabledSubjects: string[] | null,
+  maxBand: number | null,
+  focusSubject: string | null = null,
+  focusBand: number | null = null
+) {
   filterSkills = enabledSubjects
     ? SKILLS.filter((s) => enabledSubjects.includes(s.subject))
     : SKILLS;
   filterMaxBand = maxBand;
+  filterFocusSubject = focusSubject;
+  filterFocusBand = focusBand;
 }
+
+/** #257 — subject id of a skill (for focus-pin ordering in session pools). */
+function subjectForSkill(skillId: string): string | undefined {
+  return SKILLS.find((s) => s.id === skillId)?.subject;
+}
+
+/** #257 — human subject labels for the focus chip (EN + BN). */
+const FOCUS_SUBJECT_LABELS: Record<string, { en: string; bn: string }> = {
+  math: { en: "Math", bn: "গণিত" },
+  bangla: { en: "Bangla", bn: "বাংলা" },
+  english: { en: "English", bn: "ইংরেজি" },
+  science: { en: "Science", bn: "বিজ্ঞান" },
+  bgs: { en: "BGS", bn: "বিজিএস" },
+};
 
 function skillMastered(skills: SkillMap, kidId: string, skillId: string): boolean {
   const st = skills[`${kidId}:${skillId}`];
@@ -2819,6 +2848,14 @@ const SUBJECT_CARD: Record<string, [string, string]> = {
  *  starts — one tap, no choices, the app picks for the child. */
 function recommendedSkill(skills: SkillMap, kidId: string): Skill | undefined {
   const stops = journeyState(skills, kidId);
+  // #257 — focus pin leads the journey: the pinned subject+world's next
+  // unlocked stop plays first (falls back to the normal path if it's done).
+  if (filterFocusSubject && filterFocusBand) {
+    const focus = stops.find(
+      (s) => s.unlocked && !s.done && s.skill.subject === filterFocusSubject && s.skill.band === filterFocusBand
+    );
+    if (focus) return focus.skill;
+  }
   const cur = stops.find((s) => s.current);
   if (cur) return cur.skill;
   return stops[0]?.skill;
@@ -2925,6 +2962,13 @@ function sessionForWorld(skills: SkillMap, kidId: string, band: number): Session
       const rest = pool.filter((st) => st.skillId !== plan.focusSkillId);
       return [focus, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
     }
+  }
+  // #257 — focus pin: inside the pinned world, the pinned subject's unmastered
+  // skills lead (Moni still outranks this, so the tutor's call wins above).
+  if (filterFocusSubject && filterFocusBand === band) {
+    const focused = pool.filter((st) => subjectForSkill(st.skillId) === filterFocusSubject);
+    const rest = pool.filter((st) => subjectForSkill(st.skillId) !== filterFocusSubject);
+    return [...focused, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
   }
   return [...pool.filter(struggled), ...pool.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
 }
@@ -3880,9 +3924,9 @@ export default function App() {
   // immediately instead of waiting for some unrelated state to change.
   const [, setFilterTick] = useState(0);
   useEffect(() => {
-    applyKidControls(settings.enabled_subjects, settings.max_band);
+    applyKidControls(settings.enabled_subjects, settings.max_band, settings.focus_subject, settings.focus_band);
     setFilterTick((t) => t + 1);
-  }, [settings.enabled_subjects, settings.max_band]);
+  }, [settings.enabled_subjects, settings.max_band, settings.focus_subject, settings.focus_band]);
   // TTS + music enforcement — flip instantly when the parent changes them.
   useEffect(() => {
     setSpeechEnabled(settings.tts_enabled);
@@ -5540,6 +5584,17 @@ export default function App() {
                 <span className="goal-progress-bar">
                   <span className="goal-progress-fill" style={{ width: `${goalPct}%` }} />
                 </span>
+              </div>
+            )}
+
+            {/* 📌 #257 — parent-set focus pin: the journey leads with this
+                subject+world. A gentle reminder of the plan, not a block. */}
+            {settings.focus_subject && settings.focus_band && (
+              <div className="focus-chip" role="status">
+                {t.focusChip(
+                  FOCUS_SUBJECT_LABELS[settings.focus_subject]?.[lang === "bn" ? "bn" : "en"] ?? settings.focus_subject,
+                  settings.focus_band
+                )}
               </div>
             )}
             {goalNotice && (
@@ -7542,6 +7597,17 @@ export default function App() {
                         <span className="map-island-name">
                           {lang === "bn" ? b.titleBn ?? b.title : b.title}
                           {isHere && <span className="map-here-chip">📍 {t.mapHere}</span>}
+                          {settings.focus_subject && settings.focus_band === b.id && (
+                            <span
+                              className="map-focus-pin"
+                              title={t.focusChip(
+                                FOCUS_SUBJECT_LABELS[settings.focus_subject]?.[lang === "bn" ? "bn" : "en"] ?? settings.focus_subject,
+                                b.id
+                              )}
+                            >
+                              📌
+                            </span>
+                          )}
                         </span>
                         <span className="map-island-age">{t.worldAges(b.ageRange, prog.mastered, prog.total)}</span>
                         <div className="progress-bar">

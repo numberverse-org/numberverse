@@ -114,6 +114,10 @@ class KidSettingsIn(BaseModel):
     # #256 — gentle daily playtime goal (minutes); the router clamps it to the
     # day's cap. 0/None = no goal.
     goal_min: int | None = Field(default=None, ge=1, le=600)
+    # #257 — curriculum focus pin (subject + world band). Both-or-neither; a
+    # lone half clears the pin. Band 1..7.
+    focus_subject: str | None = Field(default=None, max_length=16)
+    focus_band: int | None = Field(default=None, ge=1, le=7)
 
 
 class KidSettingsOut(BaseModel):
@@ -134,6 +138,8 @@ class KidSettingsOut(BaseModel):
     quiet_volume: float = 0.15
     voice_record_enabled: bool = False
     goal_min: int | None = None
+    focus_subject: str | None = None
+    focus_band: int | None = None
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
