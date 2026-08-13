@@ -1,3 +1,14 @@
+## 14 Aug 2026 — 0.30.0 (skill of the week + compare & order fractions + shapes sides & corners)
+
+f3076c3 Merge pull request #680 from numberverse-org/feat/100-skill-of-week
+8f94026 🏅 kid: skill-of-the-week challenge + Week Warrior badge (#100)
+2eca5d8 Merge pull request #662 from numberverse-org/chore/oracle-top50-tool
+6a2d9c4 🦉 oracle: curriculum top-50 issue-filing tool (pipeline tooling)
+95f97ff Merge pull request #628 from numberverse-org/feat/62-shape-parts
+63b806a 📐 math: 2D shapes — count sides & corners with tap-to-count (#62)
+5ed3aa4 Merge pull request #627 from numberverse-org/feat/61-compare-fractions
+6c3c4fc 🍕 math: compare & order fractions with pizza visuals (#61)
+
 ## 14 Aug 2026 — 0.29.0 (8 new games: Bangla days/months, Bangla spelling, pronouns, count-back, CVC build, plurals, past -ed, case match)
 
 e62d647 Merge pull request #626 from numberverse-org/feat/51-53-54-56-en-pack

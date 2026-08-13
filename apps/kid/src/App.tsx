@@ -35,10 +35,10 @@ import { startRecording, stopRecording } from "./game/voiceRecorder";
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.29.0 (8 new games: Bangla days/months, Bangla spelling, pronouns, count-back, CVC build, plurals, past -ed, case match)";
+const APP_BUILD = "14 Aug 2026 · 0.30.0 (skill of the week + compare & order fractions + shapes sides & corners)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.29.0";
+const APP_VERSION = "0.30.0";
 
 type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
