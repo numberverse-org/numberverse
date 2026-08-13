@@ -14,7 +14,7 @@
 - ~~Bangla: antonyms & synonyms pairs (বিপরীত/সমার্থক)~~  ✅ #163 — 22+22 picture-backed pairs, antonym ↔ synonym alternate
 - ~~Bangla: punctuation placement (। , ? !)~~  ✅ #164 — 22 sentences, tile snaps in, reads the difference aloud
 - ~~Bangla: compound word building (যোগে যোগে শব্দ)~~  ✅ #165 — 18 fused compounds, emoji clue → tap both parts → new word spoken
-- Bangla: letter vs sound discrimination (অ-আ-ক-খ)  _(priority: low, kid-first)_
+- ~~Bangla: letter vs sound discrimination (অ-আ-ক-খ)~~  ✅ #166 — 14 confusable pairs, sound-first pick, 🔊 replay
 - Bangla: matra matrix challenge (মাত্রা মিশ্রণ)  _(priority: low, kid-first)_
 - Bangla: graded read-a-story — 3 short stories  _(priority: low, kid-first)_
 - Bangla: numbers 1-100 — see the word, tap the digit  _(priority: low, kid-first)_
