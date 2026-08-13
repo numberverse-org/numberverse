@@ -404,6 +404,18 @@ function buildFlaggedSkills(stories: LearningStoryRow[]): FlaggedSkill[] {
   return scored.map((f) => ({ skillId: f.skillId, wrong: f.wrong, reason: reason(f) }));
 }
 
+/** Highest band among the skills a kid has attempted (0 = none yet). */
+function kidCurrentBand(m: MasteryRow[]): number {
+  let band = 0;
+  for (const r of m) {
+    if (r.attempts > 0) {
+      const s = SKILLS.find((x) => x.id === r.skill_id);
+      if (s && s.band > band) band = s.band;
+    }
+  }
+  return band;
+}
+
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
   /** Gate: "checking" → validating the stored token server-side,
@@ -438,6 +450,10 @@ export default function ParentDashboard() {
   // #239 — reteach QR deep-links for flagged skills (client-side only).
   const [reteachQr, setReteachQr] = useState<Record<string, { title: string; dataUrl: string; code: string }>>({});
   const [reteachBusy, setReteachBusy] = useState(false);
+
+  // #240 — side-by-side kid comparison (offline: derives from loaded state).
+  const [cmpA, setCmpA] = useState<string | null>(null);
+  const [cmpB, setCmpB] = useState<string | null>(null);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -823,6 +839,40 @@ export default function ParentDashboard() {
   const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
   // #239 — top Moni-flagged skills this week, derived from the same stories.
   const flags = activeId ? buildFlaggedSkills(stories[activeId] ?? []) : [];
+
+  // #240 — side-by-side comparison of two kids, purely from loaded state.
+  const cmpAId = cmpA ?? kids[0]?.id ?? "";
+  const cmpBId = cmpB ?? kids[1]?.id ?? kids[0]?.id ?? "";
+  const cmpMetric = (id: string) => {
+    const m = mastery[id] ?? [];
+    const w = weekly[id];
+    const kid = kids.find((k) => k.id === id);
+    return {
+      id,
+      name: kid?.name ?? "—",
+      avatar: kid?.avatar ?? "🧒",
+      mastered: m.filter((x) => x.mastery >= 0.8).length,
+      inProgress: m.filter((x) => x.mastery < 0.8 && x.attempts > 0).length,
+      band: kidCurrentBand(m),
+      minutes: w?.minutes ?? 0,
+      rounds: w?.rounds ?? 0,
+      correctPct: w?.correct_pct ?? 0,
+      activeDays: w?.active_days ?? 0,
+      masteredWeek: (w?.mastered_this_week ?? []).length,
+    };
+  };
+  const mtrA = cmpMetric(cmpAId);
+  const mtrB = cmpMetric(cmpBId);
+  const compareRows = [
+    { label: "🏆 Skills mastered", a: String(mtrA.mastered), b: String(mtrB.mastered), higher: mtrA.mastered !== mtrB.mastered ? (mtrA.mastered > mtrB.mastered ? "a" : "b") : null },
+    { label: "🚀 Current world", a: mtrA.band ? `World ${mtrA.band}` : "—", b: mtrB.band ? `World ${mtrB.band}` : "—", higher: mtrA.band !== mtrB.band ? (mtrA.band > mtrB.band ? "a" : "b") : null },
+    { label: "🕒 Minutes this week", a: String(mtrA.minutes), b: String(mtrB.minutes), higher: mtrA.minutes !== mtrB.minutes ? (mtrA.minutes > mtrB.minutes ? "a" : "b") : null },
+    { label: "🎮 Rounds this week", a: String(mtrA.rounds), b: String(mtrB.rounds), higher: mtrA.rounds !== mtrB.rounds ? (mtrA.rounds > mtrB.rounds ? "a" : "b") : null },
+    { label: "🎯 Correct this week", a: `${mtrA.correctPct}%`, b: `${mtrB.correctPct}%`, higher: mtrA.correctPct !== mtrB.correctPct ? (mtrA.correctPct > mtrB.correctPct ? "a" : "b") : null },
+    { label: "📅 Days active", a: String(mtrA.activeDays), b: String(mtrB.activeDays), higher: mtrA.activeDays !== mtrB.activeDays ? (mtrA.activeDays > mtrB.activeDays ? "a" : "b") : null },
+    { label: "🆕 Mastered this week", a: String(mtrA.masteredWeek), b: String(mtrB.masteredWeek), higher: mtrA.masteredWeek !== mtrB.masteredWeek ? (mtrA.masteredWeek > mtrB.masteredWeek ? "a" : "b") : null },
+    { label: "📖 Skills in progress", a: String(mtrA.inProgress), b: String(mtrB.inProgress), higher: null },
+  ];
   const narrText =
     narrDraft && narrDraft.edited
       ? narrLang === "en"
@@ -1248,6 +1298,52 @@ export default function ParentDashboard() {
               </ul>
             )}
           </section>
+
+          {/* #240 — compare two kids side-by-side (offline) */}
+          {kids.length >= 2 && (
+            <section className="card compare-card">
+              <h2>⚖️ Compare two kids</h2>
+              <p className="muted small">
+                How {mtrA.name} and {mtrB.name} stack up, metric by metric. Everything here is
+                read from the dashboard’s already-loaded data — it works offline.
+              </p>
+              <div className="compare-pickers">
+                <select aria-label="First kid to compare" value={cmpAId} onChange={(e) => setCmpA(e.target.value)}>
+                  {kids.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.avatar} {k.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="vs">vs</span>
+                <select aria-label="Second kid to compare" value={cmpBId} onChange={(e) => setCmpB(e.target.value)}>
+                  {kids.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.avatar} {k.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <table className="compare-table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>{mtrA.avatar} {mtrA.name}</th>
+                    <th>{mtrB.avatar} {mtrB.name}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {compareRows.map((r) => (
+                    <tr key={r.label}>
+                      <td>{r.label}</td>
+                      <td className={r.higher === "a" ? "cmp-lead" : ""}>{r.a}</td>
+                      <td className={r.higher === "b" ? "cmp-lead" : ""}>{r.b}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
 
           {/* #132 — printable worksheet from weak skills */}
           <section className="card worksheet-card">
