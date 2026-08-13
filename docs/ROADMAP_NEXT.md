@@ -39,7 +39,7 @@
 - ~~Math: addition facts to 20 fluency~~  ✅ #188 — timed 6s-per-fact sprint, fact range grows by level to 20, ⚡ speed (<2.5s) + accuracy tally
 - ~~Math: subtraction facts to 20 fluency~~  ✅ #189 — timed 6s-per-fact minus sprint, visual 0–20 number line hops back to the difference, ⚡ speed + accuracy tally
 - ~~Math: doubles & near-doubles~~  ✅ #190 — doubles chant 🎵 + dot-array drill (first half), then near-doubles transfer "double {d} + 1" (second half), correct answer speaks the strategy
-- Math: making ten strategy  _(priority: low, kid-first)_
+- ~~Math: making ten strategy~~  ✅ #191 — ten-frame visuals fill the make-ten dots green + leftover yellow frame, every sum bridges to a teen, strategy line + spoken confirmation
 - Math: 2-digit addition with regrouping (visual)  _(priority: low, kid-first)_
 - Math: 2-digit subtraction with borrowing (visual)  _(priority: low, kid-first)_
 - Math: multiplication arrays (visual times tables)  _(priority: low, kid-first)_
