@@ -332,6 +332,8 @@ export interface WeeklyReport {
   top_game: string | null;
   /** #4 — 🔥 current streak: consecutive active days (ending today/yesterday). */
   streak?: number;
+  /** #8 — current Nova wallet balance (single number; share caption). */
+  coins?: number;
 }
 
 export async function getWeekly(token: string, kidId: string): Promise<WeeklyReport> {
@@ -341,7 +343,9 @@ export async function getWeekly(token: string, kidId: string): Promise<WeeklyRep
 }
 
 /** #245 — the anonymized weekly snapshot a share-card link opens. Deliberately
- *  carries NO identity: rounds/minutes/accuracy/days, mastered count, top game. */
+ *  carries NO identity: rounds/minutes/accuracy/days, mastered count, top game.
+ *  `coins` is the wallet balance (no history) and `minutes_by_day` is a 7-float
+ *  minute curve (no dates) — both aggregate-only. */
 export interface ShareSnapshot {
   rounds: number;
   minutes: number;
@@ -350,6 +354,10 @@ export interface ShareSnapshot {
   mastered_count: number;
   top_game: string | null;
   week_of: string;
+  /** #8 — current Nova wallet balance. */
+  coins?: number;
+  /** #8 — 7-day minute curve (oldest → newest, zero-filled). */
+  minutes_by_day?: number[];
 }
 
 /** #245 — mint (or return) the kid's opaque share token. Auth-protected; only

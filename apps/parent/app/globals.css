@@ -768,6 +768,27 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   color: var(--nv-muted-soft);
   font-size: 11px;
 }
+/* #8 — 7-day minute curve on the share card (aggregate floats, no dates) */
+.share-minbars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 62px;
+  margin: 16px 4px 4px;
+}
+.share-mincol {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+.share-minbar {
+  width: 100%;
+  max-width: 26px;
+  margin: 0 auto;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #4cc9f0, #2ec4b6);
+}
 .share-btn {
   display: inline-flex;
   align-items: center;

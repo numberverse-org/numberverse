@@ -219,7 +219,7 @@ async def get_kid_weekly(
     """7-day learning report for a parent — the "show me my kid actually
     learned this week" card. Aggregates round events + mastery crossings.
     Times are UTC (events are stamped server-side), dates are calendar days."""
-    await _get_owned_kid(kid_id, profile, db)
+    owned = await _get_owned_kid(kid_id, profile, db)
     now = date.today()
     start = now - timedelta(days=6)
 
@@ -310,6 +310,7 @@ async def get_kid_weekly(
         mastered_today=mastered_today_ids,
         top_game=top_game,
         streak=streak,
+        coins=owned.coins or 0,
     )
 
 

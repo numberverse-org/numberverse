@@ -221,6 +221,7 @@ class WeeklyOut(BaseModel):
     mastered_today: list[str] = []  # #244 — ≥80% + last practiced today
     top_game: str | None          # most-played game this week
     streak: int = 0               # #4 — consecutive active days (ending today/yesterday)
+    coins: int = 0                # #8 — current Nova wallet balance (share caption)
 
 
 class ProgressBatchIn(BaseModel):

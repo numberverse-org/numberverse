@@ -278,11 +278,15 @@ function weeklyShareText(kidName: string, w: WeeklyReport): string {
   const mastered = n
     ? `🏆 Mastered ${n} skill${n > 1 ? "s" : ""}: ${n <= 4 ? w.mastered_this_week.map((s) => s.replace(/-/g, " ")).join(", ") : `${n} total`}`
     : "🌱 Still growing — we keep playing every day!";
+  // #8 — honest coins line: the WALLET balance (a real number), never a made-up
+  // "earned this week" figure — we don't keep a per-week coin ledger.
+  const coins = w.coins && w.coins > 0 ? `🪙 ${w.coins} coins in ${kidName}’s wallet` : null;
   return [
     `📊 ${kidName}’s learning week on Numberverse`,
     `🎮 ${w.rounds} rounds · ${w.minutes} min · ${w.active_days} day${w.active_days === 1 ? "" : "s"} active`,
     `🎯 ${w.correct_pct}% correct`,
     mastered,
+    ...(coins ? [coins] : []),
   ].join("\n");
 }
 
