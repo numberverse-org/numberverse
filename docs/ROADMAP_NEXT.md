@@ -31,7 +31,7 @@
 - ~~English: prepositions (in, on, under, behind)~~  ✅ #180 — 8 prepositions, drag the object to the spoken spot (8 objects, snap-home + result sentence)
 - ~~English: question words (who what where when why)~~  ✅ #181 — 22 picture-context question slots, tap the word that fills the ___ blank, sentence spoken
 - ~~English: story sequencing (first then last)~~  ✅ #182 — 16 mini-stories, drag 3-4 picture cards into first→then→last order, solved story read aloud
-- English: compound words (rain+bow=rainbow)  _(priority: low, kid-first)_
+- ~~English: compound words (rain+bow=rainbow)~~  ✅ #183 — 16 compounds, tap the first half then the second, word fuses + spoken aloud
 - English: read-aloud comprehension lvl 2  _(priority: low, kid-first)_
 - English: alphabetical order race  _(priority: low, kid-first)_
 - English: word families (-at -an -ig -op)  _(priority: low, kid-first)_
