@@ -473,6 +473,14 @@ export function resetVoiceFunVolume(): void {
   }
 }
 
+/* #243 — per-kid voice balance set by the parent portal. Scales every spoken
+ * line on BOTH engines (web + neural) on top of the kid's own Soft/Normal/Loud
+ * preference (and any caller override). Default 1.0 = full volume. */
+let parentVoiceVolume = 1;
+export function setVoiceBalance(v: number) {
+  parentVoiceVolume = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+}
+
 export function speak(text: string, opts: SpeakOpts = {}) {
   if (!speechEnabled) return;
   const raw = String(text);
@@ -485,7 +493,8 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   const lang = opts.lang ?? (bnLike ? "bn" : appLang);
   // #288 — kid voice fun: a device-local volume preference (Soft/Normal/Loud)
   // applies to EVERY line on BOTH engines unless a caller overrides volume.
-  const vol = opts.volume ?? getVoiceFunVolume();
+  // #243 — the parent's per-kid voice balance scales on top of that.
+  const vol = (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume;
   // Symbols → words, then never speak pure emoji / whitespace.
   let clean = naturalize(raw, lang)
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, " ")
@@ -564,7 +573,7 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
       // Brighter than adult speech, but capped on Android so Google's voices
       // stay warm instead of chipmunk; Apple's voices take the higher pitch.
       u.pitch = opts.pitch ?? (platform === "android" ? 1.05 : 1.12);
-      u.volume = opts.volume ?? getVoiceFunVolume(); // #288 — kid volume pref; warm, never shouty unless asked
+      u.volume = (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume; // #288 kid pref · #243 parent balance
       synth.resume?.(); // some Android builds pause after idle
       if (opts.cancel !== false) {
         // WebKit/Chrome cancel→speak race: a speak() called immediately after

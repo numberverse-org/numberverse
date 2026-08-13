@@ -60,6 +60,10 @@ export interface KidSettings {
   weekday_limits_min: string | null;
   tts_enabled: boolean;
   music_enabled: boolean;
+  /** #243 — per-kid volume balance (0..1), voice / sfx / music layers. */
+  voice_volume?: number;
+  sfx_volume?: number;
+  music_volume?: number;
   /** #138 — kid voice dictation, parent-gated, on-device only. */
   voice_record_enabled: boolean;
   updated_at?: string | null;

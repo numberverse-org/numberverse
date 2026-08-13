@@ -94,7 +94,7 @@
 - ~~Parent: compare two kids side-by-side~~  ✅ #240 — "⚖️ Compare two kids" card: two pickers + metric-by-metric table (mastered, current world, minutes/rounds/correct% this week, active days, mastered this week), leader highlighted, derived from already-loaded mastery/weekly → fully offline
 - ~~Parent: export learning history (CSV/PDF)~~ ✅ #241 — shipped as #273 (0.26.16): CSV + JSON export, ISO-8601 UTC columns
 - ~~Parent: printable worksheet generator from weak skills~~ ✅ #132 — merged #444 (#242 dup closed)
-- Parent: per-kid sound & music balance  _(priority: low, parent-facing)_
+- ~~Parent: per-kid sound & music balance~~  ✅ #243 — Voice/SFX/Music sliders per kid in Reading & sound, each with 🔊 Try (client-side WebAudio preview); persisted on kid_settings (voice_volume/sfx_volume/music_volume, auto-migrated) and applied by the kid app (audio.ts layers + speech.ts voice balance)
 - Parent: daily play summary  _(priority: low, parent-facing)_
 - Parent: share-card deep link per kid  _(priority: low, parent-facing)_
 - Parent: multi-kid onboarding flow  _(priority: low, parent-facing)_

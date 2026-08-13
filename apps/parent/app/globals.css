@@ -146,6 +146,36 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
 .compare-table tr:last-child td { border-bottom: 0; }
 .compare-table td.cmp-lead { font-weight: 900; color: #ffd166; }
 
+/* #243 — per-kid volume balance (voice / sfx / music) */
+.volume-balance { display: flex; flex-direction: column; gap: 12px; margin: 14px 0 6px; }
+.vol-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vol-label {
+  min-width: 120px;
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.85);
+}
+.vol-row input[type="range"] {
+  flex: 1;
+  min-width: 140px;
+  accent-color: #7de3ff;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+.vol-num {
+  min-width: 44px;
+  text-align: right;
+  font-weight: 800;
+  color: #ffd166;
+}
+.vol-try { white-space: nowrap; }
+
 .topbar {
   display: flex;
   align-items: center;

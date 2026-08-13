@@ -95,6 +95,10 @@ class KidSettingsIn(BaseModel):
     weekday_limits_min: str | None = Field(default=None, pattern=r"^(\d{1,3},){6}\d{1,3}$")
     tts_enabled: bool = True
     music_enabled: bool = True
+    # #243 — per-kid volume balance, 0..1 (1.0 = full).
+    voice_volume: float = Field(default=1.0, ge=0.0, le=1.0)
+    sfx_volume: float = Field(default=1.0, ge=0.0, le=1.0)
+    music_volume: float = Field(default=1.0, ge=0.0, le=1.0)
     # #138 — voice recording is parent-gated, off by default.
     voice_record_enabled: bool = False
 
@@ -106,6 +110,10 @@ class KidSettingsOut(BaseModel):
     weekday_limits_min: str | None = None
     tts_enabled: bool = True
     music_enabled: bool = True
+    # #243 — per-kid volume balance, 0..1 (1.0 = full).
+    voice_volume: float = 1.0
+    sfx_volume: float = 1.0
+    music_volume: float = 1.0
     voice_record_enabled: bool = False
     updated_at: datetime | None = None
 

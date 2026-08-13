@@ -18,10 +18,10 @@ import {
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
-import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme } from "./game/audio";
+import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
-import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
+import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
@@ -3599,6 +3599,16 @@ export default function App() {
       setMuted(true);
     }
   }, [settings.music_enabled]);
+  // #243 — per-kid volume balance: apply the parent's voice/sfx/music knobs.
+  useEffect(() => {
+    setVoiceBalance(settings.voice_volume ?? 1);
+  }, [settings.voice_volume]);
+  useEffect(() => {
+    setSfxVolume(settings.sfx_volume ?? 1);
+  }, [settings.sfx_volume]);
+  useEffect(() => {
+    setMusicVolume(settings.music_volume ?? 1);
+  }, [settings.music_volume]);
   // #134 — the home/journey ambient follows the current land the kid is on.
   useEffect(() => {
     if (!kid) return;

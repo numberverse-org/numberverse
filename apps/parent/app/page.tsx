@@ -152,6 +152,9 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   weekday_limits_min: null,
   tts_enabled: true,
   music_enabled: true,
+  voice_volume: 1,
+  sfx_volume: 1,
+  music_volume: 1,
   voice_record_enabled: false,
 };
 
@@ -414,6 +417,43 @@ function kidCurrentBand(m: MasteryRow[]): number {
     }
   }
   return band;
+}
+
+/** #243 — preview a volume layer at its current level, right in the portal.
+ *  Pure client-side WebAudio (synthesized, zero assets) so the Try button works
+ *  offline and nothing is ever sent anywhere. */
+function trySoundPreview(kind: "voice" | "sfx" | "music", vol: number) {
+  type AC = new () => AudioContext;
+  const Ctor = (window.AudioContext ?? (window as unknown as { webkitAudioContext?: AC }).webkitAudioContext) as AC | undefined;
+  if (!Ctor) return;
+  try {
+    const ctx = new Ctor();
+    const t = ctx.currentTime;
+    const note = (freq: number, at: number, dur: number, type: OscillatorType, v: number) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(v, at);
+      g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(at);
+      o.stop(at + dur + 0.02);
+    };
+    const v = Math.max(0, Math.min(1, vol));
+    if (kind === "voice") note(660, t, 0.7, "sine", 0.85 * v);
+    else if (kind === "sfx") {
+      note(660, t, 0.18, "triangle", 0.14 * v);
+      note(880, t + 0.1, 0.2, "triangle", 0.14 * v);
+    } else {
+      note(523.25, t, 0.5, "triangle", 0.05 * v);
+      note(659.25, t + 0.14, 0.5, "triangle", 0.05 * v);
+      note(783.99, t + 0.28, 0.6, "triangle", 0.05 * v);
+    }
+  } catch {
+    /* audio unavailable — the Try button is a no-op, never an error */
+  }
 }
 
 export default function ParentDashboard() {
@@ -1517,6 +1557,42 @@ export default function ParentDashboard() {
                 >
                   🎙️ Voice recording
                 </button>
+              </div>
+              {/* #243 — per-kid volume balance: voice / sfx / music, with a Try button */}
+              <div className="volume-balance">
+                {(
+                  [
+                    { key: "voice_volume", icon: "🗣️", label: "Voice", hint: "Read-aloud and spoken feedback" },
+                    { key: "sfx_volume", icon: "✨", label: "Sound effects", hint: "Pops, chimes and win sounds" },
+                    { key: "music_volume", icon: "🎵", label: "Music", hint: "The background music" },
+                  ] as const
+                ).map((row) => {
+                  const cur = activeSettings[row.key] ?? 1;
+                  return (
+                    <div key={row.key} className="vol-row">
+                      <span className="vol-label" title={row.hint}>
+                        {row.icon} {row.label}
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={cur}
+                        aria-label={`${row.label} volume`}
+                        onChange={(e) => patchSettings({ [row.key]: Number(e.target.value) })}
+                      />
+                      <span className="vol-num">{Math.round(cur * 100)}%</span>
+                      <button
+                        className="ghost-btn small vol-try"
+                        type="button"
+                        onClick={() => trySoundPreview(row.key.replace("_volume", "") as "voice" | "sfx" | "music", cur)}
+                      >
+                        🔊 Try
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
               <p className="muted small">🎙️ Voice recording lets a kid record and replay their own voice. Recordings stay on this device and are never sent to the server.</p>
             </div>
