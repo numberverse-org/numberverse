@@ -140,6 +140,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-punctuation", 3, "bangla", "Punctuation", "যতি চিহ্ন"),
     ("bn-read-story", 3, "bangla", "Read a story", "গল্প পড়ি"),
     ("bn-idioms", 3, "bangla", "Simple idioms", "সহজ বাগধারা"),
+    ("bn-verbgender", 3, "bangla", "Verb match", "ক্রিয়া মেলাই"),
     ("en-cvc", 3, "english", "CVC words", "ইংরেজি শব্দ"),
     ("en-contractions", 3, "english", "Contractions", "সংকোচন শব্দ"),
     ("en-compare", 3, "english", "Big, Bigger, Biggest", "বড়, বড়ো, সবচেয়ে বড়"),

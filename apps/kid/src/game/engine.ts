@@ -117,6 +117,7 @@ import { KindnessScene } from "./KindnessScene";
 import { TruthScene } from "./TruthScene";
 import { OrdinalsScene } from "./OrdinalsScene";
 import { IdiomsScene } from "./IdiomsScene";
+import { VerbGenderScene } from "./VerbGenderScene";
 import { ClockTimeScene } from "./ClockTimeScene";
 import { BalanceScene } from "./BalanceScene";
 import { CountingSongScene } from "./CountingSongScene";
@@ -157,7 +158,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       AreaPerimScene, BnSentenceScene, GrammarScene, BgsFactsScene, BnColorsScene, EnPhonicsScene,
       BdMoneyScene,
       AddSub100Scene, RegroupScene,
-      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, KeyboardExplorerScene, DeviceMannersScene, ProfessionsMatchScene, FestivalSortScene, KindnessScene, TruthScene, OrdinalsScene, IdiomsScene, ClockTimeScene, BalanceScene,
+      FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, KeyboardExplorerScene, DeviceMannersScene, ProfessionsMatchScene, FestivalSortScene, KindnessScene, TruthScene, OrdinalsScene, IdiomsScene, VerbGenderScene, ClockTimeScene, BalanceScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
       BnSightWordsScene,

@@ -66,7 +66,7 @@
 - ~~Values: honesty — the truth game~~  ✅ #215 — 12 everyday situations (broke a vase, ate the last chocolate, found money…); tap the GREEN truthful response → ⭐ star burst + rotating praise spoken aloud; untruthful taps get only a gentle "try telling the truth" (never a penalty); each round shuffles all 12 so every kid meets them (hn* keys)
 - ~~Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)~~  ✅ #216 — race line of N runners 🏁 with a checkered finish flag; "Who is দ্বিতীয়?" → tap the 2nd-from-the-flag runner; wrong taps flash red + pulse the flag (where counting starts); each round asks every position exactly once, all 10 ordinals at lvl 6 (ord* keys)
 - ~~Bangla: simple idioms for kids~~  ✅ #217 — 12 বাগধারা (তালগাছে কুমড়ো 🌴🎃, চোখে আঙুল দিয়ে দেখা 👁️…) match their meaning; emoji picture hint + the idiom spoken aloud; 🔊 replay speaks a kid-friendly example; 3 meaning buttons, shuffle-bag guarantees all 12 met, lvl ladder [4,4,6,6,8,8] (id* keys)
-- Bangla: verb-form gender agreement  _(priority: low, kid-first)_
+- ~~Bangla: verb-form gender agreement~~  ✅ #218 — 12 slots pick the agreeing verb for a pictured subject: ছেলেটি খেলছে 👦⚽, মা রান্না করেন 👩🍳, রাজা যান 👑…; emoji picture + subject blank + 3 verb buttons (wrong = wrong person/honorific), full sentence spoken on correct; shuffle-bag + dedupe, lvl [4,4,6,6,8,8] (vg* keys)
 - Bangla: classifiers & postpositions (গুলো/টাকে)  _(priority: low, kid-first)_
 - English: digraph review challenge (sh ch th wh ph)  _(priority: low, kid-first)_
 - English: synonyms & antonyms pairs  _(priority: low, kid-first)_
