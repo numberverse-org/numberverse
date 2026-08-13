@@ -42,7 +42,7 @@
 - ~~Math: making ten strategy~~  ✅ #191 — ten-frame visuals fill the make-ten dots green + leftover yellow frame, every sum bridges to a teen, strategy line + spoken confirmation
 - ~~Math: 2-digit addition with regrouping (visual)~~  ✅ #192 — written-method box with 2 steps: add ones (base-10 cubes), 10-cube regroup animation pops a carry chip, then add tens + carry (bars); active column highlighted
 - ~~Math: 2-digit subtraction with borrowing (visual)~~  ✅ #193 — written-method box, borrow animation (a bar breaks into 10 ones, 52→4|12), then step 1 subtract ones, step 2 subtract tens; base-10 blocks update after the borrow
-- Math: multiplication arrays (visual times tables)  _(priority: low, kid-first)_
+- ~~Math: multiplication arrays (visual times tables)~~  ✅ #194 — dot arrays (2–5 × 2–5) with row/column badges, kid taps the matching equation "3 × 4 = 12"; distractors are other valid arrays, never commutative twins
 - Math: division as sharing lvl 2  _(priority: low, kid-first)_
 - Math: fractions — parts of a set  _(priority: low, kid-first)_
 - Math: mixed numbers & improper fractions intro  _(priority: low, kid-first)_

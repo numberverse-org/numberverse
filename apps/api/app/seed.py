@@ -71,6 +71,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-maketen", 2, "math", "Making ten", "দশ বানাই"),
     ("en-addregroup", 2, "math", "Carry addition (visual)", "ক্যারি যোগ (দৃশ্য)"),
     ("en-subborrow", 2, "math", "Borrow subtraction (visual)", "ধার বিয়োগ (দৃশ্য)"),
+    ("en-array-mult", 2, "math", "Array times tables", "বিন্যাসে গুণ"),
     ("bd-taka", 2, "math", "Bangla money", "টাকা চিনি"),
     ("bn-coin-values", 2, "math", "Coin values", "টাকার চেনা"),
     # Language stage 2 — more letters + sounds
