@@ -49,7 +49,7 @@
 - ~~Math: decimals — tenths place value~~  ✅ #198 — 10-cell strip (each cell = 0.1); read the shaded decimal (0.3) from 4 cards, build it by shading cells + ✅; place-value speech "3 tenths"
 - ~~Math: making change with ৳ notes~~  ✅ #199 — pay with ৳50/৳100 and compute the change (৳50−৳32=৳18) on note visuals; then tap ৳5/10/20/50 off a tray to make exact amounts + ✅
 - ~~Math: elapsed time (how long until…)~~  ✅ #200 — analog clock start + digital "until 2:45" chip; kid finds the minutes (5–59 by level); correct sweeps the hands to the target so the elapsed arc is the answer
-- Math: perimeter intro (measure the fence)  _(priority: low, kid-first)_
+- ~~Math: perimeter intro (measure the fence)~~  ✅ #201 — unit-cube fence posts along every edge; kid adds labelled sides of rectangles (4 sides) / right triangles (3 sides) and taps the perimeter (peSpeak)
 - Math: 2D → 3D shape pairing  _(priority: low, kid-first)_
 - Math: symmetry mirror game  _(priority: low, kid-first)_
 - Science: animals — features & movement  _(priority: low, kid-first)_
