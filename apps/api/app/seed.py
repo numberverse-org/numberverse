@@ -86,6 +86,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-words", 3, "bangla", "Bangla words", "শব্দ পড়ি"),
     ("bn-conjunct-find", 3, "bangla", "Conjunct speed drill", "যুক্তবর্ণ দ্রুত অনুশীলন"),
     ("bn-family-words", 3, "bangla", "Family words", "পরিবারের শব্দ"),
+    ("bn-story-read", 3, "bangla", "Story comprehension", "ছোট গল্প পড়ি"),
     ("en-cvc", 3, "english", "CVC words", "ইংরেজি শব্দ"),
     # Band 4 — advanced operations
     ("division-facts", 4, "math", "Division facts", "ভাগ করা"),
