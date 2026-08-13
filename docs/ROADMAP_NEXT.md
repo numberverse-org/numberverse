@@ -59,7 +59,7 @@
 - ~~Science: magnets — attract/repel~~  ✅ #208 — red N / blue S pole caps face each other; kid predicts attract/repel, then the movable magnet actually snaps together (✨ spark) or bounces back; wrong guesses still play the true animation (mg*Speak)
 - ~~Science: water cycle for kids~~  ✅ #209 — order water 💧 → vapor ♨️ → cloud ☁️ → rain 🌧️; a cartoon sun + pond scene animates each correct tap (pond ✨ sparkle, 💨 steam rising, cloud popping in, 💧 rain falling) while the timeline fills; lvl 1=3 steps, lvl 2+=4 (wc*Speak)
 - ~~ICT: keyboard explorer (letters & numbers)~~  ✅ #210 — find the key on a friendly blue QWERTY keyboard; a bouncing yellow badge speaks the target ("Find the B" / "B খুঁজো"); lvl 1–2 letters, lvl 3–4 numbers (Bangla digits ০১২৩… in bn), lvl 5–6 mixed; correct key flashes green + speaks it, wrong shakes red (kb* keys)
-- ICT: device manners — on/off & wait  _(priority: low, kid-first)_
+- ~~ICT: device manners — on/off & wait~~  ✅ #211 — cartoon tablet with a real power button; turn on = tap power → wait for the boot bar (a tempting 👆 bubble from lvl 2 says "not yet!"), turn off = tap power → confirm → 😴; 100% offline, speaks every step in EN/BN (dm* keys)
 - Social: professions & their tools  _(priority: low, kid-first)_
 - Social: our festivals — customs sort  _(priority: low, kid-first)_
 - Values: kindness & sharing scenarios  _(priority: low, kid-first)_
