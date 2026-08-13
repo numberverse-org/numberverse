@@ -1305,6 +1305,79 @@ body {
   font-weight: 600;
   color: rgba(255, 230, 179, 0.65);
 }
+/* 🏅 #100 — skill of the week: weekly challenge card on home. Done state turns
+   the border gold so the earned Week Warrior badge reads at a glance. */
+.week-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(110, 231, 183, 0.14), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(110, 231, 183, 0.32);
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  animation: week-card-in 0.5s ease both;
+}
+.week-card.done {
+  background: linear-gradient(135deg, rgba(255, 214, 128, 0.2), rgba(255, 255, 255, 0.05));
+  border-color: rgba(255, 214, 128, 0.55);
+}
+@keyframes week-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.week-card-icon {
+  font-size: 28px;
+  flex: 0 0 auto;
+}
+.week-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.week-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b7e9d0;
+}
+.week-card.done .week-card-title {
+  color: #ffe6b3;
+}
+.week-card-skill {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  color: #fff;
+  background: rgba(110, 231, 183, 0.18);
+  border: 1px solid rgba(110, 231, 183, 0.4);
+  border-radius: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.week-card.done .week-card-skill {
+  background: rgba(255, 214, 128, 0.22);
+  border-color: rgba(255, 214, 128, 0.5);
+}
+.week-card-skill:hover {
+  transform: translateY(-1px);
+  background: rgba(110, 231, 183, 0.3);
+}
+.week-card-skill:active {
+  transform: scale(0.96);
+}
+.week-card-line {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(183, 233, 208, 0.7);
+}
+.week-card.done .week-card-line {
+  color: rgba(255, 230, 179, 0.75);
+}
 /* 🎯 MONI contrast-drill trigger (#325) — warm pill on the home screen. */
 .home-contrast-pill {
   display: flex;
