@@ -99,6 +99,7 @@ export const SKILLS: Skill[] = [
   { id: 'en-subborrow', band: 2, subject: 'math', title: 'Borrow subtraction (visual)', titleBn: 'ধার বিয়োগ (দৃশ্য)', description: 'Subtract two 2-digit numbers step by step with base-10 blocks and a borrow animation', descriptionBn: 'দুই অঙ্কের বিয়োগ করি ধাপে ধাপে, ব্লক দেখে ধার অ্যানিমেশনসহ', commonCore: ['2.NBT.B.5'], nctbCode: 'c2-math-11', classNumber: 2, game: 'game-subborrow' },
   // Math — multiplication arrays: countable dot arrays teach tables 2-5 before numbers.
   { id: 'en-array-mult', band: 2, subject: 'math', title: 'Array times tables', titleBn: 'বিন্যাসে গুণ', description: 'Match a dot array (rows × columns) to its equation — tables 2 to 5', descriptionBn: 'বিন্দুর বিন্যাস (সারি × কলাম) মিলিয়ে গুণের সমীকরণ — ২ থেকে ৫ এর নামতা', commonCore: ['2.OA.C.4', '3.OA.A.1'], nctbCode: 'c2-math-12', classNumber: 2, game: 'game-array-mult' },
+  { id: 'skipcount', band: 2, subject: 'math', title: 'Skip count!', titleBn: 'ধাপে ধাপে!', description: 'Continue +3 and +4 sequences on a number line — tap the next number', descriptionBn: 'সংখ্যা রেখায় +৩ ও +৪ এর ধারা এগোই — পরের সংখ্যাটি টিপি', commonCore: ['2.NBT.A.2'], nctbCode: 'c2-math-13', classNumber: 2, game: 'game-skipcount' },
   // Math — division as sharing lvl 2: fair shares extended to the remainder concept.
   { id: 'en-shares2', band: 3, subject: 'math', title: 'Fair shares 2 (remainders)', titleBn: 'সমান ভাগ ২ (ভাগশেষ)', description: 'Watch candies share round-robin into plates, then find each share and the leftover', descriptionBn: 'ক্যান্ডি ঘুরে ঘুরে ভাগ হয় দেখি, তারপর প্রত্যেকের ভাগ আর বাকি খুঁজি', commonCore: ['3.OA.A.2', '3.OA.C.7'], nctbCode: 'c3-math-7', classNumber: 3, game: 'game-shares2' },
   // Math — fractions of a set: tap the correct subset of a group (1/2 of 8 → 4).
@@ -296,6 +297,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-addregroup', skillId: 'en-addregroup', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-subborrow', skillId: 'en-subborrow', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-array-mult', skillId: 'en-array-mult', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-skipcount', skillId: 'skipcount', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-shares2', skillId: 'en-shares2', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-fracset', skillId: 'en-fracset', difficultyLevels: [3, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-mixedfrac', skillId: 'en-mixedfrac', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
@@ -427,6 +429,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-addregroup': 'AddRegroup',
   'game-subborrow': 'SubBorrow',
   'game-array-mult': 'ArrayMult',
+  'game-skipcount': 'SkipCount',
   'game-shares2': 'ShareRem',
   'game-fracset': 'FracSet',
   'game-mixedfrac': 'MixedFrac',
