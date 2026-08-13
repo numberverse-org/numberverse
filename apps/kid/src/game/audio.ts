@@ -61,6 +61,7 @@ export function pop() {
   const c = ensureAudio();
   if (!c) return;
   tone(520 + Math.random() * 160, 0.13, "sine", 0.15);
+  haptic(12);
 }
 
 /** Round-meter star fills — a tiny, quiet "tick" so progress sounds rewarding. */
@@ -80,6 +81,7 @@ export function comboChime(combo: number) {
 export function bad() {
   tone(392, 0.16, "sine", 0.13); // G4 — "uh…"
   tone(311, 0.26, "sine", 0.1, 0.09); // E♭4 — "oh"
+  haptic([0, 28, 16, 24]); // short double-nudge: "try that again"
 }
 
 /** #134 — the land's celebratory root note (C4 by default). */
@@ -89,12 +91,31 @@ let landRoot = 523.25;
 export function win() {
   [1, 1.25, 1.5, 2].forEach((r, i) => tone(landRoot * r, 0.4, "triangle", 0.16, i * 0.1));
   tone(landRoot * 2.52, 0.6, "sine", 0.08, 0.42);
+  haptic([0, 18, 12, 18, 12, 34]); // little three-beat victory pulse
 }
 
 /** Soft UI button tap — DOM navigation buttons (home/worlds/done). */
 export function click() {
   tone(660, 0.05, "triangle", 0.08);
   tone(880, 0.06, "triangle", 0.06, 0.02);
+  haptic(8);
+}
+
+/* #355 — subtle haptic pulses on taps (correct/wrong/win/UI) where the
+ * device supports vibration. Kid-safe by design:
+ *  - System respect: no-ops unless `navigator.vibrate` exists (iOS Safari has
+ *    none, so those devices never buzz) and the pattern is always tiny.
+ *  - Off switch: the app's `nv_haptics` pref (default ON) — the Settings row
+ *    flips it to "0". Vibrate is NEVER required for any action.
+ * Wrapped in try/catch so a focus-restricted browser can never break audio. */
+function haptic(pattern: number | number[]) {
+  try {
+    if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+    if (localStorage.getItem("nv_haptics") === "0") return;
+    navigator.vibrate(pattern);
+  } catch {
+    /* some browsers throw when unfocused — never let that break a sound */
+  }
 }
 
 /** Rising whoosh — "we're going into the game!" transition sweep. */
@@ -120,6 +141,7 @@ export function tada() {
   [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, 0.5, "triangle", 0.1));
   [1046.5, 1318.5, 1568.0].forEach((f, i) => tone(f, 0.35, "triangle", 0.12, 0.18 + i * 0.09));
   tone(2093, 0.7, "sine", 0.08, 0.48);
+  haptic([0, 20, 14, 20, 14, 20, 14, 50]); // grand finale — sparkle-pulse
 }
 
 /* ────────────────────────────── background music ──────────────────────────────

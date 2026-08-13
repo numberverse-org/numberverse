@@ -1029,6 +1029,8 @@ interface Strings {
   settingsSecLanguage: string;
   settingsSecLearning: string;
   settingsMusicRow: string;
+  /* #355 — haptic tap pulses */
+  settingsHaptics: string;
   settingsVoiceNeural: (v: string) => string;
   settingsVoiceOff: string;
   settingsReadingOff: string;
@@ -1617,6 +1619,7 @@ const STR: Record<Lang, Strings> = {
     settingsSecLearning: "📚 My learning",
     settingsSecParents: "👨‍👩‍👧 For parents",
     settingsMusicOff: "A parent turned music off for this profile.",
+    settingsHaptics: "Tap vibration",
     settingsParentsHint: "Progress, per-kid controls and the full portal — grown-ups only.",
     settingsParentsGo: "Open parent area",
     settingsParentsSignin: "Sign in as parent",
@@ -2206,6 +2209,7 @@ const STR: Record<Lang, Strings> = {
     settingsSecLearning: "📚 আমার শেখা",
     settingsSecParents: "👨‍👩‍👧 মা-বাবার জন্য",
     settingsMusicOff: "মা-বাবা এই প্রোফাইলের জন্য মিউজিক বন্ধ করে দিয়েছেন।",
+    settingsHaptics: "ট্যাপে কম্পন",
     settingsParentsHint: "শেখার খবর, নিয়ন্ত্রণ ও পূর্ণ পোর্টাল — শুধু বড়দের জন্য।",
     settingsParentsGo: "মা-বাবার অংশ খুলুন",
     settingsParentsSignin: "মা-বাবা হিসেবে সাইন ইন করুন",
@@ -3001,6 +3005,30 @@ export default function App() {
   // #288 — kid voice fun: device-local volume preference (re-renders so the
   // active Soft/Normal/Loud button stays highlighted).
   const [voiceFunVol, setVoiceFunVolState] = useState<number>(getVoiceFunVolume());
+  // #355 — haptic pulses on taps. Default ON; the Settings row flips it.
+  // `nv_haptics === "0"` is the off marker — anything else (or unset) is ON.
+  const [hapticsOn, setHapticsOn] = useState(() => {
+    try {
+      return localStorage.getItem("nv_haptics") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleHaptics = () => {
+    const next = !hapticsOn;
+    setHapticsOn(next);
+    try {
+      localStorage.setItem("nv_haptics", next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+    // A real pulse so the kid FEELS what the switch does (no-op on iOS).
+    try {
+      if (next && "vibrate" in navigator) navigator.vibrate([0, 22, 14, 22]);
+    } catch {
+      /* ignore */
+    }
+  };
   // #136 — classroom projector mode: large-type, high-contrast, no parent UI.
   const [projector, setProjector] = useState(() => {
     try {
@@ -5466,6 +5494,24 @@ export default function App() {
               </button>
             </div>
             {musicLocked && <p className="settings-voice-note warn">{t.settingsMusicOff}</p>}
+
+            {/* #355 — haptic pulses on taps. Subtle, optional, fully off-able.
+                On devices without vibration (e.g. iOS Safari) this row simply
+                shows off — the audio module already no-ops there. */}
+            <div className="settings-divider" />
+            <div className="settings-row-line">
+              <span className="settings-row-icon">📳</span>
+              <span className="settings-row-label">{t.settingsHaptics}</span>
+              <button
+                className={`switch${hapticsOn ? " on" : ""}`}
+                role="switch"
+                aria-checked={hapticsOn}
+                aria-label={t.settingsHaptics}
+                onClick={toggleHaptics}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
 
             <div className="settings-divider" />
 
