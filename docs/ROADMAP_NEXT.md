@@ -78,7 +78,7 @@
 - ~~Math: number bonds to 10 & 20~~  ✅ #227
 - ~~Math: place value to 9999 (thousands)~~  ✅ #228 (shipped via `game-placevalue` PlaceValueScene — build+read 4-digit numbers with blocks, spoken Bangla, i18n clean)
 - ~~Math: rounding to nearest 10/100~~  ✅ #229 — number-line jump game
-- Math: bar-chart reading  _(priority: low, kid-first)_
+- ~~Math: bar-chart reading~~  ✅ #230 — 6 emoji charts, tap-the-bar
 - Science: sink or float predict  _(priority: low, kid-first)_
 - Science: animal food chains  _(priority: low, kid-first)_
 - Science: day & night — earth rotation  _(priority: low, kid-first)_
