@@ -1,3 +1,10 @@
+## 14 Aug 2026 — 0.28.0 (parent: sync status chip + manual sync + Help card)
+
+7977795 Merge pull request #612 from numberverse-org/feat/18-help-card
+73e3fdd ❓ parent: in-app Help card — iOS install + voice download guide (#18)
+dd10904 Merge pull request #595 from numberverse-org/feat/85-sync-indicator
+d8ad169 🔄 parent: sync status chip + manual sync (#85)
+
 ## 14 Aug 2026 — 0.27.1 (hotfix: achievements TDZ blue-screen crash)
 
 4a10526 Merge pull request #594 from numberverse-org/hotfix/27.1-blue-screen
