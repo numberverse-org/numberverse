@@ -71,6 +71,9 @@ export const SKILLS: Skill[] = [
   { id: 'en-phonics', band: 2, subject: 'english', title: 'Letter sounds', titleBn: 'বর্ণের উচ্চারণ', description: 'First letter sounds (A, B, C)', descriptionBn: 'প্রথম অক্ষরের উচ্চারণ (A, B, C)', commonCore: ['RF.K.3a'], nctbCode: 'c1-english-2', classNumber: 1, game: 'game-enphonics' },
   // Science — heavier / lighter (direct comparison)
   { id: 'heavy-light', band: 2, subject: 'science', title: 'Heavy or light', titleBn: 'ভারী না হালকা', description: 'Which side of the seesaw is heavier?', descriptionBn: 'দোলনার কোন দিক ভারী?', commonCore: ['K.MD.2'], nctbCode: 'c1-science-1', classNumber: 1, game: 'game-balance' },
+  // Science — sink vs float: predict, then watch the object's TRUE behavior.
+  // NCTB class-2 science has a water unit (ডুব ও ভাসা).
+  { id: 'science-sink-float', band: 2, subject: 'science', title: 'Sink or float', titleBn: 'ডুব না ভাসা', description: 'Predict whether objects sink or float, then check in water', descriptionBn: 'ডুববে নাকি ভাসবে ভবিষ্যদ্বাণী করি, তারপর জলে দেখি', commonCore: [], nctbCode: 'c2-science-3', classNumber: 2, game: 'game-sinkfloat' },
 
   // ── Band 3 — River Town (ages 6–8, class 2–3): EXTEND ARITHMETIC ──
   // Two-digit add/sub (extends band-2 facts) → mult (repeated add) → division
@@ -167,6 +170,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-bncolors', skillId: 'bn-colors', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
+  { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   // ── Band 3 arithmetic: add-sub-100 → mult → div (share then facts) → fractions → time → place value → regroup ──
   { id: 'game-addsub100', skillId: 'add-sub-100', difficultyLevels: [20, 40, 60, 80, 90, 100], targetSuccess: 0.8 },
   { id: 'game-rocketmult', skillId: 'mult-facts-2-5-10', difficultyLevels: [2, 5, 10, 12, 16, 20], targetSuccess: 0.8 },
@@ -225,6 +229,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-enphonics': 'EnPhonics',
   'game-balloonpop': 'BalloonPop',
   'game-balance': 'Balance',
+  'game-sinkfloat': 'SinkFloat',
   'game-addsub100': 'AddSub100',
   'game-clock': 'ClockTime',
   'game-rocketmult': 'RocketMult',

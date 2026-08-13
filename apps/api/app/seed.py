@@ -61,6 +61,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-colors", 2, "bangla", "Bangla colors", "রঙ চিনি"),
     ("en-phonics", 2, "english", "Letter sounds", "বর্ণের উচ্চারণ"),
     ("heavy-light", 2, "science", "Heavy or light", "ভারী না হালকা"),
+    ("science-sink-float", 2, "science", "Sink or float", "ডুব না ভাসা"),
     # Band 3 — extend arithmetic: two-digit → mult → div (share then facts) → place value → regroup
     ("add-sub-100", 3, "math", "Add & subtract to 100", "১০০-এর মধ্যে যোগ-বিয়োগ"),
     ("mult-facts-2-5-10", 3, "math", "Times tables 2, 5, 10", "২, ৫, ১০ এর নামতা"),
