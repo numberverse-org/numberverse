@@ -162,7 +162,7 @@
 - Kids: pet evolution level 2 — new pet types  _(priority: low, kid-first)_
 - Kids: challenge Nova — beat-the-owl rounds  _(priority: low, kid-first)_
 - ~~Kids: daily login calendar reward~~ ✅ #281 — 7-day cycle, growing coin bonus per consecutive play day, claim once/day within the cap (PR pending)
-- Kids: same-device sibling leaderboard  _(priority: low, kid-first)_
+- ~~Kids: same-device sibling leaderboard~~ ✅ #282 — 🥇 screen ranks device kids by mastery with per-kid totals (mastery/rounds/stars), medals + "You" pill, empty state → add sibling, no cloud (PR pending)
 - ~~Kids: goal badges (10 rounds, 100% day)~~ ✅ #283 — Badge Book: 4 lifetime badges (sessions/stars/streak/land-champion), earned via local state, celebrate-once + spoken cheer (PR pending)
 - Kids: mastery mystery reward boxes  _(priority: low, kid-first)_
 - Kids: custom avatar builder  _(priority: low, kid-first)_
