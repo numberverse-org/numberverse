@@ -329,6 +329,81 @@ function readNarrDraft(kidId: string): { en: string; bn: string; edited: boolean
   }
 }
 
+// ── #239 STRUGGLE ALERT — top Moni-flagged skills ───────────────────────
+// Built from the same synced local wrong-answer ledger (#238's stories): the
+// kid app's `wrongLedger` records every wrong tap per kid+skill, Moni classifies
+// it (fatigue / misconception / gap / guessing), and the story rows carry that
+// error_kind + a misconception code. We re-derive the flags client-side, so
+// nothing new is fetched or sent — offline-friendly and privacy-safe.
+
+interface FlaggedSkill {
+  skillId: string;
+  wrong: number;
+  reason: { en: string; bn: string };
+}
+
+/** Top 3 skills with Moni flags in the last 7 days, strongest flag first.
+ *  misconception > fatigue > gap/guessing > plain wrongs. Empty = no flags. */
+function buildFlaggedSkills(stories: LearningStoryRow[]): FlaggedSkill[] {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const week = stories.filter((s) => !s.outcome && Date.now() - new Date(s.created_at).getTime() <= WEEK_MS);
+  if (week.length === 0) return [];
+
+  const bySkill = new Map<string, { wrong: number; fatigue: number; mis: number; gap: number; guessing: number; misCode?: string }>();
+  for (const s of week) {
+    const e = bySkill.get(s.skill_id) ?? { wrong: 0, fatigue: 0, mis: 0, gap: 0, guessing: 0 };
+    e.wrong++;
+    if (s.error_kind === "fatigue") e.fatigue++;
+    else if (s.error_kind === "misconception") e.mis++;
+    else if (s.error_kind === "gap") e.gap++;
+    else if (s.error_kind === "guessing") e.guessing++;
+    if (s.misconception_code) e.misCode = s.misconception_code;
+    bySkill.set(s.skill_id, e);
+  }
+
+  const scored = [...bySkill.entries()]
+    .map(([skillId, e]) => ({
+      skillId,
+      ...e,
+      score: e.mis * 5 + e.fatigue * 4 + e.gap * 2 + e.guessing * 2 + e.wrong,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const reason = (f: (typeof scored)[number]): { en: string; bn: string } => {
+    if (f.mis > 0 && f.misCode && NARR_MIS[f.misCode]) {
+      return {
+        en: `Moni spotted a pattern — ${NARR_MIS[f.misCode].en} (${f.mis}×). A side-by-side reteach will crack it.`,
+        bn: `মনি একটি ধাঁচ ধরেছে — ${NARR_MIS[f.misCode].bn} (${f.mis} বার)। পাশাপাশি দেখিয়ে শেখালে সহজেই ঠিক হবে।`,
+      };
+    }
+    if (f.fatigue > 0) {
+      return {
+        en: "Getting tired in long sessions — shorter, frequent rounds help.",
+        bn: "লম্বা সেশনের শেষে ক্লান্ত হয়ে পড়ছে — ছোট আর নিয়মিত রাউন্ডে উপকার হবে।",
+      };
+    }
+    if (f.gap > 0) {
+      return {
+        en: "Still building this concept — a reteach in a new way would help.",
+        bn: "ধারণাটা এখনও তৈরি হচ্ছে — নতুনভাবে একটু শেখালে উপকার হবে।",
+      };
+    }
+    if (f.guessing > 0) {
+      return {
+        en: "Guessing quickly instead of solving — easier rounds rebuild confidence.",
+        bn: "সমাধানের বদলে অন্দাজে উত্তর দিচ্ছে — সহজ রাউন্ডে আত্মবিশ্বাস ফিরবে।",
+      };
+    }
+    return {
+      en: "A few mistakes this week — daily practice will smooth this out.",
+      bn: "এ সপ্তাহে কিছু ভুল হয়েছে — নিয়মিত অনুশীলনে ঠিক হয়ে যাবে।",
+    };
+  };
+
+  return scored.map((f) => ({ skillId: f.skillId, wrong: f.wrong, reason: reason(f) }));
+}
+
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
   /** Gate: "checking" → validating the stored token server-side,
@@ -359,6 +434,10 @@ export default function ParentDashboard() {
   const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
   const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
   const [narrCopied, setNarrCopied] = useState(false);
+
+  // #239 — reteach QR deep-links for flagged skills (client-side only).
+  const [reteachQr, setReteachQr] = useState<Record<string, { title: string; dataUrl: string; code: string }>>({});
+  const [reteachBusy, setReteachBusy] = useState(false);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -742,6 +821,8 @@ export default function ParentDashboard() {
 
   // #238 — weekly narrative derived from the kid's Kotha stories.
   const weekNarrative = activeId && active ? buildWeeklyNarrative(active.name, stories[activeId] ?? []) : null;
+  // #239 — top Moni-flagged skills this week, derived from the same stories.
+  const flags = activeId ? buildFlaggedSkills(stories[activeId] ?? []) : [];
   const narrText =
     narrDraft && narrDraft.edited
       ? narrLang === "en"
@@ -781,6 +862,23 @@ export default function ParentDashboard() {
       window.setTimeout(() => setNarrCopied(false), 1500);
     } catch {
       /* clipboard unavailable — nothing to show */
+    }
+  }
+
+  /** #239 — a reteach hook for a flagged skill: a QR the kid scans in the app
+   *  (`NV:<skillId>`) to jump straight into that skill's game. Pure client-side
+   *  QR, no network needed — matches the existing flashcard-card pattern. */
+  async function handleReteachQr(skillId: string, title: string) {
+    if (reteachQr[skillId] || reteachBusy) return;
+    setReteachBusy(true);
+    try {
+      const code = `NV:${skillId}`;
+      const dataUrl = await QRCode.toDataURL(code, { margin: 1, width: 160, errorCorrectionLevel: "M" });
+      setReteachQr((prev) => ({ ...prev, [skillId]: { title, dataUrl, code } }));
+    } catch {
+      setError("Couldn't build the reteach QR.");
+    } finally {
+      setReteachBusy(false);
     }
   }
 
@@ -1100,6 +1198,54 @@ export default function ParentDashboard() {
                 No learning stories for this week yet — have {active.name} play a few rounds and a
                 summary appears here.
               </p>
+            )}
+          </section>
+
+          {/* #239 — struggle alert: top Moni-flagged skills this week */}
+          <section className="card alert-card">
+            <h2>🚨 Needs a little help</h2>
+            <p className="muted small">
+              Skills where Moni flagged a misconception or tiredness this week — read from{" "}
+              {active.name}’s learning stories on this device, nothing extra is sent anywhere.
+            </p>
+            {flags.length === 0 ? (
+              <p className="muted">No flags this week — {active.name}’s learning is on a steady climb! 🎉</p>
+            ) : (
+              <ul className="alert-list">
+                {flags.map((f) => (
+                  <li key={f.skillId} className="alert-row">
+                    <div className="alert-main">
+                      <strong>{narrTitleEn(f.skillId)}</strong>
+                      {narrTitleBn(f.skillId) !== narrTitleEn(f.skillId) && (
+                        <span className="muted small"> · {narrTitleBn(f.skillId)}</span>
+                      )}
+                      <p className="alert-reason small">
+                        {narrLang === "bn" ? f.reason.bn : f.reason.en}
+                      </p>
+                    </div>
+                    <button
+                      className="btn ghost-btn small"
+                      disabled={reteachBusy}
+                      onClick={() => void handleReteachQr(f.skillId, narrTitleEn(f.skillId))}
+                    >
+                      {reteachQr[f.skillId] ? "✓ QR ready" : "🔄 Reteach QR"}
+                    </button>
+                    {reteachQr[f.skillId] && (
+                      <div className="reteach-qr">
+                        <img
+                          src={reteachQr[f.skillId].dataUrl}
+                          alt={`QR code to open ${reteachQr[f.skillId].title} in the kid app`}
+                          width={116}
+                          height={116}
+                        />
+                        <span className="muted small">
+                          Scan in the kid app to open {reteachQr[f.skillId].title}
+                        </span>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
 
