@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.34.0 (Pet mini-games: Catch Fruit + Bubble Pop + Fetch (#597 #605 #606))
+
+c31ccb0 🎮 pet mini-games launch surface: Catch Fruit + Bubble Pop + Fetch (#597 #605 #606)
+
 ## 14 Aug 2026 — 0.33.0 (PictoGraph (#65): one picture = 2/5/10 · fewest-notes money lesson + spoken note names (#66))
 
 efaf304 📊💵 #65 + #66: PictoGraph (one picture = 2/5/10) + fewest-notes money lesson
