@@ -62,7 +62,7 @@
 - ~~ICT: device manners — on/off & wait~~  ✅ #211 — cartoon tablet with a real power button; turn on = tap power → wait for the boot bar (a tempting 👆 bubble from lvl 2 says "not yet!"), turn off = tap power → confirm → 😴; 100% offline, speaks every step in EN/BN (dm* keys)
 - ~~Social: professions & their tools~~  ✅ #212 — picture-match 12 Bangladeshi helpers to their tools (ডাক্তার→🩺, কৃষক→🌾…); helper shown big, tap the matching tool from a 2×2 grid; shuffle-bag guarantees every 12 matches show all 12; Bangla+EN names (pfh*/pft* keys)
 - ~~Social: our festivals — customs sort~~  ✅ #213 — drag 16 gentle customs (8 per festival, all non-religious-adjacent) into the right bin: Pohela Boishakh 🎉 (panta bhat, hilsa, alpana…) vs Eid 🎊 (semai, eidi, henna…); correct drop speaks "{item} for {festival}", wrong flashes the right bin green (fc* keys)
-- Values: kindness & sharing scenarios  _(priority: low, kid-first)_
+- ~~Values: kindness & sharing scenarios~~  ✅ #214 — 12 everyday situations (friend forgot a crayon, one biscuit two friends…); tap the GREEN kind choice → 💚 heart burst + rotating praise spoken aloud; unkind taps get only a gentle "try the kind way" (never punished); each round shuffles all 12 so every kid meets them (kd* keys)
 - Values: honesty — the truth game  _(priority: low, kid-first)_
 - Bangla: ordinal words (প্রথম-দ্বিতীয়-তৃতীয়)  _(priority: low, kid-first)_
 - Bangla: simple idioms for kids  _(priority: low, kid-first)_
