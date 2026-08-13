@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { isAllowedExternalUrl, SKILLS } from "@numberverse/core";
+import {
+  isAllowedExternalUrl,
+  SKILLS,
+  A11Y_DEFAULTS,
+  a11yStorageKey,
+  a11yToStorage,
+  parseA11yPrefs,
+  type A11yPrefs,
+} from "@numberverse/core";
 import QRCode from "qrcode";
 import OnDeviceData from "./OnDeviceData";
 import {
@@ -84,6 +92,27 @@ const WIZARD_LANGS = {
   },
 } as const;
 type WizardLang = keyof typeof WIZARD_LANGS;
+
+/** 🧏 #250 — global accessibility toggle strings (EN + BN). Same country-pack
+ *  seam as WIZARD_LANGS: a new locale = a new key, no component rewrites. */
+const A11Y_LANGS = {
+  en: {
+    bigText: "🔍 Big text",
+    highContrast: "🎨 High contrast",
+    bigTextOn: "Big text is on for the portal and the kid app",
+    bigTextOff: "Big text is off",
+    highContrastOn: "High contrast is on for the portal and the kid app",
+    highContrastOff: "High contrast is off",
+  },
+  bn: {
+    bigText: "🔍 বড় লেখা",
+    highContrast: "🎨 উচ্চ কনট্রাস্ট",
+    bigTextOn: "পোর্টাল আর কিড অ্যাপে বড় লেখা চালু",
+    bigTextOff: "বড় লেখা বন্ধ",
+    highContrastOn: "পোর্টাল আর কিড অ্যাপে উচ্চ কনট্রাস্ট চালু",
+    highContrastOff: "উচ্চ কনট্রাস্ট বন্ধ",
+  },
+} as const;
 const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
@@ -567,6 +596,36 @@ export default function ParentDashboard() {
   useEffect(() => {
     const saved = localStorage.getItem("nv_parent_lang");
     if (saved === "en" || saved === "bn") setWizLang(saved);
+  }, []);
+
+  // 🧏 #250 — GLOBAL accessibility toggles. One localStorage key (`nv_a11y`,
+  // same origin as the kid app) → toggling here applies to BOTH areas; a
+  // `storage` listener live-syncs the portal to the kid app and vice-versa.
+  const [a11y, setA11y] = useState<A11yPrefs>(() => {
+    try {
+      return parseA11yPrefs(localStorage.getItem(a11yStorageKey()));
+    } catch {
+      return { ...A11Y_DEFAULTS };
+    }
+  });
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("nv-big-text", a11y.bigText);
+    el.classList.toggle("nv-high-contrast", a11y.highContrast);
+  }, [a11y]);
+  useEffect(() => {
+    // Cross-tab sync: the kid app (same origin) or another portal tab.
+    const el = document.documentElement;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === a11yStorageKey()) {
+        const next = parseA11yPrefs(e.newValue);
+        el.classList.toggle("nv-big-text", next.bigText);
+        el.classList.toggle("nv-high-contrast", next.highContrast);
+        setA11y(next);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // #238 — weekly narrative language + editable draft (localStorage only).
@@ -1184,6 +1243,43 @@ export default function ParentDashboard() {
     <main className="shell">
       <header className="topbar">
         <span className="brand">🔢 <b>Numberverse</b> <span className="muted">Parent Portal</span></span>
+        {/* 🧏 #250 — global accessibility toggles (shared with the kid app). */}
+        <span className="a11y-toggle-group" role="group" aria-label="Accessibility">
+          <button
+            className={`a11y-toggle${a11y.bigText ? " on" : ""}`}
+            onClick={() => {
+              const next = { ...a11y, bigText: !a11y.bigText };
+              setA11y(next);
+              try {
+                localStorage.setItem(a11yStorageKey(), a11yToStorage(next));
+              } catch {
+                /* ignore */
+              }
+            }}
+            aria-pressed={a11y.bigText}
+            title={A11Y_LANGS[wizLang].bigText}
+            aria-label={A11Y_LANGS[wizLang].bigText}
+          >
+            🔍 <span className="a11y-toggle-label">{A11Y_LANGS[wizLang].bigText}</span>
+          </button>
+          <button
+            className={`a11y-toggle${a11y.highContrast ? " on" : ""}`}
+            onClick={() => {
+              const next = { ...a11y, highContrast: !a11y.highContrast };
+              setA11y(next);
+              try {
+                localStorage.setItem(a11yStorageKey(), a11yToStorage(next));
+              } catch {
+                /* ignore */
+              }
+            }}
+            aria-pressed={a11y.highContrast}
+            title={A11Y_LANGS[wizLang].highContrast}
+            aria-label={A11Y_LANGS[wizLang].highContrast}
+          >
+            🎨 <span className="a11y-toggle-label">{A11Y_LANGS[wizLang].highContrast}</span>
+          </button>
+        </span>
         <span className="topbar-user" title={profile?.email ?? "signed in"}>
           {profile?.display_name ?? "Parent"} 👨‍👩‍👧
         </span>

@@ -24,6 +24,7 @@ import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
+import { readA11y, writeA11y, initA11y, type A11yPrefs } from "./game/a11y";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
@@ -1105,6 +1106,15 @@ interface Strings {
   projectorOn: string;
   projectorOff: string;
   projectorKeyHint: string;
+  /** 🧏 #250 — global accessibility toggles (big text + high contrast). */
+  a11yBigText: string;
+  a11yBigTextSub: string;
+  a11yHighContrast: string;
+  a11yHighContrastSub: string;
+  a11yBigTextOn: string;
+  a11yBigTextOff: string;
+  a11yHighContrastOn: string;
+  a11yHighContrastOff: string;
   settingsSecParents: string;
   settingsReduceMotion: string;
   settingsMusicOff: string;
@@ -1747,6 +1757,15 @@ const STR: Record<Lang, Strings> = {
     projectorOn: "Projector is on",
     projectorOff: "Projector is off",
     projectorKeyHint: "Press Enter to play · Esc to exit fullscreen",
+    // 🧏 #250 — global accessibility (shared with the parent portal).
+    a11yBigText: "🔍 Big text",
+    a11yBigTextSub: "Larger type everywhere — also on the parent portal",
+    a11yHighContrast: "🎨 High contrast",
+    a11yHighContrastSub: "Bolder borders, brighter text, clearer focus",
+    a11yBigTextOn: "Big text is on",
+    a11yBigTextOff: "Big text is off",
+    a11yHighContrastOn: "High contrast is on",
+    a11yHighContrastOff: "High contrast is off",
     settingsReduceMotion: "Reduce motion",
     settingsSecLanguage: "🌐 Language",
     settingsSecLearning: "📚 My learning",
@@ -2381,6 +2400,15 @@ const STR: Record<Lang, Strings> = {
     projectorOn: "প্রজেক্টর চালু",
     projectorOff: "প্রজেক্টর বন্ধ",
     projectorKeyHint: "খেলতে Enter চাপুন · ফুলস্ক্রিন বন্ধে Esc",
+    // 🧏 #250 — global accessibility (বাবা-মার পোর্টালেও প্রযোজ্য)।
+    a11yBigText: "🔍 বড় লেখা",
+    a11yBigTextSub: "সব জায়গায় বড় লেখা — মা-বাবার পোর্টালেও",
+    a11yHighContrast: "🎨 উচ্চ কনট্রাস্ট",
+    a11yHighContrastSub: "গাঢ় বর্ডার, উজ্জ্বল লেখা, স্পষ্ট ফোকাস",
+    a11yBigTextOn: "বড় লেখা চালু",
+    a11yBigTextOff: "বড় লেখা বন্ধ",
+    a11yHighContrastOn: "উচ্চ কনট্রাস্ট চালু",
+    a11yHighContrastOff: "উচ্চ কনট্রাস্ট বন্ধ",
     settingsReduceMotion: "কম গতি",
     settingsSecLanguage: "🌐 ভাষা",
     settingsSecLearning: "📚 আমার শেখা",
@@ -3459,6 +3487,21 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("nv-reduce-motion", reduceMotion);
   }, [reduceMotion]);
+  // 🧏 #250 — GLOBAL accessibility toggles (big text + high contrast). Shared
+  // with the parent portal via one localStorage key (nv_a11y, same origin); a
+  // `storage` listener keeps open tabs in sync.
+  const [a11y, setA11y] = useState<A11yPrefs>(() => readA11y());
+  useEffect(() => {
+    const un = initA11y();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "nv_a11y") setA11y(readA11y());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      un();
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
   const syncState = useKidStore((s) => s.syncState);
   const syncPending = useKidStore((s) => s.pending.length);
   // 📚 KOTHA offline-queue quota — a long offline stretch can't balloon the
@@ -6059,6 +6102,50 @@ export default function App() {
               </button>
             </div>
             {projector && <p className="settings-voice-note">🎹 {t.projectorKeyHint}</p>}
+            {/* 🧏 #250 — GLOBAL accessibility: big text + high contrast. Shared
+                with the parent portal via one localStorage key (nv_a11y). */}
+            <div className="settings-row-line">
+              <span className="settings-row-icon">🔍</span>
+              <span className="settings-row-label">
+                <span>{t.a11yBigText}</span>
+                <span className="settings-row-sub">{t.a11yBigTextSub}</span>
+              </span>
+              <button
+                className={`switch${a11y.bigText ? " on" : ""}`}
+                role="switch"
+                aria-checked={a11y.bigText}
+                aria-label={t.a11yBigText}
+                onClick={() => {
+                  const next = { ...a11y, bigText: !a11y.bigText };
+                  setA11y(next);
+                  writeA11y(next);
+                  announce(next.bigText ? t.a11yBigTextOn : t.a11yBigTextOff); // #133
+                }}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
+            <div className="settings-row-line">
+              <span className="settings-row-icon">🎨</span>
+              <span className="settings-row-label">
+                <span>{t.a11yHighContrast}</span>
+                <span className="settings-row-sub">{t.a11yHighContrastSub}</span>
+              </span>
+              <button
+                className={`switch${a11y.highContrast ? " on" : ""}`}
+                role="switch"
+                aria-checked={a11y.highContrast}
+                aria-label={t.a11yHighContrast}
+                onClick={() => {
+                  const next = { ...a11y, highContrast: !a11y.highContrast };
+                  setA11y(next);
+                  writeA11y(next);
+                  announce(next.highContrast ? t.a11yHighContrastOn : t.a11yHighContrastOff); // #133
+                }}
+              >
+                <span className="switch-thumb" />
+              </button>
+            </div>
           </div>
 
           {/* 🌐 Language — two big pills, the current one is unmistakable. */}

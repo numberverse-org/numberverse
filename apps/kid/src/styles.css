@@ -5744,3 +5744,32 @@ body {
    base rule so the switch still right-aligns. */
 .settings-row-label { flex: 1; font-size: 15px; font-weight: 700; color: #e8eef7; display: flex; flex-direction: column; gap: 2px; }
 .settings-row-sub { font-size: 11px; font-weight: 500; color: #8fa9c9; line-height: 1.3; }
+
+/* 🧏 #250 — GLOBAL accessibility classes (on <html>, shared with the parent
+   portal via the nv_a11y localStorage key). `zoom` scales the whole UI — the
+   app's type is px-based, so this is the honest way to get "big text" that
+   actually reaches every screen. High contrast boosts borders + text + focus. */
+html.nv-big-text { zoom: 1.2; }
+
+html.nv-high-contrast .app { background: #00131f; }
+html.nv-high-contrast .screen { background: #00131f; }
+html.nv-high-contrast :focus { outline: 3px solid #ffd60a; outline-offset: 2px; }
+html.nv-high-contrast .parent-card,
+html.nv-high-contrast .world-progress-card,
+html.nv-high-contrast .card,
+html.nv-high-contrast .home-path,
+html.nv-high-contrast .j-card,
+html.nv-high-contrast .tree-node { border-color: rgba(255, 255, 255, 0.55); }
+html.nv-high-contrast .muted,
+html.nv-high-contrast .note,
+html.nv-high-contrast .settings-row-sub,
+html.nv-high-contrast .subtitle,
+html.nv-high-contrast .limit-banner,
+html.nv-high-contrast .head-sub { color: #e6f1fb; }
+html.nv-high-contrast .big-btn,
+html.nv-high-contrast .play-btn,
+html.nv-high-contrast .world-card,
+html.nv-high-contrast .skip-chip { border-width: 2px; border-color: rgba(255, 255, 255, 0.6); }
+html.nv-high-contrast .j-node,
+html.nv-high-contrast .tree-node-emoji,
+html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4)); }
