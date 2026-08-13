@@ -592,6 +592,18 @@ interface AchDef {
   hintBn: string;
   earned: (c: AchCtx) => boolean;
 }
+/* #289 — declaration-order guard: BN_DIGITS/BN_MONTHS/bnNum must live ABOVE the
+ * ACHIEVEMENTS literal because its worldAll.hintBn calls bnNum() at module-eval
+ * time. A `const` read during module init is a TDZ crash (it hit production in
+ * 0.27.0 — the bundle eval'd ACHIEVEMENTS before BN_DIGITS initialized). Keep
+ * any module-scope Bengali-digit formatting below this block. */
+const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+const BN_MONTHS = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
+
+function bnNum(n: number): string {
+  return String(n).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
+}
+
 const ACHIEVEMENTS: AchDef[] = [
   { id: "firstRound", emoji: "🎈", name: "First Steps", nameBn: "প্রথম পদক্ষেপ", hint: "Complete your first session", hintBn: "প্রথম খেলাটি শেষ করো", earned: (c) => c.sessions >= 1 },
   { id: "rounds25", emoji: "🎮", name: "25 Rounds", nameBn: "২৫ রাউন্ড", hint: "Complete 25 sessions", hintBn: "২৫টা খেলা শেষ করো", earned: (c) => c.sessions >= 25 },
@@ -2799,13 +2811,6 @@ function journeyCurrentIndex(stops: JourneyStop[]): number {
  * The card "mastered date" is the skill's last practice time (the closest
  * honest moment the store records; not shown for cards earned before the
  * album existed). */
-
-const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-const BN_MONTHS = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
-
-function bnNum(n: number): string {
-  return String(n).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
-}
 
 /** "5 Aug 2026" / "৫ আগস্ট ২০২৬" — the card's mastered-date stamp. */
 function cardDate(ts: number, lang: Lang): string {
