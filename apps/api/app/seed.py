@@ -182,6 +182,11 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("percent-of-number", 7, "math", "Percent of a number", "সংখ্যার শতকরা"),
     ("fraction-simplify", 7, "math", "Simplify fractions", "ভগ্নাংশ ছোট করি"),
     ("bgs-heritage", 7, "bgs", "Bangladesh heritage", "বাংলাদেশের ঐতিহ্য"),
+    # 2026 backlog content (#43, #44, #48, #49)
+    ("bn-days-months", 1, "bangla", "Days & months", "সপ্তাহ ও মাস"),
+    ("bn-spelling", 1, "bangla", "Bangla spelling", "বানান শিখি"),
+    ("bn-pronouns", 3, "bangla", "Bangla pronouns", "সর্বনাম"),
+    ("count-back-100", 2, "math", "Count back from 100", "উল্টো গোনা"),
 ]
 
 

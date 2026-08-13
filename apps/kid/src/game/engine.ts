@@ -73,6 +73,10 @@ import { DecimalsScene } from "./DecimalsScene";
 import { PercentScene } from "./PercentScene";
 import { AreaPerimScene } from "./AreaPerimScene";
 import { BnSentenceScene } from "./BnSentenceScene";
+import { BanglaDaysScene } from "./BanglaDaysScene";
+import { BanglaSpellScene } from "./BanglaSpellScene";
+import { PronounScene } from "./PronounScene";
+import { CountBackScene } from "./CountBackScene";
 import { GrammarScene } from "./GrammarScene";
 import { BgsFactsScene } from "./BgsFactsScene";
 import { BnColorsScene } from "./BnColorsScene";
@@ -84,6 +88,7 @@ import { NovaScene } from "./NovaScene";
 import { GrowCountScene } from "./GrowCountScene";
 import { FruitTreeScene } from "./FruitTreeScene";
 import { GardenScene } from "./GardenScene";
+import { PetFeedScene } from "./PetFeedScene";
 import { FrogHopScene } from "./FrogHopScene";
 import { MemoryPairsScene } from "./MemoryPairsScene";
 import { BalloonPopScene } from "./BalloonPopScene";
@@ -165,6 +170,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       BootScene,
       NovaScene,
       GardenScene,
+      PetFeedScene,
       GrowCountScene, FruitTreeScene,
       OddEvenScene, CountPopScene, Count100Scene, Build999Scene, FruitAddScene, BnLettersScene, BnNumbersScene, ShapeCatcherScene, EnLettersScene, NumberBondsScene,
       RocketMultScene, TimesTableScene, PizzaFracScene, BnWordsScene, CvcScene, DivisionFactsScene, FairShareScene, FractionMatchScene,
@@ -175,6 +181,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       FrogHopScene, MemoryPairsScene, BalloonPopScene, FactsAddScene, SubFactsScene, DoublesScene, MakeTenScene, AddRegroupScene, SubBorrowScene, ArrayMultScene, ShareRemScene, FracSetScene, MixedFracScene, DecTenthsScene, MakeChangeScene, ElapsedTimeScene, PerimFenceScene, SolidMatchScene, SymmetryMirrorScene, AnimalsMoveScene, PlantLifeScene, WeatherSeasonsScene, ShadowGuessScene, MagnetPolesScene, WaterCycleScene, KeyboardExplorerScene, DeviceMannersScene, ProfessionsMatchScene, FestivalSortScene, KindnessScene, TruthScene, OrdinalsScene, IdiomsScene, VerbGenderScene, ClassifiersScene, DigraphsScene, SynAntScene, IrregularPluralsScene, PastTenseScene, LongVowelScene, SkipCountScene, ClockTimeScene, BalanceScene, LivingSortScene, PlantPartsScene, FiveSensesScene, FoodSourceScene, MaterialSortScene, ComputerSafetyScene, HabitSortScene,
       SinkFloatScene, FoodChainScene, DayNightScene, CatchBugScene, VillageCityScene, PatienceScene,
       ConjunctFindScene,
+      BanglaDaysScene, BanglaSpellScene, PronounScene, CountBackScene,
       BnSightWordsScene,
       SentenceBuilderScene,
       StoryReadScene,
