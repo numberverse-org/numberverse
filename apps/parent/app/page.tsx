@@ -45,6 +45,12 @@ const SUBJECTS = [
   { id: "bgs", label: "BGS", emoji: "🌏" },
 ] as const;
 
+/** #237 — the read-aloud / story-comprehension games that make up a kid's
+ *  "reading & stories" progress (EN + BN tracks). Mastery for these skills is
+ *  already loaded with the dashboard, so the card works fully offline. */
+const READING_GAMES = new Set(["game-readstory", "game-storyread", "game-story", "game-readaloud"]);
+const readingSkills = SKILLS.filter((s) => s.game && READING_GAMES.has(s.game));
+
 const GAME_LABELS: Record<string, string> = {
   "game-countpop": "Count & Pop",
   "game-countpop20": "Count & Pop to 20",
@@ -777,6 +783,58 @@ export default function ParentDashboard() {
                   </p>
                 )}
               </>
+            )}
+          </section>
+
+          {/* #237 — per-kid reading & story progress view */}
+          <section className="card reading-card">
+            <h2>📚 Reading & stories</h2>
+            <p className="muted small">
+              Which read-aloud books and story quizzes {active.name} has finished — and how they scored.
+              Every story game stays on the kid's device data, so this works offline too.
+            </p>
+            {readingSkills.length === 0 ? (
+              <p className="muted">No story games in the catalog yet.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Story</th>
+                    <th>Progress</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {readingSkills.map((s) => {
+                    const m = activeMastery.find((x) => x.skill_id === s.id);
+                    const pct = m ? Math.min(100, Math.round(m.mastery * 100)) : 0;
+                    const status = !m ? "🌱 Not started" : m.mastery >= 0.8 ? "✅ Finished" : "🔶 In progress";
+                    return (
+                      <tr key={s.id}>
+                        <td>
+                          {s.title}
+                          {s.titleBn ? <span className="muted small"> · {s.titleBn}</span> : null}
+                        </td>
+                        <td>
+                          {m ? (
+                            <>
+                              <div className="bar">
+                                <div className={`fill${m.mastery >= 0.8 ? " done" : ""}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              {pct}%
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td>{m ? `${m.correct}/${m.attempts}` : "—"}</td>
+                        <td>{status}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </section>
 
