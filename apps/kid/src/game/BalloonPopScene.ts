@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speakMath } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, BTN_RED, BTN_PURPLE, BTN_ORANGE, BTN_PRIMARY, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, BTN_RED, BTN_PURPLE, BTN_ORANGE, BTN_PRIMARY, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-balloonpop")?.difficultyLevels ?? [10, 12, 14, 16, 18, 20];
@@ -62,7 +62,7 @@ export class BalloonPopScene extends Phaser.Scene {
       .text(0, 0, t("titleBalloon"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);

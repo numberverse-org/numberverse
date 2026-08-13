@@ -31,6 +31,7 @@ import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
 import { startRecording, stopRecording } from "./game/voiceRecorder";
+import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
 
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
@@ -164,7 +165,7 @@ const DONE_CONFETTI = Array.from({ length: 30 }, (_, i) => ({
   dur: 2.6 + Math.random() * 2.6,
   drift: (Math.random() - 0.5) * 180,
   rot: 360 + Math.random() * 540,
-  color: ["#4cc9f0", "#ffd166", "#ff8fa3", "#2ec4b6", "#c4b5fd", "#ffb35c"][i % 6],
+  color: [NV_SKY, NV_GOLD, NV_PINK, "#2ec4b6", "#c4b5fd", NV_ORANGE][i % 6],
 }));
 
 /* ── Seasons — the journey path lives in the real world's season ───────────

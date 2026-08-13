@@ -6,7 +6,7 @@ import { GAMES } from "@numberverse/core";
 import { win } from "./audio";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
-import { txt, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-patience")?.difficultyLevels ?? [3, 3, 4, 4, 5, 5];
 /** Skill seed for deterministic framing rotation. */
@@ -79,14 +79,14 @@ export class PatienceScene extends Phaser.Scene {
       .text(0, 0, t("patTitle"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
     this.track = this.add.graphics();
     this.fill = this.add.graphics().setDepth(3);
     this.bigEmoji = this.add.text(0, 0, "", txt(96, "#ffffff")).setOrigin(0.5).setDepth(2);
-    this.rewardText = this.add.text(0, 0, "", txt(22, "#ffd166", { bold: true })).setOrigin(0.5).setDepth(2);
+    this.rewardText = this.add.text(0, 0, "", txt(22, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(2);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
     this.startRound();
@@ -186,7 +186,7 @@ export class PatienceScene extends Phaser.Scene {
 
   private tapDistraction(c: Phaser.GameObjects.Container) {
     this.clearDistraction();
-    const m = this.add.text(c.x, c.y - 40, t("patNotYet"), txt(16, "#ffd166", { bold: true })).setOrigin(0.5).setDepth(30);
+    const m = this.add.text(c.x, c.y - 40, t("patNotYet"), txt(16, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 26, alpha: 0, duration: 900, onComplete: () => m.destroy() });
   }
 
@@ -215,7 +215,7 @@ export class PatienceScene extends Phaser.Scene {
       this.sparkle(width / 2 + Math.cos(a) * 74, height * 0.44 + Math.sin(a) * 74);
     }
     if (this.roundsDone >= ROUNDS_TO_FINISH) {
-      const m = this.add.text(width / 2, height * 0.36, t("patGreat"), txt(24, "#ffd166", { bold: true })).setOrigin(0.5).setDepth(30);
+      const m = this.add.text(width / 2, height * 0.36, t("patGreat"), txt(24, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(30);
       this.tweens.add({ targets: m, y: m.y - 26, alpha: 0, duration: 1200, onComplete: () => m.destroy() });
     }
     const ms = Math.max(1, this.time.now - this.startedAt);

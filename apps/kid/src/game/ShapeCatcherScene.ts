@@ -7,7 +7,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { ensureAssets } from "./svgAssets";
 
@@ -66,7 +66,7 @@ export class ShapeCatcherScene extends Phaser.Scene {
       .text(0, 0, t("titleShapeCatcher"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
         this.prompt = questionPanel(this, 0, 0, { tail: "none" });

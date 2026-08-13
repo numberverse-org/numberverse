@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, modernAnswerButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, modernAnswerButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-casematch")?.difficultyLevels ?? [4, 4, 4, 4, 4, 4];
@@ -56,14 +56,14 @@ export class CaseMatchScene extends Phaser.Scene {
       .text(0, 0, t("titleCaseMatch"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.promptText = this.add
       .text(0, 0, t("casePrompt"), txt(26, "#fff8e1", { bold: true, outline: true, wrap: 340 }))
       .setOrigin(0.5);
     this.upperText = this.add
-      .text(0, 0, "", txt(110, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(110, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(2);
     this.buildOptions();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());

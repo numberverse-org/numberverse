@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_PRIMARY, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_PRIMARY, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-cvcbuild")?.difficultyLevels ?? [0, 0, 0, 1, 1, 1];
@@ -65,7 +65,7 @@ export class CvcBuildScene extends Phaser.Scene {
       .text(0, 0, t("titleCvcBuild"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -128,7 +128,7 @@ export class CvcBuildScene extends Phaser.Scene {
     this.slotX = Array.from({ length: 3 }, (_, i) => gl.startX + i * gl.spacingX);
     for (let i = 0; i < 3; i++) {
       const lbl = this.add
-        .text(this.slotX[i], gl.cy - SLOT_H / 2 - 20, String(i + 1), txt(18, "#ffd166", { bold: true, outline: true }))
+        .text(this.slotX[i], gl.cy - SLOT_H / 2 - 20, String(i + 1), txt(18, NV_GOLD, { bold: true, outline: true }))
         .setOrigin(0.5);
       this.stepLabels.push(lbl);
       const slot = modernCardButton(this, this.slotX[i], gl.cy, gl.cardW, SLOT_H, "·", BTN_NEUTRAL, 30, gl.cardW - 8);
@@ -215,7 +215,7 @@ export class CvcBuildScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.62, text, txt(30, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.62, text, txt(30, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 900, onComplete: () => m.destroy() });
   }

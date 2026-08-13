@@ -5,7 +5,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_CORRECT, BTN_RED, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_CORRECT, BTN_RED, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-yesno")?.difficultyLevels ?? [0, 0, 0, 0, 0, 0];
@@ -76,14 +76,14 @@ export class YesNoScene extends Phaser.Scene {
       .text(0, 0, t("titleYesNo"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.lineText = this.add
       .text(0, 0, "", txt(26, "#ffffff", { bold: true, wrap: 360 }))
       .setOrigin(0.5);
     this.qText = this.add
-      .text(0, 0, "", txt(24, "#ffd166", { bold: true, wrap: 340 }))
+      .text(0, 0, "", txt(24, NV_GOLD, { bold: true, wrap: 340 }))
       .setOrigin(0.5);
 
     this.slowBtn = modernCardButton(this, 0, 0, 100, 64, "🐢", BTN_NEUTRAL, 34);
@@ -165,7 +165,7 @@ export class YesNoScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.5, text, txt(28, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.5, text, txt(28, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 1000, onComplete: () => m.destroy() });

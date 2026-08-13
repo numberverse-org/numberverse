@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speakMath } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { answerRow } from "./layout";
 
@@ -71,11 +71,11 @@ export class TimesTableScene extends Phaser.Scene {
       .text(0, 0, t("titleTimesTable"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.factText = this.add
-      .text(0, 0, "", txt(52, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(52, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.arrayLabel = this.add
       .text(0, 0, "", txt(16, "#fff3bf", { bold: true }))

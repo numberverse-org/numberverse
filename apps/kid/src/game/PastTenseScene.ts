@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN, NV_RED } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-past")?.difficultyLevels ?? [4, 4, 6, 6, 8, 8];
 const ROUNDS_TO_FINISH = 3;
@@ -80,7 +80,7 @@ export class PastTenseScene extends Phaser.Scene {
       .text(0, 0, t("titleIv"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.emojiText = this.add.text(0, 0, "", txt(54, "#ffffff", { shadow: false })).setOrigin(0.5);
@@ -88,7 +88,7 @@ export class PastTenseScene extends Phaser.Scene {
       .text(0, 0, "", txt(34, "#a7f3d0", { bold: true, outline: true, wrap: 320 }))
       .setOrigin(0.5);
     this.promptText = this.add
-      .text(0, 0, t("ivPrompt"), txt(16, "#ffd166", { bold: true }))
+      .text(0, 0, t("ivPrompt"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.sentenceText = this.add
       .text(0, 0, "", txt(24, "#fff8e1", { bold: true, outline: true, wrap: 340 }))
@@ -229,7 +229,7 @@ export class PastTenseScene extends Phaser.Scene {
   private floatMsg(text: string, color = 0xffd166) {
     const m = this.add
       .text(this.scale.width / 2, this.scale.height * 0.5, text, txt(24, "#ffffff", { bold: true, outline: true, wrap: 320 }))
-      .setColor(color === 0xffd166 ? "#ffd166" : color === 0x4ade80 ? "#4ade80" : "#f87171")
+      .setColor(color === 0xffd166 ? NV_GOLD : color === 0x4ade80 ? NV_GREEN : NV_RED)
       .setOrigin(0.5)
       .setDepth(40);
     this.tweens.add({ targets: m, y: m.y - 22, alpha: 0, duration: 1300, onComplete: () => m.destroy() });

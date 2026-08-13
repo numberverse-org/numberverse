@@ -8,7 +8,7 @@ import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { assetIcon } from "./svgAssets";
-import { txt, modernAnswerButton, BTN_PRIMARY, btnFromColor, ringCorrect, gridLayout, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, BTN_PRIMARY, btnFromColor, ringCorrect, gridLayout, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { enableDragToPop } from "./gestures";
 
@@ -68,7 +68,7 @@ export class CountingSongScene extends Phaser.Scene {
       .text(0, 0, t("songTitle"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);

@@ -8,7 +8,7 @@ import { pop, win } from "./audio";
 import { speak, bnNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-round")?.difficultyLevels ?? [40, 80, 120, 400, 700, 999];
@@ -61,11 +61,11 @@ export class RoundingScene extends Phaser.Scene {
       .text(0, 0, t("titleRounding"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.shownText = this.add
-      .text(0, 0, "", txt(64, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(64, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.lineBox = this.add.container(0, 0);
     this.marker = this.add.circle(0, 0, 11, 0xffb35c).setStrokeStyle(3, 0xffffff).setDepth(100);

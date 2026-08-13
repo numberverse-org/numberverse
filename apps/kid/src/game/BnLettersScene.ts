@@ -6,7 +6,7 @@ import { bad, pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnletters")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
@@ -75,7 +75,7 @@ export class BnLettersScene extends Phaser.Scene {
       .text(0, 0, this.mode === "consonants" ? "ব্যঞ্জনবর্ণ" : "স্বরবর্ণ", txt(36, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
         this.prompt = questionPanel(this, 0, 0, { tail: "none" });

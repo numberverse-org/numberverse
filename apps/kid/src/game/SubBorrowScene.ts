@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-subborrow")?.difficultyLevels ?? [5, 6, 8, 8, 10, 10];
@@ -79,14 +79,14 @@ export class SubBorrowScene extends Phaser.Scene {
       .text(0, 0, t("titleSubBorrow"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.tallyText = this.add
       .text(0, 0, "", txt(20, "#ffffff", { bold: true, outline: true }))
       .setOrigin(0.5);
     this.stepText = this.add
-      .text(0, 0, "", txt(22, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(22, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.gfxBox = this.add.graphics().setDepth(4);
     this.gfxBlocks = this.add.graphics().setDepth(5);
@@ -284,7 +284,7 @@ export class SubBorrowScene extends Phaser.Scene {
             group.destroy();
             this.afterBorrow = true;
             this.a1t.setText(digit(this.tM - 1));
-            this.a1o.setText(digit(this.oM + 10)).setColor("#4ade80");
+            this.a1o.setText(digit(this.oM + 10)).setColor(NV_GREEN);
             this.borrowChip.setVisible(true);
             this.drawBlocks();
             pop();
@@ -355,7 +355,7 @@ export class SubBorrowScene extends Phaser.Scene {
 
   private floatMsg(text: string, x: number, y: number) {
     const m = this.add
-      .text(x, y, text, txt(24, "#ffd166", { bold: true, outline: true, wrap: 300 }))
+      .text(x, y, text, txt(24, NV_GOLD, { bold: true, outline: true, wrap: 300 }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
@@ -373,7 +373,7 @@ function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container,
   tile.setAlpha(0.4);
   tile.disableInteractive();
   const m = scene.add
-    .text(tile.x, tile.y - 40, correct(), txt(22, "#4ade80", { bold: true, outline: true }))
+    .text(tile.x, tile.y - 40, correct(), txt(22, NV_GREEN, { bold: true, outline: true }))
     .setOrigin(0.5)
     .setDepth(40);
   scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });

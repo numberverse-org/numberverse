@@ -6,7 +6,7 @@ import { bad, pop, win } from "./audio";
 import { speakMath } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { answerRow } from "./layout";
 
@@ -48,10 +48,10 @@ export class PercentScene extends Phaser.Scene {
       .text(0, 0, t("titlePercent"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.factText = this.add
-      .text(0, 0, "", txt(46, "#ffd166", {bold: true, outline: true}))
+      .text(0, 0, "", txt(46, NV_GOLD, {bold: true, outline: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("findPercent"));

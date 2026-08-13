@@ -7,7 +7,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-daynight")?.difficultyLevels ?? [2, 3, 3, 4, 4, 4];
 /** Skill seed for deterministic framing rotation. */
@@ -83,7 +83,7 @@ export class DayNightScene extends Phaser.Scene {
       .text(0, 0, t("titleDayNight"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);

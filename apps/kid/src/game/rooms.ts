@@ -1,3 +1,4 @@
+import { NV_GOLD, NV_ORANGE, NV_PINK } from "./ui"; // tokenized #591
 /**
  * Nova's rooms — 12 procedurally-drawn "2026-style" backdrops (zero image assets).
  * Each room is a full-screen canvas texture: soft gradients + dimensional decor,
@@ -112,7 +113,7 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = "rgba(255,255,255,0.12)";
       for (let x = 0; x < w; x += 24) ell(ctx, x, h * 0.82, 11, 6);
       // flowers
-      const fl = ["#ff8fb0", "#ffd166", "#ff9e6d", "#c9a7ff", "#8ef0a0"];
+      const fl = ["#ff8fb0", NV_GOLD, "#ff9e6d", "#c9a7ff", "#8ef0a0"];
       for (let i = 0; i < 10; i++) {
         const fx = w * (0.06 + i * 0.09) + (i % 2) * w * 0.02;
         const fy = h * (0.8 + ((i * 37) % 9) * 0.012);
@@ -149,7 +150,7 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = gradV(ctx, 0, h * 0.72, 0, h, [["#7ecf6a", 0], ["#58b548", 1]]);
       ctx.fillRect(0, h * 0.72, w, h * 0.28);
       // flower bushes
-      const cols = ["#ff6b9d", "#ffb3c6", "#ffd166", "#c4b5fd", "#ff9e6d", "#f4a261"];
+      const cols = ["#ff6b9d", "#ffb3c6", NV_GOLD, "#c4b5fd", "#ff9e6d", "#f4a261"];
       for (let i = 0; i < 7; i++) {
         const bx = w * (0.12 + i * 0.13);
         const by = h * (0.78 + (i % 2) * 0.03);
@@ -200,7 +201,7 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = "#ff9eb0";
       rr(ctx, w * 0.08, h * 0.26, w * 0.09, h * 0.2, 6);
       ctx.fill();
-      ctx.fillStyle = "#ffd166";
+      ctx.fillStyle = NV_GOLD;
       rr(ctx, w * 0.09, h * 0.26, w * 0.07, h * 0.15, 6);
       ctx.fill();
       // bathtub
@@ -322,7 +323,7 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = "#a8d8f0";
       rr(ctx, w * 0.3, h * 0.52, w * 0.4, h * 0.1, 12);
       ctx.fill();
-      ctx.fillStyle = "#ffd166";
+      ctx.fillStyle = NV_GOLD;
       rr(ctx, w * 0.26, h * 0.74, w * 0.48, h * 0.1, 8);
       ctx.fill();
       // night lamp
@@ -379,7 +380,7 @@ export const ROOMS: RoomDef[] = [
       rr(ctx, w * 0.54, h * 0.85, w * 0.04, h * 0.06, 4);
       ctx.fill();
       dot(ctx, w * 0.44, h * 0.775, 5, "#fff");
-      dot(ctx, w * 0.56, h * 0.775, 5, "#ffd166");
+      dot(ctx, w * 0.56, h * 0.775, 5, NV_GOLD);
       // plant
       ctx.fillStyle = "#b0714a";
       rr(ctx, w * 0.78, h * 0.74, w * 0.07, h * 0.1, 8);
@@ -517,7 +518,7 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#6b3fa0", 0], ["#9a4fbf", 0.5], ["#e06b9a", 1]]);
       ctx.fillRect(0, 0, w, h);
       // bunting
-      const cols = ["#ffd166", "#ff8fa3", "#8ef0a0", "#7db9ff", "#ffb35c"];
+      const cols = [NV_GOLD, NV_PINK, "#8ef0a0", "#7db9ff", NV_ORANGE];
       for (let i = 0; i < 10; i++) {
         const x = w * (i / 10) + w * 0.02;
         ctx.fillStyle = cols[i % cols.length];
@@ -535,7 +536,7 @@ export const ROOMS: RoomDef[] = [
       ctx.lineTo(w, h * 0.1);
       ctx.stroke();
       // balloons
-      const bcols = ["#ff5c7a", "#ffd166", "#6bc4ff", "#8ef0a0", "#c9a7ff"];
+      const bcols = ["#ff5c7a", NV_GOLD, "#6bc4ff", "#8ef0a0", "#c9a7ff"];
       for (let i = 0; i < 5; i++) {
         const bx = w * (0.12 + i * 0.18);
         const by = h * (0.3 + (i % 2) * 0.06);
@@ -609,7 +610,7 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = "#6bc4ff";
       rr(ctx, w * 0.5, h * 0.48, w * 0.08, h * 0.07, 3);
       ctx.fill();
-      ctx.fillStyle = "#ffd166";
+      ctx.fillStyle = NV_GOLD;
       rr(ctx, w * 0.58, h * 0.49, w * 0.08, h * 0.06, 3);
       ctx.fill();
       // clock

@@ -7,7 +7,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-decimals")?.difficultyLevels ?? [1, 2, 3, 4, 5, 6];
 const BUTTON_RADIUS = 78;
@@ -46,7 +46,7 @@ export class DecimalsScene extends Phaser.Scene {
       .text(0, 0, t("titleDecimals"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("tapBiggerDecimal"));

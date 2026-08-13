@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak, speakMath, bnNumber, enNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { answerRow } from "./layout";
 import { assetIcon } from "./svgAssets";
@@ -78,11 +78,11 @@ export class FairShareScene extends Phaser.Scene {
       .text(0, 0, t("titleShare"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.factText = this.add
-      .text(0, 0, "", txt(52, "#ffd166", { bold: true, outline: true }))
+      .text(0, 0, "", txt(52, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5);
     this.toastText = this.add
       .text(0, 0, "", txt(20, "#ffffff", { bold: true, shadow: true }))
@@ -247,9 +247,9 @@ export class FairShareScene extends Phaser.Scene {
   private ringBaskets() {
     for (const p of this.plateCenters) {
       const ring = this.add.graphics().setDepth(5);
-      ring.fillStyle(Phaser.Display.Color.HexStringToColor("#ffd166").color, 0.25);
+      ring.fillStyle(Phaser.Display.Color.HexStringToColor(NV_GOLD).color, 0.25);
       ring.fillCircle(p.x, p.y, 38);
-      ring.lineStyle(4, Phaser.Display.Color.HexStringToColor("#ffd166").color, 1);
+      ring.lineStyle(4, Phaser.Display.Color.HexStringToColor(NV_GOLD).color, 1);
       ring.strokeCircle(p.x, p.y, 38);
       this.tweens.add({
         targets: ring,

@@ -8,7 +8,7 @@ import { bnNumber, enNumber, speak, speakAnswer, speakMath } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
 import { ensureAssets, assetIcon } from "./svgAssets";
 
@@ -82,7 +82,7 @@ export class FruitAddScene extends Phaser.Scene {
       .text(0, 0, t("titleFruitAdd"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(20, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     // The QUESTION is the big thing — 34px, warm, impossible to miss.
@@ -233,7 +233,7 @@ export class FruitAddScene extends Phaser.Scene {
     const z = this.basketZone;
     if (!z) return;
     this.symbolText = this.add
-      .text(z.x + z.w / 2, z.y - 34, `+${b}`, txt(60, "#4ade80", {bold: true, outline: true}))
+      .text(z.x + z.w / 2, z.y - 34, `+${b}`, txt(60, NV_GREEN, {bold: true, outline: true}))
       .setOrigin(0.5)
       .setDepth(50);
     this.tweens.add({

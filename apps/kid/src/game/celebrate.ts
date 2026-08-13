@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { comboChime } from "./audio";
 import { prefersReducedMotion } from "./reducedMotion";
+import { NV_GOLD, NV_PINK } from "./ui"; // tokenized #591
 
 /**
  * Combo + celebration engine — the "juice" of a correct answer.
@@ -55,7 +56,7 @@ export function floatText(
   x: number,
   y: number,
   text: string,
-  color = "#ffd166",
+  color = NV_GOLD,
   size = 30,
   vy = -72
 ): Phaser.GameObjects.Text {
@@ -151,7 +152,7 @@ export function correctCelebrate(scene: Phaser.Scene, x: number, y: number) {
   if (combo === 3) {
     comboChime(combo);
     confettiBurst(scene, x, y, 16);
-    const t = floatText(scene, x, y - 52, "WOW! 🎉", "#ffd166", 30);
+    const t = floatText(scene, x, y - 52, "WOW! 🎉", NV_GOLD, 30);
     scene.data.set("nv:combo-fx", t);
     return;
   }
@@ -159,7 +160,7 @@ export function correctCelebrate(scene: Phaser.Scene, x: number, y: number) {
     comboChime(combo);
     confettiBurst(scene, x, y, 26);
     starBurst(scene, x, y, 6);
-    const t = floatText(scene, x, y - 58, "AMAZING! 🌟", "#ff8fa3", 32);
+    const t = floatText(scene, x, y - 58, "AMAZING! 🌟", NV_PINK, 32);
     scene.data.set("nv:combo-fx", t);
     return;
   }

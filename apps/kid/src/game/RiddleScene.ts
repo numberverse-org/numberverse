@@ -6,7 +6,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-riddle")?.difficultyLevels ?? [3, 3, 3, 4, 4, 4];
@@ -84,7 +84,7 @@ export class RiddleScene extends Phaser.Scene {
       .text(0, 0, t("titleRiddle"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
@@ -92,7 +92,7 @@ export class RiddleScene extends Phaser.Scene {
       .text(0, 0, "❓", txt(72, "#ffffff", { outline: true }))
       .setOrigin(0.5).setDepth(2);
     this.hintText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true, align: "center" }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true, align: "center" }))
       .setOrigin(0.5);
     this.replayBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 28);
     this.replayBtn.on("pointerdown", () => speak(this.rd.text, { lang: "bn" }));
@@ -208,7 +208,7 @@ export class RiddleScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(28, "#ffd166", { bold: true, outline: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(28, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 1000, onComplete: () => m.destroy() });

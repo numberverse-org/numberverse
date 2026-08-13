@@ -17,6 +17,7 @@
  * (https only), so no app can ever be launched from the share flow.
  */
 import { openExternal, stripPngMetadata } from "@numberverse/core";
+import { NV_GOLD, NV_MINT, NV_NAVY, NV_SKY } from "./ui"; // tokenized #591
 
 export interface ShareCardData {
   title: string;          // "🎉 Numberverse" (or local brand)
@@ -44,7 +45,7 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
 
   // ── background: deep navy + aurora blobs (matches the app shell) ──
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#0b2545");
+  bg.addColorStop(0, NV_NAVY);
   bg.addColorStop(1, "#152a4e");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
@@ -109,7 +110,7 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
     ctx.font = "64px 'Apple Color Emoji','Segoe UI Emoji',sans-serif";
     ctx.fillText(statEmoji[i], x + tileW / 2, tilesY + 60);
     ctx.font = "700 52px system-ui, sans-serif";
-    ctx.fillStyle = "#ffd166";
+    ctx.fillStyle = NV_GOLD;
     ctx.fillText(String(v), x + tileW / 2, tilesY + 128);
     ctx.font = "600 30px system-ui, sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.85)";
@@ -142,13 +143,13 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
     rr(ctx, barX, y + rowH + 12, barMax - barX, 18, 9);
     ctx.fill();
     const pct = w.total > 0 ? w.mastered / w.total : 0;
-    ctx.fillStyle = pct >= 1 ? "#7ee8d2" : "#4cc9f0";
+    ctx.fillStyle = pct >= 1 ? NV_MINT : NV_SKY;
     rr(ctx, barX, y + rowH + 12, Math.max(18, (barMax - barX) * pct), 18, 9);
     ctx.fill();
     // count
     ctx.textAlign = "right";
     ctx.font = "700 32px system-ui, sans-serif";
-    ctx.fillStyle = "#ffd166";
+    ctx.fillStyle = NV_GOLD;
     ctx.fillText(`${w.mastered}/${w.total}`, barMax, y + rowH / 2);
     ctx.textAlign = "center";
   });

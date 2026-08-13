@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { SAT } from "./safeArea";
-import { txt } from "./ui";
+import { txt, NV_COCOA } from "./ui";
 
 /**
  * Modern, "2026-style" animated game backgrounds — zero assets.
@@ -232,7 +232,7 @@ function texNovaHead(ctx: CanvasRenderingContext2D, w: number, h: number) {
   // brown head dome
   const head = ctx.createLinearGradient(0, 0, 0, h);
   head.addColorStop(0, "#6b4526");
-  head.addColorStop(0.5, "#7a4e2a");
+  head.addColorStop(0.5, NV_COCOA);
   head.addColorStop(1, "#8a5c33");
   ctx.fillStyle = head;
   ctx.beginPath();
@@ -248,7 +248,7 @@ function texNovaHead(ctx: CanvasRenderingContext2D, w: number, h: number) {
   // brown brow-horn tufts (the great horned owl's signature)
   const tuft = (dir: 1 | -1) => {
     const tg = ctx.createLinearGradient(0, 0, 0, h * 0.4);
-    tg.addColorStop(0, "#7a4e2a");
+    tg.addColorStop(0, NV_COCOA);
     tg.addColorStop(1, "#4f331b");
     ctx.fillStyle = tg;
     ctx.beginPath();

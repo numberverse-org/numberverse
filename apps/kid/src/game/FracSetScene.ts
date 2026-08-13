@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_CORRECT, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_CORRECT, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-fracset")?.difficultyLevels ?? [3, 4, 5, 5, 6, 6];
@@ -64,7 +64,7 @@ export class FracSetScene extends Phaser.Scene {
       .text(0, 0, t("titleFracSet"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = this.add

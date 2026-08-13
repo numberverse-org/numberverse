@@ -6,6 +6,7 @@ import { SAT } from "./safeArea";
 import { cancelSpeech, speak, speakAnswer } from "./speech";
 import { wrongLedger } from "./wrongLedger";
 import { useKidStore } from "../store";
+import { NV_GOLD, NV_NAVY } from "./ui"; // tokenized #591
 
 /**
  * Escalating hints on repeated misses — every miss is a teaching moment.
@@ -219,7 +220,7 @@ function bigBanner(scene: Phaser.Scene, text: string, scale = 1) {
       fontStyle: "bold",
       align: "center",
       wordWrap: { width: maxW - pad },
-      stroke: "#0b2545",
+      stroke: NV_NAVY,
       strokeThickness: 7,
       lineSpacing: 6,
     })
@@ -229,9 +230,9 @@ function bigBanner(scene: Phaser.Scene, text: string, scale = 1) {
   const panel = scene.add.graphics();
   panel.fillStyle(Phaser.Display.Color.HexStringToColor("#2ec4b6").color, 0.95);
   panel.fillRoundedRect(-maxW / 2, -boxH / 2, maxW, boxH, 26);
-  panel.lineStyle(4, Phaser.Display.Color.HexStringToColor("#0b2545").color, 1);
+  panel.lineStyle(4, Phaser.Display.Color.HexStringToColor(NV_NAVY).color, 1);
   panel.strokeRoundedRect(-maxW / 2, -boxH / 2, maxW, boxH, 26);
-  panel.lineStyle(3, Phaser.Display.Color.HexStringToColor("#ffd166").color, 1);
+  panel.lineStyle(3, Phaser.Display.Color.HexStringToColor(NV_GOLD).color, 1);
   panel.strokeRoundedRect(-maxW / 2 + 5, -boxH / 2 + 5, maxW - 10, boxH - 10, 21);
 
   const banner = scene.add.container(w / 2, y, [panel, tx]).setDepth(6000);
@@ -272,7 +273,7 @@ function glowCorrect(scene: Phaser.Scene, sprite: Phaser.GameObjects.Container) 
   const ring = scene.add.graphics().setDepth(5900);
   ring.fillStyle(Phaser.Display.Color.HexStringToColor("#2ec4b6").color, 0.3);
   ring.fillCircle(sprite.x, sprite.y, r);
-  ring.lineStyle(5, Phaser.Display.Color.HexStringToColor("#ffd166").color, 1);
+  ring.lineStyle(5, Phaser.Display.Color.HexStringToColor(NV_GOLD).color, 1);
   ring.strokeCircle(sprite.x, sprite.y, r);
   scene.tweens.add({
     targets: ring,

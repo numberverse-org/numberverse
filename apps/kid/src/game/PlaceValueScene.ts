@@ -7,7 +7,7 @@ import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { answerRow } from "./layout";
 
@@ -57,10 +57,10 @@ export class PlaceValueScene extends Phaser.Scene {
       .text(0, 0, t("titlePlaceValue"), txt(28, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", {bold: true}))
+      .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.factText = this.add
-      .text(0, 0, "", txt(26, "#ffd166", {bold: true, align: "center", wrap: 340, outline: true}))
+      .text(0, 0, "", txt(26, NV_GOLD, {bold: true, align: "center", wrap: 340, outline: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
@@ -171,7 +171,7 @@ export class PlaceValueScene extends Phaser.Scene {
         group.add(g);
       }
       const label = this.add
-        .text(0, p.h / 2 + 14, `${p.v} ${this.placeName(p.key)}`, txt(14, isAsk ? "#ffd166" : "#e9ecef", { bold: isAsk }))
+        .text(0, p.h / 2 + 14, `${p.v} ${this.placeName(p.key)}`, txt(14, isAsk ? NV_GOLD : "#e9ecef", { bold: isAsk }))
         .setOrigin(0.5, 0);
       group.add(label);
       c.add(group);

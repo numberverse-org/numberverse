@@ -7,7 +7,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, correctButton, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const POOL_SIZES = GAMES.find((g) => g.id === "game-foodchain")?.difficultyLevels ?? [3, 3, 4, 4, 6, 6];
 /** Skill seed for deterministic framing rotation. */
@@ -75,14 +75,14 @@ export class FoodChainScene extends Phaser.Scene {
       .text(0, 0, t("titleFoodChain"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
     this.slotBg = this.add.graphics();
     // chain slots (empty rounded cards) + arrows between them
     for (let i = 0; i < 3; i++) this.slots.push(this.slotCard(i));
-    for (let i = 0; i < 2; i++) this.arrows.push(this.add.text(0, 0, "→", txt(30, "#ffd166", { bold: true })).setOrigin(0.5));
+    for (let i = 0; i < 2; i++) this.arrows.push(this.add.text(0, 0, "→", txt(30, NV_GOLD, { bold: true })).setOrigin(0.5));
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
     this.startRound();

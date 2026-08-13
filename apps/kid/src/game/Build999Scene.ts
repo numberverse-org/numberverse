@@ -6,7 +6,7 @@ import { pop, win, starPop } from "./audio";
 import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, BTN_PRIMARY, BTN_ORANGE, BTN_PURPLE, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, BTN_PRIMARY, BTN_ORANGE, BTN_PURPLE, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { correctCelebrate } from "./celebrate";
 import { SAB } from "./safeArea";
 
@@ -58,7 +58,7 @@ export class Build999Scene extends Phaser.Scene {
 
     gameBackground(this, "sky");
     this.titleText = this.add.text(0, 0, t("titleBuild999"), txt(30, "#ffffff", { bold: true })).setOrigin(0.5);
-    this.roundText = this.add.text(0, 0, "", txt(18, "#ffd166", { bold: true })).setOrigin(0.5);
+    this.roundText = this.add.text(0, 0, "", txt(18, NV_GOLD, { bold: true })).setOrigin(0.5);
     this.progressBar = this.add.graphics();
     this.progressText = this.add.text(0, 0, "", txt(17, "#ffffff", { bold: true })).setOrigin(0.5);
     this.breakdownText = this.add.text(0, 0, "", txt(22, "#ffffff", { bold: true, shadow: true })).setOrigin(0.5);

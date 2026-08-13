@@ -5,7 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-addfacts")?.difficultyLevels ?? [6, 8, 10, 10, 12, 12];
@@ -60,7 +60,7 @@ export class FactsAddScene extends Phaser.Scene {
       .text(0, 0, t("titleFacts20"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
@@ -205,7 +205,7 @@ export class FactsAddScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.7, text, txt(24, "#ffd166", { bold: true, outline: true, wrap: 300 }))
+      .text(this.scale.width / 2, this.scale.height * 0.7, text, txt(24, NV_GOLD, { bold: true, outline: true, wrap: 300 }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
@@ -223,7 +223,7 @@ function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container,
   tile.setAlpha(0.4);
   tile.disableInteractive();
   const m = scene.add
-    .text(tile.x, tile.y - 40, correct(), txt(22, "#4ade80", { bold: true, outline: true }))
+    .text(tile.x, tile.y - 40, correct(), txt(22, NV_GREEN, { bold: true, outline: true }))
     .setOrigin(0.5)
     .setDepth(40);
   scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });

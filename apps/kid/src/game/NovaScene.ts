@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { cancelSpeech } from "./speech";
-import { txt } from "./ui";
+import { txt, NV_COCOA, NV_GOLD } from "./ui";
 import { getAppLang, currentFestival } from "./locale";
 import { t } from "./i18n";
 import {
@@ -169,7 +169,7 @@ function texBody(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const cx = w / 2;
   // pear-shaped body (narrow shoulders, full belly)
   const body = ctx.createLinearGradient(0, 0, 0, h);
-  body.addColorStop(0, "#7a4e2a");
+  body.addColorStop(0, NV_COCOA);
   body.addColorStop(0.55, "#8a5c33");
   body.addColorStop(1, "#a06a3a");
   ctx.fillStyle = body;
@@ -242,7 +242,7 @@ function texFace(ctx: CanvasRenderingContext2D, w: number, h: number) {
   // 1. brown head dome (the disc sits inside it; tufts sprout from its top)
   const head = ctx.createLinearGradient(0, 0, 0, h);
   head.addColorStop(0, "#6b4526");
-  head.addColorStop(0.5, "#7a4e2a");
+  head.addColorStop(0.5, NV_COCOA);
   head.addColorStop(1, "#8a5c33");
   ctx.fillStyle = head;
   ctx.beginPath();
@@ -396,7 +396,7 @@ function texBeak(ctx: CanvasRenderingContext2D, w: number, h: number) {
  *  along the outer edge (pokes out beside the body). */
 function texWing(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const g = ctx.createLinearGradient(0, 0, w * 0.3, h);
-  g.addColorStop(0, "#7a4e2a");
+  g.addColorStop(0, NV_COCOA);
   g.addColorStop(0.5, "#5a3a20");
   g.addColorStop(1, "#4f331b");
   ctx.fillStyle = g;
@@ -432,7 +432,7 @@ function texWing(ctx: CanvasRenderingContext2D, w: number, h: number) {
 /** Ear tuft — the great horned owl's signature raised brow-horns (brown). */
 function texTuft(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, "#7a4e2a");
+  g.addColorStop(0, NV_COCOA);
   g.addColorStop(0.6, "#5a3a20");
   g.addColorStop(1, "#4f331b");
   ctx.fillStyle = g;
@@ -968,8 +968,8 @@ export class NovaScene extends Phaser.Scene {
       .text(0, 0, t("swipeRooms"), txt(12, "#ffffff", { bold: true, shadow: false }))
       .setOrigin(0.5)
       .setAlpha(0.92);
-    this.swipeHintChevL = this.add.text(0, 0, "‹", txt(17, "#ffd166", { bold: true, shadow: false })).setOrigin(0.5);
-    this.swipeHintChevR = this.add.text(0, 0, "›", txt(17, "#ffd166", { bold: true, shadow: false })).setOrigin(0.5);
+    this.swipeHintChevL = this.add.text(0, 0, "‹", txt(17, NV_GOLD, { bold: true, shadow: false })).setOrigin(0.5);
+    this.swipeHintChevR = this.add.text(0, 0, "›", txt(17, NV_GOLD, { bold: true, shadow: false })).setOrigin(0.5);
     this.swipeHintBg = this.add.graphics();
     const w = Math.max(170, this.swipeHintLabel.width + 64);
     this.swipeHintBg.fillStyle(0x0f1935, 0.55);
@@ -1080,11 +1080,11 @@ export class NovaScene extends Phaser.Scene {
         ctx.stroke();
       }))
       .setDepth(400);
-    this.wallet = this.add.text(0, 0, "", txt(16, "#ffd166", { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
+    this.wallet = this.add.text(0, 0, "", txt(16, NV_GOLD, { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
     this.walletSub = this.add.text(0, 0, "", txt(9, "#c9d4ff", { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
 
     // streak strip: 🔥 3-day streak + dots
-    this.streakText = this.add.text(0, 0, "", txt(12, "#ffd166", { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
+    this.streakText = this.add.text(0, 0, "", txt(12, NV_GOLD, { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
     const dotK = makeTex(this, "nv-dot-s", 10, 10, (ctx, w, h) => {
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();
@@ -1316,7 +1316,7 @@ export class NovaScene extends Phaser.Scene {
         this.add.image(18, -34, makeTex(this, "nv-coin-chip", 64, 24, (ctx, w, h) => {
           const g = ctx.createLinearGradient(0, 0, 0, h);
           g.addColorStop(0, "#fff3c8");
-          g.addColorStop(1, "#ffd166");
+          g.addColorStop(1, NV_GOLD);
           ctx.fillStyle = g;
           rr(ctx, 1, 1, w - 2, h - 2, 12);
           ctx.fill();
@@ -2450,7 +2450,7 @@ export class NovaScene extends Phaser.Scene {
   private floatCoin(text: string) {
     const m = this.walletChip.getWorldTransformMatrix();
     const t = this.add
-      .text(m.tx, m.ty - 6, text, txt(20, "#ffd166", { bold: true, shadow: false }))
+      .text(m.tx, m.ty - 6, text, txt(20, NV_GOLD, { bold: true, shadow: false }))
       .setOrigin(0.5)
       .setDepth(9100);
     this.tweens.add({

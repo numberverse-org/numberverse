@@ -5,7 +5,7 @@ import { pop, win, bad } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi } from "./ui";
+import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-symmetry")?.difficultyLevels ?? [4, 4, 5, 5, 6, 6];
@@ -86,7 +86,7 @@ export class SymmetryMirrorScene extends Phaser.Scene {
       .text(0, 0, t("titleSymmetry"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = this.add
@@ -328,7 +328,7 @@ export class SymmetryMirrorScene extends Phaser.Scene {
 
   private floatMsg(text: string) {
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.3, text, txt(28, "#ffd166", { bold: true, outline: true, wrap: 320 }))
+      .text(this.scale.width / 2, this.scale.height * 0.3, text, txt(28, NV_GOLD, { bold: true, outline: true, wrap: 320 }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });

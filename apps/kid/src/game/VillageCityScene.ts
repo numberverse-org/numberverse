@@ -6,7 +6,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
-import { txt, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-villagecity")?.difficultyLevels ?? [4, 4, 6, 6, 8, 8];
 /** Skill seed for deterministic framing rotation. */
@@ -88,7 +88,7 @@ export class VillageCityScene extends Phaser.Scene {
       .text(0, 0, t("titleVillageCity"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(18, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
@@ -239,7 +239,7 @@ export class VillageCityScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.45, t("sortWoo"), txt(30, "#ffd166", { bold: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.45, t("sortWoo"), txt(30, NV_GOLD, { bold: true }))
       .setOrigin(0.5)
       .setDepth(30);
     this.tweens.add({ targets: m, y: m.y - 32, alpha: 0, duration: 900, onComplete: () => m.destroy() });

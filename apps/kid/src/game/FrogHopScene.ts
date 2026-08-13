@@ -8,7 +8,7 @@ import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { assetIcon } from "./svgAssets";
-import { txt, modernAnswerButton, correctButton, btnFromColor, gridLayout, roundMeter, type RoundMeterApi } from "./ui";
+import { txt, modernAnswerButton, correctButton, btnFromColor, gridLayout, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-froghop")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
@@ -49,7 +49,7 @@ export class FrogHopScene extends Phaser.Scene {
       .text(0, 0, t("titleFrogHop"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
-      .text(0, 0, "", txt(20, "#ffd166", { bold: true }))
+      .text(0, 0, "", txt(20, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);

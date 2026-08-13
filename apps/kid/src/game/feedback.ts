@@ -5,6 +5,7 @@ import { resetCombo } from "./celebrate";
 import { prefersReducedMotion } from "./reducedMotion";
 import { t } from "./i18n";
 import { getKidName } from "./kidName";
+import { NV_GOLD } from "./ui";  // tokenized #591
 
 /**
  * Wrong answers are a LEARNING MOMENT, never a punishment.
@@ -38,7 +39,7 @@ export function wrongTap(
   const tip = scene.add
     .text(target.x, (target.y as number) - 64, msg, {
       fontSize: "17px",
-      color: "#ffd166",
+      color: NV_GOLD,
       fontStyle: "bold",
       stroke: "#1d3557",
       strokeThickness: 4,
