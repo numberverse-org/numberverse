@@ -89,6 +89,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-maketen', band: 2, subject: 'math', title: 'Making ten', titleBn: 'দশ বানাই', description: 'Compose ten inside ten-frames, then bridge to teen sums with the leftover', descriptionBn: 'দশ-ফ্রেমে দশ বানাই, তারপর বাকি দিয়ে কিশোর সংখ্যা করি', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-9', classNumber: 2, game: 'game-maketen' },
   // Math — 2-digit written method: scaffolded carry addition with base-10 block visuals.
   { id: 'en-addregroup', band: 2, subject: 'math', title: 'Carry addition (visual)', titleBn: 'ক্যারি যোগ (দৃশ্য)', description: 'Add two 2-digit numbers step by step with base-10 blocks and a regroup animation', descriptionBn: 'দশক-একক যোগ করি ধাপে ধাপে, ব্লক দেখে ক্যারি অ্যানিমেশনসহ', commonCore: ['2.NBT.B.5', '2.NBT.B.6'], nctbCode: 'c2-math-10', classNumber: 2, game: 'game-addregroup' },
+  // Math — 2-digit written method: scaffolded borrowing with base-10 block visuals.
+  { id: 'en-subborrow', band: 2, subject: 'math', title: 'Borrow subtraction (visual)', titleBn: 'ধার বিয়োগ (দৃশ্য)', description: 'Subtract two 2-digit numbers step by step with base-10 blocks and a borrow animation', descriptionBn: 'দুই অঙ্কের বিয়োগ করি ধাপে ধাপে, ব্লক দেখে ধার অ্যানিমেশনসহ', commonCore: ['2.NBT.B.5'], nctbCode: 'c2-math-11', classNumber: 2, game: 'game-subborrow' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -245,6 +247,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-doubles', skillId: 'en-doubles', difficultyLevels: [6, 8, 10, 10, 12, 12], targetSuccess: 0.8 },
   { id: 'game-maketen', skillId: 'en-maketen', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-addregroup', skillId: 'en-addregroup', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
+  { id: 'game-subborrow', skillId: 'en-subborrow', difficultyLevels: [5, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -344,6 +347,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-doubles': 'Doubles',
   'game-maketen': 'MakeTen',
   'game-addregroup': 'AddRegroup',
+  'game-subborrow': 'SubBorrow',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',
