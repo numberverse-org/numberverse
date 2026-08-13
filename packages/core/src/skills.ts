@@ -106,6 +106,7 @@ export const SKILLS: Skill[] = [
   { id: 'add-sub-regroup', band: 3, subject: 'math', title: 'Carry & Borrow', titleBn: 'ক্যারি ও ধার', description: '3-digit addition and subtraction with carrying and borrowing (written method)', descriptionBn: '৩-অঙ্কের যোগ-বিয়োগ ক্যারি ও ধারসহ (লিখিত পদ্ধতি)', commonCore: ['2.NBT.7', '3.NBT.2'], nctbCode: 'c3-math-5', classNumber: 3, game: 'game-regroup' },
   // Language — STAGE 3: first words (mirrored: BN words then EN CVC)
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', descriptionBn: 'সহজ বাংলা শব্দ পড়ি (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
+  { id: 'bn-conjunct-find', band: 3, subject: 'bangla', title: 'Conjunct speed drill', titleBn: 'যুক্তবর্ণ দ্রুত অনুশীলন', description: 'Find common conjuncts in real words (ক্ষ, ঞ্জ, ঙ্ক)', descriptionBn: 'বাস্তব শব্দে যুক্তবর্ণ খুঁজি (ক্ষ, ঞ্জ, ঙ্ক)', commonCore: ['RF.3.3'], nctbCode: 'c3-bangla-3', classNumber: 3, game: 'game-conjunctfind' },
   { id: 'bn-family-words', band: 3, subject: 'bangla', title: 'Family words', titleBn: 'পরিবারের শব্দ', description: 'Read Bangla family words (মা, বাবা, ভাই)', descriptionBn: 'পরিবারের বাংলা শব্দ পড়ি (মা, বাবা, ভাই)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-4', classNumber: 2, game: 'game-bnwords' },
   { id: 'en-cvc', band: 3, subject: 'english', title: 'CVC words', titleBn: 'ইংরেজি শব্দ', description: 'Read cat, dog, sun, hat', descriptionBn: 'cat, dog, sun, hat পড়ি', commonCore: ['RF.2.3'], nctbCode: 'c2-english-3', classNumber: 2, game: 'game-cvc' },
 
@@ -199,6 +200,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-barchart', skillId: 'data-barchart', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-regroup', skillId: 'add-sub-regroup', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-bnwords', skillId: 'bn-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-conjunctfind', skillId: 'bn-conjunct-find', difficultyLevels: [12, 11, 10, 9, 8, 7], targetSuccess: 0.8 },
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   // ── Band 4 ──
   { id: 'game-division', skillId: 'division-facts', difficultyLevels: [2, 3, 4, 6, 8, 12], targetSuccess: 0.8 },
@@ -259,6 +261,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-regroup': 'Regroup',
   'game-pizzafrac': 'PizzaFrac',
   'game-bnwords': 'BnWords',
+  'game-conjunctfind': 'ConjunctFind',
   'game-cvc': 'Cvc',
   'game-division': 'DivisionFacts',
   'game-fracmatch': 'FractionMatch',

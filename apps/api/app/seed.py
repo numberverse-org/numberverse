@@ -82,6 +82,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("add-sub-regroup", 3, "math", "Carry & Borrow", "ক্যারি ও ধার"),
     # Language stage 3 — first words
     ("bn-words", 3, "bangla", "Bangla words", "শব্দ পড়ি"),
+    ("bn-conjunct-find", 3, "bangla", "Conjunct speed drill", "যুক্তবর্ণ দ্রুত অনুশীলন"),
     ("bn-family-words", 3, "bangla", "Family words", "পরিবারের শব্দ"),
     ("en-cvc", 3, "english", "CVC words", "ইংরেজি শব্দ"),
     # Band 4 — advanced operations

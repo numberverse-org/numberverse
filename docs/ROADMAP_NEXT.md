@@ -6,7 +6,7 @@
 
 ## v24 — content wave 3
 
-- Bangla: consonant conjunct speed drill (ক্ষ ঞ্জ ঙ্ক ণ্ড)  _(priority: low, kid-first)_
+- ~~Bangla: consonant conjunct speed drill (ক্ষ ঞ্জ ঙ্ক ণ্ড)~~  ✅ #158 — 25 conjuncts in word context, timer streak
 - Bangla: two-letter sight word wall (দেখে বলো)  _(priority: low, kid-first)_
 - Bangla: sentence builder — subject + verb + object tiles  _(priority: low, kid-first)_
 - Bangla: short-paragraph comprehension (ছোট গল্প)  _(priority: low, kid-first)_
