@@ -1,3 +1,10 @@
+## 14 Aug 2026 — 0.29.0 (8 new games: Bangla days/months, Bangla spelling, pronouns, count-back, CVC build, plurals, past -ed, case match)
+
+e62d647 Merge pull request #626 from numberverse-org/feat/51-53-54-56-en-pack
+78e853f 🇬🇧 en: CVC builder, regular plurals, past -ed, case match (#51 #53 #54 #56)
+2ed1814 Merge pull request #617 from numberverse-org/feat/43-44-48-49-bn-pack
+4cef0b4 🇧🇩 bn: Bangla days/months order + spelling builder + pronouns + count-back (#43 #44 #48 #49)
+
 ## 14 Aug 2026 — 0.28.0 (parent: sync status chip + manual sync + Help card)
 
 7977795 Merge pull request #612 from numberverse-org/feat/18-help-card
