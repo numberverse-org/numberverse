@@ -272,6 +272,16 @@ export const SKILLS: Skill[] = [
   { id: 'fraction-simplify', band: 7, subject: 'math', title: 'Simplify fractions', titleBn: 'ভগ্নাংশ ছোট করি', description: 'Reduce fractions to simplest form (4⁄8 → ½)', descriptionBn: 'ভগ্নাংশ ছোট করি (৪⁄৮ → ½)', commonCore: ['3.NF.3', '5.NF.1'], nctbCode: 'c6-math-3', classNumber: 6, game: 'game-fracmatch' },
   // BGS — heritage facts (a new, deeper fact tier in the BGS scene)
   { id: 'bgs-heritage', band: 7, subject: 'bgs', title: 'Bangladesh heritage', titleBn: 'বাংলাদেশের ঐতিহ্য', description: 'Festivals, crafts, foods, landmarks', descriptionBn: 'উৎসব, শিল্প, খাবার, ঐতিহাসিক স্থান', commonCore: [], nctbCode: 'c6-bgs-1', classNumber: 6, game: 'game-bgs' },
+
+  // ── Backlog content (#43, #44, #48, #49) — new games built for the 2026 pipeline ──
+  // #43 — order the 7 days + 12 Bangla months (band 1 calendar literacy)
+  { id: 'bn-days-months', band: 1, subject: 'bangla', title: 'Days & months', titleBn: 'সপ্তাহ ও মাস', description: 'Order the 7 days and the 12 Bangla months', descriptionBn: '৭ দিন আর ১২ বাংলা মাস সঠিক ধারায় সাজাই', commonCore: ['RF.K.1'], nctbCode: 'c1-bangla-9', classNumber: 1, game: 'game-bndaysmonths' },
+  // #44 — hear a word, build it from letter tiles (band 1 spelling)
+  { id: 'bn-spelling', band: 1, subject: 'bangla', title: 'Bangla spelling', titleBn: 'বানান শিখি', description: 'Hear a word and build it by tapping letter tiles in order', descriptionBn: 'শব্দ শুনে অক্ষরের টালি সঠিক ধারায় টিপে বানান করি', commonCore: ['RF.1.2'], nctbCode: 'c1-bangla-10', classNumber: 1, game: 'game-bnspelling' },
+  // #48 — pick the right pronoun in a sentence (band 3)
+  { id: 'bn-pronouns', band: 3, subject: 'bangla', title: 'Bangla pronouns', titleBn: 'সর্বনাম', description: 'Fill the right pronoun (আমি, তুমি, সে…) into a sentence', descriptionBn: 'বাক্যে সঠিক সর্বনাম বসাই (আমি, তুমি, সে…)', commonCore: ['L.3.1'], nctbCode: 'c3-bangla-10', classNumber: 3, game: 'game-bnpronouns' },
+  // #49 — count DOWN from 100 by 1s (rocket blast-off; band 2)
+  { id: 'count-back-100', band: 2, subject: 'math', title: 'Count back from 100', titleBn: 'উল্টো গোনা', description: 'Count down from 100 to 1 by ones — a rocket blast-off', descriptionBn: '১০০ থেকে ১ পর্যন্ত উল্টো গুনি — রকেট ওড়ে', commonCore: ['1.NBT.1'], nctbCode: 'c2-math-14', classNumber: 2, game: 'game-countback' },
 ];
 
 /** Game configs (mirrors content_items rows). Levels are ascending — engine picks an index by mastery.
@@ -413,11 +423,20 @@ export const GAMES: GameConfig[] = [
   { id: 'game-bnsentence', skillId: 'bn-sentences', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-grammar', skillId: 'en-grammar', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bgs', skillId: 'bgs-bangladesh', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
+  // #43/#44/#48/#49 — new 2026 pipeline games
+  { id: 'game-bndaysmonths', skillId: 'bn-days-months', difficultyLevels: [4, 5, 6, 7, 7, 7], targetSuccess: 0.8 },
+  { id: 'game-bnspelling', skillId: 'bn-spelling', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
+  { id: 'game-bnpronouns', skillId: 'bn-pronouns', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
+  { id: 'game-countback', skillId: 'count-back-100', difficultyLevels: [10, 20, 30, 40, 60, 100], targetSuccess: 0.8 },
 ];
 
 /** gameId → Phaser scene key. Keeps the kid app and core in sync.
  *  A scene can back MULTIPLE games — each skill's ladder is its own game id. */
 export const GAME_SCENES: Record<string, string> = {
+  'game-bndaysmonths': 'BanglaDays',
+  'game-bnspelling': 'BanglaSpell',
+  'game-bnpronouns': 'Pronoun',
+  'game-countback': 'CountBack',
   'game-countpop': 'CountPop',
   'game-countpop20': 'CountPop',
   'game-countpop50': 'CountPop',
