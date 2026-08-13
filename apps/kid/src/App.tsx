@@ -561,6 +561,16 @@ interface Strings {
   voiceFunLoud: string;
   voiceFunReset: string;
   voiceFunTest: string;
+  /* #286 — star-of-the-week recap */
+  recapTitle: string;
+  recapSub: (n: number) => string;
+  recapTopSkill: string;
+  recapWinMastered: (n: number) => string;
+  recapWinStreak: (n: number) => string;
+  recapHear: string;
+  recapEmpty: string;
+  recapHomeLine: (days: number, title: string) => string;
+  recapSpeak: (name: string, days: number, title: string, win: string) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1110,6 +1120,16 @@ const STR: Record<Lang, Strings> = {
     voiceFunLoud: "🔔 Loud",
     voiceFunReset: "🔄",
     voiceFunTest: "Say hi",
+    /* #286 — star-of-the-week recap */
+    recapTitle: "🌟 Star of the Week",
+    recapSub: (n) => `${n} day${n === 1 ? "" : "s"} this week`,
+    recapTopSkill: "Top skill",
+    recapWinMastered: (n) => `${n} skill${n === 1 ? "" : "s"} mastered this week!`,
+    recapWinStreak: (n) => `Best streak: ${n} in a row`,
+    recapHear: "🔊 Hear my week",
+    recapEmpty: "No play this week — come play!",
+    recapHomeLine: (days, title) => `${days} day${days === 1 ? "" : "s"} · ⭐ ${title}`,
+    recapSpeak: (name, days, title, win) => `${name}, this week you played ${days} day${days === 1 ? "" : "s"}, your top skill is ${title}. ${win}`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1644,6 +1664,16 @@ const STR: Record<Lang, Strings> = {
     voiceFunLoud: "🔔 জোরে",
     voiceFunReset: "🔄",
     voiceFunTest: "হাই বলো",
+    /* #286 — star-of-the-week recap */
+    recapTitle: "🌟 সপ্তাহের তারকা",
+    recapSub: (n) => `এই সপ্তাহে ${bnNum(n)} দিন খেলেছ`,
+    recapTopSkill: "সেরা দক্ষতা",
+    recapWinMastered: (n) => `এই সপ্তাহে ${bnNum(n)}টি দক্ষতা আয়ত্ত করেছ!`,
+    recapWinStreak: (n) => `সেরা ধারাবাহিকতা: ${bnNum(n)} দিন`,
+    recapHear: "🔊 আমার সপ্তাহ শোনো",
+    recapEmpty: "এই সপ্তাহে খেলা হয়নি — এসো খেলি!",
+    recapHomeLine: (days, title) => `${bnNum(days)} দিন · ⭐ ${title}`,
+    recapSpeak: (name, days, title, win) => `${name}, এই সপ্তাহে তুমি ${bnNum(days)} দিন খেলেছ, তোমার সেরা দক্ষতা ${title}। ${win}`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -4130,6 +4160,36 @@ export default function App() {
         if (voice === "shout") { tada(); }
       };
       const voiceOk = tts ? tts.available && tts.voiceCount > 0 : null;
+      // #286 — star-of-the-week recap: the trailing 7 days (today back 6),
+      // derived PURELY offline from local play. Top skill = the game skill
+      // most practiced this week (by attempts among skills practiced in the
+      // window); biggest win = new masteries this week, else the standing
+      // streak. Spoken option reads it aloud.
+      const weekStartIso = dayIsoAgo(6);
+      const weekEndIso = todayIso();
+      const weekStartMs = Date.parse(weekStartIso);
+      const weekEndMs = Date.parse(weekEndIso) + 86399999;
+      const weekPlayed = (useKidStore.getState().nova[kid.id]?.days ?? []).filter(
+        (d) => d >= weekStartIso && d <= weekEndIso
+      );
+      const weekSkills = filterSkills.filter(
+        (s) =>
+          s.game &&
+          (skillsMap[`${kid.id}:${s.id}`]?.lastPractice ?? 0) >= weekStartMs &&
+          (skillsMap[`${kid.id}:${s.id}`]?.lastPractice ?? 0) <= weekEndMs
+      );
+      const topSkill = weekSkills
+        .slice()
+        .sort(
+          (a, b) =>
+            (skillsMap[`${kid.id}:${b.id}`]?.attempts ?? 0) - (skillsMap[`${kid.id}:${a.id}`]?.attempts ?? 0)
+        )[0];
+      const masteredWeek = weekSkills.filter((s) => skillMastered(skillsMap, kid.id, s.id)).length;
+      const recapWin =
+        masteredWeek > 0 ? t.recapWinMastered(masteredWeek) : novaDayStreak >= 3 ? t.recapWinStreak(novaDayStreak) : "";
+      const recapSpeakText = topSkill
+        ? t.recapSpeak(kid.name, weekPlayed.length, lang === "bn" ? topSkill.titleBn ?? topSkill.title : topSkill.title, recapWin)
+        : "";
       return (
         <div className={`app play-app${projector ? " projector-mode" : ""}`}>
           {/* #133 — screen-reader live region: announces game + settings state. */}
@@ -4497,6 +4557,35 @@ export default function App() {
                 </button>
               </div>
             ) : null}
+
+            {/* #286 — star-of-the-week recap: the trailing 7 days, summarized
+                for the kid — days played, top skill, biggest win, and a spoken
+                option. All offline, from local play. When the week is empty it
+                becomes a soft "come play" nudge, never a lecture. */}
+            <div className="recap-card" role="status" aria-label={t.recapTitle}>
+              <span className="recap-emoji" aria-hidden="true">🌟</span>
+              <div className="recap-meta">
+                <span className="recap-title">{t.recapTitle}</span>
+                {weekPlayed.length > 0 ? (
+                  <>
+                    <span className="recap-sub">{t.recapSub(weekPlayed.length)}</span>
+                    {topSkill && (
+                      <span className="recap-line">
+                        🏆 {t.recapTopSkill}: {lang === "bn" ? topSkill.titleBn ?? topSkill.title : topSkill.title}
+                      </span>
+                    )}
+                    {recapWin && <span className="recap-win">{recapWin}</span>}
+                  </>
+                ) : (
+                  <span className="recap-sub">{t.recapEmpty}</span>
+                )}
+              </div>
+              {voiceOk && weekPlayed.length > 0 && topSkill && (
+                <button className="recap-hear" onClick={() => speak(recapSpeakText)}>
+                  {t.recapHear}
+                </button>
+              )}
+            </div>
 
             {/* Secondary destinations + Nova's name-game, FOLDED away so the
                 landing stays ONE action: greet → big PLAY → path → pet. Tap
