@@ -386,6 +386,32 @@ const ACHIEVEMENTS: AchDef[] = [
   { id: "zookeeper", emoji: "🐾", name: "Zookeeper", nameBn: "চিড়িয়াখানার রক্ষক", hint: "Adopt every pet species", hintBn: "সব পোষ্যের প্রজাতি দত্তক নাও", earned: (c) => c.pets >= NOVA_SPECIES.length },
 ];
 
+/* #292 — Nova reaction pack v2: in-game learning-event reactions. A floating
+ * Nova face + a short line fires on win streaks, setbacks and reteach moments
+ * (exactly ONE per round, highest-priority wins). Pure visual bubble + gentle
+ * speak (speak skipped when a bigger spoken moment already owns that round).
+ * Lines are locale-packed EN/BN (#131) like Badges/Achievements. */
+type NovaReaction = "cheer" | "amaze" | "superstar" | "streak" | "oops" | "gentle" | "setback" | "reteach" | "master" | "quest";
+interface NovaReactionDef {
+  emoji: string;
+  lineEn: () => string;
+  lineBn: () => string;
+  /** Speak the line aloud? False when the round already has its own spoken moment. */
+  speak?: boolean;
+}
+const NOVA_REACTIONS: Record<NovaReaction, NovaReactionDef> = {
+  cheer: { emoji: "🎉", lineEn: () => "3 in a row — nice!", lineBn: () => "টানা ৩টা — দারুণ!", speak: true },
+  amaze: { emoji: "🌟", lineEn: () => "AMAZING!", lineBn: () => "অসাধারণ!", speak: true },
+  superstar: { emoji: "⭐", lineEn: () => "SUPER STAR!", lineBn: () => "সুপার স্টার!", speak: true },
+  streak: { emoji: "🔥", lineEn: () => "You're on fire!", lineBn: () => "তুমি জ্বলছ!", speak: true },
+  oops: { emoji: "🤔", lineEn: () => "Oops! Try again — you've got this", lineBn: () => "ওহ! আবার চেষ্টা করো — পারবে", speak: true },
+  gentle: { emoji: "💛", lineEn: () => "Take a breath — you've got this", lineBn: () => "একটা নিঃশ্বাস নাও — পারবে", speak: true },
+  setback: { emoji: "😮", lineEn: () => "So close! Keep going", lineBn: () => "খুব কাছাকাছি! চালিয়ে যাও", speak: true },
+  reteach: { emoji: "🎯", lineEn: () => "Let's learn it together!", lineBn: () => "একসাথে শিখি!", speak: true },
+  master: { emoji: "🏆", lineEn: () => "Skill mastered!", lineBn: () => "দক্ষতা আয়ত্ত হয়েছে!", speak: false },
+  quest: { emoji: "🎁", lineEn: () => "Quest complete!", lineBn: () => "মিশন শেষ!", speak: false },
+};
+
 /** How many lands the kid has FULLY mastered (every skill past the threshold). */
 function fullyMasteredWorlds(skillsMap: Record<string, SkillMapEntry>, kidId: string): number {
   return BANDS.filter((b) => {
@@ -2771,6 +2797,22 @@ export default function App() {
     const id = window.setTimeout(() => setNeuralFlash(false), 5000);
     return () => window.clearTimeout(id);
   }, [neural.ready]);
+  // #292 — Nova reaction pack v2: a floating Nova face bubble for streaks /
+  // setbacks / reteach moments. Throttled (~900ms) so combos never spam; the
+  // bubble auto-clears after ~2.6s.
+  const [novaReaction, setNovaReaction] = useState<{ kind: NovaReaction; nonce: number } | null>(null);
+  const lastReactionAtRef = useRef(0);
+  const novaReact = useCallback((kind: NovaReaction) => {
+    const now = Date.now();
+    if (now - lastReactionAtRef.current < 900) return;
+    lastReactionAtRef.current = now;
+    setNovaReaction({ kind, nonce: now });
+    const def = NOVA_REACTIONS[kind];
+    const line = lang === "bn" ? def.lineBn() : def.lineEn();
+    const voiceOk = tts ? tts.available && tts.voiceCount > 0 : null;
+    if (def.speak !== false && voiceOk) speak(line, { lang: lang === "bn" ? "bn" : "en" });
+    window.setTimeout(() => setNovaReaction((cur) => (cur && cur.nonce === now ? null : cur)), 2600);
+  }, [lang, tts]);
   const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestProgress, gardenWater, gardenMastery } = useKidStore();
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
@@ -3799,13 +3841,32 @@ export default function App() {
           // try a new game). Progress counts only when this round matches it.
           const st = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
           const mastered = !!(st && st.pMastered >= MASTERY_THRESHOLD);
-          if (novaQuestProgress(kid.id, { correct, mastered, freshSkill })) {
+          const questDone = novaQuestProgress(kid.id, { correct, mastered, freshSkill });
+          if (questDone) {
             // THE moment the quest finishes — cheer once, aloud, in the app's language.
             cancelSpeech();
             tada();
             const bn = getAppLang() === "bn";
             speak(t.questCompleteSpeak(NOVA_QUEST_REWARD), { lang: bn ? "bn" : "en" });
           }
+          // #292 — Nova reaction: exactly ONE per round, highest-priority wins.
+          // Win streaks / setbacks / reteach moments get a floating Nova face.
+          const evs = useKidStore.getState().events;
+          const streakBefore = sessionStreak(evs.slice(0, -1));
+          const streakNow = sessionStreak(evs);
+          let wrongs = 0;
+          for (let i = evs.length - 1; i >= 0; i--) {
+            if (evs[i].correct) break;
+            wrongs++;
+          }
+          if (mastered) novaReact("master");
+          else if (questDone) novaReact("quest");
+          else if (wrongs >= 3) novaReact("gentle");
+          else if (wrongs === 2) novaReact("oops");
+          else if (correct && streakNow >= 7) novaReact("superstar");
+          else if (correct && streakNow >= 5) novaReact("amaze");
+          else if (correct && streakNow >= 3) novaReact("cheer");
+          else if (!correct && streakBefore >= 3) novaReact("setback");
           // GROWTH: a correct answer waters the garden…
           if (correct) gardenWater(kid.id);
           // …and a skill that just crossed the mastery bar plants a trophy flower.
@@ -4023,6 +4084,14 @@ export default function App() {
 
   const curStep = sessionRef.current[sessionIdx];
   const curReteach = (curStep?.reteach ?? 0) > 0;
+  // #292 — reteach moment: when a step flips into its remediation re-run,
+  // Nova pops a "let's learn it together" face (once per transition).
+  const prevReteachRef = useRef(0);
+  useEffect(() => {
+    const r = curStep?.reteach ?? 0;
+    if (r > 0 && prevReteachRef.current === 0) novaReact("reteach");
+    prevReteachRef.current = r;
+  }, [sessionIdx, curStep?.reteach]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── WELCOME (first time — topmost) ──────────────────────────────────────
    *  The very first screen on a fresh device. LANGUAGE first (topmost), then
@@ -6976,6 +7045,16 @@ export default function App() {
           </button>
         )}
         <div ref={mountRef} className="game-wrap" />
+        {/* #292 — Nova reaction pack v2: a floating Nova face bubble for win
+            streaks / setbacks / reteach moments. Rendered as a DOM overlay so
+            it works over EVERY game scene (no Phaser changes needed). */}
+        {novaReaction && inGame && (
+          <div key={novaReaction.nonce} className="nova-react" role="status" aria-label={lang === "bn" ? NOVA_REACTIONS[novaReaction.kind].lineBn() : NOVA_REACTIONS[novaReaction.kind].lineEn()}>
+            <span className="nova-react-owl" aria-hidden="true"><Icon name="nova" size={44} /></span>
+            <span className="nova-react-emoji" aria-hidden="true">{NOVA_REACTIONS[novaReaction.kind].emoji}</span>
+            <span className="nova-react-line">{lang === "bn" ? NOVA_REACTIONS[novaReaction.kind].lineBn() : NOVA_REACTIONS[novaReaction.kind].lineEn()}</span>
+          </div>
+        )}
         {/* #22 — pass-the-device sheet: pick the sibling whose turn it is. */}
         {coopOpen && kids.length >= 2 && (
           <div className="coop-overlay" onClick={() => setCoopOpen(false)}>

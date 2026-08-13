@@ -172,7 +172,7 @@
 - ~~Kids: long-term achievements book~~ ✅ #289 — 📚 18 milestone achievements, pop unlock animation, celebrate-once spoken cheer, offline (PR pending)
 - Kids: mastery confetti + spoken cheer  _(priority: low, kid-first)_
 - Kids: weekly 'my wins' recap card  _(priority: low, kid-first)_
-- Kids: Nova reaction pack v2  _(priority: low, kid-first)_
+- ~~Kids: Nova reaction pack v2~~ ✅ #292 — 🦉 10 in-game reactions for streaks/setbacks/reteach, priority chain, gentle speak, DOM overlay over every scene (PR pending)
 - ~~Kids: quest variety — mission types~~ ✅ #293 — duplicate of #287, closed (same 4 types, reward parity, i18n clean)
 - ~~Kids: streak-freeze token system~~ ✅ #294 — 🧊 token earned on the day-7 calendar tile; a single missed day spends it to keep the streak alive (PR pending)
 
