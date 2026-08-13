@@ -79,7 +79,25 @@ export default function SharePage() {
                 <span className="tile-num">{snap.mastered_count}</span>
                 <span className="tile-label">skills mastered</span>
               </div>
+              {typeof snap.coins === "number" && snap.coins > 0 && (
+                <div className="tile">
+                  <span className="tile-num">🪙 {snap.coins}</span>
+                  <span className="tile-label">coins in wallet</span>
+                </div>
+              )}
             </div>
+            {snap.minutes_by_day && snap.minutes_by_day.some((m) => m > 0) && (
+              <div className="share-minbars" aria-label="minutes played by day this week">
+                {snap.minutes_by_day.map((m, i) => (
+                  <div key={i} className="share-mincol" title={`${Math.round(m)} min`}>
+                    <div
+                      className="share-minbar"
+                      style={{ height: `${snap.minutes_by_day ? Math.max(4, Math.round((m / Math.max(1, ...snap.minutes_by_day!)) * 48)) : 4}px` }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             {snap.top_game && (
               <p className="muted small center" style={{ marginTop: 14 }}>
                 Favorite game: {snap.top_game.replace("game-", "").replace(/-/g, " ")}

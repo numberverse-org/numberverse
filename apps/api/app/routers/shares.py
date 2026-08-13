@@ -32,7 +32,9 @@ class ShareTokenOut(BaseModel):
 
 class ShareSnapshotOut(BaseModel):
     """Aggregates only — deliberately carries ZERO identity. `week_of` is the
-    calendar day the window ends on; top_game is an opaque game id (no PII)."""
+    calendar day the window ends on; top_game is an opaque game id (no PII);
+    coins is the current wallet balance (a single number, no per-day history);
+    minutes_by_day is the 7-day minute curve (just floats — no dates)."""
     rounds: int
     minutes: float
     correct_pct: int
@@ -40,6 +42,8 @@ class ShareSnapshotOut(BaseModel):
     mastered_count: int
     top_game: str | None
     week_of: str
+    coins: int = 0
+    minutes_by_day: list[float] = []
 
 
 @router.get("/kids/{kid_id}/share-token", response_model=ShareTokenOut)
@@ -98,6 +102,13 @@ async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
     ).all()
     mastered_count = len(mastered_rows)
 
+    # #8 — per-day minute curve (oldest → newest, zero-filled) so the share
+    # card can draw 7-day bars. No dates, just floats — stays zero-identity.
+    min_by_day: list[float] = []
+    for i in range(7):
+        d = start + timedelta(days=i)
+        min_by_day.append(round(sum(x.response_ms or 0 for x in events if x.created_at.date() == d) / 60000.0, 1))
+
     return ShareSnapshotOut(
         rounds=rounds,
         minutes=minutes,
@@ -106,4 +117,6 @@ async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
         mastered_count=mastered_count,
         top_game=top_game,
         week_of=now.isoformat(),
+        coins=kid.coins or 0,
+        minutes_by_day=min_by_day,
     )
