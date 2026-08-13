@@ -804,6 +804,40 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   color: var(--nv-muted-soft);
   font-size: 11px;
 }
+/* #18 — ❓ Help & setup card */
+.help-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--nv-text);
+  cursor: pointer;
+  padding: 2px 0;
+}
+.help-caret { color: var(--nv-muted-soft); font-size: 13px; }
+.help-body { margin-top: 12px; }
+.help-body h3 {
+  font-size: 14px;
+  margin: 16px 0 8px;
+  color: var(--nv-text);
+}
+.help-body h3:first-child { margin-top: 4px; }
+.help-steps,
+.help-list {
+  margin: 0 0 6px;
+  padding-left: 20px;
+  color: var(--nv-text);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.help-steps li,
+.help-list li { margin-bottom: 6px; }
+.help-list { list-style: disc; }
 /* #8 — 7-day minute curve on the share card (aggregate floats, no dates) */
 .share-minbars {
   display: flex;

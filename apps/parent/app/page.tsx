@@ -457,6 +457,51 @@ const SYNC_LANGS = {
   },
 } as const;
 
+/** #18 — parent-facing "how do I…" Help card: install on iPhone + the Bangla
+ *  voice download + the build-stamp check. EN + BN — same country-pack seam. */
+const HELP_LANGS = {
+  en: {
+    title: "❓ Help — install & voice",
+    toggle: "❓ Help & setup",
+    installTitle: "📱 Install on iPhone / iPad",
+    installStep1: "Open kids.munna-khan.xyz in Safari (not another browser).",
+    installStep2: "Tap the Share button (square with an up arrow).",
+    installStep3: "Tap “Add to Home Screen” (it may be on a second page of the share sheet).",
+    installStep4: "Tap “Add”. A Numberverse icon appears on your home screen.",
+    installStep5: "Always open the game from that icon — it runs full-screen and works offline.",
+    voiceTitle: "🔊 Download the Bangla voice",
+    voiceIos1: "iPhone/iPad: Settings → Accessibility → Spoken Content → Voices → Bengali → download a voice.",
+    voiceIos2: "Then relaunch the game; the read-aloud buttons use the downloaded voice.",
+    voiceAnd1: "Android: Settings → System → Languages & input → Text-to-speech output → settings gear → Install voice data → Bengali.",
+    voiceAnd2: "The game detects the voice automatically once it’s installed.",
+    stampTitle: "🏷️ Check the build (stale install?)",
+    stampStep1: "Open the kid app → ⚙️ Settings → About. It shows “Numberverse · vX.Y.Z · <date>”.",
+    stampStep2: "If the date/version looks older than what was announced, the app hasn’t refreshed yet.",
+    stampStep3: "Fully close the app and reopen it (or tap the update banner when it appears).",
+    stampStep4: "Last resort: remove the home-screen icon and re-add it. Progress is safe — it lives on the server and on-device.",
+  },
+  bn: {
+    title: "❓ সাহায্য — ইনস্টল ও ভয়েস",
+    toggle: "❓ সাহায্য ও সেটআপ",
+    installTitle: "📱 iPhone / iPad-এ ইনস্টল",
+    installStep1: "Safari-তে kids.munna-khan.xyz খুলুন (অন্য ব্রাউজারে নয়)।",
+    installStep2: "Share বোতামে চাপুন (উপরের তীর সহ বর্গক্ষেত্র)।",
+    installStep3: "“Add to Home Screen”-এ চাপুন (শেয়ার শিটের দ্বিতীয় পাতায় থাকতে পারে)।",
+    installStep4: "“Add”-এ চাপুন। হোম স্ক্রিনে একটি Numberverse আইকন আসবে।",
+    installStep5: "সবসময় সেই আইকন থেকেই খেলুন — এটি পূর্ণ স্ক্রিনে চলে এবং অফলাইনে কাজ করে।",
+    voiceTitle: "🔊 বাংলা ভয়েস ডাউনলোড",
+    voiceIos1: "iPhone/iPad: Settings → Accessibility → Spoken Content → Voices → Bengali → একটি ভয়েস ডাউনলোড করুন।",
+    voiceIos2: "তারপর খেলা আবার খুলুন; পড়া-শোনার বোতাম ডাউনলোড করা ভয়েস ব্যবহার করবে।",
+    voiceAnd1: "Android: Settings → System → Languages & input → Text-to-speech output → সেটিংস গিয়ার → Install voice data → Bengali।",
+    voiceAnd2: "ভয়েস ইনস্টল হলে খেলা নিজেই তা শনাক্ত করবে।",
+    stampTitle: "🏷️ বিল্ড পরীক্ষা (পুরনো ইনস্টল?)",
+    stampStep1: "বাচ্চার অ্যাপ খুলুন → ⚙️ Settings → About। সেখানে “Numberverse · vX.Y.Z · <তারিখ>” দেখাবে।",
+    stampStep2: "ঘোষণার চেয়ে তারিখ/ভার্সন পুরনো মনে হলে অ্যাপটি এখনও রিফ্রেশ হয়নি।",
+    stampStep3: "অ্যাপ পুরোপুরি বন্ধ করে আবার খুলুন (বা আপডেট ব্যানারে চাপুন)।",
+    stampStep4: "শেষ উপায়: হোম-স্ক্রিন আইকন মুছে আবার যোগ করুন। অগ্রগতি নিরাপদ — সেটা সার্ভার ও ডিভাইসে থাকে।",
+  },
+} as const;
+
 /** #89 — per-skill missed questions: what a kid got wrong, so re-teaching is
  *  transparent. EN + BN strings for the portal card — same country-pack seam.
  *  Built purely from the already-loaded story ledger (offline-first). */
@@ -1278,6 +1323,8 @@ export default function ParentDashboard() {
   // the browser's network events; the manual button just re-runs refreshAll.
   const [online, setOnline] = useState(true);
   const [syncingNow, setSyncingNow] = useState(false);
+  // #18 — help card (iOS install / Bangla voice / build check), collapsible.
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // #132 — printable worksheet from weak skills
   const [sheet, setSheet] = useState<{ name: string; items: WorksheetProblem[]; date: string } | null>(null);
@@ -3661,6 +3708,37 @@ export default function ParentDashboard() {
                     {diagCopied ? DEBUG_LANGS[wizLang].exported : DEBUG_LANGS[wizLang].export}
                   </button>
                 </div>
+              </div>
+            )}
+          </section>
+
+          {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}
+          <section className="card help-card">
+            <button className="help-toggle" onClick={() => setHelpOpen((o) => !o)} aria-expanded={helpOpen}>
+              {HELP_LANGS[wizLang].toggle}
+              <span className="help-caret">{helpOpen ? "▾" : "▸"}</span>
+            </button>
+            {helpOpen && (
+              <div className="help-body">
+                <h3>{HELP_LANGS[wizLang].installTitle}</h3>
+                <ol className="help-steps">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <li key={i}>{HELP_LANGS[wizLang][`installStep${i}` as keyof typeof HELP_LANGS.en]}</li>
+                  ))}
+                </ol>
+                <h3>{HELP_LANGS[wizLang].voiceTitle}</h3>
+                <ul className="help-list">
+                  <li>{HELP_LANGS[wizLang].voiceIos1}</li>
+                  <li>{HELP_LANGS[wizLang].voiceIos2}</li>
+                  <li>{HELP_LANGS[wizLang].voiceAnd1}</li>
+                  <li>{HELP_LANGS[wizLang].voiceAnd2}</li>
+                </ul>
+                <h3>{HELP_LANGS[wizLang].stampTitle}</h3>
+                <ol className="help-steps">
+                  {[1, 2, 3, 4].map((i) => (
+                    <li key={i}>{HELP_LANGS[wizLang][`stampStep${i}` as keyof typeof HELP_LANGS.en]}</li>
+                  ))}
+                </ol>
               </div>
             )}
           </section>
