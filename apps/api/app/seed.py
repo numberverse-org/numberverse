@@ -63,6 +63,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-benjonborno", 2, "bangla", "Bangla consonants", "ব্যঞ্জনবর্ণ"),
     ("bn-colors", 2, "bangla", "Bangla colors", "রঙ চিনি"),
     ("bn-sightwords", 2, "bangla", "Bangla sight words", "দেখে বলো শব্দ"),
+    ("bn-sentence-builder", 2, "bangla", "Sentence builder", "বাক্য সাজাই"),
     ("en-phonics", 2, "english", "Letter sounds", "বর্ণের উচ্চারণ"),
     ("heavy-light", 2, "science", "Heavy or light", "ভারী না হালকা"),
     ("science-sink-float", 2, "science", "Sink or float", "ডুব না ভাসা"),
