@@ -46,6 +46,8 @@ export const SKILLS: Skill[] = [
   // STAGE 1 vocabulary — first number/word names in each language
   { id: 'bn-numbers', band: 1, subject: 'bangla', title: 'Bangla numbers', titleBn: 'বাংলা সংখ্যা', description: 'Hear and recognize Bangla numerals ০–৯', descriptionBn: 'বাংলা সংখ্যা ০–৯ শুনে চিনি', commonCore: ['K.CC.1'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnnumbers' },
   { id: 'en-shapes', band: 1, subject: 'english', title: 'Shape names', titleBn: 'আকৃতির নাম', description: 'English names of shapes (circle, square, triangle)', descriptionBn: 'আকৃতির ইংরেজি নাম (বৃত্ত, বর্গ, ত্রিভুজ)', commonCore: ['L.K.5c'], nctbCode: 'c1-english-3', classNumber: 1, game: 'game-shapecatcher' },
+  // ICT — fine tap/drag motor skills (band 1 foundational, #234)
+  { id: 'ict-tap-drag', band: 1, subject: 'ict', title: 'Tap & drag accuracy', titleBn: 'টিপা-টানা অনুশীলন', description: 'Tap the bugs, drag the butterfly into the net', descriptionBn: 'পোকা টিপি, প্রজাপতি নেটে নিই', commonCore: [], nctbCode: 'c1-ict-1', classNumber: 1, game: 'game-tapdrag' },
 
   // ── Band 2 — Cottage Fields (ages 4–6): FINISH NUMBERS, THEN CALCULATE ──
   // The counting ladder first (a kid must KNOW numbers before adding them) …
@@ -154,6 +156,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-memorypairs', skillId: 'quantity-match', difficultyLevels: [2, 3, 4, 5, 6, 7], targetSuccess: 0.8 },
   { id: 'game-froghop', skillId: 'number-line', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-shapecatcher', skillId: 'shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
+  { id: 'game-tapdrag', skillId: 'ict-tap-drag', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-bnletters', skillId: 'bn-swaroborno', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-enletters', skillId: 'en-abcs', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnnumbers', skillId: 'bn-numbers', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
@@ -221,6 +224,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-fruitsub-20': 'FruitAdd',
   'game-fruittree': 'FruitTree',
   'game-shapecatcher': 'ShapeCatcher',
+  'game-tapdrag': 'CatchBug',
   'game-froghop': 'FrogHop',
   'game-memorypairs': 'MemoryPairs',
   'game-countsong': 'CountingSong',

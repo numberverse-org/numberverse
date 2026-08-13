@@ -22,6 +22,7 @@ SUBJECTS_SEED = [
     ("english", "English", "ইংরেজি", 3),
     ("science", "Science", "বিজ্ঞান", 4),
     ("bgs", "Bangladesh & Global Studies", "বাংলাদেশ ও বিশ্বপরিচয়", 5),
+    ("ict", "ICT", "আইসিটি", 6),
 ]
 
 # BRAIN-ALIGNED COURSE INDEX (issue #61) — mirrors @numberverse/core SKILLS.
@@ -42,6 +43,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("en-abcs", 1, "english", "ABCs", "ইংরেজি বর্ণমালা"),
     ("bn-numbers", 1, "bangla", "Bangla numbers", "বাংলা সংখ্যা"),
     ("en-shapes", 1, "english", "Shape names", "আকৃতির নাম"),
+    ("ict-tap-drag", 1, "ict", "Tap & drag accuracy", "টিপা-টানা অনুশীলন"),
     # Band 2 — finish numbers, then concrete arithmetic
     ("count-to-50", 2, "math", "Count to 50", "৫০ পর্যন্ত গুনি"),
     ("count-to-100", 2, "math", "Count to 100", "১০০ পর্যন্ত গুনি"),
