@@ -1,3 +1,13 @@
+## 14 Aug 2026 — 0.27.1 (hotfix: achievements TDZ blue-screen crash)
+
+4a10526 Merge pull request #594 from numberverse-org/hotfix/27.1-blue-screen
+e49e04e 📄 docs: 0.27.1 blue-screen hotfix work order
+fb3602e 🐛 fix: achievements BN digit TDZ crash — move BN_DIGITS/bnNum above ACHIEVEMENTS (blue screen)
+cc2d143 Merge pull request #593 from numberverse-org/feat/8-share-coins
+7499eee 🪙 share: coins + 7-day minute breakdown on weekly card (#8)
+1522cde Merge pull request #592 from numberverse-org/feat/7-debug-card
+5c5a0a3 🩺 parent: local-only diagnostics card (#7)
+
 ## 14 Aug 2026 — 0.27.0 (7 new science/ICT/BGS games + parent streak & mastery timeline)
 
 3ac3a0b Merge pull request #588 from numberverse-org/fix/release-sigpipe
