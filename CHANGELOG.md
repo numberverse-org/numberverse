@@ -1,3 +1,8 @@
+## 14 Aug 2026 — 0.35.0 (Pet mini-games batch 2: Bath Time + Pet Stroke + Sort Treats (#600 #599 #614))
+
+45ba285 🐛 audit: rename TreatSort data keys to lowercase (avoid camelCase i18n false positive)
+767f4f6 🎮 pet mini-games batch 2: Bath Time + Pet Stroke + Sort Treats (#600 #599 #614)
+
 ## 14 Aug 2026 — 0.34.0 (Pet mini-games: Catch Fruit + Bubble Pop + Fetch (#597 #605 #606))
 
 c31ccb0 🎮 pet mini-games launch surface: Catch Fruit + Bubble Pop + Fetch (#597 #605 #606)
