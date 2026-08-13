@@ -285,6 +285,25 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
   transition: transform 0.12s ease;
 }
 .share-btn:hover { transform: translateY(-1px); }
+/* #245 — per-kid share link (anonymous week snapshot) */
+.share-link-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.7);
+}
+.share-link-note code {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  padding: 3px 8px;
+  color: #bdefff;
+  word-break: break-all;
+}
 .stat-tiles {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

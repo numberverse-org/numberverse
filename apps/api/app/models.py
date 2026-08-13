@@ -41,6 +41,10 @@ class Kid(Base):
     # carried so a kid's wallet follows them across devices. Auto-migrated on
     # boot by migrations.py (server_default → populated rows get 0).
     coins: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    # #245 — share-card deep link: a random opaque token minted on the parent's
+    # first "share" (nullable until then). The token is UNGUESSABLE and only the
+    # parent can request it; the public snapshot it unlocks carries NO identity.
+    share_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
 
     profile: Mapped[Profile] = relationship(back_populates="kids")
     mastery: Mapped[list["SkillMastery"]] = relationship(back_populates="kid", cascade="all, delete-orphan")
