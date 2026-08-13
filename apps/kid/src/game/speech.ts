@@ -480,6 +480,13 @@ let parentVoiceVolume = 1;
 export function setVoiceBalance(v: number) {
   parentVoiceVolume = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
 }
+// #248 — quiet-hours multiplier (1 = normal). Scales every spoken line on top
+// of the parent balance during a quiet window; the moon-badge tap raises it
+// back to 1 for the session (play is never hard-blocked).
+let quietLevel = 1;
+export function setQuietLevel(v: number) {
+  quietLevel = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+}
 
 export function speak(text: string, opts: SpeakOpts = {}) {
   if (!speechEnabled) return;
@@ -494,7 +501,8 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // #288 — kid voice fun: a device-local volume preference (Soft/Normal/Loud)
   // applies to EVERY line on BOTH engines unless a caller overrides volume.
   // #243 — the parent's per-kid voice balance scales on top of that.
-  const vol = (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume;
+  // #248 — quiet hours scale on top of BOTH (softest overall).
+  const vol = (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume * quietLevel;
   // Symbols → words, then never speak pure emoji / whitespace.
   let clean = naturalize(raw, lang)
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, " ")
@@ -573,7 +581,7 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
       // Brighter than adult speech, but capped on Android so Google's voices
       // stay warm instead of chipmunk; Apple's voices take the higher pitch.
       u.pitch = opts.pitch ?? (platform === "android" ? 1.05 : 1.12);
-      u.volume = (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume; // #288 kid pref · #243 parent balance
+      u.volume = (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume * quietLevel; // #288 pref · #243 balance · #248 quiet
       synth.resume?.(); // some Android builds pause after idle
       if (opts.cancel !== false) {
         // WebKit/Chrome cancel→speak race: a speak() called immediately after

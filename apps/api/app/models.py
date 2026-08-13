@@ -78,6 +78,15 @@ class KidSettings(Base):
     voice_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
     sfx_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
     music_volume: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+    # #248 — quiet hours: the app auto-lowers volume + gently dims during a
+    # per-day schedule, NEVER hard-blocks play. `quiet_windows` is 7 comma-joined
+    # "HH:MM-HH:MM" (Mon..Sun; "-" = no quiet time that day; start>end means
+    # overnight, e.g. "20:00-07:00"). `quiet_volume` is the soft level (0.05..1),
+    # `quiet_dim` toggles the gentle screen dim. Auto-migrated on boot.
+    quiet_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    quiet_windows: Mapped[str | None] = mapped_column(String, nullable=True)
+    quiet_dim: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    quiet_volume: Mapped[float] = mapped_column(Float, default=0.15, server_default="0.15")
     # #138 — kid voice recording (record own voice + replay). PARENT-gated,
     # privacy-first: off by default, on-device only (never synced).
     voice_record_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

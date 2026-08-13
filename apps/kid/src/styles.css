@@ -5063,6 +5063,40 @@ body {
 }
 .pin-btn-primary { background: #4cc9f0; border-color: #4cc9f0; color: #05222b; font-weight: 700; }
 .pin-btn:active { transform: scale(0.97); }
+
+/* #248 — quiet hours: gentle full-screen dim + the 🌙 badge. The dim is a
+ * soft, pointer-transparent veil (interactions unaffected) and the badge is a
+ * small fixed chip — play is never blocked; tapping the badge restores sound. */
+.quiet-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(4, 10, 20, 0.30) 100%);
+  opacity: 0.92;
+  animation: quietDimFade 1.2s ease-out both;
+}
+@keyframes quietDimFade { from { opacity: 0; } to { opacity: 0.92; } }
+.quiet-badge {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2147483001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  background: rgba(15, 25, 40, 0.85);
+  color: #ffe9ad;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  max-width: min(78vw, 320px);
+}
+.quiet-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quiet-badge:active { transform: scale(0.97); }
 .pin-lock-card { border-color: rgba(76, 201, 240, 0.3); }
 .pin-lock-btn {
   background: rgba(76, 201, 240, 0.14);

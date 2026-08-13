@@ -16,12 +16,12 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
-import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume } from "./game/audio";
+import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
-import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
+import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
@@ -390,6 +390,36 @@ function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
         </button>
       </main>
     </div>
+  );
+}
+
+/* #248 — quiet-hours chrome: a gentle full-screen dim + the 🌙 moon badge.
+ * Rendered inside the main kid screens. Play is NEVER blocked — the badge tap
+ * restores full sound for the rest of the session (parent override stays in the
+ * portal; this is a kindness, not a bypass). */
+function QuietChrome({ active, dim, overridden, onToggle, label, labelOn }: {
+  active: boolean;
+  dim: boolean;
+  overridden: boolean;
+  onToggle: () => void;
+  label: string;
+  labelOn: string;
+}) {
+  if (!active) return null;
+  return (
+    <>
+      {dim && <div className="quiet-dim" aria-hidden />}
+      <button
+        className="quiet-badge"
+        onClick={onToggle}
+        aria-pressed={overridden}
+        aria-label={overridden ? labelOn : label}
+        title={overridden ? labelOn : label}
+      >
+        {overridden ? "🔊" : "🌙"}
+        <span>{overridden ? labelOn : label}</span>
+      </button>
+    </>
   );
 }
 
@@ -1076,6 +1106,9 @@ interface Strings {
   settingsParentsHint: string;
   settingsParentsGo: string;
   settingsParentsSignin: string;
+  /* #248 — quiet-hours moon badge */
+  quietBadge: string;
+  quietBadgeOn: string;
   settingsSecSound: string;
   settingsSecLanguage: string;
   settingsSecLearning: string;
@@ -1695,6 +1728,9 @@ const STR: Record<Lang, Strings> = {
     settingsDictateUnsupported: "Recording isn't supported in this browser.",
     settingsDictateClear: "Delete",
     settingsSecSound: "🔊 Sound & voice",
+    /* #248 — quiet hours */
+    quietBadge: "Quiet time — tap for full sound",
+    quietBadgeOn: "Full sound this session — tap to quiet again",
     settingsSecScreen: "🖥️ Screen",
     projectorToggle: "📽️ Classroom projector",
     projectorToggleSub: "Big, bright type for a classroom screen — the parent area is hidden.",
@@ -2321,6 +2357,9 @@ const STR: Record<Lang, Strings> = {
     settingsDictateUnsupported: "এই ব্রাউজারে রেকর্ডিং সমর্থিত নয়।",
     settingsDictateClear: "মুছে ফেলো",
     settingsSecSound: "🔊 শব্দ ও ভয়েস",
+    /* #248 — quiet hours */
+    quietBadge: "শান্ত সময় — পূর্ণ শব্দে ট্যাপ করুন",
+    quietBadgeOn: "এই সেশনে পূর্ণ শব্দ — আবার শান্ত করতে ট্যাপ করুন",
     settingsSecScreen: "🖥️ স্ক্রিন",
     projectorToggle: "📽️ ক্লাসরুম প্রজেক্টর",
     projectorToggleSub: "ক্লাসরুমের জন্য বড়, উজ্জ্বল লেখা — বাবা-মার অংশ লুকানো থাকে।",
@@ -3748,6 +3787,35 @@ export default function App() {
   useEffect(() => {
     setMusicVolume(settings.music_volume ?? 1);
   }, [settings.music_volume]);
+
+  // #248 — quiet hours. Auto-lowers EVERY sound during a parent's per-day
+  // window and (optionally) gently dims the screen — play is NEVER blocked.
+  // A tap on the 🌙 badge overrides for this session (back to full sound);
+  // the minute tick re-checks so windows crossing midnight stay correct.
+  const [quietOverride, setQuietOverride] = useState(false);
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const iv = window.setInterval(() => setMinuteTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(iv);
+  }, []);
+  const quietActive = !quietOverride && quietTimeNow(settings);
+  useEffect(() => {
+    const level = quietActive ? Math.max(0.05, settings.quiet_volume ?? 0.15) : 1;
+    setAudioQuiet(level);
+    setSpeechQuiet(level);
+  }, [quietActive, settings.quiet_volume, minuteTick]);
+  // Shared chrome element: drop into each main kid screen once.
+  const quietChrome = (
+    <QuietChrome
+      active={quietActive}
+      dim={!!settings.quiet_dim}
+      overridden={quietOverride}
+      onToggle={() => setQuietOverride((v) => !v)}
+      label={t.quietBadge}
+      labelOn={t.quietBadgeOn}
+    />
+  );
+
   // #134 — the home/journey ambient follows the current land the kid is on.
   useEffect(() => {
     if (!kid) return;
@@ -5004,6 +5072,8 @@ export default function App() {
         <div className={`app play-app${projector ? " projector-mode" : ""}`}>
           {/* #133 — screen-reader live region: announces game + settings state. */}
           <div id="sr-live" aria-live="polite" className="sr-only" ref={srLiveRef} />
+          {/* #248 — quiet-hours dim + 🌙 badge (home + game share this root) */}
+          {quietChrome}
           <main className="screen play-screen">
             <div className="play-top">
               <button
@@ -7022,6 +7092,8 @@ export default function App() {
     return (
       <div className="app">
         <main className="screen cards-screen">
+          {/* #248 — quiet-hours dim + 🌙 badge */}
+          {quietChrome}
           <header className="screen-head">
             <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
@@ -7130,6 +7202,8 @@ export default function App() {
     return (
       <div className="app">
         <main className="screen worlds">
+          {/* #248 — quiet-hours dim + 🌙 badge */}
+          {quietChrome}
           <header className="screen-head">
             <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
             <div className="head-title">
@@ -7477,6 +7551,8 @@ export default function App() {
     return (
       <div className="app">
         <main className="screen done-screen">
+          {/* #248 — quiet-hours dim + 🌙 badge */}
+          {quietChrome}
           <div className="confetti" aria-hidden="true">
             {confetti.map((p, i) => (
               <span

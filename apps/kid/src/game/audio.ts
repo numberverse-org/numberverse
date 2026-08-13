@@ -34,6 +34,13 @@ export function setSfxVolume(v: number) {
 export function setMusicVolume(v: number) {
   musicVolume = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
 }
+// #248 — quiet-hours multiplier (1 = normal). During a parent's quiet window
+// the app multiplies EVERY sound by this soft level; tapping the moon badge
+// raises it back to 1 for the rest of the session (never hard-blocked).
+let quietLevel = 1;
+export function setQuietLevel(v: number) {
+  quietLevel = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+}
 
 type SoundLayer = "sfx" | "music";
 
@@ -52,7 +59,7 @@ function tone(
   const g = c.createGain();
   o.type = type;
   o.frequency.value = freq;
-  const v = vol * (layer === "music" ? musicVolume : sfxVolume);
+  const v = vol * quietLevel * (layer === "music" ? musicVolume : sfxVolume);
   g.gain.setValueAtTime(v, t);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g);
@@ -169,7 +176,7 @@ export function whooshUp() {
   o.type = "sine";
   o.frequency.setValueAtTime(220, t);
   o.frequency.exponentialRampToValueAtTime(1180, t + 0.5);
-  g.gain.setValueAtTime(0.12 * sfxVolume, t); // #243 — respects the sfx balance
+  g.gain.setValueAtTime(0.12 * quietLevel * sfxVolume, t); // #243/#248 — sfx balance + quiet hours
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
   o.connect(g);
   g.connect(c.destination);

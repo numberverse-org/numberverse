@@ -176,6 +176,29 @@ hr { border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 20px 0; }
 }
 .vol-try { white-space: nowrap; }
 
+/* ── #248 quiet hours schedule editor ──────────────────────────────────── */
+.quiet-block { border-top: 1px dashed rgba(255,255,255,0.14); padding-top: 14px; }
+.quiet-schedule { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 6px; }
+.quiet-day { display: grid; grid-template-columns: 1fr 48px 86px auto 86px; gap: 8px; align-items: center; }
+.quiet-day-name { font-size: 13px; color: rgba(255,255,255,0.85); }
+.quiet-off { display: flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(255,255,255,0.6); }
+.quiet-time {
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+  color-scheme: dark;
+}
+.quiet-time:disabled { opacity: 0.4; }
+.quiet-sep { color: rgba(255,255,255,0.5); text-align: center; }
+@media (max-width: 560px) {
+  .quiet-day { grid-template-columns: 1fr 48px; }
+  .quiet-day .quiet-time, .quiet-day .quiet-sep { grid-column: span 1; }
+  .quiet-time { width: 100%; box-sizing: border-box; }
+}
+
 /* #244 — daily play summary headline */
 .card.daily-card { border-color: rgba(255,209,102,0.3); }
 .daily-head {

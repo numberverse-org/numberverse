@@ -192,6 +192,10 @@ const DEFAULT_SETTINGS: KidSettingsT = {
   voice_volume: 1,
   sfx_volume: 1,
   music_volume: 1,
+  quiet_enabled: false,
+  quiet_windows: null,
+  quiet_dim: true,
+  quiet_volume: 0.15,
   voice_record_enabled: false,
 };
 
@@ -224,6 +228,26 @@ function weekdayLimits(s: KidSettingsT): number[] {
 }
 function writeWeekdayLimits(s: KidSettingsT, arr: number[]): KidSettingsT {
   return { ...s, weekday_limits_min: arr.join(",") };
+}
+
+/** #248 — per-day quiet windows (Mon..Sun). Each entry is "HH:MM-HH:MM" or "-"
+ *  (no quiet time that day). Mirrors the kid-app parser exactly. */
+const QUIET_DEFAULTS = ["-", "-", "-", "-", "-", "-", "-"];
+function quietWindowsArr(s: KidSettingsT): string[] {
+  if (s.quiet_windows) {
+    const parts = s.quiet_windows.split(",");
+    if (parts.length === 7) return parts.map((p) => (p.trim() ? p.trim() : "-"));
+  }
+  return [...QUIET_DEFAULTS];
+}
+function writeQuietWindows(s: KidSettingsT, arr: string[]): KidSettingsT {
+  return { ...s, quiet_windows: arr.map((w) => (w && w.includes("-") ? w : "-")).join(",") };
+}
+/** Split one "HH:MM-HH:MM" entry into its two time strings (or "" when off). */
+function quietWindowParts(entry: string): { start: string; end: string; on: boolean } {
+  const m = /^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/.exec(entry.trim());
+  if (!m) return { start: "", end: "", on: false };
+  return { start: m[1], end: m[2], on: true };
 }
 
 function masteryPct(m: MasteryRow): number {
@@ -1868,6 +1892,94 @@ export default function ParentDashboard() {
                 })}
               </div>
               <p className="muted small">🎙️ Voice recording lets a kid record and replay their own voice. Recordings stay on this device and are never sent to the server.</p>
+            </div>
+
+            {/* #248 — quiet hours: auto-soften during a per-day schedule, never blocks play */}
+            <div className="ctrl-block quiet-block">
+              <h3>🌙 Quiet hours</h3>
+              <p className="muted small">
+                During these times the app gently lowers volume and dims the screen — play is never blocked.
+              </p>
+              <div className="toggle-grid">
+                <button
+                  className={`toggle-chip${activeSettings.quiet_enabled ? " on" : ""}`}
+                  onClick={() => patchSettings({ quiet_enabled: !activeSettings.quiet_enabled })}
+                >
+                  🌙 Quiet hours on
+                </button>
+                <button
+                  className={`toggle-chip${activeSettings.quiet_dim ? " on" : ""}`}
+                  onClick={() => patchSettings({ quiet_dim: !activeSettings.quiet_dim })}
+                  title="Gently dims the screen during quiet hours."
+                >
+                  🕯️ Gentle dimming
+                </button>
+              </div>
+
+              <div className="quiet-schedule">
+                {WEEKDAYS.map((d, i) => {
+                  const win = quietWindowParts(quietWindowsArr(activeSettings)[i]);
+                  return (
+                    <div className="quiet-day" key={d.key}>
+                      <span className="quiet-day-name">{d.full}</span>
+                      <label className="quiet-off">
+                        <input
+                          type="checkbox"
+                          checked={win.on}
+                          onChange={(e) => {
+                            const arr = quietWindowsArr(activeSettings);
+                            arr[i] = e.target.checked ? "20:00-07:00" : "-";
+                            patchSettings(writeQuietWindows(activeSettings, arr));
+                          }}
+                        />
+                        On
+                      </label>
+                      <input
+                        type="time"
+                        className="quiet-time"
+                        value={win.start}
+                        disabled={!win.on}
+                        onChange={(e) => {
+                          const arr = quietWindowsArr(activeSettings);
+                          const cur = quietWindowParts(arr[i]);
+                          const end = cur.end || "07:00";
+                          arr[i] = `${e.target.value || "20:00"}-${end}`;
+                          patchSettings(writeQuietWindows(activeSettings, arr));
+                        }}
+                      />
+                      <span className="quiet-sep">–</span>
+                      <input
+                        type="time"
+                        className="quiet-time"
+                        value={win.end}
+                        disabled={!win.on}
+                        onChange={(e) => {
+                          const arr = quietWindowsArr(activeSettings);
+                          const cur = quietWindowParts(arr[i]);
+                          const start = cur.start || "20:00";
+                          arr[i] = `${start}-${e.target.value || "07:00"}`;
+                          patchSettings(writeQuietWindows(activeSettings, arr));
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+                <p className="muted small">Overnight windows cross midnight — e.g. 20:00 → 07:00. Start later than end for bedtime.</p>
+              </div>
+
+              <div className="vol-row">
+                <span className="vol-label" title="How soft the app gets during quiet hours.">🔉 Soft volume</span>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={1}
+                  step={0.05}
+                  value={activeSettings.quiet_volume ?? 0.15}
+                  aria-label="Quiet hours volume"
+                  onChange={(e) => patchSettings({ quiet_volume: Number(e.target.value) })}
+                />
+                <span className="vol-num">{Math.round((activeSettings.quiet_volume ?? 0.15) * 100)}%</span>
+              </div>
             </div>
 
             <div className="row-buttons save-row">

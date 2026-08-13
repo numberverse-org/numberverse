@@ -99,6 +99,16 @@ class KidSettingsIn(BaseModel):
     voice_volume: float = Field(default=1.0, ge=0.0, le=1.0)
     sfx_volume: float = Field(default=1.0, ge=0.0, le=1.0)
     music_volume: float = Field(default=1.0, ge=0.0, le=1.0)
+    # #248 — quiet hours (auto-soften, never block). `quiet_windows` is 7
+    # comma-joined "HH:MM-HH:MM" (Mon..Sun; "-" = off that day; start>end =
+    # overnight). `quiet_volume` 0.05..1, `quiet_dim` toggles gentle dimming.
+    quiet_enabled: bool = False
+    quiet_windows: str | None = Field(
+        default=None,
+        pattern=r"^(?:-|\d{1,2}:\d{2}-\d{1,2}:\d{2})(?:,(?:-|\d{1,2}:\d{2}-\d{1,2}:\d{2})){6}$",
+    )
+    quiet_dim: bool = True
+    quiet_volume: float = Field(default=0.15, ge=0.05, le=1.0)
     # #138 — voice recording is parent-gated, off by default.
     voice_record_enabled: bool = False
 
@@ -114,6 +124,11 @@ class KidSettingsOut(BaseModel):
     voice_volume: float = 1.0
     sfx_volume: float = 1.0
     music_volume: float = 1.0
+    # #248 — quiet hours.
+    quiet_enabled: bool = False
+    quiet_windows: str | None = None
+    quiet_dim: bool = True
+    quiet_volume: float = 0.15
     voice_record_enabled: bool = False
     updated_at: datetime | None = None
 
