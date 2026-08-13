@@ -56,6 +56,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bgs-professions", 2, "bgs", "Community helpers", "সমাজের সাহায্যকারী"),
     ("bgs-festivals", 2, "bgs", "Our festivals", "আমাদের উৎসব"),
     ("bgs-kindness", 1, "bgs", "Kind heart", "দয়ালু হৃদয়"),
+    ("bgs-honesty", 2, "bgs", "Truth star", "সত্যের তারকা"),
     ("bgs-patience", 1, "bgs", "Patience & waiting", "ধৈর্য ও অপেক্ষা"),
     # Band 2 — finish numbers, then concrete arithmetic
     ("count-to-50", 2, "math", "Count to 50", "৫০ পর্যন্ত গুনি"),
