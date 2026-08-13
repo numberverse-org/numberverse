@@ -1197,6 +1197,19 @@ export default function ParentDashboard() {
   const archiveLoaded = !!activeId && !!archActivity[activeId];
   const selMonth = activeId ? (archMonth[activeId] ?? activeArchive[0]?.key ?? null) : null;
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
+  // 🎮 #252 — game coverage: which games (per skill) the kid has tried. Derived
+  // from the already-loaded mastery (attempts > 0) → fully offline, per-kid.
+  const playedSkills = new Set(activeMastery.filter((m) => m.attempts > 0).map((m) => m.skill_id));
+  const coverageGames = SKILLS.filter((s) => s.game).map((s) => ({ skill: s, tried: playedSkills.has(s.id) }));
+  const coverageTotal = coverageGames.length;
+  const coveragePlayed = coverageGames.filter((g) => g.tried).length;
+  const coveragePct = coverageTotal ? Math.round((coveragePlayed / coverageTotal) * 100) : 0;
+  const coverageBySubject = SUBJECTS.map((sub) => {
+    const gs = coverageGames.filter((g) => g.skill.subject === sub.id);
+    const tried = gs.filter((g) => g.tried).length;
+    return { ...sub, total: gs.length, tried };
+  }).filter((x) => x.total > 0);
+  const untriedGames = coverageGames.filter((g) => !g.tried);
   const exportArchive = () => {
     if (!activeId || !active?.name || !activeArchive.length) return;
     const blob = new Blob([archiveToCsv(activeArchive)], { type: "text/csv;charset=utf-8" });
@@ -1986,6 +1999,49 @@ export default function ParentDashboard() {
                   </div>
                 )}
               </>
+            )}
+          </section>
+
+          {/* 🎮 #252 — game coverage: which games the kid hasn't tried yet (nudge variety). */}
+          <section className="card coverage-card">
+            <h2>🎮 Games to try</h2>
+            <p className="muted small">
+              Which of the catalog’s games {active.name} has played — and which are still
+              waiting. Derived from the dashboard’s already-loaded progress, so it works offline.
+            </p>
+            <div className="coverage-summary">
+              <span className="coverage-total">{coveragePlayed} of {coverageTotal} games played</span>
+              <div className="bar big">
+                <div className={`fill${coveragePct === 100 ? " done" : ""}`} style={{ width: `${coveragePct}%` }} />
+              </div>
+            </div>
+            {coverageBySubject.map((sub) => {
+              const pct = sub.total ? Math.round((sub.tried / sub.total) * 100) : 0;
+              return (
+                <div key={sub.id} className="coverage-subject">
+                  <span className="coverage-subject-label">
+                    {sub.emoji} {sub.label} <span className="muted small">{sub.tried}/{sub.total}</span>
+                  </span>
+                  <div className="bar">
+                    <div className={`fill${pct === 100 ? " done" : ""}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            {untriedGames.length === 0 ? (
+              <p className="muted">All games played — {active.name} is a full explorer! 🎉</p>
+            ) : (
+              <ul className="coverage-list">
+                {untriedGames.map((g) => (
+                  <li key={g.skill.id} className="coverage-row">
+                    <span className="coverage-title">
+                      {g.skill.title}
+                      {g.skill.titleBn ? <span className="muted small"> · {g.skill.titleBn}</span> : null}
+                    </span>
+                    <span className="coverage-band">World {g.skill.band}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
 
