@@ -39,7 +39,7 @@ const APP_BUILD = "13 Aug 2026 · 0.26.16 (per-day wrong-answer history + playti
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.26.16";
 
-type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "cert" | "castle";
+type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "garden" | "cards" | "badges" | "leaderboard" | "cert" | "castle";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -526,6 +526,17 @@ interface Strings {
   badgeEarned: string;
   badgeLocked: string;
   badgeNewSpeak: (name: string, title: string) => string;
+  /* #282 — same-device sibling leaderboard */
+  lbTile: string;
+  lbTitle: string;
+  lbSub: string;
+  lbStatMastery: string;
+  lbStatRounds: string;
+  lbStatStars: string;
+  lbYou: string;
+  lbEmpty: string;
+  lbAddSibling: string;
+  lbSpeak: (name: string, rank: number) => string;
   /* offline-first */
   offlineReady: string;
   installBtn: string;
@@ -1040,6 +1051,17 @@ const STR: Record<Lang, Strings> = {
     badgeEarned: "Earned!",
     badgeLocked: "Keep playing to unlock",
     badgeNewSpeak: (name, title) => `${name}, new badge — ${title}! 🎖️`,
+    /* #282 — same-device sibling leaderboard */
+    lbTile: "Leaderboard",
+    lbTitle: "🥇 Sibling Leaderboard",
+    lbSub: "Same device · no cloud",
+    lbStatMastery: "Mastered",
+    lbStatRounds: "Rounds",
+    lbStatStars: "Stars",
+    lbYou: "You",
+    lbEmpty: "Add a sibling to start comparing progress!",
+    lbAddSibling: "➕ Add sibling",
+    lbSpeak: (name, rank) => `${name}, you're #${rank} on this device!`,
     /* offline-first */
     offlineReady: "✓ Works offline",
     installBtn: "📲 Get the app",
@@ -1539,6 +1561,17 @@ const STR: Record<Lang, Strings> = {
     badgeEarned: "জিতেছো!",
     badgeLocked: "আনলক করতে খেলতে থাকো",
     badgeNewSpeak: (name, title) => `${name}, নতুন ব্যাজ — ${title}! 🎖️`,
+    /* #282 — same-device sibling leaderboard */
+    lbTile: "লিডারবোর্ড",
+    lbTitle: "🥇 ভাইবোন লিডারবোর্ড",
+    lbSub: "একই ডিভাইস · ক্লাউড ছাড়া",
+    lbStatMastery: "আয়ত্ত",
+    lbStatRounds: "রাউন্ড",
+    lbStatStars: "তারা",
+    lbYou: "তুমি",
+    lbEmpty: "তুলনা শুরু করতে ভাইবোন যোগ করো!",
+    lbAddSibling: "➕ ভাইবোন যোগ করো",
+    lbSpeak: (name, rank) => `${name}, এই ডিভাইসে তোমার স্থান #${bnNum(rank)}!`,
     /* offline-first */
     offlineReady: "✓ অফলাইনে চলে",
     installBtn: "📲 অ্যাপটি নাও",
@@ -4339,6 +4372,10 @@ export default function App() {
                   <span className="play-icon-emoji" aria-hidden="true">🏅</span>
                   <span>{t.badgeTile}</span>
                 </button>
+                <button className="play-icon" onClick={() => setScreen(kid ? "leaderboard" : "kidpick")}>
+                  <span className="play-icon-emoji" aria-hidden="true">🥇</span>
+                  <span>{t.lbTile}</span>
+                </button>
                 <button className="play-icon" onClick={() => setScreen(kid ? "castle" : "kidpick")}>
                   <span className="play-icon-emoji" aria-hidden="true">🏰</span>
                   <span>{t.castleTile}</span>
@@ -5454,6 +5491,69 @@ export default function App() {
     );
   }
 
+  /* #282 — same-device sibling leaderboard: offline, privacy-safe (only kids
+     on THIS device are compared; nothing leaves the phone). Ranked by mastery,
+     each row still shows the per-kid totals so nobody's progress is hidden. */
+  if (screen === "leaderboard") {
+    const rows = kids
+      .map((k) => {
+        const st = useKidStore.getState().stats[k.id] ?? { stars: 0, score: 0, sessions: 0 };
+        return { kid: k, mastery: totalMastered(skillsMap, k.id), rounds: st.sessions, stars: st.stars };
+      })
+      .sort((a, b) => b.mastery - a.mastery || b.stars - a.stars || a.kid.name.localeCompare(b.kid.name));
+    return (
+      <div className="app">
+        <main className="screen lb-screen">
+          <header className="screen-head">
+            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <div className="head-title">
+              <h2>{t.lbTitle}</h2>
+              <p className="head-sub">{t.lbSub}</p>
+            </div>
+          </header>
+
+          {kids.length < 2 ? (
+            <div className="lb-empty">
+              <span className="lb-empty-emoji" aria-hidden="true">🥇</span>
+              <span className="lb-empty-text">{t.lbEmpty}</span>
+              <button className="big-btn" onClick={() => setScreen("addkid")}>{t.lbAddSibling}</button>
+            </div>
+          ) : (
+            <div className="lb-list">
+              {rows.map((r, i) => {
+                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+                const mine = kid?.id === r.kid.id;
+                return (
+                  <button
+                    key={r.kid.id}
+                    className={`lb-row${mine ? " mine" : ""}${i === 0 ? " first" : ""}`}
+                    onClick={() => speak(t.lbSpeak(r.kid.name, i + 1))}
+                    aria-label={`${r.kid.name} #${i + 1}`}
+                  >
+                    <span className="lb-medal" aria-hidden="true">{medal}</span>
+                    <span className="lb-avatar"><AvatarIcon emoji={r.kid.avatar} size={40} /></span>
+                    <span className="lb-meta">
+                      <span className="lb-name">
+                        {r.kid.name}
+                        {mine && <span className="lb-you">{t.lbYou}</span>}
+                      </span>
+                      <span className="lb-stats">
+                        <span className="lb-stat">🏅 {t.lbStatMastery} {r.mastery}</span>
+                        <span className="lb-stat">🎮 {t.lbStatRounds} {r.rounds}</span>
+                        <span className="lb-stat">⭐ {t.lbStatStars} {r.stars}</span>
+                      </span>
+                    </span>
+                    <span className="lb-state">▶</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   if (screen === "kidpick" || (screen === "home" && !kid)) {
     return (
       <div className="app">
@@ -5470,6 +5570,9 @@ export default function App() {
               <h2>{t.whoPlaying}</h2>
               <p className="head-sub">{t.pickProfile}</p>
             </div>
+            <button className="icon-btn" onClick={() => setScreen("leaderboard")} aria-label={t.lbTile} title={t.lbTile}>
+              🥇
+            </button>
           </header>
           <div className="world-list">
             {kids.map((k) => {
