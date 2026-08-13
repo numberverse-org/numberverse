@@ -109,6 +109,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-perim', band: 3, subject: 'math', title: 'Perimeter intro', titleBn: 'পরিসীমা শুরু', description: 'Count/add the unit-cube fence around a rectangle (4 sides) or right triangle (3 sides)', descriptionBn: 'আয়তক্ষেত্র (৪ বাহু) বা সমকোণী ত্রিভুজ (৩ বাহু) ঘিরে একক ঘনক বেড়া গুনি/যোগ করি', commonCore: ['3.MD.D.8'], nctbCode: 'c3-math-13', classNumber: 3, game: 'game-perim' },
   // Math — 2D → 3D shape pairing: match flat faces (square→cube) to rotating solids.
   { id: 'en-solidmatch', band: 3, subject: 'math', title: 'Flat faces & solids', titleBn: 'ভাঁজ ও ঘনবস্তু', description: 'Match flat faces to their solid — square→cube, rectangle→cuboid, circle→cylinder, triangle→pyramid — on rotating 3D previews', descriptionBn: 'ভাঁজ মিলিয়ে ঘনবস্তু খুঁজি — বর্গ→ঘনক, আয়তক্ষেত্র→আয়তঘন, বৃত্ত→বেলন, ত্রিভুজ→পিরামিড — ঘোরানো প্রিভিউ দেখে', commonCore: ['2.G.A.1'], nctbCode: 'c3-math-14', classNumber: 3, game: 'game-solidmatch' },
+  // Math — symmetry: complete the mirror half of a picture across the fold line.
+  { id: 'en-symmetry', band: 2, subject: 'math', title: 'Symmetry mirror', titleBn: 'আয়নার প্রতিসাম্য', description: 'Complete the mirror half of a picture across the fold line (heart, tree, butterfly, house…)', descriptionBn: 'ভাঁজ রেখা বরাবর ছবির আয়নার অর্ধেকটি পূরণ করি (হৃদয়, গাছ, প্রজাপতি, বাড়ি…)', commonCore: ['2.G.A.1'], nctbCode: 'c3-math-15', classNumber: 3, game: 'game-symmetry' },
   { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
@@ -275,6 +277,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-elapsed', skillId: 'en-elapsed', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-perim', skillId: 'en-perim', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-solidmatch', skillId: 'en-solidmatch', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-symmetry', skillId: 'en-symmetry', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -384,6 +387,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-elapsed': 'ElapsedTime',
   'game-perim': 'PerimFence',
   'game-solidmatch': 'SolidMatch',
+  'game-symmetry': 'SymmetryMirror',
   'game-coinvalues': 'CoinValue',
   'game-timewords': 'TimeWords',
   'game-directionwords': 'DirectionWords',

@@ -51,7 +51,7 @@
 - ~~Math: elapsed time (how long until…)~~  ✅ #200 — analog clock start + digital "until 2:45" chip; kid finds the minutes (5–59 by level); correct sweeps the hands to the target so the elapsed arc is the answer
 - ~~Math: perimeter intro (measure the fence)~~  ✅ #201 — unit-cube fence posts along every edge; kid adds labelled sides of rectangles (4 sides) / right triangles (3 sides) and taps the perimeter (peSpeak)
 - ~~Math: 2D → 3D shape pairing~~  ✅ #202 — six solids spin on a turntable; "which flat face belongs to this solid?" (cube→square) and the reverse; sphere + cone are the "no flat faces" distractors (sfSpeak confirms the pairing)
-- Math: symmetry mirror game  _(priority: low, kid-first)_
+- ~~Math: symmetry mirror game~~  ✅ #203 — 13 pixel-pictures (heart, pine, house, castle…) each defined by its left half; dashed gold fold line; kid taps the true mirror half from 4 cards, correct snaps the full picture together (sySpeak)
 - Science: animals — features & movement  _(priority: low, kid-first)_
 - Science: plant life cycle (seed→fruit)  _(priority: low, kid-first)_
 - Science: weather & seasons sorting  _(priority: low, kid-first)_
