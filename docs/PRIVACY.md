@@ -5,6 +5,15 @@ each. Zero analytics. Reviewed by the Oracle Privacy Steward (l1_privacy)._
 
 Last audited: **2026-08-13** (against 0.26.14 + guardrail sweep).
 
+> **#7 — Diagnostics card guardrail (2026-08-14).** The parent portal's 🩺
+> Diagnostics card is **local-only by construction**: it reads a 20-entry,
+> in-memory window-error ring buffer (never written to disk), the browser's
+> service-worker version, the last-sync timestamp, and the on-device voice
+> count. Its export button copies a text blob to the clipboard (or a download)
+> that contains **no kid names, ids, emails, or profile data** — only browser
+> env facts + error strings. Nothing is sent anywhere; the buffer dies on
+> reload. There is no diagnostics endpoint and no analytics path.
+
 ## Guiding rules
 
 1. **No analytics, no trackers, ever** — enforced by the `tracker-scan` CI
