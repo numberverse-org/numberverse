@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..deps import get_current_profile
+from ..ratelimit import rate_limit
 from ..export_format import (
     FORMAT,
     VERSION,
@@ -38,6 +38,11 @@ from ..models import (
 
 router = APIRouter(prefix="/api/v1", tags=["export"])
 
+# #838 — exports stream a family's entire history, so bound how often a
+# (possibly breached) token may pull a heavy full export. Reuses the same
+# account+IP sliding-window limiter as the write endpoints.
+EXPORT_RATE_LIMIT = rate_limit()
+
 CSV_FIELDS = ["kid", "kid_id", "date", "skill_id", "game_id", "correct", "response_ms", "difficulty"]
 
 
@@ -51,7 +56,7 @@ async def _owned_kids(db: AsyncSession, profile: Profile) -> list[Kid]:
 
 @router.get("/export", response_class=Response)
 async def export_json(
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(EXPORT_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Full family export as a downloadable, readable JSON document."""
@@ -89,7 +94,7 @@ async def export_json(
 
 @router.get("/export.csv", response_class=Response)
 async def export_csv(
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(EXPORT_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Family round history as a spreadsheet-friendly CSV (one row per round).
