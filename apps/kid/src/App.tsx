@@ -163,6 +163,13 @@ export default function App() {
    *  flags (reteach > 0) after the mastery gate blocks an advance. */
   const [reteachNonce, setReteachNonce] = useState(0);
   const activeSceneRef = useRef<string | null>(null);
+  // #1127 — incremental streak/wrongs tail for the round loop. `events` grows
+  // per session and onRoundDone used to run THREE O(events) tail scans every
+  // round (sessionStreak(evs.slice(0,-1)) + sessionStreak(evs) + a wrongs loop).
+  // This ref tracks the tail's consecutive-correct streak + wrong count and the
+  // event count those values correspond to; onRoundDone updates it O(1) and
+  // only re-derives from the store when the count drifts (a session reset).
+  const streakTailRef = useRef({ streak: 0, wrongs: 0, eventsLen: 0 });
   // Mastery snapshot BEFORE a session starts — lets the done-screen celebrate
   // the skills that were genuinely NEW this session, not just re-played ones.
   const masteredBeforeRef = useRef<Set<string>>(new Set());
@@ -1900,13 +1907,46 @@ export default function App() {
           }
           // #292 — Nova reaction: exactly ONE per round, highest-priority wins.
           // Win streaks / setbacks / reteach moments get a floating Nova face.
+          // #1127 — O(1) streak/wrongs from the maintained tail ref (was three
+          // O(events) scans per round, and events grows across the session).
           const evs = useKidStore.getState().events;
-          const streakBefore = sessionStreak(evs.slice(0, -1));
-          const streakNow = sessionStreak(evs);
-          let wrongs = 0;
-          for (let i = evs.length - 1; i >= 0; i--) {
-            if (evs[i].correct) break;
-            wrongs++;
+          const tail = streakTailRef.current;
+          let streakBefore: number;
+          let streakNow: number;
+          let wrongs: number;
+          if (tail.eventsLen === evs.length - 1) {
+            // the just-appended event extends the maintained tail — pure O(1)
+            if (e.correct) {
+              streakNow = tail.streak + 1;
+              wrongs = 0;
+              streakBefore = tail.streak;
+              tail.streak += 1;
+              tail.wrongs = 0;
+            } else {
+              wrongs = tail.wrongs + 1;
+              streakNow = 0;
+              streakBefore = tail.streak;
+              tail.wrongs += 1;
+              tail.streak = 0;
+            }
+            tail.eventsLen = evs.length;
+          } else {
+            // drift (a session reset cleared events outside onRoundDone) — one
+            // backward pass re-derives the tail, then future rounds go O(1).
+            streakBefore = 0;
+            streakNow = 0;
+            wrongs = 0;
+            let i = evs.length - 1;
+            if (i >= 0 && evs[i].correct) {
+              while (i >= 0 && evs[i].correct) { streakNow++; i--; }
+              streakBefore = streakNow - 1;
+            } else {
+              while (i >= 0 && !evs[i].correct) { wrongs++; i--; }
+              while (i >= 0 && evs[i].correct) { streakBefore++; i--; }
+            }
+            tail.streak = streakNow;
+            tail.wrongs = wrongs;
+            tail.eventsLen = evs.length;
           }
           if (mastered) novaReact("master");
           else if (questDone) novaReact("quest");
