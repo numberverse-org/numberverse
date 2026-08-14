@@ -2905,7 +2905,8 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.wallet, scale: 1.18, duration: 120, yoyo: true });
 
     this.streakText.setText(`🔥 ${this.t().streak(nova.streak)}`);
-    this.streakDots.forEach((d, i) => d.setPosition(this.streakText.width / 2 + 12 + i * 13, 0));
+    const streakHalf = this.streakText.width / 2;
+    this.streakDots.forEach((d, i) => d.setPosition(streakHalf + 12 + i * 13, 0));
     this.updateStyleBadge();
     // light the 7-day calendar (oldest → today): played days glow gold
     const days = nova.days ?? [];
@@ -2975,7 +2976,8 @@ export class NovaScene extends Phaser.Scene {
 
     // streak strip centered under the room pill
     this.streakText.setPosition(0, 0);
-    this.streakDots.forEach((d, i) => d.setPosition(this.streakText.width / 2 + 12 + i * 13, 0));
+    const streakHalf = this.streakText.width / 2;
+    this.streakDots.forEach((d, i) => d.setPosition(streakHalf + 12 + i * 13, 0));
     this.streakStrip.setPosition(W / 2, 90 + this.topInset);
     // 🏅 learning-style badge floats just below the streak
     this.styleBadge.setPosition(W / 2, 132 + this.topInset);
@@ -2983,7 +2985,7 @@ export class NovaScene extends Phaser.Scene {
     this.questChip.setPosition(W / 2, 174 + this.topInset);
     this.calTile.setPosition(W / 2, 214 + this.topInset);
     // #768 — freeze pill rides on the streak strip (right after the dots)
-    this.freezePill.setPosition(this.streakText.width / 2 + 12 + 7 * 13 + 10, 0);
+    this.freezePill.setPosition(streakHalf + 12 + 7 * 13 + 10, 0);
 
     // one-time "swipe to explore" nudge floats under Nova, above the dock
     this.swipeHint.setPosition(W / 2, H * 0.7);
