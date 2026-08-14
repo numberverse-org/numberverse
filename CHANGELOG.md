@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.2 (🐛 kill RESIZE layout thrash — coalesce once/frame + size-skip (#1108))
+
+d1cfd99 🐛 #1108 kill RESIZE layout thrash (coalesce once/frame + size-skip)
+
 ## 14 Aug 2026 — 0.53.1 (🐛 fix global-scale RESIZE listener leak (151 sites) — no memory growth across 50 rounds (#352))
 
 1c77bd9 🐛 #352 fix global-scale RESIZE listener leak (151 sites)
