@@ -60,7 +60,7 @@ import Nova3DHome from "./nova3d/Nova3DHome";
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.42.3 (🚀 Startup: lazy App chunk, splash-first paint, Phaser/three off the boot graph, deferred SW + rehydrate, safe reads, single-parse boot, planned-locale tree-shake)";
+const APP_BUILD = "14 Aug 2026 · 0.42.3 (startup: lazy App chunk, splash-first, Phaser off boot graph, deferred SW+rehydrate, safe reads, planned-locale tree-shake)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.42.3";

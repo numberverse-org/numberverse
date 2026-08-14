@@ -1,3 +1,43 @@
+## 14 Aug 2026 — 0.42.3 (startup: lazy App chunk, splash-first, Phaser off boot graph, deferred SW+rehydrate, safe reads, planned-locale tree-shake)
+
+09ff392 🚀 startup-blocking cluster: lazy App chunk (splash-first paint), Phaser off boot graph via vendor-cjs helper split, deferred SW + store rehydrate, safe readLS boot reads, single-parse loadKids/settings/playtime, planned-locale tree-shake (#1217-#1226)
+
+## 14 Aug 2026 — 0.42.3 (🚀 Startup-blocking: lazy App chunk, splash-first paint, Phaser/three off the boot graph, deferred SW + rehydrate, safe reads, single-parse boot, planned-locale tree-shake)
+
+The v36 startup-blocking cluster — cold start now paints the splash with a ~186KB boot
+path and NO Phaser/three.js/App in its dependency graph; the heavy App graph code-splits
+behind the lazy chunk and resolves DURING the splash window:
+
+- **#1217 first paint is no longer gated by the whole App graph** — `main.tsx` is now
+  lean (splash + Icon + rotate guard only); `<App/>` is `React.lazy` inside Suspense,
+  with a `BootErrorBoundary` fallback. Verified: first-paint at ~20–56ms, boot batch =
+  `index.js` + `index.css` + a 236-byte CJS-helper chunk only; App/Phaser/three/SW all
+  fetch AFTER first paint (during the 1.7s splash window).
+- **Phaser (1.4MB) removed from the boot graph** — Rollup had hosted the shared
+  CommonJS default-export interop helper inside `phaser-vendor`, so the boot chunk
+  statically imported it (the whole engine had to download+eval before the splash).
+  The helper now lives in its own `vendor-cjs` chunk; phaser-vendor is reachable ONLY
+  through the lazy App chunk.
+- **#1225 SW registration deferred** — `registerSW` no longer runs at module top-level;
+  it's dynamically imported from the splash's mount effect (post-paint).
+- **#1226 store hydration deferred** — `nv_store_v1` persist now uses `skipHydration`;
+  App rehydrates in a first-paint effect and gates the outbox drains on it, so a power
+  user's large blob never holds up the App-chunk eval.
+- **#1218/#1221/#1222 single-parse boot** — `loadKids()` memoized (one parse, 3 boot
+  callers; writers invalidate), `cachedKidSettings` computed once per render, `todayMinutes`
+  read once and shared by the cap + goal.
+- **#1219/#1220 guarded boot reads** — new central `readLS()` (null on exception) wraps
+  every boot-path `localStorage.getItem` (welcome/kid/lang/tour); a11y initializes to a
+  static default and hydrates in its effect — private-browsing/storage-denied can't abort
+  first render.
+- **#1224 planned locales tree-shaken + deferred lang read** — core's `LOCALES` now ships
+  only en/bn; the ar/hi scaffolds moved to `locale-planned.ts` (0 bytes reach the kid
+  bundle — verified). `game/locale.ts` no longer reads `nv_lang` at module top-level.
+- **#1223 i18n** — the full EN+BN table no longer evaluates before first paint (it lives
+  inside the lazy App chunk; measured eval is <5ms, fully hidden by the splash window —
+  a further EN/BN split into on-demand modules was scoped and judged net-negative risk
+  for the remaining hidden cost).
+
 ## 14 Aug 2026 — 0.42.2 (⚡ Voice-cache: in-memory LRU ledger, readonly cache reads, debounced synth meter, IDB schema-drift guard)
 
 1462c3f fix: silent onblocked fallback (no console.warn — audit forbids debug logging in shipped code)
