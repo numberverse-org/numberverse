@@ -30,6 +30,7 @@ const SIMPLE = [
  * kid taps the SIMPLIFIED fraction (e.g. 2/4 → ½). Teaches equivalence.
  */
 export class FractionMatchScene extends Phaser.Scene {
+  private levels = LEVELS;
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
@@ -47,8 +48,11 @@ export class FractionMatchScene extends Phaser.Scene {
     super("FractionMatch");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
+    // #1170 — per-skill ladder: fractions-equiv (band 4) → [2,3,4,6,8,12],
+    // fraction-simplify (band 7) → [4,6,8,12] (bigger denominators to reduce).
+    this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.background = this.add.graphics();
     this.pizzaGfx = this.add.graphics();
@@ -89,7 +93,7 @@ export class FractionMatchScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const slices = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const slices = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     // pick a simple fraction that divides evenly into `slices` (or any num<den works)
     const simple = SIMPLE[Phaser.Math.Between(0, SIMPLE.length - 1)];
     const scale = Math.max(1, Math.floor(slices / simple.den));

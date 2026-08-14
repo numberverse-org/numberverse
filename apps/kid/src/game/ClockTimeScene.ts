@@ -49,6 +49,7 @@ interface DigitalTime {
  * the kid; o'clock → half → quarter → five-minute → any-minute as levels rise.
  */
 export class ClockTimeScene extends Phaser.Scene {
+  private levels = LEVELS;
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
@@ -69,8 +70,12 @@ export class ClockTimeScene extends Phaser.Scene {
     super("ClockTime");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
+    // #1170 — the skill's own ladder (dataLevels, passed by App) picks the
+    // minute-pattern range: tell-time (band 3) → [1..6] (o'clock → any minute),
+    // clock-minute (band 6) → [5,6] (any 5-min → exact minute).
+    this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.background = this.add.graphics();
     gameBackground(this, "sunset");
@@ -118,7 +123,11 @@ export class ClockTimeScene extends Phaser.Scene {
   private startRound() {
     this.clearButtons();
     this.startedAt = this.time.now;
-    const mode = MODES[Math.min(this.levelIndex, MODES.length - 1)];
+    // #1170 — the skill's own ladder value (1..6 = o'clock..any-minute) picks
+    // the MODES entry, so clock-minute (band 6, dataLevels [5,6]) drills only
+    // 5-min steps + exact-minute, never re-teaches o'clock.
+    const levelVal = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
+    const mode = MODES[Math.min(Math.max(0, levelVal - 1), MODES.length - 1)];
     const h = Phaser.Math.Between(1, 12);
     let m = 0;
     if (mode === "any") m = Phaser.Math.Between(0, 59);
@@ -263,7 +272,8 @@ export class ClockTimeScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    // #1170 — difficulty is the skill's ladder value (1..6), not the index.
+    this.onRoundDone?.(true, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

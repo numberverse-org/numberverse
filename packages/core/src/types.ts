@@ -48,6 +48,16 @@ export interface Skill {
    *  modeForSkill() reads this INSTEAD of hardcoding skill-id → mode maps,
    *  so a new skill variant is a data entry, not a code branch. */
   dataMode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
+  /** Per-skill content range (#1170). When several skills reuse ONE game-id in
+   *  DIFFERENT bands (e.g. mult-facts-2-10 band-3 vs mult-fluency-6-9 band-6
+   *  both run TimesTable), this data field carries the skill's OWN difficulty
+   *  ladder — the exact tables/denominators/percents the scene must generate —
+   *  instead of relying on the shared game's `difficultyLevels` + the adaptive
+   *  startLevelIndex to accidentally pick the right band. The app passes
+   *  `skill.dataLevels ?? game.difficultyLevels` as the scene's `levels`, so a
+   *  band-6 skill reteaches ITS OWN floor (e.g. ×6, not ×2). A new band-pair
+   *  range is a data entry, not a scene branch. */
+  dataLevels?: number[];
 }
 
 /** Per-skill mastery state for one kid (mirrors skill_mastery row). */

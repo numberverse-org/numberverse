@@ -40,6 +40,7 @@ const FRACTIONS = [
  * kid taps the matching fraction. Level = slices (2 → 3 → 4).
  */
 export class PizzaFracScene extends Phaser.Scene {
+  private levels = LEVELS;
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
@@ -57,8 +58,11 @@ export class PizzaFracScene extends Phaser.Scene {
     super("PizzaFrac");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
+    // #1170 — per-skill ladder: fractions-intro (band 3) → [2,3,4,5,6,8],
+    // fraction-read (band 6) → [4,5,6,8] (quarters onward, never halves).
+    this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.background = this.add.graphics();
     this.pizzaGfx = this.add.graphics();
@@ -99,7 +103,7 @@ export class PizzaFracScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const slices = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const slices = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     const den = slices;
     const shaded = Phaser.Math.Between(1, den - 1);
     this.target = FRACTIONS.find((f) => f.num === shaded && f.den === den) ??

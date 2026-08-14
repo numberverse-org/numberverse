@@ -8,6 +8,7 @@ import {
   SKILLS,
   GAME_SCENES,
   getGame,
+  getSkill,
   nextDifficulty,
   moni,
   deriveLearningStyle,
@@ -1688,9 +1689,13 @@ export default function App() {
         // skill is TAUGHT again, differently, before fresh easy drills.
         teach: step.teach || reteach > 0,
         kidName: kid.name,
-        // Per-skill difficulty ladder (e.g. CountPop reuses the same scene for
-        // count-to-10 AND count-to-50 — the scene reads its own levels here).
-        levels: getGame(step.gameId)?.difficultyLevels,
+        // Per-skill difficulty ladder (#1170). When a band-pair reuses one
+        // game-id (mult-facts-2-10 + mult-fluency-6-9 both run TimesTable),
+        // the skill carries its OWN dataLevels so the scene generates content
+        // within THAT skill's range — never the other band's floor (a band-6
+        // reteach must show ×6, not ×2). Falls back to the game ladder when the
+        // skill has no narrower range.
+        levels: getSkill(step.skillId)?.dataLevels ?? getGame(step.gameId)?.difficultyLevels,
         onRoundDone: (correct: boolean, ms: number, difficulty: number) => {
           // Was this skill NEVER attempted before this round? (feeds the
           // "try a new game" quest type — must be captured BEFORE the event

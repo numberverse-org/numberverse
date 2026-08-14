@@ -19,6 +19,7 @@ const ROUNDS_TO_FINISH = 3;
  * Level = max decimal places (1 → 2 → 3).
  */
 export class DecimalsScene extends Phaser.Scene {
+  private levels = LEVELS;
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
@@ -37,8 +38,11 @@ export class DecimalsScene extends Phaser.Scene {
     super("Decimals");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
+    // #1170 — per-skill ladder: decimals-intro (band 5) → [1,2,3,4,5,6],
+    // decimals-tenths (band 7) → [2,3,4,5,6] (hundredths onward, no whole-tenths).
+    this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.background = this.add.graphics();
     this.drawBackground();
@@ -74,7 +78,7 @@ export class DecimalsScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const places = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const places = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     // generate two different decimals with `places` decimal digits
     let av = Phaser.Math.FloatBetween(0.1, 9.9);
     let bv = Phaser.Math.FloatBetween(0.1, 9.9);
@@ -98,7 +102,7 @@ export class DecimalsScene extends Phaser.Scene {
     const startX = width / 2 - (spacing * (opts.length - 1)) / 2;
     const y = this.answersY;
     // More decimal places = longer labels — shrink so "9.999999" stays inside the circle.
-    const places = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const places = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     const labelSize = places >= 6 ? 26 : places >= 4 ? 32 : 38;
     opts.forEach((value, i) => {
       const c = modernAnswerButton(this, startX + i * spacing, y, BUTTON_RADIUS, value, BTN_PRIMARY, { labelSize });
@@ -126,7 +130,8 @@ export class DecimalsScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    // #1170 — difficulty is the skill's ladder value (decimal places), not the index.
+    this.onRoundDone?.(true, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

@@ -11,15 +11,19 @@ import { SAB } from "./safeArea";
 import { answerRow } from "./layout";
 
 const LEVELS = GAMES.find((g) => g.id === "game-multable")?.difficultyLevels ?? [2, 3, 4, 5, 7, 9];
-/** Level → multiplier set. Single tables first (arrays visible), then mixed (harder). */
-const TABLES: number[][] = [
-  [2],        // L0: ×2 only
-  [3],        // L1: ×3 only
-  [4],        // L2: ×4 only
-  [5],        // L3: ×5 only
-  [6, 7],     // L4: mixed easy-medium — array bridge, then number mode
-  [8, 9, 10], // L5: mixed hard (up to 10×10)
-];
+/**
+ * Level VALUE → multiplier set (#1170). Single tables first (arrays visible),
+ * then mixed (harder). The scene's ladder is now the SKILL's own dataLevels —
+ * mult-facts-2-10 (band 3) carries [2,3,4,5,7,9,10] and mult-fluency-6-9
+ * (band 6) carries [6,7,8,9] — so a band-6 reteach starts at ×6, never ×2,
+ * and its top set never leaks ×10 outside the 6–9 scope. `max` is the skill's
+ * top table (last dataLevels entry); mixed sets stay inside that range.
+ */
+function tableSet(v: number, max: number): number[] {
+  if (v <= 5) return [v];                   // 2,3,4,5 — single table, dots
+  if (v <= 7) return [6, 7];                // 6,7 — mixed easy-medium bridge
+  return [8, 9, ...(max >= 10 ? [10] : [])]; // 8,9(+10) — mixed hard in-range
+}
 const BUTTON_RADIUS = 50;
 const ROUNDS_TO_FINISH = 3;
 const DOT_COLORS = [0xffd166, 0x4cc9f0, 0x2ec4b6, 0xff6b6b, 0x8ecae6, 0x90be6d, 0xffb35c, 0xc4b5fd, 0xf9844a, 0x06d6a0];
@@ -37,6 +41,7 @@ const DOT_COLORS = [0xffd166, 0x4cc9f0, 0x2ec4b6, 0xff6b6b, 0x8ecae6, 0x90be6d, 
  *   mastery-gate remediation) keeps the grid on so re-teaching is concrete.
  */
 export class TimesTableScene extends Phaser.Scene {
+  private levels = LEVELS;
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
@@ -61,8 +66,12 @@ export class TimesTableScene extends Phaser.Scene {
     super("TimesTable");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; teach?: boolean }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; teach?: boolean; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
+    // #1170 — the skill's own ladder (dataLevels, passed by App) drives which
+    // table range the scene drills. Fall back to the shared game ladder when a
+    // skill has no narrower range.
+    this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.teachMode = !!data.teach;
     this.dotsG = this.add.graphics();
@@ -114,8 +123,9 @@ export class TimesTableScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const idx = Math.min(this.levelIndex, TABLES.length - 1);
-    const set = TABLES[idx];
+    const idx = Math.min(this.levelIndex, this.levels.length - 1);
+    const levelVal = this.levels[idx];
+    const set = tableSet(levelVal, this.levels[this.levels.length - 1]);
     this.a = Phaser.Math.RND.pick(set);
     // keep products ≤ 100 (10×10 = 100) — the whole 2–10 table space
     this.b = Phaser.Math.Between(2, 10);
@@ -126,9 +136,11 @@ export class TimesTableScene extends Phaser.Scene {
     this.factText.setText(`${this.a} × ${this.b} = ?`);
     speakMath("mul", this.a, this.b);
     this.prevShowDots = this.showDots;
-    // Arrays → number mode: single-table levels keep the grid; the first mixed
-    // round bridges, then later mixed rounds go abstract. teach:true = concrete.
-    this.showDots = this.teachMode || set.length === 1 || this.levelIndex <= 4;
+    // Arrays → number mode: single-table levels keep the grid; only the TOP
+    // mixed round of the skill's own ladder goes abstract (teach:true stays
+    // concrete). Relative to ladder length so a band-6 fluency skill (4 rungs,
+    // dataLevels [6,7,8,9]) gets its own abstract top instead of never.
+    this.showDots = this.teachMode || set.length === 1 || this.levelIndex < this.levels.length - 1;
     this.drawDots();
     if (this.prevShowDots && !this.showDots) this.flipToast();
     this.spawnButtons();
@@ -220,7 +232,9 @@ export class TimesTableScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]);
+    // #1170 — report difficulty from the SKILL's own ladder (a band-6 ×9 drill
+    // reports 9, and a band-3 ×2 reports 2), not the shared game ladder.
+    this.onRoundDone?.(true, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

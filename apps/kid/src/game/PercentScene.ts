@@ -20,6 +20,7 @@ const ROUNDS_TO_FINISH = 3;
  * Level = the percentage (10 → 20 → 25 → 50 → 100).
  */
 export class PercentScene extends Phaser.Scene {
+  private levels = LEVELS;
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
@@ -39,8 +40,11 @@ export class PercentScene extends Phaser.Scene {
     super("Percent");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
+    // #1170 — per-skill ladder: percent-intro (band 5) → [10,20,25,50,100,150],
+    // percent-of-number (band 7) → [25,50,100,150] (no trivial 10%).
+    this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.background = this.add.graphics();
     this.drawBackground();
@@ -80,7 +84,7 @@ export class PercentScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    this.percent = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    this.percent = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     // pick a total that divides cleanly for the percent
     const denominators: Record<number, number[]> = { 10: [10, 20, 30, 40], 20: [5, 10, 15, 20], 25: [4, 8, 12, 16], 50: [2, 4, 6, 8, 10], 100: [3, 5, 7, 9] };
     const opts = denominators[this.percent] ?? [2, 4, 6, 8];

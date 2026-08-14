@@ -5,7 +5,7 @@
  *
  * i18n seam: locale-sensitive labels (badges/achievements/ranks/tour) keep
  * { en, bn } pairs here; the Strings/STR table lives in ../i18n.ts. */
-import { BANDS, SKILLS, GAME_SCENES, getGame, getFamily, nextDifficulty, moni, DEFAULT_MONI_PARAMS, type Band, type ErrorKind, type Skill } from "@numberverse/core";
+import { BANDS, SKILLS, GAME_SCENES, getGame, getSkill, getFamily, nextDifficulty, moni, DEFAULT_MONI_PARAMS, type Band, type ErrorKind, type Skill } from "@numberverse/core";
 import { useKidStore, NOVA_SPECIES, type RoundResult, type MistakeState } from "../store";
 import { bnNum, BN_MONTHS, type Lang, type Strings } from "../i18n";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "../game/ui";
@@ -859,11 +859,16 @@ export function moniLevelIndex(kidId: string, skillId: string, gameId: string): 
   if (!plan || plan.focusSkillId !== skillId) return -1;
   const game = getGame(gameId);
   if (!game || game.difficultyLevels.length === 0) return -1;
-  // Map Moni's 1–5 tier onto the game's ascending levels (tier 3 of 5 → the
-  // middle level). Clamp so it can never leave the game's range.
+  // #1170 — map Moni's 1–5 tier onto the SKILL's own ladder length when the
+  // skill carries dataLevels (a band-6 skill's ladder is shorter/narrower than
+  // the shared game ladder — the tier must clamp inside ITS range, not the
+  // band-3 partner's). Fall back to the game ladder when no narrower range.
+  const ladder = getSkill(skillId)?.dataLevels ?? game.difficultyLevels;
+  // Map Moni's 1–5 tier onto the ladder's ascending levels (tier 3 of 5 → the
+  // middle level). Clamp so it can never leave the skill's range.
   const t = Math.min(1, Math.max(0, (plan.difficulty - 1) / 4));
-  const idx = Math.round(t * (game.difficultyLevels.length - 1));
-  return Math.min(Math.max(idx, 0), game.difficultyLevels.length - 1);
+  const idx = Math.round(t * (ladder.length - 1));
+  return Math.min(Math.max(idx, 0), ladder.length - 1);
 }
 
 /** 🧠 MONI-guided session — Moni's focus skill leads the pool when it has an
@@ -908,9 +913,13 @@ export function adaptiveLevelIndex(kidId: string, skillId: string, gameId: strin
   if (moniIdx >= 0) return moniIdx;
   const game = getGame(gameId);
   if (!game) return 0;
+  // #1170 — band-pair skills carry their OWN ladder (dataLevels); the adaptive
+  // ramp must be computed against THAT ladder, not the shared game ladder, or
+  // a band-6 skill would start at a level that belongs to the band-3 partner.
+  const ladder = getSkill(skillId)?.dataLevels ?? game.difficultyLevels;
   const state = useKidStore.getState().skillFor(kidId, skillId);
-  const target = nextDifficulty(state, game.difficultyLevels, game.targetSuccess);
-  const idx = game.difficultyLevels.indexOf(target);
+  const target = nextDifficulty(state, ladder, game.targetSuccess);
+  const idx = ladder.indexOf(target);
   return idx < 0 ? 0 : idx;
 }
 
