@@ -46,7 +46,7 @@ import {
   worldUnlocked, totalMastered, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
-  MASTERY_THRESHOLD, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
+  MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
   BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, WORLD_LANDS, FOCUS_SUBJECT_LABELS, SEASON_EMOJI, SEASON_PARTICLES,
   DONE_CONFETTI, filterMaxBand, filterFocusSubject, filterFocusBand, SUBJECT_CARD,
@@ -1307,7 +1307,7 @@ export default function App() {
     if (!kid || !certWorld) return;
     try {
       const cSkills = filterSkills.filter(
-        (sk) => sk.band === certWorld.id && sk.game && (skillsMap[`${kid.id}:${sk.id}`]?.pMastered ?? 0) >= MASTERY_THRESHOLD
+        (sk) => sk.band === certWorld.id && sk.game && (skillsMap[`${kid.id}:${sk.id}`]?.pMastered ?? 0) >= masteryThresholdFor(sk.id)
       );
       const data: ShareCertData = {
         title: t.certTitle,
@@ -1661,10 +1661,16 @@ export default function App() {
     if (!step) return;
     let active = true;
     const reteach = step.reteach ?? 0;
+    // #1158/#1166 — older-kid challenge mode: a band 6-7 skill (skill.challenge)
+    // reuses a lower-band scene but runs INDEPENDENT — no forced re-demo, no
+    // drop-to-easiest reteach (a 13-year-old re-learns ×6 at ×6, not ×2), and
+    // the scene gets challenge:true so it can enable its richer mechanics.
+    const challenge = !!getSkill(step.skillId)?.challenge;
     const startLevelIndex = reteach > 0
       // Mastery-gate remediation: drop to the EASIEST tier so the re-taught
-      // concept is re-learned simply (then it ramps back up on its own).
-      ? Math.min(adaptiveLevelIndex(kid.id, step.skillId, step.gameId), 1)
+      // concept is re-learned simply (then it ramps back up on its own). In
+      // challenge mode the kid is trusted to stay at their current tier.
+      ? (challenge ? adaptiveLevelIndex(kid.id, step.skillId, step.gameId) : Math.min(adaptiveLevelIndex(kid.id, step.skillId, step.gameId), 1))
       : adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
     setCurrentKidName(kid.name);
     // Arm the wrong-answer ledger so hintWrong() records THIS kid+skill on every
@@ -1683,11 +1689,14 @@ export default function App() {
       game.scene.start(step.scene, {
         startLevelIndex,
         mode: step.mode,
+        challenge,
         // #20 — scenes that vary content per skill (BgsFacts heritage) read it.
         skill: step.skillId,
         // Remediation re-runs the narrated concept demo (FruitAdd) so the wrong
         // skill is TAUGHT again, differently, before fresh easy drills.
-        teach: step.teach || reteach > 0,
+        // Challenge mode skips the re-demo — the older kid doesn't need the
+        // hand-holding re-teach, they need to solve it at their own level.
+        teach: step.teach || (!challenge && reteach > 0),
         kidName: kid.name,
         // Per-skill difficulty ladder (#1170). When a band-pair reuses one
         // game-id (mult-facts-2-10 + mult-fluency-6-9 both run TimesTable),
@@ -1719,7 +1728,7 @@ export default function App() {
           // TYPE rotates per day (play rounds / earn stars / master a skill /
           // try a new game). Progress counts only when this round matches it.
           const st = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
-          const mastered = !!(st && st.pMastered >= MASTERY_THRESHOLD);
+          const mastered = !!(st && st.pMastered >= masteryThresholdFor(step.skillId));
           const questDone = novaQuestProgress(kid.id, { correct, mastered, freshSkill });
           if (questDone) {
             // THE moment the quest finishes — cheer once, aloud, in the app's
@@ -2195,7 +2204,7 @@ export default function App() {
                       const { title, desc } = L(s);
                       const ms = kid ? skillsMap[`${kid.id}:${s.id}`] : undefined;
                       const pct = ms ? Math.round(ms.pMastered * 100) : 0;
-                      const mastered = pct >= MASTERY_THRESHOLD * 100;
+                      const mastered = pct >= Math.round(masteryThresholdFor(s.id) * 100);
                       const tappable = !!kid && !!s.game;
                       return (
                         <button
@@ -3513,7 +3522,7 @@ export default function App() {
                         {filterSkills.filter((s) => s.game).map((skill) => {
                           const ms = skillsMap[`${activeKid.id}:${skill.id}`];
                           const pct = ms ? Math.round(ms.pMastered * 100) : 0;
-                          const mastered = pct >= MASTERY_THRESHOLD * 100;
+                          const mastered = pct >= Math.round(masteryThresholdFor(skill.id) * 100);
                           return (
                             <div key={skill.id} className="skill-row">
                               <span className="skill-emoji"><Icon name={skill.subject} size={30} /></span>
@@ -4156,7 +4165,7 @@ export default function App() {
               {bandSkills.map((skill, i) => {
                 const st = skillsMap[`${kid.id}:${skill.id}`];
                 const pct = st ? Math.round(st.pMastered * 100) : 0;
-                const mastered = pct >= MASTERY_THRESHOLD * 100;
+                const mastered = pct >= Math.round(masteryThresholdFor(skill.id) * 100);
                 const isNext = nextSkill?.id === skill.id;
                 const side = i % 2 === 0 ? "left" : "right";
                 const title = lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
@@ -4204,7 +4213,7 @@ export default function App() {
     })();
     // skills that crossed the mastery bar DURING this session → a special cheer
     const newMastered = sessionRef.current.filter(
-      (s) => !masteredBeforeRef.current.has(s.skillId) && (skillsMap[`${kid.id}:${s.skillId}`]?.pMastered ?? 0) >= MASTERY_THRESHOLD
+      (s) => !masteredBeforeRef.current.has(s.skillId) && (skillsMap[`${kid.id}:${s.skillId}`]?.pMastered ?? 0) >= masteryThresholdFor(s.skillId)
     ).length;
     // 🧠 MONI soft session hint — a measured attention dip or a sensible default.
     // Soft by design: the keep-going / play-again / home buttons stay available.
@@ -4622,7 +4631,7 @@ export default function App() {
   /* Printable certificate — a real keepsake the family can print or save as
      PDF. Only complete worlds can be celebrated this way. */
   if (screen === "cert" && kid && certWorld) {
-    const cSkills = filterSkills.filter((sk) => sk.band === certWorld.id && sk.game && (skillsMap[`${kid.id}:${sk.id}`]?.pMastered ?? 0) >= MASTERY_THRESHOLD);
+    const cSkills = filterSkills.filter((sk) => sk.band === certWorld.id && sk.game && (skillsMap[`${kid.id}:${sk.id}`]?.pMastered ?? 0) >= masteryThresholdFor(sk.id));
     return (
       <div className="cert-screen" role="document" aria-label={t.certTitle}>
         <div className="cert-toolbar no-print">

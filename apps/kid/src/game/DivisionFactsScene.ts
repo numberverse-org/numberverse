@@ -14,6 +14,8 @@ import { answerRow } from "./layout";
 const LEVELS = GAMES.find((g) => g.id === "game-division")?.difficultyLevels ?? [2, 3, 4, 6, 8, 12];
 const BUTTON_RADIUS = 50;
 const ROUNDS_TO_FINISH = 3;
+const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
+const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
 
 /**
  * Division Facts — "divide to cross the castle bridge".
@@ -31,6 +33,10 @@ export class DivisionFactsScene extends Phaser.Scene {
   private dividend = 0;
   private divisor = 2;
   private answer = 0;
+  private challenge = false; // #1158 — divide-within-100 (band 6) runs timed, no reveal
+  private challengeDone = false;
+  private challengeTimer?: Phaser.Time.TimerEvent;
+  private challengeBar?: Phaser.GameObjects.Rectangle;
   private buttons: { sprite: Phaser.GameObjects.Container; value: number }[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
@@ -44,10 +50,16 @@ export class DivisionFactsScene extends Phaser.Scene {
     super("DivisionFacts");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[]; challenge?: boolean }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
     if (data.levels?.length) this.levels = data.levels;
+    // #1158 — challenge mode: divide-within-100 (band 6) gets a per-round
+    // countdown and no hint/reveal on wrong; division-facts (band 4) stays warm.
+    this.challenge = !!data.challenge;
+    if (this.challenge) {
+      this.challengeBar = this.add.rectangle(0, 122, 0, 6, CHALLENGE_BAR).setOrigin(0, 0.5).setAlpha(0);
+    }
     this.background = this.add.graphics();
     this.drawBackground();
     this.titleText = this.add
@@ -97,6 +109,47 @@ export class DivisionFactsScene extends Phaser.Scene {
     this.factText.setText(`${this.dividend} ÷ ${this.divisor} = ?`);
     speakMath("div", this.dividend, this.divisor);
     this.spawnButtons();
+    this.armChallenge();
+  }
+
+  /** #1158 — challenge-mode countdown: gold bar drains over CHALLENGE_SECONDS;
+   *  time-up records a WRONG round (streak breaks, no coin, block does NOT
+   *  advance) and deals the next round. No re-teach, no reveal. */
+  private armChallenge() {
+    if (!this.challenge) return;
+    if (this.challengeTimer) this.challengeTimer.remove(false);
+    this.challengeDone = false;
+    const bar = this.challengeBar;
+    if (bar) {
+      this.tweens.killTweensOf(bar);
+      bar.setPosition(20, 122).setSize(Math.min(this.scale.width - 40, 320), 6).setScale(1, 1).setAlpha(1);
+      this.tweens.add({ targets: bar, scaleX: 0, duration: CHALLENGE_SECONDS * 1000, ease: "Linear.easeNone" });
+    }
+    this.challengeTimer = this.time.delayedCall(CHALLENGE_SECONDS * 1000, () => {
+      if (this.challengeDone) return;
+      this.challengeDone = true;
+      // A time-up is a completed (failed) round: the App counts it toward the
+      // block (roundsDone), the meter reflects it, and a fresh round deals.
+      // No open-wrong is recorded (no tap) so a fully-timed-out block still
+      // advances the session — the wrong events make BKT drop the tier.
+      this.roundsDone++;
+      this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private disarmChallenge() {
+    if (this.challengeTimer) {
+      this.challengeTimer.remove(false);
+      this.challengeTimer = undefined;
+    }
+    if (this.challengeBar) {
+      this.tweens.killTweensOf(this.challengeBar);
+      this.challengeBar.setAlpha(0);
+    }
   }
 
   private spawnButtons() {
@@ -123,9 +176,12 @@ export class DivisionFactsScene extends Phaser.Scene {
         hintBn: () => `${this.divisor} দিয়ে ${this.dividend} কে কতবার ভাগ করা যায়?`,
         correct: () => this.answer,
         options: () => this.buttons,
+        challenge: this.challenge, // #1158 — no banner/reveal; solve it yourself
       });
       return;
     }
+    this.challengeDone = true; // the round is solved — stop the countdown
+    this.disarmChallenge();
     pop();
     correctButton(container);
     this.buttons.forEach((b) => b.sprite.disableInteractive());

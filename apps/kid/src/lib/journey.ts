@@ -14,6 +14,16 @@ import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "../game/ui";
 export const SESSION_LEN = 6;
 /** A skill is "mastered" at this BKT P(mastered). Mirrors core masteryThreshold. */
 export const MASTERY_THRESHOLD = 0.8;
+/** Challenge-mode (#1158 #1166) older-kid skills need a HIGHER bar — a band-6/7
+ *  skill isn't "done" the moment it crosses the same 0.8 a 6-year-old hits; the
+ *  older learner proves fluency (0.92) before the map counts it mastered. */
+export const CHALLENGE_MASTERY_THRESHOLD = 0.92;
+/** The mastery bar a given skill must cross: challenge skills require more
+ *  proof, everything else uses the standard 0.8. Pure fn of the skill catalog —
+ *  no skill id→threshold map to keep in sync (a new challenge skill is data). */
+export function masteryThresholdFor(skillId: string): number {
+  return getSkill(skillId)?.challenge ? CHALLENGE_MASTERY_THRESHOLD : MASTERY_THRESHOLD;
+}
 /** Next world unlocks when ≥80% of the previous world's skills are mastered. */
 export const UNLOCK_THRESHOLD = 0.8;
 
@@ -354,7 +364,7 @@ export function masteredSkillIds(map: SkillMap, kidId: string): Set<string> {
   for (const key of Object.keys(map)) {
     const sep = key.indexOf(":");
     if (sep < 0 || key.slice(0, sep) !== kidId) continue;
-    if (map[key].pMastered >= MASTERY_THRESHOLD) set.add(key.slice(sep + 1));
+    if (map[key].pMastered >= masteryThresholdFor(key.slice(sep + 1))) set.add(key.slice(sep + 1));
   }
   return set;
 }
@@ -528,7 +538,7 @@ export const FOCUS_SUBJECT_LABELS: Record<string, { en: string; bn: string }> = 
 
 export function skillMastered(skills: SkillMap, kidId: string, skillId: string): boolean {
   const st = skills[`${kidId}:${skillId}`];
-  return !!st && st.pMastered >= MASTERY_THRESHOLD;
+  return !!st && st.pMastered >= masteryThresholdFor(skillId);
 }
 
 /** Skills a kid is currently struggling with: open (unresolved) wrongs right now,
@@ -724,7 +734,7 @@ export function worldCards(skills: SkillMap, kidId: string, band: number): CardS
     .filter((s) => s.band === band)
     .map((skill) => {
       const st = skills[`${kidId}:${skill.id}`];
-      const mastered = !!st && st.pMastered >= MASTERY_THRESHOLD;
+      const mastered = !!st && st.pMastered >= masteryThresholdFor(skill.id);
       const attempts = st?.attempts ?? 0;
       return {
         skill,

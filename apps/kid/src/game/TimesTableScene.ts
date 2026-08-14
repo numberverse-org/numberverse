@@ -26,6 +26,8 @@ function tableSet(v: number, max: number): number[] {
 }
 const BUTTON_RADIUS = 50;
 const ROUNDS_TO_FINISH = 3;
+const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
+const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
 const DOT_COLORS = [0xffd166, 0x4cc9f0, 0x2ec4b6, 0xff6b6b, 0x8ecae6, 0x90be6d, 0xffb35c, 0xc4b5fd, 0xf9844a, 0x06d6a0];
 
 /**
@@ -46,6 +48,10 @@ export class TimesTableScene extends Phaser.Scene {
   private roundsDone = 0;
   private startedAt = 0;
   private teachMode = false;
+  private challenge = false; // #1158 — band 6-7 independent mode (timed rounds, no reveal)
+  private challengeDone = false;
+  private challengeTimer?: Phaser.Time.TimerEvent;
+  private challengeBar?: Phaser.GameObjects.Rectangle;
   private showDots = true;
   private prevShowDots = true;
   private a = 2;
@@ -66,7 +72,7 @@ export class TimesTableScene extends Phaser.Scene {
     super("TimesTable");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; teach?: boolean; levels?: number[] }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; teach?: boolean; levels?: number[]; challenge?: boolean }) {
     this.onRoundDone = data.onRoundDone;
     // #1170 — the skill's own ladder (dataLevels, passed by App) drives which
     // table range the scene drills. Fall back to the shared game ladder when a
@@ -74,6 +80,12 @@ export class TimesTableScene extends Phaser.Scene {
     this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.teachMode = !!data.teach;
+    // #1158 — challenge mode: band 6-7 skills (skill.challenge → App passes it)
+    // get a per-round countdown bar and no hint/reveal on wrong.
+    this.challenge = !!data.challenge;
+    if (this.challenge) {
+      this.challengeBar = this.add.rectangle(0, 122, 0, 6, CHALLENGE_BAR).setOrigin(0, 0.5).setAlpha(0);
+    }
     this.dotsG = this.add.graphics();
     gameBackground(this, "candy");
     this.titleText = this.add
@@ -144,6 +156,48 @@ export class TimesTableScene extends Phaser.Scene {
     this.drawDots();
     if (this.prevShowDots && !this.showDots) this.flipToast();
     this.spawnButtons();
+    this.armChallenge();
+  }
+
+  /** #1158 — challenge-mode countdown: a gold bar drains over CHALLENGE_SECONDS;
+   *  time-up records a WRONG round (streak breaks, no coin, block does NOT
+   *  advance) and deals the next round. No re-teach, no reveal — the older kid
+   *  races the clock, and the combo/coin economy feels the miss. */
+  private armChallenge() {
+    if (!this.challenge) return;
+    if (this.challengeTimer) this.challengeTimer.remove(false);
+    this.challengeDone = false;
+    const bar = this.challengeBar;
+    if (bar) {
+      this.tweens.killTweensOf(bar);
+      bar.setPosition(20, 122).setSize(Math.min(this.scale.width - 40, 320), 6).setScale(1, 1).setAlpha(1);
+      this.tweens.add({ targets: bar, scaleX: 0, duration: CHALLENGE_SECONDS * 1000, ease: "Linear.easeNone" });
+    }
+    this.challengeTimer = this.time.delayedCall(CHALLENGE_SECONDS * 1000, () => {
+      if (this.challengeDone) return;
+      this.challengeDone = true;
+      // A time-up is a completed (failed) round: the App counts it toward the
+      // block (roundsDone), the meter reflects it, and a fresh round deals.
+      // No open-wrong is recorded (no tap) so a fully-timed-out block still
+      // advances the session — the wrong events make BKT drop the tier.
+      this.roundsDone++;
+      this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private disarmChallenge() {
+    if (this.challengeTimer) {
+      this.challengeTimer.remove(false);
+      this.challengeTimer = undefined;
+    }
+    if (this.challengeBar) {
+      this.tweens.killTweensOf(this.challengeBar);
+      this.challengeBar.setAlpha(0);
+    }
   }
 
   /** Draw the concrete a×b dot grid (rows = a, cols = b; each row one color). */
@@ -221,9 +275,12 @@ export class TimesTableScene extends Phaser.Scene {
           : `ভাবো — ${this.a} গুণ ${this.b} মানে ${this.b} বার ${this.a} যোগ`,
         correct: () => this.answer,
         options: () => this.buttons,
+        challenge: this.challenge, // #1158 — no banner/reveal; solve it yourself
       });
       return;
     }
+    this.challengeDone = true; // the round is solved — stop the countdown
+    this.disarmChallenge();
     pop();
     correctButton(container);
     this.buttons.forEach((b) => b.sprite.disableInteractive());

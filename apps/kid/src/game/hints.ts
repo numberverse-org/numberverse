@@ -57,6 +57,15 @@ export interface HintCtx {
    * and miss #2 never clears away choices.
    */
   keepOnWrong?: boolean;
+  /**
+   * CHALLENGE MODE (#1158): older-kid scenes (band 6-7) suppress the coaching
+   * ladder entirely — wrong taps still shake + retire the button and land in
+   * the wrong-ledger (resolve-to-complete still blocks until solved), but there
+   * is NO banner, NO half-fade of the remaining choices, and NO reveal. The
+   * kid feels the miss (combo resets, time keeps running) and must solve it
+   * themselves. The scene opts in per wrong-tap.
+   */
+  challenge?: boolean;
 }
 
 /**
@@ -114,6 +123,14 @@ export function hintWrong(
   // miss #1: keep it warm and small
   if (n === 1) {
     wrongTap(scene, container);
+    return;
+  }
+
+  // #1158 — challenge mode: the coaching ladder is OFF. Wrong buttons are still
+  // retired above and the miss is in the ledger, but no banner, no fade, no
+  // reveal — the older kid solves it themselves under pressure.
+  if (ctx.challenge) {
+    wrongTap(scene, container, { tip: false });
     return;
   }
 

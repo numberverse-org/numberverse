@@ -58,6 +58,14 @@ export interface Skill {
    *  band-6 skill reteaches ITS OWN floor (e.g. ×6, not ×2). A new band-pair
    *  range is a data entry, not a scene branch. */
   dataLevels?: number[];
+  /** Older-kid challenge mode (#1158 #1166). Band 6-7 skills that reuse a
+   *  lower-band scene flag this: the app runs them in "independent mode" — no
+   *  forced re-demo on reteach, reteach stays at the current tier (never drops
+   *  to the easiest), a HIGHER mastery threshold (0.92 vs 0.8), and the scene
+   *  gets `challenge: true` so it enables richer mechanics (timed rounds, no
+   *  hint/reveal on a wrong tap). A 13-year-old drilling ×6-9 gets pressure +
+   *  autonomy, not a grade-2 re-teach. A new older-band skill is a data entry. */
+  challenge?: boolean;
 }
 
 /** Per-skill mastery state for one kid (mirrors skill_mastery row). */
