@@ -93,11 +93,14 @@ function readLS(key: string): string | null {
 const AVATARS = AVATAR_KEYS;
 
 /** #1178/#1186 — shared Suspense fallback while a lazy screen chunk resolves
- *  (SW-precached → a fast flash). Same spinner as the engine-boot overlay. */
+ *  (SW-precached → a fast flash). Same spinner as the engine-boot overlay.
+ *  #346 — kid-friendly copy + an accessible label (no bare blank spinner). */
 function ScreenFallback() {
+  const bn = (localStorage.getItem("nv_lang") || "en") === "bn";
   return (
-    <div className="screen-suspense" role="status">
+    <div className="screen-suspense" role="status" aria-label={STR[bn ? "bn" : "en"].loadingGame}>
       <span className="game-boot-spinner" aria-hidden="true" />
+      <span className="screen-suspense-txt">{STR[bn ? "bn" : "en"].loadingGame}</span>
     </div>
   );
 }
@@ -4911,8 +4914,9 @@ export default function App() {
           </div>
         )}
         {gameBoot !== "ready" && gameBoot !== "error" && (
-          <div className="game-boot-loading" role="status" aria-label={lang === "bn" ? "খেলা লোড হচ্ছে…" : "Loading game…"}>
+          <div className="game-boot-loading" role="status" aria-label={t.loadingGame}>
             <span className="game-boot-spinner" aria-hidden="true" />
+            <span className="screen-suspense-txt">{t.loadingGame}</span>
           </div>
         )}
         {/* #292 — Nova reaction pack v2: a floating Nova face bubble for win

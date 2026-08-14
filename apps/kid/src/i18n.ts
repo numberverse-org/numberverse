@@ -761,6 +761,8 @@ export interface Strings {
   island3dBtn: string;
   islandTitle: string;
   islandLoading: string;
+  /* #346 — friendly loading copy for the engine/lazy-screen spinners */
+  loadingGame: string;
   islandBeta: string;
   islandHint: string;
   islandNoWebgl: string;
@@ -1487,6 +1489,7 @@ export const STR: Record<Lang, Strings> = {
     island3dBtn: "✨ 3D Island",
     islandTitle: "🦉 Nova's 3D Island",
     islandLoading: "Building the island…",
+    loadingGame: "Loading game…",
     islandBeta: "New · beta",
     islandHint: "Drag to look around · pinch to zoom",
     islandNoWebgl: "3D isn't supported on this device — back to 2D Nova!",
@@ -2208,6 +2211,7 @@ export const STR: Record<Lang, Strings> = {
     island3dBtn: "✨ ৩ডি দ্বীপ",
     islandTitle: "🦉 নোভার ৩ডি দ্বীপ",
     islandLoading: "দ্বীপ তৈরি হচ্ছে…",
+    loadingGame: "খেলা লোড হচ্ছে…",
     islandBeta: "নতুন · বিটা",
     islandHint: "ঘুরাতে টেনে ধরো · জুম করতে চিমটি",
     islandNoWebgl: "এই ডিভাইসে ৩ডি নেই — ২ডি নোভায় ফিরে গেছি!",

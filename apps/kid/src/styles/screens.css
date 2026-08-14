@@ -6162,8 +6162,10 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   background: linear-gradient(180deg, #d9f1ff 0%, #a8d8f0 100%);
   z-index: 5;
 }
@@ -6200,10 +6202,18 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   background: var(--nv-bg, #d9f1ff);
   z-index: 40;
+}
+/* #346 — friendly copy under the spinners (never a bare blank loading state) */
+.screen-suspense-txt {
+  color: #0b2545;
+  font-weight: 700;
+  font-size: 1.05rem;
 }
 
 /* ── #1338/#1345 — parent print sheets (worksheet + flashcard QR deck) ─────
