@@ -71,10 +71,10 @@ const AddKidForm = lazy(() => import("./components/AddKidForm"));
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.42.13 (post-mastery challenge replay: mastered expert skills get top-rung timed replay + sharp-streak reward (#1129-#1137))";
+const APP_BUILD = "14 Aug 2026 · 0.43.0 (deferred print cluster: parent-panel practice worksheet generator + printable flashcard QR deck (offline print-to-PDF))";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.42.13";
+const APP_VERSION = "0.43.0";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar" | "worksheet" | "flashcards";
 /** Rounds per skill before advancing to the next skill in a world.

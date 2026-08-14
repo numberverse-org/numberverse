@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.43.0 (deferred print cluster: parent-panel practice worksheet generator + printable flashcard QR deck (offline print-to-PDF))
+
+448358b 🖨️ deferred print cluster: worksheet generator #1338 + flashcard QR deck #1345
+
 ## 14 Aug 2026 — 0.42.13 (post-mastery challenge replay: mastered expert skills get top-rung timed replay + sharp-streak reward (#1129-#1137))
 
 e2002f9 🎯 post-mastery challenge replay #1129-#1137: mastered expert skills re-enter at top rung with timed no-hint flag + escalating sharp-streak reward
