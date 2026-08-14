@@ -17,6 +17,14 @@ const CFG: TapChoiceConfig = {
   greatKey: "seGreat",
   doneKey: "seDone",
   speakKey: "seSpeak",
+  // #1245 — each sense gets a spoken item→sense link at round start.
+  linkKeys: {
+    see: "seLinkSee",
+    hear: "seLinkHear",
+    smell: "seLinkSmell",
+    taste: "seLinkTaste",
+    touch: "seLinkTouch",
+  },
   background: "floral",
   rounds: 3,
   cols: 5,

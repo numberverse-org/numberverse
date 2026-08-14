@@ -47,6 +47,8 @@ export class ShadowGuessScene extends Phaser.Scene {
   private tallyText!: Phaser.GameObjects.Text;
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private geom = { w: 0, groundY: 0, objX: 0, objY: 0, light: {} as Record<Light, { x: number; y: number }>, spotX: {} as Record<Spot, number>, spotY: 0 };
+  /** Spoken once, on the very first question — teaches the shadow rule. */
+  private ruleHinted = false;
   private lightG!: Phaser.GameObjects.Graphics;
   private beamG!: Phaser.GameObjects.Graphics;
   private groundG!: Phaser.GameObjects.Graphics;
@@ -136,6 +138,28 @@ export class ShadowGuessScene extends Phaser.Scene {
     this.lightG.fillCircle(p.x, p.y, 44);
     this.lightEmoji.setText(LIGHT_EMOJI[this.light]);
     this.lightEmoji.setPosition(p.x, p.y);
+    // #1241 — explicit light RAYS fanning toward the object so the direction
+    // of travel is visible BEFORE the child predicts (light → object →
+    // shadow on the far side). The old bare emoji circles read as a sunset,
+    // not a light SOURCE.
+    this.drawLightRays(p);
+  }
+
+  /** A fan of rays from the light source toward the object + ground. */
+  private drawLightRays(p: { x: number; y: number }) {
+    const o = this.geom;
+    const dx = o.objX - p.x;
+    const dy = o.objY - p.y;
+    const base = Math.atan2(dy, dx);
+    const len = Math.hypot(dx, dy) * 0.62 + 22;
+    this.lightG.lineStyle(3, 0xfff3c4, 0.55);
+    for (let i = -2; i <= 2; i++) {
+      const a = base + i * 0.16;
+      this.lightG.beginPath();
+      this.lightG.moveTo(p.x + Math.cos(a) * 20, p.y + Math.sin(a) * 20);
+      this.lightG.lineTo(p.x + Math.cos(a) * len, p.y + Math.sin(a) * len);
+      this.lightG.strokePath();
+    }
   }
 
   private startRound() {
@@ -163,6 +187,16 @@ export class ShadowGuessScene extends Phaser.Scene {
       getAppLang() === "bn" ? "ছায়া কোথায় পড়বে?" : "Where will the shadow be?",
       { lang: getAppLang() === "bn" ? "bn" : "en" }
     );
+    // #1241 — one-time rule cue after the first question, so the child learns
+    // "shadow falls AWAY from the light" before predicting. Skipped if they
+    // already answered (locked).
+    if (!this.ruleHinted) {
+      this.ruleHinted = true;
+      this.time.delayedCall(2400, () => {
+        if (this.locked) return;
+        speak(t("lshRule"), { lang: getAppLang() === "bn" ? "bn" : "en", cancel: false });
+      });
+    }
     this.objEmoji.setText(this.object);
     this.positionScene();
     this.drawLight();

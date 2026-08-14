@@ -4,6 +4,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
+import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, BTN_CORRECT, BTN_RED, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -64,6 +65,8 @@ export class YesNoScene extends Phaser.Scene {
   private slowBtn!: Phaser.GameObjects.Container;
   private yesBtn!: Phaser.GameObjects.Container;
   private noBtn!: Phaser.GameObjects.Container;
+  /** Spoken one-time intro telling the child what the 🐢 button does (#1240). */
+  private turtleHinted = false;
 
   constructor() {
     super("YesNo");
@@ -87,7 +90,9 @@ export class YesNoScene extends Phaser.Scene {
       .text(0, 0, "", txt(24, NV_GOLD, { bold: true, wrap: 340 }))
       .setOrigin(0.5);
 
-    this.slowBtn = modernCardButton(this, 0, 0, 100, 64, "🐢", BTN_NEUTRAL, 34);
+    // #1240 — a bare turtle is not obviously a "play it again" control; the
+    // 🔁 glyph turns it into a visible REPLAY button.
+    this.slowBtn = modernCardButton(this, 0, 0, 118, 64, "🐢🔁", BTN_NEUTRAL, 26);
     this.slowBtn.on("pointerdown", () => this.speakLine(0.7));
     this.yesBtn = modernCardButton(this, 0, 0, 150, 96, `✅ ${t("ynYes")}`, BTN_CORRECT, 30);
     this.yesBtn.on("pointerdown", () => this.answer(true));
@@ -125,6 +130,12 @@ export class YesNoScene extends Phaser.Scene {
     this.lineText.setText(item.s);
     this.qText.setText(item.q);
     this.speakLine(1);
+    // #1240 — one-time intro explaining the 🐢 replay button, QUEUED after the
+    // first question so it never interrupts it.
+    if (!this.turtleHinted) {
+      this.turtleHinted = true;
+      speak(t("ynTurtleHint"), { lang: getAppLang() === "bn" ? "bn" : "en", cancel: false });
+    }
   }
 
   private speakLine(rate: number) {

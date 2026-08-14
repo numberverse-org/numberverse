@@ -34,6 +34,10 @@ interface Bubble {
 export class CountPopScene extends Phaser.Scene {
   private bubbles: Bubble[] = [];
   private nextExpected = 1;
+  /** Gold pulsing halo around the bubble whose value === nextExpected, so the
+   *  "number to pop next" is anchored even as the bubbles drift (#1244). */
+  private halo!: Phaser.GameObjects.Container;
+  private haloTween?: Phaser.Tweens.Tween;
   private levelIndex = 0;
   private levels = LEVELS;
   private roundCount = 0;
@@ -128,6 +132,7 @@ export class CountPopScene extends Phaser.Scene {
       ? `এক থেকে ${bnNumber(this.roundTarget)} পর্যন্ত ক্রমানুসারে সংখ্যাগুলো ফুটাও`
       : `Pop the numbers in order, from one to ${this.roundTarget}`);
     this.spawnBubbles();
+    this.markExpected(); // #1244 — halo the first "next" bubble (value 1)
   }
 
   private spawnBubbles() {
@@ -194,6 +199,7 @@ export class CountPopScene extends Phaser.Scene {
       this.tweens.killTweensOf(s);
       this.bob(s);
     }
+    this.markExpected(); // re-anchor the halo to the (possibly clamped) bubble
   }
 
   private makeBubble(value: number, x: number, y: number) {
@@ -206,12 +212,46 @@ export class CountPopScene extends Phaser.Scene {
   private bob(c: Phaser.GameObjects.Container) {
     this.tweens.add({
       targets: c,
-      y: c.y + Phaser.Math.Between(-10, 10),
-      duration: Phaser.Math.Between(1400, 2400),
+      // #1244 — gentler drift (was ±10): wild bobbing hid which bubble to pop
+      // next. The halo now carries the "this one" signal instead of motion.
+      y: c.y + Phaser.Math.Between(-6, 6),
+      duration: Phaser.Math.Between(1600, 2600),
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut",
     });
+  }
+
+  /** Gold pulsing halo around the NEXT-EXPECTED bubble — re-anchored whenever
+   *  the expectation advances. The halo container is non-interactive, so taps
+   *  still pass through to the bubble below it. */
+  private markExpected() {
+    this.clearHalo();
+    const target = this.bubbles.find((b) => b.value === this.nextExpected);
+    if (!target) return;
+    const g = this.add.graphics();
+    g.fillStyle(0xffd166, 0.13);
+    g.fillCircle(0, 0, BUBBLE_RADIUS + 10);
+    g.lineStyle(3, 0xffd166, 0.85);
+    g.strokeCircle(0, 0, BUBBLE_RADIUS + 10);
+    this.halo = this.add.container(target.sprite.x, target.sprite.y, [g]);
+    this.haloTween = this.tweens.add({
+      targets: this.halo,
+      scale: 1.1,
+      alpha: 0.5,
+      duration: 620,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private clearHalo() {
+    if (this.haloTween) {
+      this.tweens.killTweensOf(this.halo);
+      this.haloTween = undefined;
+    }
+    this.halo?.destroy();
   }
 
   private pop(container: Phaser.GameObjects.Container, value: number) {
@@ -232,6 +272,7 @@ export class CountPopScene extends Phaser.Scene {
     speak(getAppLang() === "bn" ? bnNumber(value) : String(value), { cancel: false });
     this.roundCount++;
     this.meter.set(this.roundCount, this.roundTarget);
+    this.markExpected(); // #1244 — move the halo to the new "next" number
     const [bx, by] = [container.x, container.y];
     this.bubbles = this.bubbles.filter((b) => b.sprite !== container);
     container.disableInteractive();

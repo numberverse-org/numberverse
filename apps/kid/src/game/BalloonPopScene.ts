@@ -42,6 +42,9 @@ export class BalloonPopScene extends Phaser.Scene {
   private a = 1;
   private b = 1;
   private balloons: Balloon[] = [];
+  /** Balloons stay STILL for this long after a new question so the child can
+   *  read "a + b = ?" before the answers start drifting (#1242). */
+  private frozenUntil = 0;
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
   private prompt!: QuestionPanelApi;
@@ -98,6 +101,7 @@ export class BalloonPopScene extends Phaser.Scene {
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.prompt.set(`${this.a} + ${this.b} = ?`);
     speakMath("add", this.a, this.b);
+    this.frozenUntil = this.time.now + 1500; // #1242 — read the sum first
     this.spawnBalloons(sum);
   }
 
@@ -126,6 +130,17 @@ export class BalloonPopScene extends Phaser.Scene {
   }
 
   private bob(b: Balloon) {
+    // #1242 — while the fresh question is on screen, keep the balloon at rest
+    // and schedule the drift to begin AFTER the freeze window.
+    const wait = this.frozenUntil - this.time.now;
+    if (wait > 0) {
+      b.sprite.setPosition(b.baseX, b.baseY);
+      b.sprite.setAngle(0);
+      this.time.delayedCall(wait, () => {
+        if (b.sprite.active) this.bob(b);
+      });
+      return;
+    }
     this.tweens.add({
       targets: b.sprite,
       y: b.baseY + Phaser.Math.Between(-16, 16),

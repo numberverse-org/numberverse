@@ -74,6 +74,9 @@ export class ShapePartsScene extends Phaser.Scene {
   private shapeGfx!: Phaser.GameObjects.Graphics;
   private highlightGfx!: Phaser.GameObjects.Graphics;
   private hitArea!: Phaser.GameObjects.Arc;
+  /** Gold breathing halo behind the shape — signals "tap me to count" (#1236). */
+  private pulse!: Phaser.GameObjects.Container;
+  private pulseTween?: Phaser.Tweens.Tween;
   private options: Phaser.GameObjects.Container[] = [];
   private optionValues: number[] = [];
 
@@ -159,6 +162,16 @@ export class ShapePartsScene extends Phaser.Scene {
     this.tallyText.setText(t("spCount"));
     this.drawShape();
     this.buildOptions();
+    // #1237 — SPEAK the question WITH the shape name so a pre-reader hears what
+    // they are counting (the on-screen text alone is not enough).
+    const shapeName = t(this.shape.nameKey);
+    speak(
+      this.mode === "sides" ? t("spSidesSpeak", { name: shapeName }) : t("spCornersSpeak", { name: shapeName }),
+      { lang: getAppLang() === "bn" ? "bn" : "en" }
+    );
+    // #1236 — a breathing halo makes the shape look TAP-ABLE; it stops the
+    // moment the child engages.
+    this.startPulse();
   }
 
   private drawShape() {
@@ -202,8 +215,39 @@ export class ShapePartsScene extends Phaser.Scene {
     this.hitArea.on("pointerdown", () => this.countTap());
   }
 
+  /** Gold breathing halo behind the shape — the "tap me to count" affordance.
+   *  Drawn at (0,0) inside a container so the scale tween stays centred. */
+  private startPulse() {
+    this.stopPulse();
+    const r = this.shapeRadius;
+    const g = this.add.graphics();
+    g.fillStyle(0xffd166, 0.13);
+    g.fillCircle(0, 0, r + 20);
+    g.lineStyle(4, 0xffd166, 0.9);
+    g.strokeCircle(0, 0, r + 20);
+    this.pulse = this.add.container(this.shapeCenter.x, this.shapeCenter.y, [g]);
+    this.pulseTween = this.tweens.add({
+      targets: this.pulse,
+      alpha: 0.4,
+      scale: 1.12,
+      duration: 640,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private stopPulse() {
+    if (this.pulseTween) {
+      this.tweens.killTweensOf(this.pulse);
+      this.pulseTween = undefined;
+    }
+    this.pulse?.destroy();
+  }
+
   private countTap() {
     if (this.locked) return;
+    this.stopPulse(); // the child engaged — no need for the affordance any more
     if (this.shape.key === "circle") {
       // whole outline glows once — there is nothing to count
       this.highlightGfx.clear();

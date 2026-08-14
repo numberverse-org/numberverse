@@ -42,6 +42,10 @@ export interface TapChoiceConfig {
   doneKey: string;
   /** Spoken on correct — the choice label interpolates as {choice}. */
   speakKey: string;
+  /** Optional spoken item→answer LINK spoken at round start (the choice value
+   *  maps to a key like "you SEE a {name} — tap the eye"). More concrete than
+   *  the generic prompt for pre-readers; falls back to promptKey when absent. */
+  linkKeys?: Record<string, string>;
   background: string;
   choices: TapChoice[];
   items: TapItem[];
@@ -65,6 +69,9 @@ export abstract class TapChoiceScene extends Phaser.Scene {
   private wrongThis = false;
   private busy = false;
   private cards: { c: Phaser.GameObjects.Container; choice: TapChoice }[] = [];
+  /** Soft bubble behind the item emoji so it reads as "the thing" — visually
+   *  distinct from the flat rectangular choice cards below (#1238). */
+  private itemBubble!: Phaser.GameObjects.Graphics;
   private itemEmoji!: Phaser.GameObjects.Text;
   private itemName!: Phaser.GameObjects.Text;
   private titleText!: Phaser.GameObjects.Text;
@@ -95,6 +102,8 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     this.meter = roundMeter(this);
     this.prompt = this.add.text(0, 0, "", txt(26, "#ffffff", { bold: true, outline: true, wrap: 340 })).setOrigin(0.5);
     this.tallyText = this.add.text(0, 0, "", txt(20, "#ffffff", { bold: true, outline: true })).setOrigin(0.5);
+    // bubble first so it renders BEHIND the emoji (creation order = draw order)
+    this.itemBubble = this.add.graphics();
     this.itemEmoji = this.add.text(0, 0, "✨", txt(84, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
     this.itemName = this.add.text(0, 0, "", txt(24, "#ffffff", { bold: true, outline: true, shadow: false })).setOrigin(0.5);
 
@@ -114,6 +123,13 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     this.prompt.setWordWrapWidth(Math.max(200, width - 60));
     this.itemEmoji.setPosition(width / 2, height * 0.34);
     this.itemName.setPosition(width / 2, height * 0.34 + 62);
+    // soft pill bubble containing the item — round + tinted, unlike the flat
+    // rectangular choice cards, so the "thing to match" is unmistakable
+    this.itemBubble.clear();
+    this.itemBubble.fillStyle(0xffffff, 0.1);
+    this.itemBubble.fillRoundedRect(width / 2 - 72, height * 0.34 - 56, 144, 116, 28);
+    this.itemBubble.lineStyle(3, 0xffffff, 0.45);
+    this.itemBubble.strokeRoundedRect(width / 2 - 72, height * 0.34 - 56, 144, 116, 28);
 
     const gap = 14;
     const cols = cfg.cols;
@@ -196,7 +212,11 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     this.itemName.setText(t(cfg.nameKeys[it.id]));
     const name = t(cfg.nameKeys[it.id]);
     this.prompt.setText(t(cfg.promptKey, { name }));
-    speak(t(cfg.promptKey, { name }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    // #1245 — narrate the ITEM → SENSE link aloud ("A rainbow — you see it with
+    // your eyes! Tap the eye") so a pre-reader hears WHY each choice matches.
+    // Scenes without linkKeys fall back to the generic prompt speech.
+    const linkKey = cfg.linkKeys?.[it.value] ?? cfg.promptKey;
+    speak(t(linkKey, { name }), { lang: getAppLang() === "bn" ? "bn" : "en" });
   }
 
   private tap(ch: TapChoice) {

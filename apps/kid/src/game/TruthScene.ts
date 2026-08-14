@@ -138,7 +138,14 @@ export class TruthScene extends Phaser.Scene {
     const not = this.notBtn.getData("nv-btn") as { setLabel: (s: string) => void } | undefined;
     good?.setLabel(t(GOOD_KEY(this.scenario.id)));
     not?.setLabel(t(NOT_KEY(this.scenario.id)));
-    speak(t(SIT_KEY(this.scenario.id)), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    const lang = getAppLang() === "bn" ? "bn" : "en";
+    speak(t(SIT_KEY(this.scenario.id)), { lang });
+    // #1239 — narrate BOTH response options after the scenario so a pre-reader
+    // hears the two choices (not just sees the sentence labels). cancel:false
+    // QUEUES them: scenario → honest option → other option. If the child taps
+    // early, the reward speech (cancel:true) takes over naturally.
+    speak(t(GOOD_KEY(this.scenario.id)), { lang, cancel: false });
+    speak(t(NOT_KEY(this.scenario.id)), { lang, cancel: false });
   }
 
   private answer(truthful: boolean) {

@@ -28,6 +28,9 @@ export class FrogHopScene extends Phaser.Scene {
   private startedAt = 0;
   private target = 1;
   private pads: { sprite: Phaser.GameObjects.Container; value: number }[] = [];
+  /** Faint "▸" chevrons between pads — the number line reads 1 → 2 → 3 … in
+   *  reading order, even on the 2-row grid (#1243). */
+  private hopChevs: Phaser.GameObjects.Text[] = [];
   private frog!: Phaser.GameObjects.Container;
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
@@ -119,6 +122,28 @@ export class FrogHopScene extends Phaser.Scene {
     this.background.lineStyle(3, 0xffffff, 0.35);
     this.background.lineBetween(gl.startX - gl.cardW, gl.cy + gl.cardW / 2 + 14, gl.startX + (cols - 1) * gl.spacingX + gl.cardW, gl.cy + gl.cardW / 2 + 14);
     this.sitFrogOnPad();
+    this.drawOrderChevrons();
+  }
+
+  /** Faint left→right chevrons between consecutive pads in each row (#1243). */
+  private drawOrderChevrons() {
+    for (const c of this.hopChevs) c.destroy();
+    this.hopChevs = [];
+    const { max, rows, cols } = this.gridSpec();
+    for (let row = 0; row < rows; row++) {
+      for (let c = 0; c < cols - 1; c++) {
+        const i = row * cols + c;
+        if (i + 1 >= max) break;
+        const p = this.pads[i]?.sprite;
+        const q = this.pads[i + 1]?.sprite;
+        if (!p || !q) continue;
+        const chev = this.add
+          .text((p.x + q.x) / 2, p.y, "▸", txt(20, "#ffffff", { bold: true }))
+          .setOrigin(0.5)
+          .setAlpha(0.5);
+        this.hopChevs.push(chev);
+      }
+    }
   }
 
   /** The frog lives ON the number line — it perches on pad 1 at round start
@@ -139,6 +164,7 @@ export class FrogHopScene extends Phaser.Scene {
       p.sprite.setPosition(gl.startX + (i % cols) * gl.spacingX, gl.cy - gridH / 2 + Math.floor(i / cols) * gl.spacingY);
     }
     this.sitFrogOnPad();
+    this.drawOrderChevrons();
   }
 
   private tap(container: Phaser.GameObjects.Container, value: number) {
@@ -195,6 +221,8 @@ export class FrogHopScene extends Phaser.Scene {
   private clearPads() {
     this.pads.forEach((p) => p.sprite.destroy());
     this.pads = [];
+    for (const c of this.hopChevs) c.destroy();
+    this.hopChevs = [];
     this.background.clear();
   }
 }
