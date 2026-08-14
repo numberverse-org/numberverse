@@ -166,6 +166,8 @@ export const NOVA_QUEST_REWARD = 5;
  * on top of the round payout (granted via novaChallengeReward, so the daily
  * anti-grind cap still applies). Once per skill — naturally rate-limited. */
 export const NOVA_MASTERY_REWARD = 5;
+/** #1164 — intermediate land boss prize (flat grant, inside the daily cap). */
+export const NOVA_BOSS_REWARD = 5;
 /* #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
  * (deterministic hash of kid+date → stable offline, no server). */
 export type QuestType = "rounds" | "stars" | "master" | "newgame";
@@ -324,6 +326,10 @@ export interface NovaState {
    *  condition (mastered === total) lives in App.tsx; the store persists the
    *  earned set so a NEW trophy can be celebrated exactly once. */
   trophies: number[];
+  /** #1164 — band ids whose INTERMEDIATE land boss the kid has beaten. The
+   *  condition (boss appears at ≥50% land progress) lives in lib/journey.ts;
+   *  the store persists the earned set so a boss win is celebrated once. */
+  bosses: number[];
   /** #284 — skill ids whose mastery mystery box has already been opened (the
    *  box appears on home for every mastered skill not in this list). */
   boxes: string[];
@@ -379,6 +385,7 @@ export function defaultNova(): NovaState {
     calendarDay: "",
     badges: [],
     trophies: [],
+    bosses: [],
     boxes: [],
     freezes: 0,
     petStage: 0,
@@ -524,6 +531,10 @@ interface KidState {
    *  anti-grind cap (cap-full → 0, no carry-over). Returns the coins actually
    *  granted so the UI can announce them. */
   novaChallengeReward: (kidId: string, coins: number) => number;
+  /** #1164 — intermediate land boss won. Appends band to `bosses` (deduped)
+   *  and pays the flat NOVA_BOSS_REWARD inside the daily anti-grind cap.
+   *  Returns the coins actually granted so the UI can announce them. */
+  novaBossWon: (kidId: string, band: number) => number;
   novaCompleteSession: (kidId: string) => void;
   /** #278 — `festivalKey` is the current locale's active festival (null
    *  off-season). Seasonal outfits are only purchasable while their festival
@@ -959,6 +970,39 @@ export const useKidStore = create<KidState>()(
               ...s.nova,
               [kidId]: {
                 ...cur,
+                coins: cur.coins + add,
+                totalEarned: cur.totalEarned + add,
+                earnedToday: te + add,
+                earnDay: today,
+              },
+            },
+          };
+        });
+        return granted;
+      },
+
+      /* #1164 — intermediate land boss: a flat grant inside the daily cap,
+       * exactly like the owl-challenge prize. The win still persists even when
+       * the cap is full (the celebration is the trophy, not the coins). */
+      novaBossWon: (kidId, band) => {
+        const today = todayIso();
+        const before = get().nova[kidId] ?? defaultNova();
+        const earnedToday = before.earnDay === today ? before.earnedToday : 0;
+        const granted = earnedToday >= NOVA_DAILY_CAP ? 0 : Math.min(NOVA_BOSS_REWARD, NOVA_DAILY_CAP - earnedToday);
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const te = cur.earnDay === today ? cur.earnedToday : 0;
+          const add = Math.min(NOVA_BOSS_REWARD, NOVA_DAILY_CAP - te);
+          const bosses = Array.from(new Set([...(cur.bosses ?? []), band]));
+          if (add <= 0) {
+            return { nova: { ...s.nova, [kidId]: { ...cur, bosses } } };
+          }
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: {
+                ...cur,
+                bosses,
                 coins: cur.coins + add,
                 totalEarned: cur.totalEarned + add,
                 earnedToday: te + add,

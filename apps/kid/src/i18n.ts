@@ -344,6 +344,15 @@ export interface Strings {
   chSpeakWin: (name: string) => string;
   chSpeakTie: string;
   chSpeakLose: (name: string) => string;
+  /* #1164 — intermediate land boss (per-land duel gate) */
+  bossBtn: string;
+  bossBtnBn: string;
+  bossBeaten: string;
+  bossBeatenBn: string;
+  bossWin: string;
+  bossWinBn: string;
+  bossLose: string;
+  bossTie: string;
   /* #356 — first-play onboarding tour */
   tourTitle: string;
   tourSkip: string;
@@ -1101,6 +1110,15 @@ export const STR: Record<Lang, Strings> = {
     chSpeakWin: (name) => `${name}, you beat Nova! Amazing!`,
     chSpeakTie: "Wow, it is a tie! So close!",
     chSpeakLose: (name) => `${name}, so close! Try again, you can beat Nova!`,
+    /* #1164 — intermediate land boss (per-land duel gate) */
+    bossBtn: "⚔️ Land Boss",
+    bossBtnBn: "⚔️ ভূখণ্ড বস",
+    bossBeaten: "✓ Boss beaten",
+    bossBeatenBn: "✓ বস পরাজিত",
+    bossWin: "Land Boss beaten! 🏆",
+    bossWinBn: "ভূখণ্ড বস হারালো! 🏆",
+    bossLose: "💪 So close! Try the land boss again!",
+    bossTie: "🤝 It's a tie! Try the land boss once more!",
     /* #356 — first-play onboarding tour */
     tourTitle: "How to play",
     tourSkip: "Skip",
@@ -1832,6 +1850,15 @@ export const STR: Record<Lang, Strings> = {
     chSpeakWin: (name) => `${name}, তুমি নোভাকে হারিয়েছ! অসাধারণ!`,
     chSpeakTie: "বাহ, সমান সমান! প্রায় পেরেছিলে!",
     chSpeakLose: (name) => `${name}, প্রায় পেরেছিলে! আবার চেষ্টা করো, তুমি নোভাকে হারাতে পারবে!`,
+    /* #1164 — intermediate land boss (per-land duel gate) */
+    bossBtn: "⚔️ ভূখণ্ড বস",
+    bossBtnBn: "⚔️ ভূখণ্ড বস",
+    bossBeaten: "✓ বস পরাজিত",
+    bossBeatenBn: "✓ বস পরাজিত",
+    bossWin: "ভূখণ্ড বস হারালো! 🏆",
+    bossWinBn: "ভূখণ্ড বস হারালো! 🏆",
+    bossLose: "💪 প্রায় পেরেছিলে! ভূখণ্ড বসের সাথে আবার চেষ্টা করো!",
+    bossTie: "🤝 সমান সমান! ভূখণ্ড বসের সাথে আরেকবার চেষ্টা করো!",
     /* #356 — first-play onboarding tour */
     tourTitle: "কীভাবে খেলতে হয়",
     tourSkip: "বাদ দাও",

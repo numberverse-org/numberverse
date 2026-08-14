@@ -46,7 +46,7 @@ import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, kidMasteryStats, worldProgress, worldEmoji,
-  worldUnlocked, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
+  worldUnlocked, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
   challengeEligible, challengeStartLevelIndex,
@@ -79,6 +79,8 @@ export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "w
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
+/** #1164 — land-boss duel length: longer than the casual owl challenge (5). */
+const BOSS_ROUNDS = 7;
 
 /** #1219 — EVERY boot-path localStorage read must be guarded: in private
  *  browsing / storage-denied contexts a bare getItem THROWS, and an unguarded
@@ -1285,6 +1287,70 @@ export default function App() {
   const closeChallenge = () => {
     window.clearTimeout(challengeTimerRef.current);
     setChallenge(null);
+  };
+
+  /* ── #1164 intermediate land boss: same duel mechanic as the owl challenge,
+     but land-themed, slightly harder (one notch above average), and 7 rounds.
+     SEPARATE state so the owl flow stays untouched. ── */
+  const [landBoss, setLandBoss] = useState<{
+    band: number;
+    round: number;
+    myScore: number;
+    novaScore: number;
+    level: number;
+    q: ChallengeQ;
+    pick: number | null;
+    correct: boolean;
+    novaGot: boolean;
+    won: "win" | "tie" | "lose" | null;
+    coins: number;
+  } | null>(null);
+  const bossTimerRef = useRef<number | undefined>(undefined);
+
+  const startBoss = (band: number) => {
+    if (!kid) return;
+    const mine = kidMasteryStats(kid.id);
+    const avg = mine.count ? mine.sum / mine.count : 0.25;
+    // A boss is HARDER than the kid's average: one notch above their level.
+    const base = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, Math.round(avg * 10) + 1));
+    setLandBoss({
+      band, round: 1, myScore: 0, novaScore: 0, level: base,
+      q: challengeQ(base, lang), pick: null, correct: false, novaGot: false, won: null, coins: 0,
+    });
+  };
+
+  const pickBoss = (i: number) => {
+    if (!landBoss || !kid || landBoss.pick !== null) return;
+    const correct = i === landBoss.q.answer;
+    const myScore = landBoss.myScore + (correct ? 1 : 0);
+    // Fair Nova: their hit-rate tracks the kid's accuracy so far — always winnable.
+    const novaGot = Math.random() < challengeNovaChance(myScore / landBoss.round);
+    setLandBoss({ ...landBoss, pick: i, correct, myScore, novaScore: landBoss.novaScore + (novaGot ? 1 : 0), novaGot });
+    window.clearTimeout(bossTimerRef.current);
+    bossTimerRef.current = window.setTimeout(() => {
+      setLandBoss((prev) => {
+        if (!prev || prev.pick === null) return prev;
+        if (prev.round >= BOSS_ROUNDS) {
+          const won = prev.myScore > prev.novaScore ? "win" : prev.myScore < prev.novaScore ? "lose" : "tie";
+          if (won === "win") {
+            const grant = useKidStore.getState().novaBossWon(kid.id, prev.band);
+            tada();
+            speak(lang === "bn" ? t.bossWinBn : t.bossWin);
+            return { ...prev, won, coins: grant };
+          }
+          speak(won === "tie" ? t.bossTie : t.bossLose);
+          return { ...prev, won };
+        }
+        // Fair difficulty ramp: +1 after a hit (up to max), −1 after a miss.
+        const level = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, prev.level + (prev.correct ? 1 : -1)));
+        return { ...prev, round: prev.round + 1, pick: null, correct: false, novaGot: false, level, q: challengeQ(level, lang) };
+      });
+    }, 1800);
+  };
+
+  const closeBoss = () => {
+    window.clearTimeout(bossTimerRef.current);
+    setLandBoss(null);
   };
 
   /* ── #356 first-play tour: 4-step, skippable core-loop walkthrough. Shows
@@ -4113,6 +4179,7 @@ export default function App() {
     const journeyDone = doneCount === stops.length;
     const hereIdx = kidJourneyIdx;
     const curStop = stops.find((s) => s.current);
+    const novaNow = kid ? useKidStore.getState().nova[kid.id] : undefined;
     return (
       <div className="app">
         <main className="screen worlds">
@@ -4257,6 +4324,8 @@ export default function App() {
                 const land = WORLD_LANDS[band.id];
                 const bandComplete = bandProg.mastered === bandProg.total;
                 const nextBand = BANDS.find((x) => x.id === band.id + 1);
+                const bossBeaten = landBossBeaten(novaNow, band.id);
+                const bossReady = !bossBeaten && landBossUnlocked(skillsMap, kid!.id, band.id);
                 return (
                   <section key={band.key} className="journey-region">
                     <div
@@ -4266,6 +4335,15 @@ export default function App() {
                       <span className="journey-region-emoji">{bandComplete ? <Icon name="trophy" size={20} /> : <Icon name={band.key} size={20} />}</span>
                       <span className="journey-region-name">{band.title}</span>
                       <span className="journey-region-count">{t.skillsProg(bandProg.mastered, bandProg.total)}</span>
+                      {bossBeaten ? (
+                        <span className="boss-beaten" title={lang === "bn" ? t.bossBeatenBn : t.bossBeaten}>
+                          {lang === "bn" ? t.bossBeatenBn : t.bossBeaten}
+                        </span>
+                      ) : bossReady ? (
+                        <button className="boss-btn" onClick={() => startBoss(band.id)} aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn}>
+                          {lang === "bn" ? t.bossBtnBn : t.bossBtn}
+                        </button>
+                      ) : null}
                     </div>
                     {bandComplete && nextBand && !journeyDone && (
                       <div className="journey-road-open">
@@ -4326,30 +4404,42 @@ export default function App() {
                   const more = unlocked ? 0 : Math.max(1, needed - (prevProg ?? prog).mastered);
                   const complete = prog.mastered === prog.total;
                   const land = WORLD_LANDS[b.id];
+                  const bossBeaten = landBossBeaten(novaNow, b.id);
+                  const bossReady = !bossBeaten && landBossUnlocked(skillsMap, kid!.id, b.id);
                   return (
-                    <button
-                      key={b.key}
-                      className={`world-card${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
-                      disabled={!unlocked}
-                      onClick={() => openWorld(b)}
-                      style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3 }}
-                    >
-                      <span className="world-emoji">{complete ? <Icon name="trophy" size={40} /> : <Icon name={b.key} size={40} />}</span>
-                      <span className="world-meta">
-                        <span className="world-name">{lang === "bn" ? b.titleBn ?? b.title : b.title}</span>
-                        <span className="world-age">
-                          {unlocked
-                            ? complete
-                              ? t.worldComplete
-                              : t.skillsProg(prog.mastered, prog.total)
-                            : t.masterMoreIn(more, prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : (lang === "bn" ? "আগের জগৎ" : "the last world"))}
+                    <div key={b.key} className="world-card-wrap">
+                      <button
+                        className={`world-card${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
+                        disabled={!unlocked}
+                        onClick={() => openWorld(b)}
+                        style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3 }}
+                      >
+                        <span className="world-emoji">{complete ? <Icon name="trophy" size={40} /> : <Icon name={b.key} size={40} />}</span>
+                        <span className="world-meta">
+                          <span className="world-name">{lang === "bn" ? b.titleBn ?? b.title : b.title}</span>
+                          <span className="world-age">
+                            {unlocked
+                              ? complete
+                                ? t.worldComplete
+                                : t.skillsProg(prog.mastered, prog.total)
+                              : t.masterMoreIn(more, prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : (lang === "bn" ? "আগের জগৎ" : "the last world"))}
+                          </span>
+                          <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${prog.pct}%`, background: `linear-gradient(90deg, ${land.c2}, ${land.c3})` }} />
+                          </div>
                         </span>
-                        <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: `${prog.pct}%`, background: `linear-gradient(90deg, ${land.c2}, ${land.c3})` }} />
-                        </div>
-                      </span>
-                      <span className="world-state">{unlocked ? "▶" : "🔒"}</span>
-                    </button>
+                        <span className="world-state">{unlocked ? "▶" : "🔒"}</span>
+                      </button>
+                      {bossBeaten ? (
+                        <span className="boss-beaten" title={lang === "bn" ? t.bossBeatenBn : t.bossBeaten}>
+                          {lang === "bn" ? t.bossBeatenBn : t.bossBeaten}
+                        </span>
+                      ) : bossReady ? (
+                        <button className="boss-btn" onClick={() => startBoss(b.id)} aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn}>
+                          {lang === "bn" ? t.bossBtnBn : t.bossBtn}
+                        </button>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
@@ -4357,6 +4447,82 @@ export default function App() {
             </>
           )}
         </main>
+
+        {/* #1164 — intermediate land-boss duel sheet (fixed overlay, same
+            DOM/celebration language as the owl challenge but its own state). */}
+        {landBoss && (
+          <div className="challenge-overlay" onClick={closeBoss}>
+            <div className="challenge-sheet boss-sheet" role="dialog" aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn} onClick={(e) => e.stopPropagation()}>
+              {landBoss.won ? (
+                <>
+                  <div className="challenge-result" role="status">
+                    <span className="challenge-result-emoji" aria-hidden="true">
+                      {landBoss.won === "win" ? "🏆" : landBoss.won === "tie" ? "🤝" : "💪"}
+                    </span>
+                    <span className="challenge-result-line">
+                      {landBoss.won === "win"
+                        ? lang === "bn" ? t.bossWinBn : t.bossWin
+                        : landBoss.won === "tie"
+                          ? t.bossTie
+                          : t.bossLose}
+                    </span>
+                    <span className="challenge-scoreline">
+                      {t.chYou} {bnNum(landBoss.myScore)} · {t.chNova} {bnNum(landBoss.novaScore)}
+                    </span>
+                    {landBoss.coins > 0 && (
+                      <span className="challenge-coins">{t.chCoins(landBoss.coins)}</span>
+                    )}
+                  </div>
+                  <div className="challenge-btns">
+                    <button className="big-btn" onClick={() => startBoss(landBoss.band)}>{t.chAgain}</button>
+                    <button className="ghost-btn" onClick={closeBoss}>{t.chClose}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="challenge-top">
+                    <span className="challenge-round">{t.chRound(landBoss.round, BOSS_ROUNDS)}</span>
+                    <span className="challenge-level">{t.chLevel(landBoss.level)}</span>
+                  </div>
+                  <div className="challenge-score" role="status" aria-label={`${t.chYou} ${landBoss.myScore}, ${t.chNova} ${landBoss.novaScore}`}>
+                    <span className="challenge-score-you"><Icon name="nova" size={20} /> <b>{t.chYou}</b> {bnNum(landBoss.myScore)}</span>
+                    <span className="challenge-vs">VS</span>
+                    <span className="challenge-score-nova"><Icon name="nova" size={20} /> <b>{t.chNova}</b> {bnNum(landBoss.novaScore)}</span>
+                  </div>
+                  <div className="challenge-q" aria-label={t.chQuestion}>{landBoss.q.text}</div>
+                  <div className="challenge-options">
+                    {landBoss.q.options.map((opt, i) => {
+                      const picked = landBoss.pick === i;
+                      const reveal = landBoss.pick !== null;
+                      let cls = "challenge-option";
+                      if (reveal) {
+                        if (i === landBoss.q.answer) cls += " reveal";
+                        if (picked && landBoss.correct) cls += " correct";
+                        else if (picked) cls += " wrong";
+                      }
+                      return (
+                        <button
+                          key={`${landBoss.round}-${i}`}
+                          className={cls}
+                          disabled={reveal}
+                          onClick={() => pickBoss(i)}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {landBoss.pick !== null && (
+                    <div className="challenge-feedback" role="status">
+                      <span>{landBoss.correct ? t.chCorrect : t.chWrong}</span>
+                      <span className="challenge-nova-line">{landBoss.novaGot ? t.chNovaGot : t.chNovaMiss}</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

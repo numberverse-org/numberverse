@@ -803,6 +803,17 @@ export function worldUnlocked(skills: SkillMap, kidId: string, band: number): bo
   return prev.mastered / prev.total >= UNLOCK_THRESHOLD;
 }
 
+/** #1164 — the intermediate land boss appears once a land is HALF-mastered
+ *  (≥50% progress). Pure fn of the same worldProgress aggregate the map uses. */
+export function landBossUnlocked(skills: SkillMap, kidId: string, band: number): boolean {
+  return worldProgress(skills, kidId, band).pct >= 50;
+}
+
+/** #1164 — whether this kid has already beaten this land's intermediate boss. */
+export function landBossBeaten(nova: { bosses?: number[] } | null | undefined, band: number): boolean {
+  return !!nova?.bosses?.includes(band);
+}
+
 /** #1120 — O(units) over the cached unit groups (was O(n²): re-filtering the
  *  whole 305-skill catalog + re-grouping units on every call, 13+ times/render). */
 export function totalMastered(skills: SkillMap, kidId: string): number {
