@@ -1,3 +1,16 @@
+## 15 Aug 2026 — 0.63.0 (fix: abuse-guard/authz — share rate-limit+revoke+paused (#832 #866 #867), batch caps (#833 #834 #835), body-size limit (#836), admin allow-lists (#862 #863 #864), export+content rate limits (#838 #839))
+
+4d66204 Merge nv-838: rate-limit exports + public content catalog
+b1c45b1 Merge nv-832
+69c3afe Merge nv-862
+c4378e7 Merge nv-836
+c6e2601 Merge nv-833
+9101820 🛡️ api: rate-limit exports + public content catalog (IP-keyed) (#838 #839)
+9b4faa8 🛡️ shares: IP rate-limit on public snapshot, revoke route, paused-gating, no coins on card (#832 #866 #867)
+5721117 🛡️ admin: per-resource writable allow-lists, deny is_admin/password_hash/id, redact secret columns (#862 #863 #864)
+90f3803 🛡️ api: global 1MiB request-body size-limit middleware (#836)
+23b39c9 🛡️ api: cap progress batch, story/accel batches, context budget + depth (#833 #834 #835)
+
 ## 15 Aug 2026 — 0.62.0 (fix: audio nonzero-floor (#827), haptics reduced-motion (#828), watchdog window (#829), leading-minus naturalize (#830), master SFX mute (#831))
 
 c569158 Merge #831: master SFX mute tied to TTS off
