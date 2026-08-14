@@ -6,7 +6,7 @@ import { SAT } from "./safeArea";
 import { cancelSpeech, speak, speakAnswer } from "./speech";
 import { wrongLedger } from "./wrongLedger";
 import { useKidStore } from "../store";
-import { NV_GOLD, NV_NAVY } from "./ui"; // tokenized #591
+import { NV_GOLD, NV_NAVY, NV_GREEN, txt } from "./ui"; // tokenized #591
 
 /**
  * Escalating hints on repeated misses — every miss is a teaching moment.
@@ -302,4 +302,22 @@ function glowCorrect(scene: Phaser.Scene, sprite: Phaser.GameObjects.Container) 
     ease: "Sine.easeInOut",
     onComplete: () => ring.destroy(),
   });
+}
+
+/**
+ * Tile-drill wrong-answer shake + reveal (#1086) — the shared hint-renderer for
+ * the addition-fact family (FactsAdd/SubFacts/Doubles/MakeTen). Shrinks the
+ * tapped tile, disables it, and floats the correct answer above it in green.
+ * Previously copy-pasted verbatim into each scene; part of the wider #1004
+ * hintWrongLocal dedup.
+ */
+export function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container, correct: () => string) {
+  scene.tweens.add({ targets: tile, scale: 0.9, duration: 90, yoyo: true, ease: "Sine.easeInOut" });
+  tile.setAlpha(0.4);
+  tile.disableInteractive();
+  const m = scene.add
+    .text(tile.x, tile.y - 40, correct(), txt(22, NV_GREEN, { bold: true, outline: true }))
+    .setOrigin(0.5)
+    .setDepth(40);
+  scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });
 }

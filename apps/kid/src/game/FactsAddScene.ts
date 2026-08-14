@@ -8,6 +8,7 @@ import { correctCelebrate } from "./celebrate";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
+import { hintWrongLocal } from "./hints"; // #1086 — shared tile-drill hint-renderer
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-addfacts")?.difficultyLevels ?? [6, 8, 10, 10, 12, 12];
@@ -218,16 +219,4 @@ export class FactsAddScene extends Phaser.Scene {
     this.tiles.forEach((o) => o.sprite.destroy());
     this.tiles = [];
   }
-}
-
-/** Wrong-answer feedback without hintWrong's "keep on wrong" retirement. */
-function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container, correct: () => string) {
-  scene.tweens.add({ targets: tile, scale: 0.9, duration: 90, yoyo: true, ease: "Sine.easeInOut" });
-  tile.setAlpha(0.4);
-  tile.disableInteractive();
-  const m = scene.add
-    .text(tile.x, tile.y - 40, correct(), txt(22, NV_GREEN, { bold: true, outline: true }))
-    .setOrigin(0.5)
-    .setDepth(40);
-  scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });
 }
