@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.54.0 (feat: labeled Parents door on home (1-tap portal) + Nova/Garden living-world strip; drop redundant settings gear (#1395 #1396 #1397); incl. #1152/#1156 game-id splits)
+
+e24fe18 feat: labeled Parents door (1-tap) + visible Nova/Garden living-world strip on home (#1395 #1396)
+
 ## 15 Aug 2026 — 0.53.39 (fix: distinct game ids for en-shapes + bn consonants (cross-subject/cell collision) (#1152 #1156))
 
 3614fa2 fix: split en-shapes + bn-benjonborno onto their own game ids (#1152 #1156)
