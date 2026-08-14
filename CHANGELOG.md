@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.20 (🧹 #1086 shared hintWrongLocal: 4 addition-fact scenes now import one hint-renderer from hints.ts instead of 4 verbatim copies)
+
+c2123bf 🧹 #1086: extract the byte-identical hintWrongLocal tile-reveal helper into hints.ts — FactsAdd/SubFacts/Doubles/MakeTen now import one shared hint-renderer (BalloonPop left as-is: it's a drifting-balloon arcade, not a tile drill — the issue's 'all 5' premise was false)
+
 ## 14 Aug 2026 — 0.53.19 (🐛 #1085 ShapeCatcherScene is skill-aware: en-shapes teaches the English label (forced en voice) even in bn UI; math shapes keeps localized recognition — no more 'ট্যাপ করো circle!' mixing)
 
 95c7a9d 🐛 #1085: ShapeCatcherScene differentiates by skill — en-shapes (c1-english-3) now prompts+speaks the ENGLISH shape label (forced en voice) even in a bn UI; math shapes (c1-math-3) keeps localized recognition and no longer mixes 'ট্যাপ করো circle!'
