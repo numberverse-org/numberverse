@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.31 (perf: measure RhymeTime chip widths on a shared canvas context — no more hidden Phaser Text objects per word per layout (#1102))
+
+c2a0e71 Merge branch 'nv-1102': measure RhymeTime chips with shared canvas context (#1102)
+0c99e6f Perf: measure RhymeTime chips with shared canvas context (#1102)
+
 ## 15 Aug 2026 — 0.53.30 (perf: pre-read viewport for BnNumbers grid — gridLayout takes width/height params, caches per level, single scale+SAB read per resize (#1101))
 
 89e81a2 Merge branch 'nv-1101': pre-read viewport for BnNumbers grid layout (#1101)

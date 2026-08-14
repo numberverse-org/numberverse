@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.30 (perf: pre-read viewport for BnNumbers grid — gridLayout takes width/height params, caches per level, single scale+SAB read per resize (#1101))";
-export const APP_VERSION = "0.53.30";
+export const APP_BUILD = "15 Aug 2026 · 0.53.31 (perf: measure RhymeTime chip widths on a shared canvas context — no more hidden Phaser Text objects per word per layout (#1102))";
+export const APP_VERSION = "0.53.31";
