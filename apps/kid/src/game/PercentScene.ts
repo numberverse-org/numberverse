@@ -14,6 +14,8 @@ import { answerRow } from "./layout";
 const LEVELS = GAMES.find((g) => g.id === "game-percent")?.difficultyLevels ?? [10, 20, 25, 50, 100, 150];
 const BUTTON_RADIUS = 52;
 const ROUNDS_TO_FINISH = 3;
+const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
+const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
 
 /**
  * Percent Quest — find X% of a number.
@@ -25,6 +27,10 @@ export class PercentScene extends Phaser.Scene {
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
+  private challenge = false; // #1158 — band 6-7 independent mode (timed rounds, no reveal)
+  private challengeDone = false;
+  private challengeTimer?: Phaser.Time.TimerEvent;
+  private challengeBar?: Phaser.GameObjects.Rectangle;
   private percent = 50;
   private total = 8;
   private answer = 4;
@@ -41,12 +47,18 @@ export class PercentScene extends Phaser.Scene {
     super("Percent");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[]; challenge?: boolean }) {
     this.onRoundDone = data.onRoundDone;
     // #1170 — per-skill ladder: percent-intro (band 5) → [10,20,25,50,100,150],
     // percent-of-number (band 7) → [25,50,100,150] (no trivial 10%).
     this.levels = data.levels?.length ? data.levels : LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
+    // #1158 — challenge mode: band 6-7 skills (skill.challenge → App passes it)
+    // get a per-round countdown bar and no hint/reveal on wrong.
+    this.challenge = !!data.challenge;
+    if (this.challenge) {
+      this.challengeBar = this.add.rectangle(0, 122, 0, 6, CHALLENGE_BAR).setOrigin(0, 0.5).setAlpha(0);
+    }
     this.background = this.add.graphics();
     this.drawBackground();
     this.titleText = this.add
@@ -97,6 +109,48 @@ export class PercentScene extends Phaser.Scene {
     this.factText.setText(`${this.percent}% of ${this.total} = ?`);
     speakMath("pct", this.percent, this.total);
     this.spawnButtons();
+    this.armChallenge();
+  }
+
+  /** #1158 — challenge-mode countdown: a gold bar drains over CHALLENGE_SECONDS;
+   *  time-up records a WRONG round (streak breaks, no coin, block does NOT
+   *  advance) and deals the next round. No re-teach, no reveal — the older kid
+   *  races the clock, and the combo/coin economy feels the miss. */
+  private armChallenge() {
+    if (!this.challenge) return;
+    if (this.challengeTimer) this.challengeTimer.remove(false);
+    this.challengeDone = false;
+    const bar = this.challengeBar;
+    if (bar) {
+      this.tweens.killTweensOf(bar);
+      bar.setPosition(20, 122).setSize(Math.min(this.scale.width - 40, 320), 6).setScale(1, 1).setAlpha(1);
+      this.tweens.add({ targets: bar, scaleX: 0, duration: CHALLENGE_SECONDS * 1000, ease: "Linear.easeNone" });
+    }
+    this.challengeTimer = this.time.delayedCall(CHALLENGE_SECONDS * 1000, () => {
+      if (this.challengeDone) return;
+      this.challengeDone = true;
+      // A time-up is a completed (failed) round: the App counts it toward the
+      // block (roundsDone), the meter reflects it, and a fresh round deals.
+      // No open-wrong is recorded (no tap) so a fully-timed-out block still
+      // advances the session — the wrong events make BKT drop the tier.
+      this.roundsDone++;
+      this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.percent);
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private disarmChallenge() {
+    if (this.challengeTimer) {
+      this.challengeTimer.remove(false);
+      this.challengeTimer = undefined;
+    }
+    if (this.challengeBar) {
+      this.tweens.killTweensOf(this.challengeBar);
+      this.challengeBar.setAlpha(0);
+    }
   }
 
   private spawnButtons() {
@@ -123,9 +177,12 @@ export class PercentScene extends Phaser.Scene {
         hintBn: "পিঠাটা ভাবো — অর্ধেক ৫০%, চতুর্থাংশ ২৫%",
         correct: () => this.answer,
         options: () => this.buttons,
+        challenge: this.challenge, // #1158 — no banner/reveal; solve it yourself
       });
       return;
     }
+    this.challengeDone = true; // the round is solved — stop the countdown
+    this.disarmChallenge();
     pop();
     correctButton(container);
     this.buttons.forEach((b) => b.sprite.disableInteractive());
