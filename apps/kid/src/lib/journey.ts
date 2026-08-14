@@ -549,11 +549,16 @@ export let gameUnits: { key: string; band: number; members: Skill[] }[] = [];
  *  only its band's units instead of scanning all 7 bands' worth. Rebuilt
  *  alongside gameUnits (only on applyKidControls). */
 export let gameUnitsByBand = new Map<number, { key: string; band: number; members: Skill[] }[]>();
+/** #1122 — the playable journey-stop list, cached (was filterSkills.filter(game)
+ *  on EVERY journeyStops()/journeyState()/worldCards() call). */
+export let journeyStopList: Skill[] = [];
 
 function buildGameUnits() {
   const byKey = new Map<string, { key: string; band: number; members: Skill[] }>();
+  journeyStopList = [];
   for (const s of filterSkills) {
     if (!s.game) continue;
+    journeyStopList.push(s);
     const key = `${s.band}:${s.family ?? `__${s.id}`}`;
     let u = byKey.get(key);
     if (!u) {
@@ -764,8 +769,10 @@ export interface JourneyStop {
   current: boolean;
 }
 
+/** #1122 — playable stops, cached at buildGameUnits time (see journeyStopList).
+ *  No longer re-filters the whole catalog on every call. */
 export function journeyStops(): Skill[] {
-  return filterSkills.filter((s) => s.game);
+  return journeyStopList;
 }
 
 export function journeyState(skills: SkillMap, kidId: string): JourneyStop[] {

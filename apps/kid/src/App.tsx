@@ -408,8 +408,16 @@ export default function App() {
   const storedBadges = useKidStore((s) => (kid ? s.nova[kid.id]?.badges ?? [] : []));
   // #100 — skill of the week: the highlighted skill this week + whether it's
   // mastered. Feeds the Week Warrior badge and the home card (both offline).
-  const weekSkill = kid ? skillOfWeek(skillsMap, kid.id) : undefined;
+  // #1122 — memoized; skillOfWeek internally runs journeyState (a full 135-stop
+  // sweep), so this was recomputed on EVERY App render regardless of screen.
+  // weekNumber() is in deps so the memo rolls over at the week boundary too.
+  const weekSkill = useMemo(() => (kid ? skillOfWeek(skillsMap, kid.id) : undefined), [skillsMap, kid?.id, weekNumber()]);
   const weekDone = !!kid && !!weekSkill && skillMastered(skillsMap, kid.id, weekSkill.id);
+  // #1122 — journey state lifted to a shared selector: the worlds and done
+  // screens both need the full stop list + current index. Computed once per
+  // [skillsMap, kid.id], never re-swept on unrelated store ticks.
+  const kidJourney = useMemo(() => (kid ? journeyState(skillsMap, kid.id) : []), [skillsMap, kid?.id]);
+  const kidJourneyIdx = useMemo(() => journeyCurrentIndex(kidJourney), [kidJourney]);
   // #1185 — these derivations are memoized + only depend on primitive/stable
   // values (never the store objects themselves, whose fallback literals change
   // identity every render), so a store tick that doesn't touch mastery/stats
@@ -3988,10 +3996,10 @@ export default function App() {
 
   if (screen === "worlds") {
     const allComplete = BANDS.every((b) => worldUnlocked(skillsMap, kid!.id, b.id));
-    const stops = journeyState(skillsMap, kid!.id);
+    const stops = kidJourney; // #1122 — shared selector (computed once above)
     const doneCount = stops.filter((s) => s.done).length;
     const journeyDone = doneCount === stops.length;
-    const hereIdx = journeyCurrentIndex(stops);
+    const hereIdx = kidJourneyIdx;
     const curStop = stops.find((s) => s.current);
     return (
       <div className="app">
@@ -4353,8 +4361,8 @@ export default function App() {
     // If the kid just mastered their skill, this is the NEW skill ahead of them;
     // if not, it's the same one (keep practicing). undefined = journey done.
     const nextStop = (() => {
-      const stops = journeyState(skillsMap, kid.id);
-      const idx = journeyCurrentIndex(stops);
+      const stops = kidJourney; // #1122 — shared selector (computed once above)
+      const idx = kidJourneyIdx;
       return idx < stops.length ? stops[idx] : undefined;
     })();
     // skills that crossed the mastery bar DURING this session → a special cheer
@@ -4568,7 +4576,7 @@ export default function App() {
   /* #283 — Badge Book: small trophies for real learning wins (sessions, stars,
      streak, full-land mastery). Conditions read only local state — offline. */
   if (screen === "badges" && kid) {
-    const wk = skillOfWeek(skillsMap, kid.id);
+    const wk = weekSkill; // #1122 — reuse the shared memoized week skill
     const ctx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone: !!wk && skillMastered(skillsMap, kid.id, wk.id) };
     const earnedCount = BADGES.filter((b) => b.earned(ctx)).length;
     return (

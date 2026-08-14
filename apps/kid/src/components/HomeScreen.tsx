@@ -1,6 +1,6 @@
 /* HomeScreen — the journey-first home for the active kid (extracted from App.tsx, #589).
  * Renders null when no kid is active (App falls through to the picker). */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
   recommendedSkill, journeyState, journeyCurrentIndex, currentSeason, isBirthday, skillMastered,
@@ -122,12 +122,31 @@ export default function HomeScreen({
   goBadges, goCards, goGarden, goNova,
 }: HomeScreenProps) {
   const t = STR[lang];
+    // #1122 — the journey view (recommended next skill + the stop path around
+    // "you are here") is one memoized unit keyed on [skillsMap, kid.id], so an
+    // unrelated store tick re-renders Home without re-sweeping the 135-stop
+    // journey. Null when no active kid (the picker renders instead).
+    const journeyView = useMemo(() => {
+      if (!kid) return null;
+      const rec = recommendedSkill(skillsMap, kid.id);
+      const stops = journeyState(skillsMap, kid.id);
+      const doneCount = stops.filter((s) => s.done).length;
+      const hereIdx = journeyCurrentIndex(stops);
+      return {
+        rec,
+        stops,
+        doneCount,
+        hereIdx,
+        journeyDone: stops.length > 0 && doneCount === stops.length,
+        homeStops: stops.slice(Math.max(0, hereIdx - 2), hereIdx + 3),
+      };
+    }, [skillsMap, kid]); // kid object is stable App state; only kid-switch re-sweeps
     // Home is JOURNEY-FIRST: Nova greets the kid by name + streak, the kid's
     // avatar stands on their glowing spot on the path, and one tap plays the
     // next stop. No choice-paralysis — the app remembers who's playing.
     // (If no kid is active we fall through to the picker below.)
-    if (kid) {
-      const recSkill = recommendedSkill(skillsMap, kid.id);
+    if (kid && journeyView) {
+      const { rec: recSkill, stops, doneCount, hereIdx, journeyDone, homeStops } = journeyView;
       const onPlay = () => {
         // #253 — if this kid left a mid-game session behind, RESUME it instead
         // of starting fresh (never loses the current session on a kid switch).
@@ -140,12 +159,8 @@ export default function HomeScreen({
         else startPlayWorld(BANDS[0]);
       };
       playRef.current = onPlay; // #136 — projector keyboard nav uses this
-      // "You are here" — the current spot on the one learning path.
-      const stops = journeyState(skillsMap, kid.id);
-      const doneCount = stops.filter((s) => s.done).length;
-      const hereIdx = journeyCurrentIndex(stops);
-      const journeyDone = stops.length > 0 && doneCount === stops.length;
-      const homeStops = stops.slice(Math.max(0, hereIdx - 2), hereIdx + 3);
+      // "You are here" — the current spot on the one learning path. (journeyView
+      // above is the memoized source of recSkill/stops/doneCount/hereIdx/etc.)
       // The journey path wears the real season (snow/flowers/fireflies/leaves).
       const season = currentSeason();
       // Streak kindness: a stale flame (missed ≥1 day) is a silent punishment.
