@@ -19,6 +19,11 @@ from ..seed import SKILLS_SEED
 # limiter keys on account+IP and is far above real sync cadence (see ratelimit.py).
 WRITE_RATE_LIMIT = rate_limit()
 
+# #834 — bulk story/acceleration endpoints take a raw list body, so the schema
+# has no place to cap length. The client documents ~40 per sync; 100 keeps >2x
+# headroom while stopping unbounded batch replay.
+MAX_BATCH_SIZE = 100
+
 # #275 — age-appropriate band lock (SERVER side). The client already locks worlds
 # above the parent's `max_band`; this is the enforcement layer so a tampered or
 # buggy client can NEVER persist progress/stories for content beyond the cap.
@@ -211,6 +216,11 @@ async def record_stories(
     INSERT ... ON CONFLICT DO NOTHING on (kid_id, uid), so a replayed batch
     (lost ACK → same uid re-posted) is a silent no-op instead of a duplicate.
     The response reports how many were actually new vs skipped as duplicates."""
+    if len(body) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Too many stories in batch (max {MAX_BATCH_SIZE})",
+        )
     kid_ids = {s.kid_id for s in body}
     for kid_id in kid_ids:
         owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
@@ -260,6 +270,11 @@ async def record_acceleration(
     Fire-and-forget from the kid app, same contract as /stories: ownership
     checked per kid, band-lock applied, and dedup on the client's durable-outbox
     uid so a replayed batch (lost ACK) is a silent no-op."""
+    if len(body) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Too many acceleration entries in batch (max {MAX_BATCH_SIZE})",
+        )
     kid_ids = {a.kid_id for a in body}
     for kid_id in kid_ids:
         owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
