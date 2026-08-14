@@ -131,6 +131,16 @@
   --content-max: clamp(440px, 92vw, 680px); /* primary column across ALL screens */
   --home-col-w: var(--content-max);         /* home-column alias (.play-top, …) */
   --home-card-w: 320px;                     /* centered inset card (.quest-chip, …) */
+  /* route spine/road offset (#1097) — the world-map road + journey timeline
+     gutter. As the primary column widens 440px→680px, the road/spine offset
+     scales with it so the connectors keep clearing the badges instead of
+     choking into them. Derived geometry (j-node stays -34px relative to the
+     padded path, keeping it centered on the spine at every gutter):
+       .journey-path padding-left  = --node-gutter
+       .journey-path::before left  = --node-gutter - 23px
+       .map-road left              = --node-gutter + 4px
+       .map-island left gutter     = --node-gutter + 16px */
+  --node-gutter: clamp(42px, 9.5%, 54px);
 }
 
 html, body, #root { height: 100%; background-color: #140a3a; }
