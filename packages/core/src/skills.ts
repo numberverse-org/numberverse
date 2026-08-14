@@ -15,6 +15,37 @@ export const BANDS: Band[] = [
   { id: 7, key: 'polar-peaks', title: 'Polar Peaks', titleBn: 'মেরু শৃঙ্গ', ageRange: '12–15' },
 ];
 
+/** A SKILL FAMILY = ONE learnable concept. Several skill ids may be tiers of
+ *  the same family (concrete → abstract → timed, or a band-ceiling bump of the
+ *  same scene). The child's "I can do X" mastery counts ONCE per family, so
+ *  overlapping ids stop fragmenting the mastery number (issues #1207-#1216).
+ *
+ *  i18n: the EN/BN title pair lives HERE (the central table) — per the product
+ *  rule "EN first, then any language later (like Bengali)", adding a locale
+ *  means extending this table, never the skill objects. */
+export interface SkillFamily {
+  id: string;
+  title: string; // EN
+  titleBn: string; // BN
+  /** One short EN label per tier (universal numbers/words — "to 10", "1/4",
+   *  "10%" — chosen so they read fine in any locale without translation). */
+  tiers: string[];
+}
+
+export const SKILL_FAMILIES: SkillFamily[] = [
+  { id: 'count', title: 'Count & build numbers', titleBn: 'গণনা ও সংখ্যা গঠন', tiers: ['to 10', 'to 20', 'to 50', 'to 100', 'to 999', 'count back'] },
+  { id: 'add-within-20', title: 'Add to 20', titleBn: '২০-এর মধ্যে যোগ', tiers: ['fruit tree', 'apples', 'balloons', 'timed'] },
+  { id: 'sub-within-20', title: 'Subtract within 20', titleBn: '২০-এর মধ্যে বিয়োগ', tiers: ['apples', 'timed'] },
+  { id: 'mult-facts', title: 'Times tables', titleBn: 'নামতা', tiers: ['arrays', '2/5/10', '2–10', '6–9 fluency'] },
+  { id: 'fair-share', title: 'Fair shares', titleBn: 'সমান ভাগ', tiers: ['share', 'remainders'] },
+  { id: 'division-facts', title: 'Division facts', titleBn: 'ভাগ করা', tiers: ['÷2 & ÷3', 'within 100', 'fluency'] },
+  { id: 'fractions-read', title: 'Read fractions', titleBn: 'ভগ্নাংশ পড়া', tiers: ['1/2 1/4', 'to 8 parts'] },
+  { id: 'money', title: 'Bangladeshi money', titleBn: 'টাকা-পয়সা', tiers: ['recognize', 'count', 'change'] },
+  { id: 'percent', title: 'Percent of a number', titleBn: 'সংখ্যার শতকরা', tiers: ['10/25/50%', '+75%'] },
+  { id: 'decimals', title: 'Decimals', titleBn: 'দশমিক', tiers: ['tenths strip', 'compare/order', 'place value'] },
+  { id: 'clock', title: 'Tell time', titleBn: 'ঘড়ি পড়া', tiers: ['hour/half', 'minute'] },
+];
+
 export const SKILLS: Skill[] = [
   // ══════════════════════════════════════════════════════════════════════════
   // BRAIN-ALIGNED SEQUENCE (issue #61)
@@ -33,11 +64,11 @@ export const SKILLS: Skill[] = [
 
   // ── Band 1 — Sprout Grove (ages 2–4): NUMBER SENSE ──
   // Learn the numbers themselves, as a song and as objects — no arithmetic.
-  { id: 'count-1-10', band: 1, subject: 'math', title: 'Count to 10', titleBn: '১ থেকে ১০ গুনি', description: 'Count objects 1 to 10 in sequence', descriptionBn: '১ থেকে ১০ পর্যন্ত বস্তু ক্রমান্বয়ে গুনি', commonCore: ['K.CC.1', 'K.CC.2'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop' },
+  { id: 'count-1-10', band: 1, subject: 'math', title: 'Count to 10', titleBn: '১ থেকে ১০ গুনি', description: 'Count objects 1 to 10 in sequence', descriptionBn: '১ থেকে ১০ পর্যন্ত বস্তু ক্রমান্বয়ে গুনি', commonCore: ['K.CC.1', 'K.CC.2'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop', family: 'count', tier: 1 },
   { id: 'number-song', band: 1, subject: 'math', title: 'Number song', titleBn: 'সংখ্যার গান', description: 'Sing and play the counting melody with Nova', descriptionBn: 'নোভার সাথে গুনতির গান গাই ও বাজাই', commonCore: ['K.CC.1', 'K.CC.4'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countsong' },
   { id: 'grow-count', band: 1, subject: 'math', title: 'Plant & count', titleBn: 'বপন ও গণনা', description: 'Plant seeds and watch a sprout grow — counting with a living reward', descriptionBn: 'বীজ বপন করি আর চারা বাড়তে দেখি — গুনলে জীবন্ত পুরস্কার', commonCore: ['K.CC.4', 'K.CC.5'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-growcount' },
   { id: 'quantity-match', band: 1, subject: 'math', title: 'Match numbers', titleBn: 'সংখ্যা মেলানো', description: 'Match numerals to fruit counts in a memory game', descriptionBn: 'স্মৃতি খেলায় সংখ্যা আর ফলের পরিমাণ মেলাই', commonCore: ['K.CC.4', 'K.CC.5'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-memorypairs' },
-  { id: 'count-1-20', band: 1, subject: 'math', title: 'Count to 20', titleBn: '১ থেকে ২০ গুনি', description: 'Count objects up to 20', descriptionBn: '২০ পর্যন্ত বস্তু গুনি', commonCore: ['K.CC.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop20' },
+  { id: 'count-1-20', band: 1, subject: 'math', title: 'Count to 20', titleBn: '১ থেকে ২০ গুনি', description: 'Count objects up to 20', descriptionBn: '২০ পর্যন্ত বস্তু গুনি', commonCore: ['K.CC.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop20', family: 'count', tier: 2 },
   { id: 'number-line', band: 1, subject: 'math', title: 'Number line hops', titleBn: 'সংখ্যা রেখা', description: 'Hop a frog along the number line to the target number', descriptionBn: 'সংখ্যা রেখা ধরে ব্যাঙ লাফিয়ে লক্ষ্য সংখ্যায় যাই', commonCore: ['K.CC.4', '1.NBT.1'], nctbCode: 'c1-math-2', classNumber: 1, game: 'game-froghop' },
   { id: 'shapes', band: 1, subject: 'math', title: 'Recognize shapes', titleBn: 'আকার চিনি', description: 'Identify circle, square, triangle, star', descriptionBn: 'বৃত্ত, বর্গ, ত্রিভুজ, তারা চিনি', commonCore: ['K.G.2'], nctbCode: 'c1-math-3', classNumber: 1, game: 'game-shapecatcher' },
   // Language — STAGE 1: first letters (both tracks, mirrored)
@@ -74,9 +105,9 @@ export const SKILLS: Skill[] = [
 
   // ── Band 2 — Cottage Fields (ages 4–6): FINISH NUMBERS, THEN CALCULATE ──
   // The counting ladder first (a kid must KNOW numbers before adding them) …
-  { id: 'count-to-50', band: 2, subject: 'math', title: 'Count to 50', titleBn: '৫০ পর্যন্ত গুনি', description: 'Count objects up to 50', descriptionBn: '৫০ পর্যন্ত বস্তু গুনি', commonCore: ['1.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop50' },
-  { id: 'count-to-100', band: 2, subject: 'math', title: 'Count to 100', titleBn: '১০০ পর্যন্ত গুনি', description: 'Build numbers to 100 by bundling ten-rods and ones', descriptionBn: 'দশের ছড় আর একক জুড়ে ১০০ পর্যন্ত সংখ্যা গঠন করি', commonCore: ['1.NBT.1', '2.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-count100' },
-  { id: 'count-to-999', band: 2, subject: 'math', title: 'Build to 999', titleBn: '৯৯৯ পর্যন্ত গঠন', description: 'Build three-digit numbers with hundred-flats, ten-rods and ones', descriptionBn: 'শতক, দশক আর একক দিয়ে তিন-অঙ্কের সংখ্যা গঠন করি', commonCore: ['2.NBT.1', '2.NBT.3'], nctbCode: 'c2-math-1', classNumber: 2, game: 'game-build999' },
+  { id: 'count-to-50', band: 2, subject: 'math', title: 'Count to 50', titleBn: '৫০ পর্যন্ত গুনি', description: 'Count objects up to 50', descriptionBn: '৫০ পর্যন্ত বস্তু গুনি', commonCore: ['1.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-countpop50', family: 'count', tier: 3 },
+  { id: 'count-to-100', band: 2, subject: 'math', title: 'Count to 100', titleBn: '১০০ পর্যন্ত গুনি', description: 'Build numbers to 100 by bundling ten-rods and ones', descriptionBn: 'দশের ছড় আর একক জুড়ে ১০০ পর্যন্ত সংখ্যা গঠন করি', commonCore: ['1.NBT.1', '2.NBT.1'], nctbCode: 'c1-math-1', classNumber: 1, game: 'game-count100', family: 'count', tier: 4 },
+  { id: 'count-to-999', band: 2, subject: 'math', title: 'Build to 999', titleBn: '৯৯৯ পর্যন্ত গঠন', description: 'Build three-digit numbers with hundred-flats, ten-rods and ones', descriptionBn: 'শতক, দশক আর একক দিয়ে তিন-অঙ্কের সংখ্যা গঠন করি', commonCore: ['2.NBT.1', '2.NBT.3'], nctbCode: 'c2-math-1', classNumber: 2, game: 'game-build999', family: 'count', tier: 5 },
   // Number PROPERTIES — odd/even (parity) rides the count ladder: pair the dots,
   // spot the lone one. Common Core puts it with 2.OA.3 (parity of groups).
   { id: 'odd-even', band: 2, subject: 'math', title: 'Odd & even', titleBn: 'জোড় ও বিজোড়', description: 'Sort numbers into odd and even by pairing the dots', descriptionBn: 'জোড়া বানিয়ে সংখ্যাকে জোড়-বিজোড়ে ভাগ করি', commonCore: ['2.OA.3'], nctbCode: 'c2-math-2', classNumber: 2, game: 'game-oddeven' },
@@ -84,18 +115,18 @@ export const SKILLS: Skill[] = [
   // side/corner highlighted green, then pick the total (K.G.4 / 1.G.1).
   { id: 'shapes-parts', band: 2, subject: 'math', title: 'Shapes: sides & corners', titleBn: 'আকার: বাহু ও কোণ', description: 'Count sides and corners of drawn shapes (triangle 3, square 4, rectangle 4, pentagon 5, hexagon 6, circle 0)', descriptionBn: 'আঁকা আকারের বাহু-কোণ গুনি (ত্রিভুজ ৩, বর্গ ৪, আয়তক্ষেত্র ৪, পঞ্চভুজ ৫, ষড়ভুজ ৬, বৃত্ত ০)', commonCore: ['1.G.1'], nctbCode: 'c2-math-6', classNumber: 2, game: 'game-shapeparts' },
   // …then addition, CONCRETE GAME FIRST, abstract drill LAST:
-  { id: 'fruit-tree-add', band: 2, subject: 'math', title: 'Fruit tree addition', titleBn: 'ফলের গাছ যোগ', description: 'Grow fruit on a tree as you add — see addition happen', descriptionBn: 'যোগ করলে গাছে ফল জন্মায় — যোগ করা চোখে দেখা যায়', commonCore: ['1.OA.6'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruittree' },
+  { id: 'fruit-tree-add', band: 2, subject: 'math', title: 'Fruit tree addition', titleBn: 'ফলের গাছ যোগ', description: 'Grow fruit on a tree as you add — see addition happen (tier 1 of Add to 20)', descriptionBn: 'যোগ করলে গাছে ফল জন্মায় — যোগ করা চোখে দেখা যায় (২০-এর মধ্যে যোগের ধাপ ১)', commonCore: ['1.OA.6'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruittree', family: 'add-within-20', tier: 1 },
   { id: 'add-within-10', band: 2, subject: 'math', title: 'Add within 10', titleBn: '১০-এর মধ্যে যোগ', description: 'Addition facts with sums to 10 (apples shown)', descriptionBn: 'যোগফল ১০-এর মধ্যে (আপেল দেখিয়ে)', commonCore: ['1.OA.6'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruitadd-10' },
   { id: 'sub-within-10', band: 2, subject: 'math', title: 'Subtract within 10', titleBn: '১০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 10 (apples shown)', descriptionBn: '১০-এর মধ্যে বিয়োগ (আপেল দেখিয়ে)', commonCore: ['1.OA.6'], nctbCode: 'c1-math-5', classNumber: 1, game: 'game-fruitsub-10' },
   { id: 'number-bonds-10', band: 2, subject: 'math', title: 'Number bonds to 10', titleBn: '১০-এর জোড়া সংখ্যা', description: 'Partition numbers to 10 — the backbone of add & sub', descriptionBn: '১০-এর ভাঙা সংখ্যা — যোগ-বিয়োগের ভিত্তি', commonCore: ['K.OA.3', '1.OA.6'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-bnbonds' },
   { id: 'number-bonds-20', band: 2, subject: 'math', title: 'Number bonds to 20', titleBn: '২০-এর জোড়া সংখ্যা', description: 'Partition numbers to 20 with double ten-frames', descriptionBn: 'দুই দশ-ফ্রেমে ২০-এর ভাঙা সংখ্যা', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-bnbonds20' },
-  { id: 'add-within-20', band: 2, subject: 'math', title: 'Add within 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Addition facts with sums to 20 (apples shown)', descriptionBn: 'যোগফল ২০-এর মধ্যে (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruitadd-20' },
-  { id: 'sub-within-20', band: 2, subject: 'math', title: 'Subtract within 20', titleBn: '২০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 20 (apples shown)', descriptionBn: '২০-এর মধ্যে বিয়োগ (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-5', classNumber: 1, game: 'game-fruitsub-20' },
-  { id: 'add-to-20', band: 2, subject: 'math', title: 'Add to 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Pop balloons with the right sums — abstract speed drill', descriptionBn: 'সঠিক যোগফলের বেলুন ফুটাই — দ্রুত অনুশীলন', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-balloonpop' },
+  { id: 'add-within-20', band: 2, subject: 'math', title: 'Add within 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Addition facts with sums to 20 (apples shown)', descriptionBn: 'যোগফল ২০-এর মধ্যে (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-fruitadd-20', family: 'add-within-20', tier: 2 },
+  { id: 'sub-within-20', band: 2, subject: 'math', title: 'Subtract within 20', titleBn: '২০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 20 (apples shown)', descriptionBn: '২০-এর মধ্যে বিয়োগ (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-5', classNumber: 1, game: 'game-fruitsub-20', family: 'sub-within-20', tier: 1 },
+  { id: 'add-to-20', band: 2, subject: 'math', title: 'Add to 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Pop balloons with the right sums — abstract speed drill', descriptionBn: 'সঠিক যোগফলের বেলুন ফুটাই — দ্রুত অনুশীলন', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-4', classNumber: 1, game: 'game-balloonpop', family: 'add-within-20', tier: 3 },
   // Math — addition facts fluency: rapid-fire timed drill to 20 with speed ⚡ + accuracy tally.
-  { id: 'en-addfacts', band: 2, subject: 'math', title: 'Add facts to 20', titleBn: '২০-এর মধ্যে যোগ অনুশীলন', description: 'Rapid-fire addition facts to 20 with speed + accuracy tracking', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে যোগ, গতি ও নির্ভুলতা দেখা হয়', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-6', classNumber: 2, game: 'game-addfacts' },
+  { id: 'en-addfacts', band: 2, subject: 'math', title: 'Add facts to 20', titleBn: '২০-এর মধ্যে যোগ অনুশীলন', description: 'Rapid-fire addition facts to 20 with speed + accuracy tracking (top tier of Add to 20)', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে যোগ, গতি ও নির্ভুলতা দেখা হয় (২০-এর মধ্যে যোগের শেষ ধাপ)', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-6', classNumber: 2, game: 'game-addfacts', family: 'add-within-20', tier: 4 },
   // Math — subtraction facts fluency: timed drill to 20 with a number-line aid (the minus twin).
-  { id: 'en-subfacts', band: 2, subject: 'math', title: 'Subtract facts to 20', titleBn: '২০-এর মধ্যে বিয়োগ অনুশীলন', description: 'Rapid-fire subtraction facts to 20 with a number-line hop and speed + accuracy tracking', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে বিয়োগ, সংখ্যারেখায় লাফিয়ে গতি ও নির্ভুলতা দেখা হয়', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-7', classNumber: 2, game: 'game-subfacts' },
+  { id: 'en-subfacts', band: 2, subject: 'math', title: 'Subtract facts to 20', titleBn: '২০-এর মধ্যে বিয়োগ অনুশীলন', description: 'Rapid-fire subtraction facts to 20 with a number-line hop and speed + accuracy tracking (timed tier of Subtract within 20)', descriptionBn: 'দ্রুত-দ্রুত ২০-এর মধ্যে বিয়োগ, সংখ্যারেখায় লাফিয়ে গতি ও নির্ভুলতা দেখা হয় (২০-এর মধ্যে বিয়োগের দ্রুত ধাপ)', commonCore: ['1.OA.C.6'], nctbCode: 'c2-math-7', classNumber: 2, game: 'game-subfacts', family: 'sub-within-20', tier: 2 },
   // Math — doubles strategy: chant the doubles, then transfer to near-doubles (+1) with dot arrays.
   { id: 'en-doubles', band: 2, subject: 'math', title: 'Doubles & near-doubles', titleBn: 'দ্বিগুণ ও প্রায় দ্বিগুণ', description: 'Learn doubles facts with a spoken chant and dot arrays, then solve near-doubles as double + 1', descriptionBn: 'গান ও বিন্দু দিয়ে দ্বিগুণ শিখি, তারপর দ্বিগুণ + ১ দিয়ে প্রায় দ্বিগুণ করি', commonCore: ['1.OA.C.6', '2.OA.B.2'], nctbCode: 'c2-math-8', classNumber: 2, game: 'game-doubles' },
   // Math — making ten: fill a ten-frame and bridge to the teens (8+5 = 8+2+3 = 10+3).
@@ -105,18 +136,18 @@ export const SKILLS: Skill[] = [
   // Math — 2-digit written method: scaffolded borrowing with base-10 block visuals.
   { id: 'en-subborrow', band: 2, subject: 'math', title: 'Borrow subtraction (visual)', titleBn: 'ধার বিয়োগ (দৃশ্য)', description: 'Subtract two 2-digit numbers step by step with base-10 blocks and a borrow animation', descriptionBn: 'দুই অঙ্কের বিয়োগ করি ধাপে ধাপে, ব্লক দেখে ধার অ্যানিমেশনসহ', commonCore: ['2.NBT.B.5'], nctbCode: 'c2-math-11', classNumber: 2, game: 'game-subborrow' },
   // Math — multiplication arrays: countable dot arrays teach tables 2-5 before numbers.
-  { id: 'en-array-mult', band: 2, subject: 'math', title: 'Array times tables', titleBn: 'বিন্যাসে গুণ', description: 'Match a dot array (rows × columns) to its equation — tables 2 to 5', descriptionBn: 'বিন্দুর বিন্যাস (সারি × কলাম) মিলিয়ে গুণের সমীকরণ — ২ থেকে ৫ এর নামতা', commonCore: ['2.OA.C.4', '3.OA.A.1'], nctbCode: 'c2-math-12', classNumber: 2, game: 'game-array-mult' },
+  { id: 'en-array-mult', band: 2, subject: 'math', title: 'Array times tables', titleBn: 'বিন্যাসে গুণ', description: 'Match a dot array (rows × columns) to its equation — tables 2 to 5 (the concrete array intro to the times tables)', descriptionBn: 'বিন্দুর বিন্যাস (সারি × কলাম) মিলিয়ে গুণের সমীকরণ — ২ থেকে ৫ এর নামতা (নামতার চাক্ষুষ শুরু)', commonCore: ['2.OA.C.4', '3.OA.A.1'], nctbCode: 'c2-math-12', classNumber: 2, game: 'game-array-mult', family: 'mult-facts', tier: 1 },
   { id: 'skipcount', band: 2, subject: 'math', title: 'Skip count!', titleBn: 'ধাপে ধাপে!', description: 'Continue +3 and +4 sequences on a number line — tap the next number', descriptionBn: 'সংখ্যা রেখায় +৩ ও +৪ এর ধারা এগোই — পরের সংখ্যাটি টিপি', commonCore: ['2.NBT.A.2'], nctbCode: 'c2-math-13', classNumber: 2, game: 'game-skipcount' },
   // Math — division as sharing lvl 2: fair shares extended to the remainder concept.
-  { id: 'en-shares2', band: 3, subject: 'math', title: 'Fair shares 2 (remainders)', titleBn: 'সমান ভাগ ২ (ভাগশেষ)', description: 'Watch candies share round-robin into plates, then find each share and the leftover', descriptionBn: 'ক্যান্ডি ঘুরে ঘুরে ভাগ হয় দেখি, তারপর প্রত্যেকের ভাগ আর বাকি খুঁজি', commonCore: ['3.OA.A.2', '3.OA.C.7'], nctbCode: 'c3-math-7', classNumber: 3, game: 'game-shares2' },
+  { id: 'en-shares2', band: 3, subject: 'math', title: 'Fair shares 2 (remainders)', titleBn: 'সমান ভাগ ২ (ভাগশেষ)', description: 'Watch candies share round-robin into plates, then find each share and the leftover (tier 2 of Fair shares)', descriptionBn: 'ক্যান্ডি ঘুরে ঘুরে ভাগ হয় দেখি, তারপর প্রত্যেকের ভাগ আর বাকি খুঁজি (সমান ভাগের ধাপ ২)', commonCore: ['3.OA.A.2', '3.OA.C.7'], nctbCode: 'c3-math-7', classNumber: 3, game: 'game-shares2', family: 'fair-share', tier: 2 },
   // Math — fractions of a set: tap the correct subset of a group (1/2 of 8 → 4).
   { id: 'en-fracset', band: 3, subject: 'math', title: 'Fractions of a set', titleBn: 'সমষ্টির ভগ্নাংশ', description: 'Find a fraction of a group by tapping the right number of fruits (1/2 of 8)', descriptionBn: 'গুচ্ছের ভগ্নাংশ খুঁজি — সঠিক সংখ্যক ফল তাপ করে (৮-এর ১/২)', commonCore: ['3.NF.A.1'], nctbCode: 'c3-math-8', classNumber: 3, game: 'game-fracset' },
   // Math — mixed numbers & improper fractions: bar + number line show 1½ = 3/2 (convert visually).
   { id: 'en-mixedfrac', band: 3, subject: 'math', title: 'Mixed numbers & improper fractions', titleBn: 'মিশ্র সংখ্যা ও অপ্রকৃত ভগ্নাংশ', description: 'See 1½ on a bar and a number line, then match it to its improper fraction 3/2', descriptionBn: 'বার আর সংখ্যা রেখায় ১½ দেখি, তারপর মিশিয়ে খুঁজি সমান ভগ্নাংশ ৩/২', commonCore: ['3.NF.A.3c'], nctbCode: 'c3-math-9', classNumber: 3, game: 'game-mixedfrac' },
   // Math — decimals to tenths: shade/read a 10-cell strip in 0.1 steps (place-value speech).
-  { id: 'en-dectenths', band: 3, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Read a shaded 10-cell strip as a decimal (0.3) and build one by shading cells (tenths)', descriptionBn: 'ছাপানো ১০ ঘরের দশমিক পড়ি (০.৩) আর ঘর ছাপিয়ে বানাই (দশমাংশ)', commonCore: ['4.NF.C.6'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-dectenths' },
+  { id: 'en-dectenths', band: 3, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Read a shaded 10-cell strip as a decimal (0.3) and build one by shading cells (tenths — tier 1 of Decimals)', descriptionBn: 'ছাপানো ১০ ঘরের দশমিক পড়ি (০.৩) আর ঘর ছাপিয়ে বানাই (দশমাংশ — দশমিকের ধাপ ১)', commonCore: ['4.NF.C.6'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-dectenths', family: 'decimals', tier: 1 },
   // Math — making change with ৳ notes: pay with ৳50/৳100, compute the change; tap notes to make exact amounts.
-  { id: 'en-makechange', band: 3, subject: 'math', title: 'Making change (৳ notes)', titleBn: 'টাকা ফেরত (নোট)', description: 'Pay with a ৳50/৳100 note and compute the change, then make exact amounts by tapping ৳5/10/20/50', descriptionBn: '৳৫০/৳১০০ নোট দিয়ে দাম দিয়ে ফেরত বের করি, তারপর নোট ছাপিয়ে ঠিক অংক বানাই', commonCore: ['2.MD.C.8'], nctbCode: 'c3-math-11', classNumber: 3, game: 'game-makechange' },
+  { id: 'en-makechange', band: 3, subject: 'math', title: 'Making change (৳ notes)', titleBn: 'টাকা ফেরত (নোট)', description: 'Pay with a ৳50/৳100 note and compute the change, then make exact amounts by tapping ৳5/10/20/50 (top tier of Money)', descriptionBn: '৳৫০/৳১০০ নোট দিয়ে দাম দিয়ে ফেরত বের করি, তারপর নোট ছাপিয়ে ঠিক অংক বানাই (টাকা-পয়সার শেষ ধাপ)', commonCore: ['2.MD.C.8'], nctbCode: 'c3-math-11', classNumber: 3, game: 'game-makechange', family: 'money', tier: 3 },
   // Math — elapsed time: an analog clock + a digital target, "how many minutes until …?".
   { id: 'en-elapsed', band: 3, subject: 'math', title: 'Elapsed time (how long until…)', titleBn: 'সময়ের হিসাব (কতক্ষণ পরে…)', description: 'Watch an analog clock and find how many minutes until the digital target time', descriptionBn: 'ঘড়ি দেখে খুঁজি ডিজিটাল সময় পর্যন্ত কত মিনিট বাকি', commonCore: ['2.MD.C.7', '3.MD.A.1'], nctbCode: 'c3-math-12', classNumber: 3, game: 'game-elapsed' },
   // Math — measurement: compare length (cm/m), weight (kg/g) and capacity (L/mL).
@@ -148,9 +179,9 @@ export const SKILLS: Skill[] = [
   { id: 'en-magnets', band: 2, subject: 'science', title: 'Magnets', titleBn: 'চুম্বক', description: 'Predict whether magnets attract or repel — opposite poles attract, same poles repel — then try it', descriptionBn: 'চুম্বক টানবে নাকি ঠেলবে ভবিষ্যদ্বাণী করি — বিপরীত মেরু টানে, একই মেরু ঠেলে দেয় — তারপর চেষ্টা করি', commonCore: ['3.PS.2'], nctbCode: 'c2-science-9', classNumber: 2, game: 'game-magnets' },
   // Science — water cycle: order water → vapor → cloud → rain with a cartoon scene.
   { id: 'en-water-cycle', band: 2, subject: 'science', title: 'Water cycle', titleBn: 'পানিচক্র', description: 'Order the water cycle — water, vapor, cloud, rain — and watch the cartoon sun, pond, cloud and rain bring it to life', descriptionBn: 'পানিচক্র সাজাই — পানি, বাষ্প, মেঘ, বৃষ্টি — আর কার্টুন সূর্য-পুকুর-মেঘ-বৃষ্টিতে দেখি', commonCore: ['2.ESS.2'], nctbCode: 'c2-science-10', classNumber: 2, game: 'game-watercycle' },
-  { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka' },
+  { id: 'bd-taka', band: 2, subject: 'math', title: 'Bangla money', titleBn: 'টাকা চিনি', description: 'Recognize ৳ notes and coins, make amounts, and give change', descriptionBn: '৳ নোট ও কয়েন চিনি, অংক বানাই, ফেরত দিই', commonCore: ['2.MD.8'], nctbCode: 'c1-math-6', classNumber: 1, game: 'game-bdtaka', family: 'money', tier: 1 },
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
-  { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues' },
+  { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total (tier 2 of Money)', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি (টাকা-পয়সার ধাপ ২)', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues', family: 'money', tier: 2 },
   // Language — STAGE 2: more letters + sounds (mirrored)
   { id: 'bn-benjonborno', band: 2, subject: 'bangla', title: 'Bangla consonants', titleBn: 'ব্যঞ্জনবর্ণ', description: 'Recognize Bangla consonant letters ক খ গ ঘ', descriptionBn: 'বাংলা ব্যঞ্জনবর্ণ ক খ গ ঘ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnletters' },
   { id: 'bn-colors', band: 2, subject: 'bangla', title: 'Bangla colors', titleBn: 'রঙ চিনি', description: 'Name colors in Bangla (লাল, নীল, সবুজ)', descriptionBn: 'বাংলায় রঙের নাম বলি (লাল, নীল, সবুজ)', commonCore: ['L.K.5a'], nctbCode: 'c1-bangla-4', classNumber: 1, game: 'game-bncolors' },
@@ -194,13 +225,13 @@ export const SKILLS: Skill[] = [
   // (concrete sharing FIRST, abstract facts AFTER) → fractions → time →
   // PLACE VALUE (prerequisite) → regrouping (the written method).
   { id: 'add-sub-100', band: 3, subject: 'math', title: 'Add & subtract to 100', titleBn: '১০০-এর মধ্যে যোগ-বিয়োগ', description: 'Two-digit addition and subtraction', descriptionBn: 'দুই-অঙ্কের যোগ ও বিয়োগ', commonCore: ['2.NBT.5', '3.NBT.2'], nctbCode: 'c2-math-4', classNumber: 2, game: 'game-addsub100' },
-  { id: 'mult-facts-2-5-10', band: 3, subject: 'math', title: 'Times tables 2, 5, 10', titleBn: '২, ৫, ১০ এর নামতা', description: 'Multiplication facts for 2, 5, 10', descriptionBn: '২, ৫, ১০ এর গুণের সত্যি', commonCore: ['3.OA.7'], nctbCode: 'c3-math-2', classNumber: 2, game: 'game-rocketmult' },
-  { id: 'mult-facts-2-10', band: 3, subject: 'math', title: 'Times tables 2–10', titleBn: '২–১০ এর নামতা', description: 'Multiplication facts 2×…10× taught with concrete arrays first', descriptionBn: '২×…১০× গুণন, আগে বস্তুর সারি দেখিয়ে শেখাই', commonCore: ['3.OA.7'], nctbCode: 'c3-math-2', classNumber: 2, game: 'game-multable' },
-  { id: 'div-facts-fair-share', band: 3, subject: 'math', title: 'Fair shares', titleBn: 'সমান ভাগ', description: 'Division taught by fair-sharing (12 ÷ 3 = share 12 into 3)', descriptionBn: 'সমান ভাগের মাধ্যমে ভাগ শিখি (১২ ÷ ৩ = ১২ কে ৩ ভাগ)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-share' },
-  { id: 'div-facts-by-2-3', band: 3, subject: 'math', title: 'Divide by 2 and 3', titleBn: '২ ও ৩ দিয়ে ভাগ', description: 'Division facts with divisors 2 and 3', descriptionBn: 'ভাজক ২ ও ৩ দিয়ে ভাগ', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-div-23' },
-  { id: 'fractions-intro', band: 3, subject: 'math', title: 'Halves and quarters', titleBn: 'অর্ধেক ও চতুর্থাংশ', description: 'Recognize ½, ¼, ¾ of a whole', descriptionBn: 'পুরোটার ½, ¼, ¾ চিনি', commonCore: ['3.NF.1'], nctbCode: 'c3-math-3', classNumber: 2, game: 'game-pizzafrac' },
+  { id: 'mult-facts-2-5-10', band: 3, subject: 'math', title: 'Times tables 2, 5, 10', titleBn: '২, ৫, ১০ এর নামতা', description: 'Multiplication facts for 2, 5, 10 (first fact tier of the times-table ladder)', descriptionBn: '২, ৫, ১০ এর গুণের সত্যি (নামতার প্রথম ধাপ)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-2', classNumber: 2, game: 'game-rocketmult', family: 'mult-facts', tier: 2 },
+  { id: 'mult-facts-2-10', band: 3, subject: 'math', title: 'Times tables 2–10', titleBn: '২–১০ এর নামতা', description: 'Multiplication facts 2×…10× taught with concrete arrays first', descriptionBn: '২×…১০× গুণন, আগে বস্তুর সারি দেখিয়ে শেখাই', commonCore: ['3.OA.7'], nctbCode: 'c3-math-2', classNumber: 2, game: 'game-multable', family: 'mult-facts', tier: 3 },
+  { id: 'div-facts-fair-share', band: 3, subject: 'math', title: 'Fair shares', titleBn: 'সমান ভাগ', description: 'Division taught by fair-sharing (12 ÷ 3 = share 12 into 3)', descriptionBn: 'সমান ভাগের মাধ্যমে ভাগ শিখি (১২ ÷ ৩ = ১২ কে ৩ ভাগ)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-share', family: 'fair-share', tier: 1 },
+  { id: 'div-facts-by-2-3', band: 3, subject: 'math', title: 'Divide by 2 and 3', titleBn: '২ ও ৩ দিয়ে ভাগ', description: 'Division facts with divisors 2 and 3 (first tier of Division facts)', descriptionBn: 'ভাজক ২ ও ৩ দিয়ে ভাগ (ভাগ করার প্রথম ধাপ)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 2, game: 'game-div-23', family: 'division-facts', tier: 1 },
+  { id: 'fractions-intro', band: 3, subject: 'math', title: 'Halves and quarters', titleBn: 'অর্ধেক ও চতুর্থাংশ', description: 'Recognize ½, ¼, ¾ of a whole, then read shaded fractions to 8 parts', descriptionBn: 'পুরোটার ½, ¼, ¾ চিনি, তারপর ৮ ভাগ পর্যন্ত ছায়া-ভগ্নাংশ পড়ি', commonCore: ['3.NF.1'], nctbCode: 'c3-math-3', classNumber: 2, game: 'game-pizzafrac', family: 'fractions-read', tier: 1 },
   { id: 'fractions-compare', band: 3, subject: 'math', title: 'Compare & order fractions', titleBn: 'ভগ্নাংশ তুলনা ও সাজানো', description: 'Tap the bigger pizza, then order three from smallest to biggest', descriptionBn: 'বড় পিজ্জাটা টিপো, তারপর ছোট থেকে বড় তিনটা সাজাও', commonCore: ['3.NF.A.3d'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-comparefrac' },
-  { id: 'tell-time', band: 3, subject: 'math', title: 'Tell time', titleBn: 'ঘড়ি পড়া', description: 'Read an analog clock', descriptionBn: 'ঘড়ি পড়ি', commonCore: ['1.MD.3', '2.MD.7'], nctbCode: 'c2-math-3', classNumber: 2, game: 'game-clock' },
+  { id: 'tell-time', band: 3, subject: 'math', title: 'Tell time', titleBn: 'ঘড়ি পড়া', description: 'Read an analog clock — hour, half, 5-minute steps, then to the exact minute', descriptionBn: 'ঘড়ি পড়ি — ঘণ্টা, আধাঘণ্টা, ৫ মিনিটের ধাপ, তারপর ঠিক মিনিট', commonCore: ['1.MD.3', '2.MD.7'], nctbCode: 'c2-math-3', classNumber: 2, game: 'game-clock', family: 'clock', tier: 1 },
   { id: 'place-value-1000', band: 3, subject: 'math', title: 'Place value to 9,999', titleBn: 'স্থানীয় মান', description: 'Thousands, hundreds, tens and ones up to 9,999 — read the number from its blocks', descriptionBn: '৯৯৯৯ পর্যন্ত হাজার, শতক, দশক, একক — ব্লক দেখে সংখ্যা পড়া', commonCore: ['2.NBT.1', '3.NBT.1', '4.NBT.2'], nctbCode: 'c3-math-1', classNumber: 3, game: 'game-placevalue' },
   // Rounding rides place value: read how many tens/hundreds, then jump the number
   // to the nearer fence-post. 3.NBT.1 (round to nearest 10 or 100).
@@ -247,7 +278,7 @@ export const SKILLS: Skill[] = [
   { id: 'en-longvowels', band: 2, subject: 'english', title: 'Vowel teams', titleBn: 'স্বর দল', description: 'Hear rain/play/tree/sea/boat/snow/pie/night and tap the long-vowel team that makes the word (ai ay ee ea oa ow ie igh)', descriptionBn: 'rain/play/tree/sea/boat/snow/pie/night শুনে শব্দটি তৈরি করা স্বর দল টিপি (ai ay ee ea oa ow ie igh)', commonCore: ['RF.1.3c'], nctbCode: 'c2-english-13', classNumber: 2, game: 'game-longvowels' },
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
-  { id: 'division-facts', band: 4, subject: 'math', title: 'Division facts', titleBn: 'ভাগ করা', description: 'Division facts within 100 (24÷3, 45÷5)', descriptionBn: '১০০-এর মধ্যে ভাগের সত্যি (২৪÷৩, ৪৫÷৫)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 3, game: 'game-division' },
+  { id: 'division-facts', band: 4, subject: 'math', title: 'Division facts', titleBn: 'ভাগ করা', description: 'Division facts within 100 (24÷3, 45÷5)', descriptionBn: '১০০-এর মধ্যে ভাগের সত্যি (২৪÷৩, ৪৫÷৫)', commonCore: ['3.OA.7'], nctbCode: 'c3-math-4', classNumber: 3, game: 'game-division', family: 'division-facts', tier: 2 },
   { id: 'fractions-equiv', band: 4, subject: 'math', title: 'Equivalent fractions', titleBn: 'সমান ভগ্নাংশ', description: 'Recognize ½ = 2⁄4 = 3⁄6', descriptionBn: 'বুঝি ½ = ২⁄৪ = ৩⁄৬', commonCore: ['3.NF.3'], nctbCode: 'c4-math-3', classNumber: 4, game: 'game-fracmatch' },
   // Language — STAGE 4: decoding (mirrored: BN matras ↔ EN sight words)
   { id: 'bn-matras', band: 4, subject: 'bangla', title: 'Bangla matras', titleBn: 'কার', description: 'Combine letters with matras (ক + া = কা)', descriptionBn: 'অক্ষরের সাথে কার যোগ করি (ক + া = কা)', commonCore: ['RF.3.4'], nctbCode: 'c3-bangla-2', classNumber: 3, game: 'game-bnmatras' },
@@ -256,8 +287,8 @@ export const SKILLS: Skill[] = [
   { id: 'science-animals', band: 4, subject: 'science', title: 'Animal homes', titleBn: 'প্রাণী ও আবাস', description: 'Where animals live (water, land, sky)', descriptionBn: 'প্রাণীরা কোথায় থাকে (পানি, ডাঙা, আকাশ)', commonCore: ['2.LS.4'], nctbCode: 'c3-science-1', classNumber: 3, game: 'game-animalhome' },
 
   // ── Band 5 — Star Academy (ages 10–13, class 5–8) ──
-  { id: 'decimals-intro', band: 5, subject: 'math', title: 'Decimals', titleBn: 'দশমিক', description: 'Compare and order decimals (0.5 vs 0.45)', descriptionBn: 'দশমিক তুলনা ও সাজাই (০.৫ বনাম ০.৪৫)', commonCore: ['5.NBT.3'], nctbCode: 'c5-math-3', classNumber: 5, game: 'game-decimals' },
-  { id: 'percent-intro', band: 5, subject: 'math', title: 'Percent of a number', titleBn: 'শতকরা', description: 'Find 10%, 25%, 50% of a number', descriptionBn: 'সংখ্যার ১০%, ২৫%, ৫০% বের করি', commonCore: ['6.RP.3'], nctbCode: 'c6-math-2', classNumber: 6, game: 'game-percent' },
+  { id: 'decimals-intro', band: 5, subject: 'math', title: 'Decimals', titleBn: 'দশমিক', description: 'Compare and order decimals (0.5 vs 0.45)', descriptionBn: 'দশমিক তুলনা ও সাজাই (০.৫ বনাম ০.৪৫)', commonCore: ['5.NBT.3'], nctbCode: 'c5-math-3', classNumber: 5, game: 'game-decimals', family: 'decimals', tier: 2 },
+  { id: 'percent-intro', band: 5, subject: 'math', title: 'Percent of a number', titleBn: 'শতকরা', description: 'Find 10%, 25%, 50%, then 75% of a number', descriptionBn: 'সংখ্যার ১০%, ২৫%, ৫০%, তারপর ৭৫% বের করি', commonCore: ['6.RP.3'], nctbCode: 'c6-math-2', classNumber: 6, game: 'game-percent', family: 'percent', tier: 1 },
   { id: 'area-perimeter', band: 5, subject: 'math', title: 'Area & perimeter', titleBn: 'ক্ষেত্রফল ও পরিসীমা', description: 'Area of rectangles and squares', descriptionBn: 'আয়তক্ষেত্র ও বর্গের ক্ষেত্রফল', commonCore: ['4.MD.3'], nctbCode: 'c5-math-5', classNumber: 5, game: 'game-area' },
   // Language — STAGE 5: sentences & grammar (mirrored)
   { id: 'bn-sentences', band: 5, subject: 'bangla', title: 'Bangla sentences', titleBn: 'বাক্য গঠন', description: 'Build simple Bangla sentences', descriptionBn: 'সহজ বাংলা বাক্য গঠন করি', commonCore: ['RF.5.4'], nctbCode: 'c5-bangla-4', classNumber: 5, game: 'game-bnsentence' },
@@ -268,18 +299,18 @@ export const SKILLS: Skill[] = [
   // ── Band 6 — Jungle Canopy (ages 11–14, class 5–6): FLUENCY ──
   // Deeper practice of the band 3–5 operations at higher difficulty; each
   // skill reuses a proven scene (TimesTable, DivisionFacts, PizzaFrac, Clock).
-  { id: 'mult-fluency-6-9', band: 6, subject: 'math', title: 'Times tables 6–9', titleBn: '৬–৯ এর নামতা', description: 'Multiplication tables 6, 7, 8, 9', descriptionBn: '৬, ৭, ৮, ৯ এর নামতা', commonCore: ['3.OA.7'], nctbCode: 'c5-math-2', classNumber: 5, game: 'game-multable' },
-  { id: 'divide-within-100', band: 6, subject: 'math', title: 'Divide within 100', titleBn: '১০০-এর মধ্যে ভাগ', description: 'Division facts within 100 (72÷8)', descriptionBn: '১০০-এর মধ্যে ভাগ (৭২÷৮)', commonCore: ['3.OA.7'], nctbCode: 'c5-math-4', classNumber: 5, game: 'game-division' },
-  { id: 'fraction-read', band: 6, subject: 'math', title: 'Read fractions', titleBn: 'ভগ্নাংশ পড়ি', description: 'Read shaded fractions to 8 parts', descriptionBn: '৮ ভাগ পর্যন্ত ছায়া-ভগ্নাংশ পড়ি', commonCore: ['3.NF.1'], nctbCode: 'c5-math-3', classNumber: 5, game: 'game-pizzafrac' },
-  { id: 'clock-minute', band: 6, subject: 'math', title: 'Tell time to the minute', titleBn: 'মিনিট ধরে ঘড়ি পড়ি', description: 'Read any time to the exact minute', descriptionBn: 'মিনিট ধরে সঠিক সময় পড়ি', commonCore: ['2.MD.7'], nctbCode: 'c5-math-6', classNumber: 5, game: 'game-clock' },
+  { id: 'mult-fluency-6-9', band: 6, subject: 'math', title: 'Times tables 6–9', titleBn: '৬–৯ এর নামতা', description: 'Multiplication tables 6, 7, 8, 9 — the fluency top tier of the times-table ladder', descriptionBn: '৬, ৭, ৮, ৯ এর নামতা — নামতার সিড়ির শেষ ধাপ', commonCore: ['3.OA.7'], nctbCode: 'c5-math-2', classNumber: 5, game: 'game-multable', family: 'mult-facts', tier: 4 },
+  { id: 'divide-within-100', band: 6, subject: 'math', title: 'Divide within 100', titleBn: '১০০-এর মধ্যে ভাগ', description: 'Division facts within 100 (72÷8) — the fluency top tier of Division facts', descriptionBn: '১০০-এর মধ্যে ভাগ (৭২÷৮) — ভাগ করার শেষ ধাপ', commonCore: ['3.OA.7'], nctbCode: 'c5-math-4', classNumber: 5, game: 'game-division', family: 'division-facts', tier: 3 },
+  { id: 'fraction-read', band: 6, subject: 'math', title: 'Read fractions', titleBn: 'ভগ্নাংশ পড়ি', description: 'Read shaded fractions to 8 parts (top tier of Read fractions)', descriptionBn: '৮ ভাগ পর্যন্ত ছায়া-ভগ্নাংশ পড়ি (ভগ্নাংশ পড়ার শেষ ধাপ)', commonCore: ['3.NF.1'], nctbCode: 'c5-math-3', classNumber: 5, game: 'game-pizzafrac', family: 'fractions-read', tier: 2 },
+  { id: 'clock-minute', band: 6, subject: 'math', title: 'Tell time to the minute', titleBn: 'মিনিট ধরে ঘড়ি পড়ি', description: 'Read any time to the exact minute (top tier of Tell time)', descriptionBn: 'মিনিট ধরে সঠিক সময় পড়ি (ঘড়ি পড়ার শেষ ধাপ)', commonCore: ['2.MD.7'], nctbCode: 'c5-math-6', classNumber: 5, game: 'game-clock', family: 'clock', tier: 2 },
   // Language — Bangla conjuncts (যুক্তবর্ণ): the tricky two-letter blends kids
   // meet in class 5 Bangla reading (ক্ষ ঞ্জ ঙ্ক ণ্ড). Reuses BnMatras' combine
   // mechanic with a conjuncts mode.
   { id: 'bn-conjuncts', band: 6, subject: 'bangla', title: 'Bangla conjuncts', titleBn: 'যুক্তবর্ণ', description: 'Combine letters into conjuncts ক্ষ ঞ্জ ঙ্ক ণ্ড', descriptionBn: 'অক্ষর জুড়ে যুক্তবর্ণ তৈরি করি (ক্ষ ঞ্জ ঙ্ক ণ্ড)', commonCore: ['RF.5.3'], nctbCode: 'c5-bangla-2', classNumber: 5, game: 'game-bnmatras' },
 
   // ── Band 7 — Polar Peaks (ages 12–15, class 6–8): REFINEMENT ──
-  { id: 'decimals-tenths', band: 7, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Place value in decimals (0.5, 0.25, 0.75)', descriptionBn: 'দশমিকের স্থানীয় মান (০.৫, ০.২৫, ০.৭৫)', commonCore: ['5.NBT.3', '4.NF.6'], nctbCode: 'c6-math-3', classNumber: 6, game: 'game-decimals' },
-  { id: 'percent-of-number', band: 7, subject: 'math', title: 'Percent of a number', titleBn: 'সংখ্যার শতকরা', description: 'Find 10%, 25%, 50% and 75% of a number', descriptionBn: 'সংখ্যার ১০%, ২৫%, ৫০%, ৭৫% বের করি', commonCore: ['6.RP.3'], nctbCode: 'c6-math-2', classNumber: 6, game: 'game-percent' },
+  { id: 'decimals-tenths', band: 7, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Place value in decimals (0.5, 0.25, 0.75) — the top tier of the Decimals family', descriptionBn: 'দশমিকের স্থানীয় মান (০.৫, ০.২৫, ০.৭৫) — দশমিক পরিবারের শেষ ধাপ', commonCore: ['5.NBT.3', '4.NF.6'], nctbCode: 'c6-math-3', classNumber: 6, game: 'game-decimals', family: 'decimals', tier: 3 },
+  { id: 'percent-of-number', band: 7, subject: 'math', title: 'Percent of a number', titleBn: 'সংখ্যার শতকরা', description: 'Find 10%, 25%, 50% and 75% of a number (top tier of Percent)', descriptionBn: 'সংখ্যার ১০%, ২৫%, ৫০%, ৭৫% বের করি (শতকরা-র শেষ ধাপ)', commonCore: ['6.RP.3'], nctbCode: 'c6-math-2', classNumber: 6, game: 'game-percent', family: 'percent', tier: 2 },
   { id: 'fraction-simplify', band: 7, subject: 'math', title: 'Simplify fractions', titleBn: 'ভগ্নাংশ ছোট করি', description: 'Reduce fractions to simplest form (4⁄8 → ½)', descriptionBn: 'ভগ্নাংশ ছোট করি (৪⁄৮ → ½)', commonCore: ['3.NF.3', '5.NF.1'], nctbCode: 'c6-math-3', classNumber: 6, game: 'game-fracmatch' },
   // BGS — heritage facts (a new, deeper fact tier in the BGS scene)
   { id: 'bgs-heritage', band: 7, subject: 'bgs', title: 'Bangladesh heritage', titleBn: 'বাংলাদেশের ঐতিহ্য', description: 'Festivals, crafts, foods, landmarks', descriptionBn: 'উৎসব, শিল্প, খাবার, ঐতিহাসিক স্থান', commonCore: [], nctbCode: 'c6-bgs-1', classNumber: 6, game: 'game-bgs' },
@@ -292,7 +323,7 @@ export const SKILLS: Skill[] = [
   // #48 — pick the right pronoun in a sentence (band 3)
   { id: 'bn-pronouns', band: 3, subject: 'bangla', title: 'Bangla pronouns', titleBn: 'সর্বনাম', description: 'Fill the right pronoun (আমি, তুমি, সে…) into a sentence', descriptionBn: 'বাক্যে সঠিক সর্বনাম বসাই (আমি, তুমি, সে…)', commonCore: ['L.3.1'], nctbCode: 'c3-bangla-10', classNumber: 3, game: 'game-bnpronouns' },
   // #49 — count DOWN from 100 by 1s (rocket blast-off; band 2)
-  { id: 'count-back-100', band: 2, subject: 'math', title: 'Count back from 100', titleBn: 'উল্টো গোনা', description: 'Count down from 100 to 1 by ones — a rocket blast-off', descriptionBn: '১০০ থেকে ১ পর্যন্ত উল্টো গুনি — রকেট ওড়ে', commonCore: ['1.NBT.1'], nctbCode: 'c2-math-14', classNumber: 2, game: 'game-countback' },
+  { id: 'count-back-100', band: 2, subject: 'math', title: 'Count back from 100', titleBn: 'উল্টো গোনা', description: 'Count down from 100 to 1 by ones — a rocket blast-off (reverse mode of the count family)', descriptionBn: '১০০ থেকে ১ পর্যন্ত উল্টো গুনি — রকেট ওড়ে (গণনা পরিবারের উল্টো ভাগ)', commonCore: ['1.NBT.1'], nctbCode: 'c2-math-14', classNumber: 2, game: 'game-countback', family: 'count', tier: 6 },
   // ── 2026 backlog content (#51, #53, #54, #56) — English pack ──
   // #51 — drag 3 letters to build a CVC word (band 1)
   { id: 'en-cvc-build', band: 1, subject: 'english', title: 'Build CVC words', titleBn: 'শব্দ গড়ি', description: 'See a CVC picture, drag its 3 letters into the slots to spell it', descriptionBn: 'ছবি দেখে ৩টা অক্ষর টেনে শব্দ গড়ি (cat, dog, sun)', commonCore: ['RF.1.2b'], nctbCode: 'c1-english-6', classNumber: 1, game: 'game-cvcbuild' },
@@ -608,6 +639,15 @@ export const GAME_SCENES: Record<string, string> = {
 
 export function getSkill(id: string): Skill | undefined {
   return SKILLS.find((s) => s.id === id);
+}
+
+export function getFamily(id: string): SkillFamily | undefined {
+  return SKILL_FAMILIES.find((f) => f.id === id);
+}
+
+/** All skills that are tiers of one family (in catalog order). */
+export function skillsForFamily(family: string): Skill[] {
+  return SKILLS.filter((s) => s.family === family);
 }
 
 export function skillsForBand(band: number): Skill[] {

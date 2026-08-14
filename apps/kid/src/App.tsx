@@ -42,7 +42,7 @@ import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, worldProgress, worldEmoji,
-  worldUnlocked, totalMastered, journeyStops, journeyState, journeyCurrentIndex, cardDate,
+  worldUnlocked, totalMastered, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, modeForSkill, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
   MASTERY_THRESHOLD, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
@@ -2067,7 +2067,9 @@ export default function App() {
   if (screen === "syllabus") {
     const pName = parentName();
     const masteredCount = kid ? totalMastered(skillsMap, kid.id) : 0;
-    const totalCount = filterSkills.filter((s) => s.game).length;
+    // #1207-#1216 — skills that are tiers of ONE family count once, so the
+    // syllabus's "X mastered / Y" matches the one-concept number the kid sees.
+    const totalCount = progressUnitCount();
     const goStart = () => {
       const list = loadKids();
       setScreen(list.length ? (kid ? "home" : "kidpick") : "addkid");
@@ -2129,7 +2131,7 @@ export default function App() {
                  its own land colors; lessons are a grid of tappable tiles. */}
             {BANDS.map((b) => {
               const skills = SKILLS.filter((s) => s.band === b.id);
-              const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: skills.filter((s) => s.game).length, pct: 0 };
+              const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: progressUnitsInBand(b.id), pct: 0 };
               const palette = WORLD_LANDS[b.id] ?? { c1: "#0f3d33", c2: "#2ec4b6", c3: "#a7f3d0", c2_22: "rgba(46,196,182,0.16)", deco: ["🌱"] };
               return (
                 <section
@@ -3069,7 +3071,7 @@ export default function App() {
                 {kids.map((k) => {
                   const selected = k.id === activeId;
                   const st = stats[k.id];
-                  const kidTotal = filterSkills.filter((s) => s.game).length;
+                  const kidTotal = progressUnitCount();
                   const kidMastered = totalMastered(skillsMap, k.id);
                   return (
                     <button
@@ -3113,15 +3115,15 @@ export default function App() {
                           className="progress-fill"
                           style={{
                             width: `${
-                              filterSkills.filter((s) => s.game).length
-                                ? Math.round((totalMastered(skillsMap, activeKid.id) / filterSkills.filter((s) => s.game).length) * 100)
+                              progressUnitCount()
+                                ? Math.round((totalMastered(skillsMap, activeKid.id) / progressUnitCount()) * 100)
                                 : 0
                             }%`,
                           }}
                         />
                       </div>
                       <span className="parent-sub">
-                        {totalMastered(skillsMap, activeKid.id)}/{filterSkills.filter((s) => s.game).length} · {t.starsTotal(stats[activeKid.id]?.stars ?? 0)} · {t.points(stats[activeKid.id]?.score ?? 0)} · {t.sessions(stats[activeKid.id]?.sessions ?? 0)}
+                        {totalMastered(skillsMap, activeKid.id)}/{progressUnitCount()} · {t.starsTotal(stats[activeKid.id]?.stars ?? 0)} · {t.points(stats[activeKid.id]?.score ?? 0)} · {t.sessions(stats[activeKid.id]?.sessions ?? 0)}
                       </span>
                     </div>
                     <div className="world-progress-card">

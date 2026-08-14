@@ -5,7 +5,7 @@
  *
  * i18n seam: locale-sensitive labels (badges/achievements/ranks/tour) keep
  * { en, bn } pairs here; the Strings/STR table lives in ../i18n.ts. */
-import { BANDS, SKILLS, GAME_SCENES, getGame, nextDifficulty, moni, DEFAULT_MONI_PARAMS, type Band, type ErrorKind, type Skill } from "@numberverse/core";
+import { BANDS, SKILLS, GAME_SCENES, getGame, getFamily, nextDifficulty, moni, DEFAULT_MONI_PARAMS, type Band, type ErrorKind, type Skill } from "@numberverse/core";
 import { useKidStore, NOVA_SPECIES, type RoundResult, type MistakeState } from "../store";
 import { bnNum, BN_MONTHS, type Lang, type Strings } from "../i18n";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "../game/ui";
@@ -550,11 +550,65 @@ export function strugglingSkills(
   return out.sort((a, b) => b.open - a.open || b.wrong - a.wrong);
 }
 
+/* ── SKILL FAMILIES (#1207-#1216) ──────────────────────────────────────────
+ * Overlapping skill ids that are TIERS of ONE concept (concrete→abstract→timed
+ * drills, or a band-ceiling bump of the same scene — percent 10→75%, fractions
+ * 4→8 parts, clock to the minute, division to 100, the count ladder) share a
+ * `family` in the catalog. Progress counts ONE unit per family per band, so the
+ * "X mastered / Y" number a child AND a parent see no longer fragments the same
+ * concept across duplicate ids. Every individual game stays playable and every
+ * per-skill card/mastery record is untouched — only the aggregate counts unify. */
+
+/** Family unit key — one learnable concept per band. Skills without a family
+ *  are their own unit (so families of one behave exactly as before). */
+function unitKey(s: Skill): string {
+  return `${s.band}:${s.family ?? `__${s.id}`}`;
+}
+
+/** True when ANY member of a skill's family unit is mastered — mastering one
+ *  tier of a family (e.g. concrete apples) counts the whole concept. */
+function unitMastered(skills: SkillMap, kidId: string, s: Skill): boolean {
+  return filterSkills.some(
+    (m) => m.band === s.band && (m.family ?? `__${m.id}`) === (s.family ?? `__${s.id}`) && skillMastered(skills, kidId, m.id)
+  );
+}
+
 export function worldProgress(skills: SkillMap, kidId: string, band: number): { mastered: number; total: number; pct: number } {
-  const all = filterSkills.filter((s) => s.band === band && s.game);
-  const total = all.length || 1;
-  const mastered = all.filter((s) => skillMastered(skills, kidId, s.id)).length;
+  const units = new Map<string, Skill[]>();
+  for (const s of filterSkills) {
+    if (s.band !== band || !s.game) continue;
+    const key = s.family ?? `__${s.id}`;
+    if (!units.has(key)) units.set(key, []);
+    units.get(key)!.push(s);
+  }
+  let mastered = 0;
+  for (const members of units.values()) {
+    if (members.some((m) => skillMastered(skills, kidId, m.id))) mastered++;
+  }
+  const total = units.size || 1;
   return { mastered, total, pct: Math.round((mastered / total) * 100) };
+}
+
+/** Total learnable units in the whole journey — the "Y" in "X mastered / Y".
+ *  Subject filters (parent controls) are honoured, exactly like the old count. */
+export function progressUnitCount(): number {
+  return new Set(filterSkills.filter((s) => s.game).map((s) => unitKey(s))).size;
+}
+
+/** Learnable units in one band from the FULL catalog — the parent syllabus shows
+ *  every planned lesson even for filtered-out subjects, so it counts unfiltered. */
+export function progressUnitsInBand(band: number): number {
+  return new Set(SKILLS.filter((s) => s.band === band && s.game).map((s) => s.family ?? `__${s.id}`)).size;
+}
+
+/** EN/BN title of a skill's family — lets the UI group tier cards under ONE
+ *  concept name instead of repeating "Add to 20" four times. */
+export function familyTitle(skill: Skill, lang: Lang): string {
+  if (skill.family) {
+    const f = getFamily(skill.family);
+    if (f) return lang === "bn" ? f.titleBn : f.title;
+  }
+  return lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
 }
 
 /** World emblem emoji — matches the game's SVG assets (see svgs.ts WORLDS). */
@@ -598,7 +652,16 @@ export function worldUnlocked(skills: SkillMap, kidId: string, band: number): bo
 }
 
 export function totalMastered(skills: SkillMap, kidId: string): number {
-  return filterSkills.filter((s) => s.game && skillMastered(skills, kidId, s.id)).length;
+  const seen = new Set<string>();
+  let n = 0;
+  for (const s of filterSkills) {
+    if (!s.game) continue;
+    const key = unitKey(s);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (unitMastered(skills, kidId, s)) n++;
+  }
+  return n;
 }
 
 /* ────────────────────────────── learning journey ──────────────────────────────

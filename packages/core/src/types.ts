@@ -33,6 +33,14 @@ export interface Skill {
   nctbCode?: string;
   classNumber?: number; // Bangladesh school class 1..12
   game?: string; // primary game id
+  /** Skill family (#1207-#1216 skill-overlap cleanup). Skills that are TIERS of
+   *  ONE concept — concrete → abstract → timed drills, or a band-ceiling bump
+   *  of the same scene (percent 10→75%, fractions 4→8 parts, clock to the
+   *  minute, division to 100) — share a family id so the child's "I can do X"
+   *  mastery number counts ONCE instead of once per duplicate id. */
+  family?: string;
+  /** Ladder position inside the family: 1 = concrete/intro … n = abstract/timed. */
+  tier?: number;
 }
 
 /** Per-skill mastery state for one kid (mirrors skill_mastery row). */
