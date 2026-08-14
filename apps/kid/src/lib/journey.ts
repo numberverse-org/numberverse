@@ -228,7 +228,7 @@ export interface SessionStep {
   gameId: string;
   scene: string;
   title: string;
-  mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
+  mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts" | "words" | "civic" | "paragraph" | "sentences";
   /** Run the narrated Basket Math concept-demo before the drills (add/sub). */
   teach?: boolean;
   /** #1130/#1158 — post-mastery CHALLENGE replay: this step re-runs a mastered

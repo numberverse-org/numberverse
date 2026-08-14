@@ -48,6 +48,32 @@ const ITEMS: ReadItem[] = [
   { s: "The boy plays with a red ball.", q: "What does the boy play with?", a: { e: "⚽", c: "a ball" }, d: [{ e: "🧸", c: "a teddy" }, { e: "🚗", c: "a car" }, { e: "🪁", c: "a kite" }] },
 ];
 
+// #761 — band-5 en-comprehension: SHORT paragraphs (2-3 sentences), same
+// picture-answer question. #757/#760 — band-6 en-paragraph: LONGER paragraphs
+// (4-5 sentences). Both share the ReadAloud scene; the skill id picks the pool.
+const PARAGRAPHS_SHORT: ReadItem[] = [
+  { s: "Sam has a small brown dog. The dog likes to play in the park.", q: "Where does the dog like to play?", a: { e: "🌳", c: "in the park" }, d: [{ e: "🏠", c: "in the house" }, { e: "🏫", c: "at school" }, { e: "🛒", c: "in the market" }] },
+  { s: "It is raining today. Mina stays at home and reads a book.", q: "Why does Mina stay at home?", a: { e: "☔", c: "because it rains" }, d: [{ e: "☀️", c: "because it is hot" }, { e: "❄️", c: "because it snows" }, { e: "🌬️", c: "because of wind" }] },
+  { s: "The children go to the zoo. They see a big elephant and a tall giraffe.", q: "Where do the children go?", a: { e: "🦒", c: "to the zoo" }, d: [{ e: "🏛️", c: "to the museum" }, { e: "📚", c: "to the library" }, { e: "🚜", c: "to the farm" }] },
+  { s: "Rina likes fruits. She eats a red apple every day.", q: "What does Rina eat every day?", a: { e: "🍎", c: "an apple" }, d: [{ e: "🍌", c: "a banana" }, { e: "🍊", c: "an orange" }, { e: "🥭", c: "a mango" }] },
+  { s: "The bus is full. Dad walks to the office instead.", q: "How does Dad go to the office?", a: { e: "🚶", c: "he walks" }, d: [{ e: "🚌", c: "by bus" }, { e: "🚗", c: "by car" }, { e: "🚲", c: "by bike" }] },
+  { s: "The sky is dark. The stars come out at night.", q: "When do the stars come out?", a: { e: "🌙", c: "at night" }, d: [{ e: "🌅", c: "in the morning" }, { e: "☀️", c: "at noon" }, { e: "🌤️", c: "in the afternoon" }] },
+  { s: "Mother cooks rice and fish for dinner.", q: "What does Mother cook?", a: { e: "🐟", c: "rice and fish" }, d: [{ e: "🥚", c: "eggs" }, { e: "🍞", c: "bread" }, { e: "🎂", c: "a cake" }] },
+  { s: "The baby is happy. She claps her hands and laughs.", q: "How does the baby feel?", a: { e: "😊", c: "happy" }, d: [{ e: "😢", c: "sad" }, { e: "😠", c: "angry" }, { e: "😨", c: "scared" }] },
+  { s: "The cat climbs the tall tree. It cannot come down.", q: "Where does the cat climb?", a: { e: "🌳", c: "up the tree" }, d: [{ e: "🧱", c: "on the wall" }, { e: "🏠", c: "on the roof" }, { e: "🪜", c: "up a ladder" }] },
+  { s: "My brother is small. He cannot reach the top shelf.", q: "Why can't he reach the top shelf?", a: { e: "📏", c: "he is small" }, d: [{ e: "😴", c: "he is tired" }, { e: "🤒", c: "he is sick" }, { e: "😋", c: "he is hungry" }] },
+];
+const PARAGRAPHS_LONG: ReadItem[] = [
+  { s: "Amin's family goes to the village in winter. They visit Grandmother. Grandmother makes pitha for them. Everyone is happy.", q: "Who makes pitha?", a: { e: "👵", c: "Grandmother" }, d: [{ e: "👩", c: "Mother" }, { e: "👦", c: "Amin" }, { e: "🧑‍🌾", c: "the farmer" }] },
+  { s: "The sun rises in the east. The rooster crows and the day begins. Farmers go to the fields. Children walk to school.", q: "What rises in the east?", a: { e: "☀️", c: "the sun" }, d: [{ e: "🌙", c: "the moon" }, { e: "⭐", c: "the star" }, { e: "☁️", c: "the cloud" }] },
+  { s: "Sara wants a pet. She asks for a kitten. Her mother says yes. Now Sara feeds the kitten every day.", q: "What does Sara feed every day?", a: { e: "🐱", c: "the kitten" }, d: [{ e: "🐶", c: "the dog" }, { e: "🐟", c: "the fish" }, { e: "🐦", c: "the bird" }] },
+  { s: "The library is very quiet. Many books stand on the shelves. Nadia finds a book about dinosaurs. She sits and reads it.", q: "What does Nadia read about?", a: { e: "🦕", c: "dinosaurs" }, d: [{ e: "🚀", c: "space" }, { e: "🌊", c: "the sea" }, { e: "🌸", c: "flowers" }] },
+  { s: "It is very hot outside. Rahim drinks cold water. He sits under the big tree. The shade feels cool.", q: "Where does Rahim sit?", a: { e: "🌳", c: "under the tree" }, d: [{ e: "🏠", c: "on the roof" }, { e: "🛣️", c: "by the road" }, { e: "☀️", c: "in the sun" }] },
+  { s: "The bakery smells sweet. Mom buys a loaf of bread. She also buys a chocolate cake. It is for my birthday.", q: "What is the cake for?", a: { e: "🎂", c: "the birthday" }, d: [{ e: "🏫", c: "school" }, { e: "🍽️", c: "dinner" }, { e: "🧺", c: "a picnic" }] },
+  { s: "The old man feeds the birds. They come every morning. They sit on his shoulder. He smiles and talks to them.", q: "When do the birds come?", a: { e: "🌅", c: "every morning" }, d: [{ e: "🌙", c: "at night" }, { e: "☀️", c: "at noon" }, { e: "🌇", c: "in the evening" }] },
+  { s: "The pond is full of fish. A boy sits by the water. He waits with his fishing rod. Soon he catches a small fish.", q: "What does the boy catch?", a: { e: "🐟", c: "a fish" }, d: [{ e: "🐸", c: "a frog" }, { e: "🦆", c: "a duck" }, { e: "🦀", c: "a crab" }] },
+];
+
 /**
  * English read-aloud comprehension lvl 2 (#184).
  * Band 2 reading: a 5-7 word sentence is shown + spoken; a picture-answer
@@ -61,6 +87,8 @@ export class ReadAloudScene extends Phaser.Scene {
   private locked = false;
   private item!: ReadItem;
   private readAloud = true;
+  private paragraphMode = false;
+  private skillId = "";
   private tiles: { sprite: Phaser.GameObjects.Container; val: Pic }[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private titleText!: Phaser.GameObjects.Text;
@@ -69,24 +97,31 @@ export class ReadAloudScene extends Phaser.Scene {
   private prompt!: QuestionPanelApi;
   private sentenceText!: Phaser.GameObjects.Text;
   private voiceBtn!: Phaser.GameObjects.Container;
+  private levels: number[] = LEVELS;
 
   constructor() {
     super("ReadAloud");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string; levels?: number[]; skill?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    this.levels = data.levels ?? LEVELS;
+    // #761/#757/#760 — paragraph mode (en-comprehension / en-paragraph): the
+    // skill id picks the pool — short 2-3 sentence paragraphs (band 5) vs
+    // longer 4-5 sentence ones (band 6, challenge).
+    this.paragraphMode = data.mode === "paragraph";
+    this.skillId = data.skill ?? "";
     gameBackground(this, "sky");
     this.titleText = this.add
-      .text(0, 0, t("titleRead2"), txt(34, "#ffffff", { bold: true }))
+      .text(0, 0, t(this.paragraphMode ? "titleReadPara" : "titleRead2"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
       .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.sentenceText = this.add
-      .text(0, 0, "", txt(26, "#ffffff", { bold: true, wrap: 360 }))
+      .text(0, 0, "", txt(this.paragraphMode ? 20 : 26, "#ffffff", { bold: true, wrap: 360 }))
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.voiceBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 30);
@@ -105,9 +140,9 @@ export class ReadAloudScene extends Phaser.Scene {
     this.titleText.setPosition(width / 2, 40);
     this.roundText.setPosition(width / 2, 76);
     this.meter.setPosition(width / 2, 100);
-    this.sentenceText.setPosition(width / 2, height * 0.2);
+    this.sentenceText.setPosition(width / 2, height * (this.paragraphMode ? 0.15 : 0.2));
     this.sentenceText.setWordWrapWidth(Math.max(160, width - 40));
-    this.prompt.setPosition(width / 2, height * 0.34);
+    this.prompt.setPosition(width / 2, height * (this.paragraphMode ? 0.4 : 0.34));
     this.voiceBtn.setPosition(width - 64, 120);
   }
 
@@ -118,13 +153,16 @@ export class ReadAloudScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
 
-    let item = ITEMS[Phaser.Math.Between(0, ITEMS.length - 1)];
-    if (item === this.item) item = ITEMS[(ITEMS.indexOf(item) + 1) % ITEMS.length];
+    const pool = this.paragraphMode
+      ? (this.skillId === "en-paragraph" ? PARAGRAPHS_LONG : PARAGRAPHS_SHORT)
+      : ITEMS;
+    let item = pool[Phaser.Math.Between(0, pool.length - 1)];
+    if (item === this.item) item = pool[(pool.indexOf(item) + 1) % pool.length];
     this.item = item;
     this.sentenceText.setText(item.s);
     this.prompt.set(item.q);
 
-    const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const n = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     const distract = item.d.slice(0, n - 1);
     const bank = shuffle([item.a, ...distract]);
 
@@ -134,7 +172,7 @@ export class ReadAloudScene extends Phaser.Scene {
       preferredW: 140,
       minW: 88,
       widthPad: 16,
-      topPad: this.scale.height * 0.5,
+      topPad: this.scale.height * (this.paragraphMode ? 0.55 : 0.5),
       bottomY: this.scale.height - 40 - SAB(),
       cardH: 96,
     });

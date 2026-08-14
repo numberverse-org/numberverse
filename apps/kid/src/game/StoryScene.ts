@@ -64,6 +64,60 @@ const STORIES: Story[] = [
     speak: "First the moon appears, then night falls, then everyone sleeps, and last morning comes." },
 ];
 
+// #757/#760 — band-7 en-sentence-order: drag whole SENTENCES into paragraph
+// order (topic → detail → end). Same drag mechanic as the picture stories —
+// the "frame" caption IS the sentence (no emoji). 8 four-sentence paragraphs.
+const SENTENCES: Story[] = [
+  { frames: [
+    { e: "", c: "Rina wakes up early in the morning." },
+    { e: "", c: "She brushes her teeth and washes her face." },
+    { e: "", c: "She eats a healthy breakfast." },
+    { e: "", c: "Then she walks to school with her friends." },
+  ], speak: "Rina wakes up early in the morning. She brushes her teeth and washes her face. She eats a healthy breakfast. Then she walks to school with her friends." },
+  { frames: [
+    { e: "", c: "The sun rises in the east." },
+    { e: "", c: "Birds start to sing in the trees." },
+    { e: "", c: "People go to their work." },
+    { e: "", c: "The city slowly wakes up." },
+  ], speak: "The sun rises in the east. Birds start to sing in the trees. People go to their work. The city slowly wakes up." },
+  { frames: [
+    { e: "", c: "Amin loves to play cricket." },
+    { e: "", c: "He goes to the field after school." },
+    { e: "", c: "His friends are already there." },
+    { e: "", c: "They play until the evening." },
+  ], speak: "Amin loves to play cricket. He goes to the field after school. His friends are already there. They play until the evening." },
+  { frames: [
+    { e: "", c: "Mother went to the market." },
+    { e: "", c: "She bought fresh vegetables." },
+    { e: "", c: "She also bought some fish." },
+    { e: "", c: "Then she cooked a tasty dinner." },
+  ], speak: "Mother went to the market. She bought fresh vegetables. She also bought some fish. Then she cooked a tasty dinner." },
+  { frames: [
+    { e: "", c: "My pet cat is very naughty." },
+    { e: "", c: "She hides under the bed." },
+    { e: "", c: "She jumps on the table." },
+    { e: "", c: "But she always sleeps on my lap." },
+  ], speak: "My pet cat is very naughty. She hides under the bed. She jumps on the table. But she always sleeps on my lap." },
+  { frames: [
+    { e: "", c: "It was a rainy day." },
+    { e: "", c: "The children stayed at home." },
+    { e: "", c: "They drew pictures and played games." },
+    { e: "", c: "They were happy together." },
+  ], speak: "It was a rainy day. The children stayed at home. They drew pictures and played games. They were happy together." },
+  { frames: [
+    { e: "", c: "The farmer plants rice in the field." },
+    { e: "", c: "He waters the young plants." },
+    { e: "", c: "The sun and rain help them grow." },
+    { e: "", c: "In winter, he harvests the rice." },
+  ], speak: "The farmer plants rice in the field. He waters the young plants. The sun and rain help them grow. In winter, he harvests the rice." },
+  { frames: [
+    { e: "", c: "Tom wants to build a kite." },
+    { e: "", c: "He collects paper and sticks." },
+    { e: "", c: "He ties them together with string." },
+    { e: "", c: "The kite flies high in the sky." },
+  ], speak: "Tom wants to build a kite. He collects paper and sticks. He ties them together with string. The kite flies high in the sky." },
+];
+
 /** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
 function digit(n: number): string {
   return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
@@ -79,6 +133,7 @@ export class StoryScene extends Phaser.Scene {
   private roundsDone = 0;
   private startedAt = 0;
   private locked = false;
+  private sentencesMode = false;
   private story!: Story;
   private order: number[] = [];
   private cards: Phaser.GameObjects.Container[] = [];
@@ -96,19 +151,22 @@ export class StoryScene extends Phaser.Scene {
     super("Story");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
-    gameBackground(this, "night");
+    // #757/#760 — band-7 en-sentence-order: drag whole SENTENCES into a
+    // paragraph (same drag mechanic, text-only cards).
+    this.sentencesMode = data.mode === "sentences";
+    gameBackground(this, this.sentencesMode ? "magic" : "night");
     this.titleText = this.add
-      .text(0, 0, t("titleStory"), txt(34, "#ffffff", { bold: true }))
+      .text(0, 0, t(this.sentencesMode ? "titleSentences" : "titleStory"), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
       .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t("stPrompt"));
+    this.prompt.set(t(this.sentencesMode ? "stPromptSentences" : "stPrompt"));
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.input.on("dragstart", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDragStart(p, obj));
     this.input.on("drag", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDrag(p, obj));
@@ -132,8 +190,9 @@ export class StoryScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
 
-    const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
-    const pool = STORIES.filter((s) => s.frames.length === n);
+    // Sentences mode: every paragraph is 4 sentences — never below 4 cards.
+    const n = this.sentencesMode ? 4 : LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const pool = this.sentencesMode ? SENTENCES : STORIES.filter((s) => s.frames.length === n);
     let story = pool[Phaser.Math.Between(0, pool.length - 1)];
     if (story === this.story) story = pool[(pool.indexOf(story) + 1) % pool.length];
     this.story = story;
@@ -154,7 +213,8 @@ export class StoryScene extends Phaser.Scene {
       preferredW: n === 3 ? 190 : 150,
       minW: 92,
       widthPad: 20,
-      topPad: this.scale.height * 0.42,
+      gapX: this.sentencesMode ? 10 : 14,
+      topPad: this.scale.height * (this.sentencesMode ? 0.48 : 0.42),
       bottomY: this.scale.height - 60 - SAB(),
       cardH: CARD_H,
     });
@@ -172,13 +232,21 @@ export class StoryScene extends Phaser.Scene {
     this.cards = this.order.map((storyIdx, slot) => {
       const fr = story.frames[storyIdx];
       const card = modernCardButton(this, this.slotX[slot], gl.cy, gl.cardW, CARD_H, "", BTN_NEUTRAL, 0);
-      const emoji = this.add
-        .text(0, -CARD_H * 0.2, fr.e, txt(44, "#ffffff", { outline: true }))
-        .setOrigin(0.5);
-      const cap = this.add
-        .text(0, CARD_H * 0.26, fr.c, txt(15, "#1e293b", { bold: true, shadow: false, wrap: gl.cardW - 14 }))
-        .setOrigin(0.5);
-      card.add([emoji, cap]);
+      if (this.sentencesMode) {
+        // Text-only sentence card — the whole card is the sentence.
+        const cap = this.add
+          .text(0, 0, fr.c, txt(14, "#1e293b", { bold: true, shadow: false, wrap: gl.cardW - 18, align: "center" }))
+          .setOrigin(0.5);
+        card.add([cap]);
+      } else {
+        const emoji = this.add
+          .text(0, -CARD_H * 0.2, fr.e, txt(44, "#ffffff", { outline: true }))
+          .setOrigin(0.5);
+        const cap = this.add
+          .text(0, CARD_H * 0.26, fr.c, txt(15, "#1e293b", { bold: true, shadow: false, wrap: gl.cardW - 14 }))
+          .setOrigin(0.5);
+        card.add([emoji, cap]);
+      }
       this.input.setDraggable(card);
       return card;
     });

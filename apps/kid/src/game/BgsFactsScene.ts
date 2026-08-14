@@ -20,8 +20,10 @@ interface Fact {
   tier: 1 | 2 | 3;
   /** Near-miss distractor added at high levels. */
   trick?: string;
-  /** #20 — heritage facts shown only for the bgs-heritage skill (band 7). */
-  kind?: "heritage";
+  /** #20 — heritage facts shown only for the bgs-heritage skill (band 7).
+   *  #756 — civic facts shown only for the band-4 BGS skills (bgs-our-country /
+   *  bgs-good-citizens): class-3/4 geography + civic responsibilities. */
+  kind?: "heritage" | "civic";
 }
 // #1174 — heritage cultural tokens (নকশী কাঁথা, পহেলা বৈশাখ…) come from the ONE
 // canonical spelling bank, so the fact drill can never drift from the festival
@@ -61,15 +63,37 @@ const FACTS: Fact[] = [
   { q: "The harvest festival after the rice season is…?", options: [H.nabanna, "ইদ", "বসন্ত"], answer: H.nabanna, emoji: "🌾", tier: 3, trick: "পিঠা উৎসব", kind: "heritage" },
   { q: "Pohela Boishakh falls in which month?", options: [H.boishakh, "জ্যৈষ্ঠ", "আষাঢ়"], answer: H.boishakh, emoji: "📅", tier: 3, trick: "ফাল্গুন", kind: "heritage" },
 ];
+// #756 — Band-4 BGS (class-3/4) pool: our country (districts, rivers, symbols)
+// + civic responsibilities. Both band-4 skills (bgs-our-country, bgs-good-
+// citizens) share it; only the `civic` kind appears in this mode, so Sky Castle
+// finally has a BGS strand. Questions mirror the national bank's style.
+const CIVIC_FACTS: Fact[] = [
+  // ── our country ──
+  { q: "Which district is the capital of Bangladesh?", options: ["ঢাকা", "চট্টগ্রাম", "রাজশাহী"], answer: "ঢাকা", emoji: "🏙️", tier: 1, kind: "civic" },
+  { q: "How many divisions does Bangladesh have?", options: ["৮", "৭", "৬"], answer: "৮", emoji: "🗺️", tier: 1, kind: "civic" },
+  { q: "Which river flows through Dhaka?", options: ["বুড়িগঙ্গা", "পদ্মা", "মেঘনা"], answer: "বুড়িগঙ্গা", emoji: "🌊", tier: 1, kind: "civic" },
+  { q: "What color is at the center of our flag?", options: ["লাল", "নীল", "সবুজ"], answer: "লাল", emoji: "🚩", tier: 1, kind: "civic" },
+  { q: "What is our parliament building called?", options: ["জাতীয় সংসদ ভবন", "লালবাগ কেল্লা", "আহসান মঞ্জিল"], answer: "জাতীয় সংসদ ভবন", emoji: "🏛️", tier: 2, kind: "civic" },
+  // ── good citizens ──
+  { q: "What should you do before crossing the road?", options: ["দুই দিকে দেখো", "ছুটে পার হও", "চোখ বুজে হাঁটো"], answer: "দুই দিকে দেখো", emoji: "🛣️", tier: 1, kind: "civic" },
+  { q: "Where should you throw classroom trash?", options: ["ডাস্টবিনে", "মেঝেতে", "বন্ধুর ডেস্কে"], answer: "ডাস্টবিনে", emoji: "🗑️", tier: 1, kind: "civic" },
+  { q: "When an elder enters the room, what should you do?", options: ["সম্মান দেখাও", "চুপ করে থাকো", "ঘর থেকে ছুটে যাও"], answer: "সম্মান দেখাও", emoji: "🙏", tier: 2, kind: "civic" },
+  { q: "A friend falls and gets hurt — what should you do?", options: ["সাহায্য করো", "হেসে উঠো", "ছেড়ে চলে যাও"], answer: "সাহায্য করো", emoji: "🤕", tier: 2, kind: "civic" },
+  { q: "You find money in the playground — what should you do?", options: ["বড়দের জানাও", "নিজে রেখে দাও", "লুকিয়ে ফেলো"], answer: "বড়দের জানাও", emoji: "🪙", tier: 3, kind: "civic" },
+  { q: "How should you talk to your classmates?", options: ["ভদ্রভাবে", "চিৎকার করে", "ঠাট্টা করে"], answer: "ভদ্রভাবে", emoji: "💬", tier: 3, kind: "civic" },
+  { q: "When you borrow something, what should you do?", options: ["ফেরত দাও", "রেখে দাও", "ভুলে যাও"], answer: "ফেরত দাও", emoji: "🤲", tier: 3, kind: "civic" },
+];
 const BUTTON_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 
 /** Facts that match the current level — symbols → geography → history.
  *  Heritage mode (bgs-heritage, band 7) shows ALL the `kind: "heritage"` facts
- *  (every one is tier 3, so a low start level must never empty the pool). */
-function factsForLevel(level: number, heritage: boolean): Fact[] {
-  if (heritage) return FACTS.filter((f) => f.kind === "heritage");
+ *  (every one is tier 3, so a low start level must never empty the pool).
+ *  Civic mode (band-4 BGS) shows the `kind: "civic"` pool, tier-graded. */
+function factsForLevel(level: number, mode: "national" | "heritage" | "civic"): Fact[] {
   const tier = level >= 4 ? 3 : level >= 2 ? 2 : 1;
+  if (mode === "heritage") return FACTS.filter((f) => f.kind === "heritage");
+  if (mode === "civic") return CIVIC_FACTS.filter((f) => f.tier <= tier);
   return FACTS.filter((f) => f.tier <= tier && !f.kind);
 }
 
@@ -84,6 +108,7 @@ export class BgsFactsScene extends Phaser.Scene {
   private roundsDone = 0;
   private startedAt = 0;
   private heritageMode = false;
+  private civicMode = false;
   private target!: Fact;
   private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
@@ -98,15 +123,21 @@ export class BgsFactsScene extends Phaser.Scene {
     super("BgsFacts");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; skill?: string }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; skill?: string; mode?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
     // #20 — bgs-heritage (band 7) draws only the heritage fact pool.
     this.heritageMode = data.skill === "bgs-heritage";
+    // #756 — the band-4 BGS skills (bgs-our-country, bgs-good-citizens) run in
+    // civic mode: districts, rivers, national symbols + civic responsibilities.
+    this.civicMode = data.mode === "civic";
     this.background = this.add.graphics();
     this.drawBackground();
+    const titleKey = this.civicMode
+      ? data.skill === "bgs-our-country" ? "titleBgsCountry" : "titleBgsCitizens"
+      : "titleBgs";
     this.titleText = this.add
-      .text(0, 0, t("titleBgs"), txt(32, "#ffffff", {bold: true}))
+      .text(0, 0, t(titleKey), txt(32, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
       .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
@@ -141,7 +172,7 @@ export class BgsFactsScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const pool = factsForLevel(this.levelIndex, this.heritageMode);
+    const pool = factsForLevel(this.levelIndex, this.civicMode ? "civic" : this.heritageMode ? "heritage" : "national");
     this.target = pool[Phaser.Math.Between(0, pool.length - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));

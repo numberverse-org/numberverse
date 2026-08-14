@@ -47,7 +47,7 @@ export interface Skill {
    *  bn-conjuncts → "conjuncts" (vs bn-matras' matra combine). The app's
    *  modeForSkill() reads this INSTEAD of hardcoding skill-id → mode maps,
    *  so a new skill variant is a data entry, not a code branch. */
-  dataMode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
+  dataMode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts" | "words" | "civic" | "paragraph" | "sentences";
   /** Per-skill content range (#1170). When several skills reuse ONE game-id in
    *  DIFFERENT bands (e.g. mult-facts-2-10 band-3 vs mult-fluency-6-9 band-6
    *  both run TimesTable), this data field carries the skill's OWN difficulty

@@ -149,6 +149,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     # Language stage 3 — first words
     ("bn-words", 3, "bangla", "Bangla words", "শব্দ পড়ি"),
     ("bn-conjunct-find", 3, "bangla", "Conjunct speed drill", "যুক্তবর্ণ দ্রুত অনুশীলন"),
+    ("bn-matra-words", 3, "bangla", "Matra words", "কার মিশ্রণ"),
     ("bn-family-words", 3, "bangla", "Family words", "পরিবারের শব্দ"),
     ("bn-story-read", 3, "bangla", "Story comprehension", "ছোট গল্প পড়ি"),
     ("bn-punctuation", 3, "bangla", "Punctuation", "যতি চিহ্ন"),
@@ -168,6 +169,8 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-matras", 4, "bangla", "Bangla matras", "কার"),
     ("en-sightwords", 4, "english", "Sight words", "দেখা-শব্দ"),
     ("science-animals", 4, "science", "Animal homes", "প্রাণী ও আবাস"),
+    ("bgs-our-country", 4, "bgs", "Our country", "আমাদের দেশ"),
+    ("bgs-good-citizens", 4, "bgs", "Good citizens", "ভালো নাগরিক"),
     # Band 5
     ("decimals-intro", 5, "math", "Decimals", "দশমিক"),
     ("percent-intro", 5, "math", "Percent of a number", "শতকরা"),
@@ -175,17 +178,24 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-sentences", 5, "bangla", "Bangla sentences", "বাক্য গঠন"),
     ("en-grammar", 5, "english", "Nouns & verbs", "বিশেষ্য ও ক্রিয়া"),
     ("bgs-bangladesh", 5, "bgs", "Bangladesh facts", "বাংলাদেশ পরিচিতি"),
+    ("ict-online-safety", 5, "ict", "Online safety", "অনলাইন নিরাপত্তা"),
+    ("science-states-matter", 5, "science", "States of matter", "পদার্থের অবস্থা"),
+    ("en-comprehension", 5, "english", "Read & understand", "পড়ে বুঝি"),
     # Band 6 — Jungle Canopy (fluency)
     ("mult-fluency-6-9", 6, "math", "Times tables 6–9", "৬–৯ এর নামতা"),
     ("divide-within-100", 6, "math", "Divide within 100", "১০০-এর মধ্যে ভাগ"),
     ("fraction-read", 6, "math", "Read fractions", "ভগ্নাংশ পড়ি"),
     ("clock-minute", 6, "math", "Tell time to the minute", "মিনিট ধরে ঘড়ি পড়ি"),
     ("bn-conjuncts", 6, "bangla", "Bangla conjuncts", "যুক্তবর্ণ"),
+    ("en-paragraph", 6, "english", "Paragraph power", "অনুচ্ছেদ পড়ি"),
+    ("science-human-body", 6, "science", "Human body", "মানবদেহ"),
     # Band 7 — Polar Peaks (refinement)
     ("decimals-tenths", 7, "math", "Decimal tenths", "দশমিকের দশক"),
     ("percent-of-number", 7, "math", "Percent of a number", "সংখ্যার শতকরা"),
     ("fraction-simplify", 7, "math", "Simplify fractions", "ভগ্নাংশ ছোট করি"),
     ("bgs-heritage", 7, "bgs", "Bangladesh heritage", "বাংলাদেশের ঐতিহ্য"),
+    ("en-sentence-order", 7, "english", "Sentence order", "বাক্য সাজাই"),
+    ("science-body-systems", 7, "science", "Body systems", "অঙ্গতন্ত্র"),
     # 2026 backlog content (#43, #44, #48, #49)
     ("bn-days-months", 1, "bangla", "Days & months", "সপ্তাহ ও মাস"),
     ("bn-spelling", 1, "bangla", "Bangla spelling", "বানান শিখি"),

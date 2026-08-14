@@ -47,10 +47,31 @@ const CONJUNCTS = [
   { base: "প", base2: "্র", combined: "প্র", hint: "প্র" },
   { base: "ব", base2: "্র", combined: "ব্র", hint: "ব্র" },
 ];
-/** A combine fact — matras OR conjuncts share the same 2→1 shape. */
+/** #759 — matra WORDS: join two SYLLABLES (the second carrying a matra) into a
+ *  whole word. The band-3 decoding bridge between band-2 matra-matrix
+ *  (ক+◻+টা=কাটা) and band-4 bn-matras (ক+া=কা): the kid now READS the word by
+ *  joining its syllable halves — কা + টা = কাটা. Same combine mechanic. */
+const WORDS: { parts: [string, string]; combined: string }[] = [
+  { parts: ["কা", "টা"], combined: "কাটা" },
+  { parts: ["গা", "ছ"], combined: "গাছ" },
+  { parts: ["মা", "ছ"], combined: "মাছ" },
+  { parts: ["হা", "তি"], combined: "হাতি" },
+  { parts: ["ন", "দী"], combined: "নদী" },
+  { parts: ["ক", "লা"], combined: "কলা" },
+  { parts: ["ব", "ই"], combined: "বই" },
+  { parts: ["তা", "রা"], combined: "তারা" },
+  { parts: ["সু", "খ"], combined: "সুখ" },
+  { parts: ["বা", "টি"], combined: "বাটি" },
+  { parts: ["চা", "ল"], combined: "চাল" },
+  { parts: ["সা", "রি"], combined: "সারি" },
+  { parts: ["রো", "দ"], combined: "রোদ" },
+  { parts: ["বে", "ড়া"], combined: "বেড়া" },
+];
+/** A combine fact — matras, conjuncts OR words share the same 2→1 shape. */
 type CombineFact = { parts: [string, string]; combined: string; hint: string };
 const MATRA_FACTS: CombineFact[] = MATRAS.map((m) => ({ parts: [m.base, m.matra], combined: m.combined, hint: m.hint }));
 const CONJUNCT_FACTS: CombineFact[] = CONJUNCTS.map((c) => ({ parts: [c.base, c.base2], combined: c.combined, hint: c.hint }));
+const WORD_FACTS: CombineFact[] = WORDS.map((w) => ({ parts: w.parts, combined: w.combined, hint: w.combined }));
 const BUTTON_RADIUS = 56;
 const ROUNDS_TO_FINISH = 3;
 
@@ -63,6 +84,7 @@ export class BnMatrasScene extends Phaser.Scene {
   private roundsDone = 0;
   private startedAt = 0;
   private conjunctMode = false;
+  private wordsMode = false;
   private facts: CombineFact[] = MATRA_FACTS;
   private target!: CombineFact;
   private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
@@ -83,20 +105,22 @@ export class BnMatrasScene extends Phaser.Scene {
     this.levelIndex = data.startLevelIndex ?? 0;
     // #20 — conjuncts mode (bn-conjuncts) shares the combine mechanic.
     this.conjunctMode = data.mode === "conjuncts";
-    this.facts = this.conjunctMode ? CONJUNCT_FACTS : MATRA_FACTS;
+    // #759 — words mode (bn-matra-words, band 3) shares it too: syllable→word.
+    this.wordsMode = data.mode === "words";
+    this.facts = this.wordsMode ? WORD_FACTS : this.conjunctMode ? CONJUNCT_FACTS : MATRA_FACTS;
     this.background = this.add.graphics();
     this.drawBackground();
     this.titleText = this.add
-      .text(0, 0, t(this.conjunctMode ? "titleBnConjunct" : "titleBnMatras"), txt(34, "#ffffff", {bold: true}))
+      .text(0, 0, t(this.wordsMode ? "titleBnMatraWords" : this.conjunctMode ? "titleBnConjunct" : "titleBnMatras"), txt(34, "#ffffff", {bold: true}))
       .setOrigin(0.5);
     this.roundText = this.add
       .text(0, 0, "", txt(18, NV_GOLD, {bold: true}))
       .setOrigin(0.5);
     this.factText = this.add
-      .text(0, 0, "", txt(56, NV_GOLD, {bold: true, outline: true}))
+      .text(0, 0, "", txt(this.wordsMode ? 48 : 56, NV_GOLD, {bold: true, outline: true}))
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t(this.conjunctMode ? "tapConjunct" : "tapMatra"));
+    this.prompt.set(t(this.wordsMode ? "tapMatraWords" : this.conjunctMode ? "tapConjunct" : "tapMatra"));
     this.meter = roundMeter(this);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
