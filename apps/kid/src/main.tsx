@@ -113,6 +113,8 @@ function RotateOverlay() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     let lockAttempted = false;
+    let pending = false;
+    let rafId = 0;
     const check = () => {
       // phone-sized landscape: width > height AND a height only a phone (or a
       // very short desktop window) would have — iPads/desktops are left alone.
@@ -130,12 +132,24 @@ function RotateOverlay() {
         }
       }
     };
-    check();
-    window.addEventListener("resize", check);
-    window.addEventListener("orientationchange", check);
+    // #1106 — collapse resize/orientationchange bursts into one layout read per
+    // frame instead of forcing layout on every event.
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      rafId = requestAnimationFrame(() => {
+        pending = false;
+        rafId = 0;
+        check();
+      });
+    };
+    schedule();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", schedule);
     return () => {
-      window.removeEventListener("resize", check);
-      window.removeEventListener("orientationchange", check);
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("orientationchange", schedule);
     };
   }, []);
   if (!show) return null;
