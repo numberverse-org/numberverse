@@ -41,6 +41,13 @@ export interface Skill {
   family?: string;
   /** Ladder position inside the family: 1 = concrete/intro … n = abstract/timed. */
   tier?: number;
+  /** Per-skill scene variant selector (#1169). When several skills share ONE
+   *  scene, this data field picks the exact mode the scene should run in —
+   *  e.g. bn-family-words → "family" (vs bn-words' default word list), or
+   *  bn-conjuncts → "conjuncts" (vs bn-matras' matra combine). The app's
+   *  modeForSkill() reads this INSTEAD of hardcoding skill-id → mode maps,
+   *  so a new skill variant is a data entry, not a code branch. */
+  dataMode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
 }
 
 /** Per-skill mastery state for one kid (mirrors skill_mastery row). */

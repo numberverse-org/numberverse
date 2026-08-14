@@ -43,7 +43,7 @@ import {
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, worldProgress, worldEmoji,
   worldUnlocked, totalMastered, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
-  worldCards, recommendedSkill, weekNumber, skillOfWeek, modeForSkill, stepForSkill, moniPlanFor,
+  worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
   MASTERY_THRESHOLD, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
   BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,

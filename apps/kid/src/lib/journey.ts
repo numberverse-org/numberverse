@@ -785,14 +785,12 @@ export function skillOfWeek(skills: SkillMap, kidId: string): Skill | undefined 
   return pool[weekNumber() % pool.length].skill;
 }
 
-export function modeForSkill(skillId: string): SessionStep["mode"] {
-  if (skillId === "sub-within-10" || skillId === "sub-within-20") return "sub";
-  if (skillId === "bn-benjonborno") return "consonants";
-  if (skillId === "bn-family-words") return "family";
-  // #20 — Bangla conjuncts (ক্ষ ঞ্জ ঙ্ক ণ্ড): BnMatras' combine mechanic,
-  // fed a conjunct list instead of matras.
-  if (skillId === "bn-conjuncts") return "conjuncts";
-  return undefined;
+export function modeForSkill(skill: Skill): SessionStep["mode"] {
+  // #1169 — the scene variant is DATA on the skill (sub-within-10/20 → "sub",
+  // bn-benjonborno → "consonants", bn-family-words → "family", bn-conjuncts →
+  // "conjuncts"), read here instead of a hardcoded skill-id map. A new variant
+  // is one dataMode field in packages/core, not a code branch.
+  return skill.dataMode;
 }
 
 export function stepForSkill(skill: Skill): SessionStep {
@@ -802,7 +800,7 @@ export function stepForSkill(skill: Skill): SessionStep {
     gameId,
     scene: GAME_SCENES[gameId],
     title: skill.title,
-    mode: modeForSkill(skill.id),
+    mode: modeForSkill(skill),
     // First exposure to + or − → the kid gets the narrated Basket Math demo
     // round first, so the symbol means "put together / take away" before they
     // ever face an abstract drill. (Replay sessions re-teach — harmless.)
