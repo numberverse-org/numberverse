@@ -85,7 +85,7 @@ export const SKILLS: Skill[] = [
   { id: 'en-abcs', band: 1, subject: 'english', title: 'ABCs', titleBn: 'ইংরেজি বর্ণমালা', description: 'Recognize uppercase letters A–F', descriptionBn: 'বড় হাতের ইংরেজি অক্ষর A–F চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-english-1', classNumber: 1, game: 'game-enletters' },
   // STAGE 1 vocabulary — first number/word names in each language
   { id: 'bn-numbers', band: 1, subject: 'bangla', title: 'Bangla numbers', titleBn: 'বাংলা সংখ্যা', description: 'Hear and recognize Bangla numerals ০–৯', descriptionBn: 'বাংলা সংখ্যা ০–৯ শুনে চিনি', commonCore: ['K.CC.1'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnnumbers' },
-  { id: 'en-shapes', band: 1, subject: 'english', title: 'Shape names', titleBn: 'আকৃতির নাম', description: 'English names of shapes (circle, square, triangle)', descriptionBn: 'আকৃতির ইংরেজি নাম (বৃত্ত, বর্গ, ত্রিভুজ)', commonCore: ['L.K.5c'], nctbCode: 'c1-english-3', classNumber: 1, game: 'game-shapecatcher' },
+  { id: 'en-shapes', band: 1, subject: 'english', title: 'Shape names', titleBn: 'আকৃতির নাম', description: 'English names of shapes (circle, square, triangle)', descriptionBn: 'আকৃতির ইংরেজি নাম (বৃত্ত, বর্গ, ত্রিভুজ)', commonCore: ['L.K.5c'], nctbCode: 'c1-english-3', classNumber: 1, game: 'game-shapenames' },
   { id: 'en-wordfamilies', band: 1, subject: 'english', title: 'Word families', titleBn: 'শব্দ পরিবার', description: 'Sort words into rhyming families (-at, -an, -ig, -op)', descriptionBn: 'মিলিয়ে লেখা শব্দগুলো পরিবারে সাজাও (-at, -an, -ig, -op)', commonCore: ['RF.K.3d'], nctbCode: 'c1-english-4', classNumber: 1, game: 'game-wordfam' },
   { id: 'en-yesno', band: 1, subject: 'english', title: 'Yes or no?', titleBn: 'হ্যাঁ নাকি না?', description: 'Hear a sentence and a question; tap YES or NO (slow-replay button)', descriptionBn: 'একটা বাক্য ও প্রশ্ন শোনো; হ্যাঁ বা না চাপো (ধীরে শোনার বোতাম)', commonCore: ['SL.K.2'], nctbCode: 'c1-english-5', classNumber: 1, game: 'game-yesno' },
   // ICT — fine tap/drag motor skills (band 1 foundational, #234)
@@ -183,7 +183,7 @@ export const SKILLS: Skill[] = [
   // Math — coin values: ৳1/৳2/৳5/৳10 recognition + count-to-total, names spoken (টাকার চেনা).
   { id: 'bn-coin-values', band: 2, subject: 'math', title: 'Coin values', titleBn: 'টাকার চেনা', description: 'Recognize ৳1/৳2/৳5/৳10 coins & notes and count to a total (tier 2 of Money)', descriptionBn: '৳১/৳২/৳৫/৳১০ চিনি আর মোট টাকার হিসাব করি (টাকা-পয়সার ধাপ ২)', commonCore: ['2.MD.8'], nctbCode: 'c2-math-5', classNumber: 2, game: 'game-coinvalues', family: 'money', tier: 2 },
   // Language — STAGE 2: more letters + sounds (mirrored)
-  { id: 'bn-benjonborno', band: 2, subject: 'bangla', title: 'Bangla consonants', titleBn: 'ব্যঞ্জনবর্ণ', description: 'Recognize Bangla consonant letters ক খ গ ঘ', descriptionBn: 'বাংলা ব্যঞ্জনবর্ণ ক খ গ ঘ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-11', classNumber: 1, game: 'game-bnletters', dataMode: 'consonants' },
+  { id: 'bn-benjonborno', band: 2, subject: 'bangla', title: 'Bangla consonants', titleBn: 'ব্যঞ্জনবর্ণ', description: 'Recognize Bangla consonant letters ক খ গ ঘ', descriptionBn: 'বাংলা ব্যঞ্জনবর্ণ ক খ গ ঘ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-11', classNumber: 1, game: 'game-bnconsonants', dataMode: 'consonants' },
   { id: 'bn-colors', band: 2, subject: 'bangla', title: 'Bangla colors', titleBn: 'রঙ চিনি', description: 'Name colors in Bangla (লাল, নীল, সবুজ)', descriptionBn: 'বাংলায় রঙের নাম বলি (লাল, নীল, সবুজ)', commonCore: ['L.K.5a'], nctbCode: 'c1-bangla-4', classNumber: 1, game: 'game-bncolors' },
   // Language — sight words: whole-word recall of short high-frequency words (দেখে বলো).
   { id: 'bn-sightwords', band: 2, subject: 'bangla', title: 'Bangla sight words', titleBn: 'দেখে বলো শব্দ', description: 'Read short high-frequency Bangla words on sight (আমি, তুমি, সে, না)', descriptionBn: 'দেখেই বাংলা শব্দ পড়ি (আমি, তুমি, সে, না)', commonCore: ['RF.2.3g'], nctbCode: 'c2-bangla-5', classNumber: 2, game: 'game-bnsightwords' },
@@ -377,11 +377,13 @@ export const GAMES: GameConfig[] = [
   { id: 'game-memorypairs', skillId: 'quantity-match', difficultyLevels: [2, 3, 4, 5, 6, 7], targetSuccess: 0.8 },
   { id: 'game-froghop', skillId: 'number-line', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-shapecatcher', skillId: 'shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
+  { id: 'game-shapenames', skillId: 'en-shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
   { id: 'game-tapdrag', skillId: 'ict-tap-drag', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-villagecity', skillId: 'bgs-village-city', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-patience', skillId: 'bgs-patience', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-habits', skillId: 'bgs-habits', difficultyLevels: [3, 3, 4, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-bnletters', skillId: 'bn-swaroborno', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-bnconsonants', skillId: 'bn-benjonborno', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-enletters', skillId: 'en-abcs', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnnumbers', skillId: 'bn-numbers', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   // ── Band 2 counting → concrete add/sub → abstract recap ──
@@ -554,6 +556,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-fruitsub-20': 'FruitAdd',
   'game-fruittree': 'FruitTree',
   'game-shapecatcher': 'ShapeCatcher',
+  'game-shapenames': 'ShapeCatcher',
   'game-tapdrag': 'CatchBug',
   'game-villagecity': 'VillageCity',
   'game-patience': 'Patience',
@@ -561,6 +564,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-memorypairs': 'MemoryPairs',
   'game-countsong': 'CountingSong',
   'game-bnletters': 'BnLetters',
+  'game-bnconsonants': 'BnLetters',
   'game-bnnumbers': 'BnNumbers',
   'game-enletters': 'EnLetters',
   'game-bnbonds': 'NumberBonds',

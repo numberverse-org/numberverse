@@ -56,15 +56,20 @@ export class ShapeCatcherScene extends Phaser.Scene {
   // prompt + narration stay in English no matter the app language. The math
   // 'shapes' skill (c1-math-3) keeps the app-language prompt (shape recognition).
   private englishMode = false;
+  // #1152 — the English shape-names skill runs its OWN game id (game-shapenames),
+  // so the ladder comes from the per-skill data.levels the app already passes
+  // (falls back to the shared module LEVELS when the skill carries none).
+  private levels: number[] = LEVELS;
 
   constructor() {
     super("ShapeCatcher");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; skill?: string }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; skill?: string; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.englishMode = data.skill === "en-shapes";
+    this.levels = data.levels ?? LEVELS;
     ensureAssets(this);
     this.background = this.add.graphics();
     this.drawBackground();
@@ -98,7 +103,7 @@ export class ShapeCatcherScene extends Phaser.Scene {
   private startRound() {
     this.shapes.forEach((s) => s.destroy());
     this.shapes = [];
-    const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const n = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     this.target = SHAPES[Phaser.Math.Between(0, SHAPES.length - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));

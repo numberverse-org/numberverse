@@ -53,6 +53,9 @@ export class BnLettersScene extends Phaser.Scene {
   private roundsDone = 0;
   private startedAt = 0;
   private mode: "vowels" | "consonants" = "vowels";
+  // #1156 — consonants run under their OWN game id (game-bnconsonants); the
+  // ladder comes from the per-skill data.levels the app passes (fallback here).
+  private levels: number[] = LEVELS;
   private target!: { bn: string; en: string };
   private cards: Phaser.GameObjects.Container[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
@@ -66,9 +69,10 @@ export class BnLettersScene extends Phaser.Scene {
     super("BnLetters");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: "vowels" | "consonants" }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: "vowels" | "consonants"; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
     this.mode = data.mode ?? "vowels";
+    this.levels = data.levels ?? LEVELS;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.background = this.add.graphics();
     this.drawBackground();
@@ -103,7 +107,7 @@ export class BnLettersScene extends Phaser.Scene {
     this.cards.forEach((c) => c.destroy());
     this.cards = [];
     const letters = this.mode === "consonants" ? BENJONBORNO : SWAROBORNO;
-    const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const n = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     this.target = letters[Phaser.Math.Between(0, Math.min(n, letters.length) - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
