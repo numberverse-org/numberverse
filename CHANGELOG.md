@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.29 (perf: batch safe-area reads in BnNumbers layout — single SAB() before all setPosition writes (#1100))
+
+f1412d3 Merge branch 'nv-1100': batch SAB() reads in BnNumbersScene layout (#1100)
+bd330d0 fix(kid): batch SAB() reads in BnNumbersScene layout (#1100)
+
 ## 15 Aug 2026 — 0.53.28 (perf: cache safe-area insets — SAB/SAT no longer force a getComputedStyle reflow on every call, refreshed only on resize/orientationchange (#1099))
 
 e589ca0 Merge branch 'nv-1099': cache safe-area insets (#1099)
