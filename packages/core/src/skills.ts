@@ -139,25 +139,25 @@ export const SKILLS: Skill[] = [
   { id: 'en-array-mult', band: 2, subject: 'math', title: 'Array times tables', titleBn: 'বিন্যাসে গুণ', description: 'Match a dot array (rows × columns) to its equation — tables 2 to 5 (the concrete array intro to the times tables)', descriptionBn: 'বিন্দুর বিন্যাস (সারি × কলাম) মিলিয়ে গুণের সমীকরণ — ২ থেকে ৫ এর নামতা (নামতার চাক্ষুষ শুরু)', commonCore: ['2.OA.C.4', '3.OA.A.1'], nctbCode: 'c2-math-12', classNumber: 2, game: 'game-array-mult', family: 'mult-facts', tier: 1 },
   { id: 'skipcount', band: 2, subject: 'math', title: 'Skip count!', titleBn: 'ধাপে ধাপে!', description: 'Continue +3 and +4 sequences on a number line — tap the next number', descriptionBn: 'সংখ্যা রেখায় +৩ ও +৪ এর ধারা এগোই — পরের সংখ্যাটি টিপি', commonCore: ['2.NBT.A.2'], nctbCode: 'c2-math-13', classNumber: 2, game: 'game-skipcount' },
   // Math — division as sharing lvl 2: fair shares extended to the remainder concept.
-  { id: 'en-shares2', band: 3, subject: 'math', title: 'Fair shares 2 (remainders)', titleBn: 'সমান ভাগ ২ (ভাগশেষ)', description: 'Watch candies share round-robin into plates, then find each share and the leftover (tier 2 of Fair shares)', descriptionBn: 'ক্যান্ডি ঘুরে ঘুরে ভাগ হয় দেখি, তারপর প্রত্যেকের ভাগ আর বাকি খুঁজি (সমান ভাগের ধাপ ২)', commonCore: ['3.OA.A.2', '3.OA.C.7'], nctbCode: 'c3-math-7', classNumber: 3, game: 'game-shares2', family: 'fair-share', tier: 2 },
+  { id: 'en-shares2', band: 3, subject: 'math', title: 'Fair shares 2 (remainders)', titleBn: 'সমান ভাগ ২ (ভাগশেষ)', description: 'Watch candies share round-robin into plates, then find each share and the leftover (tier 2 of Fair shares)', descriptionBn: 'ক্যান্ডি ঘুরে ঘুরে ভাগ হয় দেখি, তারপর প্রত্যেকের ভাগ আর বাকি খুঁজি (সমান ভাগের ধাপ ২)', commonCore: ['3.OA.A.2', '3.OA.C.7'], nctbCode: 'c3-math-8', classNumber: 3, game: 'game-shares2', family: 'fair-share', tier: 2 },
   // Math — fractions of a set: tap the correct subset of a group (1/2 of 8 → 4).
-  { id: 'en-fracset', band: 3, subject: 'math', title: 'Fractions of a set', titleBn: 'সমষ্টির ভগ্নাংশ', description: 'Find a fraction of a group by tapping the right number of fruits (1/2 of 8)', descriptionBn: 'গুচ্ছের ভগ্নাংশ খুঁজি — সঠিক সংখ্যক ফল তাপ করে (৮-এর ১/২)', commonCore: ['3.NF.A.1'], nctbCode: 'c3-math-8', classNumber: 3, game: 'game-fracset' },
+  { id: 'en-fracset', band: 3, subject: 'math', title: 'Fractions of a set', titleBn: 'সমষ্টির ভগ্নাংশ', description: 'Find a fraction of a group by tapping the right number of fruits (1/2 of 8)', descriptionBn: 'গুচ্ছের ভগ্নাংশ খুঁজি — সঠিক সংখ্যক ফল তাপ করে (৮-এর ১/২)', commonCore: ['3.NF.A.1'], nctbCode: 'c3-math-9', classNumber: 3, game: 'game-fracset' },
   // Math — mixed numbers & improper fractions: bar + number line show 1½ = 3/2 (convert visually).
-  { id: 'en-mixedfrac', band: 3, subject: 'math', title: 'Mixed numbers & improper fractions', titleBn: 'মিশ্র সংখ্যা ও অপ্রকৃত ভগ্নাংশ', description: 'See 1½ on a bar and a number line, then match it to its improper fraction 3/2', descriptionBn: 'বার আর সংখ্যা রেখায় ১½ দেখি, তারপর মিশিয়ে খুঁজি সমান ভগ্নাংশ ৩/২', commonCore: ['3.NF.A.3c'], nctbCode: 'c3-math-9', classNumber: 3, game: 'game-mixedfrac' },
+  { id: 'en-mixedfrac', band: 3, subject: 'math', title: 'Mixed numbers & improper fractions', titleBn: 'মিশ্র সংখ্যা ও অপ্রকৃত ভগ্নাংশ', description: 'See 1½ on a bar and a number line, then match it to its improper fraction 3/2', descriptionBn: 'বার আর সংখ্যা রেখায় ১½ দেখি, তারপর মিশিয়ে খুঁজি সমান ভগ্নাংশ ৩/২', commonCore: ['3.NF.A.3c'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-mixedfrac' },
   // Math — decimals to tenths: shade/read a 10-cell strip in 0.1 steps (place-value speech).
-  { id: 'en-dectenths', band: 3, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Read a shaded 10-cell strip as a decimal (0.3) and build one by shading cells (tenths — tier 1 of Decimals)', descriptionBn: 'ছাপানো ১০ ঘরের দশমিক পড়ি (০.৩) আর ঘর ছাপিয়ে বানাই (দশমাংশ — দশমিকের ধাপ ১)', commonCore: ['4.NF.C.6'], nctbCode: 'c3-math-10', classNumber: 3, game: 'game-dectenths', family: 'decimals', tier: 1 },
+  { id: 'en-dectenths', band: 3, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Read a shaded 10-cell strip as a decimal (0.3) and build one by shading cells (tenths — tier 1 of Decimals)', descriptionBn: 'ছাপানো ১০ ঘরের দশমিক পড়ি (০.৩) আর ঘর ছাপিয়ে বানাই (দশমাংশ — দশমিকের ধাপ ১)', commonCore: ['4.NF.C.6'], nctbCode: 'c3-math-11', classNumber: 3, game: 'game-dectenths', family: 'decimals', tier: 1 },
   // Math — making change with ৳ notes: pay with ৳50/৳100, compute the change; tap notes to make exact amounts.
-  { id: 'en-makechange', band: 3, subject: 'math', title: 'Making change (৳ notes)', titleBn: 'টাকা ফেরত (নোট)', description: 'Pay with a ৳50/৳100 note and compute the change, then make exact amounts by tapping ৳5/10/20/50 (top tier of Money)', descriptionBn: '৳৫০/৳১০০ নোট দিয়ে দাম দিয়ে ফেরত বের করি, তারপর নোট ছাপিয়ে ঠিক অংক বানাই (টাকা-পয়সার শেষ ধাপ)', commonCore: ['2.MD.C.8'], nctbCode: 'c3-math-11', classNumber: 3, game: 'game-makechange', family: 'money', tier: 3 },
+  { id: 'en-makechange', band: 3, subject: 'math', title: 'Making change (৳ notes)', titleBn: 'টাকা ফেরত (নোট)', description: 'Pay with a ৳50/৳100 note and compute the change, then make exact amounts by tapping ৳5/10/20/50 (top tier of Money)', descriptionBn: '৳৫০/৳১০০ নোট দিয়ে দাম দিয়ে ফেরত বের করি, তারপর নোট ছাপিয়ে ঠিক অংক বানাই (টাকা-পয়সার শেষ ধাপ)', commonCore: ['2.MD.C.8'], nctbCode: 'c3-math-12', classNumber: 3, game: 'game-makechange', family: 'money', tier: 3 },
   // Math — elapsed time: an analog clock + a digital target, "how many minutes until …?".
-  { id: 'en-elapsed', band: 3, subject: 'math', title: 'Elapsed time (how long until…)', titleBn: 'সময়ের হিসাব (কতক্ষণ পরে…)', description: 'Watch an analog clock and find how many minutes until the digital target time', descriptionBn: 'ঘড়ি দেখে খুঁজি ডিজিটাল সময় পর্যন্ত কত মিনিট বাকি', commonCore: ['2.MD.C.7', '3.MD.A.1'], nctbCode: 'c3-math-12', classNumber: 3, game: 'game-elapsed' },
+  { id: 'en-elapsed', band: 3, subject: 'math', title: 'Elapsed time (how long until…)', titleBn: 'সময়ের হিসাব (কতক্ষণ পরে…)', description: 'Watch an analog clock and find how many minutes until the digital target time', descriptionBn: 'ঘড়ি দেখে খুঁজি ডিজিটাল সময় পর্যন্ত কত মিনিট বাকি', commonCore: ['2.MD.C.7', '3.MD.A.1'], nctbCode: 'c3-math-13', classNumber: 3, game: 'game-elapsed' },
   // Math — measurement: compare length (cm/m), weight (kg/g) and capacity (L/mL).
   // NCTB class-3 math has a measurement unit (মাপজোক); the scene also teaches
   // 1 m = 100 cm, 1 kg = 1000 g, 1 L = 1000 mL by mixing units at higher levels.
-  { id: 'math-measure', band: 3, subject: 'math', title: 'Measurement (compare)', titleBn: 'মাপজোক (তুলনা)', description: 'Tap the longer, heavier or larger — comparing cm/m, kg/g and L/mL', descriptionBn: 'লম্বা, ভারী বা বেশি কোনটা — ট্যাপ করে তুলনা করি, সেমি/মিটার, কেজি/গ্রাম আর লিটার/মিলি মেপে', commonCore: ['1.MD.1', '1.MD.2', '3.MD.2'], nctbCode: 'c3-math-15', classNumber: 3, game: 'game-measure' },
+  { id: 'math-measure', band: 3, subject: 'math', title: 'Measurement (compare)', titleBn: 'মাপজোক (তুলনা)', description: 'Tap the longer, heavier or larger — comparing cm/m, kg/g and L/mL', descriptionBn: 'লম্বা, ভারী বা বেশি কোনটা — ট্যাপ করে তুলনা করি, সেমি/মিটার, কেজি/গ্রাম আর লিটার/মিলি মেপে', commonCore: ['1.MD.1', '1.MD.2', '3.MD.2'], nctbCode: 'c3-math-16', classNumber: 3, game: 'game-measure' },
   // Math — perimeter intro: add the side lengths around a fence, unit cubes along every edge.
-  { id: 'en-perim', band: 3, subject: 'math', title: 'Perimeter intro', titleBn: 'পরিসীমা শুরু', description: 'Count/add the unit-cube fence around a rectangle (4 sides) or right triangle (3 sides)', descriptionBn: 'আয়তক্ষেত্র (৪ বাহু) বা সমকোণী ত্রিভুজ (৩ বাহু) ঘিরে একক ঘনক বেড়া গুনি/যোগ করি', commonCore: ['3.MD.D.8'], nctbCode: 'c3-math-13', classNumber: 3, game: 'game-perim' },
+  { id: 'en-perim', band: 3, subject: 'math', title: 'Perimeter intro', titleBn: 'পরিসীমা শুরু', description: 'Count/add the unit-cube fence around a rectangle (4 sides) or right triangle (3 sides)', descriptionBn: 'আয়তক্ষেত্র (৪ বাহু) বা সমকোণী ত্রিভুজ (৩ বাহু) ঘিরে একক ঘনক বেড়া গুনি/যোগ করি', commonCore: ['3.MD.D.8'], nctbCode: 'c3-math-14', classNumber: 3, game: 'game-perim' },
   // Math — 2D → 3D shape pairing: match flat faces (square→cube) to rotating solids.
-  { id: 'en-solidmatch', band: 3, subject: 'math', title: 'Flat faces & solids', titleBn: 'ভাঁজ ও ঘনবস্তু', description: 'Match flat faces to their solid — square→cube, rectangle→cuboid, circle→cylinder, triangle→pyramid — on rotating 3D previews', descriptionBn: 'ভাঁজ মিলিয়ে ঘনবস্তু খুঁজি — বর্গ→ঘনক, আয়তক্ষেত্র→আয়তঘন, বৃত্ত→বেলন, ত্রিভুজ→পিরামিড — ঘোরানো প্রিভিউ দেখে', commonCore: ['2.G.A.1'], nctbCode: 'c3-math-14', classNumber: 3, game: 'game-solidmatch' },
+  { id: 'en-solidmatch', band: 3, subject: 'math', title: 'Flat faces & solids', titleBn: 'ভাঁজ ও ঘনবস্তু', description: 'Match flat faces to their solid — square→cube, rectangle→cuboid, circle→cylinder, triangle→pyramid — on rotating 3D previews', descriptionBn: 'ভাঁজ মিলিয়ে ঘনবস্তু খুঁজি — বর্গ→ঘনক, আয়তক্ষেত্র→আয়তঘন, বৃত্ত→বেলন, ত্রিভুজ→পিরামিড — ঘোরানো প্রিভিউ দেখে', commonCore: ['2.G.A.1'], nctbCode: 'c3-math-15', classNumber: 3, game: 'game-solidmatch' },
   // Math — symmetry: complete the mirror half of a picture across the fold line.
   { id: 'en-symmetry', band: 2, subject: 'math', title: 'Symmetry mirror', titleBn: 'আয়নার প্রতিসাম্য', description: 'Complete the mirror half of a picture across the fold line (heart, tree, butterfly, house…)', descriptionBn: 'ভাঁজ রেখা বরাবর ছবির আয়নার অর্ধেকটি পূরণ করি (হৃদয়, গাছ, প্রজাপতি, বাড়ি…)', commonCore: ['2.G.A.1'], nctbCode: 'c3-math-18', classNumber: 3, game: 'game-symmetry' },
   // Science — animal moves: sort 24 animals into fly / swim / crawl / walk bins.
@@ -241,7 +241,7 @@ export const SKILLS: Skill[] = [
   { id: 'data-barchart', band: 3, subject: 'math', title: 'Bar chart reading', titleBn: 'বার চার্ট পড়ি', description: 'Answer how-many questions by tapping bars on a chart', descriptionBn: 'চার্টের বার দেখে কতগুলো, ট্যাপ করে উত্তর দিই', commonCore: ['2.MD.10', '3.MD.3'], nctbCode: 'c3-math-6', classNumber: 3, game: 'game-barchart' },
   // Data — pictographs: ONE picture = 2/5/10, count pictures × key.
   // NCTB class-3 "data" strand; CC 2.MD.10 / 3.MD.3 (same as bar charts).
-  { id: 'data-picto', band: 3, subject: 'math', title: 'Picture charts', titleBn: 'ছবির চার্ট', description: 'Read pictographs where one picture = 2, 5 or 10 and answer how-many questions', descriptionBn: 'ছবির চার্ট পড়ি — ১টা ছবি = ২/৫/১০, ছবি দেখে কতগুলো বলি', commonCore: ['2.MD.10', '3.MD.3'], nctbCode: 'c3-math-16', classNumber: 3, game: 'game-picto' },
+  { id: 'data-picto', band: 3, subject: 'math', title: 'Picture charts', titleBn: 'ছবির চার্ট', description: 'Read pictographs where one picture = 2, 5 or 10 and answer how-many questions', descriptionBn: 'ছবির চার্ট পড়ি — ১টা ছবি = ২/৫/১০, ছবি দেখে কতগুলো বলি', commonCore: ['2.MD.10', '3.MD.3'], nctbCode: 'c3-math-7', classNumber: 3, game: 'game-picto' },
   { id: 'add-sub-regroup', band: 3, subject: 'math', title: 'Carry & Borrow', titleBn: 'ক্যারি ও ধার', description: '3-digit addition and subtraction with carrying and borrowing (written method)', descriptionBn: '৩-অঙ্কের যোগ-বিয়োগ ক্যারি ও ধারসহ (লিখিত পদ্ধতি)', commonCore: ['2.NBT.7', '3.NBT.2'], nctbCode: 'c3-math-5', classNumber: 3, game: 'game-regroup' },
   // Language — STAGE 3: first words (mirrored: BN words then EN CVC)
   { id: 'bn-words', band: 3, subject: 'bangla', title: 'Bangla words', titleBn: 'শব্দ পড়ি', description: 'Read simple Bangla words (মাছ, বাঘ, কলা)', descriptionBn: 'সহজ বাংলা শব্দ পড়ি (মাছ, বাঘ, কলা)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-3', classNumber: 2, game: 'game-bnwords' },
@@ -284,7 +284,7 @@ export const SKILLS: Skill[] = [
 
   // ── Band 4 — Sky Castle (ages 8–10, class 3–4): ADVANCED OPERATIONS ──
   { id: 'division-facts', band: 4, subject: 'math', title: 'Division facts', titleBn: 'ভাগ করা', description: 'Division facts within 100 (24÷3, 45÷5)', descriptionBn: '১০০-এর মধ্যে ভাগের সত্যি (২৪÷৩, ৪৫÷৫)', commonCore: ['3.OA.7'], nctbCode: 'c4-math-1', classNumber: 4, game: 'game-division', family: 'division-facts', tier: 2 },
-  { id: 'fractions-equiv', band: 4, subject: 'math', title: 'Equivalent fractions', titleBn: 'সমান ভগ্নাংশ', description: 'Recognize ½ = 2⁄4 = 3⁄6', descriptionBn: 'বুঝি ½ = ২⁄৪ = ৩⁄৬', commonCore: ['3.NF.3'], nctbCode: 'c4-math-3', classNumber: 4, game: 'game-fracmatch' },
+  { id: 'fractions-equiv', band: 4, subject: 'math', title: 'Equivalent fractions', titleBn: 'সমান ভগ্নাংশ', description: 'Recognize ½ = 2⁄4 = 3⁄6', descriptionBn: 'বুঝি ½ = ২⁄৪ = ৩⁄৬', commonCore: ['3.NF.3'], nctbCode: 'c4-math-2', classNumber: 4, game: 'game-fracmatch' },
   // Language — STAGE 4: decoding (mirrored: BN matras ↔ EN sight words)
   { id: 'bn-matras', band: 4, subject: 'bangla', title: 'Bangla matras', titleBn: 'কার', description: 'Combine letters with matras (ক + া = কা)', descriptionBn: 'অক্ষরের সাথে কার যোগ করি (ক + া = কা)', commonCore: ['RF.3.4'], nctbCode: 'c3-bangla-2', classNumber: 3, game: 'game-bnmatras' },
   { id: 'en-sightwords', band: 4, subject: 'english', title: 'Sight words', titleBn: 'দেখা-শব্দ', description: 'Read the, and, you, that, with', descriptionBn: 'the, and, you, that, with পড়ি', commonCore: ['RF.3.4'], nctbCode: 'c3-english-3', classNumber: 3, game: 'game-sightwords' },
@@ -534,7 +534,24 @@ export const GAMES: GameConfig[] = [
 ];
 
 /** gameId → Phaser scene key. Keeps the kid app and core in sync.
- *  A scene can back MULTIPLE games — each skill's ladder is its own game id. */
+ *  A scene can back MULTIPLE games — each skill's ladder is its own game id.
+ *
+ *  #1157 — shared-scene ladder map (one scene, several skills). Every shared
+ *  game id is INTENTIONAL tier reuse: each skill keeps its own `dataLevels`
+ *  ladder (below / #1170) and the app tags every answer event with `skillId`,
+ *  so per-code attribution survives scene reuse. Pedagogically unrelated pairs
+ *  got their own game ids instead (e.g. game-shapecatcher vs game-shapenames,
+ *  game-bnletters vs game-bnconsonants — see #1152/#1156).
+ *    game-bnwords   → bn-words (c2-bangla-3) + bn-family-words (c2-bangla-4), dataMode family
+ *    game-bnmatras  → bn-matras (c3-bangla-2) + bn-conjuncts (c6-bangla-2), dataMode conjuncts
+ *    game-clock     → tell-time (c2-math-3) + clock-minute (c6-math-6), dataLevels clock-minute
+ *    game-decimals  → decimals-intro (c5-math-3) + decimals-tenths (c7-math-3)
+ *    game-division  → division-facts (c4-math-1) + divide-within-100 (c6-math-4)
+ *    game-fracmatch → fractions-equiv (c4-math-2) + fraction-simplify (c7-math-1)
+ *    game-multable  → mult-facts-2-10 (c3-math-19) + mult-fluency-6-9 (c6-math-1), dataLevels 6-9 + challenge
+ *    game-percent   → percent-intro (c6-math-2) + percent-of-number (c7-math-2)
+ *    game-pizzafrac → fractions-intro (c3-math-3) + fraction-read (c6-math-3)
+ *    game-bgs       → bgs-bangladesh (c5-bgs-1) + bgs-heritage (c7-bgs-1) */
 export const GAME_SCENES: Record<string, string> = {
   'game-cvcbuild': 'CvcBuild',
   'game-plurals': 'Plurals',
