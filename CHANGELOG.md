@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.30 (perf: pre-read viewport for BnNumbers grid — gridLayout takes width/height params, caches per level, single scale+SAB read per resize (#1101))
+
+89e81a2 Merge branch 'nv-1101': pre-read viewport for BnNumbers grid layout (#1101)
+4a8d315 perf(kid): pre-read viewport for BnNumbers grid layout (#1101)
+
 ## 15 Aug 2026 — 0.53.29 (perf: batch safe-area reads in BnNumbers layout — single SAB() before all setPosition writes (#1100))
 
 f1412d3 Merge branch 'nv-1100': batch SAB() reads in BnNumbersScene layout (#1100)
