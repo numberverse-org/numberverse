@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.6 (perf: split 189KB global CSS — boot sheet (splash+base) is the only sync CSS (~13KB), screen CSS rides the lazy App chunk during the splash window (#1177))
+
+6ebad3d 🚀 render-blocking: split 189KB global CSS — boot sheet (splash+base, 13KB) is the only sync CSS; screen CSS rides the lazy App chunk (#1177)
+
 ## 14 Aug 2026 — 0.42.5 (render-blocking: lazy HomeScreen/AddKidForm/Nova3DHome chunks, memoized badge/achievement/trophy/box derivations, readiness-based + tap-to-dismiss splash, engine-boot spinner + retry, nova3d Suspense fallback)
 
 c583d9a 🚀 render-blocking: lazy HomeScreen/AddKidForm/Nova3DHome chunks (App 517k→417k), memoize badge/achievement/trophy/box derivations, splash is readiness-based + tap-to-dismiss, engine boot shows spinner + tap-to-retry, nova3d lazy Suspense fallback (#1182 #1183 #1185 #1186 #1178)
