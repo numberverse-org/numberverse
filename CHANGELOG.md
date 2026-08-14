@@ -1,3 +1,11 @@
+## 15 Aug 2026 — 0.56.0 (feat: band 6-7 math breadth (algebra/negatives/ratio/geometry/stats, 11 skills, 2 scenes) + age-graded mission bar for bands 5-7 (#1160 #1162))
+
+e06756e fix: mirror 11 new band 6-7 math skills in API seed for audit parity (#1160)
+0f3d1d2 merge: #1160 band 6-7 math breadth
+e35571a feat: band 6-7 math breadth — algebra, negatives, ratio, geometry, statistics (11 new skills, 2 new scenes) (#1160)
+5530ff6 merge: #1162 age-graded reward surfaces
+96c28ee feat: age-graded reward surface — mission bar (streak/badges/trophy) replaces nursery pet for bands 5-7 (#1162)
+
 ## 15 Aug 2026 — 0.55.0 (feat: challenge mode (15s countdown, no reveal) for all 8 remaining band 6-7 scenes (#1163 #1162))
 
 ed93838 merge: challenge mode batch B (#1163)
