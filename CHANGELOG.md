@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.1 (🐛 fix global-scale RESIZE listener leak (151 sites) — no memory growth across 50 rounds (#352))
+
+1c77bd9 🐛 #352 fix global-scale RESIZE listener leak (151 sites)
+
 ## 14 Aug 2026 — 0.53.0 (perf: warm the engine chunk at home idle so the first game opens instantly (#357))
 
 1c0f4da perf(scene-preload): warm the engine chunk at home idle for instant first-play (#357)

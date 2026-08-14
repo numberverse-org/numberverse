@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.0 (perf: warm the engine chunk at home idle so the first game opens instantly (#357))";
-export const APP_VERSION = "0.53.0";
+export const APP_BUILD = "14 Aug 2026 · 0.53.1 (🐛 fix global-scale RESIZE listener leak (151 sites) — no memory growth across 50 rounds (#352))";
+export const APP_VERSION = "0.53.1";
