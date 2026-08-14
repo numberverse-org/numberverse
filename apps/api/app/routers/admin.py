@@ -40,6 +40,85 @@ WHITELIST: dict[str, type] = {
 
 UUID_MODELS = {Profile, Kid, Subscription, KidSettings}
 
+# Per-resource writable fields for the generic admin CRUD below. POST/PUT
+# bodies may contain anything; only these keys are accepted. This keeps every
+# legitimately-editable react-admin field working while making it impossible
+# for an admin REST call to mass-assign server-managed or security-sensitive
+# columns (ids, timestamps, is_admin, password_hash, app-minted tokens).
+WRITABLE_FIELDS: dict[str, set[str]] = {
+    "profiles": {
+        "email",
+        "display_name",
+        "aggregate_opt_in",
+    },
+    "kids": {
+        "profile_id",
+        "name",
+        "avatar",
+        "birth_year",
+        "coins",
+    },
+    "kid_settings": {
+        "kid_id",
+        "enabled_subjects",
+        "max_band",
+        "daily_limit_min",
+        "weekday_limits_min",
+        "tts_enabled",
+        "music_enabled",
+        "voice_volume",
+        "sfx_volume",
+        "music_volume",
+        "quiet_enabled",
+        "quiet_windows",
+        "quiet_dim",
+        "quiet_volume",
+        "voice_record_enabled",
+        "goal_min",
+        "focus_subject",
+        "focus_band",
+        "voice_tone",
+        "voice_speed",
+        "paused",
+    },
+    "skills": {
+        "band",
+        "subject",
+        "title",
+        "title_bn",
+        "description",
+        "common_core",
+        "nctb_code",
+        "class_number",
+        "sort_order",
+    },
+    "content_items": {
+        "kind",
+        "title",
+        "config",
+        "band",
+        "enabled",
+    },
+    "config": {
+        "key",
+        "value",
+    },
+    "subscriptions": {
+        "profile_id",
+        "plan",
+        "store",
+        "store_ref",
+        "status",
+        "current_period_end",
+    },
+}
+
+# Never writable through this router, even if a future edit accidentally adds
+# them to WRITABLE_FIELDS. `id` is set by the DB/URL; `is_admin` is an authz
+# flag; `password_hash` is credential material. Those may only change through
+# the auth flows.
+DENIED_WRITE_FIELDS = {"id", "is_admin", "password_hash"}
+
 
 def _jsonable(value: Any) -> Any:
     if value is None:
@@ -55,11 +134,31 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
+# Secret-ish columns that must never be serialized in admin responses, even
+# for an authenticated admin. `password_hash` is the #864 leak; `token_hash`
+# (sessions) and `share_token` (kids) are bearer/token material that the admin
+# CRUD never needs to read back.
+SENSITIVE_COLUMNS = {"password_hash", "token_hash", "share_token"}
+
+
 def _row_to_dict(obj: Any) -> dict:
     data: dict = {}
     for col in obj.__table__.columns:
+        if col.name in SENSITIVE_COLUMNS:
+            continue
         data[col.name] = _jsonable(getattr(obj, col.name))
     return data
+
+
+def _writable_payload(resource: str, body: dict) -> dict:
+    """Mass-assignment guard (#862, #863).
+
+    Return only the body keys present in the per-resource WRITABLE_FIELDS
+    allow-list. Unknown keys and DENIED_WRITE_FIELDS (`id`, `is_admin`,
+    `password_hash`) are never passed through to the ORM model.
+    """
+    allowed = WRITABLE_FIELDS.get(resource, set())
+    return {k: v for k, v in body.items() if k in allowed and k not in DENIED_WRITE_FIELDS}
 
 
 def _pk_value(model: type, raw: str) -> Any:
@@ -418,7 +517,7 @@ async def create_resource(
     model = WHITELIST.get(resource)
     if not model:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
-    obj = model(**{k: v for k, v in body.items() if hasattr(model, k)})
+    obj = model(**_writable_payload(resource, body))
     db.add(obj)
     await db.commit()
     await db.refresh(obj)
@@ -439,9 +538,7 @@ async def update_resource(
     obj = await db.get(model, _pk_value(model, item_id))
     if not obj:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    for key, val in body.items():
-        if key == "id" or not hasattr(model, key):
-            continue
+    for key, val in _writable_payload(resource, body).items():
         setattr(obj, key, val)
     await db.commit()
     await db.refresh(obj)
