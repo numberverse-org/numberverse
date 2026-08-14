@@ -57,6 +57,19 @@ const STORIES: ReadStory[] = [
 ];
 const stripPunc = (w: string) => w.replace(/[।,!?]/g, "");
 
+/** Shared 2d context for measuring word-chip widths. Reusing one context (and
+ * setting the font once) keeps readPhase() from allocating a Phaser Text per
+ * word just to read its width — that was a per-round reflow/GC storm. */
+let measureCtx: CanvasRenderingContext2D | null = null;
+function measureWordWidth(word: string): number {
+  if (!measureCtx) {
+    measureCtx = document.createElement("canvas").getContext("2d");
+    const style = txt(24, "#000000", { bold: true });
+    measureCtx!.font = `${style.fontStyle} ${style.fontSize} ${style.fontFamily}`;
+  }
+  return measureCtx!.measureText(word).width;
+}
+
 /**
  * Graded read-a-story — গল্প পড়ি (#168).
  * Band 2/3: each round is one graded story. Phase 1 READ — the story renders as
@@ -140,17 +153,9 @@ export class ReadStoryScene extends Phaser.Scene {
     this.readAllBtn.setVisible(true);
     this.doneBtn.setVisible(true);
     const { width, height } = this.scale;
-    const all: string[] = [];
-    const chipMap: { word: string; w: number }[] = [];
-    const measure = this.story.s
+    const chipMap: { word: string; w: number }[] = this.story.s
       .flat()
-      .map((w) => this.add.text(0, 0, w, txt(24, "#000000", { bold: true })).setOrigin(0.5));
-    measure.forEach((m, i) => {
-      const word = this.story.s.flat()[i];
-      chipMap.push({ word, w: m.width + 24 });
-      all.push(word);
-    });
-    measure.forEach((m) => m.destroy());
+      .map((word) => ({ word, w: measureWordWidth(word) + 24 }));
     // wrap into centered lines
     const maxW = width - 60;
     const rows: number[][] = [];
