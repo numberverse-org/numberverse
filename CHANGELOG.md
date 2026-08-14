@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.41.0 (🦉 3D Nova offline + gating: Workbox 5MiB cap, wasm+glb precached, three-vendor split (island 36KiB), native OrbitControls, Oracle 3D Nova Perf role, v32 CHANGELOG)
+
+5dae29e 🦉 #691: offline precache under 5 MiB cap + Oracle 3D Nova Perf role
+
 ## 14 Aug 2026 — v32 — 3D Nova island (complete)
 
 The 3D Nova island (epic #755) is fully shipped and offline-safe:
