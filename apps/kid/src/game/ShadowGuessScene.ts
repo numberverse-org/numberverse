@@ -258,7 +258,7 @@ export class ShadowGuessScene extends Phaser.Scene {
   private ring(zone: Phaser.GameObjects.Container, color: number, alpha = 0.9) {
     const g = this.add.graphics();
     g.lineStyle(5, color, alpha);
-    g.strokeEllipse(0, 0, zone.getBounds().width + 8, zone.getBounds().height + 8);
+    g.strokeEllipse(0, 0, zone.width + 8, zone.height + 8);
     zone.add(g);
     this.time.delayedCall(1000, () => g.destroy());
   }

@@ -215,8 +215,8 @@ export class MagnetPolesScene extends Phaser.Scene {
   }
 
   private highlight(btn: Phaser.GameObjects.Container, color: number) {
-    const w = btn.getBounds().width;
-    const h = btn.getBounds().height;
+    const w = btn.width;
+    const h = btn.height;
     const g = this.add.graphics();
     g.lineStyle(5, color, 0.9);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
