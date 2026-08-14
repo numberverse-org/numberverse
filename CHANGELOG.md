@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.39.1 (fix API 422s on /progress + /stories (fractional response_ms) — also ships blue-screen + splash SVG fixes from 0.39.0)
+
+1d98d4b 🐛 fix API 422s on /progress + /stories: round fractional response_ms
+
 ## 14 Aug 2026 — 0.39.0 (fix blue screen + splash Nova SVG (regressions from #591/#589))
 
 aa981eb 🐛 fix blue screen (HomeScreen bare JSX → proper return) + splash Nova SVG (unquoted attrs → TDZ cycle)
