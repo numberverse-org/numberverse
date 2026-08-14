@@ -52,6 +52,7 @@ export class RhymeTimeScene extends Phaser.Scene {
   private rhyme!: Rhyme;
   private wordIdx = 0;
   private chips: { sprite: Phaser.GameObjects.Container; word: string }[] = [];
+  private static measureCtx: CanvasRenderingContext2D | null = null;
   private ringGfx!: Phaser.GameObjects.Graphics;
   private rhymeTitle!: Phaser.GameObjects.Text;
   private readBtn!: Phaser.GameObjects.Container;
@@ -103,14 +104,24 @@ export class RhymeTimeScene extends Phaser.Scene {
     this.layoutChips();
   }
 
+  /** Measure a word chip at the same font/size the cards use, without
+   *  allocating a Phaser Text object per word (which forced a layout read on
+   *  every layout()/startRound()/pickRhyme() and churned the scene graph). */
+  private measureWord(word: string): number {
+    if (!RhymeTimeScene.measureCtx) {
+      RhymeTimeScene.measureCtx = document.createElement("canvas").getContext("2d");
+    }
+    const ctx = RhymeTimeScene.measureCtx;
+    if (!ctx) return word.length * 22;
+    ctx.font = "800 30px 'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif";
+    return ctx.measureText(word).width;
+  }
+
   private layoutChips() {
     if (!this.rhyme || this.chips.length === 0) return;
     const { width } = this.scale;
     const maxW = Math.min(width * 0.94, 620);
-    const measure = this.rhyme.words.map((w) =>
-      this.add.text(0, 0, w, txt(30, "#000000", { bold: true })).setOrigin(0.5)
-    );
-    const sizes = measure.map((m) => ({ w: m.width + 26, h: CHIP_H }));
+    const sizes = this.rhyme.words.map((w) => ({ w: this.measureWord(w) + 26, h: CHIP_H }));
     const rows: number[][] = [];
     let row: number[] = [];
     let rowW = 0;
@@ -137,7 +148,6 @@ export class RhymeTimeScene extends Phaser.Scene {
         x += sizes[i].w + CHIP_GAP;
       });
     });
-    measure.forEach((m) => m.destroy());
   }
 
   private startRound() {
@@ -155,10 +165,7 @@ export class RhymeTimeScene extends Phaser.Scene {
     if (r === this.rhyme) r = RHYMES[(RHYMES.indexOf(r) + 1) % RHYMES.length];
     this.rhyme = r;
     this.rhymeTitle.setText(r.title);
-    const maxW = Math.min(this.scale.width * 0.94, 620);
-    const measure = r.words.map((w) => this.add.text(0, 0, w, txt(30, "#000000", { bold: true })).setOrigin(0.5));
-    const sizes = measure.map((m) => ({ w: m.width + 26, h: CHIP_H }));
-    measure.forEach((m) => m.destroy());
+    const sizes = r.words.map((w) => ({ w: this.measureWord(w) + 26, h: CHIP_H }));
     r.words.forEach((w, i) => {
       const chip = modernCardButton(this, 0, 0, sizes[i].w, CHIP_H, w, BTN_NEUTRAL, 28, sizes[i].w - 8);
       chip.on("pointerdown", () => this.tap(chip));
