@@ -23,8 +23,9 @@ function shuffle<T>(a: T[]): T[] {
 }
 
 /**
- * Skip count! (#225). A band-2/3 math pattern game continuing +3 and +4
- * sequences on a number line. Shows a run of terms ("0 · 3 · 6 · ___") with
+ * Skip count! (#225). A band-2/3 math pattern game continuing number
+ * sequences on a number line — step pools ramp +2/+3 → +3/+4/+5 → +4/+5/+10
+ * per band (#1273). Shows a run of terms ("0 · 3 · 6 · ___") with
  * green dots on a number line and a pulsing "?" at the next position; the kid
  * taps the next number from 3 options. Off-by-one distractors reward true
  * skip-counting, never a penalty.
@@ -126,10 +127,20 @@ export class SkipCountScene extends Phaser.Scene {
     this.showNext();
   }
 
+  /** #1273 — step pool per band: small (+2/+3) first, then middle (+3/+4/+5),
+   *  then large (+4/+5/+10) — covers the issue's +2/+5/+10 ladder plus the
+   *  original +3/+4 continuity. */
+  private static readonly STEPS: number[][] = [
+    [2, 3],
+    [3, 4, 5],
+    [4, 5, 10],
+  ];
+
   private newQuestion() {
     const maxStart = MAX_START[Math.min(this.levelIndex, MAX_START.length - 1)];
     this.start = Math.floor(Math.random() * (maxStart + 1));
-    this.step = Math.random() < 0.5 ? 3 : 4;
+    const band = SkipCountScene.STEPS[Math.min(Math.floor(this.levelIndex / 2), SkipCountScene.STEPS.length - 1)];
+    this.step = band[Phaser.Math.Between(0, band.length - 1)];
     this.seq = Array.from({ length: this.terms }, (_, i) => this.start + i * this.step);
     this.correct = this.start + this.terms * this.step;
     // off-by-one/off-by-two distractors reward true skip-counting
