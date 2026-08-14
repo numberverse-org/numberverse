@@ -40,7 +40,8 @@
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
+import { MathUtils } from "three";
+import type { Vector3 } from "three";
 import { ACTIVITIES } from "../game/activities";
 import { emptyGarden } from "../game/garden";
 import { getAppLang } from "../game/locale";
@@ -274,11 +275,11 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
     }, 2000);
   };
 
-  const onFloorClick = (e: { stopPropagation: () => void; point: THREE.Vector3 }) => {
+  const onFloorClick = (e: { stopPropagation: () => void; point: Vector3 }) => {
     e.stopPropagation();
     // keep the owl inside the floor circle
-    const x = THREE.MathUtils.clamp(e.point.x, -4.6, 4.6);
-    const z = THREE.MathUtils.clamp(e.point.z, -3.4, 3.4);
+    const x = MathUtils.clamp(e.point.x, -4.6, 4.6);
+    const z = MathUtils.clamp(e.point.z, -3.4, 3.4);
     walkId.current += 1;
     setWalkTo({ x, z, id: walkId.current });
     // one gentle "tap the floor" hint per room visit

@@ -7,10 +7,10 @@
  */
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
-import * as THREE from "three";
+import type { Group } from "three";
 
 export function Egg3D({ hopping, reduced }: { hopping: boolean; reduced: boolean }) {
-  const ref = useRef<THREE.Group | null>(null);
+  const ref = useRef<Group | null>(null);
   useFrame((state, delta) => {
     const g = ref.current;
     if (!g) return;

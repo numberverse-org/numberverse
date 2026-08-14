@@ -1,3 +1,23 @@
+## 14 Aug 2026 — v32 — 3D Nova island (complete)
+
+The 3D Nova island (epic #755) is fully shipped and offline-safe:
+
+- **Foundation** (#684/#685/#686): lazy three.js island (own chunk, <1.5MB cold
+  start), WebGL probe + graceful 2D fallback, meshopt-compressed nova.glb
+  (458KiB) precached offline
+- **World** (#687): 12 themed 3D rooms (EN+BN), PBR lighting, one 1024² PCF
+  soft shadow, orbit/zoom camera with reduced-motion clamps
+- **Play** (#688): 51 spatial activities re-hosted as 3D actions, walk-to-tap,
+  3D feed/pet/bathe, dress-up
+- **Progress** (#689): egg→grown petStage scale + species tints, 3D outfits,
+  garden plants + growth toast, coin badge (EN+BN)
+- **Safety + perf** (#690): DynamicResolution (frame-time DPR), reduced-motion
+  freeze + opacity-only burst (WCAG 2.3.1), flash throttle ≥350ms, canvas
+  aria-label + spoken feedback
+- **Offline + gating** (#691): Workbox cap 5MiB, three/R3F + Phaser split into
+  cacheable vendor chunks (island chunk 36KiB, three-vendor <1MiB), Oracle
+  "3D Nova Perf" role rides release.sh
+
 ## 14 Aug 2026 — 0.40.3 (🦉 3D Nova vestibular+perf: dynamic resolution, reduced-motion freeze, opacity burst, flash throttle, aria-label+speak)
 
 0b085cb 🦉 #690 vestibular + perf safety for the 3D island

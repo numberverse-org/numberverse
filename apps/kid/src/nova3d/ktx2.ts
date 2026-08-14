@@ -7,13 +7,13 @@
  * transcode path on devices that have it and falls back to CPU basis
  * decoding elsewhere, so every renderer re-enters with the same decoder.
  */
-import * as THREE from "three";
+import type { WebGLRenderer } from "three";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
 
 let ktx2: KTX2Loader | null = null;
 
 /** First call captures the renderer; the loader is then reused forever. */
-export function getKTX2Loader(renderer: THREE.WebGLRenderer): KTX2Loader {
+export function getKTX2Loader(renderer: WebGLRenderer): KTX2Loader {
   if (!ktx2) {
     ktx2 = new KTX2Loader()
       .setTranscoderPath("/assets/basis/")

@@ -44,7 +44,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,svg,ico,json,glb}"],
+        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,svg,ico,json,glb,wasm}"],
         // og-card.png is only for social link previews (crawlers), never needed
         // offline — keep it out of the precache so it doesn't burn install bytes.
         globIgnores: ["**/og-card.png"],
@@ -79,12 +79,28 @@ export default defineConfig({
             },
           },
         ],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       devOptions: {
         enabled: false, // never service-worker during local dev (stale-cache footguns)
       },
     }),
   ],
+  // #691 — the 3D island must never force a >1MB chunk download. three.js +
+  // R3F move to their own cacheable vendor chunk, so the lazy island chunk
+  // stays small and the vendor chunk survives island app updates.
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            // three core + examples (GLTF/KTX2/OrbitControls loaders) + R3F
+            if (id.includes("three") || id.includes("@react-three")) return "three-vendor";
+            if (id.includes("phaser")) return "phaser-vendor";
+          }
+        },
+      },
+    },
+  },
   server: { host: true, port: 5173 },
 });

@@ -7,7 +7,7 @@
  * (1024² PCF soft shadow) and matching fog. Everything is data-driven — zero
  * external assets — so the whole room set stays ~1 draw call per prop.
  */
-import * as THREE from "three";
+import { BackSide, BufferAttribute, BufferGeometry, Color } from "three";
 import { useMemo, type ReactElement } from "react";
 
 /* ── gradient sky dome (vertex colors: horizon → top) ── */
@@ -19,8 +19,8 @@ function SkyDome({ top, horizon }: { top: string; horizon: string }) {
     const h = 16;
     const positions = new Float32Array((w + 1) * (h + 1) * 3);
     const colors = new Float32Array((w + 1) * (h + 1) * 3);
-    const cTop = new THREE.Color(top);
-    const cHor = new THREE.Color(horizon);
+    const cTop = new Color(top);
+    const cHor = new Color(horizon);
     let p = 0;
     for (let y = 0; y <= h; y++) {
       const v = y / h; // 0 top … 1 bottom
@@ -39,9 +39,9 @@ function SkyDome({ top, horizon }: { top: string; horizon: string }) {
         p += 3;
       }
     }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    const g = new BufferGeometry();
+    g.setAttribute("position", new BufferAttribute(positions, 3));
+    g.setAttribute("color", new BufferAttribute(colors, 3));
     const idx = [];
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
@@ -56,7 +56,7 @@ function SkyDome({ top, horizon }: { top: string; horizon: string }) {
   }, [top, horizon]);
   return (
     <mesh geometry={geo} frustumCulled={false}>
-      <meshBasicMaterial vertexColors side={THREE.BackSide} depthWrite={false} fog={false} />
+      <meshBasicMaterial vertexColors side={BackSide} depthWrite={false} fog={false} />
     </mesh>
   );
 }

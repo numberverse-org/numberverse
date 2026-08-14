@@ -248,6 +248,42 @@ def l2_perf():
     ok = js < 2_600_000  # 2.6MB budget for the main bundle
     return ok, f"main js {js/1e6:.2f}MB (budget 2.6MB)"
 
+def l2_nova_perf():
+    """🦉 3D Nova Perf — the island must stay a small lazy pull and honor
+    vestibular/WCAG safety (#691)."""
+    dist = KID / "dist" / "assets"
+    if not dist.exists():
+        return True, "no local dist (box builds) — skipping 3D bundle checks"
+    ok, bits = True, []
+    island = next(dist.glob("Nova3D-*.js"), None)
+    if island:
+        sz = island.stat().st_size
+        ok &= sz < 1024 * 1024  # island lazy chunk < 1MB
+        bits.append(f"island {sz//1024}KiB")
+    threev = next(dist.glob("three-vendor-*.js"), None)
+    if threev:
+        sz = threev.stat().st_size
+        ok &= sz < 1024 * 1024  # three+R3F renderer pull < 1MB
+        bits.append(f"three-vendor {sz//1024}KiB")
+    glb = KID / "public" / "assets" / "nova.glb"
+    if glb.exists():
+        g = glb.stat().st_size
+        ok &= g < 2 * 1024 * 1024  # model < 2MiB
+        bits.append(f"glb {g//1024}KiB")
+    # vestibular/WCAG source gates (the runtime a11y checks live in the #690
+    # Playwright suite; here we guard the shipped levers they depend on).
+    nova = (KID / "src" / "nova3d" / "Nova3D.tsx").read_text(errors="ignore")
+    css = (KID / "src" / "styles.css").read_text(errors="ignore")
+    cam = (KID / "src" / "nova3d" / "camera.tsx").read_text(errors="ignore")
+    has_throttle = "lastBurstMs" in nova and "350" in nova          # no flash > 3/s
+    has_reduced = "data-motion={reduced ? \"reduced\" : \"full\"}" in nova
+    has_dynres = (KID / "src" / "nova3d" / "DynamicResolution.tsx").exists()
+    fade = "@keyframes island-fadeonly" in css and "transform" not in css.split("@keyframes island-fadeonly")[1].split("}")[0]
+    auto_rotate_off = "autoRotate = !reduced" in cam
+    ok &= has_throttle and has_reduced and has_dynres and fade and auto_rotate_off
+    bits.append(f"throttle={has_throttle} reduced={has_reduced} dynres={has_dynres} fadeOnly={fade} noAutoRotate={auto_rotate_off}")
+    return ok, "; ".join(bits)
+
 # ══ LAYER 3 — Quality & Trust ════════════════════════════════════════════════
 def l3_tsc():
     p = run(["./node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.json"], cwd=KID, timeout=180)
@@ -502,6 +538,7 @@ CHECKS = [
     ("🛠️ Eng",      "Core Package Engineer",      "7 world keys", l2_core),
     ("🛠️ Eng",      "Deployment Engineer",        "deploy.sh present", l2_deploy),
     ("🛠️ Eng",      "Performance Engineer",       "bundle budget", l2_perf),
+    ("🛠️ Eng",      "3D Nova Perf",               "island chunk + glb + a11y levers", l2_nova_perf),
     ("🛡️ Trust",    "QA Lead",                    "audit.mjs", l2_scenes),
     ("🛡️ Trust",    "Type-Safety Officer",        "tsc --noEmit", l3_tsc),
     ("🛡️ Trust",    "Progress/Cert Verifier",     "thresholds+rewards", l3_progress),

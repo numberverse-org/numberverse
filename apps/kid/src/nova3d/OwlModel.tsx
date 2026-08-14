@@ -14,7 +14,8 @@
  */
 import { useFrame, useThree, useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import * as THREE from "three";
+import { AnimationClip, AnimationMixer, MeshStandardMaterial } from "three";
+import type { Group, Mesh, SkinnedMesh } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { getKTX2Loader } from "./ktx2";
@@ -59,16 +60,16 @@ export function Nova({
   });
   const { scene, animations } = gltf;
 
-  const meshRef = useRef<THREE.SkinnedMesh | null>(null);
-  const groupRef = useRef<THREE.Group | null>(null);
-  const mixer = useMemo(() => new THREE.AnimationMixer(scene), [scene]);
+  const meshRef = useRef<SkinnedMesh | null>(null);
+  const groupRef = useRef<Group | null>(null);
+  const mixer = useMemo(() => new AnimationMixer(scene), [scene]);
 
   // shadow + keep a handle to the single SkinnedMesh ("Nova")
   useEffect(() => {
     scene.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = true;
-      if (o.name === MESH_NAME && (o as THREE.SkinnedMesh).isSkinnedMesh) {
-        meshRef.current = o as THREE.SkinnedMesh;
+      if ((o as Mesh).isMesh) (o as Mesh).castShadow = true;
+      if (o.name === MESH_NAME && (o as SkinnedMesh).isSkinnedMesh) {
+        meshRef.current = o as SkinnedMesh;
       }
     });
   }, [scene]);
@@ -83,7 +84,7 @@ export function Nova({
 
   // play the requested clip (walk overrides while moving)
   useEffect(() => {
-    const clipDef = THREE.AnimationClip.findByName(animations, effectiveClip);
+    const clipDef = AnimationClip.findByName(animations, effectiveClip);
     if (!clipDef) return;
     const action = mixer.clipAction(clipDef);
     action.reset();
@@ -98,7 +99,7 @@ export function Nova({
     const mesh = meshRef.current;
     if (!mesh) return;
     const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-    if (mat instanceof THREE.MeshStandardMaterial) {
+    if (mat instanceof MeshStandardMaterial) {
       mat.color.set(tint ?? "#ffffff");
       mat.needsUpdate = true;
     }
