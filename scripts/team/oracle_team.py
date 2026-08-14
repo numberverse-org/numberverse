@@ -357,7 +357,8 @@ def l3_release():
 # ══ LAYER 4 — Content & Experience ═══════════════════════════════════════════
 def l4_season():
     # currentSeason moved to lib/journey.ts during #589; scan the whole src/
-    # tree so the check survives future extractions. APP_BUILD stays in App.tsx.
+    # tree so the check survives future extractions. APP_BUILD lives in
+    # version.ts since #1321 (banner + parent footer read the same stamp).
     src_blob = "\n".join(
         f.read_text(errors="ignore") for f in (KID / "src").rglob("*")
         if f.suffix in (".ts", ".tsx"))
@@ -378,7 +379,9 @@ def l5_captions():
     return False, "share captions missing the URL"
 
 def l5_release_mgr():
-    app = (KID / "src" / "App.tsx").read_text()
+    # #1321 — the release stamp moved to version.ts (the update banner + parent
+    # footer read the same source); grep that file, not App.tsx.
+    app = (KID / "src" / "version.ts").read_text()
     m = re.search(r'APP_BUILD\s*=\s*"([^"]+)"', app)
     tr = (ROOT / "TRACKER.md").read_text(errors="ignore")
     # TRACKER says "> Last updated: 11 Aug 2026" — parse the day/month/year

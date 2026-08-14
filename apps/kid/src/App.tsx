@@ -69,13 +69,10 @@ const Nova3DHome = lazy(() => import("./nova3d/Nova3DHome"));
 const HomeScreen = lazy(() => import("./components/HomeScreen"));
 const AddKidForm = lazy(() => import("./components/AddKidForm"));
 
-/** Build stamp — shown in the parent panel footer. Bump on every deploy so a
- *  stale service-worker cache is instantly visible (if the phone shows an old
- *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.44.1 (bundle gate: enforce #1316 main-JS <1.5MB gz wire budget in CI + oracle)";
-/** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
- *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.44.1";
+// #1321 — build stamp + semantic version moved to version.ts so the BOOT
+// chunk's PWA update banner reads the same "version notes source" as the
+// parent panel footer without dragging App's lazy graph into boot.
+import { APP_BUILD, APP_VERSION } from "./version";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar" | "worksheet" | "flashcards";
 /** Rounds per skill before advancing to the next skill in a world.
@@ -1507,6 +1504,10 @@ export default function App() {
     } catch {
       /* ignore */
     }
+    // #1321 — the boot-chunk update banner reads nv_lang; tell it when the
+    // kid switches language mid-session so the banner follows (the boot's own
+    // bootBn read would otherwise go stale).
+    window.dispatchEvent(new CustomEvent("nv:lang"));
     setAppLang(lang);
     // #131 — locale packs carry the text direction: an RTL locale (Arabic…)
     // flips the whole document so bidi text lays out correctly.

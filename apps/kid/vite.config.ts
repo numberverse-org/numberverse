@@ -12,7 +12,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // #1321 — "prompt" (not autoUpdate): a fresh deploy installs a new SW
+      // that WAITS. The boot's update banner is the prompt to refresh; tapping
+      // "Update" sends SKIP_WAITING (via virtual:pwa-register's updateSW) and
+      // the page reloads onto the new build. autoUpdate's immediate takeover +
+      // abrupt reload was #1225; prompt mode is the kid-safe version.
+      registerType: "prompt",
       // #264/#1234 — injectManifest (hand-written sw.ts): the offline-first
       // contract needs a NEVER-reject /api handler (cached GET replay + synthetic
       // 503 for queued mutations) that workbox generateSW's runtimeCaching cannot

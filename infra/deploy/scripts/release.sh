@@ -38,7 +38,9 @@ echo "── 2/6 Bump build stamp + semver + tracker ────"
 python3 - "$TODAY" "$VERSION" "$SUMMARY" <<'PY'
 import re, sys
 today, version, summary = sys.argv[1], sys.argv[2], sys.argv[3]
-app = "apps/kid/src/App.tsx"
+# #1321 — the stamp lives in version.ts (the update banner + parent footer both
+# read it); grep that file, NOT App.tsx.
+app = "apps/kid/src/version.ts"
 s = open(app, encoding="utf-8").read()
 s = re.sub(r'const APP_BUILD = "[^"]*"', f'const APP_BUILD = "{today} · {version} ({summary})"', s)
 # True SEMVER — the release version IS the semver, used verbatim (0.MAJOR.MINOR.PATCH).
@@ -52,7 +54,7 @@ t = open(tr, encoding="utf-8").read()
 t = re.sub(r'> Last updated: [0-9]+ [A-Za-z]+ [0-9]{4}', f'> Last updated: {today}', t)
 open(tr, "w", encoding="utf-8").write(t)
 PY
-grep -n "const APP_VERSION\|const APP_BUILD" apps/kid/src/App.tsx | sed 's/^/  ✓ /'
+grep -n "const APP_VERSION\|const APP_BUILD" apps/kid/src/version.ts | sed 's/^/  ✓ /'
 
 echo "── 3/6 Changelog since last tag ────────────────"
 LAST=$(git describe --tags --abbrev=0 2>/dev/null || true)

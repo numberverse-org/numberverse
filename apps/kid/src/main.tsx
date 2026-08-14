@@ -1,6 +1,8 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Icon } from "./components/Icon";
+import UpdateBanner from "./components/UpdateBanner";
+import { swUpdateAvailable } from "./updateBanner";
 import "./styles/boot.css"; // #1177 — splash + base tokens only; screens.css rides the lazy App chunk
 
 /**
@@ -41,37 +43,26 @@ const NV_SKY = "#4cc9f0";
 const NV_PINK = "#ff8fa3";
 
 /**
- * SERVICE WORKER + "PWA always gets the new update" — #1225.
+ * SERVICE WORKER + "PWA always gets the new update" — #1225 → #1321.
  *
  * SW registration is NEVER on the critical rendering path: the runtime
  * (virtual:pwa-register → workbox) is dynamically imported AFTER first paint
  * (the splash's mount effect fires post-paint), so the boot chunk stays lean.
  *
- * The build uses registerType: "autoUpdate" — a fresh deploy installs a new
- * service worker that takes over immediately. But an OPEN page keeps running
- * its OLD bundle forever unless it reloads. Fix: when a NEW service worker
- * takes control, reload right away.
- *
- * Guards:
- *  · First-ever install has NO prior controller → skip the reload (a fresh
- *    visitor isn't double-loaded). An UPDATE is a change from an existing
- *    controller to a new one.
- *  · sessionStorage survives reloads → one swap, never an infinite loop.
+ * #1321 — the build uses registerType: "prompt": a fresh deploy installs a NEW
+ * service worker that WAITS (it does not yank an open session mid-game, and it
+ * does NOT surprise-reload like the old autoUpdate+immediate-reload flow).
+ * When a new version is waiting, onNeedRefresh arms the update banner (via the
+ * updateBanner bridge); tapping "Update" calls the returned updateSW(), which
+ * sends SKIP_WAITING → the waiting worker activates → clientsClaim() takes
+ * control → the page reloads onto the fresh bundle. No banner → no reload.
  */
 async function deferSWRegistration() {
   try {
     const { registerSW } = await import("virtual:pwa-register");
-    const hadController = Boolean(navigator.serviceWorker?.controller);
-    registerSW({
+    const updateSW = registerSW({
       immediate: true,
-      onRegisteredSW(_swUrl, registration) {
-        registration?.addEventListener("controllerchange", () => {
-          if (!hadController) return;
-          if (sessionStorage.getItem("nv:sw-swap") === "1") return;
-          sessionStorage.setItem("nv:sw-swap", "1");
-          window.location.reload();
-        });
-      },
+      onNeedRefresh: () => swUpdateAvailable(() => void updateSW()),
     });
   } catch {
     /* registration is best-effort — a failure must never break the splash */
@@ -274,6 +265,10 @@ function Boot() {
           <App />
         </BootErrorBoundary>
       </Suspense>
+      {/* #1321 — global update banner: prompt-mode SW waits, this is the
+          kid-safe "new version ready — tap to update" tap-through. Fixed
+          overlay, self-contained en/bn, per-session dismiss. */}
+      <UpdateBanner />
       <RotateOverlay />
     </>
   );
