@@ -101,7 +101,7 @@ export class NegativeNumberScene extends Phaser.Scene {
     this.markerG = this.add.graphics();
     gameBackground(this, "space");
     this.titleText = this.add
-      .text(0, 0, this.skillId === "neg-number-line-add" ? L("Negative number line", "ঋণাত্মক সংখ্যারেখা") : L("Compare negatives", "ঋণাত্মক সংখ্যা তুলনা"), txt(34, "#ffffff", { bold: true }))
+      .text(0, 0, this.titleForSkill(), txt(34, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.roundText = this.add
       .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
@@ -214,8 +214,15 @@ export class NegativeNumberScene extends Phaser.Scene {
     this.armChallenge();
   }
 
+  private titleForSkill(): string {
+    if (this.skillId === "neg-number-line-add") return L("Negative number line", "ঋণাত্মক সংখ্যারেখা");
+    if (this.skillId === "neg-arith") return L("Negative number arithmetic", "ঋণাত্মক সংখ্যার হিসাব");
+    return L("Compare negatives", "ঋণাত্মক সংখ্যা তুলনা");
+  }
+
   private buildRound(): Round {
     if (this.skillId === "neg-number-line-add") return this.addRound();
+    if (this.skillId === "neg-arith") return this.arithRound();
     return this.compareOrderRound();
   }
 
@@ -288,6 +295,40 @@ export class NegativeNumberScene extends Phaser.Scene {
       hintBn: "প্রথম সংখ্যায় শুরু করো — + মানে ডানে, − মানে বামে",
       start: a,
       dest: correct,
+    };
+  }
+
+  /** #1164 — band-8 negative arithmetic: add, subtract and multiply signed
+   *  numbers. The number line stays on screen as the scaffold (never the
+   *  reveal), and the level ramps the operation. */
+  private arithRound(): Round {
+    const level = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
+    let fact = "";
+    let correct = 0;
+    if (level <= 1) {
+      const a = -Phaser.Math.Between(3, 9);
+      const b = Phaser.Math.Between(4, 12);
+      correct = a + b;
+      fact = `${numLabel(a)} + ${numLabel(b)} = ?`;
+    } else if (level === 2) {
+      const a = Phaser.Math.Between(3, 12);
+      const b = -Phaser.Math.Between(2, 7);
+      correct = a - b;
+      fact = `${numLabel(a)} − (${numLabel(b)}) = ?`;
+    } else {
+      const a = Phaser.Math.Between(2, 5);
+      const b = Phaser.Math.Between(3, 6);
+      const negate = Phaser.Math.Between(0, 1) === 0 ? -1 : 1;
+      correct = negate * a * b;
+      fact = `(${negate === -1 ? `−${a}` : a}) × ${b} = ?`;
+    }
+    return {
+      prompt: L("Solve it!", "সমাধান করো!"),
+      fact,
+      options: numericOptions(correct, -30).map(String),
+      correct: String(correct),
+      hint: L("Move right for +, left for −; unlike signs multiply to a negative", "+ মানে ডানে, − মানে বামে; বিপরীত চিহ্নের গুণফল ঋণাত্মক"),
+      hintBn: "+ মানে ডানে, − মানে বামে; বিপরীত চিহ্নের গুণফল ঋণাত্মক",
     };
   }
 
