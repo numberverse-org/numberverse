@@ -77,6 +77,8 @@ export const SKILLS: Skill[] = [
   // #1143 — a NO-PRESSURE free-play garden break between tap-heavy lessons.
   // Deliberately unscored: no challenge flag, no rounds, no right/wrong.
   { id: 'math-explore-garden', band: 1, subject: 'math', title: 'Explore garden', titleBn: 'বাগান সাজাই', description: 'Free-play counting and shape garden — plant and explore with no pressure', descriptionBn: 'গুনে ও আকারে সাজানো মুক্ত বাগান — কোনো চাপ ছাড়াই লাগাই আর খেলি', commonCore: ['K.CC.1', 'K.G.2'], nctbCode: 'c1-math-19', classNumber: 1, game: 'game-exploregarden' },
+  // #1144 — glyph-tracing engine: the first handwriting step for numerals.
+  { id: 'trace-digits', band: 1, subject: 'math', title: 'Trace numbers', titleBn: 'সংখ্যা আঁকি', description: 'Trace digits 0–9 with a finger — the first step to writing numbers', descriptionBn: 'আঙুল দিয়ে ০–৯ সংখ্যা আঁকি — সংখ্যা লেখার প্রথম ধাপ', commonCore: ['K.CC.3'], nctbCode: 'c1-math-20', classNumber: 1, game: 'game-trace', challenge: true, dataLevels: [1, 2, 3, 4, 5, 6] },
   // Language — STAGE 1: first letters (both tracks, mirrored)
   { id: 'bn-swaroborno', band: 1, subject: 'bangla', title: 'Bangla vowels', titleBn: 'স্বরবর্ণ', description: 'Recognize Bangla vowel letters অ আ ই ঈ উ ঊ', descriptionBn: 'বাংলা স্বরবর্ণ অ আ ই ঈ উ ঊ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-1', classNumber: 1, game: 'game-bnletters', dataMode: 'vowels' },
   { id: 'bn-rhymes', band: 1, subject: 'bangla', title: 'Nursery rhymes', titleBn: 'ছড়ার গান', description: 'Recite classic NCTB Bangla rhymes, tapping along word by word', descriptionBn: 'নোভার সাথে ছড়া গাই, শব্দ ধরে টিপে টিপে', commonCore: ['RF.K.2a'], nctbCode: 'c1-bangla-5', classNumber: 1, game: 'game-rhymes' },
@@ -89,6 +91,8 @@ export const SKILLS: Skill[] = [
   // Values — polite words: pick ধন্যবাদ / দয়া করে / দুঃখিত in everyday scenarios (শিষ্টাচার).
   { id: 'bn-polite-words', band: 1, subject: 'bangla', title: 'Polite words', titleBn: 'শিষ্টাচার', description: 'Tap the polite reply (ধন্যবাদ, দয়া করে, দুঃখিত) for everyday scenarios', descriptionBn: 'প্রতিদিনের পরিস্থিতিতে ভদ্র শব্দ টিপি (ধন্যবাদ, দয়া করে, দুঃখিত)', commonCore: ['SL.K.6'], nctbCode: 'c1-bangla-8', classNumber: 1, game: 'game-polite' },
   { id: 'en-abcs', band: 1, subject: 'english', title: 'ABCs', titleBn: 'ইংরেজি বর্ণমালা', description: 'Recognize uppercase letters A–F', descriptionBn: 'বড় হাতের ইংরেজি অক্ষর A–F চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-english-1', classNumber: 1, game: 'game-enletters' },
+  // #1144 — glyph-tracing engine: the first handwriting step for capitals.
+  { id: 'trace-letters', band: 1, subject: 'english', title: 'Trace letters', titleBn: 'ইংরেজি অক্ষর আঁকি', description: 'Trace capital letters with a finger — the first step to handwriting', descriptionBn: 'আঙুল দিয়ে ইংরেজি বড় হাতের অক্ষর আঁকি — হাতের লেখার প্রথম ধাপ', commonCore: ['RF.K.1d'], nctbCode: 'c1-english-8', classNumber: 1, game: 'game-trace', challenge: true, dataLevels: [1, 2, 3, 4, 5, 6] },
   // STAGE 1 vocabulary — first number/word names in each language
   { id: 'bn-numbers', band: 1, subject: 'bangla', title: 'Bangla numbers', titleBn: 'বাংলা সংখ্যা', description: 'Hear and recognize Bangla numerals ০–৯', descriptionBn: 'বাংলা সংখ্যা ০–৯ শুনে চিনি', commonCore: ['K.CC.1'], nctbCode: 'c1-bangla-2', classNumber: 1, game: 'game-bnnumbers' },
   { id: 'en-shapes', band: 1, subject: 'english', title: 'Shape names', titleBn: 'আকৃতির নাম', description: 'English names of shapes (circle, square, triangle)', descriptionBn: 'আকৃতির ইংরেজি নাম (বৃত্ত, বর্গ, ত্রিভুজ)', commonCore: ['L.K.5c'], nctbCode: 'c1-english-3', classNumber: 1, game: 'game-shapenames' },
@@ -461,6 +465,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-bnconsonants', skillId: 'bn-benjonborno', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-enletters', skillId: 'en-abcs', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bnnumbers', skillId: 'bn-numbers', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
+  { id: 'game-trace', skillId: 'trace-digits', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   // ── Band 2 counting → concrete add/sub → abstract recap ──
   { id: 'game-countpop50', skillId: 'count-to-50', difficultyLevels: [10, 15, 20, 30, 40, 50], targetSuccess: 0.8 },
   { id: 'game-count100', skillId: 'count-to-100', difficultyLevels: [10, 20, 30, 40, 60, 100], targetSuccess: 0.8 },
@@ -642,6 +647,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-plurals': 'Plurals',
   'game-pasted': 'PastEd',
   'game-casematch': 'CaseMatch',
+  'game-trace': 'Trace',
   'game-bndaysmonths': 'BanglaDays',
   'game-bnspelling': 'BanglaSpell',
   'game-banglaspell': 'BanglaSpell',

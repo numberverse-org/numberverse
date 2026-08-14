@@ -39,6 +39,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("number-line", 1, "math", "Number line hops", "সংখ্যা রেখা"),
     ("shapes", 1, "math", "Recognize shapes", "আকার চিনি"),
     ("math-explore-garden", 1, "math", "Explore garden", "বাগান সাজাই"),
+    ("trace-digits", 1, "math", "Trace numbers", "সংখ্যা আঁকি"),
     # Language stage 1 — letters
     ("bn-swaroborno", 1, "bangla", "Bangla vowels", "স্বরবর্ণ"),
     ("bn-rhymes", 1, "bangla", "Nursery rhymes", "ছড়ার গান"),
@@ -47,6 +48,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("bn-direction-words", 1, "bangla", "Direction words", "দিকের শব্দ"),
     ("bn-polite-words", 1, "bangla", "Polite words", "শিষ্টাচার"),
     ("en-abcs", 1, "english", "ABCs", "ইংরেজি বর্ণমালা"),
+    ("trace-letters", 1, "english", "Trace letters", "ইংরেজি অক্ষর আঁকি"),
     ("bn-numbers", 1, "bangla", "Bangla numbers", "বাংলা সংখ্যা"),
     ("en-shapes", 1, "english", "Shape names", "আকৃতির নাম"),
     ("en-wordfamilies", 1, "english", "Word families", "শব্দ পরিবার"),
