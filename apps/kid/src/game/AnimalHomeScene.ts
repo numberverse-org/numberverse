@@ -56,6 +56,31 @@ const ANIMAL_NAME: Record<string, string> = {
   deer: "deer", owl: "owl", penguin: "penguin", rhino: "rhino", bat: "bat",
   crocodile: "crocodile", camel: "camel", parrot: "parrot",
 };
+
+/** #1276 — baby→adult pairs (the "animal babies" half of the skill). Baby and
+ *  adult must be DISTINCT emojis so a kid can actually tell them apart; the
+ *  home field keeps a hint from naming a conflicting home when both round
+ *  kinds are mixed. Names are en/bn literals for hint + TTS lines (the emoji
+ *  is the visual name, same pattern as ANIMAL_NAME above). */
+interface Baby {
+  baby: string;    // baby emoji
+  adult: string;   // adult emoji
+  babyEn: string;
+  babyBn: string;
+  adultEn: string;
+  adultBn: string;
+  home: "Water" | "Land" | "Sky";
+  tier: 1 | 2 | 3;
+}
+const BABIES: Baby[] = [
+  { baby: "🐣", adult: "🐔", babyEn: "chick", babyBn: "ছানা", adultEn: "chicken", adultBn: "মুরগি", home: "Land", tier: 1 },
+  { baby: "🐶", adult: "🐕", babyEn: "puppy", babyBn: "কুকুরছানা", adultEn: "dog", adultBn: "কুকুর", home: "Land", tier: 1 },
+  { baby: "🐱", adult: "🐈", babyEn: "kitten", babyBn: "বিড়ালছানা", adultEn: "cat", adultBn: "বিড়াল", home: "Land", tier: 1 },
+  { baby: "🐯", adult: "🐅", babyEn: "tiger cub", babyBn: "বাঘছানা", adultEn: "tiger", adultBn: "বাঘ", home: "Land", tier: 2 },
+  { baby: "🐤", adult: "🐦", babyEn: "baby bird", babyBn: "পাখির ছানা", adultEn: "bird", adultBn: "পাখি", home: "Sky", tier: 2 },
+  { baby: "🐠", adult: "🐟", babyEn: "little fish", babyBn: "ছোট মাছ", adultEn: "fish", adultBn: "মাছ", home: "Water", tier: 3 },
+  { baby: "🐇", adult: "🐰", babyEn: "bunny", babyBn: "খরগোশছানা", adultEn: "rabbit", adultBn: "খরগোশ", home: "Land", tier: 2 },
+];
 const BUTTON_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 
@@ -69,17 +94,23 @@ function poolForLevel(level: number): Animal[] {
 }
 
 /**
- * Animal Homes — where does this animal live?
- * Band 4 (ages 8–10, Science). Shows an animal emoji, kid taps Water/Land/Sky.
- * Level 1–2: match one famous animal. Level 3–4: match two. Level 5–6: match
- * three (one of each home) from trickier animals.
+ * Animal Homes & Babies — where does this animal live? + whose baby is this?
+ * Band 4 (ages 8–10, Science). Rounds ALTERNATE between the two:
+ *   homes  → show an animal emoji, kid taps Water/Land/Sky (18-animal pool).
+ *   babies → show a baby emoji, kid taps its mommy/daddy adult (7 baby pairs).
+ * Level 1–2: match one. Level 3–4: match two. Level 5–6: match three from the
+ * trickier pool. Same drag-to-answer gesture for both round kinds.
  */
 export class AnimalHomeScene extends Phaser.Scene {
   private levelIndex = 0;
   private roundsDone = 0;
   private startedAt = 0;
+  /** Which sub-game this round is (#1276 — homes and babies alternate). */
+  private roundKind: "homes" | "babies" = "homes";
   /** Animals still to match this round (one per home, so hints never collide). */
   private queue: Animal[] = [];
+  /** Baby pairs still to match this round (distinct adults, so answers never repeat). */
+  private babyQueue: Baby[] = [];
   private qIdx = 0;
   private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
@@ -151,6 +182,10 @@ export class AnimalHomeScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
+    if (this.roundKind === "babies") {
+      this.startBabiesRound();
+      return;
+    }
     const size = queueSize(this.levelIndex);
     const pool = poolForLevel(this.levelIndex);
     // pick `size` animals with DISTINCT homes so hint keys never collide mid-round
@@ -169,6 +204,64 @@ export class AnimalHomeScene extends Phaser.Scene {
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.showCurrent();
     this.spawnButtons();
+  }
+
+  /** #1276 — baby round: `size` babies with DISTINCT adults (no repeated answers). */
+  private startBabiesRound() {
+    const size = queueSize(this.levelIndex);
+    const pool = BABIES.filter((b) => b.tier <= (this.levelIndex >= 4 ? 3 : this.levelIndex >= 2 ? 2 : 1));
+    const picks: Baby[] = [];
+    const adults = new Set<string>();
+    for (const b of [...pool].sort(() => Math.random() - 0.5)) {
+      if (adults.has(b.adult)) continue;
+      picks.push(b);
+      adults.add(b.adult);
+      if (picks.length >= size) break;
+    }
+    this.babyQueue = picks;
+    this.qIdx = 0;
+    this.startedAt = this.time.now;
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.showBabyCurrent();
+    this.spawnBabyButtons();
+  }
+
+  /** Show the next baby + a "x of y" nudge, speak "whose baby is this?". */
+  private showBabyCurrent() {
+    const b = this.babyQueue[this.qIdx];
+    this.animalBox.removeAll(true);
+    this.animalBox.add(this.add.text(0, 0, b.baby, txt(150, "#ffffff", { shadow: true })).setOrigin(0.5));
+    this.prompt.set(
+      this.babyQueue.length > 1
+        ? t("animalBabyQN", { n: this.qIdx + 1, total: this.babyQueue.length })
+        : t("animalBabyQ")
+    );
+    speak(getAppLang() === "bn" ? `${b.babyBn} — এটা কার বাচ্চা?` : `Whose baby is the ${b.babyEn}?`);
+  }
+
+  /** Answer buttons = adult animals (emoji + name), distinct from the queue. */
+  private spawnBabyButtons() {
+    const adults = [...new Set(this.babyQueue.map((b) => b.adult))];
+    while (adults.length < 3) {
+      const extra = BABIES[Phaser.Math.Between(0, BABIES.length - 1)].adult;
+      if (!adults.includes(extra)) adults.push(extra);
+    }
+    const opts = adults.sort(() => Math.random() - 0.5);
+    const { width } = this.scale;
+    const spacing = BUTTON_RADIUS * 2 + 14;
+    const startX = width / 2 - (spacing * (opts.length - 1)) / 2;
+    const y = this.answersY;
+    opts.forEach((adultEmoji, i) => {
+      const row = BABIES.find((b) => b.adult === adultEmoji)!;
+      const c = modernAnswerButton(this, startX + i * spacing, y, BUTTON_RADIUS, "");
+      c.add([
+        this.add.text(0, -12, adultEmoji, txt(44, "#052e3f", { shadow: false })).setOrigin(0.5),
+        this.add.text(0, 26, getAppLang() === "bn" ? row.adultBn : row.adultEn, txt(15, "#052e3f", { bold: true, shadow: false })).setOrigin(0.5),
+      ]);
+      c.on("pointerdown", () => this.tap(c, adultEmoji));
+      this.buttons.push({ sprite: c, value: adultEmoji });
+    });
   }
 
   /** Show the next animal to match + a "x of y" nudge. */
@@ -203,9 +296,13 @@ export class AnimalHomeScene extends Phaser.Scene {
     });
   }
 
-  private tap(container: Phaser.GameObjects.Container, home: string) {
+  private tap(container: Phaser.GameObjects.Container, value: string) {
+    if (this.roundKind === "babies") {
+      this.tapBaby(container, value);
+      return;
+    }
     const target = this.queue[this.qIdx];
-    if (home !== target.home) {
+    if (value !== target.home) {
       hintWrong(this, container, {
         hint: () => `The ${this.animalName(target)} lives in ${target.home} — tap ${target.home}`,
         hintBn: () => `${this.animalName(target)} থাকে ${target.home} — ${target.home} চাপো`,
@@ -228,17 +325,53 @@ export class AnimalHomeScene extends Phaser.Scene {
         });
         this.showCurrent();
       } else {
-        const ms = Math.max(1, this.time.now - this.startedAt);
-        win();
-        this.roundsDone++;
-        this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-        this.onRoundDone?.(true, ms, this.levelIndex + 1);
-        this.time.delayedCall(500, () => {
-          if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
-          this.levelIndex++;
-          this.startRound();
-        });
+        this.completeRound();
       }
+    });
+  }
+
+  /** #1276 — baby round tap: match the baby to its adult. */
+  private tapBaby(container: Phaser.GameObjects.Container, adultEmoji: string) {
+    const target = this.babyQueue[this.qIdx];
+    if (adultEmoji !== target.adult) {
+      hintWrong(this, container, {
+        hint: () => `The ${target.babyEn} grows into the ${target.adultEn} — tap the ${target.adultEn}`,
+        hintBn: () => `${target.babyBn} বড় হয়ে ${target.adultBn} হয় — ${target.adultBn} চাপো`,
+        correct: () => target.adult,
+        options: () => this.buttons,
+      });
+      return;
+    }
+    pop();
+    ringCorrect(this, container);
+    this.sparkle(container.x, container.y);
+    this.buttons.forEach((b) => b.sprite.disableInteractive());
+    this.time.delayedCall(260, () => {
+      this.qIdx++;
+      if (this.qIdx < this.babyQueue.length) {
+        this.buttons.forEach((b) => {
+          b.sprite.setAlpha(1);
+          b.sprite.setInteractive();
+        });
+        this.showBabyCurrent();
+      } else {
+        this.completeRound();
+      }
+    });
+  }
+
+  /** Round done (either kind) → advance; next round flips homes ⇄ babies. */
+  private completeRound() {
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    win();
+    this.roundsDone++;
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.time.delayedCall(500, () => {
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.roundKind = this.roundKind === "homes" ? "babies" : "homes"; // alternate
+      this.levelIndex++;
+      this.startRound();
     });
   }
 
