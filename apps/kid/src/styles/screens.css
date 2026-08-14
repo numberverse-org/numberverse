@@ -506,7 +506,7 @@
   padding: 0;
 }
 .hud-back:active { background: rgba(255, 255, 255, 0.22); }
-.hud-world { color: #c7d5e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.hud-world { color: #c7d5e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 60px; flex: 0 1 auto; }
 .round-chip { background: rgba(255, 255, 255, 0.08); border-radius: 999px; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
 .stars { color: var(--nv-gold); white-space: nowrap; }
 .game-wrap { flex: 1; min-height: 0; position: relative; }
@@ -2824,6 +2824,16 @@
   .hud-streak { display: none; }
   .hud-coins { font-size: 13px; }
   .round-chip { padding: 8px 8px; font-size: 14px; }
+}
+
+/* #1094 — under 360px even with the streak gone, the skill pill crowds the
+   world label into a 14px sliver while round/stars/coins/music keep fixed
+   width. Drop the low-value skill pill (the world name + round chip keep the
+   context; the skill is also in the scene title + spoken) so the world label
+   gets a usable width and can fill the freed space. */
+@media (max-width: 360px) {
+  .hud-skill { display: none; }
+  .hud-world { flex: 1 1 auto; min-width: 0; } /* drop the 60px floor here: skill is gone, world fills the row */
 }
 
 .lang-toggle {
