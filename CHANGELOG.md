@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.36 (fix: festival-banner spans the home column width (#1110))
+
+94d9319 fix: festival-banner spans the home column — width:100% max-width var(--content-max) (#1110)
+
 ## 15 Aug 2026 — 0.53.35 (perf: cache streakText.width in NovaScene resize layout (#1105))
 
 64c571b perf: cache streakText width in NovaScene layout (#1105)
