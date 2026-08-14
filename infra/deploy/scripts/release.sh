@@ -108,13 +108,24 @@ LIVE="https://kids.munna-khan.xyz"
 SMOKE_BODY="$(mktemp -t nv-smoke-body.XXXXXX)"
 trap 'rm -f "$SMOKE_BODY"' EXIT
 # smoke_serves <base-url> <version> [curl args…] — 0 if <base> serves the stamp.
+# #1217 — APP_VERSION/APP_BUILD live in the LAZY App chunk (splash-first split),
+# NOT the index boot chunk. So a version grep against index.js alone is a
+# FALSE NEGATIVE on any post-split build (0.42.3's good deploy was rolled back
+# on exactly this). Check index.js AND the App chunk it dynamic-imports.
 smoke_serves() {
   local base="$1" want="$2"; shift 2
-  local bust js
+  local bust js appjs
   bust="nv$RANDOM$RANDOM"
   js=$(curl -sL --max-time 15 "$@" "$base/?$bust" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1 || true)
   [ -n "$js" ] || return 1
   curl -sL --max-time 30 "$@" "$base/$js?$bust" -o "$SMOKE_BODY" || return 1
+  [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 100000 ] || return 1
+  grep -qF "$want" "$SMOKE_BODY" && return 0
+  # stamp not in index.js → fetch the lazy App chunk it references and grep that.
+  appjs=$(grep -oE '(assets/)?App-[A-Za-z0-9_-]+\.js' "$SMOKE_BODY" | head -1 || true)
+  [ -n "$appjs" ] || return 1
+  appjs="${appjs#assets/}"
+  curl -sL --max-time 30 "$@" "$base/$appjs?$bust" -o "$SMOKE_BODY" || return 1
   [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 100000 ] || return 1
   grep -qF "$want" "$SMOKE_BODY"
 }
