@@ -68,10 +68,10 @@ const AddKidForm = lazy(() => import("./components/AddKidForm"));
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.42.9 (10 scene UX fixes for pre-readers (#1236-#1245))";
+const APP_BUILD = "14 Aug 2026 · 0.42.10 (reward-overlap: care paws vs learning coins, quality-tier challenge rewards, type-scaled quests (#1189 #1191 #1192 #1194 #1195 #1196))";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.42.9";
+const APP_VERSION = "0.42.10";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.

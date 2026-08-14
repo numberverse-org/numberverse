@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.10 (reward-overlap: care paws vs learning coins, quality-tier challenge rewards, type-scaled quests (#1189 #1191 #1192 #1194 #1195 #1196))
+
+b09879c 🪙 reward-overlap cluster: care paws vs learning coins, quality-tier challenge rewards (#1189 #1191 #1192 #1194 #1195 #1196)
+
 ## 14 Aug 2026 — 0.42.9 (10 scene UX fixes for pre-readers (#1236-#1245))
 
 c3dacf8 💻 UX/cognitive-load: 10 scene fixes for pre-readers (#1236-#1245)
