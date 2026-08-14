@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.45.0 (PWA prompt-mode update banner with version notes (#1321))
+
+01c3ee7 feat(pwa): prompt-mode update banner with version notes (#1321)
+
 ## 14 Aug 2026 — 0.44.1 (bundle gate: enforce #1316 main-JS <1.5MB gz wire budget in CI + oracle)
 
 56393cf 📦 bundle gate: enforce the #1316 'main JS < 1.5MB gz' wire budget
