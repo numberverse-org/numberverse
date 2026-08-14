@@ -6366,3 +6366,32 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   .fc-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
   .fc-card { border-width: 1px; }
 }
+
+/* ══ #1091 — tablet/foldable layout tier ═══════════════════════════════════
+   The stylesheet had zero `min-width` reflows: every heavy column screen
+   rendered as one skinny centered strip from 360px to 1200px+. The continuous
+   width scaling lives in --content-max (#1090); THIS tier adds the LAYOUT
+   reflows — cards reflow to multi-column grids at tablet scale, and dense
+   book/trophy grids widen so they show more per row instead of a narrow
+   column. (Journey stays a single-column TIMELINE on purpose: its spine +
+   node connectors are the metaphor; 2-up would sever the path.) */
+@media (min-width: 700px) {
+  /* worlds: world cards are compact, self-contained rows — at tablet scale
+     they read 2-up (auto-fill → 2× ~330px tracks inside the 680px column)
+     instead of a skinny vertical strip. */
+  .world-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    align-content: start;
+  }
+}
+@media (min-width: 1024px) {
+  /* badge book / achievements / trophy shelf are GRIDS — the 680px readability
+     cap that suits text columns can sit a little wider so a 5-row tablet shows
+     5-6 tiles across instead of 4. */
+  .badge-grid,
+  .ach-grid,
+  .tr-shelf {
+    max-width: 820px;
+  }
+}
