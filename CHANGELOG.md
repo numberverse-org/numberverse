@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.40.3 (🦉 3D Nova vestibular+perf: dynamic resolution, reduced-motion freeze, opacity burst, flash throttle, aria-label+speak)
+
+0b085cb 🦉 #690 vestibular + perf safety for the 3D island
+
 ## 14 Aug 2026 — 0.40.2 (3D Nova #689: petStage egg→grown scale + species tints, 3D outfits, garden plants + growth toast, coin badge (EN+BN))
 
 485e808 🦉 3D NOVA: wire garden, coins, outfits, species to the owl (#689)

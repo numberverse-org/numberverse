@@ -59,10 +59,10 @@ import Nova3DHome from "./nova3d/Nova3DHome";
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.40.2 (3D Nova #689: petStage egg→grown scale + species tints, 3D outfits, garden plants + growth toast, coin badge (EN+BN))";
+const APP_BUILD = "14 Aug 2026 · 0.40.3 (🦉 3D Nova vestibular+perf: dynamic resolution, reduced-motion freeze, opacity burst, flash throttle, aria-label+speak)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.40.2";
+const APP_VERSION = "0.40.3";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
