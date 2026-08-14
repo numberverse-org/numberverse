@@ -35,7 +35,9 @@ echo "── glTF pipeline: $SRC → $OUT"
 ARGS=(optimize "$SRC" "$OUT" --compress meshopt --verbose)
 if command -v ktx >/dev/null 2>&1; then
   echo "  ✓ ktx encoder found — KTX2 texture compression ON"
-  ARGS+=(--texture-compress ktx2 --texture-size 2048)
+  # 4096 = the single base-color ATLAS resolution (single-draw-call owl, #687);
+  # downscaling to 2048 would halve feather/belly/head detail.
+  ARGS+=(--texture-compress ktx2 --texture-size 4096)
 else
   echo "  ⚠ ktx encoder NOT found (brew install ktx) — skipping KTX2 textures."
   echo "    (fine for the texture-less placeholder; required once #686 ships textures)"

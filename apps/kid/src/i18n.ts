@@ -717,6 +717,9 @@ export interface Strings {
   islandBack: string;
   islandPlayGames: string;
   islandBack2d: string;
+  /* #687 — 3D home room switcher (prev/next room cycle) */
+  islandRoomPrev: string;
+  islandRoomNext: string;
 }
 
 export const STR: Record<Lang, Strings> = {
@@ -1383,6 +1386,8 @@ export const STR: Record<Lang, Strings> = {
     islandBack: "‹ Back",
     islandPlayGames: "🎮 Play games (2D)",
     islandBack2d: "Return to 2D Nova",
+    islandRoomPrev: "Previous room",
+    islandRoomNext: "Next room",
   },
   bn: {
     appTagline: "আপনার সন্তানরা স্মার্টভাবে শিখুক — বাংলা, ইংরেজি, গণিত ও আরও।",
@@ -2047,6 +2052,8 @@ export const STR: Record<Lang, Strings> = {
     islandBack: "‹ ফিরে",
     islandPlayGames: "🎮 খেলা করো (২ডি)",
     islandBack2d: "২ডি নোভায় ফিরে যাও",
+    islandRoomPrev: "আগের ঘর",
+    islandRoomNext: "পরের ঘর",
   },
 };
 

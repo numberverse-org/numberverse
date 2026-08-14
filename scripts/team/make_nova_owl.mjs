@@ -1,18 +1,21 @@
 /**
- * 🦉 #686 — the stylized-realistic Nova owl, generated entirely from code.
+ * 🦉 #686/#687 — the stylized-realistic Nova owl, generated entirely from code.
  *
  * A production-style character rig with zero external DCC tooling:
  *
  *   • SKELETON — 13-bone armature (root/spine/neck/head/earL/earR/wingL/wingR/
- *     legL/legR/footL/footR/tail). Each body part is a SkinnedMesh rigidly bound
- *     (weight = 1) to one bone, so glTF exports real joints + inverse-bind
- *     matrices and three's AnimationMixer drives the poses.
+ *     legL/legR/footL/footR/tail). Every vertex is rigidly bound (weight = 1)
+ *     to one bone, so glTF exports real joints + inverse-bind matrices and
+ *     three's AnimationMixer drives the poses.
+ *   • SINGLE DRAW CALL (#687) — all 18 body/face parts are merged into ONE
+ *     SkinnedMesh with ONE MeshStandardMaterial. All PBR maps are baked into
+ *     shared atlases (4096² base + 2048² normal + 2048² ORM), and each part's
+ *     UVs are remapped into its atlas rect — so the whole owl renders in a
+ *     single WebGL draw call (design doc §1.3b: "1 draw call for Nova").
  *   • MORPH TARGETS — six facial expressions (happy/sad/scared/excited/sleepy/
- *     grumpy) as positional blend shapes on the head mesh, plus "open" on the
- *     beak halves for mouth animation.
- *   • PBR TEXTURES — 2048² base-color (feather, belly, head-with-facial-disc),
- *     1024² normal + ORM maps, all procedural and deterministic (PNG via
- *     gltf_helpers, no canvas, no image files).
+ *     grumpy) as positional blend shapes on the head vertices, plus "open" on
+ *     the beak halves — merged into 7 named targets on the single mesh.
+ *   • PBR TEXTURES — procedural + deterministic (no canvas, no image files).
  *   • ANIMATION — six loopable clips sampled at 30 fps: idle, walk, hop, fly,
  *     spin, dance.
  *
@@ -219,31 +222,6 @@ function tuftGeo(mirror) {
   return g;
 }
 
-// ───────────────────────────────── skinning helper ─────────────────────────────────
-
-function skinPart(geo, mat, boneIndex, name, skeleton) {
-  const n = geo.attributes.position.count;
-  const idx = new Uint16Array(n * 4);
-  idx.fill(boneIndex);
-  geo.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(idx, 4));
-  const w = new Float32Array(n * 4);
-  w.fill(1);
-  geo.setAttribute("skinWeight", new THREE.Float32BufferAttribute(w, 4));
-  const mesh = new THREE.SkinnedMesh(geo, mat);
-  mesh.name = name;
-  mesh.skeleton = skeleton;
-  mesh.bindMatrix = new THREE.Matrix4();
-  mesh.bindMatrixInverse = new THREE.Matrix4();
-  return mesh;
-}
-
-function plainPart(geo, mat, name, parentBone) {
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.name = name;
-  if (parentBone) parentBone.add(mesh);
-  return mesh;
-}
-
 // ───────────────────────────────── morph targets ─────────────────────────────────
 
 const ZONES = {
@@ -307,22 +285,6 @@ function openMorph(geo, dx, dy, dz) {
   return new THREE.BufferAttribute(d, 3);
 }
 
-/**
- * Wire a mesh's morph targets so GLTFExporter emits them. three.js only
- * initializes morphTargetInfluences when morph attributes exist at Mesh
- * construction; we assign geometry.morphAttributes AFTER the mesh is built,
- * so we must set the weights + name dictionary explicitly. Weights start 0
- * (rest pose) — the Nova3D runtime drives them per emotion.
- */
-function wireMorphs(mesh, names) {
-  mesh.morphTargetDictionary = {};
-  mesh.morphTargetInfluences = [];
-  for (let i = 0; i < names.length; i++) {
-    mesh.morphTargetDictionary[names[i]] = i;
-    mesh.morphTargetInfluences.push(0);
-  }
-}
-
 // ───────────────────────────────── PBR textures ─────────────────────────────────
 
 function buildTextures() {
@@ -378,25 +340,27 @@ function buildTextures() {
     return 0.78 + 0.15 * disc; // disc is a touch shinier (downy)
   }, (u, v) => 0.85 + 0.08 * Math.exp(-(((u - 0.75) ** 2) / 0.06 + ((v - 0.5) ** 2) / 0.06)));
 
-  // ── glossy / accent small maps ──
-  const beakBase = makeTexture(256, 256, (u, v) => {
+  // ── glossy / accent maps — sized to their ATLAS rects (single-draw-call) ──
+  // The 4096² base atlas reserves 1024² for beak/foot, 512² for eye/pupil, so
+  // these are generated at exactly the rect resolution (no upscale blur).
+  const beakBase = makeTexture(1024, 1024, (u, v) => {
     const stripe = 1 - 0.18 * (Math.sin(u * 60) + 1) * 0.5;
     return [244 * stripe, 169 * stripe, 66 * stripe, 255];
   });
-  const eyeWhite = makeTexture(64, 64, (u, v) => {
+  const eyeWhite = makeTexture(512, 512, (u, v) => {
     const du = u - 0.5, dv = v - 0.5;
     const r = Math.sqrt(du * du + dv * dv) * 2.2;
     const shade = 1 - Math.min(1, r) * 0.18;
     return [252 * shade, 250 * shade, 245 * shade, 255];
   });
-  const pupil = makeTexture(64, 64, (u, v) => {
+  const pupil = makeTexture(512, 512, (u, v) => {
     const du = u - 0.5, dv = v - 0.5;
     const r = Math.sqrt(du * du + dv * dv) * 2;
     const glint = r < 0.55 ? 0 : Math.exp(-(((u - 0.62) ** 2) / 0.008 + ((v - 0.38) ** 2) / 0.008));
     const base = 22 + 20 * Math.min(1, r);
     return [base + 200 * glint, base + 200 * glint, base + 200 * glint, 255];
   });
-  const footBase = makeTexture(256, 256, (u, v) => {
+  const footBase = makeTexture(1024, 1024, (u, v) => {
     const n = valueNoise(u * 14, v * 14);
     const scale = 0.9 + 0.1 * n;
     return [232 * scale, 146 * scale, 58 * scale, 255];
@@ -405,48 +369,124 @@ function buildTextures() {
   return { featherBase, featherNormal, featherORM, bellyBase, bellyNormal, bellyORM, headBase, headORM, beakBase, eyeWhite, pupil, footBase };
 }
 
-function buildMaterials(T) {
-  const feather = new THREE.MeshStandardMaterial({
-    map: T.featherBase,
-    normalMap: T.featherNormal,
-    roughnessMap: T.featherORM,
-    metalnessMap: T.featherORM,
-    aoMap: T.featherORM,
+// ───────────────────── single-draw-call: shared texture atlases ─────────────────────
+//
+// #687 budget: the whole owl is ONE mesh with ONE material → ONE WebGL draw
+// call. Each part's former per-part texture becomes a sub-rect in three shared
+// atlases (base / normal / ORM), and every part's UVs are remapped into its
+// rect. The three atlases share the SAME normalized rect layout, so a single
+// UV transform per part samples map + normalMap + roughness/metalnessMap
+// consistently. Rects are generated at exactly their pixel size → no blur.
+
+const RECT = {
+  FEATHER:   { x: 0,     y: 0,     w: 0.5,   h: 0.5   }, // body/wings/tail/legs/tufts
+  BELLY:     { x: 0.5,   y: 0,     w: 0.5,   h: 0.5   },
+  HEAD:      { x: 0,     y: 0.5,   w: 0.5,   h: 0.5   },
+  BEAK:      { x: 0.5,   y: 0.5,   w: 0.25,  h: 0.25  }, // beak top (striped)
+  BEAK_DARK: { x: 0.75,  y: 0.5,   w: 0.25,  h: 0.25  }, // beak bottom (solid)
+  FOOT:      { x: 0.5,   y: 0.75,  w: 0.25,  h: 0.25  },
+  EYE:       { x: 0.75,  y: 0.75,  w: 0.125, h: 0.125 },
+  PUPIL:     { x: 0.875, y: 0.75,  w: 0.125, h: 0.125 },
+};
+
+/** blit a DataTexture's pixels into `dst` at `rect` (normalized), scaling if needed. */
+function blit(dst, atlasW, rect, src, srcW, srcH) {
+  const x0 = Math.round(rect.x * atlasW);
+  const y0 = Math.round(rect.y * atlasW); // square atlases
+  const rw = Math.round(rect.w * atlasW);
+  const rh = Math.round(rect.h * atlasW);
+  for (let y = 0; y < rh; y++) {
+    const sy = Math.min(srcH - 1, Math.floor((y * srcH) / rh));
+    const sRow = sy * srcW * 4;
+    const dRow = ((y0 + y) * atlasW + x0) * 4;
+    for (let x = 0; x < rw; x++) {
+      const sx = Math.min(srcW - 1, Math.floor((x * srcW) / rw));
+      const so = sRow + sx * 4;
+      const do_ = dRow + x * 4;
+      dst[do_] = src[so];
+      dst[do_ + 1] = src[so + 1];
+      dst[do_ + 2] = src[so + 2];
+      dst[do_ + 3] = src[so + 3];
+    }
+  }
+}
+
+/** solid fill for atlas regions that had no map (flat normal / solid ORM). */
+function fillSolid(dst, atlasW, rect, [r, g, b, a = 255]) {
+  const x0 = Math.round(rect.x * atlasW);
+  const y0 = Math.round(rect.y * atlasW);
+  const rw = Math.round(rect.w * atlasW);
+  const rh = Math.round(rect.h * atlasW);
+  for (let y = 0; y < rh; y++) {
+    const dRow = ((y0 + y) * atlasW + x0) * 4;
+    for (let x = 0; x < rw; x++) {
+      const d = dRow + x * 4;
+      dst[d] = r;
+      dst[d + 1] = g;
+      dst[d + 2] = b;
+      dst[d + 3] = a;
+    }
+  }
+}
+
+function atlasTexture(px, w, h, colorSpace) {
+  const t = new THREE.DataTexture(px, w, h, THREE.RGBAFormat);
+  t.colorSpace = colorSpace === "srgb" ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Bake all PBR maps into three shared atlases and return ONE material. */
+function buildOwlMaterial(T) {
+  const BASE = 4096, MID = 2048; // base atlas / normal+ORM atlas
+  const base = new Uint8Array(BASE * BASE * 4);
+  const normal = new Uint8Array(MID * MID * 4);
+  const orm = new Uint8Array(MID * MID * 4);
+
+  // defaults first (anything missed stays neutral, never black/NaN)
+  fillSolid(normal, MID, { x: 0, y: 0, w: 1, h: 1 }, [128, 128, 255]);
+  fillSolid(orm, MID, { x: 0, y: 0, w: 1, h: 1 }, [230, 204, 0]);
+
+  // ── base atlas ──
+  blit(base, BASE, RECT.FEATHER, T.featherBase.image.data, T.featherBase.image.width, T.featherBase.image.height);
+  blit(base, BASE, RECT.BELLY, T.bellyBase.image.data, T.bellyBase.image.width, T.bellyBase.image.height);
+  blit(base, BASE, RECT.HEAD, T.headBase.image.data, T.headBase.image.width, T.headBase.image.height);
+  blit(base, BASE, RECT.BEAK, T.beakBase.image.data, T.beakBase.image.width, T.beakBase.image.height);
+  fillSolid(base, BASE, RECT.BEAK_DARK, [0xb9, 0x6a, 0x2b]); // solid beak-bottom brown
+  blit(base, BASE, RECT.FOOT, T.footBase.image.data, T.footBase.image.width, T.footBase.image.height);
+  blit(base, BASE, RECT.EYE, T.eyeWhite.image.data, T.eyeWhite.image.width, T.eyeWhite.image.height);
+  blit(base, BASE, RECT.PUPIL, T.pupil.image.data, T.pupil.image.width, T.pupil.image.height);
+
+  // ── normal atlas (head + foot reused the feather normal map in the 8-material era) ──
+  blit(normal, MID, RECT.FEATHER, T.featherNormal.image.data, T.featherNormal.image.width, T.featherNormal.image.height);
+  blit(normal, MID, RECT.BELLY, T.bellyNormal.image.data, T.bellyNormal.image.width, T.bellyNormal.image.height);
+  blit(normal, MID, RECT.HEAD, T.featherNormal.image.data, T.featherNormal.image.width, T.featherNormal.image.height);
+  blit(normal, MID, RECT.FOOT, T.featherNormal.image.data, T.featherNormal.image.width, T.featherNormal.image.height);
+  // beak/eyes/pupils stay flat → already filled default [128,128,255]
+
+  // ── ORM atlas (roughness×255 = G, metal×255 = B, AO×255 = R — AO unused in glb) ──
+  blit(orm, MID, RECT.FEATHER, T.featherORM.image.data, T.featherORM.image.width, T.featherORM.image.height);
+  blit(orm, MID, RECT.BELLY, T.bellyORM.image.data, T.bellyORM.image.width, T.bellyORM.image.height);
+  blit(orm, MID, RECT.HEAD, T.headORM.image.data, T.headORM.image.width, T.headORM.image.height);
+  blit(orm, MID, RECT.FOOT, T.featherORM.image.data, T.featherORM.image.width, T.featherORM.image.height);
+  fillSolid(orm, MID, RECT.BEAK, [230, Math.round(0.42 * 255), 0]); // beak rough 0.42
+  fillSolid(orm, MID, RECT.BEAK_DARK, [230, Math.round(0.5 * 255), 0]); // 0.5
+  fillSolid(orm, MID, RECT.EYE, [230, Math.round(0.18 * 255), 0]); // 0.18
+  fillSolid(orm, MID, RECT.PUPIL, [230, Math.round(0.12 * 255), 0]); // 0.12
+
+  // ONE ORM texture object for BOTH roughness+metalness — GLTFExporter skips
+  // the canvas-combine step when metalnessMap === roughnessMap (same image).
+  const ormTex = atlasTexture(orm, MID, MID);
+  return new THREE.MeshStandardMaterial({
+    map: atlasTexture(base, BASE, BASE, "srgb"),
+    normalMap: atlasTexture(normal, MID, MID),
+    roughnessMap: ormTex,
+    metalnessMap: ormTex,
     roughness: 0.9,
     metalness: 0,
   });
-  const belly = new THREE.MeshStandardMaterial({
-    map: T.bellyBase,
-    normalMap: T.bellyNormal,
-    roughnessMap: T.bellyORM,
-    metalnessMap: T.bellyORM,
-    aoMap: T.bellyORM,
-    roughness: 0.92,
-    metalness: 0,
-  });
-  const head = new THREE.MeshStandardMaterial({
-    map: T.headBase,
-    normalMap: T.featherNormal,
-    roughnessMap: T.headORM,
-    metalnessMap: T.headORM,
-    aoMap: T.headORM,
-    roughness: 0.88,
-    metalness: 0,
-  });
-  const beak = new THREE.MeshStandardMaterial({ map: T.beakBase, roughness: 0.42, metalness: 0 });
-  const beakDark = new THREE.MeshStandardMaterial({ color: 0xb96a2b, roughness: 0.5, metalness: 0 });
-  const eyeWhite = new THREE.MeshStandardMaterial({ map: T.eyeWhite, roughness: 0.18, metalness: 0 });
-  const pupil = new THREE.MeshStandardMaterial({ map: T.pupil, roughness: 0.12, metalness: 0 });
-  const foot = new THREE.MeshStandardMaterial({
-    map: T.footBase,
-    normalMap: T.featherNormal,
-    roughnessMap: T.featherORM,
-    metalnessMap: T.featherORM,
-    aoMap: T.featherORM,
-    roughness: 0.7,
-    metalness: 0,
-  });
-  return { feather, belly, head, beak, beakDark, eyeWhite, pupil, foot };
 }
 
 // ───────────────────────────────── animation clips ─────────────────────────────────
@@ -567,7 +607,106 @@ function buildClips() {
   return [idle, walk, hop, fly, spin, dance];
 }
 
-// ───────────────────────────────── assemble ─────────────────────────────────
+// ───────────────────────────────── assemble (single draw call) ─────────────────────────────────
+
+/** Concatenate all part geometries (position/normal/uv/skin) into ONE geometry.
+ *  NO vertex dedup — parts are separate primitives, and keeping ranges intact
+ *  is what lets us splice morph deltas per part afterwards. */
+function mergeRig(parts) {
+  const total = parts.reduce((s, p) => s + p.geo.attributes.position.count, 0);
+  const pos = new Float32Array(total * 3);
+  const nrm = new Float32Array(total * 3);
+  const uv = new Float32Array(total * 2);
+  const skinIdx = new Uint16Array(total * 4);
+  const skinWgt = new Float32Array(total * 4);
+  const index = [];
+  const ranges = [];
+  let v = 0;
+  for (const p of parts) {
+    const g = p.geo;
+    const n = g.attributes.position.count;
+    pos.set(g.attributes.position.array, v * 3);
+    nrm.set(g.attributes.normal.array, v * 3);
+    uv.set(g.attributes.uv.array, v * 2);
+    for (let i = 0; i < n; i++) {
+      skinIdx[(v + i) * 4] = p.boneIndex; // rigid bind: weight 1 → bone
+      skinWgt[(v + i) * 4] = 1;
+    }
+    const gi = g.index.array;
+    for (let i = 0; i < gi.length; i++) index.push(gi[i] + v);
+    ranges.push({ start: v, end: v + n });
+    v += n;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("normal", new THREE.BufferAttribute(nrm, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  geo.setAttribute("skinIndex", new THREE.BufferAttribute(skinIdx, 4));
+  geo.setAttribute("skinWeight", new THREE.BufferAttribute(skinWgt, 4));
+  geo.setIndex(index);
+  return { geo, ranges };
+}
+
+/** Remap a part's UVs into its atlas rect (same rect for base/normal/ORM). */
+function remapUVs(geo, rect) {
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) {
+    uv.setXY(i, rect.x + uv.getX(i) * rect.w, rect.y + uv.getY(i) * rect.h);
+  }
+}
+
+/** Rotate morph deltas (VECTORS — no translation) into scene space. Morph deltas
+ *  are authored in the part's bone-local space; once the base geometry is baked
+ *  into scene space the deltas must follow the same rotation, or expressions /
+ *  beak-open offsets would point along the bone's local axes instead of the
+ *  world's (a no-op today — head bones carry no rotation — but correct anyway). */
+function rotateDeltas(attr, mtx) {
+  const arr = attr.array;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < arr.length; i += 3) {
+    v.set(arr[i], arr[i + 1], arr[i + 2]).applyMatrix4(mtx);
+    arr[i] = v.x;
+    arr[i + 1] = v.y;
+    arr[i + 2] = v.z;
+  }
+  return attr;
+}
+
+/** Collect a part's morph deltas as [{ name, attr }] — computed from the LOCAL
+ *  geometry (zone coords / open deltas are bone-local), then rotated into the
+ *  same scene space the base geometry is baked into. */
+function collectMorphDeltas(p, bindRot) {
+  const out = [];
+  if (p.morphs === EMOTIONS) {
+    // head → the 6 facial expressions
+    const attrs = headMorphs(p.geo);
+    Object.keys(EMOTIONS).forEach((name, i) => {
+      out.push({ name, attr: rotateDeltas(attrs[i], bindRot) });
+    });
+  } else if (p.morphs) {
+    // beak halves → shared "open" target (parts don't overlap → additive-safe)
+    for (const [name, delta] of Object.entries(p.morphs)) {
+      out.push({ name, attr: rotateDeltas(openMorph(p.geo, ...delta), bindRot) });
+    }
+  }
+  return out;
+}
+
+/** Build the 7 merged morph targets (deltas spliced at each part's vertex range). */
+function buildMergedMorphs(parts, ranges, totalVerts) {
+  const names = [...Object.keys(EMOTIONS), "open"];
+  const data = names.map(() => new Float32Array(totalVerts * 3));
+  for (const p of parts) {
+    const r = ranges[p.rangeIndex];
+    if (!r || !p.morphDeltas) continue;
+    for (const md of p.morphDeltas) {
+      const m = names.indexOf(md.name);
+      if (m < 0) continue;
+      data[m].set(md.attr.array, r.start * 3);
+    }
+  }
+  return { names, data };
+}
 
 function triCount(geo) {
   return (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
@@ -576,58 +715,75 @@ function triCount(geo) {
 async function main() {
   const { bones, skeleton } = buildSkeleton();
   const T = buildTextures();
-  const M = buildMaterials(T);
+  const material = buildOwlMaterial(T);
+  const boneIdx = (name) => skeleton.bones.indexOf(bones[name]);
+
+  // Bind-pose world matrices FIRST: each part must be baked from its bone's
+  // LOCAL space into scene space before merging. At bind pose three's skinning
+  // (currentWorld × inverseBind) collapses to identity, so the merged geometry
+  // HAS to already sit where the owl should appear — otherwise every part
+  // renders at the origin (the collapsed-blob bug this bakes away).
+  bones.root.updateMatrixWorld(true);
+
+  // Every part: geometry (in its bone's local space), its bone, its atlas rect,
+  // and optional morphs. Plain parts get their old mesh-offset baked in and are
+  // rigid-bound to their parent bone exactly like the old SkinnedMesh parts.
+  const parts = [
+    { name: "body", geo: bodyGeo(), bone: "spine", rect: RECT.FEATHER },
+    { name: "belly", geo: bellyGeo(), bone: "spine", rect: RECT.BELLY },
+    { name: "head", geo: headGeo(), bone: "head", rect: RECT.HEAD, morphs: EMOTIONS },
+    { name: "wingL", geo: wingGeo(false), bone: "wingL", rect: RECT.FEATHER },
+    { name: "wingR", geo: wingGeo(true), bone: "wingR", rect: RECT.FEATHER },
+    { name: "tail", geo: tailGeo(), bone: "tail", rect: RECT.FEATHER },
+    { name: "legL", geo: legGeo(), bone: "legL", rect: RECT.FEATHER },
+    { name: "legR", geo: legGeo(), bone: "legR", rect: RECT.FEATHER },
+    { name: "footL", geo: footGeo(), bone: "footL", rect: RECT.FOOT },
+    { name: "footR", geo: footGeo(), bone: "footR", rect: RECT.FOOT },
+    { name: "beakTop", geo: beakTopGeo(), bone: "head", rect: RECT.BEAK, morphs: { open: [0, 0.05, 0.03] } },
+    { name: "beakBottom", geo: beakBottomGeo(), bone: "head", rect: RECT.BEAK_DARK, morphs: { open: [0, -0.05, 0.04] } },
+    { name: "eyeL", geo: eyeGeo(), bone: "head", rect: RECT.EYE, xOffset: -0.27 },
+    { name: "eyeR", geo: eyeGeo(), bone: "head", rect: RECT.EYE, xOffset: 0.27 },
+    { name: "pupilL", geo: pupilGeo(-0.27), bone: "head", rect: RECT.PUPIL },
+    { name: "pupilR", geo: pupilGeo(0.27), bone: "head", rect: RECT.PUPIL },
+    { name: "tuftL", geo: tuftGeo(false), bone: "earL", rect: RECT.FEATHER },
+    { name: "tuftR", geo: tuftGeo(true), bone: "earR", rect: RECT.FEATHER },
+  ];
+
+  // Bind each part to its bone + remap UVs into its atlas rect, baking the part
+  // and its morph deltas into scene space via the bone's bind world matrix.
+  const mergedParts = parts.map((p, i) => {
+    if (p.xOffset) p.geo.translate(p.xOffset, 0, 0);
+    remapUVs(p.geo, p.rect);
+    const bindMtx = bones[p.bone].matrixWorld;
+    const bindRot = new THREE.Matrix4().extractRotation(bindMtx);
+    // 1) morph deltas FIRST (zone coords are bone-local), rotated into scene space
+    const morphDeltas = collectMorphDeltas(p, bindRot);
+    // 2) base geometry baked into scene space (position + normal)
+    p.geo.applyMatrix4(bindMtx);
+    return { ...p, boneIndex: boneIdx(p.bone), rangeIndex: i, morphDeltas };
+  });
+
+  const { geo, ranges } = mergeRig(mergedParts);
+  const { names, data } = buildMergedMorphs(mergedParts, ranges, geo.attributes.position.count);
+  geo.morphAttributes.position = data.map((d) => new THREE.BufferAttribute(d, 3));
+  geo.morphTargetsRelative = true;
+
+  const owl = new THREE.SkinnedMesh(geo, material);
+  owl.name = "Nova";
+  owl.skeleton = skeleton;
+  owl.bindMatrix = new THREE.Matrix4();
+  owl.bindMatrixInverse = new THREE.Matrix4();
+  owl.morphTargetDictionary = {};
+  names.forEach((n, i) => (owl.morphTargetDictionary[n] = i));
+  owl.morphTargetInfluences = new Array(names.length).fill(0);
 
   const rig = new THREE.Group();
   rig.name = "NovaRig";
   rig.add(bones.root);
+  rig.add(owl);
 
   const scene = new THREE.Scene();
   scene.add(rig);
-
-  const B = bones;
-  const boneIdx = (name) => skeleton.bones.indexOf(B[name]);
-
-  // skinned parts (rigid single-bone binding)
-  const parts = [];
-  parts.push(skinPart(bodyGeo(), M.feather, boneIdx("spine"), "body", skeleton));
-  parts.push(skinPart(bellyGeo(), M.belly, boneIdx("spine"), "belly", skeleton));
-
-  const headMesh = skinPart(headGeo(), M.head, boneIdx("head"), "head", skeleton);
-  headMesh.geometry.morphAttributes.position = headMorphs(headMesh.geometry);
-  headMesh.geometry.morphTargetsRelative = true;
-  // GLTFExporter only emits morph targets when morphTargetInfluences is set
-  // (length = target count). Setting it AFTER geometry.morphAttributes is
-  // populated makes the 6 emotion targets exportable + drivable via weights.
-  wireMorphs(headMesh, Object.keys(EMOTIONS));
-  parts.push(headMesh);
-
-  parts.push(skinPart(wingGeo(false), M.feather, boneIdx("wingL"), "wingL", skeleton));
-  parts.push(skinPart(wingGeo(true), M.feather, boneIdx("wingR"), "wingR", skeleton));
-  parts.push(skinPart(tailGeo(), M.feather, boneIdx("tail"), "tail", skeleton));
-  parts.push(skinPart(legGeo(), M.feather, boneIdx("legL"), "legL", skeleton));
-  parts.push(skinPart(legGeo(), M.feather, boneIdx("legR"), "legR", skeleton));
-  parts.push(skinPart(footGeo(), M.foot, boneIdx("footL"), "footL", skeleton));
-  parts.push(skinPart(footGeo(), M.foot, boneIdx("footR"), "footR", skeleton));
-  for (const p of parts) rig.add(p);
-
-  // morph-driven beak halves (children of head bone — rigid, follow head)
-  const beakTop = plainPart(beakTopGeo(), M.beak, "beakTop", B.head);
-  beakTop.geometry.morphAttributes.position = [openMorph(beakTop.geometry, 0, 0.05, 0.03)];
-  beakTop.geometry.morphTargetsRelative = true;
-  wireMorphs(beakTop, ["open"]);
-  const beakBottom = plainPart(beakBottomGeo(), M.beakDark, "beakBottom", B.head);
-  beakBottom.geometry.morphAttributes.position = [openMorph(beakBottom.geometry, 0, -0.05, 0.04)];
-  beakBottom.geometry.morphTargetsRelative = true;
-  wireMorphs(beakBottom, ["open"]);
-
-  // rigid-on-head face parts
-  plainPart(eyeGeo(), M.eyeWhite, "eyeL", B.head).position.x = -0.27;
-  plainPart(eyeGeo(), M.eyeWhite, "eyeR", B.head).position.x = 0.27;
-  plainPart(pupilGeo(-0.27), M.pupil, "pupilL", B.head);
-  plainPart(pupilGeo(0.27), M.pupil, "pupilR", B.head);
-  plainPart(tuftGeo(false), M.feather, "tuftL", B.earL);
-  plainPart(tuftGeo(true), M.feather, "tuftR", B.earR);
 
   // bind pose: wings already carry their rest tilt on the bone
   bones.root.updateMatrixWorld(true);
@@ -637,15 +793,13 @@ async function main() {
   const exporter = new GLTFExporter();
   const gltf = await exporter.parseAsync(scene, { binary: false, animations: clips });
 
-  const totalTris = [...rig.children.filter((c) => c.isMesh)].reduce((s, m) => s + triCount(m.geometry), 0);
   writeFileSync(OUT, JSON.stringify(gltf, null, 2));
 
   console.log(`✓ wrote ${OUT}`);
-  console.log(`  bones: ${skeleton.bones.length} · meshes: ${rig.children.filter((c) => c.isMesh).length}`);
-  console.log(`  triangles: ${totalTris} (target 20k–40k)`);
-  console.log(`  morphs: ${Object.keys(EMOTIONS).join(", ")} + beak open`);
+  console.log(`  bones: ${skeleton.bones.length} · meshes: 1 (single draw call) · morphs: ${names.join(", ")}`);
+  console.log(`  triangles: ${triCount(geo)} (target 20k–40k)`);
   console.log(`  clips: ${clips.map((c) => c.name).join(", ")}`);
-  console.log(`  textures: feather/belly/head base 2048² · normal+ORM 1024² · glossy accents`);
+  console.log(`  material: 1 MeshStandardMaterial (4096² base + 2048² normal + 2048² ORM atlases)`);
 }
 
 main().catch((e) => {
