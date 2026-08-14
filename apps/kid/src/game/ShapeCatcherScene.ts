@@ -52,14 +52,19 @@ export class ShapeCatcherScene extends Phaser.Scene {
   private roundText!: Phaser.GameObjects.Text;
   private meter!: RoundMeterApi;
   private background!: Phaser.GameObjects.Graphics;
+  // #1085 — en-shapes (c1-english-3) teaches the ENGLISH shape labels, so its
+  // prompt + narration stay in English no matter the app language. The math
+  // 'shapes' skill (c1-math-3) keeps the app-language prompt (shape recognition).
+  private englishMode = false;
 
   constructor() {
     super("ShapeCatcher");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; skill?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    this.englishMode = data.skill === "en-shapes";
     ensureAssets(this);
     this.background = this.add.graphics();
     this.drawBackground();
@@ -98,10 +103,19 @@ export class ShapeCatcherScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.prompt.set(t("tapThe", { target: this.target }));
-    speak(getAppLang() === "bn"
-      ? `${SHAPE_BN[this.target] ?? this.target} ট্যাপ করো!`
-      : `Tap the ${this.target}!`);
+    if (this.englishMode) {
+      // English-label lesson (en-shapes): the prompt + speech use the ENGLISH
+      // word regardless of app language, so a Bengali-UI kid still learns "circle".
+      // Force { lang: "en" } so the spoken label uses an English voice too.
+      this.prompt.set(`Tap the ${this.target}!`);
+      speak(`Tap the ${this.target}!`, { lang: "en" });
+    } else {
+      // Shape-recognition lesson (math): prompt in the app language, using the
+      // localized shape name so the Bangla UI never mixes "ট্যাপ করো circle!".
+      const label = getAppLang() === "bn" ? (SHAPE_BN[this.target] ?? this.target) : this.target;
+      this.prompt.set(t("tapThe", { target: label }));
+      speak(getAppLang() === "bn" ? `${label} ট্যাপ করো!` : `Tap the ${this.target}!`);
+    }
     this.spawnShapes(n);
   }
 
