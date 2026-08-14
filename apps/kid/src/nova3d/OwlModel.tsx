@@ -13,7 +13,7 @@
  *   • the single SkinnedMesh casts the room's one soft shadow.
  */
 import { useFrame, useThree, useLoader } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
@@ -31,9 +31,24 @@ interface NovaProps {
   reduced?: boolean;
   position?: [number, number, number];
   scale?: number;
+  /** #688 dress-up: multiplies the shared KTX2 atlas (white = natural) */
+  tint?: string;
+  /** #688 walk-to-tap: floor point to glide to; bump `id` to re-target */
+  walkTo?: { x: number; z: number; id: number } | null;
+  /** #688 tap-the-owl → pet reaction */
+  onPet?: () => void;
 }
 
-export function Nova({ clip = "idle", morph = "happy", reduced = false, position = [0, 0, 0], scale = 1 }: NovaProps) {
+export function Nova({
+  clip = "idle",
+  morph = "happy",
+  reduced = false,
+  position = [0, 0, 0],
+  scale = 1,
+  tint,
+  walkTo,
+  onPet,
+}: NovaProps) {
   const gl = useThree((s) => s.gl);
   const gltf = useLoader(GLTFLoader, URL, (loader) => {
     loader.setKTX2Loader(getKTX2Loader(gl));
@@ -42,6 +57,7 @@ export function Nova({ clip = "idle", morph = "happy", reduced = false, position
   const { scene, animations } = gltf;
 
   const meshRef = useRef<THREE.SkinnedMesh | null>(null);
+  const groupRef = useRef<THREE.Group | null>(null);
   const mixer = useMemo(() => new THREE.AnimationMixer(scene), [scene]);
 
   // shadow + keep a handle to the single SkinnedMesh ("Nova")
@@ -54,20 +70,55 @@ export function Nova({ clip = "idle", morph = "happy", reduced = false, position
     });
   }, [scene]);
 
-  // play the requested clip
+  /* ── #688 walk-to-tap: the walk clip plays while gliding to a floor point ── */
+  const [walkTarget, setWalkTarget] = useState<{ x: number; z: number } | null>(null);
   useEffect(() => {
-    const clipDef = THREE.AnimationClip.findByName(animations, clip);
+    if (walkTo) setWalkTarget({ x: walkTo.x, z: walkTo.z });
+  }, [walkTo]);
+  const walking = walkTarget !== null;
+  const effectiveClip = walking ? ("walk" as NovaClip) : clip;
+
+  // play the requested clip (walk overrides while moving)
+  useEffect(() => {
+    const clipDef = THREE.AnimationClip.findByName(animations, effectiveClip);
     if (!clipDef) return;
     const action = mixer.clipAction(clipDef);
+    action.reset();
     action.play();
     return () => {
       action.stop();
     };
-  }, [mixer, animations, clip]);
+  }, [mixer, animations, effectiveClip]);
 
-  // freeze the owl under reduced motion; otherwise advance the clip
+  /* ── #688 dress-up: feather tint (multiplies the shared KTX2 atlas) ── */
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    if (mat instanceof THREE.MeshStandardMaterial) {
+      mat.color.set(tint ?? "#ffffff");
+      mat.needsUpdate = true;
+    }
+  }, [tint]);
+
+  // advance the clip (frozen under reduced motion) + walk-to-target glide
   useFrame((_, delta) => {
     if (!reduced) mixer.update(delta);
+    const g = groupRef.current;
+    if (!g || !walkTarget) return;
+    const dx = walkTarget.x - g.position.x;
+    const dz = walkTarget.z - g.position.z;
+    const dist = Math.hypot(dx, dz);
+    const speed = reduced ? 1.0 : 1.9;
+    if (dist > 0.05) {
+      g.position.x += (dx / dist) * speed * delta;
+      g.position.z += (dz / dist) * speed * delta;
+      // face the walk direction (owl model faces +Z at rest)
+      g.rotation.y = Math.atan2(dx, dz);
+    } else {
+      g.rotation.y = 0;
+      setWalkTarget(null);
+    }
   });
 
   // morph crossfade — always smooth; slower dissolve under reduced motion
@@ -86,8 +137,14 @@ export function Nova({ clip = "idle", morph = "happy", reduced = false, position
   });
 
   return (
-    <group position={position} scale={scale}>
-      <primitive object={scene} />
+    <group ref={groupRef} position={position} scale={scale}>
+      <primitive
+        object={scene}
+        onClick={(e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          onPet?.();
+        }}
+      />
     </group>
   );
 }

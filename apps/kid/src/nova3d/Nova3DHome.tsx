@@ -95,7 +95,7 @@ export default function Nova3DHome({ kidName, onBack2d, onExit }: Props) {
           }
         >
           <div className="island-canvas">
-            <Nova3D />
+            <Nova3D onPlay2d={onBack2d} />
           </div>
         </Suspense>
       </IslandErrorBoundary>

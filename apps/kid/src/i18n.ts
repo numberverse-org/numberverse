@@ -720,6 +720,15 @@ export interface Strings {
   /* #687 — 3D home room switcher (prev/next room cycle) */
   islandRoomPrev: string;
   islandRoomNext: string;
+  /* #688 — spatial actions palette */
+  islandActions: string;
+  islandIn2d: string;
+  islandDressup: string;
+  islandDressupNatural: string;
+  islandDressupGold: string;
+  islandDressupRosy: string;
+  islandDressupMint: string;
+  islandWalkHint: string;
 }
 
 export const STR: Record<Lang, Strings> = {
@@ -1388,6 +1397,14 @@ export const STR: Record<Lang, Strings> = {
     islandBack2d: "Return to 2D Nova",
     islandRoomPrev: "Previous room",
     islandRoomNext: "Next room",
+    islandActions: "Nova's actions",
+    islandIn2d: "2D",
+    islandDressup: "Dress up",
+    islandDressupNatural: "Natural",
+    islandDressupGold: "Gold",
+    islandDressupRosy: "Rosy",
+    islandDressupMint: "Mint",
+    islandWalkHint: "Tap the floor to walk Nova",
   },
   bn: {
     appTagline: "আপনার সন্তানরা স্মার্টভাবে শিখুক — বাংলা, ইংরেজি, গণিত ও আরও।",
@@ -2054,6 +2071,14 @@ export const STR: Record<Lang, Strings> = {
     islandBack2d: "২ডি নোভায় ফিরে যাও",
     islandRoomPrev: "আগের ঘর",
     islandRoomNext: "পরের ঘর",
+    islandActions: "নোভার কাজগুলো",
+    islandIn2d: "২ডি",
+    islandDressup: "সাজাও",
+    islandDressupNatural: "স্বাভাবিক",
+    islandDressupGold: "সোনালি",
+    islandDressupRosy: "গোলাপি",
+    islandDressupMint: "পুদিনা",
+    islandWalkHint: "নোভাকে হাঁটাতে মেঝেতে টোকা দাও",
   },
 };
 
