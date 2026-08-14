@@ -615,6 +615,35 @@ export function skillMastered(skills: SkillMap, kidId: string, skillId: string):
   return !!st && st.pMastered >= masteryThresholdFor(skillId);
 }
 
+/* #1125 — per-kid mastery stats (count + pMastered sum), folded ONCE per
+ * skills-map reference. startChallenge() used to scan Object.entries(st.skills)
+ * (filtering the kid's prefix, up to 305 entries, then reducing) synchronously
+ * on EVERY tap. The store writes a NEW skills object on every round, so the
+ * cache refreshes between sessions; within one snapshot it's O(1) per kid. */
+let masteryStatsRef: unknown = null;
+let masteryStatsByKid = new Map<string, { count: number; sum: number }>();
+
+export function kidMasteryStats(kidId: string): { count: number; sum: number } {
+  const st = useKidStore.getState();
+  if (st.skills !== masteryStatsRef) {
+    masteryStatsRef = st.skills;
+    const byKid = new Map<string, { count: number; sum: number }>();
+    for (const [key, m] of Object.entries(st.skills)) {
+      const colon = key.indexOf(":");
+      const kid = colon < 0 ? key : key.slice(0, colon);
+      let c = byKid.get(kid);
+      if (!c) {
+        c = { count: 0, sum: 0 };
+        byKid.set(kid, c);
+      }
+      c.count += 1;
+      c.sum += m.pMastered;
+    }
+    masteryStatsByKid = byKid;
+  }
+  return masteryStatsByKid.get(kidId) ?? { count: 0, sum: 0 };
+}
+
 /** Skills a kid is currently struggling with: open (unresolved) wrongs right now,
  *  OR ≥3 lifetime misses and not yet mastered. Feeds the parent panel's
  *  "Needs a little help" list so a grown-up can guide the tough ones. */

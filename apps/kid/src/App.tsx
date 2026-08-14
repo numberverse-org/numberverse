@@ -44,7 +44,7 @@ import { WorksheetScreen, FlashcardsScreen } from "./components/PrintSheets"; //
 import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
-  applyKidControls, subjectForSkill, skillMastered, strugglingSkills, worldProgress, worldEmoji,
+  applyKidControls, subjectForSkill, skillMastered, strugglingSkills, kidMasteryStats, worldProgress, worldEmoji,
   worldUnlocked, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
@@ -1219,10 +1219,10 @@ export default function App() {
 
   const startChallenge = () => {
     if (!kid) return;
-    const st = useKidStore.getState();
-    const prefix = `${kid.id}:`;
-    const mine = Object.entries(st.skills).filter(([k]) => k.startsWith(prefix));
-    const avg = mine.length ? mine.reduce((s, [, m]) => s + m.pMastered, 0) / mine.length : 0.25;
+    // #1125 — per-kid mastery stats come from the cached kidMasteryStats fold
+    // (O(1) per tap) instead of scanning Object.entries(st.skills) on every tap.
+    const mine = kidMasteryStats(kid.id);
+    const avg = mine.count ? mine.sum / mine.count : 0.25;
     const base = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, Math.round(avg * 10)));
     setChallenge({
       round: 1, myScore: 0, novaScore: 0, level: base,
