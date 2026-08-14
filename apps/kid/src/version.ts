@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.51.0 (curriculum strand-gaps: band-4 BGS civic facts, band-3 matra-words, band-5 ICT/sci/EN comprehension, bands 6-7 English+science (sentences & paragraphs, human body) (#756 #757 #758 #759 #760 #761))";
-export const APP_VERSION = "0.51.0";
+export const APP_BUILD = "14 Aug 2026 · 0.52.0 (polish: friendly loading copy on every spinner (screen + engine boot) + full state audit (#346))";
+export const APP_VERSION = "0.52.0";

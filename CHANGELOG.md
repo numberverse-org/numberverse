@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.52.0 (polish: friendly loading copy on every spinner (screen + engine boot) + full state audit (#346))
+
+fe957ca feat(polish): friendly loading copy on every spinner + state audit (#346)
+
 ## 14 Aug 2026 — 0.51.0 (curriculum strand-gaps: band-4 BGS civic facts, band-3 matra-words, band-5 ICT/sci/EN comprehension, bands 6-7 English+science (sentences & paragraphs, human body) (#756 #757 #758 #759 #760 #761))
 
 a1ff82a feat(curriculum): close #756 #757 #758 #759 #760 #761 — BGS/sci/ICT/EN strand gaps
