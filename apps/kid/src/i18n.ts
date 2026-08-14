@@ -182,6 +182,14 @@ export interface Strings {
   petHatchSpeak: (name: string) => string;
   petName: string;
   petGrewInto: (stage: string) => string;
+  /* #1162 — age-graded reward surface: bands 5-7 see a mission bar instead of
+   * the nursery pet (streak + badges + achievements + trophy-room entry). */
+  missionTitle: string;
+  missionSub: string;
+  missionStreak: (n: number) => string;
+  missionBadges: (n: number) => string;
+  missionAchievements: (n: number) => string;
+  missionTrophy: string;
   /* name in funny voices — Nova plays with the kid's name */
   funnyTitle: string;
   funnyRobot: string;
@@ -941,6 +949,14 @@ export const STR: Record<Lang, Strings> = {
     petHatchSpeak: (name) => `Wow! ${name}, your pet grew up!`,
     petName: "Pet",
     petGrewInto: (stage) => `Your pet grew into a ${stage}! 🎉`,
+    /* #1162 — age-graded reward surface: bands 5-7 see a mission bar instead of
+     * the nursery pet (streak + badges + achievements + trophy-room entry). */
+    missionTitle: "Mission",
+    missionSub: "Your training log",
+    missionStreak: (n) => `🔥 ${n}-day streak`,
+    missionBadges: (n) => `🏅 ${n} badge${n === 1 ? "" : "s"}`,
+    missionAchievements: (n) => `📚 ${n} achievement${n === 1 ? "" : "s"}`,
+    missionTrophy: "🏆 Trophy Room",
     funnyTitle: "Nova says your name!",
     funnyRobot: "🤖 Robot",
     funnyWhisper: "🤫 Whisper",
@@ -1665,6 +1681,13 @@ export const STR: Record<Lang, Strings> = {
     petHatchSpeak: (name) => `বাহ! ${name}, তোমার পোষা বড় হলো!`,
     petName: "পোষা",
     petGrewInto: (stage) => `তোমার পোষা বড় হয়ে হলো ${stage}! 🎉`,
+    /* #1162 — বয়স অনুযায়ী পুরস্কার: ব্যান্ড ৫-৭-এ পোষার বদলে মিশন বার। */
+    missionTitle: "মিশন",
+    missionSub: "তোমার অগ্রগতির খাতা",
+    missionStreak: (n) => `🔥 ${bnNum(n)} দিনের ধারা`,
+    missionBadges: (n) => `🏅 ${bnNum(n)}টা ব্যাজ`,
+    missionAchievements: (n) => `📚 ${bnNum(n)}টা কৃতিত্ব`,
+    missionTrophy: "🏆 ট্রফি রুম",
     funnyTitle: "নোভা তোমার নাম বলে!",
     funnyRobot: "🤖 রোবট",
     funnyWhisper: "🤫 ফিসফিস",

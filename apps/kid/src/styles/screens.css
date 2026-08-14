@@ -1607,6 +1607,78 @@
   cursor: default;
 }
 
+/* #1162 — age-graded reward surface: bands 5-7 see this mission bar instead of
+   the nursery pet. Same card language as .pet-card/.recap-card (16px radius,
+   soft glow border, centered 320px inset) but muted purple/mint — a training
+   log, not a feeding ritual. */
+.mission-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: var(--home-card-w);
+  background: linear-gradient(135deg, rgba(196, 181, 253, 0.18), rgba(46, 196, 182, 0.12));
+  border: 1.5px solid rgba(196, 181, 253, 0.42);
+  border-radius: 16px;
+  padding: 10px 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+.mission-emoji {
+  font-size: 30px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  flex-shrink: 0;
+}
+.mission-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.mission-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #c4b5fd;
+  letter-spacing: 0.02em;
+}
+.mission-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+}
+.mission-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.mission-stat {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #eafff4;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.mission-trophy {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a2332;
+  background: linear-gradient(135deg, #c4b5fd, #ffd782);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mission-trophy:hover { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(196, 181, 253, 0.14); }
+.mission-trophy:active { transform: scale(0.94); }
+
 /* #284 — mastery mystery box */
 .box-card {
   display: flex;

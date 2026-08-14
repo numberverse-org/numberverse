@@ -7,7 +7,7 @@ import {
   worldProgress, worldEmoji, worldUnlocked, totalMastered, subjectForSkill, journeyStops, cardDate,
   rankFor, challengeQ, challengeNovaChance, RANKS, TOUR_STEPS, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, FOCUS_SUBJECT_LABELS, SUBJECT_CARD, worldCards, CONTRAST_TEMPLATES,
-  filterSkills, moniPlanFor, SEASON_EMOJI, SEASON_PARTICLES,
+  filterSkills, moniPlanFor, SEASON_EMOJI, SEASON_PARTICLES, kidBand,
 } from "../lib/journey";
 import { STR, bnNum, type Lang, type Strings } from "../i18n";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_SPECIES, speciesById, speciesEmoji, questTypeFor, QUEST_TARGETS, type QuestType } from "../store";
@@ -189,6 +189,14 @@ export default function HomeScreen({
         if (after > before) speak(t.petHatchSpeak(kid.name));
         else speak(t.petFeedSpeak);
       };
+      // #1162 — age-graded reward surface. Bands 1–4 keep the nursery pet;
+      // bands 5–7 (ages ~10–15) get a dignified mission bar instead of a
+      // "feed the baby animal" ritual. Missing/zero birthYear → band 1 → pet.
+      const rewardBand = kidBand(kid);
+      const showMission = rewardBand >= 5;
+      const kidNova = useKidStore.getState().nova[kid.id];
+      const badgeCount = kidNova?.badges?.length ?? 0;
+      const achCount = kidNova?.achievements?.length ?? 0;
       // Nova plays with the kid's name in funny voices — pure silliness.
       // Speech settings: robot = low + slow, whisper = soft + slow, shout = high + fast.
       const speakFunny = (voice: "robot" | "whisper" | "shout") => {
@@ -700,23 +708,43 @@ export default function HomeScreen({
 
 
             {/* The pet — the kid's growing friend. Learning feeds it: every
-                session, every new mastery, and one daily snack. */}
-            <div className="pet-card" role="status">
-              <span className="pet-emoji" aria-hidden="true">
-                {speciesEmoji(petSpecies, petStage)}
-                {petStage >= 3 && <span className="pet-sparkle">✨</span>}
-              </span>
-              <div className="pet-meta">
-                <span className="pet-title">{t.petTitle} · {speciesById(petSpecies)[lang === "bn" ? "nameBn" : "name"]} · {[t.petStage0, t.petStage1, t.petStage2, t.petStage3][petStage]}</span>
-                <span className="pet-bar">
-                  <span className="pet-fill" style={{ width: `${Math.round(petProgress * 100)}%` }} />
-                </span>
-                <span className="pet-grow">{t.petGrow(petProgress)}</span>
+                session, every new mastery, and one daily snack. #1162 — this
+                nursery ritual is age-gated: bands 1–4 keep it, bands 5–7 get
+                the mission bar below instead. */}
+            {showMission ? (
+              <div className="mission-card" role="status" aria-label={t.missionTitle}>
+                <span className="mission-emoji" aria-hidden="true">🎯</span>
+                <div className="mission-meta">
+                  <span className="mission-title">{t.missionTitle}</span>
+                  <span className="mission-sub">{t.missionSub}</span>
+                  <span className="mission-stats" role="list">
+                    <span className="mission-stat" role="listitem">{t.missionStreak(novaDayStreak)}</span>
+                    <span className="mission-stat" role="listitem">{t.missionBadges(badgeCount)}</span>
+                    <span className="mission-stat" role="listitem">{t.missionAchievements(achCount)}</span>
+                  </span>
+                </div>
+                <button className="mission-trophy" onClick={() => setScreen(kid ? "trophyroom" : "kidpick")}>
+                  {t.missionTrophy}
+                </button>
               </div>
-              <button className="pet-btn" onClick={feedPet} disabled={petFedToday || petStage >= 3}>
-                {petFedToday ? t.petFedToday : t.petFeed}
-              </button>
-            </div>
+            ) : (
+              <div className="pet-card" role="status">
+                <span className="pet-emoji" aria-hidden="true">
+                  {speciesEmoji(petSpecies, petStage)}
+                  {petStage >= 3 && <span className="pet-sparkle">✨</span>}
+                </span>
+                <div className="pet-meta">
+                  <span className="pet-title">{t.petTitle} · {speciesById(petSpecies)[lang === "bn" ? "nameBn" : "name"]} · {[t.petStage0, t.petStage1, t.petStage2, t.petStage3][petStage]}</span>
+                  <span className="pet-bar">
+                    <span className="pet-fill" style={{ width: `${Math.round(petProgress * 100)}%` }} />
+                  </span>
+                  <span className="pet-grow">{t.petGrow(petProgress)}</span>
+                </div>
+                <button className="pet-btn" onClick={feedPet} disabled={petFedToday || petStage >= 3}>
+                  {petFedToday ? t.petFedToday : t.petFeed}
+                </button>
+              </div>
+            )}
 
             {/* #284 — mastery mystery box: mastering a skill earns an unopened
                 box on home. Opening pays 2–5 coins (inside the daily cap —
