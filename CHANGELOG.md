@@ -1,5 +1,9 @@
 ## 14 Aug 2026 — 0.42.0 (💥 Reward fairness: effort pays — coins tier by difficulty, mastery bonus, garden scales, every one of the 130 scenes celebrates)
 
+24b1949 💥 #1187 #1188 #1190 #1061 #1062 #1067 #1197 #1198 #1206: reward fairness — effort pays
+
+## 14 Aug 2026 — 0.42.0 (💥 Reward fairness: effort pays — coins tier by difficulty, mastery bonus, garden scales, every one of the 130 scenes celebrates)
+
 The reward economy finally distinguishes a hard win from a trivial tap (v36 oracle
 sweep 4 — reward-overlap/feedback-escalation):
 
