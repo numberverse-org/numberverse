@@ -1,5 +1,9 @@
 /**
  * 🦉 #689 — the egg (petStage 0) that wobbles until it hatches.
+ *
+ * #690 — vestibular safety: under reduced motion the egg is perfectly still
+ * (no idle bob, no wobble, no hop). The egg still renders and the action
+ * feedback still fires — just without any movement.
  */
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
@@ -10,6 +14,12 @@ export function Egg3D({ hopping, reduced }: { hopping: boolean; reduced: boolean
   useFrame((state, delta) => {
     const g = ref.current;
     if (!g) return;
+    if (reduced) {
+      // #690 — no idle bob / wobble / hop at all
+      g.position.y = 0;
+      g.rotation.z = 0;
+      return;
+    }
     const t = state.clock.elapsedTime;
     if (hopping) {
       g.position.y = Math.max(0, Math.abs(Math.sin(t * 7))) * 0.34;

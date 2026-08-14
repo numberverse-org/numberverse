@@ -26,6 +26,17 @@
  *   • the coin badge reads nova.coins (rewards still capped by the store)
  *   • the growth garden renders as 3D plants in the garden room, and new
  *     growth is celebrated — no silent dead-ends
+ *
+ * #690 perf + vestibular/WCAG safety:
+ *   • DynamicResolution watches real frame time and drops pixelRatio a step
+ *     under load (half-res + CSS upscale), recovers when frames do
+ *   • reduced motion: egg frozen (no bob), burst = opacity dissolve (no
+ *     scale/pulse), active presses neutral, camera already clamped (#687),
+ *     the owl's idle clip frozen + morph dissolve slowed (#687)
+ *   • flash safety: bursts are throttled ≥ 350 ms apart (never > 3/s); no
+ *     saturated-red strobes (small floating emojis only)
+ *   • a11y: canvas gets aria-label + role="img"; room switches and action
+ *     taps speak their names so spoken feedback works without motion
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
@@ -35,9 +46,11 @@ import { emptyGarden } from "../game/garden";
 import { getAppLang } from "../game/locale";
 import { ROOMS } from "../game/rooms";
 import { prefersReducedMotion } from "../game/reducedMotion";
+import { speak } from "../game/speech";
 import { STR } from "../i18n";
 import { defaultNova, speciesById, speciesEmoji, useKidStore } from "../store";
 import { OrbitCamera } from "./camera";
+import { DynamicResolution } from "./DynamicResolution";
 import { Egg3D } from "./Egg3D";
 import { Garden3D } from "./Garden3D";
 import { RoomLights } from "./lighting";
@@ -97,7 +110,7 @@ interface Burst {
   id: number;
   emoji: string[];
 }
-function EmojiBurst({ burst }: { burst: Burst | null }) {
+function EmojiBurst({ burst, reduced }: { burst: Burst | null; reduced: boolean }) {
   const [items, setItems] = useState<{ id: number; e: string; x: number; y: number; d: number; delay: number }[]>([]);
   useEffect(() => {
     if (!burst || burst.emoji.length === 0) return;
@@ -116,7 +129,8 @@ function EmojiBurst({ burst }: { burst: Burst | null }) {
   }, [burst]);
   if (items.length === 0) return null;
   return (
-    <div className="island-burst" aria-hidden="true">
+    // #690 reduced motion → pure opacity dissolve (island-burst--reduced), no scale/pulse
+    <div className={`island-burst${reduced ? " island-burst--reduced" : ""}`} aria-hidden="true">
       {items.map((it) => (
         <span
           key={it.id}
@@ -165,6 +179,7 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
   const [paletteOpen, setPaletteOpen] = useState(true);
   const burstId = useRef(0);
   const walkId = useRef(0);
+  const lastBurstMs = useRef(0); // #690 flash safety: throttle bursts ≥ 350 ms (never > 3/s)
   const hintTimer = useRef<number | null>(null);
   const [showWalkHint, setShowWalkHint] = useState(false);
 
@@ -187,8 +202,7 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
       const prev = Number(window.localStorage.getItem(GARDEN_LS(kidId)) ?? "-1");
       if (prev >= 0 && garden.plants.length > prev) {
         setGardenToast(t.islandGardenGrew);
-        burstId.current += 1;
-        setBurst({ id: burstId.current, emoji: ["🌱", "🌷", "⭐"] });
+        fireBurst(["🌱", "🌷", "⭐"]);
       }
       window.localStorage.setItem(GARDEN_LS(kidId), String(garden.plants.length));
     } catch {
@@ -211,6 +225,19 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
       }
       return n;
     });
+    // #690 spoken feedback fires regardless of motion (names come from ROOMS)
+    const nextId = ROOM_THEMES[(roomIdx + dir + ROOM_THEMES.length) % ROOM_THEMES.length].id;
+    const nextRoom2d = ROOMS.find((r) => r.id === nextId);
+    if (nextRoom2d) speak(lang === "bn" ? nextRoom2d.nameBn ?? nextRoom2d.name : nextRoom2d.name, { lang });
+  };
+
+  /** #690 — WCAG 2.3.1: no flash > 3/s. Bursts coalesce to ≥ 350 ms apart. */
+  const fireBurst = (emoji: string[]) => {
+    const now = performance.now();
+    if (now - lastBurstMs.current < 350) return; // too soon — skip this one
+    lastBurstMs.current = now;
+    burstId.current += 1;
+    setBurst({ id: burstId.current, emoji });
   };
 
   /* ── #688 spatial actions ── */
@@ -221,9 +248,11 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
       return;
     }
     const rig = rigFor(id);
-    burstId.current += 1;
     setActionId(id);
-    setBurst({ id: burstId.current, emoji: rig.burst ?? [] });
+    fireBurst(rig.burst ?? []);
+    // #690 spoken feedback without motion
+    const act = ACTIVITIES.find((a) => a.id === id);
+    if (act) speak(lang === "bn" ? act.nameBn : act.name, { lang });
     const holdMs = (rig.hold ?? 1.6) * 1000;
     window.setTimeout(() => {
       setActionId((cur) => (cur === id ? null : cur));
@@ -236,9 +265,10 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
 
   const onPet = () => {
     const rigPet = rigFor("game-stroke");
-    burstId.current += 1;
     setActionId("game-stroke");
-    setBurst({ id: burstId.current, emoji: rigPet.burst ?? [] });
+    fireBurst(rigPet.burst ?? []);
+    const act = ACTIVITIES.find((a) => a.id === "game-stroke");
+    if (act) speak(lang === "bn" ? act.nameBn : act.name, { lang });
     window.setTimeout(() => {
       setActionId((cur) => (cur === "game-stroke" ? null : cur));
     }, 2000);
@@ -260,15 +290,20 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
   };
 
   return (
-    <div className="island-scene">
+    <div className="island-scene" data-motion={reduced ? "reduced" : "full"}>
+      {/* #690 a11y: the island is a meaningful image for screen readers */}
       <Canvas
         shadows
-        dpr={[1, 1.5]}
+        aria-label={`${t.islandTitle} — ${speciesLabel}`}
+        role="img"
+        dpr={reduced ? [0.75, 1.25] : [1, 1.5]}
         camera={{ position: [4.8, 3.2, 5.6], fov: 45 }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
         onCreated={({ gl }) => gl.setClearColor("#8ed0f2", 1)}
       >
         <ContextGuard />
+        {/* #690 dynamic render resolution: half-res + CSS upscale under load */}
+        <DynamicResolution reduced={reduced} />
         <RoomLights theme={theme} />
         <Room theme={theme} />
         {grown ? (
@@ -301,7 +336,7 @@ export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
       </Canvas>
 
       {/* #688 floating emoji burst + #689 garden-growth toast + walk hint */}
-      <EmojiBurst burst={burst} />
+      <EmojiBurst burst={burst} reduced={reduced} />
       {gardenToast && <p className="island-walkhint">{gardenToast}</p>}
       {showWalkHint && <p className="island-walkhint">👣 {t.islandWalkHint}</p>}
 

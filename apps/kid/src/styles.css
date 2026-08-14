@@ -6186,6 +6186,41 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   100% { opacity: 0; transform: translateY(-52px) scale(0.9); }
 }
 
+/* #690 vestibular safety — reduced motion: the burst is a pure opacity
+   dissolve (no fly-up, no scale/pulse). Honors BOTH the OS media query and
+   the in-app toggle (data-motion="reduced" set by prefersReducedMotion). */
+.island-burst--reduced .island-burst-emoji { animation: island-fadeonly 1s ease-out forwards; }
+.island-scene[data-motion="reduced"] .island-burst-emoji { animation: island-fadeonly 1s ease-out forwards; }
+@keyframes island-fadeonly {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* #690 — the walk/garden hint fades by opacity only (no vertical drift) */
+.island-scene[data-motion="reduced"] .island-walkhint { animation: island-fadeopacity 0.3s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .island-walkhint { animation: island-fadeopacity 0.3s ease-out; }
+}
+@keyframes island-fadeopacity {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* #690 — press feedback under reduced motion is a color shift, never a scale pulse */
+.island-scene[data-motion="reduced"] .island-roombtn:active,
+.island-scene[data-motion="reduced"] .island-dressbtn:active,
+.island-scene[data-motion="reduced"] .island-swatch:active,
+.island-scene[data-motion="reduced"] .island-palette-toggle:active,
+.island-scene[data-motion="reduced"] .island-action:active,
+.island-scene[data-motion="reduced"] .island-back:active { transform: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .island-roombtn:active,
+  .island-dressbtn:active,
+  .island-swatch:active,
+  .island-palette-toggle:active,
+  .island-action:active,
+  .island-back:active { transform: none !important; }
+}
+
 /* one-time "tap the floor to walk" toast */
 .island-walkhint {
   position: absolute;
