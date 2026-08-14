@@ -74,6 +74,9 @@ export const SKILLS: Skill[] = [
   { id: 'count-1-20', band: 1, subject: 'math', title: 'Count to 20', titleBn: '১ থেকে ২০ গুনি', description: 'Count objects up to 20', descriptionBn: '২০ পর্যন্ত বস্তু গুনি', commonCore: ['K.CC.1'], nctbCode: 'c1-math-10', classNumber: 1, game: 'game-countpop20', family: 'count', tier: 2 },
   { id: 'number-line', band: 1, subject: 'math', title: 'Number line hops', titleBn: 'সংখ্যা রেখা', description: 'Hop a frog along the number line to the target number', descriptionBn: 'সংখ্যা রেখা ধরে ব্যাঙ লাফিয়ে লক্ষ্য সংখ্যায় যাই', commonCore: ['K.CC.4', '1.NBT.1'], nctbCode: 'c1-math-2', classNumber: 1, game: 'game-froghop' },
   { id: 'shapes', band: 1, subject: 'math', title: 'Recognize shapes', titleBn: 'আকার চিনি', description: 'Identify circle, square, triangle, star', descriptionBn: 'বৃত্ত, বর্গ, ত্রিভুজ, তারা চিনি', commonCore: ['K.G.2'], nctbCode: 'c1-math-3', classNumber: 1, game: 'game-shapecatcher' },
+  // #1143 — a NO-PRESSURE free-play garden break between tap-heavy lessons.
+  // Deliberately unscored: no challenge flag, no rounds, no right/wrong.
+  { id: 'math-explore-garden', band: 1, subject: 'math', title: 'Explore garden', titleBn: 'বাগান সাজাই', description: 'Free-play counting and shape garden — plant and explore with no pressure', descriptionBn: 'গুনে ও আকারে সাজানো মুক্ত বাগান — কোনো চাপ ছাড়াই লাগাই আর খেলি', commonCore: ['K.CC.1', 'K.G.2'], nctbCode: 'c1-math-19', classNumber: 1, game: 'game-exploregarden' },
   // Language — STAGE 1: first letters (both tracks, mirrored)
   { id: 'bn-swaroborno', band: 1, subject: 'bangla', title: 'Bangla vowels', titleBn: 'স্বরবর্ণ', description: 'Recognize Bangla vowel letters অ আ ই ঈ উ ঊ', descriptionBn: 'বাংলা স্বরবর্ণ অ আ ই ঈ উ ঊ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-1', classNumber: 1, game: 'game-bnletters', dataMode: 'vowels' },
   { id: 'bn-rhymes', band: 1, subject: 'bangla', title: 'Nursery rhymes', titleBn: 'ছড়ার গান', description: 'Recite classic NCTB Bangla rhymes, tapping along word by word', descriptionBn: 'নোভার সাথে ছড়া গাই, শব্দ ধরে টিপে টিপে', commonCore: ['RF.K.2a'], nctbCode: 'c1-bangla-5', classNumber: 1, game: 'game-rhymes' },
@@ -437,6 +440,9 @@ export const GAMES: GameConfig[] = [
   { id: 'game-memorypairs', skillId: 'quantity-match', difficultyLevels: [2, 3, 4, 5, 6, 7], targetSuccess: 0.8 },
   { id: 'game-froghop', skillId: 'number-line', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-shapecatcher', skillId: 'shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
+  // #1143 — unscored free-play garden: a flat ladder is a data placeholder
+  // only (the scene never grades), so adaptive code always stays at tier 1.
+  { id: 'game-exploregarden', skillId: 'math-explore-garden', difficultyLevels: [1, 1, 1, 1, 1, 1], targetSuccess: 0.8 },
   { id: 'game-shapenames', skillId: 'en-shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
   { id: 'game-tapdrag', skillId: 'ict-tap-drag', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-villagecity', skillId: 'bgs-village-city', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
@@ -781,6 +787,8 @@ export const GAME_SCENES: Record<string, string> = {
   // #1161 — new band 6-7 science + ICT answer-button scenes
   'game-sciencefacts': 'ScienceFacts',
   'game-codelogic': 'CodeLogic',
+  // #1143 — no-pressure free-play garden break
+  'game-exploregarden': 'ExploreGarden',
 };
 
 export function getSkill(id: string): Skill | undefined {
