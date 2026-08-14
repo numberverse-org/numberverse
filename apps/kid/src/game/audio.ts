@@ -44,6 +44,27 @@ export function setQuietLevel(v: number) {
   quietLevel = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
 }
 
+/* #831 — master SFX mute. The parent portal can switch off spoken voice (TTS)
+ * and, with it, the whole feedback layer (pops, chimes, win fanfares, clicks).
+ * Music has its own mute below; this flag is a dedicated off-switch for the
+ * SFX/feedback path and is routed through tone() + whooshUp() so no sound
+ * effect can slip through. Persisted like nv_music ("0" = on, "1" = off) but
+ * defaulting to ON because SFX are expected out of the box (music is opt-in). */
+let sfxMuted = typeof localStorage !== "undefined" ? localStorage.getItem("nv_sfx") === "1" : false;
+export function setSfxMuted(v: boolean) {
+  sfxMuted = v;
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem("nv_sfx", sfxMuted ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  }
+}
+export function isSfxMuted(): boolean {
+  return sfxMuted;
+}
+
 type SoundLayer = "sfx" | "music";
 
 function tone(
@@ -61,7 +82,7 @@ function tone(
   const g = c.createGain();
   o.type = type;
   o.frequency.value = freq;
-  const v = vol * quietLevel * (layer === "music" ? musicVolume : sfxVolume);
+  const v = vol * quietLevel * (layer === "music" ? musicVolume : sfxMuted ? 0 : sfxVolume);
   g.gain.setValueAtTime(Math.max(v, 0.0001), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g);
@@ -179,7 +200,7 @@ export function whooshUp() {
   o.type = "sine";
   o.frequency.setValueAtTime(220, t);
   o.frequency.exponentialRampToValueAtTime(1180, t + 0.5);
-  g.gain.setValueAtTime(Math.max(0.12 * quietLevel * sfxVolume, 0.0001), t); // #243/#248 — sfx balance + quiet hours
+  g.gain.setValueAtTime(Math.max(0.12 * quietLevel * (sfxMuted ? 0 : sfxVolume), 0.0001), t); // #243/#248/#831 — sfx balance + quiet hours + master SFX mute
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
   o.connect(g);
   g.connect(c.destination);
