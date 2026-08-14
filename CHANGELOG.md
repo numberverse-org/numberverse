@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.35 (perf: cache streakText.width in NovaScene resize layout (#1105))
+
+64c571b perf: cache streakText width in NovaScene layout (#1105)
+62ae75c perf: cache streakText width in NovaScene layout (#1105)
+
 ## 15 Aug 2026 — 0.53.34 (perf: drop getBounds layout reads in ShadowGuess/MagnetPoles highlight (#1104))
 
 952e4ce perf: avoid getBounds layout reads in ShadowGuess/MagnetPoles highlight (#1104)
