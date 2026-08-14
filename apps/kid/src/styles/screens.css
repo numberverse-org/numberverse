@@ -730,7 +730,12 @@
 .play-screen {
   justify-content: flex-start;
   gap: 18px;
-  padding: 20px 20px 28px;
+  /* #1115 — single explicit bottom-inclusive safe-area calc: the home screen
+     owns its own bottom offset (breathing + notch) instead of stacking a
+     28px pad on top of .app's env(safe-area-inset-bottom). The paired
+     .app:has(.screen.play-screen) rule in boot.css drops .app's bottom
+     offset for this screen so the notch is counted exactly once. */
+  padding: 20px 20px calc(16px + env(safe-area-inset-bottom, 0px));
 }
 .play-top {
   display: flex;
