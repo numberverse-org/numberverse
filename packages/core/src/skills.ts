@@ -79,8 +79,13 @@ export const SKILLS: Skill[] = [
   { id: 'math-explore-garden', band: 1, subject: 'math', title: 'Explore garden', titleBn: 'বাগান সাজাই', description: 'Free-play counting and shape garden — plant and explore with no pressure', descriptionBn: 'গুনে ও আকারে সাজানো মুক্ত বাগান — কোনো চাপ ছাড়াই লাগাই আর খেলি', commonCore: ['K.CC.1', 'K.G.2'], nctbCode: 'c1-math-19', classNumber: 1, game: 'game-exploregarden' },
   // #1144 — glyph-tracing engine: the first handwriting step for numerals.
   { id: 'trace-digits', band: 1, subject: 'math', title: 'Trace numbers', titleBn: 'সংখ্যা আঁকি', description: 'Trace digits 0–9 with a finger — the first step to writing numbers', descriptionBn: 'আঙুল দিয়ে ০–৯ সংখ্যা আঁকি — সংখ্যা লেখার প্রথম ধাপ', commonCore: ['K.CC.3'], nctbCode: 'c1-math-20', classNumber: 1, game: 'game-trace', challenge: true, dataLevels: [1, 2, 3, 4, 5, 6] },
+  // #1145 — parity + geometry join the shared drag-sort engine.
+  { id: 'odd-even-sort', band: 1, subject: 'math', title: 'Odd & even sort', titleBn: 'জোড়-বিজোড় সাজাই', description: 'Drag number cards into the odd or even bin', descriptionBn: 'সংখ্যার কার্ড টেনে জোড় বা বিজোড় ঘরে ফেলি', commonCore: ['2.OA.3'], nctbCode: 'c1-math-21', classNumber: 1, game: 'game-oddevensort', challenge: true, dataLevels: [4, 4, 6, 6, 8, 8] },
+  { id: 'shape-corner-sort', band: 1, subject: 'math', title: 'Corners or not?', titleBn: 'কোণ আছে নাকি নেই?', description: 'Drag flat shapes into has-corners or no-corners bins', descriptionBn: 'আকার টেনে কোণ-আছে বা কোণ-নেই ঘরে ফেলি', commonCore: ['K.G.4'], nctbCode: 'c1-math-22', classNumber: 1, game: 'game-shapecorner', challenge: true, dataLevels: [4, 4, 6, 6, 8, 8] },
   // Language — STAGE 1: first letters (both tracks, mirrored)
   { id: 'bn-swaroborno', band: 1, subject: 'bangla', title: 'Bangla vowels', titleBn: 'স্বরবর্ণ', description: 'Recognize Bangla vowel letters অ আ ই ঈ উ ঊ', descriptionBn: 'বাংলা স্বরবর্ণ অ আ ই ঈ উ ঊ চিনি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-1', classNumber: 1, game: 'game-bnletters', dataMode: 'vowels' },
+  // #1145 — the same letter knowledge as a drag-and-drop classification.
+  { id: 'vowel-consonant-sort', band: 1, subject: 'bangla', title: 'Vowels & consonants sort', titleBn: 'স্বরবর্ণ ও ব্যঞ্জনবর্ণ সাজাই', description: 'Drag Bangla letters into the vowel or consonant bin', descriptionBn: 'বাংলা বর্ণ টেনে স্বরবর্ণ বা ব্যঞ্জনবর্ণ ঘরে ফেলি', commonCore: ['RF.K.1d'], nctbCode: 'c1-bangla-13', classNumber: 1, game: 'game-vowelconsonant', challenge: true, dataLevels: [4, 4, 6, 6, 8, 8] },
   { id: 'bn-rhymes', band: 1, subject: 'bangla', title: 'Nursery rhymes', titleBn: 'ছড়ার গান', description: 'Recite classic NCTB Bangla rhymes, tapping along word by word', descriptionBn: 'নোভার সাথে ছড়া গাই, শব্দ ধরে টিপে টিপে', commonCore: ['RF.K.2a'], nctbCode: 'c1-bangla-5', classNumber: 1, game: 'game-rhymes' },
   // Language — letter vs sound discrimination: hear a sound, pick the matching letter among confusable twins (ক/খ, প/ফ, স/শ).
   { id: 'bn-lettersound', band: 1, subject: 'bangla', title: 'Letter sounds', titleBn: 'বর্ণের ধ্বনি', description: 'Hear a letter sound, tap the matching Bangla letter (ক/খ, প/ফ, স/শ)', descriptionBn: 'বর্ণের ধ্বনি শুনে সঠিক বর্ণ টিপি (ক/খ, প/ফ, স/শ)', commonCore: ['RF.K.3a'], nctbCode: 'c1-bangla-3', classNumber: 1, game: 'game-lettersound' },
@@ -181,8 +186,10 @@ export const SKILLS: Skill[] = [
   { id: 'en-weather-seasons', band: 1, subject: 'science', title: 'Weather & seasons', titleBn: 'আবহাওয়া ও ঋতু', description: 'Sort clothes and activities by season — sunscreen for summer, umbrella for rainy, scarf for winter, kite for spring', descriptionBn: 'ঋতু অনুযায়ী পোশাক-কাজ সাজাই — গ্রীষ্মে সানস্ক্রিন, বর্ষায় ছাতা, শীতে স্কার্ফ, বসন্তে ঘুড়ি', commonCore: ['K.ESS.2'], nctbCode: 'c1-science-2', classNumber: 1, game: 'game-seasons' },
   // Science — living & non-living: sort 36 pictures into জীব (living) / জড় (non-living).
   { id: 'science-living', band: 1, subject: 'science', title: 'Living & non-living', titleBn: 'জীব ও জড়', description: 'Sort pictures into living (grows, breathes) or non-living things', descriptionBn: 'ছবি সাজাই জীব (বাঁচে, বাড়ে) নাকি জড়', commonCore: ['1.LS.1'], nctbCode: 'c1-science-3', classNumber: 1, game: 'game-living' },
+  // #1145 — plant/animal sort fills the science slot beside living/non-living.
+  { id: 'plant-animal-sort', band: 1, subject: 'science', title: 'Plant or animal?', titleBn: 'গাছ নাকি প্রাণী?', description: 'Drag living things into the plant or animal bin', descriptionBn: 'জীবন্ত জিনিস টেনে গাছ বা প্রাণী ঘরে ফেলি', commonCore: ['1.LS.1'], nctbCode: 'c1-science-5', classNumber: 1, game: 'game-plantanimal', challenge: true, dataLevels: [4, 4, 6, 6, 8, 8] },
   // Science — five senses: which sense do we use for each sound/smell/taste/picture.
-  { id: 'science-senses', band: 1, subject: 'science', title: 'Five senses', titleBn: 'পাঁচ ইন্দ্রিয়', description: 'Pick the sense we use — see, hear, smell, taste, touch', descriptionBn: 'কোন ইন্দ্রিয় ব্যবহার করি — দেখা, শোনা, গন্ধ, স্বাদ, স্পর্শ', commonCore: ['1.LS.1'], nctbCode: 'c1-science-4', classNumber: 1, game: 'game-senses' },
+  { id: 'science-senses', band: 1, subject: 'science', title: 'Five senses', titleBn: 'পাঁচ ইন্দ্রিয়', description: 'Drag each picture into the sense we use — see, hear, smell, taste, touch', descriptionBn: 'প্রতিটি ছবি টেনে সঠিক ইন্দ্রিয়ের ঘরে ফেলি — দেখা, শোনা, গন্ধ, স্বাদ, স্পর্শ', commonCore: ['1.LS.1'], nctbCode: 'c1-science-4', classNumber: 1, game: 'game-senses' },
   // Science — light & shadows: predict where the shadow falls as the light moves.
   { id: 'en-light-shadows', band: 2, subject: 'science', title: 'Light & shadows', titleBn: 'আলো ও ছায়া', description: 'Predict the shadow — it falls opposite the light; low light makes a long shadow, high light a short one', descriptionBn: 'ছায়া কোথায় পড়বে ভবিষ্যদ্বাণী করি — আলোর বিপরীতে; নিচু আলো লম্বা ছায়া, উঁচু আলো ছোট ছায়া', commonCore: ['1.PS.3'], nctbCode: 'c2-science-8', classNumber: 2, game: 'game-shadows' },
   // Science — magnets: predict attract/repel from the facing poles, then try it.
@@ -554,6 +561,11 @@ export const GAMES: GameConfig[] = [
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
   { id: 'game-foodsource', skillId: 'science-food-source', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-material', skillId: 'science-materials', difficultyLevels: [4, 4, 8, 8, 12, 12], targetSuccess: 0.8 },
+  // #1145 — new binSort classification games (drag-to-bin engine).
+  { id: 'game-oddevensort', skillId: 'odd-even-sort', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
+  { id: 'game-vowelconsonant', skillId: 'vowel-consonant-sort', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
+  { id: 'game-shapecorner', skillId: 'shape-corner-sort', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
+  { id: 'game-plantanimal', skillId: 'plant-animal-sort', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-daynight', skillId: 'science-day-night', difficultyLevels: [2, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   // ── Band 3 arithmetic: add-sub-100 → mult → div (share then facts) → fractions → time → place value → regroup ──
   { id: 'game-addsub100', skillId: 'add-sub-100', difficultyLevels: [20, 40, 60, 80, 90, 100], targetSuccess: 0.8 },
@@ -744,6 +756,11 @@ export const GAME_SCENES: Record<string, string> = {
   'game-foodchain': 'FoodChain',
   'game-foodsource': 'FoodSource',
   'game-material': 'MaterialSort',
+  // #1145 — new binSort classification scenes.
+  'game-oddevensort': 'OddEvenSort',
+  'game-vowelconsonant': 'VowelConsonantSort',
+  'game-shapecorner': 'ShapeCornerSort',
+  'game-plantanimal': 'PlantAnimalSort',
   'game-daynight': 'DayNight',
   'game-addsub100': 'AddSub100',
   'game-clock': 'ClockTime',

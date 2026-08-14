@@ -61,8 +61,8 @@ export interface BinSortConfig {
   items: SortItem[];
   /** item id → i18n name key. */
   nameKeys: Record<string, string>;
-  /** 2×1 row (2 bins) or 2×2 grid (4 bins). */
-  grid: 2 | 4;
+  /** 2×1 row (2 bins), 2×2 grid (4 bins) or 3+2 grid (5 bins). */
+  grid: 2 | 4 | 5;
   /** Rounds to finish per level. */
   rounds: number;
 }
@@ -163,6 +163,23 @@ export abstract class BinSortScene extends Phaser.Scene {
       const y = Math.max(bandTop, height - cardH - 20 - SAB());
       this.binGeom = { cardW, cardH, startX, c0: y + cardH / 2, c1: y + cardH / 2 };
       this.bins.forEach((b, i) => b.c.setPosition(i === 0 ? startX : startX + cardW + gap, y + cardH / 2));
+    } else if (cfg.grid === 5) {
+      const cardW = Math.max(96, Math.min(150, (width - 4 * gap) / 3));
+      const cardH = 118;
+      const startX = width / 2 - (cardW + gap);
+      const bandTop = height * 0.5;
+      const bandBottom = height - 18 - SAB();
+      const totalH = 2 * cardH + gap;
+      const topY = Math.max(bandTop, bandBottom - totalH);
+      const c0 = topY + cardH / 2;
+      const row5 = width / 2 - cardW / 2 - gap / 2;
+      this.binGeom = { cardW, cardH, startX, c0, c1: c0 + cardH + gap };
+      this.bins.forEach((b, i) =>
+        b.c.setPosition(
+          i < 3 ? startX + i * (cardW + gap) : row5 + (i - 3) * (cardW + gap),
+          i < 3 ? c0 : c0 + cardH + gap
+        )
+      );
     } else {
       const cardW = Math.max(100, Math.min(200, (width - 3 * gap) / 2));
       const cardH = 124;
@@ -211,8 +228,19 @@ export abstract class BinSortScene extends Phaser.Scene {
     const { cardW, cardH, startX, c0, c1 } = this.binGeom;
     const GAP = 14;
     cfg.bins.forEach((bin, i) => {
-      const x = cfg.grid === 2 ? (i === 0 ? startX : startX + cardW + GAP) : i % 2 === 0 ? startX : startX + cardW + GAP;
-      const y = cfg.grid === 2 ? c0 : i < 2 ? c0 : c1;
+      let x: number;
+      let y: number;
+      if (cfg.grid === 2) {
+        x = i === 0 ? startX : startX + cardW + GAP;
+        y = c0;
+      } else if (cfg.grid === 5) {
+        const row5 = this.scale.width / 2 - cardW / 2 - GAP / 2;
+        x = i < 3 ? startX + i * (cardW + GAP) : row5 + (i - 3) * (cardW + GAP);
+        y = i < 3 ? c0 : c1;
+      } else {
+        x = i % 2 === 0 ? startX : startX + cardW + GAP;
+        y = i < 2 ? c0 : c1;
+      }
       this.bins.push({ c: this.makeBin(x, y, bin), bin });
     });
   }
