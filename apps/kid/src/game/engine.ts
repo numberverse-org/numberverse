@@ -94,6 +94,7 @@ import { NovaScene } from "./NovaScene";
 import { GrowCountScene } from "./GrowCountScene";
 import { FruitTreeScene } from "./FruitTreeScene";
 import { GardenScene } from "./GardenScene";
+import { ExploreGardenScene } from "./ExploreGardenScene";
 import { PetFeedScene } from "./PetFeedScene";
 import { FrogHopScene } from "./FrogHopScene";
 import { MemoryPairsScene } from "./MemoryPairsScene";
@@ -205,6 +206,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       BootScene,
       NovaScene,
       GardenScene,
+      ExploreGardenScene,
       PetFeedScene,
       CatchFruitScene, BubblePopScene, FetchScene, BathNovaScene, PetStrokeScene, TreatSortScene, HideSeekScene, PetMemoryScene, TuckInScene,
       PetDanceScene, NovaSaysScene, PetWalkScene, EggHatchScene, SpeciesGalleryScene, DressUpScene, PetBirthdayScene, PhotoBoothScene, SleepWakeScene,

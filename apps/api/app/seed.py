@@ -38,6 +38,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("count-1-20", 1, "math", "Count to 20", "১ থেকে ২০ গুনি"),
     ("number-line", 1, "math", "Number line hops", "সংখ্যা রেখা"),
     ("shapes", 1, "math", "Recognize shapes", "আকার চিনি"),
+    ("math-explore-garden", 1, "math", "Explore garden", "বাগান সাজাই"),
     # Language stage 1 — letters
     ("bn-swaroborno", 1, "bangla", "Bangla vowels", "স্বরবর্ণ"),
     ("bn-rhymes", 1, "bangla", "Nursery rhymes", "ছড়ার গান"),
