@@ -46,6 +46,7 @@ import {
   worldUnlocked, totalMastered, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
+  challengeEligible, challengeStartLevelIndex,
   MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
   BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, WORLD_LANDS, FOCUS_SUBJECT_LABELS, SEASON_EMOJI, SEASON_PARTICLES,
@@ -164,6 +165,10 @@ export default function App() {
   const masteredBeforeRef = useRef<Set<string>>(new Set());
   // Pet stage when the session began — lets the done-screen celebrate a hatch/grow.
   const petStageBeforeRef = useRef(0);
+  // #1132 — post-mastery challenge streak: consecutive clean challenge-replay
+  // blocks escalate the reward (Sharper ×2 → ×3…); a non-challenge step resets
+  // the chain so only 'beat your best' replays stack.
+  const challengeStreakRef = useRef<Record<string, number>>({});
   const [roundsDone, setRoundsDone] = useState(0);
   const [sessionIdx, setSessionIdx] = useState(0);
   // 🎯 #325 — the active contrast drill (template + the skill it fixes) and
@@ -1661,17 +1666,22 @@ export default function App() {
     if (!step) return;
     let active = true;
     const reteach = step.reteach ?? 0;
-    // #1158/#1166 — older-kid challenge mode: a band 6-7 skill (skill.challenge)
-    // reuses a lower-band scene but runs INDEPENDENT — no forced re-demo, no
-    // drop-to-easiest reteach (a 13-year-old re-learns ×6 at ×6, not ×2), and
-    // the scene gets challenge:true so it can enable its richer mechanics.
-    const challenge = !!getSkill(step.skillId)?.challenge;
-    const startLevelIndex = reteach > 0
-      // Mastery-gate remediation: drop to the EASIEST tier so the re-taught
-      // concept is re-learned simply (then it ramps back up on its own). In
-      // challenge mode the kid is trusted to stay at their current tier.
-      ? (challenge ? adaptiveLevelIndex(kid.id, step.skillId, step.gameId) : Math.min(adaptiveLevelIndex(kid.id, step.skillId, step.gameId), 1))
-      : adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
+    // #1158/#1166 — challenge mode is a band 6-7 skill flag (skill.challenge)
+    // OR a post-mastery challenge replay (step.challenge, #1130). Both run the
+    // scene INDEPENDENT — no forced re-demo, no drop-to-easiest reteach, and
+    // challenge:true so the scene can enable its richer mechanics.
+    const challenge = !!getSkill(step.skillId)?.challenge || !!step.challenge;
+    const startLevelIndex = step.challenge
+      // #1129/#1134 — a post-mastery challenge replay starts at the TOP rung of
+      // the skill's ladder (the hardest it offers; the timed/no-hint flag adds
+      // the pressure). Mastered ≠ flatlined at the old adaptive level.
+      ? challengeStartLevelIndex(step.skillId, step.gameId)
+      : reteach > 0
+        // Mastery-gate remediation: drop to the EASIEST tier so the re-taught
+        // concept is re-learned simply (then it ramps back up on its own). In
+        // challenge mode the kid is trusted to stay at their current tier.
+        ? (challenge ? adaptiveLevelIndex(kid.id, step.skillId, step.gameId) : Math.min(adaptiveLevelIndex(kid.id, step.skillId, step.gameId), 1))
+        : adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
     setCurrentKidName(kid.name);
     // Arm the wrong-answer ledger so hintWrong() records THIS kid+skill on every
     // wrong tap (resolve-to-complete: wrongs accumulate until a correct solve).
@@ -1836,6 +1846,24 @@ export default function App() {
       speak(t.reteachLetTry, { lang: bn ? "bn" : "en" });
       return; // do NOT advance
     }
+    // #1132 — keeping a mastered skill sharp ESCALATES: each clean challenge-
+    // replay block (open wrongs resolved) stacks a streak, and the coin bonus
+    // grows with it (Sharper ×2 → ×3…). A non-challenge step resets the chain.
+    const stepChallenge = !!step.challenge;
+    const chStreak = challengeStreakRef.current[kid.id] ?? 0;
+    if (stepChallenge) {
+      challengeStreakRef.current[kid.id] = chStreak + 1;
+      const n = chStreak + 1;
+      if (n >= 2) {
+        tada();
+        cancelSpeech();
+        const bn = getAppLang() === "bn";
+        speak(bn ? `⚡ নামতা ধারালো! ${n} বার পরপর!` : `⚡ Sharper! ${n} sharp replays in a row!`, { lang: bn ? "bn" : "en" });
+        useKidStore.getState().novaChallengeReward(kid.id, n); // escalating bonus
+      }
+    } else {
+      challengeStreakRef.current[kid.id] = 0;
+    }
     const next = sessionIdx + 1;
     if (next < sessionRef.current.length) {
       setSessionIdx(next);
@@ -1914,7 +1942,9 @@ export default function App() {
     setSessionIdx(0);
     breakPendingRef.current = false;
     clearSavedSession(kid.id); // #253 — explicit new session drops any saved one
-    sessionRef.current = [stepForSkill(skill)];
+    // #1131 — replaying a mastered EXPERT skill is a 'beat your best' challenge
+    // replay (top rung + challenge flag), not a flat re-run of the same lesson.
+    sessionRef.current = [stepForSkill(skill, !!kid && challengeEligible(skillsMap, kid.id, skill.id))];
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
     // The "done" screen needs a world to render — bind the stop's band so the

@@ -24,6 +24,29 @@ export const CHALLENGE_MASTERY_THRESHOLD = 0.92;
 export function masteryThresholdFor(skillId: string): number {
   return getSkill(skillId)?.challenge ? CHALLENGE_MASTERY_THRESHOLD : MASTERY_THRESHOLD;
 }
+/** #1133/#1136 — the EXPERT bar: a skill is "over-mastered" (challenge-replay
+ *  eligible) at pMastered ≥ 0.92. This is the gradation past the mastery
+ *  boolean — 0.8 is just-mastered (stays in Moni's review rotation), 0.92+
+ *  is expert (gets the top-rung timed challenge replay). So 1.0 genuinely
+ *  plays harder than 0.8 without needing a new number in the data model. */
+export const CHALLENGE_REPLAY_THRESHOLD = 0.92;
+/** Post-mastery EXPERT check (#1133): pMastered ≥ 0.92 → the skill can re-enter
+ *  the session pool as a challenge replay. Pure fn of the mastery map. */
+export function challengeEligible(skills: SkillMap, kidId: string, skillId: string): boolean {
+  const st = skills[`${kidId}:${skillId}`];
+  return !!st && st.pMastered >= CHALLENGE_REPLAY_THRESHOLD;
+}
+/** Post-mastery challenge replay starts at the TOP rung of the skill's OWN
+ *  ladder (dataLevels when present, else the game ladder) — the hardest the
+ *  skill offers; the challenge flag (timed/no-hint in the supporting scenes)
+ *  supplies the pressure. #1129/#1134 — the answer to "what's next" for a
+ *  mastered skill. */
+export function challengeStartLevelIndex(skillId: string, gameId: string): number {
+  const game = getGame(gameId);
+  if (!game || game.difficultyLevels.length === 0) return 0;
+  const ladder = getSkill(skillId)?.dataLevels ?? game.difficultyLevels;
+  return ladder.length - 1;
+}
 /** Next world unlocks when ≥80% of the previous world's skills are mastered. */
 export const UNLOCK_THRESHOLD = 0.8;
 
@@ -208,6 +231,11 @@ export interface SessionStep {
   mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts";
   /** Run the narrated Basket Math concept-demo before the drills (add/sub). */
   teach?: boolean;
+  /** #1130/#1158 — post-mastery CHALLENGE replay: this step re-runs a mastered
+   *  EXPERT skill (pMastered ≥ 0.92) at the TOP rung with the challenge flag —
+   *  no forced re-demo, reteach stays at tier, and the scenes that support it
+   *  add a countdown + no hint/reveal. "Mastered" never means "gone". */
+  challenge?: boolean;
   /** Mastery-gate count: how many remediation re-runs this step has had after
    *  the kid left wrongs unresolved. >0 → re-teach (re-demo + easier tier)
    *  until a block ends with open === 0, then advance. */
@@ -773,6 +801,11 @@ export function recommendedSkill(skills: SkillMap, kidId: string): Skill | undef
   }
   const cur = stops.find((s) => s.current);
   if (cur) return cur.skill;
+  // #1131 — no unmastered next step pressing: offer a mastered EXPERT skill as
+  // a 'beat your best' challenge replay (deterministic via weekNumber) instead
+  // of only ever pointing forward. A fully-mastered skill has a replay affordance.
+  const experts = stops.filter((s) => s.done && challengeEligible(skills, kidId, s.skill.id));
+  if (experts.length) return experts[weekNumber() % experts.length].skill;
   return stops[0]?.skill;
 }
 
@@ -803,7 +836,7 @@ export function modeForSkill(skill: Skill): SessionStep["mode"] {
   return skill.dataMode;
 }
 
-export function stepForSkill(skill: Skill): SessionStep {
+export function stepForSkill(skill: Skill, challenge = false): SessionStep {
   const gameId = skill.game!;
   return {
     skillId: skill.id,
@@ -811,6 +844,9 @@ export function stepForSkill(skill: Skill): SessionStep {
     scene: GAME_SCENES[gameId],
     title: skill.title,
     mode: modeForSkill(skill),
+    // #1130/#1131 — a mastered EXPERT skill re-enters as a post-mastery
+    // challenge replay (top rung + challenge flag) instead of vanishing.
+    challenge,
     // First exposure to + or − → the kid gets the narrated Basket Math demo
     // round first, so the symbol means "put together / take away" before they
     // ever face an abstract drill. (Replay sessions re-teach — harmless.)
@@ -884,11 +920,24 @@ export function moniLevelIndex(kidId: string, skillId: string, gameId: string): 
 /** 🧠 MONI-guided session — Moni's focus skill leads the pool when it has an
  *  opinion (else the classic journey order: struggled-first, then fresh). */
 export function sessionForWorld(skills: SkillMap, kidId: string, band: number): SessionStep[] {
-  const ordered = filterSkills.filter((s) => s.band === band && s.game).map(stepForSkill);
+  const ordered = filterSkills.filter((s) => s.band === band && s.game).map((s) => stepForSkill(s));
   const unmastered = ordered.filter((st) => !skillMastered(skills, kidId, st.skillId));
   const pool = unmastered.length ? unmastered : ordered;
   const mistakes = useKidStore.getState().mistakes;
   const struggled = (st: SessionStep) => (mistakes[`${kidId}:${st.skillId}`]?.wrong ?? 0) > 0;
+  // #1130/#1133 — post-mastery challenge replays: mastered EXPERT skills
+  // (pMastered ≥ 0.92) re-enter the pool at the TOP rung with the challenge
+  // flag. A 0.8–0.91 mastered skill stays OUT (Moni's spaced review keeps it
+  // warm) — so 1.0 genuinely plays harder than 0.8, and mastered never means
+  // gone. Exactly one expert replay closes the session when any exists.
+  const expertSteps = ordered
+    .filter((st) => challengeEligible(skills, kidId, st.skillId))
+    .map((st) => stepForSkill(getSkill(st.skillId)!, true));
+  const finish = (arr: SessionStep[]): SessionStep[] => {
+    if (!expertSteps.length) return arr.slice(0, SESSION_LEN);
+    const others = arr.filter((st) => !st.challenge);
+    return [...others.slice(0, SESSION_LEN - 1), ...expertSteps].slice(0, SESSION_LEN);
+  };
 
   // MONI: if the tutor has a recommended skill in THIS band, it leads the queue
   // (it already accounts for gaps + misconceptions + review timing).
@@ -897,7 +946,7 @@ export function sessionForWorld(skills: SkillMap, kidId: string, band: number): 
     const focus = pool.find((st) => st.skillId === plan.focusSkillId);
     if (focus) {
       const rest = pool.filter((st) => st.skillId !== plan.focusSkillId);
-      return [focus, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+      return finish([focus, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))]);
     }
   }
   // #257 — focus pin: inside the pinned world, the pinned subject's unmastered
@@ -905,9 +954,9 @@ export function sessionForWorld(skills: SkillMap, kidId: string, band: number): 
   if (filterFocusSubject && filterFocusBand === band) {
     const focused = pool.filter((st) => subjectForSkill(st.skillId) === filterFocusSubject);
     const rest = pool.filter((st) => subjectForSkill(st.skillId) !== filterFocusSubject);
-    return [...focused, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+    return finish([...focused, ...rest.filter(struggled), ...rest.filter((st) => !struggled(st))]);
   }
-  return [...pool.filter(struggled), ...pool.filter((st) => !struggled(st))].slice(0, SESSION_LEN);
+  return finish([...pool.filter(struggled), ...pool.filter((st) => !struggled(st))]);
 }
 
 export function nextUnmasteredSkill(skills: SkillMap, kidId: string, band: number): Skill | undefined {
