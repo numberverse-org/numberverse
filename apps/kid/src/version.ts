@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.3 (📱 mobile-responsive: kill horizontal overflow, screens no longer scroll sideways)";
-export const APP_VERSION = "0.53.3";
+export const APP_BUILD = "14 Aug 2026 · 0.53.4 (⚡ totalMastered: cache 305-skill catalog as unit groups — no more re-filter per render (#1120))";
+export const APP_VERSION = "0.53.4";

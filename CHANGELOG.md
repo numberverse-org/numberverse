@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.4 (⚡ totalMastered: cache 305-skill catalog as unit groups — no more re-filter per render (#1120))
+
+37ca580 ⚡ #1120 totalMastered: cache the 305-skill catalog as unit groups
+
 ## 14 Aug 2026 — 0.53.3 (📱 mobile-responsive: kill horizontal overflow, screens no longer scroll sideways)
 
 ad007e6 📱 mobile-responsive: kill horizontal overflow so screens can't scroll sideways
