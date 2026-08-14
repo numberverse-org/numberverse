@@ -1,3 +1,14 @@
+## 15 Aug 2026 — 0.59.0 (feat: 4 new mechanic engines — ArcadeCatch physics fast-round facts, TraceScene glyph handwriting, ExploreGarden no-pressure free play, BanglaSpell typing hybrid (#1140 #1142 #1143 #1144))
+
+b5f63ef merge #1144: TraceScene glyph tracing
+bd02177 merge #1143: ExploreGarden free play
+9c99014 merge #1142: ArcadeCatch fast rounds
+3a48270 merge #1140: typing hybrid spelling
+b8e9dec #1144: TraceScene — glyph-tracing engine for digits 0-9 + capitals, trace-digits & trace-letters skills
+166eb6a #1143: ExploreGarden — no-pressure free-play garden (unscored, emoji planting, open prompts), math-explore-garden skill
+ed4b423 #1142: ArcadeCatch — first Phaser Arcade-physics lesson (falling answers, 12s gold bar), 4 fast-round fact skills
+bfc24bf #1140: production spelling — typing hybrid in BanglaSpellScene (tier 1-2 tap, tier 3+ physical/QWERTY typing), bn-spell-type skill
+
 ## 15 Aug 2026 — 0.58.0 (feat: band 8 Summit Peaks (12 class-8 skills, map keeps going) + intermediate land boss gate at 50% land progress (#1164))
 
 517393f merge #1164 (B): intermediate land boss

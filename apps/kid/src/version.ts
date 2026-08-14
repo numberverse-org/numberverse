@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.58.0 (feat: band 8 Summit Peaks (12 class-8 skills, map keeps going) + intermediate land boss gate at 50% land progress (#1164))";
-export const APP_VERSION = "0.58.0";
+export const APP_BUILD = "15 Aug 2026 · 0.59.0 (feat: 4 new mechanic engines — ArcadeCatch physics fast-round facts, TraceScene glyph handwriting, ExploreGarden no-pressure free play, BanglaSpell typing hybrid (#1140 #1142 #1143 #1144))";
+export const APP_VERSION = "0.59.0";
