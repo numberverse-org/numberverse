@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.10 (⚡ #1126 todayIso cache + quest/calendar useShallow — no per-tick Date build or object churn)
+
+5963ead ⚡ #1126 todayIso/dayIsoAgo: cached local-day Date + selectors use todayOnce/useShallow
+
 ## 14 Aug 2026 — 0.53.9 (⚡ #1125 startChallenge: per-kid mastery stats cached — no skills scan per tap)
 
 8d1672a ⚡ #1125 startChallenge: per-kid mastery stats folded once per skills ref
