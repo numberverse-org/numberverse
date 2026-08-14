@@ -573,9 +573,16 @@ export function gridLayout(
     gapY?: number;
     /** Card height (rect cards only). Defaults to cardW (round buttons). */
     cardH?: number;
+    /** Pre-read scene width — lets callers take ONE scale read up front and
+     *  reuse it here instead of gridLayout() re-reading scene.scale between
+     *  grid writes and per-card texture allocations. */
+    width?: number;
+    /** Pre-read scene height (see width). */
+    height?: number;
   }
 ): GridLayout {
-  const { width, height } = scene.scale;
+  const width = opts.width ?? scene.scale.width;
+  const height = opts.height ?? scene.scale.height;
   const gapX = opts.gapX ?? 14;
   const gapY = opts.gapY ?? 14;
   let cardW = Math.max(opts.minW, Math.min(opts.preferredW, (width - opts.widthPad) / opts.cols));

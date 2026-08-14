@@ -7,7 +7,7 @@ import { bad, pop, win } from "./audio";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
+import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, gridLayout, type RoundMeterApi, type GridLayout, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { BANGLA_DIGITS } from "./wordBanks";
 
@@ -36,6 +36,10 @@ export class BnNumbersScene extends Phaser.Scene {
   private speaker!: Phaser.GameObjects.Container;
   private meter!: RoundMeterApi;
   private background!: Phaser.GameObjects.Graphics;
+  // Pre-read on every resize so spawnCards() doesn't interleave layout reads
+  // (scale width/height + getComputedStyle safe-area) with per-card texture writes.
+  private viewport = { width: 0, height: 0, sab: 0 };
+  private gridLayoutCache: { n: number; gl: GridLayout } | null = null;
 
   constructor() {
     super("BnNumbers");
@@ -76,6 +80,8 @@ export class BnNumbersScene extends Phaser.Scene {
   private layout() {
     const { width, height } = this.scale;
     const sab = SAB();
+    this.viewport = { width, height, sab };
+    this.gridLayoutCache = null;
     this.titleText.setPosition(width / 2, 44);
     this.roundText.setPosition(width / 2, 82);
     this.meter.setPosition(width / 2, 104);
@@ -100,15 +106,20 @@ export class BnNumbersScene extends Phaser.Scene {
   private spawnCards(n: number) {
     const grid = n <= 3 ? { cols: 3, rows: 1 } : n <= 4 ? { cols: 2, rows: 2 } : n <= 6 ? { cols: 3, rows: 2 } : { cols: 4, rows: Math.ceil(n / 4) };
     const opts = [this.target, ...DIGITS.filter((d) => d.ch !== this.target.ch)].slice(0, n).sort(() => Math.random() - 0.5);
-    const gl = gridLayout(this, {
-      cols: grid.cols,
-      rows: grid.rows,
-      preferredW: n <= 6 ? CARD_RADIUS * 2 : CARD_RADIUS * 1.6,
-      minW: 56,
-      widthPad: 40,
-      topPad: 128,
-      bottomY: this.scale.height - 150 - SAB(),
-    });
+    const gl = this.gridLayoutCache?.n === n
+      ? this.gridLayoutCache.gl
+      : gridLayout(this, {
+          cols: grid.cols,
+          rows: grid.rows,
+          preferredW: n <= 6 ? CARD_RADIUS * 2 : CARD_RADIUS * 1.6,
+          minW: 56,
+          widthPad: 40,
+          topPad: 128,
+          bottomY: this.viewport.height - 150 - this.viewport.sab,
+          width: this.viewport.width,
+          height: this.viewport.height,
+        });
+    if (this.gridLayoutCache?.n !== n) this.gridLayoutCache = { n, gl };
     opts.forEach((digit, i) => {
       const col = i % grid.cols;
       const row = Math.floor(i / grid.cols);
