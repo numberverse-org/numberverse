@@ -1302,6 +1302,11 @@
   padding: 0;
   cursor: pointer;
   min-width: 46px;
+  /* #1116 — ride above .season-particles (z-index:3): the decorative snow/
+     leaves/fireflies must never cover the 'you are here' ring — the single
+     most important marker on the path. */
+  position: relative;
+  z-index: 4;
 }
 .home-node:disabled { cursor: default; }
 .home-node-ring {
