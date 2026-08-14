@@ -692,7 +692,7 @@
   border-radius: 999px;
   background: var(--nv-orange);
   color: #3b2418;
-  font-family: "Baloo 2", "Nunito", system-ui, sans-serif;
+  font-family: "Baloo 2", "Noto Sans Bengali", "Nunito", system-ui, sans-serif;
   font-weight: 800;
   font-size: 13px;
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);

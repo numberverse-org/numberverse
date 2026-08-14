@@ -26,7 +26,7 @@ export interface TxtOpts {
 /** Modern text style: rounded font stack, 1px tracking, soft drop shadow. */
 export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Types.GameObjects.Text.TextStyle {
   const st: Phaser.Types.GameObjects.Text.TextStyle = {
-    fontFamily: "'Baloo 2', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+    fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
     fontSize: `${size}px`,
     color,
     fontStyle: opts.bold ? "800" : "600",
@@ -60,7 +60,7 @@ export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Typ
  */
 export function promptTxt(size: number): Phaser.Types.GameObjects.Text.TextStyle {
   return {
-    fontFamily: "'Baloo 2', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+    fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
     fontSize: `${size}px`,
     color: "#ffffff",
     fontStyle: "800",
@@ -90,12 +90,12 @@ export function promptTxt(size: number): Phaser.Types.GameObjects.Text.TextStyle
  *  line that IS the question ("How many in all?", "Find the letter…"). */
 export function questionTxt(): Phaser.Types.GameObjects.Text.TextStyle {
   return {
-    fontFamily: "'Baloo 2', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+    fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
     fontSize: "34px",
     color: "#fff8e1",
     fontStyle: "800",
     align: "center",
-    letterSpacing: 0.5,
+    letterSpacing: 0, // keep 0 — letter-spacing breaks Bangla complex-script shaping
     wordWrap: { width: 340, useAdvancedWrap: true },
     stroke: "#1d3557",
     strokeThickness: 7,
@@ -368,7 +368,7 @@ export function modernCardButton(
     children.push(assetIcon(scene, optsIcon.key, optsIcon.size, { y: optsIcon.y, scale: optsIcon.scale }));
   } else {
     labelText = scene.add
-      .text(0, 0, label, wrap ? { ...txt(labelSize, style.text, { bold: true, shadow: false }), wordWrap: { width: wrap }, align: "center", lineSpacing: -2 } : txt(labelSize, style.text, { bold: true, shadow: false }))
+      .text(0, 0, label, wrap ? { ...txt(labelSize, style.text, { bold: true, shadow: false }), wordWrap: { width: wrap }, align: "center", lineSpacing: 0 } : txt(labelSize, style.text, { bold: true, shadow: false }))
       .setOrigin(0.5);
     children.push(labelText);
   }

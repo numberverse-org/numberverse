@@ -72,7 +72,7 @@ export function floatText(
 ): Phaser.GameObjects.Text {
   const t = scene.add
     .text(x, y, text, {
-      fontFamily: "'Baloo 2', 'Nunito', system-ui, sans-serif",
+      fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, sans-serif",
       fontSize: `${size}px`,
       color,
       fontStyle: "800",

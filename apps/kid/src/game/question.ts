@@ -111,7 +111,7 @@ export function questionPanel(
   const glow = scene.add.graphics();
   const tx = scene.add
     .text(0, 0, "", {
-      fontFamily: "'Baloo 2', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+      fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
       fontSize: "32px",
       color: TEXT_COLOR,
       fontStyle: "800",
