@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.18 (🐛 #1118 voice-dl-banner: constrained to the 440px home column (was a shrink-wrapped 224px pill) + animated entry — one-time first-run voice-download mount no longer reflows the Play button)
+
+116702c 🐛 #1118: voice-dl-banner constrained to the home column (width:100%, max-width:var(--home-col-w)) + animated entry — aligns with hero/play cards and softens the one-time first-run reflow
+
 ## 14 Aug 2026 — 0.53.17 (🐛 #1117 home-streak badge: poke capped at 10px inside the 14px owl→greeting gap — flame badge never collides with greeting text at any width (even with the freeze pill))
 
 7ef569f 🐛 #1117: .home-streak poke capped at 10px (was -16px) — badge stays inside the 14px owl→greeting gap so the flame never collides with greeting text (incl. the wider freeze-pill variant) at any width
