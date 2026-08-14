@@ -1944,6 +1944,9 @@ export default function App() {
         challenge,
         // #20 — scenes that vary content per skill (BgsFacts heritage) read it.
         skill: step.skillId,
+        // #1142 — ArcadeCatch reads the skill id directly to pick its fact
+        // generator (facts-fast-add/sub/mult/div).
+        skillId: step.skillId,
         // Remediation re-runs the narrated concept demo (FruitAdd) so the wrong
         // skill is TAUGHT again, differently, before fresh easy drills.
         // Challenge mode skips the re-demo — the older kid doesn't need the

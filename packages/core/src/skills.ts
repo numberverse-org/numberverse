@@ -343,6 +343,13 @@ export const SKILLS: Skill[] = [
   { id: 'ratio-simplify', band: 6, subject: 'math', title: 'Simplify ratios', titleBn: 'অনুপাত ছোট করি', description: 'Reduce ratios to simplest form — 4:8 → 1:2, 6:9 → 2:3', descriptionBn: 'অনুপাতকে সবচেয়ে ছোট আকারে আনি — ৪:৮ → ১:২, ৬:৯ → ২:৩', commonCore: ['6.RP.3'], nctbCode: 'c6-math-8', classNumber: 6, game: 'game-mathsolve', family: 'ratio', tier: 1, dataLevels: [2, 3, 4], challenge: true },
   { id: 'geo-perimeter', band: 6, subject: 'math', title: 'Perimeter: rectangles & triangles', titleBn: 'পরিসীমা: আয়তক্ষেত্র ও ত্রিভুজ', description: 'Add the side lengths around rectangles and right triangles (top tier of Perimeter intro)', descriptionBn: 'আয়তক্ষেত্র ও সমকোণী ত্রিভুজের বাহু যোগ করে পরিসীমা বের করি (পরিসীমা শুরুর শেষ ধাপ)', commonCore: ['3.MD.8', '4.MD.3'], nctbCode: 'c6-math-9', classNumber: 6, game: 'game-perim', dataLevels: [4, 5, 6, 8, 8, 10], challenge: true },
   { id: 'prob-words', band: 6, subject: 'math', title: 'Probability words', titleBn: 'সম্ভাবনার শব্দ', description: 'Label events certain, likely, unlikely or impossible', descriptionBn: 'ঘটনাকে নিশ্চিত, সম্ভবত, অসম্ভাব্য বা অসম্ভব বলি', commonCore: ['7.SP.5'], nctbCode: 'c6-math-10', classNumber: 6, game: 'game-mathsolve', family: 'probability', tier: 1, dataLevels: [1, 2, 3, 4], challenge: true },
+  // #1142 — fast-round fact fluency rides the new ArcadeCatch scene. The same
+  // fact families as the static fact drills, but now the answer FALLS under
+  // real Arcade physics and a 12s gold bar — the first true reaction mode.
+  { id: 'facts-fast-add', band: 6, subject: 'math', title: 'Fast add facts', titleBn: 'দ্রুত যোগ', description: 'Catch the falling sum before it lands — rapid-fire addition facts', descriptionBn: 'মাটিতে নামার আগেই সঠিক যোগফল ধরো — দ্রুতগতির যোগের অনুশীলন', commonCore: ['1.OA.C.6', '2.OA.B.2'], nctbCode: 'c6-math-11', classNumber: 6, game: 'game-arcadecatch', dataLevels: [1, 2, 3, 4, 5, 6], challenge: true },
+  { id: 'facts-fast-sub', band: 6, subject: 'math', title: 'Fast subtract facts', titleBn: 'দ্রুত বিয়োগ', description: 'Catch the falling difference before it lands — rapid-fire subtraction facts', descriptionBn: 'মাটিতে নামার আগেই সঠিক বিয়োগফল ধরো — দ্রুতগতির বিয়োগের অনুশীলন', commonCore: ['1.OA.C.6', '2.OA.B.2'], nctbCode: 'c6-math-12', classNumber: 6, game: 'game-arcadecatch', dataLevels: [1, 2, 3, 4, 5, 6], challenge: true },
+  { id: 'facts-fast-mult', band: 6, subject: 'math', title: 'Fast times tables', titleBn: 'দ্রুত নামতা', description: 'Catch the falling product before it lands — rapid-fire times-table facts', descriptionBn: 'মাটিতে নামার আগেই সঠিক গুণফল ধরো — দ্রুতগতির নামতার অনুশীলন', commonCore: ['3.OA.7'], nctbCode: 'c6-math-13', classNumber: 6, game: 'game-arcadecatch', dataLevels: [1, 2, 3, 4, 5, 6], challenge: true },
+  { id: 'facts-fast-div', band: 6, subject: 'math', title: 'Fast division facts', titleBn: 'দ্রুত ভাগ', description: 'Catch the falling quotient before it lands — rapid-fire division facts', descriptionBn: 'মাটিতে নামার আগেই সঠিক ভাগফল ধরো — দ্রুতগতির ভাগের অনুশীলন', commonCore: ['3.OA.7'], nctbCode: 'c6-math-14', classNumber: 6, game: 'game-arcadecatch', dataLevels: [1, 2, 3, 4, 5, 6], challenge: true },
   // #1161 — bands 6-7 science/english/ict breadth: the oldest cohort keeps a
   // full multi-subject mix. Science adds forces/energy (new ScienceFacts scene),
   // ecosystem roles (FoodChain roles mode) and organ depth (HumanBody); English
@@ -598,6 +605,8 @@ export const GAMES: GameConfig[] = [
   // ladders; the scene branches on the skill id, like game-mathsolve)
   { id: 'game-sciencefacts', skillId: 'science-forces-energy', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   { id: 'game-codelogic', skillId: 'ict-code-blocks', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
+  // #1142 — ArcadeCatch fast rounds: one scene, four fact families.
+  { id: 'game-arcadecatch', skillId: 'facts-fast-add', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
 ];
 
 /** gameId → Phaser scene key. Keeps the kid app and core in sync.
@@ -781,6 +790,8 @@ export const GAME_SCENES: Record<string, string> = {
   // #1161 — new band 6-7 science + ICT answer-button scenes
   'game-sciencefacts': 'ScienceFacts',
   'game-codelogic': 'CodeLogic',
+  // #1142 — fast-round fact fluency (add/sub/mult/div) on Arcade physics
+  'game-arcadecatch': 'ArcadeCatch',
 };
 
 export function getSkill(id: string): Skill | undefined {

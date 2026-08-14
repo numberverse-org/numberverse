@@ -194,6 +194,11 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("ratio-simplify", 6, "math", "Simplify ratios", "অনুপাত ছোট করি"),
     ("geo-perimeter", 6, "math", "Perimeter: rectangles & triangles", "পরিসীমা: আয়তক্ষেত্র ও ত্রিভুজ"),
     ("prob-words", 6, "math", "Probability words", "সম্ভাবনার শব্দ"),
+    # #1142 — fast-round fact fluency (ArcadeCatch)
+    ("facts-fast-add", 6, "math", "Fast add facts", "দ্রুত যোগ"),
+    ("facts-fast-sub", 6, "math", "Fast subtract facts", "দ্রুত বিয়োগ"),
+    ("facts-fast-mult", 6, "math", "Fast times tables", "দ্রুত নামতা"),
+    ("facts-fast-div", 6, "math", "Fast division facts", "দ্রুত ভাগ"),
     # #1161 — band 6 science/english/ict breadth
     ("science-forces-energy", 6, "science", "Forces & energy", "বল ও শক্তি"),
     ("science-ecosystems", 6, "science", "Ecosystems: food chains", "বাস্তুতন্ত্র: খাদ্য শৃঙ্খল"),
