@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.44.1 (bundle gate: enforce #1316 main-JS <1.5MB gz wire budget in CI + oracle)
+
+56393cf 📦 bundle gate: enforce the #1316 'main JS < 1.5MB gz' wire budget
+
 ## 14 Aug 2026 — 0.44.0 (retention hooks: quest+calendar in Nova #765, affection decay+best friend #766, cap-full come-back #767, freeze visibility #768, garden teaser #769, newgame quest hint #770)
 
 1ce65f6 🎯 retention hooks: quest/calendar in Nova, care decay + best friend, cap waiting, freeze visibility, garden teaser, newgame hint
