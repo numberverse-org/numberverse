@@ -1,3 +1,8 @@
+## 14 Aug 2026 — 0.42.7 (kids-facing: uniform reward surfacing — combo streak chip floats on every shared-celebrate scene, correctCelebrate added to OddEven/NumberBonds/AddSub100/DivisionFacts/BgsFacts, garden tap bursts, column-math core extracted pure (#1199 #1200 #1201 #1202 #1203 #1204 #1205))
+
+5297681 🎉 scene-complexity-balance: uniform reward surfacing — streak chip in the shared celebrate path + correctCelebrate on 6 previously-silent scenes, column-math core extracted (#1199 #1200 #1201 #1202 #1203 #1204 #1205)
+e242f8f 🦉 oracle: read CSS across the split styles/*.css sheets (boot+screens) via kid_css() helper — #1177 split broke the single styles.css reads
+
 ## 14 Aug 2026 — 0.42.6 (perf: split 189KB global CSS — boot sheet (splash+base) is the only sync CSS (~13KB), screen CSS rides the lazy App chunk during the splash window (#1177))
 
 6ebad3d 🚀 render-blocking: split 189KB global CSS — boot sheet (splash+base, 13KB) is the only sync CSS; screen CSS rides the lazy App chunk (#1177)
