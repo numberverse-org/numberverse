@@ -1,3 +1,10 @@
+## 15 Aug 2026 — 0.58.0 (feat: band 8 Summit Peaks (12 class-8 skills, map keeps going) + intermediate land boss gate at 50% land progress (#1164))
+
+517393f merge #1164 (B): intermediate land boss
+75d6fed merge #1164 (A): band 8 Summit Peaks
+93b014f #1164 (B): intermediate land boss — per-land duel gate at 50% progress, bossBeaten persistence, boss UI on journey + worlds
+b8d4fd2 #1164 (A): band 8 Summit Peaks — 12 class-8 skills, depth ladders in 6 scenes, oracle updated to 8 lands
+
 ## 15 Aug 2026 — 0.57.0 (feat: band 6-7 science/english/ict — 15 skills, 2 new scenes (coding logic, science facts), depth ladders in 5 existing scenes (#1161))
 
 a434d6d fix: child-safety gate — rephrase new band 6-7 science content to established safe vocabulary (0 unsafe hits) (#1161)
