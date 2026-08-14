@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.24 (HUD: world label keeps usable width on narrow phones; skill pill drops under 360px (#1094))
+
+59c9d5c 🛠 HUD: world label collapses to 14px sliver on narrow phones; give it a usable width (#1094)
+
 ## 15 Aug 2026 — 0.53.23 (tapChoice: band-clamp grid to screen — no off-screen cards on short phones (#1093))
 
 a73c1e8 🛠 tapChoice: band-clamp grid to screen — no off-screen cards on short phones (#1093)
