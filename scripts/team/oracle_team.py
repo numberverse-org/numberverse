@@ -21,7 +21,7 @@ DAILY launchd job (full paging) is the one that should page Hasan for REAL failu
 
 Launchd: com.tresha.oracle-team runs this daily (StartInterval 86400).
 """
-import os, re, sys, json, subprocess, urllib.request
+import os, re, sys, json, subprocess, urllib.request, gzip
 from pathlib import Path
 from datetime import date, datetime
 
@@ -255,9 +255,11 @@ def l2_perf():
     assets = sorted((KID / "dist" / "assets").glob("*.js")) if (KID / "dist" / "assets").exists() else []
     if not assets:
         return True, "no local dist (box builds) — skipping budget"
-    js = max(a.stat().st_size for a in assets)
-    ok = js < 2_600_000  # 2.6MB budget for the main bundle
-    return ok, f"main js {js/1e6:.2f}MB (budget 2.6MB)"
+    raw = max(a.stat().st_size for a in assets)
+    gz = max(len(gzip.compress(a.read_bytes())) for a in assets)
+    # #1316 — the kid's wire budget is gzip, not raw: every chunk < 1.5MB gz.
+    ok = gz < 1_572_864 and raw < 1_769_472
+    return ok, f"worst gz {gz/1e6:.2f}MB / raw {raw/1e6:.2f}MB (gz budget 1.5MB, raw tripwire 1.73MB)"
 
 def l2_nova_perf():
     """🦉 3D Nova Perf — the island must stay a small lazy pull and honor
