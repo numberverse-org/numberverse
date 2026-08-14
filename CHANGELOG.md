@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.40.2 (3D Nova #689: petStage egg→grown scale + species tints, 3D outfits, garden plants + growth toast, coin badge (EN+BN))
+
+485e808 🦉 3D NOVA: wire garden, coins, outfits, species to the owl (#689)
+
 ## 14 Aug 2026 — 0.40.1 (3D Nova spatial activities: OwlRig action palette, walk-to-tap, 3D feed/pet/bathe, dress-up (#688))
 
 41a5ce6 🦉 #688: spatial activities — OwlRig maps all 51 activities to 3D clip+morph, action palette, walk-to-tap, 3D feed/pet/bathe, dress-up
