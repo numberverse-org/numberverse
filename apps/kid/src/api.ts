@@ -103,6 +103,10 @@ let identityPromise: Promise<SyncIdentity | null> | null = null;
 async function deviceAuth(deviceId: string): Promise<string> {
   const cached = localStorage.getItem(LS.deviceToken);
   if (cached) return cached;
+  // #264 — no cached token + offline = never attempt auth (a failed signup
+  // request would escape the SW cache). ensureIdentity treats the throw as
+  // "offline — retry next tick".
+  if (typeof navigator !== "undefined" && !navigator.onLine) throw new Error("offline: no cached device token");
   let secret = localStorage.getItem(LS.secret);
   if (!secret) {
     secret = genSecret();
@@ -139,6 +143,11 @@ async function deviceAuth(deviceId: string): Promise<string> {
  *  portal and a guest still gets an isolated private family account. */
 async function mapLocalKidsToServer(token: string): Promise<Record<string, string>> {
   const map = readKidMap();
+  // #264 — offline-first: if every local kid is already mapped, the `/kids`
+  // fetch below is pure overhead (and an offline failure would escape the SW
+  // cache). Short-circuit to zero network. The sync entry points also gate on
+  // navigator.onLine, so this only matters for the mapped-roster fast path.
+  if (localKids().every((k) => map[k.id])) return map;
   let changed = false;
   const existing = await fetch(`${API}/kids`, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
     r.ok ? r.json() : []
@@ -219,8 +228,14 @@ export async function validateParentSession(): Promise<boolean> {
   try {
     const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) return true;
-    clearParentSession();
-    return false;
+    // #1234 — a 503 is the SW's "offline, answered from the boundary" envelope
+    // (or any server-side hiccup): NOT proof the token is invalid, so keep the
+    // parent session. Only a genuine 401/403 (rejected by the API) logs out.
+    if (res.status === 401 || res.status === 403) {
+      clearParentSession();
+      return false;
+    }
+    return true; // 5xx / offline envelope — keep the session, revalidate later
   } catch {
     return true; // offline — don't kick a valid parent out
   }
@@ -434,6 +449,14 @@ export async function syncProgress(): Promise<void> {
     setSyncState("idle");
     return;
   }
+  // #264 — offline-first contract: never let the sync path fire network
+  // requests that escape the service-worker cache (a failed fetch offline
+  // breaks the "no network calls" guarantee). navigator.onLine is the browser's
+  // offline flag; the 30s heartbeat / online + visibility listeners re-arm us.
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    setSyncState("offline");
+    return;
+  }
   const identity = await ensureIdentity();
   if (!identity) {
     setSyncState("offline");
@@ -506,6 +529,10 @@ export async function syncStories(): Promise<void> {
   if (storySyncing) return;
   const { stories } = useKidStore.getState();
   if (stories.length === 0) return;
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    useKidStore.getState().setSyncState("offline");
+    return;
+  }
   const identity = await ensureIdentity();
   if (!identity) {
     useKidStore.getState().setSyncState("offline");
@@ -576,6 +603,10 @@ export async function syncAccel(): Promise<void> {
   if (accelSyncing) return;
   const { accel } = useKidStore.getState();
   if (accel.length === 0) return;
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    useKidStore.getState().setSyncState("offline");
+    return;
+  }
   const identity = await ensureIdentity();
   if (!identity) {
     useKidStore.getState().setSyncState("offline");
@@ -741,6 +772,7 @@ let lastRestoreAt = 0;
 export async function restoreServerState(): Promise<void> {
   const now = Date.now();
   if (now - lastRestoreAt < 5 * 60_000) return;
+  if (typeof navigator !== "undefined" && !navigator.onLine) return; // #264 offline
   const identity = await ensureIdentity();
   if (!identity) return; // offline — don't consume the throttle; retry on the online event
   lastRestoreAt = now;

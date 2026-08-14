@@ -13,6 +13,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // #264/#1234 — injectManifest (hand-written sw.ts): the offline-first
+      // contract needs a NEVER-reject /api handler (cached GET replay + synthetic
+      // 503 for queued mutations) that workbox generateSW's runtimeCaching cannot
+      // express. The SW source lives in src/sw.ts and is bundled into dist/sw.js.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       includeAssets: ["favicon.png", "apple-touch-icon.png"],
       manifest: {
         name: "Numberverse — Math Playground",
@@ -43,43 +50,15 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,svg,ico,json,glb,wasm}"],
         // og-card.png is only for social link previews (crawlers), never needed
         // offline — keep it out of the precache so it doesn't burn install bytes.
         globIgnores: ["**/og-card.png"],
-        navigateFallback: "/index.html",
-        // CRITICAL — the kid SW's scope is "/", so its navigation fallback would
-        // intercept EVERY path on this origin and serve the game's index.html —
-        // including the sibling apps (/parent portal, /admin console). Without
-        // this denylist a parent navigating to the portal in a browser with the
-        // installed PWA sees the GAME, not the portal. Let these namespaces fall
-        // through to the network (nginx serves the real static exports).
-        navigateFallbackDenylist: [/^\/parent\//, /^\/admin\//],
-        // The app never fetches remote data (local-first), so precache is all
-        // we need — EXCEPT the on-device neural Bangla voice. The piper
-        // phonemizer + model are way over the precache size cap (6MB), so they
-        // are runtime-cached CacheFirst on first use: the first Bangla session
-        // downloads the voice once (~110MB), then it's instant + fully offline.
-        // NOTE: workbox RegExpRoute matches against the FULL href (origin +
-        // path + query), NOT just pathname — so the pattern must NOT be
-        // anchored with ^/voice/ (that silently never matches and forces a
-        // re-download on every reload). Match the /voice/ segment mid-href.
-        runtimeCaching: [
-          {
-            urlPattern: /\/voice\/.*$/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "nv-voice",
-              expiration: {
-                maxEntries: 12,
-                maxAgeSeconds: 60 * 60 * 24 * 180, // 6 months — re-fetch after
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // NOTE: the /voice CacheFirst + /api never-reject handler + navigation
+        // fallback (with the /parent /admin denylist) are implemented IN the SW
+        // itself (src/sw.ts) — injectManifest mode doesn't auto-inject routes.
       },
       devOptions: {
         enabled: false, // never service-worker during local dev (stale-cache footguns)
