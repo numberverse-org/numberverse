@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.34 (perf: drop getBounds layout reads in ShadowGuess/MagnetPoles highlight (#1104))
+
+952e4ce perf: avoid getBounds layout reads in ShadowGuess/MagnetPoles highlight (#1104)
+0aba7e5 perf: avoid getBounds layout reads in ShadowGuess/MagnetPoles highlight (#1104)
+
 ## 15 Aug 2026 — 0.53.33 (perf: measure ReadStory word chips on shared canvas ctx (#1103))
 
 7384d08 perf: measure ReadStory word chips with shared canvas context (#1103)

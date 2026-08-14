@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.33 (perf: measure ReadStory word chips on shared canvas ctx (#1103))";
-export const APP_VERSION = "0.53.33";
+export const APP_BUILD = "15 Aug 2026 · 0.53.34 (perf: drop getBounds layout reads in ShadowGuess/MagnetPoles highlight (#1104))";
+export const APP_VERSION = "0.53.34";
