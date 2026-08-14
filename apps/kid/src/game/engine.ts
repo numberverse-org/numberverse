@@ -171,6 +171,8 @@ import { StatesMatterScene } from "./StatesMatterScene";
 import { HumanBodyScene } from "./HumanBodyScene";
 import { MathSolveScene } from "./MathSolveScene";
 import { NegativeNumberScene } from "./NegativeNumberScene";
+import { ScienceFactsScene } from "./ScienceFactsScene";
+import { CodeLogicScene } from "./CodeLogicScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
 
@@ -251,6 +253,8 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       HumanBodyScene,
       MathSolveScene,
       NegativeNumberScene,
+      ScienceFactsScene,
+      CodeLogicScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
     input: { activePointers: 3 },

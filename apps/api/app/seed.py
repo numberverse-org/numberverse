@@ -194,6 +194,15 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("ratio-simplify", 6, "math", "Simplify ratios", "অনুপাত ছোট করি"),
     ("geo-perimeter", 6, "math", "Perimeter: rectangles & triangles", "পরিসীমা: আয়তক্ষেত্র ও ত্রিভুজ"),
     ("prob-words", 6, "math", "Probability words", "সম্ভাবনার শব্দ"),
+    # #1161 — band 6 science/english/ict breadth
+    ("science-forces-energy", 6, "science", "Forces & energy", "বল ও শক্তি"),
+    ("science-ecosystems", 6, "science", "Ecosystems: food chains", "বাস্তুতন্ত্র: খাদ্য শৃঙ্খল"),
+    ("science-body-depth", 6, "science", "Human body: organ jobs", "মানবদেহ: অঙ্গের কাজ"),
+    ("en-read-inference", 6, "english", "Reading: infer & predict", "পড়া: অনুমান ও ভবিষ্যদ্বাণী"),
+    ("en-grammar-past-depth", 6, "english", "Irregular past tense", "অনিয়মিত অতীত কাল"),
+    ("en-paragraph-order", 6, "english", "Order a paragraph", "অনুচ্ছেদ সাজাই"),
+    ("ict-digital-literacy", 6, "ict", "Digital literacy", "ডিজিটাল সাক্ষরতা"),
+    ("ict-code-blocks", 6, "ict", "What does this block do?", "এই ব্লকটি কী করে?"),
     # Band 7 — Polar Peaks (refinement)
     ("decimals-tenths", 7, "math", "Decimal tenths", "দশমিকের দশক"),
     ("percent-of-number", 7, "math", "Percent of a number", "সংখ্যার শতকরা"),
@@ -207,6 +216,14 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     ("ratio-unit-rate", 7, "math", "Unit rates", "একক দর"),
     ("geo-symmetry", 7, "math", "Symmetry mirror", "আয়নার প্রতিসাম্য"),
     ("stats-mean-mode", 7, "math", "Mean, mode & median", "গড়, প্রচুরক ও মধ্যমা"),
+    # #1161 — band 7 science/english/ict depth
+    ("science-energy-transfer", 7, "science", "Energy types & transfer", "শক্তির ধরন ও প্রবাহ"),
+    ("science-ecosystems-depth", 7, "science", "Food webs & niches", "খাদ্য জাল ও নিচ"),
+    ("science-body-systems-depth", 7, "science", "Body systems: what they do", "অঙ্গতন্ত্র: এদের কাজ"),
+    ("en-read-critical", 7, "english", "Reading: main idea", "পড়া: মূল ভাব"),
+    ("en-grammar-irregulars-depth", 7, "english", "Irregular plurals", "অনিয়মিত বহুবচন"),
+    ("ict-digital-citizenship", 7, "ict", "Digital citizenship", "ডিজিটাল নাগরিকত্ব"),
+    ("ict-code-steps", 7, "ict", "Order the steps", "ধাপ সাজাই"),
     # 2026 backlog content (#43, #44, #48, #49)
     ("bn-days-months", 1, "bangla", "Days & months", "সপ্তাহ ও মাস"),
     ("bn-spelling", 1, "bangla", "Bangla spelling", "বানান শিখি"),

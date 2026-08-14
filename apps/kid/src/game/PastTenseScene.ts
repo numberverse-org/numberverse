@@ -69,14 +69,17 @@ export class PastTenseScene extends Phaser.Scene {
   private promptText!: Phaser.GameObjects.Text;
   private sentenceText!: Phaser.GameObjects.Text;
   private optionBtns: Phaser.GameObjects.Container[] = [];
+  private levels: number[] = LEVELS;
 
   constructor() {
     super("PastTense");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; levels?: number[] }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    // #1161 — band-6 grammar depth carries its own ladder (more verbs/round).
+    this.levels = data.levels ?? LEVELS;
     gameBackground(this, "sunset");
     this.titleText = this.add
       .text(0, 0, t("titleIv"), txt(34, "#ffffff", { bold: true }))

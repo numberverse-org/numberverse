@@ -75,6 +75,31 @@ const PARAGRAPHS_LONG: ReadItem[] = [
   { s: "The pond is full of fish. A boy sits by the water. He waits with his fishing rod. Soon he catches a small fish.", q: "What does the boy catch?", a: { e: "🐟", c: "a fish" }, d: [{ e: "🐸", c: "a frog" }, { e: "🦆", c: "a duck" }, { e: "🦀", c: "a crab" }] },
 ];
 
+// #1161 — band 6 inference reading: the answer is NOT printed — the kid must
+// read between the lines and predict the next step.
+const PARAGRAPHS_INFER: ReadItem[] = [
+  { s: "Amina looks out of the window. Dark clouds cover the sky. She picks up her umbrella before she leaves.", q: "What is the weather probably like?", a: { e: "🌧️", c: "it is going to rain" }, d: [{ e: "☀️", c: "it is sunny" }, { e: "❄️", c: "it is snowing" }, { e: "🌫️", c: "it is foggy" }] },
+  { s: "Rafi's stomach growls. He opens the lunch box and smiles. His mother packed his favourite dish.", q: "How does Rafi probably feel?", a: { e: "😋", c: "hungry and happy" }, d: [{ e: "😴", c: "sleepy" }, { e: "😠", c: "angry" }, { e: "😨", c: "scared" }] },
+  { s: "The puppy scratches at the door. It wags its tail very fast when Dad picks up the leash.", q: "What will probably happen next?", a: { e: "🐕", c: "Dad takes the puppy for a walk" }, d: [{ e: "🛁", c: "the puppy has a bath" }, { e: "🍽️", c: "the puppy eats dinner" }, { e: "🛏️", c: "the puppy goes to sleep" }] },
+  { s: "Nadia studies every evening. She writes notes in bright colours. Her exams begin next week.", q: "Why does Nadia study every evening?", a: { e: "📚", c: "she wants to do well in her exams" }, d: [{ e: "🎨", c: "she loves colours" }, { e: "📺", c: "she dislikes television" }, { e: "🛍️", c: "she wants to go shopping" }] },
+  { s: "The shopkeeper lowers the shutter. He turns the sign to 'CLOSED'. The clock shows eight at night.", q: "Why is the shopkeeper closing?", a: { e: "🌙", c: "the shop is closing for the day" }, d: [{ e: "☀️", c: "it is early morning" }, { e: "🎉", c: "there is a party" }, { e: "🚚", c: "a delivery is coming" }] },
+  { s: "Tanvir practises kicking the ball every afternoon. His team has a match on Friday.", q: "Why does Tanvir practise?", a: { e: "⚽", c: "he wants to play well in the match" }, d: [{ e: "😴", c: "he is bored" }, { e: "📖", c: "he likes reading" }, { e: "🎮", c: "he wants a new game" }] },
+  { s: "The glass slips from Rina's hand. She hears a crash and then her mother runs into the room.", q: "What probably happened?", a: { e: "💥", c: "the glass broke" }, d: [{ e: "🎵", c: "music started" }, { e: "🐱", c: "a cat meowed" }, { e: "🚪", c: "the door closed" }] },
+  { s: "Birds fly low over the field. The ants march in a long line to higher ground.", q: "What will probably happen soon?", a: { e: "⛈️", c: "a storm or rain is coming" }, d: [{ e: "☀️", c: "a heat wave" }, { e: "🌙", c: "night will fall" }, { e: "🌬️", c: "a cold wind" }] },
+];
+
+// #1161 — band 7 critical reading: main idea + author purpose.
+const PARAGRAPHS_CRITICAL: ReadItem[] = [
+  { s: "Recycling turns old paper, glass and plastic into new things. When we recycle, less rubbish goes to landfills. Recycling also saves trees and water.", q: "What is the main idea?", a: { e: "♻️", c: "recycling helps the planet" }, d: [{ e: "🗑️", c: "rubbish is smelly" }, { e: "🌲", c: "trees grow slowly" }, { e: "🏭", c: "factories make plastic" }] },
+  { s: "Honey bees fly from flower to flower. While they sip nectar, pollen sticks to their legs. In this way bees help plants make seeds.", q: "Why did the author write this?", a: { e: "🐝", c: "to explain how bees help plants" }, d: [{ e: "🍯", c: "to sell honey" }, { e: "📖", c: "to tell a funny story" }, { e: "🎨", c: "to describe a painting" }] },
+  { s: "The tiger is the biggest cat in the world. Its stripes help it hide in the tall grass. Sadly, tigers are endangered because their forests are being cut down.", q: "What is the main idea?", a: { e: "🐅", c: "tigers are special but in danger" }, d: [{ e: "🐱", c: "cats are good pets" }, { e: "🌳", c: "forests are dark" }, { e: "📏", c: "tigers are small" }] },
+  { s: "Washing your hands with soap removes germs. Doctors say we should wash before eating and after using the toilet. Clean hands keep us healthy.", q: "Why did the author write this?", a: { e: "🧼", c: "to teach how to stay healthy" }, d: [{ e: "💧", c: "to describe water" }, { e: "🍽️", c: "to list foods" }, { e: "🧸", c: "to tell a bedtime story" }] },
+  { s: "Rainwater falls on the hills and runs into streams. The streams join rivers, and rivers flow to the sea. This journey is called the water cycle's runoff.", q: "What is the main idea?", a: { e: "🌊", c: "water travels from hills to the sea" }, d: [{ e: "⛰️", c: "hills are tall" }, { e: "🐟", c: "fish live in rivers" }, { e: "☔", c: "rain is cold" }] },
+  { s: "A library is a quiet place full of books. People borrow books to read at home. Librarians help readers find the right book.", q: "Why did the author write this?", a: { e: "📚", c: "to describe what a library is" }, d: [{ e: "🔇", c: "to tell people to be quiet" }, { e: "💰", c: "to sell books" }, { e: "🎪", c: "to advertise a circus" }] },
+  { s: "The Sun is a star at the centre of our solar system. Its gravity keeps the planets moving in their paths. Without the Sun, Earth would be cold and dark.", q: "What is the main idea?", a: { e: "☀️", c: "the Sun is vital to our solar system" }, d: [{ e: "🌙", c: "the Moon is bright" }, { e: "❄️", c: "winter is cold" }, { e: "⭐", c: "stars are tiny" }] },
+  { s: "Mosquitoes lay their eggs in standing water. Emptying buckets and covering water pots stops them from breeding. This is how we prevent dengue.", q: "Why did the author write this?", a: { e: "🦟", c: "to explain how to prevent dengue" }, d: [{ e: "💧", c: "to describe rain" }, { e: "🪣", c: "to sell buckets" }, { e: "🏡", c: "to tell a home story" }] },
+];
+
 /**
  * English read-aloud comprehension lvl 2 (#184).
  * Band 2 reading: a 5-7 word sentence is shown + spoken; a picture-answer
@@ -155,7 +180,13 @@ export class ReadAloudScene extends Phaser.Scene {
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
 
     const pool = this.paragraphMode
-      ? (this.skillId === "en-paragraph" ? PARAGRAPHS_LONG : PARAGRAPHS_SHORT)
+      ? (this.skillId === "en-paragraph"
+          ? PARAGRAPHS_LONG
+          : this.skillId === "en-read-inference"
+            ? PARAGRAPHS_INFER
+            : this.skillId === "en-read-critical"
+              ? PARAGRAPHS_CRITICAL
+              : PARAGRAPHS_SHORT)
       : ITEMS;
     let item = pool[Phaser.Math.Between(0, pool.length - 1)];
     if (item === this.item) item = pool[(pool.indexOf(item) + 1) % pool.length];
