@@ -128,6 +128,36 @@ export interface Strings {
   certPrint: string;
   certBack: string;
   certSpeak: (name: string, world: string) => string;
+  /* #1338 — printable worksheet generator (offline PDF via the print sheet). */
+  wsTitle: string;
+  wsSub: string;
+  wsFor: (name: string) => string;
+  wsNeedsPractice: string;
+  wsUnmastered: string;
+  wsAll: string;
+  wsSelected: (n: number) => string;
+  wsPickHint: string;
+  wsNoSkills: string;
+  wsPrint: string;
+  wsPrintHint: string;
+  wsWarmup: string;
+  wsSolve: string;
+  wsWriteTrace: string;
+  wsCount: string;
+  wsBack: string;
+  /* #1345 — flashcard QR print generator (offline; the scan side shipped in #139). */
+  fcTitle: string;
+  fcSub: string;
+  fcFor: (name: string) => string;
+  fcPickHint: string;
+  fcSelected: (n: number) => string;
+  fcPrint: string;
+  fcPrintHint: string;
+  fcHow: string;
+  fcScanEntry: string;
+  fcDrawing: string;
+  fcNoSkills: string;
+  fcBack: string;
   /** Generic back-button label (aria) used on every `icon-btn` back arrow —
    *  localized so a Bangla screen reader never announces English "Back". */
   back: string;
@@ -837,6 +867,36 @@ export const STR: Record<Lang, Strings> = {
     certPrint: "🖨️ Print / Save as PDF",
     certBack: "‹ Back",
     certSpeak: (name, world) => `Certificate! ${name}, you mastered ${world}!`,
+    /* #1338 — printable worksheet generator (offline PDF via the print sheet). */
+    wsTitle: "Practice worksheets",
+    wsSub: "Print a practice sheet from the skills that need it",
+    wsFor: (name) => `Practice sheet for ${name}`,
+    wsNeedsPractice: "Needs practice",
+    wsUnmastered: "Not yet mastered",
+    wsAll: "All skills",
+    wsSelected: (n) => `${n} selected`,
+    wsPickHint: "Tap skills to add them to the sheet",
+    wsNoSkills: "Nothing to print here yet",
+    wsPrint: "🖨️ Print / Save as PDF",
+    wsPrintHint: "Print works fully offline — use your device's Save as PDF.",
+    wsWarmup: "Warm-up",
+    wsSolve: "Solve",
+    wsWriteTrace: "Write / trace",
+    wsCount: "Count the stars",
+    wsBack: "‹ Back",
+    /* #1345 — flashcard QR print generator (offline; the scan side shipped in #139). */
+    fcTitle: "Flashcard codes",
+    fcSub: "Print QR cards that open a skill's game when scanned",
+    fcFor: (name) => `Flashcard deck for ${name}`,
+    fcPickHint: "Tap skills to turn them into cards",
+    fcSelected: (n) => `${n} cards`,
+    fcPrint: "🖨️ Print flashcards",
+    fcPrintHint: "Cards are offline — a kid scans one with the 📷 Scan a card button on Home.",
+    fcHow: "Print, cut, and scan",
+    fcScanEntry: "📷 Scan a card",
+    fcDrawing: "Drawing cards…",
+    fcNoSkills: "Pick skills to make cards",
+    fcBack: "‹ Back",
     back: "Back",
     birthMonth: "Month",
     birthDay: "Day",
@@ -1514,6 +1574,36 @@ export const STR: Record<Lang, Strings> = {
     certPrint: "🖨️ প্রিন্ট / PDF সংরক্ষণ",
     certBack: "‹ ফিরে যাও",
     certSpeak: (name, world) => `সনদ! ${name}, তুমি ${world} আয়ত্ত করেছ!`,
+    /* #1338 — printable worksheet generator (offline PDF via the print sheet). */
+    wsTitle: "অনুশীলন ওয়ার্কশিট",
+    wsSub: "যে দক্ষতায় অনুশীলন দরকার, তার প্রিন্টযোগ্য পাতা",
+    wsFor: (name) => `${name}-এর অনুশীলন পাতা`,
+    wsNeedsPractice: "অনুশীলন দরকার",
+    wsUnmastered: "এখনো আয়ত্ত হয়নি",
+    wsAll: "সব দক্ষতা",
+    wsSelected: (n) => `${bnNum(n)}টি বাছাই`,
+    wsPickHint: "পাতায় যোগ করতে দক্ষতায় ট্যাপ করো",
+    wsNoSkills: "এখানে এখনো কিছু নেই",
+    wsPrint: "🖨️ প্রিন্ট / PDF সংরক্ষণ",
+    wsPrintHint: "প্রিন্ট সম্পূর্ণ অফলাইনে চলে — ডিভাইসের Save as PDF ব্যবহার করো।",
+    wsWarmup: "গরম করা",
+    wsSolve: "সমাধান করো",
+    wsWriteTrace: "লেখো / ধরে লেখো",
+    wsCount: "তারা গুনো",
+    wsBack: "‹ ফিরে যাও",
+    /* #1345 — flashcard QR print generator (offline; the scan side shipped in #139). */
+    fcTitle: "ফ্ল্যাশকার্ড কোড",
+    fcSub: "QR কার্ড ছাপো — স্ক্যান করলে সেই দক্ষতার খেলা খুলবে",
+    fcFor: (name) => `${name}-এর ফ্ল্যাশকার্ড ডেক`,
+    fcPickHint: "কার্ড বানাতে দক্ষতায় ট্যাপ করো",
+    fcSelected: (n) => `${bnNum(n)}টি কার্ড`,
+    fcPrint: "🖨️ ফ্ল্যাশকার্ড ছাপো",
+    fcPrintHint: "কার্ড অফলাইনে চলে — বাড়ির পেজের 📷 কার্ড স্ক্যান বাটনে স্ক্যান করলেই খেলা খুলবে।",
+    fcHow: "ছাপো, কাটো, আর স্ক্যান করো",
+    fcScanEntry: "📷 কার্ড স্ক্যান",
+    fcDrawing: "কার্ড আঁকা হচ্ছে…",
+    fcNoSkills: "কার্ড বানাতে দক্ষতা বাছাই করো",
+    fcBack: "‹ ফিরে যাও",
     back: "ফিরে যাও",
     birthMonth: "মাস",
     birthDay: "দিন",

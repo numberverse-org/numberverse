@@ -39,6 +39,7 @@ import { STR, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
 import VoiceCheck from "./components/VoiceCheck";
 import StoryInspector from "./components/StoryInspector";
 import CountUp from "./components/CountUp";
+import { WorksheetScreen, FlashcardsScreen } from "./components/PrintSheets"; // #1338 #1345
 import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
@@ -75,7 +76,7 @@ const APP_BUILD = "14 Aug 2026 · 0.42.13 (post-mastery challenge replay: master
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
 const APP_VERSION = "0.42.13";
 
-export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
+export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar" | "worksheet" | "flashcards";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -3051,6 +3052,32 @@ export default function App() {
                 <span className="big-btn parent-portal-btn">{t.parentPortalCta}</span>
               </a>
 
+              {/* ── #1338 — printable practice worksheet from struggling skills.
+                  Print-to-PDF, fully offline, no data leaves the device. */}
+              <div className="parent-card ws-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.wsTitle}</span>
+                  <span className="parent-stats">📝</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.wsSub}</p>
+                <button className="big-btn parent-portal-btn" onClick={() => setScreen("worksheet")}>
+                  {t.wsPrint}
+                </button>
+              </div>
+
+              {/* ── #1345 — printable flashcard QR deck. Cards open a skill's
+                  game when scanned with the Home 📷 Scan a card button (#139). */}
+              <div className="parent-card ws-card">
+                <div className="parent-head">
+                  <span className="parent-name">{t.fcTitle}</span>
+                  <span className="parent-stats">🃏</span>
+                </div>
+                <p className="syllabus-settings-sub">{t.fcSub}</p>
+                <button className="big-btn parent-portal-btn" onClick={() => setScreen("flashcards")}>
+                  {t.fcPrint}
+                </button>
+              </div>
+
               {/* ── Sign out of the parent account (device only — progress stays) ── */}
               <div className="parent-card settings-signout-card">
                 <div className="parent-head">
@@ -4701,6 +4728,42 @@ export default function App() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  /* 🖨️ #1338 — printable practice worksheet (parent panel → print-to-PDF).
+     Struggling-skill picker + generated warm-ups; offline via window.print(). */
+  if (screen === "worksheet") {
+    // Prefer the parent panel's selected kid; fall back to who's playing now.
+    const wsKid = kids.find((k) => k.id === parentKidId) ?? kid ?? kids[0];
+    if (!wsKid) return null;
+    return (
+      <WorksheetScreen
+        kid={wsKid}
+        skillsMap={skillsMap}
+        mistakes={mistakes}
+        t={t}
+        lang={lang}
+        onBack={() => setScreen("parent")}
+      />
+    );
+  }
+
+  /* 🃏 #1345 — printable flashcard QR deck (parent panel). Each card encodes
+     `NV:<skillId>` — the same code the #139 scan sheet decodes, so a scanned
+     printed card launches that skill's game. Offline (qrcode dynamic import). */
+  if (screen === "flashcards") {
+    // Prefer the parent panel's selected kid; fall back to who's playing now.
+    const fcKid = kids.find((k) => k.id === parentKidId) ?? kid ?? kids[0];
+    if (!fcKid) return null;
+    return (
+      <FlashcardsScreen
+        kid={fcKid}
+        skillsMap={skillsMap}
+        t={t}
+        lang={lang}
+        onBack={() => setScreen("parent")}
+      />
     );
   }
 
