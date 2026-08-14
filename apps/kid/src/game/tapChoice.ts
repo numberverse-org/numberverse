@@ -135,15 +135,29 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     const gap = 14;
     const cols = cfg.cols;
     const rows = Math.ceil(cfg.choices.length / cols);
-    const cardW = Math.max(88, Math.min(180, (width - (cols + 1) * gap) / cols));
-    const cardH = 118;
+    // #1093 — fit the grid on ANY screen. Before: fixed cardH=118 and
+    // topY=max(0.56h, bottom-anchor) — a tall grid (many rows) overflowed past
+    // the bottom edge on short phones, and the old cardW floor of 88 clipped
+    // wide grids horizontally (5 senses × 88px = 496px on a 360px canvas).
+    // Mirror ui.ts gridLayout()'s band-clamping: cap cardW so every col stays
+    // on-screen, and shrink cardH so the grid always sits between the item
+    // bubble/name and the bottom edge. Current 1-row FiveSenses renders at the
+    // same size/position as before (verified); this hardens the base for any
+    // future taller config.
+    const cardW = Math.min(180, Math.max(52, (width - (cols + 1) * gap) / cols));
+    const bandBottom = height - 18 - SAB();
+    const bandTop = Math.max(height * 0.56, height * 0.34 + 82); // clears the item bubble + name
+    const bandH = Math.max(0, bandBottom - bandTop);
+    const cardH = Math.min(118, Math.max(64, Math.floor((bandH - (rows - 1) * gap) / rows)));
     const totalH = rows * cardH + (rows - 1) * gap;
-    const topY = Math.max(height * 0.56, height - totalH - 18 - SAB());
+    const topY = bandBottom - totalH; // bottom-anchored: always fits above the bottom edge
     this.geom = { cardW, cardH, startX: width / 2 - (cols * cardW + (cols - 1) * gap) / 2, topY, gap };
     this.cards.forEach((c, i) => {
       const row = Math.floor(i / cols);
       const col = i % cols;
-      c.c.setPosition(this.geom.startX + col * (cardW + gap), topY + row * (cardH + gap) + cardH / 2);
+      // + cardW/2 centers each card within its cell (matches the vertical
+      // + cardH/2) — without it the first card's left half hangs off-screen.
+      c.c.setPosition(this.geom.startX + col * (cardW + gap) + cardW / 2, topY + row * (cardH + gap) + cardH / 2);
     });
   }
 
@@ -180,7 +194,7 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     cfg.choices.forEach((ch, i) => {
       const row = Math.floor(i / cols);
       const col = i % cols;
-      this.cards.push({ c: this.makeCard(startX + col * (cardW + gap), topY + row * (cardH + gap) + cardH / 2, ch), choice: ch });
+      this.cards.push({ c: this.makeCard(startX + col * (cardW + gap) + cardW / 2, topY + row * (cardH + gap) + cardH / 2, ch), choice: ch });
     });
   }
 
@@ -193,8 +207,13 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
     bg.fillStyle(0x93a3b8, 0.5);
     bg.fillRoundedRect(-cardW / 2, cardH / 2 - 8, cardW, 8, 4);
-    const icon = this.add.text(0, -16, ch.icon, txt(44, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
-    const label = this.add.text(0, 30, t(ch.key), txt(22, "#1e293b", { bold: true, shadow: false, wrap: cardW - 16 })).setOrigin(0.5);
+    // #1093 — content scales with cardH (69px on short phones) so the icon and
+    // label never clip outside a shrunken card (the 118px-card y was hard-coded).
+    const iconY = Math.round(-cardH * 0.135); // -16 at cardH 118
+    const labelY = Math.round(cardH * 0.254); // +30 at cardH 118
+    const iconSize = Math.min(44, Math.max(30, Math.round(cardH * 0.42)));
+    const icon = this.add.text(0, iconY, ch.icon, txt(iconSize, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
+    const label = this.add.text(0, labelY, t(ch.key), txt(22, "#1e293b", { bold: true, shadow: false, wrap: cardW - 16 })).setOrigin(0.5);
     const c = this.add.container(x, y, [bg, icon, label]);
     c.setSize(cardW, cardH);
     c.setInteractive({ useHandCursor: true });
