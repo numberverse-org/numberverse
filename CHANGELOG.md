@@ -1,3 +1,16 @@
+## 15 Aug 2026 — 0.62.0 (fix: audio nonzero-floor (#827), haptics reduced-motion (#828), watchdog window (#829), leading-minus naturalize (#830), master SFX mute (#831))
+
+c569158 Merge #831: master SFX mute tied to TTS off
+e801d35 Merge #830
+8676ed2 Merge #829
+4620e4a Merge #828
+1eb944a Merge #827
+bc89d8f 🔇 audio: master SFX mute tied to TTS off (#831)
+3da435d 🗣️ speech: naturalize leading minus ('-5' → 'minus five') (#830)
+0bd0523 🗣️ neuralVoice: watchdog window no smaller than arm; rearm after fetch phase (#829)
+2385b69 📳 haptics: respect prefersReducedMotion in haptic() (#828)
+1c49ee9 🔊 audio: nonzero gain floor prevents exponentialRamp RangeError on vol=0 (#827)
+
 ## 15 Aug 2026 — 0.61.0 (refactor: DragReorderScene shared base — 6 scenes migrated, 902 LOC dedup (#1146))
 
 a738952 Merge nv-1146: DragReorderScene shared base, 6 scenes migrated (#1146)
