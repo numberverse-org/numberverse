@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.6 (⚡ #1122 journey: cache journeyStops + memoized journey derivations — no catalog re-filter per render)";
-export const APP_VERSION = "0.53.6";
+export const APP_BUILD = "14 Aug 2026 · 0.53.7 (⚡ #1123 moniPlanFor: cached plan — one 305-map fold per step, not per call)";
+export const APP_VERSION = "0.53.7";

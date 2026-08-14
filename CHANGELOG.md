@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.7 (⚡ #1123 moniPlanFor: cached plan — one 305-map fold per step, not per call)
+
+14c52ea ⚡ #1123 moniPlanFor: cache the plan on (kidId, store refs, 60s bucket)
+
 ## 14 Aug 2026 — 0.53.6 (⚡ #1122 journey: cache journeyStops + memoized journey derivations — no catalog re-filter per render)
 
 bbef1b8 ⚡ #1122 journey: cache journeyStops list + memoize render-site derivations
