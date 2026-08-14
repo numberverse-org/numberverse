@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.60.0 (feat: memory recall engine, drag-sort economy (13 BinSort subclasses), real-key KeyboardExplorer (#1141 #1145 #1139))";
-export const APP_VERSION = "0.60.0";
+export const APP_BUILD = "15 Aug 2026 · 0.61.0 (refactor: DragReorderScene shared base — 6 scenes migrated, 902 LOC dedup (#1146))";
+export const APP_VERSION = "0.61.0";

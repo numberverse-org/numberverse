@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.61.0 (refactor: DragReorderScene shared base — 6 scenes migrated, 902 LOC dedup (#1146))
+
+a738952 Merge nv-1146: DragReorderScene shared base, 6 scenes migrated (#1146)
+67da449 🛠️ reorder engine: DragReorderScene shared base, 6 scenes migrated, 902 LOC dedup (#1146)
+
 ## 15 Aug 2026 — 0.60.0 (feat: memory recall engine, drag-sort economy (13 BinSort subclasses), real-key KeyboardExplorer (#1141 #1145 #1139))
 
 290d662 merge #1139: KeyboardExplorer real keys
