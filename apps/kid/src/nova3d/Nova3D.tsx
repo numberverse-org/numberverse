@@ -18,18 +18,31 @@
  *   • 3D-native: tap the floor → Nova walks there (walk clip + rotation);
  *     tap Nova → pet; Feed / Pet / Bathe play natively; dress-up tints the
  *     shared KTX2 atlas.
+ *
+ * #689 wires the store (unchanged) so growth shows in 3D:
+ *   • petStage 0 renders the egg; 1→3 scale the owl up (hatch→young→grown);
+ *     species tints the feathers + shows its evolution emoji badge
+ *   • the equipped outfit attaches as 3D accessories (Outfit3D.tsx)
+ *   • the coin badge reads nova.coins (rewards still capped by the store)
+ *   • the growth garden renders as 3D plants in the garden room, and new
+ *     growth is celebrated — no silent dead-ends
  */
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { ACTIVITIES } from "../game/activities";
+import { emptyGarden } from "../game/garden";
 import { getAppLang } from "../game/locale";
 import { ROOMS } from "../game/rooms";
 import { prefersReducedMotion } from "../game/reducedMotion";
 import { STR } from "../i18n";
+import { defaultNova, speciesById, speciesEmoji, useKidStore } from "../store";
 import { OrbitCamera } from "./camera";
+import { Egg3D } from "./Egg3D";
+import { Garden3D } from "./Garden3D";
 import { RoomLights } from "./lighting";
 import { is2DGame, rigFor } from "./OwlRig";
+import { Outfit3D } from "./Outfit3D";
 import { Nova } from "./OwlModel";
 import { Room, ROOM_THEMES } from "./Room";
 
@@ -122,14 +135,24 @@ function EmojiBurst({ burst }: { burst: Burst | null }) {
   );
 }
 
+
+/* ── #689 egg→grown per species: 0=egg 1=hatch 2=young 3=grown ── */
+
+const STAGE_SCALE = [0, 0.55, 0.75, 0.95] as const;
+const SPECIES_TINT: Record<string, string | undefined> = {
+  owl: undefined, cat: "#f0a868", peacock: "#2a9d8f", dragon: "#6abf6a",
+};
+
 /* ── the 3D home room ── */
 
 interface Nova3DProps {
   /** #688 — a tapped 2D-only mini-game routes back to the 2D home */
   onPlay2d?: () => void;
+  /** #689 — the active kid (store keys: nova / garden / coins) */
+  kidId?: string;
 }
 
-export default function Nova3D({ onPlay2d }: Nova3DProps = {}) {
+export default function Nova3D({ onPlay2d, kidId = "" }: Nova3DProps = {}) {
   const reduced = prefersReducedMotion();
   const lang = getAppLang() === "bn" ? "bn" : "en";
   const t = STR[lang];
@@ -144,6 +167,36 @@ export default function Nova3D({ onPlay2d }: Nova3DProps = {}) {
   const walkId = useRef(0);
   const hintTimer = useRef<number | null>(null);
   const [showWalkHint, setShowWalkHint] = useState(false);
+
+  /* ── #689 the store drives the 3D pet (read-only — rewards stay capped) ── */
+  const nova = useKidStore((s) => s.nova[kidId]) ?? defaultNova();
+  const garden = useKidStore((s) => s.garden[kidId]) ?? emptyGarden();
+  const petStage = Math.max(0, Math.min(3, nova.petStage));
+  const grown = petStage > 0; // egg vs owl
+  const owlScale = STAGE_SCALE[petStage] ?? 0.95;
+  const effectiveTint = tint ?? SPECIES_TINT[nova.species]; // dress-up wins, else species
+  const equipped = grown ? nova.equipped : "none";
+  const sp = speciesById(nova.species);
+  const speciesLabel = lang === "bn" ? sp.nameBn : sp.name;
+
+  /* garden growth celebration — new plants appear visibly, never silent */
+  const GARDEN_LS = (id: string) => `nv_3d_garden_${id}`;
+  const [gardenToast, setGardenToast] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const prev = Number(window.localStorage.getItem(GARDEN_LS(kidId)) ?? "-1");
+      if (prev >= 0 && garden.plants.length > prev) {
+        setGardenToast(t.islandGardenGrew);
+        burstId.current += 1;
+        setBurst({ id: burstId.current, emoji: ["🌱", "🌷", "⭐"] });
+      }
+      window.localStorage.setItem(GARDEN_LS(kidId), String(garden.plants.length));
+    } catch {
+      /* storage blocked — growth simply isn't tracked this visit */
+    }
+    const timer = window.setTimeout(() => setGardenToast(null), 4200);
+    return () => window.clearTimeout(timer);
+  }, [garden.plants.length, kidId, t.islandGardenGrew]);
 
   const theme = ROOM_THEMES[roomIdx];
   const room2d = ROOMS.find((r) => r.id === theme.id);
@@ -218,27 +271,49 @@ export default function Nova3D({ onPlay2d }: Nova3DProps = {}) {
         <ContextGuard />
         <RoomLights theme={theme} />
         <Room theme={theme} />
-        <Nova
-          clip={clip}
-          morph={morph}
-          reduced={reduced}
-          position={[0, 0.04, 0]}
-          scale={0.95}
-          tint={tint}
-          walkTo={walkTo}
-          onPet={onPet}
-        />
-        {/* invisible floor: tap to walk Nova there (#688) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} onClick={onFloorClick}>
-          <planeGeometry args={[15, 13]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
+        {grown ? (
+          <Nova
+            clip={clip}
+            morph={morph}
+            reduced={reduced}
+            position={[0, 0.04, 0]}
+            scale={owlScale}
+            tint={effectiveTint}
+            walkTo={walkTo}
+            onPet={onPet}
+          >
+            {/* #689 the equipped outfit rides the owl group */}
+            {equipped !== "none" && <Outfit3D outfitId={equipped} />}
+          </Nova>
+        ) : (
+          <Egg3D hopping={actionId !== null} reduced={reduced} />
+        )}
+        {/* invisible floor: tap to walk Nova there (#688, grown pets only) */}
+        {grown && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} onClick={onFloorClick}>
+            <planeGeometry args={[15, 13]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        )}
+        {/* #689 the growth garden lives in its room (new plants = visible reward) */}
+        {theme.id === "garden" && <Garden3D garden={garden} position={[2.8, 0.02, 2.6]} />}
         <OrbitCamera reduced={reduced} />
       </Canvas>
 
-      {/* #688 floating emoji burst + walk hint */}
+      {/* #688 floating emoji burst + #689 garden-growth toast + walk hint */}
       <EmojiBurst burst={burst} />
+      {gardenToast && <p className="island-walkhint">{gardenToast}</p>}
       {showWalkHint && <p className="island-walkhint">👣 {t.islandWalkHint}</p>}
+
+      {/* #689 pet badge: evolution emoji + coin count (rewards stay capped) */}
+      <div className="island-petbadge" aria-label={`${speciesLabel} · ${t.islandCoins} ${nova.coins}`}>
+        <span className="island-petemoji" aria-hidden="true">
+          {speciesEmoji(nova.species, petStage)}
+        </span>
+        <span className="island-coin" aria-hidden="true">
+          🪙 {nova.coins}
+        </span>
+      </div>
 
       {/* #688 dress-up: feather tint swatches (natural/gold/rosy/mint) */}
       <div className="island-dress" role="group" aria-label={t.islandDressup}>

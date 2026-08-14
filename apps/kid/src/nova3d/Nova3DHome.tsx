@@ -20,6 +20,7 @@ const Nova3D = lazy(() => import("./Nova3D"));
 
 interface Props {
   kidName: string;
+  kidId?: string; // #689 store keys (nova / garden / coins)
   onBack2d: () => void; // → 2D Nova home (pet games etc.)
   onExit: () => void; // → the app home
 }
@@ -44,7 +45,7 @@ class IslandErrorBoundary extends Component<
   }
 }
 
-export default function Nova3DHome({ kidName, onBack2d, onExit }: Props) {
+export default function Nova3DHome({ kidName, kidId, onBack2d, onExit }: Props) {
   const lang = getAppLang() === "bn" ? "bn" : "en";
   const t = STR[lang];
   const [noWebgl] = useState(() => !webglAvailable());
@@ -95,7 +96,7 @@ export default function Nova3DHome({ kidName, onBack2d, onExit }: Props) {
           }
         >
           <div className="island-canvas">
-            <Nova3D onPlay2d={onBack2d} />
+            <Nova3D onPlay2d={onBack2d} kidId={kidId} />
           </div>
         </Suspense>
       </IslandErrorBoundary>

@@ -729,6 +729,9 @@ export interface Strings {
   islandDressupRosy: string;
   islandDressupMint: string;
   islandWalkHint: string;
+  /* #689 — store wiring badges */
+  islandCoins: string;
+  islandGardenGrew: string;
 }
 
 export const STR: Record<Lang, Strings> = {
@@ -1405,6 +1408,8 @@ export const STR: Record<Lang, Strings> = {
     islandDressupRosy: "Rosy",
     islandDressupMint: "Mint",
     islandWalkHint: "Tap the floor to walk Nova",
+    islandCoins: "Coins",
+    islandGardenGrew: "Your garden grew!",
   },
   bn: {
     appTagline: "আপনার সন্তানরা স্মার্টভাবে শিখুক — বাংলা, ইংরেজি, গণিত ও আরও।",
@@ -2079,6 +2084,8 @@ export const STR: Record<Lang, Strings> = {
     islandDressupRosy: "গোলাপি",
     islandDressupMint: "পুদিনা",
     islandWalkHint: "নোভাকে হাঁটাতে মেঝেতে টোকা দাও",
+    islandCoins: "মুদ্রা",
+    islandGardenGrew: "তোমার বাগান বড় হয়েছে!",
   },
 };
 

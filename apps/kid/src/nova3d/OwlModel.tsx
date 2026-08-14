@@ -13,7 +13,7 @@
  *   • the single SkinnedMesh casts the room's one soft shadow.
  */
 import { useFrame, useThree, useLoader } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
@@ -37,6 +37,8 @@ interface NovaProps {
   walkTo?: { x: number; z: number; id: number } | null;
   /** #688 tap-the-owl → pet reaction */
   onPet?: () => void;
+  /** #689 outfit accessories render inside the owl group */
+  children?: ReactNode;
 }
 
 export function Nova({
@@ -48,6 +50,7 @@ export function Nova({
   tint,
   walkTo,
   onPet,
+  children,
 }: NovaProps) {
   const gl = useThree((s) => s.gl);
   const gltf = useLoader(GLTFLoader, URL, (loader) => {
@@ -145,6 +148,7 @@ export function Nova({
           onPet?.();
         }}
       />
+      {children}
     </group>
   );
 }

@@ -4533,6 +4533,7 @@ export default function App() {
     return (
       <Nova3DHome
         kidName={kid?.name ?? ""}
+        kidId={kid?.id ?? ""}
         onBack2d={() => setScreen("nova")}
         onExit={() => setScreen("home")}
       />
