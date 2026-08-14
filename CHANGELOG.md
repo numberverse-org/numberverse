@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.39.0 (fix blue screen + splash Nova SVG (regressions from #591/#589))
+
+aa981eb 🐛 fix blue screen (HomeScreen bare JSX → proper return) + splash Nova SVG (unquoted attrs → TDZ cycle)
+
 ## 14 Aug 2026 — 0.38.0 (glTF asset pipeline: meshopt-compressed Nova owl (35 KB) precached offline (#685))
 
 2a31d01 🗂️ #685: glTF asset pipeline — procedural owl source → meshopt-optimized nova.glb
