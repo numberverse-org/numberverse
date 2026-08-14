@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.21 (responsive: primary columns scale clamp(440px,92vw,680px) for foldables/tablets (#1090))
+
+5151b9a 💻 responsive: scale primary columns to 680px on large screens (#1090)
+
 ## 15 Aug 2026 — 0.53.20 (🧹 #1086 shared hintWrongLocal: 4 addition-fact scenes now import one hint-renderer from hints.ts instead of 4 verbatim copies)
 
 c2123bf 🧹 #1086: extract the byte-identical hintWrongLocal tile-reveal helper into hints.ts — FactsAdd/SubFacts/Doubles/MakeTen now import one shared hint-renderer (BalloonPop left as-is: it's a drifting-balloon arcade, not a tile drill — the issue's 'all 5' premise was false)
