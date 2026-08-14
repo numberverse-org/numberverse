@@ -172,6 +172,50 @@
 .world-card.locked { opacity: 0.55; cursor: default; }
 .world-card.locked:active { transform: none; }
 .world-card.locked .world-state { color: rgba(255, 255, 255, 0.5); }
+/* #1164 — intermediate land-boss gate: the world card keeps its own button,
+   so the boss CTA + beaten mark live in a sibling wrapper (never nested). */
+.world-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.world-card-wrap .world-card { width: 100%; }
+.boss-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 209, 102, 0.55);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.22), rgba(255, 138, 76, 0.12));
+  color: #ffe9b0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.boss-btn:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18); }
+.boss-beaten {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(46, 196, 182, 0.5);
+  background: rgba(46, 196, 182, 0.14);
+  color: #b8f5ee;
+  font-size: 12px;
+  font-weight: 800;
+}
+.world-card-wrap .boss-btn,
+.world-card-wrap .boss-beaten { width: 100%; }
 
 /* ---- learning journey (path map) ---- */
 .view-toggle {
