@@ -72,10 +72,10 @@ const AddKidForm = lazy(() => import("./components/AddKidForm"));
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.43.0 (deferred print cluster: parent-panel practice worksheet generator + printable flashcard QR deck (offline print-to-PDF))";
+const APP_BUILD = "14 Aug 2026 · 0.44.0 (retention hooks: quest+calendar in Nova #765, affection decay+best friend #766, cap-full come-back #767, freeze visibility #768, garden teaser #769, newgame quest hint #770)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.43.0";
+const APP_VERSION = "0.44.0";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar" | "worksheet" | "flashcards";
 /** Rounds per skill before advancing to the next skill in a world.
