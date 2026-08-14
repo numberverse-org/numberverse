@@ -8,12 +8,14 @@ import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, modernAnswerButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
+import { UPPERCASE, LOWERCASE } from "./englishLiteracy";
 
 const LEVELS = GAMES.find((g) => g.id === "game-casematch")?.difficultyLevels ?? [4, 4, 4, 4, 4, 4];
 const ROUNDS_TO_FINISH = 3;
 const QUESTIONS_PER_ROUND = 6;
-const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const LOWER = "abcdefghijklmnopqrstuvwxyz";
+// #1176 — the case strings come from the shared alphabet module.
+const UPPER = UPPERCASE;
+const LOWER = LOWERCASE;
 
 function shuffle<T>(a: T[]): T[] {
   for (let i = a.length - 1; i > 0; i--) {

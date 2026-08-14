@@ -9,6 +9,7 @@ import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
+import { ALPHA_ORDER_SETS } from "./englishLiteracy";
 
 const LEVELS = GAMES.find((g) => g.id === "game-alphabet")?.difficultyLevels ?? [4, 4, 5, 5, 6, 6];
 const ROUNDS_TO_FINISH = 3;
@@ -21,39 +22,11 @@ function digit(n: number): string {
 }
 
 // ── Levelled word sets ──
+// #1176 — the ABC-order sets live in the shared englishLiteracy module, so the
+// word pool can never drift from the letter-sound sets.
 // 4 cards: all distinct first letters (band-1 easy). 5 cards: longer, still
 // distinct firsts. 6 cards: shared first letters force 2nd/3rd-letter compare.
-const SETS_4: string[][] = [
-  ["apple", "ball", "cat", "dog"],
-  ["ant", "bee", "cow", "fox"],
-  ["bag", "car", "duck", "egg"],
-  ["bird", "cake", "fish", "hat"],
-  ["bear", "cow", "deer", "frog"],
-  ["boat", "cup", "drum", "goat"],
-  ["book", "cake", "door", "egg"],
-  ["bus", "cat", "dog", "ear"],
-];
-const SETS_5: string[][] = [
-  ["apple", "banana", "cherry", "grape", "mango"],
-  ["ball", "drum", "kite", "lion", "tree"],
-  ["bridge", "castle", "forest", "garden", "river"],
-  ["bread", "cheese", "honey", "mango", "rice"],
-  ["cow", "duck", "frog", "lion", "tiger"],
-  ["green", "orange", "purple", "red", "yellow"],
-  ["brother", "father", "mother", "sister", "uncle"],
-  ["autumn", "garden", "spring", "summer", "winter"],
-];
-const SETS_6: string[][] = [
-  ["ant", "apple", "ball", "bat", "cat", "dog"],
-  ["big", "bird", "book", "bus", "cake", "car"],
-  ["bear", "bee", "bird", "boat", "book", "bus"],
-  ["cat", "cake", "cap", "dog", "egg", "fish"],
-  ["apple", "ant", "ball", "bear", "cat", "cow"],
-  ["duck", "dog", "drum", "egg", "fish", "fox"],
-  ["hat", "hen", "hill", "sun", "tree", "water"],
-  ["ice", "jam", "jump", "kite", "leaf", "moon"],
-];
-const SETS: Record<number, string[][]> = { 4: SETS_4, 5: SETS_5, 6: SETS_6 };
+const SETS: Record<number, string[][]> = ALPHA_ORDER_SETS;
 
 /**
  * Alphabetical order race (#185).

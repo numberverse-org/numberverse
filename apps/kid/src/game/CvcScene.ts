@@ -9,26 +9,12 @@ import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { ensureAssets } from "./svgAssets";
+import { CVC_POOL } from "./wordBanks";
 
 const LEVELS = GAMES.find((g) => g.id === "game-cvc")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
-const WORDS = [
-  { en: "cat", icon: "cat" },
-  { en: "dog", icon: "dog" },
-  { en: "sun", icon: "sun" },
-  { en: "hat", icon: "hat" },
-  { en: "bed", icon: "bed" },
-  { en: "car", icon: "car" },
-  { en: "bus", icon: "bus" },
-  { en: "egg", icon: "egg2" },
-  { en: "pig", icon: "pig" },
-  { en: "fox", icon: "fox" },
-  { en: "cow", icon: "cow" },
-  { en: "owl", icon: "owl" },
-  { en: "bat", icon: "bat" },
-  { en: "rat", icon: "rat" },
-  { en: "hen", icon: "hen" },
-  { en: "web", icon: "web" },
-];
+// #1167 — the shared CVC bank: this scene's tap-the-picture words are the SAME
+// pool the spelling builder uses (one edit propagates to both).
+const WORDS: { en: string; icon: string }[] = CVC_POOL.map((w) => ({ en: w.word, icon: w.icon! }));
 const CARD_RADIUS = 56;
 const ROUNDS_TO_FINISH = 3;
 

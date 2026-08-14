@@ -9,36 +9,11 @@ import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { ensureAssets, assetIcon } from "./svgAssets";
+import { ALPHABET } from "./englishLiteracy";
 
 const LEVELS = GAMES.find((g) => g.id === "game-enletters")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
-const LETTERS = [
-  { ch: "A", en: "A", hint: "Apple", icon: "apple" },
-  { ch: "B", en: "B", hint: "Ball", icon: "ball" },
-  { ch: "C", en: "C", hint: "Cat", icon: "cat" },
-  { ch: "D", en: "D", hint: "Dog", icon: "dog" },
-  { ch: "E", en: "E", hint: "Egg", icon: "egg2" },
-  { ch: "F", en: "F", hint: "Fish", icon: "fish" },
-  { ch: "G", en: "G", hint: "Goat", icon: "goat" },
-  { ch: "H", en: "H", hint: "Hat", icon: "hat" },
-  { ch: "I", en: "I", hint: "Ice", icon: "ice" },
-  { ch: "J", en: "J", hint: "Jam", icon: "strawberry" },
-  { ch: "K", en: "K", hint: "Kite", icon: "kite" },
-  { ch: "L", en: "L", hint: "Lion", icon: "lion" },
-  { ch: "M", en: "M", hint: "Moon", icon: "moon" },
-  { ch: "N", en: "N", hint: "Nest", icon: "owl" },
-  { ch: "O", en: "O", hint: "Orange", icon: "orange" },
-  { ch: "P", en: "P", hint: "Pig", icon: "pig" },
-  { ch: "Q", en: "Q", hint: "Queen", icon: "trophy" },
-  { ch: "R", en: "R", hint: "Rabbit", icon: "frog" },
-  { ch: "S", en: "S", hint: "Sun", icon: "sun" },
-  { ch: "T", en: "T", hint: "Turtle", icon: "turtle" },
-  { ch: "U", en: "U", hint: "Umbrella", icon: "flower" },
-  { ch: "V", en: "V", hint: "Van", icon: "car" },
-  { ch: "W", en: "W", hint: "Wave", icon: "wave" },
-  { ch: "X", en: "X", hint: "X-ray", icon: "bolt" },
-  { ch: "Y", en: "Y", hint: "Yarn", icon: "ball" },
-  { ch: "Z", en: "Z", hint: "Zebra", icon: "tiger" },
-];
+// #1176 — the letter-sound targets come from the ONE shared alphabet module.
+const LETTERS = ALPHABET;
 const CARD_RADIUS = 58;
 const ROUNDS_TO_FINISH = 3;
 

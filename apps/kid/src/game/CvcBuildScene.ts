@@ -9,22 +9,17 @@ import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_PRIMARY, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
+import { CVC_BUILD_POOL } from "./wordBanks";
 
 const LEVELS = GAMES.find((g) => g.id === "game-cvcbuild")?.difficultyLevels ?? [0, 0, 0, 1, 1, 1];
 const ROUNDS_TO_FINISH = 3;
 const QUESTIONS_PER_ROUND = 4;
 const SLOT_H = 66;
 
-/** 20 true-CVC words, all with 3 DISTINCT letters so the drag build is unambiguous. */
-const WORDS: { word: string; emoji: string }[] = [
-  { word: "cat", emoji: "🐱" }, { word: "dog", emoji: "🐶" }, { word: "sun", emoji: "☀️" },
-  { word: "hat", emoji: "🎩" }, { word: "bed", emoji: "🛏️" }, { word: "car", emoji: "🚗" },
-  { word: "bus", emoji: "🚌" }, { word: "pig", emoji: "🐷" }, { word: "fox", emoji: "🦊" },
-  { word: "cow", emoji: "🐮" }, { word: "owl", emoji: "🦉" }, { word: "bat", emoji: "🦇" },
-  { word: "rat", emoji: "🐀" }, { word: "hen", emoji: "🐔" }, { word: "web", emoji: "🕸️" },
-  { word: "ice", emoji: "🧊" }, { word: "jam", emoji: "🍓" }, { word: "bug", emoji: "🐛" },
-  { word: "pin", emoji: "📌" }, { word: "van", emoji: "🚐" },
-];
+/** 20 true-CVC words (16 shared with the read scene + 5 builder extras), all
+ *  with 3 DISTINCT letters so the drag build is unambiguous. #1167 — derived
+ *  from the shared CVC bank instead of a hand-copied second copy. */
+const WORDS: { word: string; emoji: string }[] = CVC_BUILD_POOL.map((w) => ({ word: w.word, emoji: w.emoji }));
 const EXTRA_LETTERS = ["p", "n", "r", "b", "m", "l", "k"];
 
 /**

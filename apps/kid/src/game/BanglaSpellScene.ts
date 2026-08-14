@@ -8,36 +8,19 @@ import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, correctButton, ringCorrect, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
+import { BANGLA_KID_WORDS } from "./wordBanks";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnspelling")?.difficultyLevels ?? [2, 3, 3, 4, 4, 5];
 const ROUNDS_TO_FINISH = 3;
 const QUESTIONS_PER_ROUND = 3;
-/** Band-1 kid words. `letters` are the spelling units as they appear on a tile
- *  (base letter + attached matra sign) — the way NCTB kids spell aloud. */
-const WORDS: { emoji: string; word: string; letters: string[] }[] = [
-  { emoji: "🍌", word: "কলা", letters: ["ক", "লা"] },
-  { emoji: "📖", word: "বই", letters: ["ব", "ৈ"] },
-  { emoji: "🍚", word: "ভাত", letters: ["ভা", "ত"] },
-  { emoji: "🌺", word: "ফুল", letters: ["ফু", "ল"] },
-  { emoji: "🥭", word: "আম", letters: ["আ", "ম"] },
-  { emoji: "👩", word: "মা", letters: ["মা"] },
-  { emoji: "🐯", word: "বাঘ", letters: ["বা", "ঘ"] },
-  { emoji: "🐟", word: "মাছ", letters: ["মা", "ছ"] },
-  { emoji: "🥚", word: "ডিম", letters: ["ডি", "ম"] },
-  { emoji: "🏠", word: "বাড়ি", letters: ["বা", "ড়ি"] },
-  { emoji: "🚂", word: "রেল", letters: ["রে", "ল"] },
-  { emoji: "🌳", word: "গাছ", letters: ["গা", "ছ"] },
-  { emoji: "🪁", word: "ঘুড়ি", letters: ["ঘু", "ড়ি"] },
-  { emoji: "🐘", word: "হাতি", letters: ["হা", "তি"] },
-  { emoji: "🌧️", word: "বৃষ্টি", letters: ["বৃ", "ষ্টি"] },
-  { emoji: "☀️", word: "রোদ", letters: ["রো", "দ"] },
-  { emoji: "⛰️", word: "পাহাড়", letters: ["পা", "হা", "ড়"] },
-  { emoji: "🍉", word: "তরমুজ", letters: ["ত", "র", "মু", "জ"] },
-  { emoji: "🦆", word: "হাঁস", letters: ["হাঁ", "স"] },
-  { emoji: "🛶", word: "নৌকা", letters: ["নৌ", "কা"] },
-  { emoji: "🍯", word: "মধু", letters: ["ম", "ধু"] },
-  { emoji: "🐚", word: "ঝিনুক", letters: ["ঝি", "নু", "ক"] },
-];
+/** Band-1 kid words. #1168 — the SAME canonical bank as the read scene; the
+ *  `letters` (base letter + attached matra sign tiles) and emoji come from the
+ *  shared entry so a word edit propagates to read + spell + riddles at once. */
+const WORDS: { emoji: string; word: string; letters: string[] }[] = BANGLA_KID_WORDS.filter((w) => w.letters).map((w) => ({
+  emoji: w.emoji,
+  word: w.bn,
+  letters: w.letters!,
+}));
 /** Common Bangla spelling units used as distractors. */
 const DISTRACTORS = ["খা", "গো", "চা", "টি", "পো", "যা", "শে", "ড়া", "টি", "ঁ", "।"];
 

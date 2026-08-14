@@ -8,20 +8,11 @@ import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
+import { BANGLA_DIGITS } from "./wordBanks";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnnumbers")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
-const DIGITS = [
-  { ch: "০", word: "শূন্য" },
-  { ch: "১", word: "এক" },
-  { ch: "২", word: "দুই" },
-  { ch: "৩", word: "তিন" },
-  { ch: "৪", word: "চার" },
-  { ch: "৫", word: "পাঁচ" },
-  { ch: "৬", word: "ছয়" },
-  { ch: "৭", word: "সাত" },
-  { ch: "৮", word: "আট" },
-  { ch: "৯", word: "নয়" },
-];
+// #1172 — the digit glyphs + spoken names come from the shared number bank.
+const DIGITS = BANGLA_DIGITS;
 const CARD_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 

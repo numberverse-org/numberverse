@@ -9,48 +9,17 @@ import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, gridLayout, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 import { ensureAssets } from "./svgAssets";
+import { BANGLA_KID_WORDS, BANGLA_FAMILY_WORDS } from "./wordBanks";
 
 const LEVELS = GAMES.find((g) => g.id === "game-bnwords")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
 export type BnWord = { bn: string; en: string; icon: string };
-const WORDS: BnWord[] = [
-  { bn: "মাছ", en: "Fish", icon: "fish" },
-  { bn: "বাঘ", en: "Tiger", icon: "tiger" },
-  { bn: "কলা", en: "Banana", icon: "banana" },
-  { bn: "গরু", en: "Cow", icon: "cow" },
-  { bn: "হাঁস", en: "Duck", icon: "duck" },
-  { bn: "ফুল", en: "Flower", icon: "flower2" },
-  { bn: "পাখি", en: "Bird", icon: "bird" },
-  { bn: "আপেল", en: "Apple", icon: "apple" },
-  { bn: "ঘোড়া", en: "Horse", icon: "horse" },
-  { bn: "ছাগল", en: "Goat", icon: "goat" },
-  { bn: "হাতি", en: "Elephant", icon: "elephant" },
-  { bn: "কুকুর", en: "Dog", icon: "dog" },
-  { bn: "বিড়াল", en: "Cat", icon: "cat" },
-  { bn: "হরিণ", en: "Deer", icon: "deer" },
-  { bn: "প্রজাপতি", en: "Butterfly", icon: "butterfly" },
-  { bn: "পেঙ্গুইন", en: "Penguin", icon: "penguin" },
-  { bn: "তোতা", en: "Parrot", icon: "parrot" },
-  { bn: "আঙুর", en: "Grapes", icon: "grapes" },
-  { bn: "স্ট্রবেরি", en: "Strawberry", icon: "strawberry" },
-  { bn: "চাঁদ", en: "Moon", icon: "moon" },
-];
+// #1168 — the read-scene words are the CANONICAL bank (the same spelling the
+// spelling-builder and riddle answers use), filtered to the picture-icon set.
+const WORDS: BnWord[] = BANGLA_KID_WORDS.filter((w) => w.icon).map(({ bn, en, icon }) => ({ bn, en, icon: icon! }));
 /** Family members — same read-the-word-tap-the-picture game, family vocab.
  *  Icons are pure-emoji assets (no SVG), so they render instantly and never
  *  need rasterizing. Mode "family" is set by App for the bn-family-words skill. */
-export const FAMILY_WORDS: BnWord[] = [
-  { bn: "মা", en: "Mom", icon: "mom" },
-  { bn: "বাবা", en: "Dad", icon: "dad" },
-  { bn: "ভাই", en: "Brother", icon: "brother" },
-  { bn: "বোন", en: "Sister", icon: "sister" },
-  { bn: "দাদা", en: "Grandpa", icon: "grandpa" },
-  { bn: "দাদি", en: "Grandma", icon: "grandma" },
-  { bn: "নানা", en: "Grandpa", icon: "grandpa" },
-  { bn: "নানি", en: "Grandma", icon: "grandma" },
-  { bn: "চাচা", en: "Uncle", icon: "uncle" },
-  { bn: "খালা", en: "Aunt", icon: "aunt" },
-  { bn: "ভাতিজা", en: "Nephew", icon: "cousin" },
-  { bn: "ভাতিজি", en: "Niece", icon: "cousin" },
-];
+export const FAMILY_WORDS: BnWord[] = BANGLA_FAMILY_WORDS.filter((w) => w.icon).map(({ bn, en, icon }) => ({ bn, en, icon: icon! }));
 const CARD_RADIUS = 56;
 const ROUNDS_TO_FINISH = 3;
 

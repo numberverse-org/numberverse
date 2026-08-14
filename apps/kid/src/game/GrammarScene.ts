@@ -8,15 +8,14 @@ import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
+import { GRAMMAR_NOUNS, GRAMMAR_VERBS } from "./wordBanks";
 
 const LEVELS = GAMES.find((g) => g.id === "game-grammar")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
+// #1171 — the noun/verb columns are STABLE SUBSETS of the shared
+// high-frequency word bank, so a curriculum word edit lands in one place.
 const WORDS = [
-  { word: "dog", type: "noun" }, { word: "run", type: "verb" },
-  { word: "book", type: "noun" }, { word: "sing", type: "verb" },
-  { word: "cat", type: "noun" }, { word: "jump", type: "verb" },
-  { word: "teacher", type: "noun" }, { word: "read", type: "verb" },
-  { word: "tree", type: "noun" }, { word: "eat", type: "verb" },
-  { word: "school", type: "noun" }, { word: "write", type: "verb" },
+  ...GRAMMAR_NOUNS.map((word) => ({ word, type: "noun" as const })),
+  ...GRAMMAR_VERBS.map((word) => ({ word, type: "verb" as const })),
 ];
 const BUTTON_RADIUS = 60;
 const ROUNDS_TO_FINISH = 3;
