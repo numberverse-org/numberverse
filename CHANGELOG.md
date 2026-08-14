@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.5 (⚡ worldProgress: per-band unit index — one pass over that band's units (#1121))
+
+1c7242e ⚡ #1121 worldProgress: per-band unit index — one pass over that band's units
+
 ## 14 Aug 2026 — 0.53.4 (⚡ totalMastered: cache 305-skill catalog as unit groups — no more re-filter per render (#1120))
 
 37ca580 ⚡ #1120 totalMastered: cache the 305-skill catalog as unit groups
