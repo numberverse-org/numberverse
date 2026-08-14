@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.18 (🐛 #1118 voice-dl-banner: constrained to the 440px home column (was a shrink-wrapped 224px pill) + animated entry — one-time first-run voice-download mount no longer reflows the Play button)";
-export const APP_VERSION = "0.53.18";
+export const APP_BUILD = "14 Aug 2026 · 0.53.19 (🐛 #1085 ShapeCatcherScene is skill-aware: en-shapes teaches the English label (forced en voice) even in bn UI; math shapes keeps localized recognition — no more 'ট্যাপ করো circle!' mixing)";
+export const APP_VERSION = "0.53.19";

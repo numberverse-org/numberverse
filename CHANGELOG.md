@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.19 (🐛 #1085 ShapeCatcherScene is skill-aware: en-shapes teaches the English label (forced en voice) even in bn UI; math shapes keeps localized recognition — no more 'ট্যাপ করো circle!' mixing)
+
+95c7a9d 🐛 #1085: ShapeCatcherScene differentiates by skill — en-shapes (c1-english-3) now prompts+speaks the ENGLISH shape label (forced en voice) even in a bn UI; math shapes (c1-math-3) keeps localized recognition and no longer mixes 'ট্যাপ করো circle!'
+
 ## 14 Aug 2026 — 0.53.18 (🐛 #1118 voice-dl-banner: constrained to the 440px home column (was a shrink-wrapped 224px pill) + animated entry — one-time first-run voice-download mount no longer reflows the Play button)
 
 116702c 🐛 #1118: voice-dl-banner constrained to the home column (width:100%, max-width:var(--home-col-w)) + animated entry — aligns with hero/play cards and softens the one-time first-run reflow
