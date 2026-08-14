@@ -176,6 +176,7 @@ import { NegativeNumberScene } from "./NegativeNumberScene";
 import { ScienceFactsScene } from "./ScienceFactsScene";
 import { CodeLogicScene } from "./CodeLogicScene";
 import { ArcadeCatchScene } from "./ArcadeCatchScene";
+import { MemoryScene } from "./MemoryScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
 
@@ -260,6 +261,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       ScienceFactsScene,
       CodeLogicScene,
       ArcadeCatchScene,
+      MemoryScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
     input: { activePointers: 3 },

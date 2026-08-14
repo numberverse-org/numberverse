@@ -130,6 +130,8 @@ export const SKILLS: Skill[] = [
   { id: 'sub-within-10', band: 2, subject: 'math', title: 'Subtract within 10', titleBn: '১০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 10 (apples shown)', descriptionBn: '১০-এর মধ্যে বিয়োগ (আপেল দেখিয়ে)', commonCore: ['1.OA.6'], nctbCode: 'c1-math-5', classNumber: 1, game: 'game-fruitsub-10', dataMode: 'sub' },
   { id: 'number-bonds-10', band: 2, subject: 'math', title: 'Number bonds to 10', titleBn: '১০-এর জোড়া সংখ্যা', description: 'Partition numbers to 10 — the backbone of add & sub', descriptionBn: '১০-এর ভাঙা সংখ্যা — যোগ-বিয়োগের ভিত্তি', commonCore: ['K.OA.3', '1.OA.6'], nctbCode: 'c1-math-14', classNumber: 1, game: 'game-bnbonds' },
   { id: 'number-bonds-20', band: 2, subject: 'math', title: 'Number bonds to 20', titleBn: '২০-এর জোড়া সংখ্যা', description: 'Partition numbers to 20 with double ten-frames', descriptionBn: 'দুই দশ-ফ্রেমে ২০-এর ভাঙা সংখ্যা', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-15', classNumber: 1, game: 'game-bnbonds20' },
+  // #1141 — shared memory-flip engine: recall the two addends that make 10.
+  { id: 'mem-number-bonds', band: 2, subject: 'math', title: 'Number bond memory', titleBn: 'সংখ্যা জোড়ার স্মৃতি', description: 'Flip hidden cards to recall the two numbers that make 10 (3 + 7)', descriptionBn: 'লুকানো কার্ড খুলে ১০-এর জোড়ার দুটো সংখ্যা মনে করে মেলাই (৩ + ৭)', commonCore: ['K.OA.3', '1.OA.6'], nctbCode: 'c2-math-16', classNumber: 2, game: 'game-memory', challenge: true, dataLevels: [6, 8, 12, 16, 20, 20] },
   { id: 'add-within-20', band: 2, subject: 'math', title: 'Add within 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Addition facts with sums to 20 (apples shown)', descriptionBn: 'যোগফল ২০-এর মধ্যে (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-16', classNumber: 1, game: 'game-fruitadd-20', family: 'add-within-20', tier: 2, dataMode: 'add' },
   { id: 'sub-within-20', band: 2, subject: 'math', title: 'Subtract within 20', titleBn: '২০-এর মধ্যে বিয়োগ', description: 'Subtraction facts within 20 (apples shown)', descriptionBn: '২০-এর মধ্যে বিয়োগ (আপেল দেখিয়ে)', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-18', classNumber: 1, game: 'game-fruitsub-20', family: 'sub-within-20', tier: 1, dataMode: 'sub' },
   { id: 'add-to-20', band: 2, subject: 'math', title: 'Add to 20', titleBn: '২০-এর মধ্যে যোগ', description: 'Pop balloons with the right sums — abstract speed drill', descriptionBn: 'সঠিক যোগফলের বেলুন ফুটাই — দ্রুত অনুশীলন', commonCore: ['1.OA.6', '2.OA.2'], nctbCode: 'c1-math-17', classNumber: 1, game: 'game-balloonpop', family: 'add-within-20', tier: 3 },
@@ -261,6 +263,8 @@ export const SKILLS: Skill[] = [
   // Same combine mechanic as BnMatras, but the two parts are SYLLABLES of a
   // real word — the matra→words→decode ladder finally has its missing rung.
   { id: 'bn-matra-words', band: 3, subject: 'bangla', title: 'Matra words', titleBn: 'কার মিশ্রণ', description: 'Join syllables with matras into whole words (কা + টা = কাটা)', descriptionBn: 'কার দিয়ে অক্ষর জুড়ে শব্দ বানাই (কা + টা = কাটা)', commonCore: ['RF.3.3'], nctbCode: 'c3-bangla-1', classNumber: 3, game: 'game-bnmatra-words', dataMode: 'words' },
+  // #1141 — shared memory-flip engine: recall matra sign ↔ example word.
+  { id: 'mem-bangla-matra', band: 3, subject: 'bangla', title: 'Matra memory', titleBn: 'মাত্রার স্মৃতি', description: 'Flip hidden cards to match each matra sign with its example word (ি ↔ মিল)', descriptionBn: 'লুকানো কার্ড খুলে প্রতিটি মাত্রা চিহ্নের সাথে তার উদাহরণ শব্দ মনে করে মেলাই (ি ↔ মিল)', commonCore: ['RF.3.3'], nctbCode: 'c3-bangla-11', classNumber: 3, game: 'game-memory', challenge: true, dataLevels: [6, 8, 12, 16, 20, 20] },
   { id: 'bn-family-words', band: 3, subject: 'bangla', title: 'Family words', titleBn: 'পরিবারের শব্দ', description: 'Read Bangla family words (মা, বাবা, ভাই)', descriptionBn: 'পরিবারের বাংলা শব্দ পড়ি (মা, বাবা, ভাই)', commonCore: ['RF.2.4'], nctbCode: 'c2-bangla-4', classNumber: 2, game: 'game-bnwords', dataMode: 'family' },
   { id: 'bn-story-read', band: 3, subject: 'bangla', title: 'Story comprehension', titleBn: 'ছোট গল্প পড়ি', description: 'Read a mini-story, then answer a who/what question with pictures', descriptionBn: 'ছোট গল্প পড়ে ছবি দিয়ে উত্তর দিই (কে/কী)', commonCore: ['RL.2.1', 'RL.2.10'], nctbCode: 'c3-bangla-4', classNumber: 3, game: 'game-storyread' },
   { id: 'bn-punctuation', band: 3, subject: 'bangla', title: 'Punctuation', titleBn: 'যতি চিহ্ন', description: 'Tap the right punctuation to end each sentence (। ? !)', descriptionBn: 'বাক্য শেষ করার সঠিক যতি চিহ্ন টিপি (। ? !)', commonCore: ['L.3.2c'], nctbCode: 'c3-bangla-5', classNumber: 3, game: 'game-punct' },
@@ -277,6 +281,8 @@ export const SKILLS: Skill[] = [
   { id: 'en-synant', band: 3, subject: 'english', title: 'Same or opposite?', titleBn: 'একই নাকি বিপরীত?', description: 'Match synonyms (happy → glad) and antonyms (big → small) with a picture hint', descriptionBn: 'সমার্থক (happy → glad) ও বিপরীতার্থক (big → small) শব্দ মেলাই — ছবির ইঙ্গিতসহ', commonCore: ['L.3.5c'], nctbCode: 'c3-english-6', classNumber: 3, game: 'game-synant' },
   { id: 'en-irregulars', band: 3, subject: 'english', title: 'Make it plural!', titleBn: 'বহুবচন বানাও!', description: 'One foot 🦶 → two ___? Pick the irregular plural (feet, teeth, mice, children…)', descriptionBn: 'একটা foot 🦶 → দুটো ___? অনিয়মিত বহুবচন বাছো (feet, teeth, mice, children…)', commonCore: ['L.3.1b'], nctbCode: 'c3-english-7', classNumber: 3, game: 'game-irregulars' },
   { id: 'en-pasttense', band: 3, subject: 'english', title: 'Past time!', titleBn: 'অতীত কাল!', description: 'Today I go 🚶 → Yesterday I ___ to school. Pick the irregular past (went, saw, ate…)', descriptionBn: 'আজ আমি go 🚶 → গতকাল আমি ___ স্কুলে। অনিয়মিত অতীত বাছো (went, saw, ate…)', commonCore: ['L.3.1d'], nctbCode: 'c3-english-8', classNumber: 3, game: 'game-past' },
+  // #1141 — shared memory-flip engine: recall the two parts that fuse into one compound.
+  { id: 'mem-compound-words', band: 3, subject: 'english', title: 'Compound memory', titleBn: 'যৌগিক শব্দের স্মৃতি', description: 'Flip hidden cards to recall the two parts that build a compound word (sun + flower → sunflower)', descriptionBn: 'লুকানো কার্ড খুলে যৌগিক শব্দের দুটো অংশ মনে করে মেলাই (sun + flower → sunflower)', commonCore: ['L.1.4c'], nctbCode: 'c3-english-10', classNumber: 3, game: 'game-memory', challenge: true, dataLevels: [6, 8, 12, 16, 20, 20] },
   // Grammar — prepositions: drag the object to the spoken place (in/on/under/behind…).
   { id: 'en-prepositions', band: 2, subject: 'english', title: 'Prepositions', titleBn: 'অব্যয়', description: 'Drag an object to the spoken place: in, on, under, behind, in front of, next to, above, between', descriptionBn: 'বলে দেওয়া জায়গায় জিনিসটা টেনে রাখি: in, on, under, behind, in front of, next to, above, between', commonCore: ['L.1.1i'], nctbCode: 'c2-english-6', classNumber: 2, game: 'game-prepositions' },
   // Grammar — question words: fill the ___ in a picture-context question (who/what/where…).
@@ -298,6 +304,8 @@ export const SKILLS: Skill[] = [
   // Language — STAGE 4: decoding (mirrored: BN matras ↔ EN sight words)
   { id: 'bn-matras', band: 4, subject: 'bangla', title: 'Bangla matras', titleBn: 'কার', description: 'Combine letters with matras (ক + া = কা)', descriptionBn: 'অক্ষরের সাথে কার যোগ করি (ক + া = কা)', commonCore: ['RF.3.4'], nctbCode: 'c3-bangla-2', classNumber: 3, game: 'game-bnmatras' },
   { id: 'en-sightwords', band: 4, subject: 'english', title: 'Sight words', titleBn: 'দেখা-শব্দ', description: 'Read the, and, you, that, with', descriptionBn: 'the, and, you, that, with পড়ি', commonCore: ['RF.3.4'], nctbCode: 'c3-english-3', classNumber: 3, game: 'game-sightwords' },
+  // #1141 — shared memory-flip engine: recall word ↔ synonym.
+  { id: 'mem-synonyms', band: 4, subject: 'english', title: 'Synonym memory', titleBn: 'সমার্থক শব্দের স্মৃতি', description: 'Flip hidden cards to recall each word and its synonym (happy ↔ glad)', descriptionBn: 'লুকানো কার্ড খুলে প্রতিটি শব্দের সাথে তার সমার্থক শব্দ মনে করে মেলাই (happy ↔ glad)', commonCore: ['L.4.5c'], nctbCode: 'c4-english-1', classNumber: 4, game: 'game-memory', challenge: true, dataLevels: [6, 8, 12, 16, 20, 20] },
   // Science — animals
   { id: 'science-animals', band: 4, subject: 'science', title: 'Animal homes', titleBn: 'প্রাণী ও আবাস', description: 'Where animals live (water, land, sky)', descriptionBn: 'প্রাণীরা কোথায় থাকে (পানি, ডাঙা, আকাশ)', commonCore: ['2.LS.4'], nctbCode: 'c3-science-1', classNumber: 3, game: 'game-animalhome' },
   // #756 — Band 4 BGS (class-3/4): Sky Castle had ZERO bgs. Both skills reuse
@@ -451,6 +459,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-countsong', skillId: 'number-song', difficultyLevels: [3, 5, 7, 8, 9, 10], targetSuccess: 0.8 },
   { id: 'game-growcount', skillId: 'grow-count', difficultyLevels: [3, 4, 5, 7, 9, 12], targetSuccess: 0.8 },
   { id: 'game-memorypairs', skillId: 'quantity-match', difficultyLevels: [2, 3, 4, 5, 6, 7], targetSuccess: 0.8 },
+  { id: 'game-memory', skillId: 'mem-compound-words', difficultyLevels: [6, 8, 12, 16, 20, 20], targetSuccess: 0.8 },
   { id: 'game-froghop', skillId: 'number-line', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-shapecatcher', skillId: 'shapes', difficultyLevels: [3, 4, 6, 8, 10, 12], targetSuccess: 0.8 },
   // #1143 — unscored free-play garden: a flat ladder is a data placeholder
@@ -671,6 +680,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-patience': 'Patience',
   'game-froghop': 'FrogHop',
   'game-memorypairs': 'MemoryPairs',
+  'game-memory': 'Memory',
   'game-countsong': 'CountingSong',
   'game-bnletters': 'BnLetters',
   'game-bnconsonants': 'BnLetters',
