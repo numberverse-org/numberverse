@@ -864,7 +864,11 @@
 }
 .home-streak {
   position: absolute;
-  right: -16px;
+  /* #1117 — poke is capped at 10px, inside the hero's 14px owl→greeting gap:
+     the flame badge stays a corner badge on Nova WITHOUT ever touching the
+     greeting text (the old -16px poked 2px past the gap and collided with
+     short names at narrow widths). */
+  right: -10px;
   bottom: -2px;
   font-size: 12px;
   font-weight: 900;
