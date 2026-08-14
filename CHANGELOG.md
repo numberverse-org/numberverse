@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.12 (⚡ #1128 QR scanner: native BarcodeDetector + downscaled jsQR at ~4fps)
+
+dcd3fa2 ⚡ #1128 QR scanner: native BarcodeDetector + downscaled jsQR at ~4fps
+
 ## 14 Aug 2026 — 0.53.11 (⚡ #1127 onRoundDone: O(1) streak/wrongs tail ref — no 3× events scans per round)
 
 879b2f1 🔤 #1386-#1390 Bangla font: Noto Sans Bengali + real weight faces + fix letter/line-spacing
