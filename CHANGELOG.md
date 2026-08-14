@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.37 (fix: goal-progress/goal-nudge span home column; drop redundant margin-top (#1111))
+
+59dea9b fix: goal-progress/goal-nudge span the home column; drop redundant margin-top (#1111)
+
 ## 15 Aug 2026 — 0.53.36 (fix: festival-banner spans the home column width (#1110))
 
 94d9319 fix: festival-banner spans the home column — width:100% max-width var(--content-max) (#1110)

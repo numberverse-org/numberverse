@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.36 (fix: festival-banner spans the home column width (#1110))";
-export const APP_VERSION = "0.53.36";
+export const APP_BUILD = "15 Aug 2026 · 0.53.37 (fix: goal-progress/goal-nudge span home column; drop redundant margin-top (#1111))";
+export const APP_VERSION = "0.53.37";
