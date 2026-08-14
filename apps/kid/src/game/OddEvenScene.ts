@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { frameText } from "./framing";
@@ -72,7 +73,7 @@ export class OddEvenScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.pairBox = this.add.container(0, 0);
     this.meter = roundMeter(this);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

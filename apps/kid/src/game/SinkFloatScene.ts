@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -89,7 +90,7 @@ export class SinkFloatScene extends Phaser.Scene {
       .setDepth(100);
     this.tank = this.add.graphics();
     this.meter = roundMeter(this);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

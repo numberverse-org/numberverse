@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -78,7 +79,7 @@ export class BanglaDaysScene extends Phaser.Scene {
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("bdPrompt"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.input.on("dragstart", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDragStart(p, obj));
     this.input.on("drag", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDrag(p, obj));
     this.input.on("dragend", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDragEnd(p, obj));

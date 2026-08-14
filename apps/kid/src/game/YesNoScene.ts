@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
@@ -99,7 +100,7 @@ export class YesNoScene extends Phaser.Scene {
     this.noBtn = modernCardButton(this, 0, 0, 150, 96, `❌ ${t("ynNo")}`, BTN_RED, 30);
     this.noBtn.on("pointerdown", () => this.answer(false));
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

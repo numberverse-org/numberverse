@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -83,7 +84,7 @@ export class FoodChainScene extends Phaser.Scene {
     // chain slots (empty rounded cards) + arrows between them
     for (let i = 0; i < 3; i++) this.slots.push(this.slotCard(i));
     for (let i = 0; i < 2; i++) this.arrows.push(this.add.text(0, 0, "→", txt(30, NV_GOLD, { bold: true })).setOrigin(0.5));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

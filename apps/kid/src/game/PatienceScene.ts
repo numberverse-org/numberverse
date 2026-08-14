@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -88,7 +89,7 @@ export class PatienceScene extends Phaser.Scene {
     this.fill = this.add.graphics().setDepth(3);
     this.bigEmoji = this.add.text(0, 0, "", txt(96, "#ffffff")).setOrigin(0.5).setDepth(2);
     this.rewardText = this.add.text(0, 0, "", txt(22, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(2);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

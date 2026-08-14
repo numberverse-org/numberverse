@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { pop } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
@@ -62,7 +63,7 @@ export class SpeciesGalleryScene extends Phaser.Scene {
     gameBackground(this, "floral");
     this.drawHeader();
     this.drawGallery();
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
   }
 
   private t() {

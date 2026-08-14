@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -64,7 +65,7 @@ export class CatchBugScene extends Phaser.Scene {
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
     this.net = this.add.text(0, 0, "🥅", txt(58, "#ffffff")).setOrigin(0.5).setDepth(2);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -112,7 +113,7 @@ export class RegroupScene extends Phaser.Scene {
     this.lentT = this.add.text(0, 0, "", txt(15, NV_GREEN, { bold: true })).setOrigin(0.5).setAlpha(0);
     this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("solveIt"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => { this.layout(); this.drawBoard(); });
+    onSceneResize(this, () => { this.layout(); this.drawBoard(); });
     this.layout();
     this.startRound();
   }

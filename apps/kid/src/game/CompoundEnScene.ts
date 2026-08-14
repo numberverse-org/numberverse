@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -93,7 +94,7 @@ export class CompoundEnScene extends Phaser.Scene {
     this.slot1 = this.add.text(0, 0, "?", txt(26, "#ffffff", { bold: true })).setOrigin(0.5);
     this.slot2 = this.add.text(0, 0, "?", txt(26, "#ffffff", { bold: true })).setOrigin(0.5);
     this.resultText = this.add.text(0, 0, "", txt(26, "#ffffff", { bold: true })).setOrigin(0.5);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

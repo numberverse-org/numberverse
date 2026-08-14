@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -86,7 +87,7 @@ export class PlantLifeScene extends Phaser.Scene {
     this.growEmoji = this.add.text(0, 0, "", txt(64, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5).setAlpha(0);
     this.grow.add([this.potG, this.growEmoji]);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

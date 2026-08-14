@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
@@ -93,7 +94,7 @@ export class PetMemoryScene extends Phaser.Scene {
     gameBackground(this, "night");
     this.drawHeader();
     this.deal();
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
   }
 
   private t() {

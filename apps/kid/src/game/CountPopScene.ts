@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -68,7 +69,7 @@ export class CountPopScene extends Phaser.Scene {
     this.meter = roundMeter(this);
         this.instruction = questionPanel(this, 0, 0, { tail: "none" });
     this.instruction.set(t("tapNumbersOrder"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.reflowBubbles();
     });

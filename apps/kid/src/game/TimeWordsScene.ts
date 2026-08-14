@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -83,7 +84,7 @@ export class TimeWordsScene extends Phaser.Scene {
       const label = this.add.text(0, 0, "", txt(24, NV_NAVY, { bold: true })).setOrigin(0.5).setDepth(2);
       this.boxes.push({ g, label });
     }
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

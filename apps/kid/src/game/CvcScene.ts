@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -58,7 +59,7 @@ export class CvcScene extends Phaser.Scene {
       .setOrigin(0.5);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("readWordTapPic"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

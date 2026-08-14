@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -122,7 +123,7 @@ export class BnMatrasScene extends Phaser.Scene {
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t(this.wordsMode ? "tapMatraWords" : this.conjunctMode ? "tapConjunct" : "tapMatra"));
     this.meter = roundMeter(this);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

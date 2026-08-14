@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -106,7 +107,7 @@ export class ProfessionsMatchScene extends Phaser.Scene {
     this.helperEmoji = this.add.text(0, 0, "", txt(66, "#ffffff", { shadow: false })).setOrigin(0.5);
     this.helperName = this.add.text(0, 0, "", txt(20, NV_GOLD, { bold: true, outline: true })).setOrigin(0.5);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

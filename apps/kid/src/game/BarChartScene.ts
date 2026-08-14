@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -135,7 +136,7 @@ export class BarChartScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       if (this.bars.length) this.drawBars();
     });

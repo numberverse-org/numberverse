@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -91,7 +92,7 @@ export class WaterCycleScene extends Phaser.Scene {
     this.sunG = this.add.graphics();
     this.cloudG = this.add.graphics().setAlpha(0);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

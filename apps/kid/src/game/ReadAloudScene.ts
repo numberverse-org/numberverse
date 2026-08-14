@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -130,7 +131,7 @@ export class ReadAloudScene extends Phaser.Scene {
       (this.voiceBtn.getData("nv-btn") as { setLabel: (l: string) => void }).setLabel(this.readAloud ? "🔊" : "🔇");
       if (this.readAloud) speak(this.item.s, { lang: "en" });
     });
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

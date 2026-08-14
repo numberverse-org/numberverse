@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { frameText } from "./framing";
@@ -70,7 +71,7 @@ export class RoundingScene extends Phaser.Scene {
     this.lineBox = this.add.container(0, 0);
     this.marker = this.add.circle(0, 0, 11, 0xffb35c).setStrokeStyle(3, 0xffffff).setDepth(100);
     this.meter = roundMeter(this);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

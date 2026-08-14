@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -57,7 +58,7 @@ export class FrogHopScene extends Phaser.Scene {
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
     this.frog = assetIcon(this, "frog", 64).setDepth(500);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.reflowGrid();
     });

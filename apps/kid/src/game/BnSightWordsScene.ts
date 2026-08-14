@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -100,7 +101,7 @@ export class BnSightWordsScene extends Phaser.Scene {
     this.track = this.add.graphics();
     this.timerFill = this.add.graphics().setDepth(3);
     this.ring = this.add.graphics().setDepth(6);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

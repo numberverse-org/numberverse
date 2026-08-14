@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -69,7 +70,7 @@ export class FactsAddScene extends Phaser.Scene {
       .text(0, 0, "", txt(20, "#ffffff", { bold: true, outline: true }))
       .setOrigin(0.5);
     this.timerBar = this.add.rectangle(0, 0, 0, 10, 0xffd166).setOrigin(0, 0.5).setDepth(5);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

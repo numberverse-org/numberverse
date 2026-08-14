@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -141,7 +142,7 @@ export class AnimalHomeScene extends Phaser.Scene {
     this.meter = roundMeter(this);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("whereLives"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
 

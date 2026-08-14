@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -82,7 +83,7 @@ export class MixedFracScene extends Phaser.Scene {
       this.tickLabels.push(this.add.text(0, 0, digit(i), txt(18, "#ffffff", { bold: true })).setOrigin(0.5).setDepth(5));
     }
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

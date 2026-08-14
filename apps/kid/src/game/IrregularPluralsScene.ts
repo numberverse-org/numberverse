@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -97,7 +98,7 @@ export class IrregularPluralsScene extends Phaser.Scene {
       .text(0, 0, "", txt(40, "#ffffff", { bold: true, outline: true, wrap: 330 }))
       .setOrigin(0.5);
     this.buildOptions();
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

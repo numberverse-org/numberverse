@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -69,7 +70,7 @@ export class CaseMatchScene extends Phaser.Scene {
       .text(0, 0, "", txt(110, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(2);
     this.buildOptions();
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

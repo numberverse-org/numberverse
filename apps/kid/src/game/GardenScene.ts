@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { useKidStore } from "../store";
 import { STAGE_EMOJI, STAGE_NAME_EN, STAGE_NAME_BN, type GardenState } from "./garden";
 import { gameBackground } from "./backgrounds";
@@ -47,7 +48,7 @@ export class GardenScene extends Phaser.Scene {
     this.emptyHint = this.add
       .text(0, 0, bn ? "খেলো আর গাছ বাড়াও!" : "Play and watch your garden grow!", promptTxt(17))
       .setOrigin(0.5);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout(); // positions title/sub AND lays out the plants
     // live updates — if the garden changes while this scene is open, redraw
     this.unsub = useKidStore.subscribe(() => this.refresh());

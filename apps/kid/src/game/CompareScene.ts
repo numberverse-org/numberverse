@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -92,7 +93,7 @@ export class CompareScene extends Phaser.Scene {
     // pool grows to the row's high-water mark, then recycles forever.
     this.tilePool = cardPool(this, CARD_W, CARD_H, BTN_NEUTRAL, 30);
     this.chipPool = cardPool(this, 96, 48, BTN_NEUTRAL, 22);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

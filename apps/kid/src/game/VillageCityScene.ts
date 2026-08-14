@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -96,7 +97,7 @@ export class VillageCityScene extends Phaser.Scene {
     this.zones = this.add.graphics();
     this.villageLabel = this.add.text(0, 0, "", txt(18, "#ffffff", { bold: true })).setOrigin(0.5).setDepth(2);
     this.cityLabel = this.add.text(0, 0, "", txt(18, "#ffffff", { bold: true })).setOrigin(0.5).setDepth(2);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.layoutCards();
     });

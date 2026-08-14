@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -78,7 +79,7 @@ export class MagnetPolesScene extends Phaser.Scene {
     this.moveMagnet = this.add.container(0, 0).setDepth(6);
     this.spark = this.add.text(0, 0, "✨", txt(46, "#ffffff", { shadow: false })).setOrigin(0.5).setDepth(10).setVisible(false);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

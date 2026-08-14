@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -78,7 +79,7 @@ export class DoublesScene extends Phaser.Scene {
     this.songBtn = modernCardButton(this, 0, 0, 110, 44, t("dblSong"), BTN_NEUTRAL, 16);
     this.songBtn.on("pointerdown", () => this.singChant());
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

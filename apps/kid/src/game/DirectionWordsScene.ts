@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -78,7 +79,7 @@ export class DirectionWordsScene extends Phaser.Scene {
     this.gridG = this.add.graphics().setDepth(0);
     this.char = this.add.text(0, 0, "🐱", txt(40, "#ffffff", {})).setOrigin(0.5).setDepth(2);
     this.goal = this.add.text(0, 0, "⭐", txt(40, "#ffffff", {})).setOrigin(0.5).setDepth(1);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

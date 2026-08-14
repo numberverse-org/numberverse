@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -86,7 +87,7 @@ export class RhymeTimeScene extends Phaser.Scene {
     this.readBtn = modernCardButton(this, 0, 0, 84, 60, "🔊", BTN_ORANGE, 32);
     this.readBtn.on("pointerdown", () => this.singWhole());
     this.readBtn.setDepth(3);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

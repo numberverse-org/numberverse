@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -86,7 +87,7 @@ export class SubFactsScene extends Phaser.Scene {
     this.markerDot = this.add.circle(0, 0, 7, 0xffd166).setDepth(7);
     this.markerLabel = this.add.text(0, 0, "", txt(14, "#ffffff", { bold: true })).setOrigin(0.5).setDepth(7);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -73,7 +74,7 @@ export class Count100Scene extends Phaser.Scene {
     this.plus1.on("pointerup", () => this.addOne());
     this.plus10.on("pointerup", () => this.addTen());
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.drawMaterials();
       this.drawProgress();

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -91,7 +92,7 @@ export class ClockTimeScene extends Phaser.Scene {
     this.faceG = this.add.graphics();
     this.hourHand = this.add.graphics().setDepth(600);
     this.minuteHand = this.add.graphics().setDepth(600);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.drawClock(true);
     });

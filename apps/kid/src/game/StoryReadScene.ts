@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -96,7 +97,7 @@ export class StoryReadScene extends Phaser.Scene {
       speak(`${this.story.text} ${this.story.q}`, { lang: "bn" });
     });
     this.readBtn.setDepth(3);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -99,7 +100,7 @@ export class SentenceBuilderScene extends Phaser.Scene {
     this.prompt.set(t("sbPrompt"));
     this.meter = roundMeter(this);
     this.slotGfx = this.add.graphics().setDepth(1);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

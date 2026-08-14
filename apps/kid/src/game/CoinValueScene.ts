@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -75,7 +76,7 @@ export class CoinValueScene extends Phaser.Scene {
     this.totalText = this.add.text(0, 0, "", txt(52, "#ffffff", { bold: true, outline: true })).setOrigin(0.5).setDepth(3);
     this.sumText = this.add.text(0, 0, "", txt(26, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(3);
     this.trayRow = this.add.container(0, 0).setDepth(4);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

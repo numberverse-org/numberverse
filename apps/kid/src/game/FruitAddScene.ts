@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -88,7 +89,7 @@ export class FruitAddScene extends Phaser.Scene {
     // The QUESTION is the big thing — 34px, warm, impossible to miss.
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(frameText("howManyFruit", FRAME_SEED(this.mode), 0));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.reflow();
     });

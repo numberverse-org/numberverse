@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
@@ -93,7 +94,7 @@ export class FetchScene extends Phaser.Scene {
       .setInteractive();
     this.tapZone.on("pointerdown", (p: Phaser.Input.Pointer) => this.throwBall(p.x));
     this.input.setTopOnly(true);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
   }
 
   private t() {

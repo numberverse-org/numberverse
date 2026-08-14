@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -80,7 +81,7 @@ export class BnLettersScene extends Phaser.Scene {
     this.meter = roundMeter(this);
         this.prompt = questionPanel(this, 0, 0, { tail: "none" });
     this.prompt.set(t("findLetter"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -109,7 +110,7 @@ export class ConjunctFindScene extends Phaser.Scene {
       .setOrigin(0.5).setDepth(2);
     this.track = this.add.graphics();
     this.timerFill = this.add.graphics().setDepth(3);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

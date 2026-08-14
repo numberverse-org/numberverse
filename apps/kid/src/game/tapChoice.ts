@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -107,7 +108,7 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     this.itemEmoji = this.add.text(0, 0, "✨", txt(84, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
     this.itemName = this.add.text(0, 0, "", txt(24, "#ffffff", { bold: true, outline: true, shadow: false })).setOrigin(0.5);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

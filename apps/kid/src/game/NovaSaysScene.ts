@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { pop, bad, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
@@ -85,7 +86,7 @@ export class NovaSaysScene extends Phaser.Scene {
     this.drawHeader();
     this.drawNova();
     this.nextRound();
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
   }
 
   private t() {

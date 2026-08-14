@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -95,7 +96,7 @@ export class ContractsScene extends Phaser.Scene {
     this.prompt.set(t("ctPrompt"));
     this.replayBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 28);
     this.replayBtn.on("pointerdown", () => speak(this.toFull ? this.ct.c : this.ct.f, { lang: "en" }));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

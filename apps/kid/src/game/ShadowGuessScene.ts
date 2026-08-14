@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
@@ -82,7 +83,7 @@ export class ShadowGuessScene extends Phaser.Scene {
     this.lightEmoji = this.add.text(0, 0, "", txt(40, "#ffffff", { shadow: false })).setOrigin(0.5).setDepth(8);
     this.objEmoji = this.add.text(0, 0, "", txt(70, "#ffffff", { shadow: false })).setOrigin(0.5).setDepth(6);
 
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

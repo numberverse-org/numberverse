@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
@@ -98,7 +99,7 @@ export class MagicEScene extends Phaser.Scene {
     this.eText = this.add.text(0, 0, "?", txt(40, NV_GOLD, { bold: true })).setOrigin(0.5);
     this.eSlot.add(this.eText);
     this.baseText = this.add.text(0, 0, "", txt(48, "#ffffff", { bold: true, outline: true })).setOrigin(0, 0.5);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

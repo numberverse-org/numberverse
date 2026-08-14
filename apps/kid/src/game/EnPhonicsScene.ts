@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -66,7 +67,7 @@ export class EnPhonicsScene extends Phaser.Scene {
     this.pictureBox = this.add.container(0, 0);
         this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("startLetter"));
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }

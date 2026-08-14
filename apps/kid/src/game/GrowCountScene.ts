@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak, bnNumber } from "./speech";
@@ -59,7 +60,7 @@ export class GrowCountScene extends Phaser.Scene {
     this.rewardPlant = this.add
       .text(0, 0, PLANT_EMOJI[0], txt(76, "#ffffff"))
       .setOrigin(0.5);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.reflow();
     });

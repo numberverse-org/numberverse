@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -142,7 +143,7 @@ export class PictoGraphScene extends Phaser.Scene {
     this.prompt = questionPanel(this, 0, 0);
     this.keyChip = this.add.container(0, 0);
     this.chartBox = this.add.container(0, 0);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => {
+    onSceneResize(this, () => {
       this.layout();
       this.buildChart();
     });

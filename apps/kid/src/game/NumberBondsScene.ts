@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { getAppLang } from "./locale";
 import { frameText } from "./framing";
@@ -79,7 +80,7 @@ export class NumberBondsScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.frameBox = this.add.container(0, 0);
     this.meter = roundMeter(this);
-    this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
+    onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
   }
