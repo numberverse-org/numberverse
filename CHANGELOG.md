@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.45.1 (fix: stable SW-update snapshot (blank-screen #185 regression from 0.45.0))
+
+f1dd977 fix(pwa): stable useSyncExternalStore snapshot in updateBanner bridge
+
 ## 14 Aug 2026 — 0.45.0 (PWA prompt-mode update banner with version notes (#1321))
 
 01c3ee7 feat(pwa): prompt-mode update banner with version notes (#1321)
