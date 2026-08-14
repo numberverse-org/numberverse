@@ -19,7 +19,8 @@ The 3D Nova island (epic #755) is fully shipped and offline-safe:
   freeze + opacity-only burst (WCAG 2.3.1), flash throttle ≥350ms, canvas
   aria-label + spoken feedback
 - **Offline + gating** (#691): Workbox cap 5MiB, three/R3F + Phaser split into
-  cacheable vendor chunks (island chunk 36KiB, three-vendor <1MiB), Oracle
+  cacheable vendor chunks (island 168KiB, three-vendor 884KiB, genuinely
+  lazy — three.js no longer prefetched on cold start), Oracle
   "3D Nova Perf" role rides release.sh
 
 ## 14 Aug 2026 — 0.40.3 (🦉 3D Nova vestibular+perf: dynamic resolution, reduced-motion freeze, opacity burst, flash throttle, aria-label+speak)

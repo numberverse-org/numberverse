@@ -90,12 +90,19 @@ export default defineConfig({
   // R3F move to their own cacheable vendor chunk, so the lazy island chunk
   // stays small and the vendor chunk survives island app updates.
   build: {
+    // #691 — keep the island + games genuinely lazy: no modulepreload links
+    // (they made three-vendor/phaser-vendor fetch on every cold start; the
+    // lazy chunks should download only when a kid actually enters them).
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            // three core + examples (GLTF/KTX2/OrbitControls loaders) + R3F
-            if (id.includes("three") || id.includes("@react-three")) return "three-vendor";
+            // three core + examples (GLTF/KTX2/OrbitControls loaders) ONLY.
+            // @react-three/fiber stays out so R3F's React dependency is NOT
+            // pulled into three-vendor (that made the entry share React
+            // through three-vendor → three.js fetched on every cold start).
+            if (id.includes("node_modules/three")) return "three-vendor";
             if (id.includes("phaser")) return "phaser-vendor";
           }
         },
