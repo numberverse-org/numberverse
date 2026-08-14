@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.14 (🐛 #1114 cal-strip: container-query-scaled tile stack (top/coin/gap) + nowrap — 7-column calendar stays square at every width, 🪙{n} no longer wraps on narrow phones)
+
+f77d0b4 🐛 #1114: cal-strip tiles stay square at every width — container-query-scaled top/coin/gap + nowrap stop 🪙{n} from wrapping and inflating tile height on narrow phones
+
 ## 14 Aug 2026 — 0.53.13 (🎨 #1112 home column tokens: --home-col-w/--home-card-w make the 440px primary / 320px inset-card gutter system explicit + self-documenting)
 
 850763d 🎨 #1112: home column tokens (--home-col-w 440 / --home-card-w 320) make the two-column home gutter system explicit + self-documenting
