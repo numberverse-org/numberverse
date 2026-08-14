@@ -169,6 +169,8 @@ import { CountingSongScene } from "./CountingSongScene";
 import { OnlineSafetyScene } from "./OnlineSafetyScene";
 import { StatesMatterScene } from "./StatesMatterScene";
 import { HumanBodyScene } from "./HumanBodyScene";
+import { MathSolveScene } from "./MathSolveScene";
+import { NegativeNumberScene } from "./NegativeNumberScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
 
@@ -247,6 +249,8 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       OnlineSafetyScene,
       StatesMatterScene,
       HumanBodyScene,
+      MathSolveScene,
+      NegativeNumberScene,
     ],
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
     input: { activePointers: 3 },

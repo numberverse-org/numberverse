@@ -331,6 +331,15 @@ export const SKILLS: Skill[] = [
   // en-comprehension. Science: human body organ jobs (HumanBody scene).
   { id: 'en-paragraph', band: 6, subject: 'english', title: 'Paragraph power', titleBn: 'অনুচ্ছেদ পড়ি', description: 'Comprehend longer paragraphs — read, understand, answer', descriptionBn: 'লম্বা অনুচ্ছেদ পড়ি, বুঝি, উত্তর দিই', commonCore: ['RF.6.4'], nctbCode: 'c6-english-1', classNumber: 6, game: 'game-enparagraph', dataMode: 'paragraph', challenge: true },
   { id: 'science-human-body', band: 6, subject: 'science', title: 'Human body', titleBn: 'মানবদেহ', description: 'Match the major organs — heart, brain, lungs, stomach', descriptionBn: 'প্রধান অঙ্গ চিনি — হৃৎপিণ্ড, মস্তিষ্ক, ফুসফুস, পাকস্থলী', commonCore: [], nctbCode: 'c6-science-1', classNumber: 6, game: 'game-humanbody' },
+  // #1160 — band 6 math breadth: algebra readiness, negative-number sense,
+  // ratio, geometry depth and probability. New skills reuse the shared-scene
+  // ladder (game-mathsolve / game-negatives are new answer-button scenes;
+  // game-perim reuses the proven fence scene) and flag challenge:true.
+  { id: 'alg-missing-number', band: 6, subject: 'math', title: 'Missing numbers', titleBn: 'অজানা সংখ্যা খুঁজি', description: 'Solve number sentences with a missing number — ? + 7 = 15, ? − 9 = 6, 18 − ? = 11', descriptionBn: 'অজানা সংখ্যার বাক্য সমাধান করি — ? + ৭ = ১৫, ? − ৯ = ৬, ১৮ − ? = ১১', commonCore: ['1.OA.8', '6.EE.2'], nctbCode: 'c6-math-5', classNumber: 6, game: 'game-mathsolve', family: 'algebra', tier: 1, dataLevels: [1, 2, 3], challenge: true },
+  { id: 'neg-compare-order', band: 6, subject: 'math', title: 'Compare negative numbers', titleBn: 'ঋণাত্মক সংখ্যা তুলনা', description: 'Which negative is greater? Order −5, −2, 0 on the number line', descriptionBn: 'কোন ঋণাত্মক সংখ্যা বড়? সংখ্যারেখায় −৫, −২, ০ সাজাই', commonCore: ['6.NS.7'], nctbCode: 'c6-math-7', classNumber: 6, game: 'game-negatives', family: 'negatives', tier: 1, dataLevels: [1, 2, 3], challenge: true },
+  { id: 'ratio-simplify', band: 6, subject: 'math', title: 'Simplify ratios', titleBn: 'অনুপাত ছোট করি', description: 'Reduce ratios to simplest form — 4:8 → 1:2, 6:9 → 2:3', descriptionBn: 'অনুপাতকে সবচেয়ে ছোট আকারে আনি — ৪:৮ → ১:২, ৬:৯ → ২:৩', commonCore: ['6.RP.3'], nctbCode: 'c6-math-8', classNumber: 6, game: 'game-mathsolve', family: 'ratio', tier: 1, dataLevels: [2, 3, 4], challenge: true },
+  { id: 'geo-perimeter', band: 6, subject: 'math', title: 'Perimeter: rectangles & triangles', titleBn: 'পরিসীমা: আয়তক্ষেত্র ও ত্রিভুজ', description: 'Add the side lengths around rectangles and right triangles (top tier of Perimeter intro)', descriptionBn: 'আয়তক্ষেত্র ও সমকোণী ত্রিভুজের বাহু যোগ করে পরিসীমা বের করি (পরিসীমা শুরুর শেষ ধাপ)', commonCore: ['3.MD.8', '4.MD.3'], nctbCode: 'c6-math-9', classNumber: 6, game: 'game-perim', dataLevels: [4, 5, 6, 8, 8, 10], challenge: true },
+  { id: 'prob-words', band: 6, subject: 'math', title: 'Probability words', titleBn: 'সম্ভাবনার শব্দ', description: 'Label events certain, likely, unlikely or impossible', descriptionBn: 'ঘটনাকে নিশ্চিত, সম্ভবত, অসম্ভাব্য বা অসম্ভব বলি', commonCore: ['7.SP.5'], nctbCode: 'c6-math-10', classNumber: 6, game: 'game-mathsolve', family: 'probability', tier: 1, dataLevels: [1, 2, 3, 4], challenge: true },
 
   // ── Band 7 — Polar Peaks (ages 12–15, class 7): REFINEMENT ──
   { id: 'decimals-tenths', band: 7, subject: 'math', title: 'Decimal tenths', titleBn: 'দশমিকের দশক', description: 'Place value in decimals (0.5, 0.25, 0.75) — the top tier of the Decimals family', descriptionBn: 'দশমিকের স্থানীয় মান (০.৫, ০.২৫, ০.৭৫) — দশমিক পরিবারের শেষ ধাপ', commonCore: ['5.NBT.3', '4.NF.6'], nctbCode: 'c7-math-3', classNumber: 7, game: 'game-decimals', family: 'decimals', tier: 3, dataLevels: [2, 3, 4, 5, 6], challenge: true },
@@ -344,6 +353,15 @@ export const SKILLS: Skill[] = [
   // scene at system-difficulty levels).
   { id: 'en-sentence-order', band: 7, subject: 'english', title: 'Sentence order', titleBn: 'বাক্য সাজাই', description: 'Order sentences into a clear paragraph (topic → detail → end)', descriptionBn: 'বাক্য সাজিয়ে পরিষ্কার অনুচ্ছেদ বানাই (মূল কথা → বিবরণ → শেষ)', commonCore: ['W.6.2c'], nctbCode: 'c7-english-1', classNumber: 7, game: 'game-sentenceorder', dataMode: 'sentences', challenge: true },
   { id: 'science-body-systems', band: 7, subject: 'science', title: 'Body systems', titleBn: 'অঙ্গতন্ত্র', description: 'Match organs to their body system and what it does', descriptionBn: 'অঙ্গকে তার তন্ত্র আর কাজের সাথে মেলাই', commonCore: [], nctbCode: 'c7-science-1', classNumber: 7, game: 'game-body-systems', challenge: true },
+  // #1160 — band 7 math breadth: one-step algebra, negative-number addition,
+  // ratio/proportion and the data strand (mean/mode/median). New reasoning
+  // skills ride game-mathsolve/game-negatives; symmetry reuses game-symmetry.
+  { id: 'alg-one-step', band: 7, subject: 'math', title: 'One-step equations', titleBn: 'এক ধাপের সমীকরণ', description: 'Solve x + 3 = 11 and x − 4 = 9 by doing the opposite operation', descriptionBn: 'উল্টো অপারেশন করে x + ৩ = ১১ আর x − ৪ = ৯ সমাধান করি', commonCore: ['6.EE.7'], nctbCode: 'c7-math-4', classNumber: 7, game: 'game-mathsolve', family: 'algebra', tier: 2, dataLevels: [1, 2, 3], challenge: true },
+  { id: 'neg-number-line-add', band: 7, subject: 'math', title: 'Add negatives on a number line', titleBn: 'সংখ্যারেখায় ঋণাত্মক যোগ', description: 'Add a small negative to a positive on the number line — 5 + (−3) = 2', descriptionBn: 'সংখ্যারেখায় ধনাত্মকের সাথে ছোট ঋণাত্মক যোগ করি — ৫ + (−৩) = ২', commonCore: ['7.NS.1'], nctbCode: 'c7-math-5', classNumber: 7, game: 'game-negatives', family: 'negatives', tier: 2, dataLevels: [1, 2, 3], challenge: true },
+  { id: 'ratio-equivalent', band: 7, subject: 'math', title: 'Equivalent ratios', titleBn: 'সমান অনুপাত', description: 'Match equivalent ratios — 2:3 = 4:6 by scaling both sides', descriptionBn: 'সমান অনুপাত মেলাই — দুই পাশ একসাথে বাড়িয়ে ২:৩ = ৪:৬', commonCore: ['6.RP.3'], nctbCode: 'c7-math-6', classNumber: 7, game: 'game-mathsolve', family: 'ratio', tier: 2, dataLevels: [2, 3, 4], challenge: true },
+  { id: 'ratio-unit-rate', band: 7, subject: 'math', title: 'Unit rates', titleBn: 'একক দর', description: 'Find the unit rate — 3 pens cost ৳12, so 1 pen costs ৳4', descriptionBn: 'একক দর বের করি — ৩ কলমের দাম ৳১২, তাই ১ কলমের দাম ৳৪', commonCore: ['6.RP.2'], nctbCode: 'c7-math-7', classNumber: 7, game: 'game-mathsolve', family: 'ratio', tier: 3, dataLevels: [2, 3, 4, 5], challenge: true },
+  { id: 'geo-symmetry', band: 7, subject: 'math', title: 'Symmetry mirror', titleBn: 'আয়নার প্রতিসাম্য', description: 'Complete the mirror half of a picture across the fold line (top tier of Symmetry)', descriptionBn: 'ভাঁজ রেখা বরাবর ছবির আয়নার অর্ধেকটি পূরণ করি (প্রতিসাম্যের শেষ ধাপ)', commonCore: ['4.G.3'], nctbCode: 'c7-math-8', classNumber: 7, game: 'game-symmetry', dataLevels: [4, 4, 5, 5, 6, 6], challenge: true },
+  { id: 'stats-mean-mode', band: 7, subject: 'math', title: 'Mean, mode & median', titleBn: 'গড়, প্রচুরক ও মধ্যমা', description: 'Find the mean, mode and median of small sets — 4, 7, 9 → mean 6', descriptionBn: 'ছোট সংখ্যার সেটের গড়, প্রচুরক ও মধ্যমা বের করি — ৪, ৭, ৯ → গড় ৬', commonCore: ['6.SP.5'], nctbCode: 'c7-math-9', classNumber: 7, game: 'game-mathsolve', family: 'statistics', tier: 1, dataLevels: [1, 2, 3], challenge: true },
 
   // ── Backlog content (#43, #44, #48, #49) — new games built for the 2026 pipeline ──
   // #43 — order the 7 days + 12 Bangla months (band 1 calendar literacy)
@@ -531,6 +549,9 @@ export const GAMES: GameConfig[] = [
   { id: 'game-humanbody', skillId: 'science-human-body', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
   { id: 'game-sentenceorder', skillId: 'en-sentence-order', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-body-systems', skillId: 'science-body-systems', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
+  // #1160 — new band 6-7 reasoning scenes (answer-button ladder, challenge-ready)
+  { id: 'game-mathsolve', skillId: 'alg-missing-number', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
+  { id: 'game-negatives', skillId: 'neg-compare-order', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
 ];
 
 /** gameId → Phaser scene key. Keeps the kid app and core in sync.
@@ -708,6 +729,9 @@ export const GAME_SCENES: Record<string, string> = {
   'game-humanbody': 'HumanBody',
   'game-body-systems': 'HumanBody',
   'game-sentenceorder': 'Story',
+  // #1160 — new band 6-7 reasoning scenes
+  'game-mathsolve': 'MathSolve',
+  'game-negatives': 'NegativeNumber',
 };
 
 export function getSkill(id: string): Skill | undefined {
