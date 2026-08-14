@@ -228,7 +228,7 @@ export interface SessionStep {
   gameId: string;
   scene: string;
   title: string;
-  mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts" | "words" | "civic" | "paragraph" | "sentences";
+  mode?: "add" | "sub" | "vowels" | "consonants" | "family" | "conjuncts" | "words" | "civic" | "paragraph" | "sentences" | "fast";
   /** Run the narrated Basket Math concept-demo before the drills (add/sub). */
   teach?: boolean;
   /** #1130/#1158 — post-mastery CHALLENGE replay: this step re-runs a mastered
@@ -957,6 +957,9 @@ export function modeForSkill(skill: Skill): SessionStep["mode"] {
   // bn-benjonborno → "consonants", bn-family-words → "family", bn-conjuncts →
   // "conjuncts"), read here instead of a hardcoded skill-id map. A new variant
   // is one dataMode field in packages/core, not a code branch.
+  // #1142 — ArcadeCatch is always the fast-round variant of a fact drill, so
+  // its scene gets mode:"fast" regardless of the shared dataMode field.
+  if (skill.game === "game-arcadecatch") return "fast";
   return skill.dataMode;
 }
 
