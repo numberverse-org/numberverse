@@ -1541,21 +1541,56 @@ export default function App() {
         if (!video) return;
         video.srcObject = stream;
         await video.play().catch(() => {});
+        // #1128 — the old loop ran a FULL-resolution (640×N) drawImage +
+        // getImageData + jsQR RGB scan on the main thread EVERY animation frame
+        // (60 fps) the whole time the sheet was open. Now:
+        //   · native BarcodeDetector (off-main-thread) is used when present;
+        //   · the jsQR fallback downscales to ~320px wide (jsQR is O(area));
+        //   · both are rate-limited to ~4 fps with a timestamp gate.
+        const detector: { detect(v: HTMLVideoElement): Promise<Array<{ rawValue: string }>> } | null = (() => {
+          try {
+            const BD = (window as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => { detect(v: HTMLVideoElement): Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
+            return BD ? new BD({ formats: ["qr_code"] }) : null;
+          } catch {
+            return null; // format list unsupported — fall back to jsQR
+          }
+        })();
+        let jsqr: ((data: Uint8ClampedArray, w: number, h: number) => { data: string } | null) | null = null;
+        let lastDecode = 0;
         const loop = async () => {
           if (!active || !scanOpen) return;
           const v = scanVideoRef.current;
           const c = scanCanvasRef.current;
           if (v && c && v.readyState >= 2 && v.videoWidth > 0) {
-            const ctx = c.getContext("2d", { willReadFrequently: true });
-            if (ctx) {
-              c.width = v.videoWidth;
-              c.height = v.videoHeight;
-              ctx.drawImage(v, 0, 0);
+            const now = performance.now();
+            if (now - lastDecode >= 250) {
+              lastDecode = now;
               try {
-                const { default: jsQR } = await import("jsqr");
-                const img = ctx.getImageData(0, 0, c.width, c.height);
-                const found = jsQR(img.data, c.width, c.height);
-                if (found?.data) launchCardCodeRef.current(found.data);
+                if (detector) {
+                  const codes = await detector.detect(v);
+                  for (const cd of codes) {
+                    if (cd?.rawValue) {
+                      launchCardCodeRef.current(cd.rawValue);
+                      break;
+                    }
+                  }
+                } else {
+                  const ctx = c.getContext("2d", { willReadFrequently: true });
+                  if (ctx) {
+                    const scale = Math.min(320 / v.videoWidth, 1);
+                    const w = Math.max(1, Math.round(v.videoWidth * scale));
+                    const h = Math.max(1, Math.round(v.videoHeight * scale));
+                    if (c.width !== w) {
+                      c.width = w;
+                      c.height = h;
+                    }
+                    ctx.drawImage(v, 0, 0, w, h);
+                    jsqr ??= (await import("jsqr")).default;
+                    const img = ctx.getImageData(0, 0, w, h);
+                    const found = jsqr(img.data, w, h);
+                    if (found?.data) launchCardCodeRef.current(found.data);
+                  }
+                }
               } catch {
                 /* decode hiccup — keep scanning */
               }
