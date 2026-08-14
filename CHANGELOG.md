@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.8 (skill families: overlapping ids collapse into one-concept tiers (#1207-#1216))
+
+9ae015e 🏷️ skill families: collapse overlapping skill ids into one-concept tiers (#1207-#1216)
+
 ## 14 Aug 2026 — 0.42.7 (kids-facing: uniform reward surfacing — combo streak chip floats on every shared-celebrate scene, correctCelebrate added to OddEven/NumberBonds/AddSub100/DivisionFacts/BgsFacts, garden tap bursts, column-math core extracted pure (#1199 #1200 #1201 #1202 #1203 #1204 #1205))
 
 5297681 🎉 scene-complexity-balance: uniform reward surfacing — streak chip in the shared celebrate path + correctCelebrate on 6 previously-silent scenes, column-math core extracted (#1199 #1200 #1201 #1202 #1203 #1204 #1205)

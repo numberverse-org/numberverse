@@ -68,10 +68,10 @@ const AddKidForm = lazy(() => import("./components/AddKidForm"));
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.42.7 (kids-facing: uniform reward surfacing — combo streak chip floats on every shared-celebrate scene, correctCelebrate added to OddEven/NumberBonds/AddSub100/DivisionFacts/BgsFacts, garden tap bursts, column-math core extracted pure (#1199 #1200 #1201 #1202 #1203 #1204 #1205))";
+const APP_BUILD = "14 Aug 2026 · 0.42.8 (skill families: overlapping ids collapse into one-concept tiers (#1207-#1216))";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.42.7";
+const APP_VERSION = "0.42.8";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
