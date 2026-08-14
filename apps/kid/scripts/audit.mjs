@@ -257,7 +257,7 @@ if (bankSrc) {
     const close = bankSrc.indexOf("];", open);
     return [...bankSrc.slice(open, close).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   };
-  const sight = new Set([...grabArray("SIGHT_WORDS_BASE"), ...grabArray("SIGHT_WORDS_L3")]);
+  const sight = new Set([...grabArray("SIGHT_WORDS_BASE"), ...grabArray("SIGHT_WORDS_L2"), ...grabArray("SIGHT_WORDS_L3")]);
   // CVC/grammar pools are object entries `{ word: "cat", ... }` / plain strings
   const grabBlock = (name) => {
     const start = bankSrc.indexOf(`export const ${name}`);

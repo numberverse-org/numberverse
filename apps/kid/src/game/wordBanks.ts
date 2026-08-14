@@ -66,12 +66,28 @@ export const GRAMMAR_VERBS = ["run", "sing", "jump", "read", "eat", "write"];
 
 /* ════════════════ Sight words — high-frequency list (#1175) ════════════════ */
 
-/** Base set (Fry 2nd-100 subset) — the original SightWordsScene pool stays for
- *  continuity. Canonical home for the sight-word game. */
+/** Base set — the original SightWordsScene pool stays for continuity. It is
+ *  a hand-picked mix of Fry 1st-100 (the, and, you…) + a few 2nd-100 words
+ *  (because, people). Canonical home for the sight-word game. */
 export const SIGHT_WORDS_BASE: string[] = [
   "the", "and", "you", "that", "with", "have", "from", "were",
   "they", "when", "your", "about", "what", "which", "there", "where",
   "would", "could", "should", "people", "water", "because", "more", "make",
+];
+
+/** Fry 2nd 100 — the level-2 sight word list (issue #1258), all 100 words.
+ *  The union of BASE + L2 + L3 covers every 2nd-100 and 3rd-100 word exactly
+ *  once: 27 of the canonical 2nd-100 were already in BASE/L3 (kept there, so
+ *  no duplicate pool entries), and the 73 below complete the set. */
+export const SIGHT_WORDS_L2: string[] = [
+  "after", "again", "air", "also", "America", "animal", "another", "answer", "any", "around",
+  "ask", "away", "back", "before", "big", "boy", "came", "change", "different", "does",
+  "end", "even", "follow", "form", "found", "gave", "great", "hand", "help", "here",
+  "home", "house", "just", "kind", "know", "land", "large", "learn", "letter", "line",
+  "little", "live", "long", "made", "man", "men", "money", "move", "much", "must",
+  "need", "new", "only", "over", "picture", "place", "play", "present", "pretty", "ran",
+  "read", "right", "say", "sound", "still", "tell", "try", "turn", "two", "upon",
+  "use", "very", "well",
 ];
 
 /** Fry 3rd 100 — the level-3 sight word list (issue #177), all 100 words. */

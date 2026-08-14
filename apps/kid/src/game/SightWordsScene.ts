@@ -11,10 +11,11 @@ import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-sightwords")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
 // #1175 — the sight-word pools come from the ONE shared word-bank module
-// (base Fry-2nd subset + Fry 3rd-100), so a curriculum edit lives in a single
-// place and the audit's ⑥ cross-bank lint can see every lexical entry.
-import { SIGHT_WORDS_BASE, SIGHT_WORDS_L3 } from "./wordBanks";
-const WORDS = [...SIGHT_WORDS_BASE, ...SIGHT_WORDS_L3];
+// (base + Fry 2nd-100 + Fry 3rd-100; the L2 pool completes the second hundred
+// per issue #1258), so a curriculum edit lives in a single place and the
+// audit's ⑥ cross-bank lint can see every lexical entry.
+import { SIGHT_WORDS_BASE, SIGHT_WORDS_L2, SIGHT_WORDS_L3 } from "./wordBanks";
+const WORDS = [...SIGHT_WORDS_BASE, ...SIGHT_WORDS_L2, ...SIGHT_WORDS_L3];
 const CARD_W = 110;
 const CARD_H = 64;
 const ROUNDS_TO_FINISH = 3;
