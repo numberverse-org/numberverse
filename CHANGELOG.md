@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.41.1 (🐛 3D Nova island stays lazy: three.js no longer prefetched on cold start (three-vendor = three only, modulePreload off))
+
+604e0a6 🐛 #691: keep the 3D island genuinely lazy (no three.js on cold start)
+
 ## 14 Aug 2026 — 0.41.0 (🦉 3D Nova offline + gating: Workbox 5MiB cap, wasm+glb precached, three-vendor split (island 36KiB), native OrbitControls, Oracle 3D Nova Perf role, v32 CHANGELOG)
 
 5dae29e 🦉 #691: offline precache under 5 MiB cap + Oracle 3D Nova Perf role
