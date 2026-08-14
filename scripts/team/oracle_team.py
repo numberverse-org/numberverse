@@ -218,7 +218,8 @@ def l1_bands():
     src = (CORE / "skills.ts").read_text()
     bands = re.findall(r"\{\s*id:\s*(\d+),\s*key:\s*'([^']+)'[^}]*?ageRange:\s*'([^']+)'\s*\}", src)
     ids = [int(b[0]) for b in bands]
-    return (ids == [1,2,3,4,5,6,7] and len(bands) == 7), f"{len(bands)} bands {ids}"
+    # #1164 — the map keeps going past band 7: contiguous 1..8 (Summit Peaks).
+    return (ids == list(range(1, 9)) and len(bands) == 8), f"{len(bands)} bands {ids}"
 
 # ══ LAYER 2 — Engineering Crew ═══════════════════════════════════════════════
 def l2_scenes():
@@ -246,7 +247,9 @@ def l2_share():
 def l2_core():
     src = (CORE / "skills.ts").read_text()
     keys = re.findall(r"key:\s*'([^']+)'", src)
-    return (set(keys) == {"sprout-grove","cottage-fields","river-town","sky-castle","star-academy","jungle-canopy","polar-peaks"}), f"world keys: {keys}"
+    # #1164 — Summit Peaks added past Polar Peaks (8 lands).
+    expected = {"sprout-grove","cottage-fields","river-town","sky-castle","star-academy","jungle-canopy","polar-peaks","summit-peaks"}
+    return (set(keys) == expected), f"world keys: {keys}"
 
 def l2_deploy():
     return (ROOT / "infra" / "deploy" / "scripts" / "deploy.sh").exists(), "deploy.sh present"

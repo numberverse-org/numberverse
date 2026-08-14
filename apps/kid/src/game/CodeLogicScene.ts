@@ -54,6 +54,18 @@ const STEPS_FACTS: Fact[] = [
   { q: "A game shows 'You win!' when the score is 10. Which idea is this?", qBn: "স্কোর ১০ হলে খেলা 'তুমি জিতেছ!' দেখায়। এটা কোন ধারণা?", options: ["condition and action", "a spelling rule", "a colour change", "a screen break"], optionsBn: ["শর্ত ও কাজ", "বানানের নিয়ম", "রং বদলানো", "স্ক্রিন বিরতি"], answer: 0, emoji: "🏆", tier: 3, hint: "If score is 10, then show the message.", hintBn: "যদি স্কোর ১০ হয়, তাহলে বার্তা দেখাও।" },
 ];
 
+// #1164 — band 8 coding-logic depth: find and fix simple bugs.
+const DEBUG_FACTS: Fact[] = [
+  { q: "Your program should print 'Hello' but prints 'Helo'. What is the bug?", qBn: "তোমার প্রোগ্রামের 'Hello' ছাপার কথা, কিন্তু ছাপে 'Helo'। ভুলটি কী?", options: ["a missing letter", "a missing loop", "too much sound", "a closed app"], optionsBn: ["একটি অক্ষর কম", "লুপ কম", "অতিরিক্ত শব্দ", "অ্যাপ বন্ধ"], answer: 0, emoji: "🐞", tier: 1, hint: "Compare the expected text with what printed.", hintBn: "যা ছাপার কথা আর যা ছাপল তা মেলাও।" },
+  { q: "A loop should run 5 times but runs forever. What is probably missing?", qBn: "একটি লুপের ৫ বার চলার কথা, কিন্তু চলে অবিরাম। সম্ভবত কী নেই?", options: ["a stop condition", "a sound", "a colour", "a name"], optionsBn: ["থামার শর্ত", "একটি শব্দ", "একটি রং", "একটি নাম"], answer: 0, emoji: "🔁", tier: 1, hint: "A loop needs a way to know when to stop.", hintBn: "লুপের জানা দরকার কখন থামবে।" },
+  { q: "A robot must turn left, but it turns right. Which step needs fixing?", qBn: "রোবটের বাঁয়ে ঘোরার কথা, কিন্তু ঘোরে ডানে। কোন ধাপ ঠিক করতে হবে?", options: ["the turn direction", "the start button", "the battery colour", "the robot's name"], optionsBn: ["ঘোরার দিক", "শুরুর বোতাম", "ব্যাটারির রং", "রোবটের নাম"], answer: 0, emoji: "🤖", tier: 1, hint: "Check which way the robot actually moves.", hintBn: "রোবট আসলে কোন দিকে যায় দেখো।" },
+  { q: "What is the FIRST step to fix a bug?", qBn: "ভুল ঠিক করার প্রথম ধাপ কী?", options: ["find where the mistake happens", "delete the whole program", "change the screen colour", "close the laptop"], optionsBn: ["ভুলটা কোথায় হচ্ছে খুঁজে বের করা", "পুরো প্রোগ্রাম মুছে ফেলা", "পর্দার রং বদলানো", "ল্যাপটপ বন্ধ করা"], answer: 0, emoji: "🔍", tier: 2, hint: "You must locate the problem before fixing it.", hintBn: "ঠিক করার আগে সমস্যাটি খুঁজে পেতে হয়।" },
+  { q: "Which one is debugging?", qBn: "কোনটি ডিবাগিং?", options: ["finding and fixing mistakes in code", "drawing a picture", "turning up the volume", "saving a file"], optionsBn: ["কোডের ভুল খুঁজে ঠিক করা", "ছবি আঁকা", "শব্দ বাড়ানো", "ফাইল সংরক্ষণ করা"], answer: 0, emoji: "🛠️", tier: 2, hint: "Debugging means finding and fixing errors.", hintBn: "ডিবাগিং মানে ভুল খুঁজে ঠিক করা।" },
+  { q: "The score shows 0 even after a goal. What should you check first?", qBn: "গোলের পরও স্কোর ০ দেখায়। আগে কী পরীক্ষা করা উচিত?", options: ["the code that adds points", "the background colour", "the music volume", "the character's hat"], optionsBn: ["পয়েন্ট যোগ করার কোড", "পটভূমির রং", "গানের আওয়াজ", "চরিত্রের টুপি"], answer: 0, emoji: "⚽", tier: 2, hint: "Find the step that should change the score.", hintBn: "যে ধাপে স্কোর বদলানোর কথা তা খুঁজো।" },
+  { q: "An IF block runs the wrong action because the condition is backwards. How do you fix it?", qBn: "শর্ত উল্টো থাকায় IF ব্লক ভুল কাজ চালায়। কীভাবে ঠিক করবে?", options: ["reverse the condition", "add more sound", "delete the program", "turn the screen off"], optionsBn: ["শর্তটি উল্টে দাও", "আরও শব্দ যোগ করো", "প্রোগ্রাম মুছে দাও", "পর্দা বন্ধ করো"], answer: 0, emoji: "❓", tier: 3, hint: "The condition decides which path runs.", hintBn: "শর্তই ঠিক করে কোন পথ চলবে।" },
+  { q: "Why do programmers test with small examples first?", qBn: "প্রোগ্রামাররা আগে ছোট উদাহরণ দিয়ে পরীক্ষা করে কেন?", options: ["to spot mistakes quickly", "to make the game slower", "to use more battery", "to hide the code"], optionsBn: ["ভুল দ্রুত খুঁজে পেতে", "খেলা ধীর করতে", "ব্যাটারি বেশি খরচ করতে", "কোড লুকাতে"], answer: 0, emoji: "🧪", tier: 3, hint: "Small cases are easy to check by hand.", hintBn: "ছোট উদাহরণ হাতে মেলানো সহজ।" },
+];
+
 const BUTTON_RADIUS = 56;
 
 /**
@@ -112,9 +124,11 @@ export class CodeLogicScene extends Phaser.Scene {
   }
 
   private titleForSkill(): string {
-    return this.skillId === "ict-code-steps"
-      ? L("Order the steps", "ধাপ সাজাই")
-      : L("What does this block do?", "এই ব্লকটি কী করে?");
+    if (this.skillId === "ict-code-steps")
+      return L("Order the steps", "ধাপ সাজাই");
+    if (this.skillId === "ict-code-debug")
+      return L("Code logic: find & fix", "কোড যুক্তি: খুঁজে ঠিক করি");
+    return L("What does this block do?", "এই ব্লকটি কী করে?");
   }
 
   private get answersY() {
@@ -131,7 +145,9 @@ export class CodeLogicScene extends Phaser.Scene {
   }
 
   private factsForSkill(): Fact[] {
-    return this.skillId === "ict-code-steps" ? STEPS_FACTS : BLOCK_FACTS;
+    if (this.skillId === "ict-code-steps") return STEPS_FACTS;
+    if (this.skillId === "ict-code-debug") return DEBUG_FACTS;
+    return BLOCK_FACTS;
   }
 
   private factsForLevel(): Fact[] {

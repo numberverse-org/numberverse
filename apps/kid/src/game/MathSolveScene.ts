@@ -153,6 +153,8 @@ export class MathSolveScene extends Phaser.Scene {
     switch (this.skillId) {
       case "alg-one-step":
         return L("One-step equations", "এক ধাপের সমীকরণ");
+      case "alg-two-step":
+        return L("Two-step equations", "দুই ধাপের সমীকরণ");
       case "ratio-simplify":
         return L("Simplify ratios", "অনুপাত ছোট করি");
       case "ratio-equivalent":
@@ -163,6 +165,12 @@ export class MathSolveScene extends Phaser.Scene {
         return L("Probability words", "সম্ভাবনার শব্দ");
       case "stats-mean-mode":
         return L("Mean, mode & median", "গড়, প্রচুরক ও মধ্যমা");
+      case "stats-larger-sets":
+        return L("Statistics: larger sets", "পরিসংখ্যান: বড় সেট");
+      case "percent-change":
+        return L("Percentage change", "শতকরা পরিবর্তন");
+      case "geo-volume-angles":
+        return L("Angles & volume", "কোণ ও আয়তন");
       default:
         return L("Missing numbers", "অজানা সংখ্যা");
     }
@@ -198,6 +206,8 @@ export class MathSolveScene extends Phaser.Scene {
     switch (this.skillId) {
       case "alg-one-step":
         return this.oneStepRound();
+      case "alg-two-step":
+        return this.twoStepRound();
       case "ratio-simplify":
         return this.ratioSimplifyRound();
       case "ratio-equivalent":
@@ -208,6 +218,12 @@ export class MathSolveScene extends Phaser.Scene {
         return this.probabilityRound();
       case "stats-mean-mode":
         return this.statsRound();
+      case "stats-larger-sets":
+        return this.statsLargerRound();
+      case "percent-change":
+        return this.percentChangeRound();
+      case "geo-volume-angles":
+        return this.geometryRound();
       default:
         return this.missingNumberRound();
     }
@@ -428,6 +444,167 @@ export class MathSolveScene extends Phaser.Scene {
       correct: String(correct),
       hint: L("Check the definition — mean is average, mode is most, median is middle", "সংজ্ঞা মনে করো — গড় হলো গড়, প্রচুরক হলো সবচেয়ে বেশি, মধ্যমা হলো মাঝেরটি"),
       hintBn: "সংজ্ঞা মনে করো — গড় হলো গড়, প্রচুরক হলো সবচেয়ে বেশি, মধ্যমা হলো মাঝেরটি",
+    };
+  }
+
+  /* ── band-8 generators (#1164) ── */
+
+  private twoStepRound(): Round {
+    const level = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
+    let fact = "";
+    let correct = 0;
+    if (level <= 1) {
+      const a = 2;
+      const b = Phaser.Math.Between(3, 8);
+      const x = Phaser.Math.Between(2, 9);
+      correct = x;
+      fact = `${a}x + ${b} = ${a * x + b}`;
+    } else if (level === 2) {
+      const a = 2;
+      const b = Phaser.Math.Between(2, 7);
+      const x = Phaser.Math.Between(3, 9);
+      correct = x;
+      fact = `${a}x − ${b} = ${a * x - b}`;
+    } else {
+      const a = Phaser.Math.Between(3, 5);
+      const b = Phaser.Math.Between(4, 12);
+      const x = Phaser.Math.Between(2, 9);
+      correct = x;
+      fact = level === 3 ? `${a}x + ${b} = ${a * x + b}` : `${a}x − ${b} = ${a * x - b}`;
+    }
+    return {
+      prompt: L("Solve for x", "x-এর মান বের করো"),
+      fact,
+      options: numericOptions(correct).map(String),
+      correct: String(correct),
+      hint: L("Undo two operations — reverse the order", "দুটি অপারেশন উল্টো ক্রমে ভাঙো"),
+      hintBn: "দুটি অপারেশন উল্টো ক্রমে ভাঙো",
+    };
+  }
+
+  private percentChangeRound(): Round {
+    const pct = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
+    const old = pct * 4; // 10→40, 20→80, 25→100, 50→200 — always a clean change
+    const change = (old * pct) / 100;
+    const increase = this.levelIndex % 2 === 0;
+    const next = increase ? old + change : old - change;
+    const correct = `${pct}%`;
+    const opts = new Set<string>([correct]);
+    for (const c of [`${Math.max(5, pct - 5)}%`, `${pct + 5}%`, `${pct + 10}%`, `${pct + 15}%`]) {
+      if (opts.size >= 4) break;
+      if (c !== correct) opts.add(c);
+    }
+    return {
+      prompt: L("What is the percent change?", "শতকরা পরিবর্তন কত?"),
+      fact: L(
+        `Old price ৳${old} → new price ৳${next}`,
+        `পুরনো দাম ৳${old} → নতুন দাম ৳${next}`
+      ),
+      options: shuffle([...opts]),
+      correct,
+      hint: L("Change ÷ original × 100", "পরিবর্তন ÷ পুরনো দাম × ১০০"),
+      hintBn: "পরিবর্তন ÷ পুরনো দাম × ১০০",
+    };
+  }
+
+  private geometryRound(): Round {
+    const level = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
+    // Levels 1–3: complementary & supplementary angle pairs. Levels 4–6: volume
+    // of cubes and cuboids — two class-8 geometry skills sharing one ladder.
+    if (level <= 3) {
+      const complementary = level <= 1 || (level === 3 && Phaser.Math.Between(0, 1) === 0);
+      const a = complementary
+        ? Phaser.Math.Between(20, 70)
+        : Phaser.Math.Between(100, 150);
+      const sum = complementary ? 90 : 180;
+      const correct = sum - a;
+      return {
+        prompt: L("Find the missing angle", "অজানা কোণটি খুঁজো"),
+        fact: complementary ? `${a}° + ? = 90°` : `${a}° + ? = 180°`,
+        options: numericOptions(correct, 0).map((n) => `${n}°`),
+        correct: `${correct}°`,
+        hint: complementary
+          ? L("Complementary angles add to 90°", "পূরক কোণের যোগফল ৯০°")
+          : L("Supplementary angles add to 180°", "সম্পূরক কোণের যোগফল ১৮০°"),
+        hintBn: complementary ? "পূরক কোণের যোগফল ৯০°" : "সম্পূরক কোণের যোগফল ১৮০°",
+      };
+    }
+    const cube = level === 4;
+    if (cube) {
+      const s = Phaser.Math.Between(2, 5);
+      const correct = s * s * s;
+      return {
+        prompt: L("Find the volume", "আয়তন বের করো"),
+        fact: L(`Cube with side ${s} cm — volume?`, `${s} সেমি বাহুর ঘনকের আয়তন?`),
+        options: numericOptions(correct, 1).map((n) => `${n} cm³`),
+        correct: `${correct} cm³`,
+        hint: L("Volume of a cube = side × side × side", "ঘনকের আয়তন = বাহু × বাহু × বাহু"),
+        hintBn: "ঘনকের আয়তন = বাহু × বাহু × বাহু",
+      };
+    }
+    const l = Phaser.Math.Between(3, 6);
+    const w = Phaser.Math.Between(2, 5);
+    const h = level === 5 ? Phaser.Math.Between(2, 4) : Phaser.Math.Between(5, 8);
+    const correct = l * w * h;
+    return {
+      prompt: L("Find the volume", "আয়তন বের করো"),
+      fact: L(`Cuboid ${l} × ${w} × ${h} cm — volume?`, `আয়তঘন ${l} × ${w} × ${h} সেমি — আয়তন?`),
+      options: numericOptions(correct, 1).map((n) => `${n} cm³`),
+      correct: `${correct} cm³`,
+      hint: L("Volume = length × width × height", "আয়তন = দৈর্ঘ্য × প্রস্থ × উচ্চতা"),
+      hintBn: "আয়তন = দৈর্ঘ্য × প্রস্থ × উচ্চতা",
+    };
+  }
+
+  private statsLargerRound(): Round {
+    const level = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
+    let fact = "";
+    let correct = 0;
+    if (level <= 1) {
+      const mean = Phaser.Math.Between(10, 16);
+      const a = Phaser.Math.Between(4, 16);
+      const b = Phaser.Math.Between(4, 16);
+      const c = Phaser.Math.Between(4, 16);
+      const d = Phaser.Math.Between(4, 16);
+      const e = 5 * mean - a - b - c - d;
+      if (e < 1 || e > 20) {
+        fact = `Mean of ${mean - 2}, ${mean - 1}, ${mean}, ${mean + 1}, ${mean + 2}`;
+        correct = mean;
+      } else {
+        const nums = shuffle([a, b, c, d, e]);
+        fact = `Mean of ${nums.join(", ")}`;
+        correct = mean;
+      }
+    } else if (level === 2) {
+      const median = Phaser.Math.Between(12, 20);
+      const parts = [
+        median - Phaser.Math.Between(4, 7),
+        median - Phaser.Math.Between(2, 3),
+        median - 1,
+        median + 1,
+        median + Phaser.Math.Between(2, 3),
+        median + Phaser.Math.Between(4, 7),
+      ];
+      const nums = shuffle([...parts, median]);
+      fact = `Median of ${nums.join(", ")}`;
+      correct = median;
+    } else {
+      const lo = Phaser.Math.Between(4, 10);
+      const hi = lo + Phaser.Math.Between(10, 20);
+      const mid1 = Phaser.Math.Between(lo + 1, hi - 1);
+      let mid2 = Phaser.Math.Between(lo + 1, hi - 1);
+      while (mid2 === mid1) mid2 = Phaser.Math.Between(lo + 1, hi - 1);
+      const nums = shuffle([lo, mid1, mid2, hi]);
+      fact = `Range of ${nums.join(", ")}`;
+      correct = hi - lo;
+    }
+    return {
+      prompt: L("Find it!", "বের করো!"),
+      fact,
+      options: numericOptions(correct).map(String),
+      correct: String(correct),
+      hint: L("Mean = average, median = middle, range = biggest − smallest", "গড় = গড়, মধ্যমা = মাঝেরটি, বিস্তার = সবচেয়ে বড় − সবচেয়ে ছোট"),
+      hintBn: "গড় = গড়, মধ্যমা = মাঝেরটি, বিস্তার = সবচেয়ে বড় − সবচেয়ে ছোট",
     };
   }
 

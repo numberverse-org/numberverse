@@ -79,6 +79,19 @@ const WEB_FACTS: RoleFact[] = [
 ];
 
 
+// #1164 — band 8 ecosystem depth: energy pyramids, nutrient cycles,
+// biodiversity and balance (the ecosystems ladder's hardest rung).
+const ECOSYSTEM_8_FACTS: RoleFact[] = [
+  { q: "In an energy pyramid, where is the most energy found?", qBn: "শক্তির পিরামিডে সবচেয়ে বেশি শক্তি কোথায় থাকে?", options: ["at the producer level", "at the top predator", "in the clouds", "in the rocks"], optionsBn: ["উৎপাদক স্তরে", "সর্বোচ্চ শিকারীতে", "মেঘে", "পাথরে"], answer: 0, emoji: "🔺", tier: 1, hint: "Producers capture energy from sunlight first.", hintBn: "উৎপাদক প্রথমে সূর্যের আলো থেকে শক্তি ধরে।" },
+  { q: "As energy moves up a food chain, the amount of energy…", qBn: "খাদ্য শৃঙ্খলে উপরের দিকে উঠলে শক্তির পরিমাণ…", options: ["decreases", "stays the same", "doubles every time", "never changes"], optionsBn: ["কমে", "একই থাকে", "প্রতিবার দ্বিগুণ হয়", "কখনো বদলায় না"], answer: 0, emoji: "📉", tier: 1, hint: "Each level uses energy to live and move.", hintBn: "প্রতিটি স্তর বাঁচতে ও চলতে শক্তি খরচ করে।" },
+  { q: "Which living things return nutrients to the soil?", qBn: "কোন জীব মাটিতে পুষ্টি ফিরিয়ে দেয়?", options: ["decomposers", "top predators", "clouds", "stones"], optionsBn: ["বিয়োজক", "সর্বোচ্চ শিকারী", "মেঘ", "পাথর"], answer: 0, emoji: "🪱", tier: 1, hint: "They break down old leaves and roots.", hintBn: "এরা পুরনো পাতা ও শিকড় ভেঙে ফেলে।" },
+  { q: "A mangrove forest protects the coast by…", qBn: "ম্যানগ্রোভ বন উপকূল রক্ষা করে কীভাবে?", options: ["holding the soil with its roots", "making big waves", "blocking the sun", "melting the ice"], optionsBn: ["শিকড় দিয়ে মাটি ধরে রেখে", "বড় ঢেউ তৈরি করে", "সূর্য আটকে রেখে", "বরফ গলিয়ে"], answer: 0, emoji: "🌳", tier: 2, hint: "Roots hold soil and slow the water.", hintBn: "শিকড় মাটি ধরে রাখে আর পানি ধীর করে।" },
+  { q: "Which action helps biodiversity the most?", qBn: "কোন কাজ জীববৈচিত্র্য সবচেয়ে বেশি বাড়ায়?", options: ["protecting many habitats", "cutting down all trees", "paving over fields", "using more plastic"], optionsBn: ["অনেক আবাস রক্ষা করা", "সব গাছ কেটে ফেলা", "মাঠ ঢেকে ফেলা", "বেশি প্লাস্টিক ব্যবহার করা"], answer: 0, emoji: "🐾", tier: 2, hint: "Many kinds of homes support many kinds of life.", hintBn: "অনেক ধরনের আবাসে অনেক ধরনের প্রাণ থাকে।" },
+  { q: "When one species disappears from a food web, other species may…", qBn: "খাদ্য জাল থেকে একটি প্রজাতি হারিয়ে গেলে অন্য প্রজাতিরা…", options: ["lose a food source", "grow wings", "turn into plants", "make more sunlight"], optionsBn: ["খাদ্যের উৎস হারায়", "ডানা পায়", "গাছে বদলে যায়", "বেশি সূর্যালোক বানায়"], answer: 0, emoji: "🕸️", tier: 2, hint: "Food webs connect many species together.", hintBn: "খাদ্য জাল অনেক প্রজাতিকে জুড়ে রাখে।" },
+  { q: "A balanced ecosystem has…", qBn: "একটি ভারসাম্যপূর্ণ বাস্তুতন্ত্রে থাকে…", options: ["many connected food webs", "only one animal", "only rocks", "no producers"], optionsBn: ["অনেক যুক্ত খাদ্য জাল", "কেবল একটি প্রাণী", "কেবল পাথর", "কোনো উৎপাদক নেই"], answer: 0, emoji: "⚖️", tier: 3, hint: "Many connections make an ecosystem strong.", hintBn: "অনেক সংযোগ বাস্তুতন্ত্রকে শক্তিশালী করে।" },
+  { q: "Why do plants need decomposers?", qBn: "গাছের কেন বিয়োজক দরকার?", options: ["to recycle nutrients into the soil", "to give them shade", "to make music", "to fly their seeds"], optionsBn: ["মাটিতে পুষ্টি ফেরাতে", "ছায়া দিতে", "গান বাজাতে", "বীজ উড়িয়ে নিতে"], answer: 0, emoji: "🌱", tier: 3, hint: "Decomposers put nutrients back where roots can use them.", hintBn: "বিয়োজক পুষ্টি মাটিতে ফেরায়, শিকড় তা ব্যবহার করে।" },
+];
+
 /**
  * Food Chain — order producer → eater → predator with arrows.
  * Band 2 (ages 4–6, science). The producer is pre-placed; the kid taps who
@@ -122,8 +135,9 @@ export class FoodChainScene extends Phaser.Scene {
     this.levelIndex = data.startLevelIndex ?? 0;
     // #1161 — "roles" mode flips this scene from chain-ordering into an
     // ecosystem roles quiz (producer/consumer/decomposer; webs/niches for band 7).
-    this.mode = data.mode ?? "";
+    // #1164 — band 8 ecosystems depth selects the same roles quiz by skill id.
     this.skillId = data.skill ?? "";
+    this.mode = data.mode ?? (this.skillId === "science-ecosystems-8" ? "roles" : "");
     this.challenge = !!data.challenge;
     this.background = this.add.graphics();
     gameBackground(this, "forest");
@@ -154,9 +168,11 @@ export class FoodChainScene extends Phaser.Scene {
   }
 
   private rolesTitle(): string {
-    return this.skillId === "science-ecosystems-depth"
-      ? getAppLang() === "bn" ? "খাদ্য জাল ও নিচ" : "Food webs & niches"
-      : getAppLang() === "bn" ? "বাস্তুতন্ত্র: খাদ্য শৃঙ্খল" : "Ecosystems: food chains";
+    if (this.skillId === "science-ecosystems-depth")
+      return getAppLang() === "bn" ? "খাদ্য জাল ও নিচ" : "Food webs & niches";
+    if (this.skillId === "science-ecosystems-8")
+      return getAppLang() === "bn" ? "বাস্তুতন্ত্র: শক্তি ও চক্র" : "Ecosystems: energy & cycles";
+    return getAppLang() === "bn" ? "বাস্তুতন্ত্র: খাদ্য শৃঙ্খল" : "Ecosystems: food chains";
   }
 
   private slotCard(i: number): Phaser.GameObjects.Text {
@@ -226,7 +242,9 @@ export class FoodChainScene extends Phaser.Scene {
   }
 
   private rolesFacts(): RoleFact[] {
-    return this.skillId === "science-ecosystems-depth" ? WEB_FACTS : ROLES_FACTS;
+    if (this.skillId === "science-ecosystems-depth") return WEB_FACTS;
+    if (this.skillId === "science-ecosystems-8") return ECOSYSTEM_8_FACTS;
+    return ROLES_FACTS;
   }
 
   private rolesFactsForLevel(): RoleFact[] {

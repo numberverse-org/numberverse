@@ -63,6 +63,20 @@ const ENERGY_FACTS: Fact[] = [
   { q: "Energy can never be destroyed — it only ___ .", qBn: "শক্তি কখনো ধ্বংস হয় না — এটা কেবল ___ ।", options: ["changes form", "disappears", "gets lost forever", "turns into nothing"], optionsBn: ["রূপ বদলায়", "উধাও হয়", "চিরতরে হারিয়ে যায়", "শূন্য হয়ে যায়"], answer: 0, emoji: "⚡", tier: 3, hint: "Energy conservation — it transforms.", hintBn: "শক্তির নিত্যতা — এটা রূপান্তরিত হয়।" },
 ];
 
+// #1164 — band 8 forces & energy depth: work, friction and simple machines.
+const FORCES_DEPTH_FACTS: Fact[] = [
+  { q: "You push a box with a force of 2 units for 3 metres. How much work do you do?", qBn: "তুমি ৩ মিটার দূরত্বে ২ একক বল দিয়ে বাক্স ঠেললে কত কাজ করলে?", options: ["6 units", "5 units", "1 unit", "3 units"], optionsBn: ["৬ একক", "৫ একক", "১ একক", "৩ একক"], answer: 0, emoji: "📦", tier: 1, hint: "Work = force × distance.", hintBn: "কাজ = বল × দূরত্ব।" },
+  { q: "Which force slows down a toy car sliding across the floor?", qBn: "মেঝেতে চলন্ত খেলনা গাড়িকে কোন বল ধীর করে দেয়?", options: ["friction", "gravity", "magnetism", "sound"], optionsBn: ["ঘর্ষণ", "মাধ্যাকর্ষণ", "চুম্বকত্ব", "শব্দ"], answer: 0, emoji: "🚗", tier: 1, hint: "It happens when two surfaces rub together.", hintBn: "দুটি তল ঘষা খেলেই এটা হয়।" },
+  { q: "A seesaw is which kind of simple machine?", qBn: "দোলনা কোন ধরনের সরল যন্ত্র?", options: ["a lever", "a pulley", "a wheel", "a ramp"], optionsBn: ["লিভার", "কপিকল", "চাকা", "ঢালু পথ"], answer: 0, emoji: "⚖️", tier: 1, hint: "It turns around a point in the middle.", hintBn: "এটা মাঝের একটি বিন্দুর চারপাশে ঘোরে।" },
+  { q: "A ramp helps move a heavy box upward. A ramp is an example of…", qBn: "ঢালু পথ ভারী বাক্স উপরে তুলতে সাহায্য করে। এটা কোনটির উদাহরণ?", options: ["an inclined plane", "a lever", "a pulley", "a screw"], optionsBn: ["নত তল", "লিভার", "কপিকল", "স্ক্রু"], answer: 0, emoji: "🛝", tier: 1, hint: "It is a flat surface set at an angle.", hintBn: "এটা হেলানো একটি সমতল তল।" },
+  { q: "Which simple machine helps lift a bucket from a well?", qBn: "কূপ থেকে বালতি তুলতে কোন সরল যন্ত্র সাহায্য করে?", options: ["a pulley", "a ramp", "a wheel", "a spring"], optionsBn: ["কপিকল", "ঢালু পথ", "চাকা", "স্প্রিং"], answer: 0, emoji: "🪣", tier: 2, hint: "It uses a rope that runs over a wheel.", hintBn: "চাকার ওপর দিয়ে দড়ি চালানো হয়।" },
+  { q: "A ball rolls uphill and slows to a stop. Its motion energy turns mostly into…", qBn: "একটি বল উঁচুতে উঠে থেমে যায়। এর গতি শক্তি মূলত কী-তে বদলায়?", options: ["stored (potential) energy", "light", "sound only", "nothing"], optionsBn: ["স্থিতি শক্তি", "আলো", "কেবল শব্দ", "কিছুই না"], answer: 0, emoji: "⚽", tier: 2, hint: "Higher up means more stored energy.", hintBn: "যত উপরে, তত বেশি জমা শক্তি।" },
+  { q: "Which surface produces the MOST friction?", qBn: "কোন তলে সবচেয়ে বেশি ঘর্ষণ হয়?", options: ["a rough carpet", "a smooth slide", "wet ice", "polished glass"], optionsBn: ["খসখসে কার্পেট", "মসৃণ ঢালু পথ", "ভেজা বরফ", "পালিশ করা কাচ"], answer: 0, emoji: "🧶", tier: 2, hint: "Rough surfaces grip more.", hintBn: "খসখসে তল বেশি আটকে ধরে।" },
+  { q: "Pedalling a bicycle turns your muscle energy mostly into…", qBn: "সাইকেলের প্যাডেল মারলে তোমার পেশির শক্তি মূলত কী-তে বদলায়?", options: ["motion energy", "light energy", "sound energy only", "magnetic energy"], optionsBn: ["গতি শক্তিতে", "আলো শক্তিতে", "কেবল শব্দ শক্তিতে", "চৌম্বক শক্তিতে"], answer: 0, emoji: "🚲", tier: 3, hint: "The wheels start to move.", hintBn: "চাকাগুলো চলতে শুরু করে।" },
+  { q: "A machine that makes work easier by changing the force or distance is a…", qBn: "বল বা দূরত্ব বদলে কাজ সহজ করে দেয় এমন যন্ত্রকে কী বলে?", options: ["simple machine", "heat engine", "battery", "mirror"], optionsBn: ["সরল যন্ত্র", "তাপ ইঞ্জিন", "ব্যাটারি", "আয়না"], answer: 0, emoji: "⚙️", tier: 3, hint: "Levers, pulleys and ramps are examples.", hintBn: "লিভার, কপিকল আর ঢালু পথ এর উদাহরণ।" },
+  { q: "Oil is put on a door hinge to make the door move smoothly. The oil reduces…", qBn: "দরজা মসৃণভাবে চলতে কব্জায় তেল দেওয়া হয়। তেল কী কমায়?", options: ["friction", "gravity", "weight", "magnetism"], optionsBn: ["ঘর্ষণ", "মাধ্যাকর্ষণ", "ওজন", "চুম্বকত্ব"], answer: 0, emoji: "🚪", tier: 3, hint: "Slippery surfaces rub less.", hintBn: "পিচ্ছিল তল কম ঘষা খায়।" },
+];
+
 const BUTTON_RADIUS = 56;
 
 /**
@@ -124,9 +138,11 @@ export class ScienceFactsScene extends Phaser.Scene {
   }
 
   private titleForSkill(): string {
-    return this.skillId === "science-energy-transfer"
-      ? L("Energy types & transfer", "শক্তির ধরন ও প্রবাহ")
-      : L("Forces & energy", "বল ও শক্তি");
+    if (this.skillId === "science-energy-transfer")
+      return L("Energy types & transfer", "শক্তির ধরন ও প্রবাহ");
+    if (this.skillId === "science-forces-depth")
+      return L("Forces & energy depth", "বল ও শক্তির গভীরতা");
+    return L("Forces & energy", "বল ও শক্তি");
   }
 
   private get answersY() {
@@ -143,7 +159,9 @@ export class ScienceFactsScene extends Phaser.Scene {
   }
 
   private factsForSkill(): Fact[] {
-    return this.skillId === "science-energy-transfer" ? ENERGY_FACTS : FORCES_FACTS;
+    if (this.skillId === "science-energy-transfer") return ENERGY_FACTS;
+    if (this.skillId === "science-forces-depth") return FORCES_DEPTH_FACTS;
+    return FORCES_FACTS;
   }
 
   private factsForLevel(): Fact[] {

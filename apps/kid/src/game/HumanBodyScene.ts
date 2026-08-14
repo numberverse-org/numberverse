@@ -70,6 +70,18 @@ const SYSTEM_FACTS: Fact[] = [
   { q: "Which system sends signals from the brain?", options: ["Nervous", "Circulatory ♻️", "Skeletal", "Digestive"], answer: "Nervous", emoji: "🧠", tier: 3 },
 ];
 
+// #1164 — band 8 body-system depth: how systems work TOGETHER.
+const SYSTEM_FACTS_8: Fact[] = [
+  { q: "Which two systems work together to move your arm?", options: ["Muscular and skeletal", "Digestive and immune", "Respiratory and skin", "Only skeletal"], answer: "Muscular and skeletal", emoji: "💪", tier: 3 },
+  { q: "Which system carries oxygen to the muscles?", options: ["Circulatory ♻️", "Skeletal", "Digestive", "Only muscular"], answer: "Circulatory ♻️", emoji: "♻️", tier: 3 },
+  { q: "When you run fast, which systems work together the most?", options: ["Respiratory, circulatory and muscular", "Only skeletal", "Only digestive", "Skin and hair"], answer: "Respiratory, circulatory and muscular", emoji: "🏃", tier: 3 },
+  { q: "The brain and nerves belong to which system?", options: ["Nervous", "Skeletal", "Digestive", "Circulatory ♻️"], answer: "Nervous", emoji: "🧠", tier: 3 },
+  { q: "Which system works with the digestive system to deliver food energy?", options: ["Circulatory ♻️", "Skeletal", "Respiratory", "Only skin"], answer: "Circulatory ♻️", emoji: "♻️", tier: 3 },
+  { q: "What do the lungs bring in for the body to use?", options: ["Oxygen", "Food", "Bones", "Sweat"], answer: "Oxygen", emoji: "🫁", tier: 3 },
+  { q: "Which system protects the brain and the heart?", options: ["Skeletal", "Digestive", "Muscular 💪", "Skin only"], answer: "Skeletal", emoji: "🦴", tier: 3 },
+  { q: "Sweating when you are hot is mostly which system at work?", options: ["Skin", "Skeletal", "Circulatory ♻️", "Digestive"], answer: "Skin", emoji: "💧", tier: 3 },
+];
+
 const BUTTON_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
