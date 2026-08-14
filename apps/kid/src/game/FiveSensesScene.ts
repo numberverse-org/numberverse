@@ -1,4 +1,4 @@
-import { TapChoiceScene, type TapChoiceConfig } from "./tapChoice";
+import { BinSortScene, type BinSortConfig } from "./binSort";
 
 /** i18n name keys — double-quoted camelCase literals the audit scanner sees. */
 const NAME_KEY: Record<string, string> = {
@@ -10,30 +10,22 @@ const NAME_KEY: Record<string, string> = {
   Cloud: "seCloud", Chocolate: "seChocolate", Leaf: "seLeaf", Banana: "seBanana",
 };
 
-const CFG: TapChoiceConfig = {
+const CFG: BinSortConfig = {
   gameId: "game-senses",
   titleKey: "seTitle",
   promptKey: "seQ",
   greatKey: "seGreat",
   doneKey: "seDone",
-  speakKey: "seSpeak",
-  // #1245 — each sense gets a spoken item→sense link at round start.
-  linkKeys: {
-    see: "seLinkSee",
-    hear: "seLinkHear",
-    smell: "seLinkSmell",
-    taste: "seLinkTaste",
-    touch: "seLinkTouch",
-  },
+  speakWrongKey: "seWrong",
   background: "floral",
+  grid: 5,
   rounds: 3,
-  cols: 5,
-  choices: [
-    { value: "see", key: "seSee", icon: "👁️" },
-    { value: "hear", key: "seHear", icon: "👂" },
-    { value: "smell", key: "seSmell", icon: "👃" },
-    { value: "taste", key: "seTaste", icon: "👅" },
-    { value: "touch", key: "seTouch", icon: "✋" },
+  bins: [
+    { value: "see", key: "seSee", icon: "👁️", verdictKey: "seVerdictSee" },
+    { value: "hear", key: "seHear", icon: "👂", verdictKey: "seVerdictHear" },
+    { value: "smell", key: "seSmell", icon: "👃", verdictKey: "seVerdictSmell" },
+    { value: "taste", key: "seTaste", icon: "👅", verdictKey: "seVerdictTaste" },
+    { value: "touch", key: "seTouch", icon: "✋", verdictKey: "seVerdictTouch" },
   ],
   items: [
     // tier 1 — famous
@@ -68,15 +60,16 @@ const CFG: TapChoiceConfig = {
 };
 
 /**
- * Five senses (#71). A band-1 science game: hear a song, see a rainbow, smell
- * a rose — tap which sense you use (see 👁️ / hear 👂 / smell 👃 / taste 👅 /
- * touch ✋). Wrong taps flash the right sense green as a gentle hint.
+ * Five senses (#71). A band-1 science sort: drag each picture into the sense
+ * bin we use — see 👁️ / hear 👂 / smell 👃 / taste 👅 / touch ✋. Same items the
+ * tap version already served, now on the shared BinSortScene drag engine so
+ * sorting (the gentlest preschool interaction) reaches this skill too.
  */
-export class FiveSensesScene extends TapChoiceScene {
+export class FiveSensesScene extends BinSortScene {
   constructor() {
     super("FiveSenses");
   }
-  protected cfg(): TapChoiceConfig {
+  protected cfg(): BinSortConfig {
     return CFG;
   }
 }
