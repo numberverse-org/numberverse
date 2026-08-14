@@ -74,3 +74,27 @@ def rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
         return profile
 
     return dep
+
+
+def ip_rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
+    """FastAPI dependency enforcing `limit` requests/minute per client IP.
+
+    Variant for PUBLIC endpoints with no account to key on (e.g. a share link).
+    Uses the same in-memory sliding window, with an `ip:` key prefix so buckets
+    can never collide with the account+IP buckets from `rate_limit`. Returns
+    None; the route only needs the dependency to run before it.
+    """
+
+    async def dep(request: Request) -> None:
+        now = time.monotonic()
+        ip = request.client.host if request.client else "unknown"
+        key = f"ip:{ip}"
+        if not _sliding_allow(key, limit, now):
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Too many requests — try again in a moment",
+            )
+        _last_purge[key] = now
+        _sweep(now)
+
+    return dep

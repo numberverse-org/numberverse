@@ -6,10 +6,12 @@ that returns ONLY anonymized aggregates — no name, avatar, kid id, email or
 skill ids — so a friend/relative sees the week's numbers and nothing personal.
 The public page makes one fetch and no tracking pixels: zero analytics.
 
-Two routes:
-  · GET /kids/{kid_id}/share-token  (auth) — mint (or return) the opaque token
-  · GET /share/{token}              (public) — the anonymized weekly snapshot
+Three routes:
+  · GET    /kids/{kid_id}/share-token  (auth) — mint (or return) the opaque token
+  · DELETE /kids/{kid_id}/share-token  (auth) — revoke the link (token is nulled)
+  · GET    /share/{token}              (public) — the anonymized weekly snapshot
 """
+import asyncio
 import secrets
 from collections import Counter
 from datetime import date, timedelta
@@ -21,9 +23,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import Kid, Profile, ProgressEvent, SkillMastery
+from ..models import Kid, KidSettings, Profile, ProgressEvent, SkillMastery
+from ..ratelimit import ip_rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["share"])
+
+# #832 — /share/{token} is auth-free, so rate-limit by client IP only (there is
+# no account to key on). 30 req/min is far more than a shared link gets opened
+# while still blunting token-guessing hammering.
+SHARE_SNAPSHOT_RATE_LIMIT = ip_rate_limit(limit=30)
+
+# Small fixed floor for public 404s so a guessed link isn't distinguishable from
+# a valid-but-paused link by response time alone (approximate, not exact).
+_SHARE_404_DELAY_SECONDS = 0.02
+
+
+async def _share_not_found() -> None:
+    await asyncio.sleep(_SHARE_404_DELAY_SECONDS)
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
 
 
 class ShareTokenOut(BaseModel):
@@ -33,8 +50,8 @@ class ShareTokenOut(BaseModel):
 class ShareSnapshotOut(BaseModel):
     """Aggregates only — deliberately carries ZERO identity. `week_of` is the
     calendar day the window ends on; top_game is an opaque game id (no PII);
-    coins is the current wallet balance (a single number, no per-day history);
-    minutes_by_day is the 7-day minute curve (just floats — no dates)."""
+    minutes_by_day is the 7-day minute curve (just floats — no dates). #867 —
+    the live wallet balance is intentionally NOT included on the public card."""
     rounds: int
     minutes: float
     correct_pct: int
@@ -42,7 +59,6 @@ class ShareSnapshotOut(BaseModel):
     mastered_count: int
     top_game: str | None
     week_of: str
-    coins: int = 0
     minutes_by_day: list[float] = []
 
 
@@ -65,15 +81,42 @@ async def get_share_token(
     return ShareTokenOut(token=owned.share_token)
 
 
-@router.get("/share/{token}", response_model=ShareSnapshotOut)
+@router.delete("/kids/{kid_id}/share-token", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_share_token(
+    kid_id,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """#866 — revoke a kid's share link. Nulls the opaque token so the public
+    snapshot stops resolving immediately. The next mint (GET) rotates a fresh
+    token, so the parent can share again without ever reusing a dead link."""
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    owned.share_token = None
+    await db.commit()
+
+
+@router.get(
+    "/share/{token}",
+    response_model=ShareSnapshotOut,
+    dependencies=[Depends(SHARE_SNAPSHOT_RATE_LIMIT)],
+)
 async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
     """Public weekly snapshot for a share card. NO auth: the token IS the key.
-    Unknown/revoked tokens → 404 (a guessed link finds nothing)."""
+    Unknown/revoked/paused tokens → 404 (a guessed link finds nothing)."""
     if not token:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
+        await _share_not_found()
     kid = await db.scalar(select(Kid).where(Kid.share_token == token))
     if not kid:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
+        await _share_not_found()
+
+    # #867 — the parent's pause kill-switch also gates the public card: while a
+    # kid is paused, their share link stops resolving. A missing settings row
+    # means defaults (not paused), so legacy kids keep sharing.
+    settings = await db.get(KidSettings, kid.id)
+    if settings is not None and settings.paused:
+        await _share_not_found()
 
     now = date.today()
     start = now - timedelta(days=6)
@@ -117,6 +160,5 @@ async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
         mastered_count=mastered_count,
         top_game=top_game,
         week_of=now.isoformat(),
-        coins=kid.coins or 0,
         minutes_by_day=min_by_day,
     )
