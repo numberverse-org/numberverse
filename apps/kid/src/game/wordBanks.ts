@@ -64,6 +64,30 @@ export const CVC_BUILD_POOL: CvcWord[] = [...CVC_POOL, ...CVC_BUILD_EXTRA];
 export const GRAMMAR_NOUNS = ["dog", "book", "cat", "teacher", "tree", "school"];
 export const GRAMMAR_VERBS = ["run", "sing", "jump", "read", "eat", "write"];
 
+/* ════════════════ Sight words — high-frequency list (#1175) ════════════════ */
+
+/** Base set (Fry 2nd-100 subset) — the original SightWordsScene pool stays for
+ *  continuity. Canonical home for the sight-word game. */
+export const SIGHT_WORDS_BASE: string[] = [
+  "the", "and", "you", "that", "with", "have", "from", "were",
+  "they", "when", "your", "about", "what", "which", "there", "where",
+  "would", "could", "should", "people", "water", "because", "more", "make",
+];
+
+/** Fry 3rd 100 — the level-3 sight word list (issue #177), all 100 words. */
+export const SIGHT_WORDS_L3: string[] = [
+  "high", "every", "near", "add", "food", "between", "own", "below", "country", "plant",
+  "last", "school", "father", "keep", "tree", "never", "start", "city", "earth", "eyes",
+  "light", "thought", "head", "under", "story", "saw", "left", "don't", "few", "while",
+  "along", "might", "close", "something", "seem", "next", "hard", "open", "example", "begin",
+  "life", "always", "those", "both", "paper", "together", "got", "group", "often", "run",
+  "important", "until", "children", "side", "feet", "car", "mile", "night", "walk", "white",
+  "sea", "began", "grow", "took", "river", "four", "carry", "state", "once", "book",
+  "hear", "stop", "without", "second", "late", "miss", "idea", "enough", "eat", "face",
+  "watch", "far", "Indian", "really", "almost", "let", "above", "girl", "sometimes", "mountain",
+  "cut", "young", "talk", "soon", "list", "song", "being", "leave", "family", "it's",
+];
+
 /* ════════════════ Bangla kid words — read & spell (#1168) ════════════════ */
 
 export interface BanglaKidWord {

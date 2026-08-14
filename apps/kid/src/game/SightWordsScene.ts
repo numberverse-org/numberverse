@@ -10,39 +10,11 @@ import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, 
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-sightwords")?.difficultyLevels ?? [3, 4, 5, 6, 8, 10];
-/** Base set (2nd-hundred friendly words) — the original pool stays for continuity. */
-const WORDS_BASE = [
-  { word: "the" }, { word: "and" }, { word: "you" }, { word: "that" },
-  { word: "with" }, { word: "have" }, { word: "from" }, { word: "were" },
-  { word: "they" }, { word: "when" }, { word: "your" }, { word: "about" },
-  { word: "what" }, { word: "which" }, { word: "there" }, { word: "where" },
-  { word: "would" }, { word: "could" }, { word: "should" }, { word: "people" },
-  { word: "water" }, { word: "because" }, { word: "more" }, { word: "make" },
-];
-/** Fry 3rd 100 — the level-3 sight word list (issue #177), all 100 words. */
-const WORDS_L3 = [
-  { word: "high" }, { word: "every" }, { word: "near" }, { word: "add" }, { word: "food" },
-  { word: "between" }, { word: "own" }, { word: "below" }, { word: "country" }, { word: "plant" },
-  { word: "last" }, { word: "school" }, { word: "father" }, { word: "keep" }, { word: "tree" },
-  { word: "never" }, { word: "start" }, { word: "city" }, { word: "earth" }, { word: "eyes" },
-  { word: "light" }, { word: "thought" }, { word: "head" }, { word: "under" }, { word: "story" },
-  { word: "saw" }, { word: "left" }, { word: "don't" }, { word: "few" }, { word: "while" },
-  { word: "along" }, { word: "might" }, { word: "close" }, { word: "something" }, { word: "seem" },
-  { word: "next" }, { word: "hard" }, { word: "open" }, { word: "example" }, { word: "begin" },
-  { word: "life" }, { word: "always" }, { word: "those" }, { word: "both" }, { word: "paper" },
-  { word: "together" }, { word: "got" }, { word: "group" }, { word: "often" }, { word: "run" },
-  { word: "important" }, { word: "until" }, { word: "children" }, { word: "side" }, { word: "feet" },
-  { word: "car" }, { word: "mile" }, { word: "night" }, { word: "walk" }, { word: "white" },
-  { word: "sea" }, { word: "began" }, { word: "grow" }, { word: "took" }, { word: "river" },
-  { word: "four" }, { word: "carry" }, { word: "state" }, { word: "once" }, { word: "book" },
-  { word: "hear" }, { word: "stop" }, { word: "without" }, { word: "second" }, { word: "late" },
-  { word: "miss" }, { word: "idea" }, { word: "enough" }, { word: "eat" }, { word: "face" },
-  { word: "watch" }, { word: "far" }, { word: "Indian" }, { word: "really" }, { word: "almost" },
-  { word: "let" }, { word: "above" }, { word: "girl" }, { word: "sometimes" }, { word: "mountain" },
-  { word: "cut" }, { word: "young" }, { word: "talk" }, { word: "soon" }, { word: "list" },
-  { word: "song" }, { word: "being" }, { word: "leave" }, { word: "family" }, { word: "it's" },
-];
-const WORDS = [...WORDS_BASE, ...WORDS_L3];
+// #1175 — the sight-word pools come from the ONE shared word-bank module
+// (base Fry-2nd subset + Fry 3rd-100), so a curriculum edit lives in a single
+// place and the audit's ⑥ cross-bank lint can see every lexical entry.
+import { SIGHT_WORDS_BASE, SIGHT_WORDS_L3 } from "./wordBanks";
+const WORDS = [...SIGHT_WORDS_BASE, ...SIGHT_WORDS_L3];
 const CARD_W = 110;
 const CARD_H = 64;
 const ROUNDS_TO_FINISH = 3;
@@ -119,7 +91,7 @@ export class SightWordsScene extends Phaser.Scene {
     this.cards.forEach((c) => c.destroy());
     this.cards = [];
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
-    this.target = WORDS[Phaser.Math.Between(0, WORDS.length - 1)].word;
+    this.target = WORDS[Phaser.Math.Between(0, WORDS.length - 1)];
     this.mode = Math.random() < 0.5 ? "hear" : "read";
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
@@ -139,7 +111,7 @@ export class SightWordsScene extends Phaser.Scene {
 
   private spawnCards(n: number) {
     const grid = n <= 3 ? { cols: 3, rows: 1 } : n <= 4 ? { cols: 2, rows: 2 } : n <= 6 ? { cols: 3, rows: 2 } : { cols: 4, rows: Math.ceil(n / 4) };
-    const opts = [this.target, ...WORDS.filter((w) => w.word !== this.target).map((w) => w.word)]
+    const opts = [this.target, ...WORDS.filter((w) => w !== this.target)]
       .slice(0, n)
       .sort(() => Math.random() - 0.5);
     const gl = gridLayout(this, {

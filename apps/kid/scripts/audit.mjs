@@ -240,6 +240,41 @@ for (const dir of SHIPPED_DIRS) {
 // console.error on a genuine error path is allowed (only hits above are fatal).
 if (!consoleHits) console.log("  ✓ zero console.log/debug/info/warn/trace in shipped code");
 
+/* ── 6. cross-bank word overlap (#1175) ── */
+console.log("⑥  shared word-bank cross-overlap (sight ↔ CVC/grammar)…");
+const bankSrc = existsSync(join(GAME, "wordBanks.ts")) ? readFileSync(join(GAME, "wordBanks.ts"), "utf8") : "";
+if (bankSrc) {
+  // grab the string-array blocks for the two sight pools
+  const grabArray = (name) => {
+    const start = bankSrc.indexOf(`export const ${name}`);
+    if (start < 0) return [];
+    const open = bankSrc.indexOf("[", start);
+    const close = bankSrc.indexOf("];", open);
+    return [...bankSrc.slice(open, close).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  };
+  const sight = new Set([...grabArray("SIGHT_WORDS_BASE"), ...grabArray("SIGHT_WORDS_L3")]);
+  // CVC/grammar pools are object entries `{ word: "cat", ... }` / plain strings
+  const grabBlock = (name) => {
+    const start = bankSrc.indexOf(`export const ${name}`);
+    if (start < 0) return [];
+    const open = bankSrc.indexOf("[", start);
+    const close = bankSrc.indexOf("];", open);
+    return [...bankSrc.slice(open, close).matchAll(/word: "([^"]+)"/g)].map((m) => m[1]);
+  };
+  const cvc = new Set([...grabBlock("CVC_POOL"), ...grabBlock("CVC_BUILD_EXTRA")]);
+  const gram = new Set([...grabArray("GRAMMAR_NOUNS"), ...grabArray("GRAMMAR_VERBS")]);
+  const overlap = [...sight].filter((w) => cvc.has(w) || gram.has(w)).sort();
+  for (const w of overlap) {
+    const where = [];
+    if (cvc.has(w)) where.push("CVC");
+    if (gram.has(w)) where.push("grammar");
+    warn(`sight word "${w}" also in ${where.join(" + ")} bank — same spelling must match (wordBanks.ts is the one source)`);
+  }
+  if (!overlap.length) console.log("  ✓ no sight-word / CVC / grammar lexical overlap");
+} else {
+  warn("wordBanks.ts not found — ⑥ cross-bank lint skipped");
+}
+
 console.log("\n──────────────────────────────");
 if (errors) { console.log(`✖ ${errors} error(s), ${warns} warning(s)`); process.exit(1); }
 if (warns) console.log(`✓ 0 errors, ${warns} warning(s) — fix warnings or leave deliberate`);
