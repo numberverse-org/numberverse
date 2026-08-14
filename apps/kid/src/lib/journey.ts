@@ -853,12 +853,24 @@ export function adaptiveLevelIndex(kidId: string, skillId: string, gameId: strin
   return idx < 0 ? 0 : idx;
 }
 
+// #1218 — kids are read at boot (3×: kids state, active-kid resolver, and the
+// screen initializer). Parse nv_kids ONCE and memoize; writers must call
+// invalidateKidsCache() so a later read re-parses (kept as an export so App.tsx
+// can refresh after addKid/avatar writes).
+let kidsCache: Kid[] | null = null;
+
 export function loadKids(): Kid[] {
+  if (kidsCache) return kidsCache;
   try {
     const raw = localStorage.getItem("nv_kids");
-    if (raw) return JSON.parse(raw) as Kid[];
+    kidsCache = raw ? (JSON.parse(raw) as Kid[]) : [];
   } catch {
     /* ignore */
+    kidsCache = [];
   }
-  return [];
+  return kidsCache;
+}
+
+export function invalidateKidsCache(): void {
+  kidsCache = null;
 }

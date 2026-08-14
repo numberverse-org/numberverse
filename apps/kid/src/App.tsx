@@ -11,6 +11,7 @@ import {
   moni,
   deriveLearningStyle,
   DEFAULT_MONI_PARAMS,
+  A11Y_DEFAULTS,
   type Band,
   type Skill,
   type ErrorKind,
@@ -44,7 +45,7 @@ import {
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, worldProgress, worldEmoji,
   worldUnlocked, totalMastered, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, modeForSkill, stepForSkill, moniPlanFor,
-  moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids,
+  moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
   MASTERY_THRESHOLD, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
   BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, WORLD_LANDS, FOCUS_SUBJECT_LABELS, SEASON_EMOJI, SEASON_PARTICLES,
@@ -59,15 +60,27 @@ import Nova3DHome from "./nova3d/Nova3DHome";
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.42.2 (⚡ Voice-cache: in-memory LRU ledger, readonly cache reads, debounced synth meter, IDB schema-drift guard)";
+const APP_BUILD = "14 Aug 2026 · 0.42.3 (🚀 Startup: lazy App chunk, splash-first paint, Phaser/three off the boot graph, deferred SW + rehydrate, safe reads, single-parse boot, planned-locale tree-shake)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.42.2";
+const APP_VERSION = "0.42.3";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
+
+/** #1219 — EVERY boot-path localStorage read must be guarded: in private
+ *  browsing / storage-denied contexts a bare getItem THROWS, and an unguarded
+ *  one in a useState initializer aborts the render before any UI. Central safe
+ *  read — returns null on any failure so initializers can fall through. */
+function readLS(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 const AVATARS = AVATAR_KEYS;
 
 export default function App() {
@@ -145,12 +158,8 @@ export default function App() {
   const [kid, setKid] = useState<Kid | null>(() => {
     const list = loadKids();
     if (!list.length) return null;
-    try {
-      const id = localStorage.getItem("nv_kid_id");
-      return list.find((k) => k.id === id) ?? null;
-    } catch {
-      return null;
-    }
+    const id = readLS("nv_kid_id"); // #1219 — guarded (private-browsing safe)
+    return list.find((k) => k.id === id) ?? null;
   });
   // #22 — sibling co-op: "pass the device" overlay + "now playing" toast.
   const [coopOpen, setCoopOpen] = useState(false);
@@ -171,21 +180,17 @@ export default function App() {
   // on the journey, otherwise the PARENT page (which shows the sign-in form
   // inline — the one and only parent page in the whole app).
   const [screen, setScreen] = useState<Screen>(() => {
-    if (!localStorage.getItem("nv_seen_welcome")) return "welcome";
+    if (!readLS("nv_seen_welcome")) return "welcome"; // #1219 — guarded read
     if (!hasParentSession()) return "parent";
     const list = loadKids();
     if (list.length === 0) return "addkid";
-    try {
-      const id = localStorage.getItem("nv_kid_id");
-      return list.some((k) => k.id === id) ? "home" : "kidpick";
-    } catch {
-      return "kidpick";
-    }
+    const id = readLS("nv_kid_id"); // #1219 — guarded read
+    return list.some((k) => k.id === id) ? "home" : "kidpick";
   });
   // Worlds screen shows the single linear learning journey by default.
   const [journeyView, setJourneyView] = useState(true);
   const [mapView, setMapView] = useState(false);
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("nv_lang") as Lang) || "en");
+  const [lang, setLang] = useState<Lang>(() => (readLS("nv_lang") as Lang) || "en"); // #1219
   const [muted, setMuted] = useState(isMusicMuted());
   // #288 — kid voice fun: device-local volume preference (re-renders so the
   // active Soft/Normal/Loud button stays highlighted).
@@ -474,8 +479,12 @@ export default function App() {
   // 🧏 #250 — GLOBAL accessibility toggles (big text + high contrast). Shared
   // with the parent portal via one localStorage key (nv_a11y, same origin); a
   // `storage` listener keeps open tabs in sync.
-  const [a11y, setA11y] = useState<A11yPrefs>(() => readA11y());
+  // #1220 — the initializer is a STATIC default (never touches storage during
+  // render); the real persisted value is read in the effect below, so a storage
+  // exception in private browsing can't abort first render.
+  const [a11y, setA11y] = useState<A11yPrefs>(() => ({ ...A11Y_DEFAULTS }));
   useEffect(() => {
+    setA11y(readA11y()); // #1220 — hydrate from storage after first paint
     const un = initA11y();
     const onStorage = (e: StorageEvent) => {
       if (e.key === "nv_a11y") setA11y(readA11y());
@@ -511,9 +520,30 @@ export default function App() {
     return () => navigator.serviceWorker.removeEventListener("controllerchange", onCtl);
   }, []);
 
+  // #1226 — the persisted nv_store_v1 blob is hydrated HERE (after first paint),
+  // not at store creation. Gating: the outbox drains in startAutoSync must NOT
+  // run against an empty pre-hydration store (they'd miss queued stories), so
+  // sync only arms once rehydrate() has landed. For a normal-size blob this
+  // adds a single frame; for a power user's large blob it keeps the App-chunk
+  // eval off the first-render path entirely.
+  const [storeHydrated, setStoreHydrated] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    // rehydrate() is typed void | Promise<void> — when void (already hydrated),
+    // resolve immediately; when a promise, await the merge before arming sync.
+    Promise.resolve(useKidStore.persist.rehydrate()).then(() => {
+      if (alive) setStoreHydrated(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   // Always-sync: drain the offline outbox on boot, then keep a heartbeat +
   // reconnect/foreground listeners (see api.ts). Never blocks gameplay.
-  useEffect(() => startAutoSync(), []);
+  useEffect(() => {
+    if (!storeHydrated) return;
+    return startAutoSync();
+  }, [storeHydrated]);
 
   // ── Parent session gate: validate the stored token once on boot. If it
   // expired or was revoked, clear it and return the parent to the gate so the
@@ -792,10 +822,15 @@ export default function App() {
   // Per-kid settings come from the parent portal (api.ts). We fetch them on
   // the active kid (cache-first so offline play still respects the rules) and
   // apply: subject visibility, world cap, daily playtime, voice + music.
-  const [settings, setSettings] = useState<KidSettings>(() => (kid ? cachedKidSettings(kid.id) : { ...KID_SETTINGS_DEFAULT }));
+  // #1221 — ONE synchronous cache read per render, shared by the state
+  // initializer AND the hydration effect (readSettingsCache is a parse-once
+  // memo, so repeated calls already return the same reference; deriving a
+  // single `cachedSettings` here makes the single-read intent explicit).
+  const cachedSettings = kid ? cachedKidSettings(kid.id) : { ...KID_SETTINGS_DEFAULT };
+  const [settings, setSettings] = useState<KidSettings>(cachedSettings);
   useEffect(() => {
     if (!kid) return;
-    setSettings(cachedKidSettings(kid.id));
+    setSettings(cachedSettings);
     let alive = true;
     void fetchKidSettings(kid.id).then((s) => {
       if (alive) setSettings(s);
@@ -948,10 +983,14 @@ export default function App() {
     subjectAllowed.clear();
     if (settings.enabled_subjects) for (const s of settings.enabled_subjects) subjectAllowed.add(s);
   }, [settings.enabled_subjects, subjectAllowed]);
+  // #1222 — read today's playtime ONCE per render and reuse it for the cap
+  // check, the goal line, and the goal banner (the api-level memo already avoids
+  // re-parsing localStorage, but this kills the duplicate CALLS too).
+  const todayPlayed = todayMinutes();
   /** Should the PLAY button be blocked? (#6 — effective per-weekday cap reached) */
   const playLimitReached = (() => {
     const cap = todayLimitMin(settings);
-    return cap !== null && todayMinutes() >= cap;
+    return cap !== null && todayPlayed >= cap;
   })();
   // A gentle child-facing banner when a play attempt hits the daily cap.
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
@@ -959,7 +998,6 @@ export default function App() {
   // line, and celebrated ONCE per day when reached. `goalReached` excludes the
   // cap block so the two banners never fight; the nudge is fully dismissible.
   const goalMin = settings.goal_min && settings.goal_min > 0 ? settings.goal_min : 0;
-  const todayPlayed = todayMinutes();
   const goalReached = goalMin > 0 && todayPlayed >= goalMin && !playLimitReached;
   const goalPct = goalMin > 0 ? Math.min(100, Math.round((todayPlayed / goalMin) * 100)) : 0;
   const [goalNotice, setGoalNotice] = useState(false);
@@ -1087,12 +1125,7 @@ export default function App() {
   const [tourStep, setTourStep] = useState<number | null>(null);
   useEffect(() => {
     if (screen !== "home" || !kid || tourStep !== null) return;
-    let done = true;
-    try {
-      done = localStorage.getItem("nv_tour_done") === "1";
-    } catch {
-      /* ignore */
-    }
+    const done = readLS("nv_tour_done") === "1"; // #1219 — centralized safe read
     if (!done) setTourStep(0);
   }, [screen, kid, tourStep]);
   const closeTour = (finished = false) => {
@@ -1871,6 +1904,7 @@ export default function App() {
     const newKid: Kid = { id: genId(), name, avatar, birthYear, ...(birthMonth ? { birthMonth } : {}), ...(birthDay ? { birthDay } : {}) };
     const next = [...kids, newKid];
     setKids(next);
+    invalidateKidsCache(); // #1218 — the memo must re-parse after a write
     try {
       localStorage.setItem("nv_kids", JSON.stringify(next));
     } catch {
@@ -1886,6 +1920,7 @@ export default function App() {
   const updateKidAvatar = (kidId: string, parts: AvatarParts) => {
     const next = kids.map((k) => (k.id === kidId ? { ...k, avatarParts: parts } : k));
     setKids(next);
+    invalidateKidsCache(); // #1218 — the memo must re-parse after a write
     try {
       localStorage.setItem("nv_kids", JSON.stringify(next));
     } catch {

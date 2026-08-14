@@ -97,6 +97,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // #1217 — the CommonJS default-export interop helper (\0commonjsHelpers)
+          // is used by EVERY CJS module (react, react/jsx-runtime, phaser, …).
+          // If Rollup hosts it inside phaser-vendor, then the BOOT chunk (which
+          // needs it for react/jsx-runtime) statically imports phaser-vendor →
+          // 1.4 MB of Phaser must download+execute before the splash paints.
+          // Give the helper its own tiny chunk so boot only ever touches it.
+          if (id.includes("commonjsHelpers")) return "vendor-cjs";
           if (id.includes("node_modules")) {
             // three core + examples (GLTF/KTX2/OrbitControls loaders) ONLY.
             // @react-three/fiber stays out so R3F's React dependency is NOT

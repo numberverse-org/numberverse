@@ -1328,6 +1328,15 @@ export const useKidStore = create<KidState>()(
           return { garden: { ...s.garden, [kidId]: next } };
         }),
     }),
-    { name: "nv_store_v1", storage: debouncedPersistStorage(), partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness }) }
+    {
+      name: "nv_store_v1",
+      storage: debouncedPersistStorage(),
+      // #1226 — DON'T parse the persisted blob at store creation (which fires
+      // during the lazy App-chunk eval). App.tsx calls `useKidStore.persist
+      // .rehydrate()` in a first-paint effect (and gates outbox drains on it),
+      // so a power user's large nv_store_v1 blob never holds up first render.
+      skipHydration: true,
+      partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness })
+    }
   )
 );

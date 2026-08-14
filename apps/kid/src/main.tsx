@@ -1,45 +1,111 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import { Icon } from "./components/Icon";
-import { getAppLang } from "./game/locale";
 import "./styles.css";
-import { registerSW } from "virtual:pwa-register";
-import { NV_GOLD, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
 
 /**
- * SERVICE WORKER + "PWA always gets the new update".
+ * #1217 — the heavy graph (App → @numberverse/core tables, the full zustand
+ * persist tree, ./api, ./i18n's thousands of string keys, Phaser scenes) must
+ * NOT evaluate before first paint. Only the splash + a handful of static deps
+ * live in the boot chunk; <App/> is a lazy chunk that resolves DURING the
+ * splash window, so the splash pixels render first (no JS graph to parse first).
+ */
+let appLoadedResolve: (() => void) | null = null;
+const appLoaded = new Promise<void>((r) => {
+  appLoadedResolve = r;
+});
+const App = lazy(() =>
+  import("./App").then((m) => {
+    appLoadedResolve?.(); // splash countdown starts when the graph is in
+    return m;
+  })
+);
+
+/**
+ * #1224/#1219 — the splash needs the app language for its tagline, but importing
+ * getAppLang() pulls @numberverse/core's full LOCALES registry into the boot
+ * chunk. Read nv_lang directly here (guarded — private-browsing safe); the real
+ * locale machinery lives inside the lazy App graph.
+ */
+let bootBn = false;
+try {
+  bootBn = (localStorage.getItem("nv_lang") || "en") === "bn";
+} catch {
+  /* storage denied — English splash */
+}
+
+// Splash-only tokens inlined — importing NV_GOLD/NV_SKY/NV_PINK from ./game/ui
+// would drag Phaser + the whole UI toolkit into the boot chunk. (#1217)
+const NV_GOLD = "#ffd166";
+const NV_SKY = "#4cc9f0";
+const NV_PINK = "#ff8fa3";
+
+/**
+ * SERVICE WORKER + "PWA always gets the new update" — #1225.
+ *
+ * SW registration is NEVER on the critical rendering path: the runtime
+ * (virtual:pwa-register → workbox) is dynamically imported AFTER first paint
+ * (the splash's mount effect fires post-paint), so the boot chunk stays lean.
  *
  * The build uses registerType: "autoUpdate" — a fresh deploy installs a new
  * service worker that takes over immediately. But an OPEN page keeps running
- * its OLD bundle forever unless it reloads. That's exactly why every installed
- * PWA silently served stale games after a deploy.
- *
- * Fix: when a NEW service worker takes control of this page, reload it right
- * away — so every open PWA (iPhone home-screen included) jumps to the new
- * build on the next app open / the moment the background update lands.
+ * its OLD bundle forever unless it reloads. Fix: when a NEW service worker
+ * takes control, reload right away.
  *
  * Guards:
- *  · First-ever install has NO prior controller → we skip the reload so a
- *    fresh visitor isn't double-loaded. A genuine UPDATE is a change from an
- *    existing controller to a new one.
+ *  · First-ever install has NO prior controller → skip the reload (a fresh
+ *    visitor isn't double-loaded). An UPDATE is a change from an existing
+ *    controller to a new one.
  *  · sessionStorage survives reloads → one swap, never an infinite loop.
  */
-const hadController = Boolean(
-  typeof navigator !== "undefined" && navigator.serviceWorker?.controller
-);
-
-registerSW({
-  immediate: true,
-  onRegisteredSW(_swUrl, registration) {
-    registration?.addEventListener("controllerchange", () => {
-      if (!hadController) return;
-      if (sessionStorage.getItem("nv:sw-swap") === "1") return;
-      sessionStorage.setItem("nv:sw-swap", "1");
-      window.location.reload();
+async function deferSWRegistration() {
+  try {
+    const { registerSW } = await import("virtual:pwa-register");
+    const hadController = Boolean(navigator.serviceWorker?.controller);
+    registerSW({
+      immediate: true,
+      onRegisteredSW(_swUrl, registration) {
+        registration?.addEventListener("controllerchange", () => {
+          if (!hadController) return;
+          if (sessionStorage.getItem("nv:sw-swap") === "1") return;
+          sessionStorage.setItem("nv:sw-swap", "1");
+          window.location.reload();
+        });
+      },
     });
-  },
-});
+  } catch {
+    /* registration is best-effort — a failure must never break the splash */
+  }
+}
+
+/** #1217 — a failed lazy-chunk load must show a recovery path, never a frozen
+ *  blank canvas (offline-first SW + precache make this a rare fallback). */
+class BootErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    const bn = bootBn;
+    return (
+      <div className="boot-error">
+        <p>{bn ? "আবার চেষ্টা করো" : "Tap to retry"}</p>
+        <button
+          onClick={() => {
+            this.setState({ failed: false });
+            window.location.reload();
+          }}
+        >
+          ↻
+        </button>
+      </div>
+    );
+  }
+}
 
 /**
  * 📱 PORTRAIT-ONLY GUARD.
@@ -82,7 +148,7 @@ function RotateOverlay() {
     };
   }, []);
   if (!show) return null;
-  const bn = getAppLang() === "bn";
+  const bn = bootBn;
   return (
     <div className="rotate-overlay" role="alert">
       <div className="rotate-icon" aria-hidden="true">🔄</div>
@@ -111,18 +177,26 @@ const SPLASH_FLOAT = [
   { left: 88, size: 16, delay: 1, dur: 9.5, color: NV_PINK },
 ];
 
-function SplashScreen() {
+/** The splash covers first paint AND the lazy App-chunk load: the countdown
+ *  only starts once `ready` (the App chunk resolved), so a slow chunk load
+ *  never leaves a blank canvas — the splash simply stays a little longer. */
+function SplashScreen({ ready }: { ready: boolean }) {
   const [phase, setPhase] = useState<"show" | "hide" | "gone">("show");
   useEffect(() => {
+    // #1225 — kick SW registration here (post-paint), never in the boot path.
+    void deferSWRegistration();
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
     const hide = window.setTimeout(() => setPhase("hide"), 1700);
     const gone = window.setTimeout(() => setPhase("gone"), 2350);
     return () => {
       window.clearTimeout(hide);
       window.clearTimeout(gone);
     };
-  }, []);
+  }, [ready]);
   if (phase === "gone") return null;
-  const bn = getAppLang() === "bn";
+  const bn = bootBn;
   return (
     <div className={`splash ${phase === "hide" ? "splash-hide" : ""}`} aria-hidden="true">
       <div className="splash-glow splash-glow-a" />
@@ -163,10 +237,35 @@ function SplashScreen() {
   );
 }
 
+/** Boot: the splash holds (no blank gap) until the App chunk resolves, then
+ *  runs its normal countdown. SplashScreen + RotateOverlay are the ONLY pieces
+ *  of the render tree that must be live before first paint. */
+function Boot() {
+  const [appReady, setAppReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    appLoaded.then(() => {
+      if (alive) setAppReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return (
+    <>
+      <SplashScreen ready={appReady} />
+      <Suspense fallback={null}>
+        <BootErrorBoundary>
+          <App />
+        </BootErrorBoundary>
+      </Suspense>
+      <RotateOverlay />
+    </>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SplashScreen />
-    <App />
-    <RotateOverlay />
+    <Boot />
   </React.StrictMode>
 );
