@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.16 (🐛 #1116 home-node z-index:4 keeps the 'you are here' avatar ring above season particles (z-index:3) — snow/leaves/fireflies never cover the path marker)
+
+c22877d 🐛 #1116: .home-node gets position:relative + z-index:4 — the 'you are here' avatar ring stays above season particles (z-index:3), never visually covered by snow/leaves/fireflies
+
 ## 14 Aug 2026 — 0.53.15 (🐛 #1115 home screen bottom offset: single safe-area calc (16px + env()) instead of app-safe-area + 28px double-stack — quest lands above the fold on short notched phones)
 
 6e46890 🐛 #1115: home screen single bottom offset — .app:has(.play-screen) drops its safe-area pad, .play-screen owns a bottom-inclusive calc(16px + env(safe-area-inset-bottom)); kills the 34px+28px double-stack that pushed the quest below the fold
