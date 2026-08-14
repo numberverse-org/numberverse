@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.48.0 (animal homes: babies round — match baby to adult, alternating with homes (#1276))
+
+276220e feat(animal): babies round — match baby to adult, alternating with homes (#1276)
+
 ## 14 Aug 2026 — 0.47.0 (sight words: full Fry 2nd-100 pool for level 2 (#1258))
 
 514de7f feat(sight-words): full Fry 2nd-100 pool for level 2 (#1258)
