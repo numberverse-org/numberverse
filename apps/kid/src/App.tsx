@@ -30,6 +30,7 @@ import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { readA11y, writeA11y, initA11y, type A11yPrefs } from "./game/a11y";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
+import { emptyGarden, gardenSummary } from "./game/garden";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
@@ -517,6 +518,34 @@ export default function App() {
     // `?? []` fallback is a fresh array identity every render.
     [skillsMap, kid?.id, storedBoxes.join(",")]
   );
+  // #767 — the anti-grind cap is a RETENTION moment, not a dead end: when
+  // today's coins are full but a box/calendar bonus is still WAITING, Home says
+  // "come back tomorrow 🌙" and names the reward. Nothing is granted or lost.
+  const capWaiting = useMemo(
+    () =>
+      !!kid && coinsCapped && (unclaimedBoxes.length > 0 || !!calendar?.claimable),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [coinsCapped, unclaimedBoxes.length, calendar?.claimable]
+  );
+  // #769 — garden teaser for Home: plants/fruits + a "new growth!" cue when the
+  // live garden outgrew the snapshot the kid last SAW (updated on Garden open).
+  const gardenTile = useKidStore((s) => {
+    if (!kid) return null;
+    const sum = gardenSummary(s.garden[kid.id] ?? emptyGarden());
+    const seen = s.nova[kid.id]?.gardenSeen ?? "";
+    const [seenPlants = 0, seenFruits = 0] = seen ? seen.split(",").map((x) => parseInt(x, 10) || 0) : [0, 0];
+    return { plants: sum.plants, fruits: sum.fruits, fresh: seen !== "" && (sum.plants > seenPlants || sum.fruits > seenFruits) };
+  });
+  // #770 — a 'newgame' quest day names ONE un-attempted game to try, so the
+  // goal is a concrete tap instead of an opaque "try 1 new game". null when no
+  // fresh skills remain (Home then shows the warm fallback).
+  const freshSkillHint = useMemo(() => {
+    if (!kid || quest.type !== "newgame" || quest.done) return null;
+    return (
+      filterSkills.find((s) => s.game && !(skillsMap[`${kid.id}:${s.id}`]?.attempts ?? 0)) ??
+      null
+    );
+  }, [kid, quest.type, quest.done, skillsMap]);
   // Streak kindness: the store only refreshes `streak` at session-complete, so
   // after a missed day the badge would show a STALE flame. Track the anchor day
   // so we can hide the stale flame and welcome the kid back warmly instead.
@@ -1651,6 +1680,9 @@ export default function App() {
         kidName: kid.name,
         onBack: () => setScreen("home"),
       });
+      // #769 — snapshot the garden the kid is ABOUT to see, so Home can cue
+      // "new growth!" whenever it outgrew the last visit.
+      useKidStore.getState().novaMarkGardenSeen(kid.id);
       activeSceneRef.current = "Garden";
     };
     whenGameReady(mountEl, start); // waits for the async engine chunk
@@ -2317,6 +2349,9 @@ export default function App() {
       unclaimedBoxes={unclaimedBoxes}
       freezeCount={freezeCount}
       calendar={calendar}
+      capWaiting={capWaiting}
+      gardenTile={gardenTile}
+      freshSkillHint={freshSkillHint}
       goalPct={goalPct}
       playLimitReached={playLimitReached}
       launchCardCode={launchCardCode}

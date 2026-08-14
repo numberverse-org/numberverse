@@ -219,6 +219,18 @@ export interface Strings {
   questDoneText: string;
   questReward: (n: number) => string;
   questCompleteSpeak: (n: number) => string;
+  /* #770 — a 'newgame' quest day names one un-attempted game to try */
+  questFreshTry: string;
+  questFreshPlay: string;
+  questFreshNone: string;
+  /* #767 — cap-full "come back tomorrow" names the waiting reward */
+  capFullLine: (reward: string) => string;
+  capRewardBox: string;
+  capRewardCal: string;
+  capRewardBoth: string;
+  /* #769 — garden teaser on home */
+  gardenTileSum: (plants: number, fruits: number) => string;
+  gardenTileFresh: string;
   /* #281 — 7-day login calendar */
   calendarTitle: string;
   calendarHint: string;
@@ -946,6 +958,9 @@ export const STR: Record<Lang, Strings> = {
     questTypeStars: (n) => `Earn ${n} star${n === 1 ? "" : "s"}`,
     questTypeMaster: (n) => `Master ${n} skill`,
     questTypeNewgame: (n) => `Try ${n} new game`,
+    questFreshTry: "Try a brand-new game today:",
+    questFreshPlay: "Play",
+    questFreshNone: "No new games left — play anything! 🎉",
     questProgress: (n, target) => `${n}/${target}`,
     questDoneText: "✅ Quest complete!",
     questReward: (n) => `+${n} 🪙 bonus`,
@@ -1006,6 +1021,11 @@ export const STR: Record<Lang, Strings> = {
     boxOpen: "Open",
     boxCapSpeak: "The box will open tomorrow — the daily reward is full!",
     boxRewardSpeak: (name, coins) => `${name}, you found ${coins} coins in the box! 🎁`,
+    /* #767 — cap-full "come back tomorrow" names the waiting reward */
+    capFullLine: (reward) => `All of today's coins are earned — your ${reward} waits for tomorrow — come back! 🌙`,
+    capRewardBox: "mystery box 🎁",
+    capRewardCal: "calendar bonus 🪙",
+    capRewardBoth: "mystery box 🎁 and calendar bonus 🪙",
     hudCoinsMaxed: "Coins maxed for today! Keep learning — stars still count 🎯",
     /* #294 — streak-freeze tokens */
     freezePill: (n) => `🧊 ${n}`,
@@ -1451,6 +1471,9 @@ export const STR: Record<Lang, Strings> = {
     masterySpeak: (title) => `Wow! You mastered ${title}! 🎉`,
     gardenTile: "My Garden",
     gardenHint: "Answer right — plants grow!",
+    /* #769 — home teaser: plants/fruits + a "new growth!" cue */
+    gardenTileSum: (plants, fruits) => `🌱 ${plants} plants · ${fruits} fruitful`,
+    gardenTileFresh: "new growth!",
     /* 🦉 3D Nova island (#684) */
     island3dBtn: "✨ 3D Island",
     islandTitle: "🦉 Nova's 3D Island",
@@ -1653,6 +1676,9 @@ export const STR: Record<Lang, Strings> = {
     questTypeStars: (n) => `${bnNum(n)}টা তারা জিতো`,
     questTypeMaster: (n) => `${bnNum(n)}টি দক্ষতা আয়ত্ত করো`,
     questTypeNewgame: (n) => `${bnNum(n)}টা নতুন খেলা খেলো`,
+    questFreshTry: "আজ একটি একদম নতুন খেলা খেলো:",
+    questFreshPlay: "খেলো",
+    questFreshNone: "আর নতুন খেলা নেই — যা খুশি খেলো! 🎉",
     questProgress: (n, target) => `${bnNum(n)}/${bnNum(target)}`,
     questDoneText: "✅ মিশন শেষ!",
     questReward: (n) => `+${n} 🪙 বোনাস`,
@@ -1713,6 +1739,11 @@ export const STR: Record<Lang, Strings> = {
     boxOpen: "খোলো",
     boxCapSpeak: "বক্সটা কাল খুলবে — আজকের পুরস্কার ভরে গেছে!",
     boxRewardSpeak: (name, coins) => `${name}, বক্সে ${coins}টা কয়েন পেয়েছো! 🎁`,
+    /* #767 — cap-full "come back tomorrow" names the waiting reward */
+    capFullLine: (reward) => `আজকের সব কয়েন জিতেছ — তোমার ${reward} কালের জন্য অপেক্ষা করছে — আবার এসো! 🌙`,
+    capRewardBox: "মিস্ট্রি বক্স 🎁",
+    capRewardCal: "ক্যালেন্ডার বোনাস 🪙",
+    capRewardBoth: "মিস্ট্রি বক্স 🎁 আর ক্যালেন্ডার বোনাস 🪙",
     hudCoinsMaxed: "আজকের কয়েন ভরে গেছে! শিখতে থাকো — তারকারা এখনও গুনবে 🎯",
     /* #294 — streak-freeze tokens */
     freezePill: (n) => `🧊 ${bnNum(n)}`,
@@ -2158,6 +2189,9 @@ export const STR: Record<Lang, Strings> = {
     masterySpeak: (title) => `বাহ! তুমি ${title} আয়ত্ত করেছ! 🎉`,
     gardenTile: "আমার বাগান",
     gardenHint: "ঠিক উত্তর দাও — গাছ বাড়বে!",
+    /* #769 — home teaser: plants/fruits + a "new growth!" cue */
+    gardenTileSum: (plants, fruits) => `🌱 ${bnNum(plants)}টা গাছ · ${bnNum(fruits)}টা ফল`,
+    gardenTileFresh: "নতুন চারা!",
     /* 🦉 3D Nova island (#684) */
     island3dBtn: "✨ ৩ডি দ্বীপ",
     islandTitle: "🦉 নোভার ৩ডি দ্বীপ",

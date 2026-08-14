@@ -65,6 +65,12 @@ export interface HomeScreenProps {
   unclaimedBoxes: Skill[];
   freezeCount: number;
   calendar: { pos: number; claimable: boolean; claimedToday: boolean } | null;
+  /** #767 — today's coins are capped but a box/calendar bonus is waiting. */
+  capWaiting: boolean;
+  /** #769 — garden summary for the home teaser (null when no kid). */
+  gardenTile: { plants: number; fruits: number; fresh: boolean } | null;
+  /** #770 — one un-attempted game to try when today's quest is 'newgame'. */
+  freshSkillHint: Skill | null;
   goalPct: number;
   playLimitReached: boolean;
   launchCardCode: (raw: string) => void;
@@ -106,7 +112,7 @@ export default function HomeScreen({
   kid, lang, skillsMap, settings, challenge, quest, tourStep, projector, neural, tts, installEvt,
   swActive, scanOpen, scanCode, scanError, goalMin, goalNotice, limitNotice, todayPlayed, weekSkill,
   weekDone, bdayClaimed, petFedToday, petProgress, petSpecies, petStage, novaDayStreak, novaLastDay,
-  unclaimedBoxes, freezeCount, calendar, goalPct, playLimitReached, launchCardCode, voiceFunVol,
+  unclaimedBoxes, freezeCount, calendar, capWaiting, gardenTile, freshSkillHint, goalPct, playLimitReached, launchCardCode, voiceFunVol,
   neuralFlash, quietChrome, playRef, savedSessionsRef, scanCanvasRef, scanVideoRef, srLiveRef,
   setScreen, setScanCode, setScanError, setScanOpen, setGoalNotice, setTourStep, setVoiceFunVolState,
   closeChallenge, closeTour, installApp, pickChallenge, resumeSession, snapshotSession, startChallenge,
@@ -282,7 +288,11 @@ export default function HomeScreen({
               <div className="home-nova" role="img" aria-label="Nova the Owl">
                 <Icon name="nova" size={72} />
                 {!missedDay && novaDayStreak > 0 && (
-                  <span className="home-streak" role="status">🔥 {novaDayStreak}</span>
+                  // #768 — the freeze-token safety net is visible right on the
+                  // streak badge, so the kid KNOWS a missed day is covered.
+                  <span className="home-streak" role="status" title={freezeCount > 0 ? t.freezePill(freezeCount) : undefined}>
+                    🔥 {novaDayStreak}{freezeCount > 0 ? <em className="home-freeze">{t.freezePill(freezeCount)}</em> : null}
+                  </span>
                 )}
               </div>
               <div className="home-greet">
@@ -456,6 +466,29 @@ export default function HomeScreen({
                 </span>
               )}
             </div>
+            {/* #770 — a 'newgame' quest day is opaque ("try 1 new game") — name
+                ONE un-attempted skill to play, tappable straight into it. When
+                every game's been tried, a warm "play anything" fallback instead. */}
+            {quest.type === "newgame" && !quest.done && (
+              freshSkillHint ? (
+                <button className="fresh-skill-hint" onClick={() => startSingleSkill(freshSkillHint)} role="status">
+                  <span className="fresh-skill-emoji" aria-hidden="true">🆕</span>
+                  <span className="fresh-skill-txt">
+                    <span className="fresh-skill-title">{t.questFreshTry}</span>
+                    <span className="fresh-skill-name">{lang === "bn" ? freshSkillHint.titleBn ?? freshSkillHint.title : freshSkillHint.title}</span>
+                  </span>
+                  <span className="fresh-skill-go">{t.questFreshPlay} →</span>
+                </button>
+              ) : (
+                <div className="fresh-skill-hint fresh-skill-none" role="status">
+                  <span className="fresh-skill-emoji" aria-hidden="true">🆕</span>
+                  <span className="fresh-skill-txt">
+                    <span className="fresh-skill-title">{t.questFreshTry}</span>
+                    <span className="fresh-skill-name">{t.questFreshNone}</span>
+                  </span>
+                </div>
+              )
+            )}
             {/* #281 — 7-day login calendar: a growing coin bonus per consecutive
                 play day. One tap per day, fully offline, inside the anti-grind cap.
                 Day 1..7 of the cycle; past tiles ✓, today's tile pulses when ready,
@@ -652,6 +685,25 @@ export default function HomeScreen({
               </div>
             ) : null}
 
+            {/* #767 — the anti-grind cap is a RETENTION moment: today's coins are
+                full but a box/calendar bonus is still waiting — so we say "come
+                back tomorrow 🌙" and NAME the reward. Nothing is granted or lost;
+                the wall reads as a forward-looking wait, never a dead end. */}
+            {capWaiting && (
+              <div className="cap-waiting" role="status">
+                <span className="cap-waiting-emoji" aria-hidden="true">🌙</span>
+                <span className="cap-waiting-txt">
+                  {t.capFullLine(
+                    unclaimedBoxes.length > 0 && calendar?.claimable
+                      ? t.capRewardBoth
+                      : unclaimedBoxes.length > 0
+                        ? t.capRewardBox
+                        : t.capRewardCal
+                  )}
+                </span>
+              </div>
+            )}
+
             {/* #286 — star-of-the-week recap: the trailing 7 days, summarized
                 for the kid — days played, top skill, biggest win, and a spoken
                 option. All offline, from local play. When the week is empty it
@@ -709,7 +761,18 @@ export default function HomeScreen({
                 </button>
                 <button className="play-icon" onClick={goGarden}>
                   <span className="play-icon-emoji" aria-hidden="true">🌱</span>
-                  <span>{t.gardenTile}</span>
+                  <span>
+                    {/* #769 — the garden teases itself on home: "N plants · M
+                        fruits", plus a "new growth!" cue when it outgrew the
+                        snapshot the kid last SAW (updated on Garden open). */}
+                    <span className="garden-tile-name">{t.gardenTile}</span>
+                    {gardenTile && (
+                      <span className="garden-tile-sum">
+                        {t.gardenTileSum(gardenTile.plants, gardenTile.fruits)}
+                        {gardenTile.fresh && <em className="garden-tile-fresh">{t.gardenTileFresh}</em>}
+                      </span>
+                    )}
+                  </span>
                 </button>
                 <button className="play-icon" onClick={goCards}>
                   <span className="play-icon-emoji" aria-hidden="true">🏆</span>

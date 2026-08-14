@@ -13,7 +13,7 @@ import {
   type ErrorKind,
   fingerprintAnswer,
 } from "@numberverse/core";
-import { waterGarden, masteryPlant, emptyGarden, type GardenState } from "./game/garden";
+import { waterGarden, masteryPlant, emptyGarden, gardenSummary, type GardenState } from "./game/garden";
 
 export interface RoundResult {
   gameId: string;
@@ -150,6 +150,11 @@ export const NOVA_DAILY_BONUS = 2;
 export const NOVA_CARE_GAIN = 5;
 /** Daily coin reward for feeding/playing with Nova (once each). */
 export const NOVA_CARE_COINS = 1;
+/** #766 — affection is a daily-care HABIT: it decays a little per missed care
+ *  day (never below 0) so a returning kid sees the warmth needs tending, and
+ *  crossing 100 pays the one-time 'best friend' bonus. */
+export const NOVA_AFFECTION_DECAY = 2; // affection lost per missed care day
+export const AFFECTION_BEST_COIN = 15; // one-time bonus at affection 100
 /** #1192 — care coins have their OWN tiny daily cap (2 = one feed + one play),
  *  entirely separate from the learning NOVA_DAILY_CAP. Caring never crowds
  *  out learning rewards, and vice versa. */
@@ -277,6 +282,12 @@ export interface NovaState {
   lastDay: string;
   /** 0..100 — grows with feed/play care. */
   affection: number;
+  /** #766 — one-time 'best friend' bonus paid when affection first hits 100. */
+  affectionBest: boolean;
+  /** #769 — "plants,fruits" snapshot of the LAST garden the kid actually SAW
+   *  (updated when the Garden opens) — Home cues "new growth!" when the live
+   *  gardenSummary() shows more than this. */
+  gardenSeen: string;
   /** Last ISO date the kid fed Nova (care actions reset daily). */
   fed: string;
   played: string;
@@ -344,6 +355,8 @@ export function defaultNova(): NovaState {
     days: [],
     lastDay: "",
     affection: 0,
+    affectionBest: false,
+    gardenSeen: "",
     fed: "",
     played: "",
     earnedToday: 0,
@@ -522,6 +535,9 @@ interface KidState {
   gardenWater: (kidId: string, amount?: number) => void;
   /** A skill was just mastered → plant its trophy flower. */
   gardenMastery: (kidId: string, skillId: string, title: string) => void;
+  /** #769 — snapshot the garden the kid just SAW (plants,fruits) so Home can
+   *  cue "new growth!" the next time it outgrew the last visit. */
+  novaMarkGardenSeen: (kidId: string) => void;
   /** Nova's birthday gift — claimable once per calendar year (a real bonus, bypasses the daily cap). */
   novaBirthday: (kidId: string) => void;
   /** The pet takes a bigger step when a skill is newly mastered. */
@@ -1122,18 +1138,27 @@ export const useKidStore = create<KidState>()(
           // learning rewards (and vice versa).
           const careDay = cur.careDay === today ? cur.careEarnedToday ?? 0 : 0;
           const add = Math.min(NOVA_CARE_COINS, Math.max(0, NOVA_CARE_DAILY_CAP - careDay));
-          const affection = Math.min(100, cur.affection + NOVA_CARE_GAIN);
+          // #766 — gentle decay per missed care day, then the day's gain; cap 100.
+          const careGap = cur.careDay && cur.careDay !== today
+            ? Math.max(0, Math.round((new Date(today).getTime() - new Date(cur.careDay).getTime()) / 86400000))
+            : 0;
+          const decayed = Math.max(0, cur.affection - (careGap > 1 ? (careGap - 1) * NOVA_AFFECTION_DECAY : 0));
+          const affection = Math.min(100, decayed + NOVA_CARE_GAIN);
+          // #766 — first time crossing 100 → one-time 'best friend' bonus.
+          const bestFriend = !cur.affectionBest && affection >= 100;
+          const bestCoins = bestFriend ? AFFECTION_BEST_COIN : 0;
           return {
             nova: {
               ...s.nova,
               [kidId]: {
                 ...cur,
-                coins: cur.coins + add,
-                totalEarned: cur.totalEarned + add,
+                coins: cur.coins + add + bestCoins,
+                totalEarned: cur.totalEarned + add + bestCoins,
                 careCoins: (cur.careCoins ?? 0) + add,
                 careDay: today,
                 careEarnedToday: careDay + add,
                 affection,
+                affectionBest: bestFriend ? true : (cur.affectionBest ?? false),
                 ...(action === "feed" ? { fed: today } : { played: today }),
               },
             },
@@ -1373,6 +1398,21 @@ export const useKidStore = create<KidState>()(
           const next = masteryPlant(g, skillId, title);
           if (next === g) return { garden: s.garden }; // already planted
           return { garden: { ...s.garden, [kidId]: next } };
+        }),
+
+      novaMarkGardenSeen: (kidId) =>
+        set((s) => {
+          const g = s.garden[kidId] ?? emptyGarden();
+          const sum = gardenSummary(g);
+          const snap = `${sum.plants},${sum.fruits}`;
+          const cur = s.nova[kidId];
+          if (cur && cur.gardenSeen === snap) return { nova: s.nova }; // nothing new
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: { ...(cur ?? defaultNova()), gardenSeen: snap },
+            },
+          };
         }),
     }),
     {

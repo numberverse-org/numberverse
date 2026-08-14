@@ -1759,6 +1759,58 @@
   border-radius: 999px;
   padding: 8px 12px;
 }
+/* #768 — the freeze safety net rides the home streak badge too */
+.home-streak .home-freeze {
+  font-style: normal;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(23, 96, 168, 0.9);
+  color: #cfe8ff;
+  font-size: 10px;
+  border: 1.5px solid #fff;
+}
+/* #767 — cap-full "come back tomorrow 🌙": the anti-grind wall becomes a
+   forward-looking wait (names the waiting reward — box and/or calendar) */
+.cap-waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.14), rgba(255, 209, 102, 0.12));
+  border: 1.5px dashed rgba(255, 209, 102, 0.5);
+  border-radius: 16px;
+  padding: 10px 14px;
+}
+.cap-waiting-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
+.cap-waiting-txt { font-size: 13px; font-weight: 800; color: #ffe9b0; }
+/* #770 — a 'newgame' quest day names ONE un-attempted game to try */
+.fresh-skill-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  text-align: left;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.18), rgba(76, 201, 240, 0.14));
+  border: 1.5px solid rgba(255, 209, 102, 0.5);
+  border-radius: 16px;
+  padding: 10px 14px;
+  color: #fff;
+  cursor: pointer;
+}
+.fresh-skill-hint:active { transform: scale(0.98); }
+.fresh-skill-none { cursor: default; opacity: 0.92; }
+.fresh-skill-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
+.fresh-skill-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fresh-skill-title { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #9bd8ff; }
+.fresh-skill-name { font-size: 15px; font-weight: 900; color: #fff; }
+.fresh-skill-go { margin-left: auto; font-size: 13px; font-weight: 900; color: var(--nv-gold); white-space: nowrap; }
+/* #769 — garden teaser: summary line + "new growth!" cue on the More button */
+.garden-tile-name { display: block; }
+.garden-tile-sum { display: block; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65); margin-top: 2px; }
+.garden-tile-fresh { display: block; font-style: normal; margin-top: 2px; font-size: 11px; font-weight: 900; color: var(--nv-mint); }
 .cal-strip {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

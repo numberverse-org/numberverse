@@ -1,10 +1,11 @@
 import Phaser from "phaser";
-import { pop, win, bad } from "./audio";
+import { pop, win, bad, tada } from "./audio";
 import { speak } from "./speech";
 import { cancelSpeech } from "./speech";
 import { txt, NV_COCOA, NV_GOLD } from "./ui";
 import { getAppLang, currentFestival } from "./locale";
 import { t } from "./i18n";
+import { bnNum } from "../i18n";
 import {
   useKidStore,
   NOVA_OUTFITS,
@@ -12,9 +13,16 @@ import {
   speciesById,
   speciesEmoji,
   NOVA_DAILY_CAP,
+  NOVA_CALENDAR_REWARDS,
+  calendarCycleDay,
+  questTypeFor,
+  QUEST_TARGETS,
+  NOVA_QUEST_TARGET,
+  AFFECTION_BEST_COIN,
   todayIso,
   dayIsoAgo,
   defaultNova,
+  type QuestType,
   type NovaOutfit,
   type NovaSpecies,
 } from "../store";
@@ -46,6 +54,21 @@ const NOVA_T = {
     close: "✕",
     playCta: "Let's Play!",
     playSub: "Win coins · Beat your streak 🔥",
+    /* #765 — daily quest + claimable 7-day calendar mirrored from Home. */
+    calDay: (pos: number) => `Day ${pos}`,
+    calClaim: (reward: number) => `+${reward} 🪙`,
+    calClaimed: "✓",
+    calNotReady: "Play a game first, then tap to claim!",
+    questType: { rounds: "🎯 rounds", stars: "⭐ stars", master: "🏅 master", newgame: "🆕 new game" },
+    questSpeak: (label: string, progress: number, target: number) =>
+      `Today's quest: ${label} — ${progress}/${target}! Tap here any time!`,
+    questDoneSpeak: (label: string) => `Today's quest is done — ${label} complete! Great job! 💛`,
+    calSpeak: (add: number) => `Daily bonus! +${add} coins! 🎁`,
+    calCapSpeak: "Your coin cup is full — this bonus waits safely for tomorrow! 🌙",
+    calFreezeSpeak: "Nice! A streak-freeze token — one missed day is safe! 🧊",
+    /* #766 — care decay: a gentle 'come back' when affection lapsed. */
+    missedYou: "Nova missed you — feed me to keep our friendship warm!",
+    bestFriend: "Best friends! 💛",
     wear: "Wear",
     wearing: "On",
     needCoins: "Play games to earn coins! 💪",
@@ -87,6 +110,21 @@ const NOVA_T = {
     close: "✕",
     playCta: "খেলি!",
     playSub: "কয়েন জিতো · ধারা চালিয়ে যাও 🔥",
+    /* #765 — daily quest + claimable 7-day calendar mirrored from Home. */
+    calDay: (pos: number) => `দিন ${bnNum(pos)}`,
+    calClaim: (reward: number) => `+${bnNum(reward)} 🪙`,
+    calClaimed: "✓",
+    calNotReady: "আগে একটি খেলা খেলো, তারপর বোনাস নাও!",
+    questType: { rounds: "🎯 রাউন্ড", stars: "⭐ তারা", master: "🏅 মাস্টারি", newgame: "🆕 নতুন খেলা" },
+    questSpeak: (label: string, progress: number, target: number) =>
+      `আজকের চ্যালেঞ্জ: ${label} — ${bnNum(progress)}/${bnNum(target)}! যেকোনো সময় এখানে ট্যাপ করো!`,
+    questDoneSpeak: (label: string) => `আজকের চ্যালেঞ্জ শেষ — ${label} সম্পূর্ণ! দারুণ! 💛`,
+    calSpeak: (add: number) => `দিনের বোনাস! +${bnNum(add)} কয়েন! 🎁`,
+    calCapSpeak: "কয়েনের পেয়ালা ভরে গেছে — এই বোনাস কাল নিরাপদে অপেক্ষা করবে! 🌙",
+    calFreezeSpeak: "দারুণ! একটি স্ট্রিক-ফ্রিজ টোকেন — একটি মিস করা দিন নিরাপদ! 🧊",
+    /* #766 — care decay: a gentle 'come back' when affection lapsed. */
+    missedYou: "নোভা তোমাকে মিস করেছে — বন্ধুত্ব উষ্ণ রাখতে খাওয়াও!",
+    bestFriend: "আমরা সেরা বন্ধু! 💛",
     wear: "পরো",
     wearing: "পরে",
     needCoins: "কয়েন পেতে খেলা খেলো! 💪",
@@ -639,6 +677,19 @@ export class NovaScene extends Phaser.Scene {
   private styleBadgeBg!: Phaser.GameObjects.Graphics;
   private styleBadgeText!: Phaser.GameObjects.Text;
 
+  // #765 — kid-facing daily quest chip + claimable 7-day calendar tile,
+  // mirrored from Home so the pet room is the same "come back daily" home.
+  private questChip!: Phaser.GameObjects.Container;
+  private questChipBg!: Phaser.GameObjects.Graphics;
+  private questChipText!: Phaser.GameObjects.Text;
+  private calTile!: Phaser.GameObjects.Container;
+  private calTileBg!: Phaser.GameObjects.Graphics;
+  private calCells: Phaser.GameObjects.Text[] = [];
+  // #768 — streak-freeze token count, tucked right after the streak dots.
+  private freezePill!: Phaser.GameObjects.Text;
+  // #766 — "Nova missed you" shown once per scene visit, never nagging.
+  private missedYouSpoken = false;
+
   // outfit on Nova's body
   private outfitNodes: Record<string, Phaser.GameObjects.GameObject[]> = {};
 
@@ -774,6 +825,7 @@ export class NovaScene extends Phaser.Scene {
 
     this.buildTopBar();
     this.buildStyleBadge();
+    this.buildDailyStrip();
     this.buildRoom(this.roomIdx);
     // KID GESTURE — swipe LEFT/RIGHT on the open canvas flips the room.
     // Swipes that start ON a tappable thing (Nova, dock, chevrons, an open
@@ -851,6 +903,20 @@ export class NovaScene extends Phaser.Scene {
       this.say(T.greeting(name), 2600);
       this.time.delayedCall(2800, () => {
         if (!this.touched && !this.dozing) this.say(T.tapHint, 2000);
+      });
+    }
+    // #766 — when affection decayed from missed care days, Nova gently asks the
+    // kid to come back and feed her (once per scene visit, after the greeting —
+    // never nags, never guilt).
+    const novaHere = useKidStore.getState().nova[this.kidId] ?? defaultNova();
+    const todayHere = todayIso();
+    const careGap = novaHere.careDay && novaHere.careDay !== todayHere
+      ? Math.max(0, Math.round((new Date(todayHere).getTime() - new Date(novaHere.careDay).getTime()) / 86400000))
+      : 0;
+    if (careGap > 1 && (novaHere.affection ?? 0) < 100) {
+      this.missedYouSpoken = true;
+      this.time.delayedCall(4700, () => {
+        if (!this.dozing && !this.touched) this.say(this.t().missedYou, 2600);
       });
     }
     // after the hello, tease the one-time "swipe to explore" nudge
@@ -1149,6 +1215,164 @@ export class NovaScene extends Phaser.Scene {
     this.styleBadgeBg.lineStyle(1.4, 0xffd166, 0.5);
     this.styleBadgeBg.strokeRoundedRect(-w / 2, -16, w, 32, 16);
     this.styleBadge.setVisible(true);
+  }
+
+  /* ────────────────────────── daily hooks (#765/#768) ────────────────────────── */
+
+  /** #765 — the pet room shows the SAME daily hooks as Home: a quest chip
+   *  (type rotates per kid/day, tap to hear today's goal) and a compact
+   *  7-day login calendar whose "today" tile lights up when claimable after
+   *  the first session — tapping it calls novaClaimCalendar.
+   *  #768 — the streak-freeze token count rides right on the streak strip. */
+  private buildDailyStrip() {
+    // freeze token pill — hidden until a token is owned; rides on the streak
+    // strip so it moves and scales with the 🔥 line (#768)
+    this.freezePill = this.add
+      .text(0, 0, "", txt(11, "#9fd7ff", { bold: true, shadow: false }))
+      .setOrigin(0.5)
+      .setDepth(400)
+      .setVisible(false);
+    this.streakStrip.add(this.freezePill);
+
+    // quest chip — emoji + progress, tappable for a spoken goal
+    this.questChipText = this.add
+      .text(0, 0, "", txt(12, "#ffffff", { bold: true, shadow: false }))
+      .setOrigin(0.5)
+      .setDepth(401);
+    this.questChipBg = this.add.graphics().setDepth(400);
+    this.questChip = this.add.container(0, 0, [this.questChipBg, this.questChipText]).setDepth(401);
+    this.questChip.setSize(220, 34).setInteractive({ useHandCursor: true });
+    this.questChip.on("pointerdown", () => this.sayQuestGoal());
+
+    // 7-day calendar tile — one mini cell per cycle day
+    const cellW = 26;
+    const n = NOVA_CALENDAR_REWARDS.length;
+    for (let i = 0; i < n; i++) {
+      this.calCells.push(
+        this.add
+          .text(-((n - 1) * cellW) / 2 + i * cellW, 0, "", txt(10, "#eafaff", { bold: true, shadow: false }))
+          .setOrigin(0.5)
+          .setDepth(401)
+      );
+    }
+    this.calTileBg = this.add.graphics().setDepth(400);
+    this.calTile = this.add.container(0, 0, [this.calTileBg, ...this.calCells]).setDepth(401);
+    this.calTile.setSize(n * cellW, 34).setInteractive({ useHandCursor: true });
+    this.calTile.on("pointerdown", () => this.claimCalendarTile());
+  }
+
+  /** Re-render the quest chip + calendar tile + freeze pill from the store. */
+  private refreshDailyStrip() {
+    const kidId = this.kidId;
+    const nova = useKidStore.getState().nova[kidId] ?? defaultNova();
+    const today = todayIso();
+
+    // ── quest chip (#765): progress only counts once today's type is fresh.
+    const todayFresh = nova.questDay === today;
+    const type: QuestType = todayFresh && nova.questType ? (nova.questType as QuestType) : questTypeFor(kidId, today);
+    const progress = todayFresh ? (nova.questProgress ?? (type === "rounds" ? nova.questRounds ?? 0 : 0)) : 0;
+    const target = QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET;
+    const done = todayFresh ? !!nova.questDone : false;
+    this.questChipText.setText(`${done ? "✅" : "🎯"} ${Math.min(progress, target)}/${target}`);
+    const qw = Math.max(92, this.questChipText.width + 36);
+    this.questChipBg.clear();
+    this.questChipBg.fillStyle(done ? 0x1e5f43 : 0x0f1935, 0.75);
+    this.questChipBg.fillRoundedRect(-qw / 2, -17, qw, 34, 17);
+    this.questChipBg.lineStyle(1.4, done ? 0x8ef0b0 : 0xffd166, done ? 0.6 : 0.45);
+    this.questChipBg.strokeRoundedRect(-qw / 2, -17, qw, 34, 17);
+
+    // ── calendar tile (#765): claimable only after today's first session.
+    const playedToday = nova.lastDay === today;
+    const pos = playedToday
+      ? calendarCycleDay(nova.streak)
+      : nova.lastDay === dayIsoAgo(1)
+        ? calendarCycleDay(nova.streak + 1) // today would extend the streak → next tile
+        : 1; // missed a day → fresh restart at day 1
+    const claimable = playedToday && nova.calendarDay !== today;
+    const claimedToday = nova.calendarDay === today;
+    const capFull = nova.earnDay === today && (nova.earnedToday ?? 0) >= NOVA_DAILY_CAP;
+    this.calCells.forEach((c, i) => {
+      const day = i + 1;
+      const isToday = day === pos;
+      const state = isToday && claimable ? "claim" : day < pos || claimedToday ? "done" : isToday ? "wait" : "future";
+      if (state === "claim") {
+        c.setText(`🪙${bnNum(NOVA_CALENDAR_REWARDS[i])}`).setColor("#052e3f");
+      } else if (state === "done") {
+        c.setText("✓").setColor("#9fd7ff");
+      } else if (state === "wait") {
+        c.setText(`🪙${bnNum(NOVA_CALENDAR_REWARDS[i])}`).setColor("#ffe08a");
+      } else {
+        c.setText("🔒").setColor("#8aa0c8");
+      }
+    });
+    this.calTileBg.clear();
+    const cw = NOVA_CALENDAR_REWARDS.length * 26 + 14;
+    this.calTileBg.fillStyle(0x0f1935, 0.55);
+    this.calTileBg.fillRoundedRect(-cw / 2, -17, cw, 34, 17);
+    this.calTileBg.lineStyle(1.4, claimable ? 0x8ef0b0 : 0xffffff, claimable ? 0.6 : 0.3);
+    this.calTileBg.strokeRoundedRect(-cw / 2, -17, cw, 34, 17);
+    // Pulse while claimable — a gentle "tap me" beat (and when the day's cap is
+    // already full, hold the calm glow so a waiting bonus reads as WAITING).
+    this.tweens.killTweensOf(this.calTile);
+    if (claimable && !capFull) {
+      this.tweens.add({ targets: this.calTile, scale: 1.05, duration: 320, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    } else {
+      this.calTile.setScale(1);
+    }
+
+    // ── freeze pill (#768) — sits right after the streak dots.
+    const freezes = nova.freezes ?? 0;
+    this.freezePill.setText(`🧊 ${bnNum(freezes)}`);
+    this.freezePill.setVisible(freezes > 0);
+    this.freezePill.setPosition(this.streakText.width / 2 + 12 + 7 * 13 + 10, 0);
+  }
+
+  /** Tap the quest chip → speak today's goal (offline, kid-safe). */
+  private sayQuestGoal() {
+    const kidId = this.kidId;
+    const nova = useKidStore.getState().nova[kidId] ?? defaultNova();
+    const today = todayIso();
+    const todayFresh = nova.questDay === today;
+    const type: QuestType = todayFresh && nova.questType ? (nova.questType as QuestType) : questTypeFor(kidId, today);
+    const progress = todayFresh ? (nova.questProgress ?? (type === "rounds" ? nova.questRounds ?? 0 : 0)) : 0;
+    const target = QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET;
+    const done = todayFresh ? !!nova.questDone : false;
+    const label = this.t().questType[type];
+    pop();
+    if (done) this.say(this.t().questDoneSpeak(label), 2200);
+    else this.say(this.t().questSpeak(label, Math.min(progress, target), target), 2400);
+  }
+
+  /** Tap the calendar tile → claim today's bonus (novaClaimCalendar). */
+  private claimCalendarTile() {
+    const kidId = this.kidId;
+    const today = todayIso();
+    const beforeFreezes = useKidStore.getState().nova[kidId]?.freezes ?? 0;
+    const add = useKidStore.getState().novaClaimCalendar(kidId);
+    const afterFreezes = useKidStore.getState().nova[kidId]?.freezes ?? 0;
+    const token = afterFreezes > beforeFreezes;
+    if (add > 0 || token) {
+      pop();
+      this.refresh();
+      if (token) {
+        this.burstEmoji("🧊", 4, 22);
+        this.say(this.t().calFreezeSpeak, 2400);
+      } else {
+        this.floatCoin(`+${add} 🪙`);
+        this.say(this.t().calSpeak(add), 2000);
+      }
+      return;
+    }
+    // Not claimable — explain gently instead of a silent tap.
+    const nova = useKidStore.getState().nova[kidId] ?? defaultNova();
+    if (nova.calendarDay === today) return; // already claimed today — nothing to say
+    if (nova.lastDay !== today) {
+      this.say(this.t().calNotReady, 1800);
+      return;
+    }
+    if (nova.earnDay === today && (nova.earnedToday ?? 0) >= NOVA_DAILY_CAP) {
+      this.say(this.t().calCapSpeak, 2400);
+    }
   }
 
   /* ────────────────────────── build pieces ────────────────────────── */
@@ -2340,7 +2564,11 @@ export class NovaScene extends Phaser.Scene {
     }
     const after = useKidStore.getState().nova[this.kidId] ?? defaultNova();
     const earnedToday = after.earnDay === today ? after.earnedToday : 0;
-    const coinAdded = after.coins - before.coins;
+    // #766 — the one-time "best friend" bonus is celebrated separately from the
+    // daily care coin, so the float never reads as one lumped number.
+    const best = !!after.affectionBest && !before.affectionBest;
+    const bestCoins = best ? AFFECTION_BEST_COIN : 0;
+    const coinAdded = after.coins - before.coins - bestCoins;
     this.refresh();
     this.resetIdleTimer();
 
@@ -2348,14 +2576,21 @@ export class NovaScene extends Phaser.Scene {
       this.say(action === "feed" ? T.doneTodayFeed : T.doneTodayPlay, 1800);
       return;
     }
+    if (best) {
+      // #766 — first time affection hits 100 → visible, one-time celebration.
+      tada();
+      this.burstEmoji("💛", 10, 28);
+      this.say(`${T.bestFriend} +${bestCoins} 🪙`, 2600);
+      this.floatCoin(`+${bestCoins} 🪙`);
+    }
     if (coinAdded > 0) {
       // #1192 — care earns its OWN currency (🐾), never the learning cap
       this.floatCoin(`+${coinAdded} 🐾`);
       if (earnedToday >= NOVA_DAILY_CAP) this.say(T.dailyCap, 2200);
       else this.say(action === "feed" ? T.feedReward : T.playReward, 1800);
-    } else if (earnedToday >= NOVA_DAILY_CAP) {
+    } else if (!best && earnedToday >= NOVA_DAILY_CAP) {
       this.say(T.dailyCap, 2200);
-    } else {
+    } else if (!best) {
       this.say(action === "feed" ? T.feedMsg : T.playMsg, 1800);
     }
   }
@@ -2694,6 +2929,9 @@ export class NovaScene extends Phaser.Scene {
     this.ctaCoin.setPosition(18, -34);
     this.ctaSub.setText(this.t().playSub);
 
+    // #765/#768 — quest chip, 7-day calendar tile + freeze pill (all from store)
+    this.refreshDailyStrip();
+
     this.renderShopPage();
     this.renderSpeciesPage();
     this.renderActPage();
@@ -2740,6 +2978,11 @@ export class NovaScene extends Phaser.Scene {
     this.streakStrip.setPosition(W / 2, 90 + this.topInset);
     // 🏅 learning-style badge floats just below the streak
     this.styleBadge.setPosition(W / 2, 132 + this.topInset);
+    // #765 — daily quest chip + claimable 7-day calendar tile under the streak
+    this.questChip.setPosition(W / 2, 174 + this.topInset);
+    this.calTile.setPosition(W / 2, 214 + this.topInset);
+    // #768 — freeze pill rides on the streak strip (right after the dots)
+    this.freezePill.setPosition(this.streakText.width / 2 + 12 + 7 * 13 + 10, 0);
 
     // one-time "swipe to explore" nudge floats under Nova, above the dock
     this.swipeHint.setPosition(W / 2, H * 0.7);
