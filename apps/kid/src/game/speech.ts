@@ -307,6 +307,11 @@ function naturalize(text: string, lang: "en" | "bn"): string {
   const percent = lang === "bn" ? " শতাংশ " : " percent ";
   const equals = lang === "bn" ? " সমান " : " equals ";
   let s = text;
+  // A leading minus on a negative number ("-5"/"−5", or "-five") says the
+  // full word "minus five" — never leave a bare "-"/"−" that some engines
+  // silently skip. Run this BEFORE the operator rules below (the digit-minus-
+  // digit rule only ever matches an operator between two numbers).
+  s = s.replace(/^\s*[−-]\s*(?=[\dঀ-৿A-Za-z])/u, minus);
   // multiplication X-cross symbols (before the emoji strip catches them)
   s = s.replace(/[✕✖]/gu, times);
   // math operators → words
