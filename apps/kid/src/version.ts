@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.22 (responsive: tablet layout tier — worlds 2-up grid + denser badge/ach/trophy grids (#1091))";
-export const APP_VERSION = "0.53.22";
+export const APP_BUILD = "15 Aug 2026 · 0.53.23 (tapChoice: band-clamp grid to screen — no off-screen cards on short phones (#1093))";
+export const APP_VERSION = "0.53.23";

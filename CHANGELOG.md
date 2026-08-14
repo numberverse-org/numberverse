@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.23 (tapChoice: band-clamp grid to screen — no off-screen cards on short phones (#1093))
+
+a73c1e8 🛠 tapChoice: band-clamp grid to screen — no off-screen cards on short phones (#1093)
+
 ## 15 Aug 2026 — 0.53.22 (responsive: tablet layout tier — worlds 2-up grid + denser badge/ach/trophy grids (#1091))
 
 945eb2d 💻 responsive: tablet layout tier — worlds 2-up, denser book grids (#1091)
