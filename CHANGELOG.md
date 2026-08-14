@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.17 (🐛 #1117 home-streak badge: poke capped at 10px inside the 14px owl→greeting gap — flame badge never collides with greeting text at any width (even with the freeze pill))
+
+7ef569f 🐛 #1117: .home-streak poke capped at 10px (was -16px) — badge stays inside the 14px owl→greeting gap so the flame never collides with greeting text (incl. the wider freeze-pill variant) at any width
+
 ## 14 Aug 2026 — 0.53.16 (🐛 #1116 home-node z-index:4 keeps the 'you are here' avatar ring above season particles (z-index:3) — snow/leaves/fireflies never cover the path marker)
 
 c22877d 🐛 #1116: .home-node gets position:relative + z-index:4 — the 'you are here' avatar ring stays above season particles (z-index:3), never visually covered by snow/leaves/fireflies

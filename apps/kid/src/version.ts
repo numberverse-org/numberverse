@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.16 (🐛 #1116 home-node z-index:4 keeps the 'you are here' avatar ring above season particles (z-index:3) — snow/leaves/fireflies never cover the path marker)";
-export const APP_VERSION = "0.53.16";
+export const APP_BUILD = "14 Aug 2026 · 0.53.17 (🐛 #1117 home-streak badge: poke capped at 10px inside the 14px owl→greeting gap — flame badge never collides with greeting text at any width (even with the freeze pill))";
+export const APP_VERSION = "0.53.17";
