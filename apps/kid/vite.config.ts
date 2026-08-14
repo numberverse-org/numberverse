@@ -44,7 +44,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,svg,ico,json}"],
+        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,svg,ico,json,glb}"],
         // og-card.png is only for social link previews (crawlers), never needed
         // offline — keep it out of the precache so it doesn't burn install bytes.
         globIgnores: ["**/og-card.png"],
