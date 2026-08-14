@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.13 (post-mastery challenge replay: mastered expert skills get top-rung timed replay + sharp-streak reward (#1129-#1137))
+
+e2002f9 🎯 post-mastery challenge replay #1129-#1137: mastered expert skills re-enter at top rung with timed no-hint flag + escalating sharp-streak reward
+
 ## 14 Aug 2026 — 0.42.12 (older-kid challenge mode: band 6-7 independent + timed rounds (#1158 #1165 #1166))
 
 771e776 🎯 older-kid challenge mode #1158 #1165 #1166: band 6-7 independent + timed rounds
