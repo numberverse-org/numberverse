@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.49.0 (skip-count step ladder +2/+5/+10 per band (#1273))
+
+11f8d86 feat(skip-count): step ladder +2/+5/+10 per band (#1273)
+
 ## 14 Aug 2026 — 0.48.0 (animal homes: babies round — match baby to adult, alternating with homes (#1276))
 
 276220e feat(animal): babies round — match baby to adult, alternating with homes (#1276)
