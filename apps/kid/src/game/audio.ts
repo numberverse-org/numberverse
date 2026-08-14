@@ -60,7 +60,7 @@ function tone(
   o.type = type;
   o.frequency.value = freq;
   const v = vol * quietLevel * (layer === "music" ? musicVolume : sfxVolume);
-  g.gain.setValueAtTime(v, t);
+  g.gain.setValueAtTime(Math.max(v, 0.0001), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g);
   g.connect(c.destination);
@@ -176,7 +176,7 @@ export function whooshUp() {
   o.type = "sine";
   o.frequency.setValueAtTime(220, t);
   o.frequency.exponentialRampToValueAtTime(1180, t + 0.5);
-  g.gain.setValueAtTime(0.12 * quietLevel * sfxVolume, t); // #243/#248 — sfx balance + quiet hours
+  g.gain.setValueAtTime(Math.max(0.12 * quietLevel * sfxVolume, 0.0001), t); // #243/#248 — sfx balance + quiet hours
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
   o.connect(g);
   g.connect(c.destination);
