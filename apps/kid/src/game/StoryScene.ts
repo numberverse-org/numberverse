@@ -119,6 +119,51 @@ const SENTENCES: Story[] = [
   ], speak: "Tom wants to build a kite. He collects paper and sticks. He ties them together with string. The kite flies high in the sky." },
 ];
 
+// #1161 — band 6 paragraph ordering: three-sentence paragraphs (one rung
+// below the band-7 four-sentence paragraphs above).
+const SENTENCES3: Story[] = [
+  { frames: [
+    { e: "", c: "Sara wakes up early." },
+    { e: "", c: "She eats breakfast." },
+    { e: "", c: "She walks to school." },
+  ], speak: "Sara wakes up early. She eats breakfast. She walks to school." },
+  { frames: [
+    { e: "", c: "The sky turns dark." },
+    { e: "", c: "Lightning flashes." },
+    { e: "", c: "Rain starts to fall." },
+  ], speak: "The sky turns dark. Lightning flashes. Rain starts to fall." },
+  { frames: [
+    { e: "", c: "Mother washes the rice." },
+    { e: "", c: "She puts it in the pot." },
+    { e: "", c: "She cooks it on the stove." },
+  ], speak: "Mother washes the rice. She puts it in the pot. She cooks it on the stove." },
+  { frames: [
+    { e: "", c: "The bird finds a twig." },
+    { e: "", c: "It carries it to the tree." },
+    { e: "", c: "It builds a nest." },
+  ], speak: "The bird finds a twig. It carries it to the tree. It builds a nest." },
+  { frames: [
+    { e: "", c: "Amin puts on his shoes." },
+    { e: "", c: "He picks up his ball." },
+    { e: "", c: "He runs to the field." },
+  ], speak: "Amin puts on his shoes. He picks up his ball. He runs to the field." },
+  { frames: [
+    { e: "", c: "The milk is in the fridge." },
+    { e: "", c: "Rina pours it into a glass." },
+    { e: "", c: "She drinks it happily." },
+  ], speak: "The milk is in the fridge. Rina pours it into a glass. She drinks it happily." },
+  { frames: [
+    { e: "", c: "The sun sets in the west." },
+    { e: "", c: "The stars come out." },
+    { e: "", c: "The children go to bed." },
+  ], speak: "The sun sets in the west. The stars come out. The children go to bed." },
+  { frames: [
+    { e: "", c: "Tom opens his book." },
+    { e: "", c: "He reads the first page." },
+    { e: "", c: "He learns something new." },
+  ], speak: "Tom opens his book. He reads the first page. He learns something new." },
+];
+
 /** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
 function digit(n: number): string {
   return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
@@ -135,6 +180,7 @@ export class StoryScene extends Phaser.Scene {
   private startedAt = 0;
   private locked = false;
   private sentencesMode = false;
+  private skillId = "";
   private story!: Story;
   private order: number[] = [];
   private cards: Phaser.GameObjects.Container[] = [];
@@ -152,12 +198,15 @@ export class StoryScene extends Phaser.Scene {
     super("Story");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string; skill?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
     // #757/#760 — band-7 en-sentence-order: drag whole SENTENCES into a
     // paragraph (same drag mechanic, text-only cards).
     this.sentencesMode = data.mode === "sentences";
+    // #1161 — band-6 en-paragraph-order uses the 3-sentence pool (one rung
+    // below the band-7 4-sentence paragraphs).
+    this.skillId = data.skill ?? "";
     gameBackground(this, this.sentencesMode ? "magic" : "night");
     this.titleText = this.add
       .text(0, 0, t(this.sentencesMode ? "titleSentences" : "titleStory"), txt(34, "#ffffff", { bold: true }))
@@ -191,9 +240,10 @@ export class StoryScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
 
-    // Sentences mode: every paragraph is 4 sentences — never below 4 cards.
-    const n = this.sentencesMode ? 4 : LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
-    const pool = this.sentencesMode ? SENTENCES : STORIES.filter((s) => s.frames.length === n);
+    // Sentences mode: paragraphs are 4 sentences (3 for the band-6 rung).
+    const three = this.sentencesMode && this.skillId === "en-paragraph-order";
+    const n = this.sentencesMode ? (three ? 3 : 4) : LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    const pool = this.sentencesMode ? (three ? SENTENCES3 : SENTENCES) : STORIES.filter((s) => s.frames.length === n);
     let story = pool[Phaser.Math.Between(0, pool.length - 1)];
     if (story === this.story) story = pool[(pool.indexOf(story) + 1) % pool.length];
     this.story = story;

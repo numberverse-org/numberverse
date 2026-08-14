@@ -44,6 +44,32 @@ const FACTS: Fact[] = [
   { q: "The bones belong to which system?", options: ["Skeletal", "Digestive", "Respiratory", "Nervous"], answer: "Skeletal", emoji: "🦴", tier: 3 },
 ];
 
+// #1161 — band 6 organ-job depth: more organs (muscles, liver, kidneys,
+// intestines, joints) reusing the HumanBody answer-button mechanic.
+const FACTS_DEPTH: Fact[] = [
+  { q: "Which part moves your arms and legs?", options: ["Muscles 💪", "Teeth 🦷", "Skin", "Hair"], answer: "Muscles 💪", emoji: "💪", tier: 2 },
+  { q: "Which organ cleans your blood?", options: ["Liver", "Eyes 👀", "Bones 🦴", "Ears 👂"], answer: "Liver", emoji: "🫘", tier: 2 },
+  { q: "Which organs clean your blood and make urine?", options: ["Kidneys", "Lungs 🫁", "Teeth 🦷", "Hair"], answer: "Kidneys", emoji: "🫘", tier: 2 },
+  { q: "Which part absorbs the food you eat?", options: ["Intestines", "Heart ❤️", "Eyes 👀", "Bones 🦴"], answer: "Intestines", emoji: "🌀", tier: 2 },
+  { q: "Which part lets your arm bend?", options: ["A joint", "A nail", "A tooth", "A hair"], answer: "A joint", emoji: "🦾", tier: 2 },
+  { q: "Which part pumps blood to every muscle?", options: ["Heart ❤️", "Liver", "Stomach", "Nose 👃"], answer: "Heart ❤️", emoji: "❤️", tier: 2 },
+  { q: "Which part helps you chew food?", options: ["Teeth 🦷", "Lungs 🫁", "Kidneys", "Skin"], answer: "Teeth 🦷", emoji: "🦷", tier: 2 },
+  { q: "Which organ controls every move you make?", options: ["Brain 🧠", "Stomach", "Bones 🦴", "Liver"], answer: "Brain 🧠", emoji: "🧠", tier: 2 },
+];
+
+// #1161 — band 7 body-system depth: WHAT each system does (not just which
+// organ belongs where) — the systems ladder's hardest rung.
+const SYSTEM_FACTS: Fact[] = [
+  { q: "What does the circulatory system do?", options: ["Carries blood around the body", "Breaks down food", "Helps you breathe", "Holds you up"], answer: "Carries blood around the body", emoji: "♻️", tier: 3 },
+  { q: "What does the digestive system do?", options: ["Breaks down food", "Pumps blood", "Moves your bones", "Makes you see"], answer: "Breaks down food", emoji: "🍲", tier: 3 },
+  { q: "What does the respiratory system do?", options: ["Brings in air and oxygen", "Digests food", "Controls thinking", "Fights germs"], answer: "Brings in air and oxygen", emoji: "🫁", tier: 3 },
+  { q: "What does the nervous system do?", options: ["Sends messages and controls the body", "Makes blood", "Digests food", "Covers the body"], answer: "Sends messages and controls the body", emoji: "🧠", tier: 3 },
+  { q: "What does the skeletal system do?", options: ["Supports and protects the body", "Pumps blood", "Breaks down food", "Makes you hear"], answer: "Supports and protects the body", emoji: "🦴", tier: 3 },
+  { q: "What does the muscular system do?", options: ["Moves the body", "Carries blood", "Makes urine", "Digests food"], answer: "Moves the body", emoji: "💪", tier: 3 },
+  { q: "Which system works with the lungs?", options: ["Respiratory", "Skeletal", "Digestive", "Muscular 💪"], answer: "Respiratory", emoji: "🫁", tier: 3 },
+  { q: "Which system sends signals from the brain?", options: ["Nervous", "Circulatory ♻️", "Skeletal", "Digestive"], answer: "Nervous", emoji: "🧠", tier: 3 },
+];
+
 const BUTTON_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
@@ -77,14 +103,18 @@ export class HumanBodyScene extends Phaser.Scene {
   private meter!: RoundMeterApi;
   private questionText!: Phaser.GameObjects.Text;
   private prompt!: QuestionPanelApi;
+  private skillId = "";
 
   constructor() {
     super("HumanBody");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; challenge?: boolean }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; challenge?: boolean; skill?: string }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    // #1161 — band 6/7 depth pools: organ-job depth (science-body-depth) and
+    // system functions (science-body-systems-depth).
+    this.skillId = data.skill ?? "";
     // #1158 — challenge mode: band 6-7 skills (skill.challenge → App passes it)
     // get a per-round countdown bar and no hint/reveal on wrong.
     this.challenge = !!data.challenge;
@@ -124,7 +154,12 @@ export class HumanBodyScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    const pool = factsForLevel(this.levelIndex);
+    const pool =
+      this.skillId === "science-body-depth"
+        ? FACTS_DEPTH
+        : this.skillId === "science-body-systems-depth"
+          ? SYSTEM_FACTS
+          : factsForLevel(this.levelIndex);
     this.target = pool[Phaser.Math.Between(0, pool.length - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
