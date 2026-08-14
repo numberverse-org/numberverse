@@ -70,3 +70,31 @@ PASS: no growth across 50 rounds (#352)
 - Audio: `speech.ts` / `audio.ts` use WebAudio nodes; a dedicated device
   profile (Memory tab, 50 rounds on a mid-range Android) is the remaining
   hands-on verification step, tracked in #352.
+
+## #1108 — layout thrash (same helper, same release)
+
+While fixing the leak we found the second half of the RESIZE problem: Phaser's
+`ScaleManager.refresh()` **emits RESIZE unconditionally** even when the game
+size is unchanged, and `App.tsx`'s `visualViewport.resize` handler bypassed
+the ResizeObserver raf-guard — so an iOS toolbar-collapse burst ran the full
+scene layout read/write storm **repeatedly in one frame**.
+
+Two fixes (released together):
+
+1. **`App.tsx`** — `visualViewport.resize` now routes through the same
+   once-per-frame `scheduleRefresh()` guard as the ResizeObserver (shared
+   `raf` counter). Every resize trigger coalesces to ≤ 1 `scale.refresh()`/frame.
+2. **`onSceneResize()`** — now (a) skips the layout when `scale.width/height`
+   are unchanged (kills no-op RESIZE events), and (b) coalesces same-frame
+   events into a single rAF. A scene can never lay out more than once per
+   frame; the pending rAF is cancelled on SHUTDOWN.
+
+Runtime proof (real Phaser EventEmitter + deterministic rAF stub, driving the
+actual `sceneLifecycle.ts` through esbuild):
+
+```
+1. same-size burst (3 events)         → layouts: 0  (size-skip)
+2. 3 real resizes in one frame        → layouts: 1  (coalesce)
+3. 3 real resizes across frames       → layouts: 3  (once per frame)
+4. shutdown before the rAF fires      → pending rAF 1→0, layout 0, listener gone
+```

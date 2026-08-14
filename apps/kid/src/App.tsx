@@ -1629,19 +1629,25 @@ export default function App() {
       if (g && g.isBooted) g.scale.refresh();
     };
     let raf = 0;
+    // #1108 — ONE refresh per frame, shared by every resize trigger
+    // (ResizeObserver AND visualViewport). Before, visualViewport.resize
+    // bypassed the raf guard and ran refreshCanvas() synchronously per event —
+    // an iOS toolbar-collapse burst fired a full scene layout storm repeatedly
+    // in the same frame. Both sources now coalesce to once per frame.
+    const scheduleRefresh = () => {
+      if (raf) return; // one refresh per frame max
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        refreshCanvas();
+      });
+    };
     let ro: ResizeObserver | undefined;
     if (typeof ResizeObserver !== "undefined" && mountEl) {
-      ro = new ResizeObserver(() => {
-        if (raf) return; // one refresh per frame max
-        raf = requestAnimationFrame(() => {
-          raf = 0;
-          refreshCanvas();
-        });
-      });
+      ro = new ResizeObserver(scheduleRefresh);
       ro.observe(mountEl);
     }
     const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
-    vv?.addEventListener("resize", refreshCanvas);
+    vv?.addEventListener("resize", scheduleRefresh);
     setGameBoot("loading");
     let alive = true; // #1186 — a stale resolve must not set error after teardown
     bootGame(mountEl).then((g) => {
@@ -1662,7 +1668,7 @@ export default function App() {
       (window as unknown as Record<string, unknown>).__NV_GAME__ = null;
       if (raf) cancelAnimationFrame(raf);
       ro?.disconnect();
-      vv?.removeEventListener("resize", refreshCanvas);
+      vv?.removeEventListener("resize", scheduleRefresh);
       teardownGame();
     };
   }, [screen, gameBootNonce]);
