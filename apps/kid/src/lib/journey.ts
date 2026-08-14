@@ -386,6 +386,33 @@ export function isBirthday(kid: Kid | null | undefined): boolean {
   return now.getMonth() + 1 === kid.birthMonth && now.getDate() === kid.birthDay;
 }
 
+/* #1162 — age-graded reward surfaces. The nursery pet is perfect for the
+ * youngest bands, but the same caring ritual reads as patronising to older
+ * learners. Map age (currentYear - birthYear) onto the curriculum bands in
+ * packages/core skills.ts BANDS (1 = 2–4, 2 = 4–6, 3 = 6–8, 4 = 8–10,
+ * 5 = 10–13, 6 = 11–14, 7 = 12–15) so the home screen can swap the pet for a
+ * streak/badge/achievement mission bar on bands 5–7. */
+export function bandForAge(age: number): number {
+  if (!Number.isFinite(age) || age < 4) return 1;
+  if (age < 6) return 2;
+  if (age < 8) return 3;
+  if (age < 10) return 4;
+  if (age < 13) return 5;
+  if (age < 14) return 6;
+  return 7;
+}
+
+/** The band a kid is in, from their stored birth year. A missing/zero/future
+ *  birth year falls back to band 1 (youngest surface) so an incomplete profile
+ *  keeps the nursery pet instead of losing the caring ritual entirely. */
+export function kidBand(kid: Kid | null | undefined, now: Date = new Date()): number {
+  const birthYear = kid?.birthYear;
+  if (typeof birthYear !== "number" || birthYear <= 0) return 1;
+  const age = now.getFullYear() - birthYear;
+  if (age < 0) return 1;
+  return bandForAge(age);
+}
+
 /** Skill ids that have crossed the mastery bar for a kid right now. */
 export function masteredSkillIds(map: SkillMap, kidId: string): Set<string> {
   const set = new Set<string>();
