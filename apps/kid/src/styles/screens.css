@@ -913,6 +913,10 @@
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+  /* #1098 — size query container so confetti falls the card's own height,
+     not a fixed 190px (under/over-shoots wrapped or large cards). */
+  container-type: size;
+  --fall-h: calc(100cqh + 24px);
 }
 .birthday-confetti span {
   position: absolute;
@@ -923,7 +927,7 @@
 @keyframes bday-fall {
   0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
   12% { opacity: 1; }
-  100% { transform: translateY(190px) rotate(340deg); opacity: 0.9; }
+  100% { transform: translateY(var(--fall-h, 190px)) rotate(340deg); opacity: 0.9; }
 }
 .birthday-body {
   position: relative;
@@ -3573,7 +3577,17 @@
 .contrast-progress { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.6px; }
 .contrast-done-body { max-width: 340px; margin: 0 auto; font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.88); line-height: 1.5; }
 .contrast-done-btn { margin-top: 8px; }
-.confetti { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+  /* #1098 — size query container so confetti falls the screen's own height,
+     not a fixed 108vh (which resets early on tall/tablet viewports). */
+  container-type: size;
+  --fall-h: 108cqh;
+}
 .confetti-piece {
   position: absolute;
   top: -16px;
@@ -3587,7 +3601,7 @@
 }
 @keyframes confetti-fall {
   0% { transform: translate3d(0, -20px, 0) rotate(0deg); }
-  100% { transform: translate3d(var(--drift, 0px), 108vh, 0) rotate(var(--rot, 360deg)); }
+  100% { transform: translate3d(var(--drift, 0px), var(--fall-h, 108vh), 0) rotate(var(--rot, 360deg)); }
 }
 .done-stars {
   font-size: clamp(50px, 15vw, 80px);
