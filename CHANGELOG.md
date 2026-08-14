@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.38.0 (glTF asset pipeline: meshopt-compressed Nova owl (35 KB) precached offline (#685))
+
+2a31d01 🗂️ #685: glTF asset pipeline — procedural owl source → meshopt-optimized nova.glb
+
 ## 14 Aug 2026 — 0.37.0 (3D Nova foundation: lazy three.js island + WebGL context lifecycle (#684))
 
 c937d03 🦉 #684 3D Nova foundation: lazy three.js island + WebGL context lifecycle
