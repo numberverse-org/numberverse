@@ -762,7 +762,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: 58%;
+  /* #1095 — 52% (was 58%): keeps chip + the fixed 162px right cluster on ONE
+     row for long names up to ~445px. At 58%, a 430px phone (0.58·390+162+8)
+     wraps the controls onto a second row. */
+  max-width: 52%;
   min-width: 0; /* let a long name ellipsize instead of forcing the top bar wider */
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -774,7 +777,7 @@
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.kid-chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kid-chip-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kid-chip-swap { color: rgba(255, 255, 255, 0.6); font-size: 14px; flex: none; }
 .play-top-right { display: flex; align-items: center; gap: 8px; flex: none; }
 .stars-pill {
@@ -2834,6 +2837,24 @@
 @media (max-width: 360px) {
   .hud-skill { display: none; }
   .hud-world { flex: 1 1 auto; min-width: 0; } /* drop the 60px floor here: skill is gone, world fills the row */
+}
+
+/* #1095 — play-top single-row guarantee on narrow phones. The right cluster is
+   a fixed 162px (voice 44 + settings 46 + scan 56 + gaps): even a SHORT name
+   wraps it to a second row below 340px, and the old 58% chip cap let long names
+   wrap it up to ~445px — the controls get stranded on their own 112px-tall
+   second row. Under 400px shrink the cluster buttons + chip and close the gaps.
+   Crucially, drop flex-wrap here: with wrap on, the browser line-breaks BEFORE
+   shrinking (the 52%-capped chip + 136px cluster exceeds 280px at 320px, so the
+   cluster still jumped to row 2). nowrap + .kid-chip's min-width:0 makes the
+   chip shrink to exactly the free space — name ellipsizes, ⇄ stays flex:none. */
+@media (max-width: 400px) {
+  .play-top { flex-wrap: nowrap; }
+  .play-top-right { gap: 6px; flex-shrink: 0; }
+  .voice-chip { width: 40px; height: 40px; font-size: 17px; }
+  .settings-btn { width: 40px; height: 40px; font-size: 18px; }
+  .scan-btn { width: 44px; height: 44px; font-size: 30px; }
+  .kid-chip { gap: 6px; padding: 8px 10px 8px 8px; font-size: 15px; }
 }
 
 .lang-toggle {
