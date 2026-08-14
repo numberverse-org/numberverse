@@ -59,10 +59,10 @@ import Nova3DHome from "./nova3d/Nova3DHome";
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.39.1 (fix API 422s on /progress + /stories (fractional response_ms) — also ships blue-screen + splash SVG fixes from 0.39.0)";
+const APP_BUILD = "14 Aug 2026 · 0.39.2 (stylized-realistic Nova owl model — armature + 6 emotion morph targets + 6 animation clips, KTX2 PBR (#686))";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.39.1";
+const APP_VERSION = "0.39.2";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.

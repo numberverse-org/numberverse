@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.39.2 (stylized-realistic Nova owl model — armature + 6 emotion morph targets + 6 animation clips, KTX2 PBR (#686))
+
+b54bcc9 🦉 #686: stylized-realistic Nova owl — armature + morph targets, KTX2 PBR
+
 ## 14 Aug 2026 — 0.39.1 (fix API 422s on /progress + /stories (fractional response_ms) — also ships blue-screen + splash SVG fixes from 0.39.0)
 
 1d98d4b 🐛 fix API 422s on /progress + /stories: round fractional response_ms
