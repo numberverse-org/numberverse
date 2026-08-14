@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.24 (HUD: world label keeps usable width on narrow phones; skill pill drops under 360px (#1094))";
-export const APP_VERSION = "0.53.24";
+export const APP_BUILD = "15 Aug 2026 · 0.53.25 (play-top: kid chip + right control cluster always share one row — shrink cluster under 400px, cap chip at 52%, nowrap so long names ellipsize instead of wrapping (#1095))";
+export const APP_VERSION = "0.53.25";

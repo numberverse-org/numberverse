@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.25 (play-top: kid chip + right control cluster always share one row — shrink cluster under 400px, cap chip at 52%, nowrap so long names ellipsize instead of wrapping (#1095))
+
+05e03ac 🎨 play-top: single-row guarantee — chip + right cluster never wrap (#1095)
+
 ## 15 Aug 2026 — 0.53.24 (HUD: world label keeps usable width on narrow phones; skill pill drops under 360px (#1094))
 
 59c9d5c 🛠 HUD: world label collapses to 14px sliver on narrow phones; give it a usable width (#1094)
