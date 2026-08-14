@@ -1,20 +1,7 @@
 import Phaser from "phaser";
-import { onSceneResize } from "./sceneLifecycle";
+import { DragReorderScene, type DragReorderConfig, type DragReorderData, type DragReorderItem } from "./reorder";
 import { t } from "./i18n";
-import { questionPanel, type QuestionPanelApi } from "./question";
-import { GAMES } from "@numberverse/core";
-import { pop, win } from "./audio";
-import { correctCelebrate } from "./celebrate";
-import { speak } from "./speech";
-import { getAppLang } from "./locale";
-import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
-import { SAB } from "./safeArea";
-
-const LEVELS = GAMES.find((g) => g.id === "game-story")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
-const ROUNDS_TO_FINISH = 3;
-const CARD_H = 132;
-const BN_D = "০১২৩৪৫৬৭৮৯";
+import { txt, modernCardButton, BTN_NEUTRAL, NV_GOLD } from "./ui";
 
 /** One picture card in a mini-story. */
 interface Frame {
@@ -164,208 +151,94 @@ const SENTENCES3: Story[] = [
   ], speak: "Tom opens his book. He reads the first page. He learns something new." },
 ];
 
-/** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
-
 /**
  * Story sequencing (first → then → last) (#182).
  * Band 2 reading: a scrambled row of 3-4 picture cards; the kid DRAGS them into
- * story order. A correct order re-reads the story aloud. 16 mini-stories.
+ * story order. A correct order re-reads the story aloud. 16 mini-stories. The
+ * same scene also powers band 6-7 sentence/paragraph ordering (text-only cards).
  */
-export class StoryScene extends Phaser.Scene {
-  private levelIndex = 0;
-  private roundsDone = 0;
-  private startedAt = 0;
-  private locked = false;
+export class StoryScene extends DragReorderScene {
   private sentencesMode = false;
   private skillId = "";
   private story!: Story;
-  private order: number[] = [];
-  private cards: Phaser.GameObjects.Container[] = [];
-  private slotX: number[] = [];
-  private slotCy = 0;
-  private fromSlot = -1;
-  private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
-  private titleText!: Phaser.GameObjects.Text;
-  private roundText!: Phaser.GameObjects.Text;
-  private meter!: RoundMeterApi;
-  private prompt!: QuestionPanelApi;
-  private stepLabels: Phaser.GameObjects.Text[] = [];
+  private lastStory: Story | null = null;
 
   constructor() {
     super("Story");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string; skill?: string }) {
-    this.onRoundDone = data.onRoundDone;
-    this.levelIndex = data.startLevelIndex ?? 0;
+  protected prepare(data: DragReorderData) {
     // #757/#760 — band-7 en-sentence-order: drag whole SENTENCES into a
     // paragraph (same drag mechanic, text-only cards).
     this.sentencesMode = data.mode === "sentences";
     // #1161 — band-6 en-paragraph-order uses the 3-sentence pool (one rung
     // below the band-7 4-sentence paragraphs).
     this.skillId = data.skill ?? "";
-    gameBackground(this, this.sentencesMode ? "magic" : "night");
-    this.titleText = this.add
-      .text(0, 0, t(this.sentencesMode ? "titleSentences" : "titleStory"), txt(34, "#ffffff", { bold: true }))
-      .setOrigin(0.5);
-    this.roundText = this.add
-      .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
-      .setOrigin(0.5);
-    this.meter = roundMeter(this);
-    this.prompt = questionPanel(this, 0, 0);
-    this.prompt.set(t(this.sentencesMode ? "stPromptSentences" : "stPrompt"));
-    onSceneResize(this, () => this.layout());
-    this.input.on("dragstart", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDragStart(p, obj));
-    this.input.on("drag", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDrag(p, obj));
-    this.input.on("dragend", (p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) => this.onDragEnd(p, obj));
-    this.layout();
-    this.startRound();
   }
 
-  private layout() {
-    const { width, height } = this.scale;
-    this.titleText.setPosition(width / 2, 40);
-    this.roundText.setPosition(width / 2, 76);
-    this.meter.setPosition(width / 2, 100);
-    this.prompt.setPosition(width / 2, height * 0.22);
+  protected cfg(): DragReorderConfig {
+    return {
+      gameId: "game-story",
+      titleKey: "titleStory",
+      promptKey: "stPrompt",
+      greatKey: "stGreat",
+      doneKey: "stDone",
+      background: this.sentencesMode ? "magic" : "night",
+      rounds: 3,
+      cardH: 132,
+      speakLang: "en",
+      announceDone: false,
+      dragScale: 1.1,
+      stepColor: "#c4b5fd",
+      stepSize: 20,
+      stepOffset: 22,
+      slotPreferredW: (n) => (n === 3 ? 190 : 150),
+      slotMinW: 92,
+      slotWidthPad: 20,
+      slotGapX: this.sentencesMode ? 10 : 14,
+      slotTopPadRatio: this.sentencesMode ? 0.48 : 0.42,
+      slotBottomPad: 60,
+    };
   }
 
-  private startRound() {
-    this.clearRound();
-    this.locked = false;
-    this.startedAt = this.time.now;
-    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
-    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+  protected titleString(): string {
+    return t(this.sentencesMode ? "titleSentences" : "titleStory");
+  }
 
+  protected promptString(): string {
+    return t(this.sentencesMode ? "stPromptSentences" : "stPrompt");
+  }
+
+  protected promptGreat(): string {
+    return t("stGreat");
+  }
+
+  protected greatMessage(): string {
+    return this.roundsDone + 1 >= this.cfg().rounds ? t("stDone") : t("stGreat");
+  }
+
+  protected speakLine(): string {
+    return this.story.speak;
+  }
+
+  protected roundItems(): DragReorderItem[] {
     // Sentences mode: paragraphs are 4 sentences (3 for the band-6 rung).
     const three = this.sentencesMode && this.skillId === "en-paragraph-order";
-    const n = this.sentencesMode ? (three ? 3 : 4) : LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
-    const pool = this.sentencesMode ? (three ? SENTENCES3 : SENTENCES) : STORIES.filter((s) => s.frames.length === n);
+    const ladder = this.ladder();
+    const n = this.sentencesMode
+      ? three ? 3 : 4
+      : ladder[Math.min(this.levelIndex, ladder.length - 1)];
+    const pool = this.sentencesMode
+      ? three ? SENTENCES3 : SENTENCES
+      : STORIES.filter((s) => s.frames.length === n);
     let story = pool[Phaser.Math.Between(0, pool.length - 1)];
-    if (story === this.story) story = pool[(pool.indexOf(story) + 1) % pool.length];
+    if (story === this.lastStory) story = pool[(pool.indexOf(story) + 1) % pool.length];
+    this.lastStory = story;
     this.story = story;
-
-    this.order = Array.from({ length: n }, (_, i) => i);
-    // shuffle until the row is NOT already correct — every round needs a real move
-    const correct = this.order.join(",");
-    while (this.order.join(",") === correct) {
-      for (let i = this.order.length - 1; i > 0; i--) {
-        const j = Phaser.Math.Between(0, i);
-        [this.order[i], this.order[j]] = [this.order[j], this.order[i]];
-      }
-    }
-
-    const gl = gridLayout(this, {
-      cols: n,
-      rows: 1,
-      preferredW: n === 3 ? 190 : 150,
-      minW: 92,
-      widthPad: 20,
-      gapX: this.sentencesMode ? 10 : 14,
-      topPad: this.scale.height * (this.sentencesMode ? 0.48 : 0.42),
-      bottomY: this.scale.height - 60 - SAB(),
-      cardH: CARD_H,
-    });
-    this.slotCy = gl.cy;
-    this.slotX = Array.from({ length: n }, (_, i) => gl.startX + i * gl.spacingX);
-
-    // step badges above each slot — 1st, 2nd, 3rd … in local digits
-    for (let i = 0; i < n; i++) {
-      const lbl = this.add
-        .text(this.slotX[i], gl.cy - CARD_H / 2 - 22, digit(i + 1), txt(20, "#c4b5fd", { bold: true, outline: true }))
-        .setOrigin(0.5);
-      this.stepLabels.push(lbl);
-    }
-
-    this.cards = this.order.map((storyIdx, slot) => {
-      const fr = story.frames[storyIdx];
-      const card = modernCardButton(this, this.slotX[slot], gl.cy, gl.cardW, CARD_H, "", BTN_NEUTRAL, 0);
-      if (this.sentencesMode) {
-        // Text-only sentence card — the whole card is the sentence.
-        const cap = this.add
-          .text(0, 0, fr.c, txt(14, "#1e293b", { bold: true, shadow: false, wrap: gl.cardW - 18, align: "center" }))
-          .setOrigin(0.5);
-        card.add([cap]);
-      } else {
-        const emoji = this.add
-          .text(0, -CARD_H * 0.2, fr.e, txt(44, "#ffffff", { outline: true }))
-          .setOrigin(0.5);
-        const cap = this.add
-          .text(0, CARD_H * 0.26, fr.c, txt(15, "#1e293b", { bold: true, shadow: false, wrap: gl.cardW - 14 }))
-          .setOrigin(0.5);
-        card.add([emoji, cap]);
-      }
-      this.input.setDraggable(card);
-      return card;
-    });
+    return story.frames.map((fr) => ({ value: fr.c, label: fr.c, emoji: fr.e }));
   }
 
-  private onDragStart(_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) {
-    if (this.locked) return;
-    this.fromSlot = this.cards.indexOf(obj);
-    if (this.fromSlot < 0) return;
-    obj.setDepth(30);
-    this.tweens.add({ targets: obj, scale: 1.1, duration: 90, ease: "Sine.easeOut" });
-  }
-
-  private onDrag(p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) {
-    if (this.locked || this.fromSlot < 0) return;
-    obj.x = Phaser.Math.Clamp(p.x, this.slotX[0] - 40, this.slotX[this.slotX.length - 1] + 40);
-    obj.y = this.slotCy;
-  }
-
-  private onDragEnd(_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Container) {
-    if (this.locked || this.fromSlot < 0) return;
-    const from = this.fromSlot;
-    this.fromSlot = -1;
-    obj.setDepth(10);
-    this.tweens.add({ targets: obj, scale: 1, duration: 90, ease: "Sine.easeInOut" });
-
-    // nearest slot by x-distance
-    let to = 0;
-    let best = Infinity;
-    this.slotX.forEach((sx, i) => {
-      const d = Math.abs((obj.x ?? sx) - sx);
-      if (d < best) { best = d; to = i; }
-    });
-
-    if (to === from) {
-      this.tweens.add({ targets: obj, x: this.slotX[from], duration: 120, ease: "Sine.easeInOut" });
-      return;
-    }
-
-    // swap the two cards' logical positions + move both cards
-    [this.order[from], this.order[to]] = [this.order[to], this.order[from]];
-    [this.cards[from], this.cards[to]] = [this.cards[to], this.cards[from]];
-    this.tweens.add({ targets: obj, x: this.slotX[to], duration: 130, ease: "Back.easeOut" });
-    this.tweens.add({ targets: this.cards[from], x: this.slotX[from], duration: 130, ease: "Back.easeOut" });
-
-    if (this.order.every((v, i) => v === i)) this.solve();
-  }
-
-  private solve() {
-    this.locked = true;
-    pop();
-    win();
-    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
-    this.prompt.set(t("stGreat"));
-    this.time.delayedCall(300, () => speak(this.story.speak, { lang: "en" }));
-    this.floatMsg(this.roundsDone + 1 >= ROUNDS_TO_FINISH ? t("stDone") : t("stGreat"));
-    const ms = Math.max(1, this.time.now - this.startedAt);
-    this.roundsDone++;
-    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
-    this.time.delayedCall(1400, () => {
-      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
-      this.levelIndex++;
-      this.startRound();
-    });
-  }
-
-  private floatMsg(text: string) {
+  protected floatMsg(text: string) {
     const m = this.add
       .text(this.scale.width / 2, this.scale.height * 0.42, text, txt(26, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
@@ -373,11 +246,23 @@ export class StoryScene extends Phaser.Scene {
     this.tweens.add({ targets: m, y: m.y - 26, alpha: 0, duration: 1000, onComplete: () => m.destroy() });
   }
 
-  private clearRound() {
-    this.cards.forEach((c) => c.destroy());
-    this.cards = [];
-    this.stepLabels.forEach((l) => l.destroy());
-    this.stepLabels = [];
-    this.slotX = [];
+  protected makeCard(item: DragReorderItem, x: number, y: number, w: number, h: number): Phaser.GameObjects.Container {
+    const card = modernCardButton(this, x, y, w, h, "", BTN_NEUTRAL, 0);
+    if (this.sentencesMode) {
+      // Text-only sentence card — the whole card is the sentence.
+      const cap = this.add
+        .text(0, 0, item.label, txt(14, "#1e293b", { bold: true, shadow: false, wrap: w - 18, align: "center" }))
+        .setOrigin(0.5);
+      card.add([cap]);
+    } else {
+      const emoji = this.add
+        .text(0, -h * 0.2, item.emoji ?? "", txt(44, "#ffffff", { outline: true }))
+        .setOrigin(0.5);
+      const cap = this.add
+        .text(0, h * 0.26, item.label, txt(15, "#1e293b", { bold: true, shadow: false, wrap: w - 14 }))
+        .setOrigin(0.5);
+      card.add([emoji, cap]);
+    }
+    return card;
   }
 }
