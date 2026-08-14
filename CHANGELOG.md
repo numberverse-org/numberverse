@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.22 (responsive: tablet layout tier — worlds 2-up grid + denser badge/ach/trophy grids (#1091))
+
+945eb2d 💻 responsive: tablet layout tier — worlds 2-up, denser book grids (#1091)
+
 ## 15 Aug 2026 — 0.53.21 (responsive: primary columns scale clamp(440px,92vw,680px) for foldables/tablets (#1090))
 
 5151b9a 💻 responsive: scale primary columns to 680px on large screens (#1090)
