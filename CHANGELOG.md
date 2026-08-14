@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.46.0 (neural-voice retry + honest no-Bn line; pooled CompareScene cards (#1318 #1319 #1324))
+
+49445dd feat(voice+pooling): neural-voice retry & honest no-Bn line; pooled CompareScene cards (#1318 #1319 #1324)
+
 ## 14 Aug 2026 — 0.45.1 (fix: stable SW-update snapshot (blank-screen #185 regression from 0.45.0))
 
 f1dd977 fix(pwa): stable useSyncExternalStore snapshot in updateBanner bridge
