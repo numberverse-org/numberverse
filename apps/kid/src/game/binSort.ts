@@ -289,10 +289,12 @@ export abstract class BinSortScene extends Phaser.Scene {
   private wrongPlace(cfg: BinSortConfig, it: SortItem, bin: { c: Phaser.GameObjects.Container; bin: SortBin }) {
     this.wrongThisItem = true;
     bad();
-    this.floatMsg(t(cfg.speakWrongKey, { name: t(cfg.nameKeys[it.id]) }));
+    const right = this.bins.find((b) => b.bin.value === it.value)!;
+    // #1173 — the wrong hint NAMES the right bin ("panta bhat belongs with
+    // Pohela Boishakh!") via the {where} slot, so the gentle cue still teaches.
+    this.floatMsg(t(cfg.speakWrongKey, { name: t(cfg.nameKeys[it.id]), where: t(right.bin.key) }));
     this.flashBin(bin, 0xf87171);
     this.tweens.add({ targets: bin.c, x: bin.c.x + 8, duration: 60, yoyo: true, repeat: 3, ease: "Sine.easeInOut" });
-    const right = this.bins.find((b) => b.bin.value === it.value)!;
     this.flashBin(right, 0x4ade80, 0.45);
     this.flyBack();
   }
