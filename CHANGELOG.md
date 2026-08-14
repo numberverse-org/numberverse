@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.40.1 (3D Nova spatial activities: OwlRig action palette, walk-to-tap, 3D feed/pet/bathe, dress-up (#688))
+
+41a5ce6 🦉 #688: spatial activities — OwlRig maps all 51 activities to 3D clip+morph, action palette, walk-to-tap, 3D feed/pet/bathe, dress-up
+
 ## 14 Aug 2026 — 0.40.0 (3D Nova home room: 12 themed rooms + PBR lighting + soft shadow + orbit camera (#687))
 
 3e3c116 🦉 #687: 3D home room — 12 themed rooms, PBR lighting, one 1024² PCF soft shadow, orbit/zoom camera with reduced-motion clamps
