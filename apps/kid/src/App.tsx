@@ -354,6 +354,46 @@ export default function App() {
   const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestProgress, gardenWater, gardenMastery } = useKidStore();
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
+  // #1124 — parent-panel wrong-answer heatmap: pre-aggregate the (unbounded,
+  // growing) mistakes ledger ONCE per [mistakes, active parent kid] into
+  // per-day skill buckets + day totals. Previously the parent-panel render
+  // re-folded Object.entries(mistakes) with nested byDay loops + a reduce over
+  // every value + a sort — and the panel re-renders on the 30s settings poll
+  // and any store tick while open.
+  const parentHeatmap = useMemo(() => {
+    const activeParentId =
+      parentKidId && kids.some((k) => k.id === parentKidId) ? parentKidId : (kid?.id ?? kids[0]?.id ?? null);
+    const days: string[] = [];
+    for (let i = 27; i >= 0; i--) days.push(dayIsoAgo(i));
+    // day → skillId → wrong taps, for the active parent kid only
+    const daySkills = new Map<string, Map<string, number>>();
+    let anyWrongs = false;
+    if (activeParentId) {
+      const kidPrefix = `${activeParentId}:`;
+      for (const [key, m] of Object.entries(mistakes)) {
+        if (!key.startsWith(kidPrefix)) continue;
+        const skillId = key.slice(kidPrefix.length);
+        for (const [day, n] of Object.entries(m.byDay ?? {})) {
+          if (n <= 0) continue;
+          anyWrongs = true;
+          let perSkill = daySkills.get(day);
+          if (!perSkill) {
+            perSkill = new Map();
+            daySkills.set(day, perSkill);
+          }
+          perSkill.set(skillId, (perSkill.get(skillId) ?? 0) + n);
+        }
+      }
+    }
+    // day → total wrong taps, folded once (was [...m.values()].reduce per cell)
+    const dayTotal = new Map<string, number>();
+    for (const [day, perSkill] of daySkills) {
+      let sum = 0;
+      for (const n of perSkill.values()) sum += n;
+      dayTotal.set(day, sum);
+    }
+    return { days, daySkills, dayTotal, anyWrongs };
+  }, [mistakes, parentKidId, kid?.id, kids]);
   const kothaStories = useKidStore((s) => s.stories);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
   // #1196 — the anti-grind cap: when today's LEARNING coins are maxed, a small
@@ -3572,28 +3612,10 @@ export default function App() {
                       <summary>{t.mistakesTitle}</summary>
                       <p className="syllabus-settings-sub">{t.mistakesSub}</p>
                       {(() => {
-                        const days: string[] = [];
-                        for (let i = 27; i >= 0; i--) days.push(dayIsoAgo(i));
-                        // day → skillId → wrong taps, for THIS kid only
-                        const daySkills = new Map<string, Map<string, number>>();
-                        let anyWrongs = false;
-                        const kidPrefix = `${activeKid.id}:`;
-                        for (const [key, m] of Object.entries(mistakes)) {
-                          if (!key.startsWith(kidPrefix)) continue;
-                          const skillId = key.slice(kidPrefix.length);
-                          for (const [day, n] of Object.entries(m.byDay ?? {})) {
-                            if (n <= 0) continue;
-                            anyWrongs = true;
-                            let perSkill = daySkills.get(day);
-                            if (!perSkill) { perSkill = new Map(); daySkills.set(day, perSkill); }
-                            perSkill.set(skillId, (perSkill.get(skillId) ?? 0) + n);
-                          }
-                        }
+                        // #1124 — the aggregation + day totals come from the
+                        // memoized parentHeatmap (built once per mistakes change).
+                        const { days, daySkills, dayTotal, anyWrongs } = parentHeatmap;
                         if (!anyWrongs) return <p className="parent-help-caught">{t.mistakesEmpty}</p>;
-                        const dayTotal = (day: string) => {
-                          const m = daySkills.get(day);
-                          return m ? [...m.values()].reduce((a, b) => a + b, 0) : 0;
-                        };
                         // Selected day = the user's pick when it has wrongs, else
                         // the most recent day with any (never invent an empty day).
                         const selDay =
@@ -3615,7 +3637,7 @@ export default function App() {
                             <div className="mistakes-weekdays" aria-hidden>{t.mistakesWeekday}</div>
                             <div className="mistakes-heat" role="grid" aria-label={t.mistakesHeatTitle}>
                               {days.map((day) => {
-                                const n = dayTotal(day);
+                                const n = dayTotal.get(day) ?? 0;
                                 return (
                                   <button
                                     key={day}
@@ -3629,7 +3651,7 @@ export default function App() {
                                 );
                               })}
                             </div>
-                            <p className="mistakes-day-label" role="status">{t.mistakesDayLabel(selDay, dayTotal(selDay))}</p>
+                            <p className="mistakes-day-label" role="status">{t.mistakesDayLabel(selDay, dayTotal.get(selDay) ?? 0)}</p>
                             {drill.length === 0 ? (
                               <p className="parent-help-caught">{t.mistakesNoneDay}</p>
                             ) : (
