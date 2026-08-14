@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.40.0 (3D Nova home room: 12 themed rooms + PBR lighting + soft shadow + orbit camera (#687))
+
+3e3c116 🦉 #687: 3D home room — 12 themed rooms, PBR lighting, one 1024² PCF soft shadow, orbit/zoom camera with reduced-motion clamps
+
 ## 14 Aug 2026 — 0.39.2 (stylized-realistic Nova owl model — armature + 6 emotion morph targets + 6 animation clips, KTX2 PBR (#686))
 
 b54bcc9 🦉 #686: stylized-realistic Nova owl — armature + morph targets, KTX2 PBR
