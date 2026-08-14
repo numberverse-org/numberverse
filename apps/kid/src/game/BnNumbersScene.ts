@@ -75,11 +75,12 @@ export class BnNumbersScene extends Phaser.Scene {
 
   private layout() {
     const { width, height } = this.scale;
+    const sab = SAB();
     this.titleText.setPosition(width / 2, 44);
     this.roundText.setPosition(width / 2, 82);
     this.meter.setPosition(width / 2, 104);
-    this.speaker.setPosition(width / 2, height - 110 - SAB());
-    this.prompt.setPosition(width / 2, height - 32 - SAB());
+    this.speaker.setPosition(width / 2, height - 110 - sab);
+    this.prompt.setPosition(width / 2, height - 32 - sab);
     this.reflowCards();
   }
 
