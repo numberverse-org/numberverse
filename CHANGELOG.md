@@ -1,3 +1,11 @@
+## 15 Aug 2026 — 0.55.0 (feat: challenge mode (15s countdown, no reveal) for all 8 remaining band 6-7 scenes (#1163 #1162))
+
+ed93838 merge: challenge mode batch B (#1163)
+4fee2b4 merge: challenge mode batch A (#1163)
+ab6297d feat: challenge mode (15s countdown, no reveal) for fraction-match, bgs-facts, human-body, bn-matras (#1163)
+0d3a7de feat: challenge mode (15s countdown, no reveal) for clock, pizza-frac, decimals, percent (#1163)
+e3546a6 🐛 #1563 answer-option cards: fix clipped face + label contrast
+
 ## 15 Aug 2026 — 0.54.1 (fix: NCTB math cell renumber (c3 data adjacent, c4 contiguous) + shared-scene ladder doc (#1154 #1155 #1157))
 
 294bbd7 fix: renumber c3/c4 math cells (data-skills adjacent, c4 contiguous) + doc shared-scene ladders (#1154 #1155 #1157)

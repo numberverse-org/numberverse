@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.54.1 (fix: NCTB math cell renumber (c3 data adjacent, c4 contiguous) + shared-scene ladder doc (#1154 #1155 #1157))";
-export const APP_VERSION = "0.54.1";
+export const APP_BUILD = "15 Aug 2026 · 0.55.0 (feat: challenge mode (15s countdown, no reveal) for all 8 remaining band 6-7 scenes (#1163 #1162))";
+export const APP_VERSION = "0.55.0";
