@@ -1387,7 +1387,8 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 14px;
+  width: 100%;
+  max-width: var(--content-max); /* #1111 — span the home column, not shrink-to-fit */
   padding: 10px 14px;
   border-radius: 16px;
   background: rgba(46, 196, 182, 0.14);
@@ -1416,7 +1417,8 @@
   transition: width 0.3s ease;
 }
 .goal-nudge {
-  margin-top: 14px;
+  width: 100%;
+  max-width: var(--content-max); /* #1111 — span the home column; play-screen gap supplies the spacing */
   padding: 14px 16px;
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(46, 196, 182, 0.25), rgba(125, 227, 255, 0.2));
