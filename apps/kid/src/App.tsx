@@ -22,7 +22,7 @@ import {
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
-import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
+import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setVoiceTone, setVoiceSpeed, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -1047,6 +1047,10 @@ export default function App() {
   // TTS + music enforcement — flip instantly when the parent changes them.
   useEffect(() => {
     setSpeechEnabled(settings.tts_enabled);
+    // #831 — a parent turning reading off also silences the SFX layer (pops,
+    // chimes, win fanfares, clicks). No separate parent field exists, so the
+    // TTS off-switch is the parent-facing control for the master SFX mute.
+    setSfxMuted(!settings.tts_enabled);
   }, [settings.tts_enabled]);
   useEffect(() => {
     if (!settings.music_enabled) {
