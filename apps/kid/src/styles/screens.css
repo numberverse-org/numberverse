@@ -1236,6 +1236,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  max-width: var(--content-max); /* #1110 — stay inside the home column, not a shrink-wrapped pill */
   margin: 0 0 12px;
   padding: 10px 14px;
   border-radius: 14px;
