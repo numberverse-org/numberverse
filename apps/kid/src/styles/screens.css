@@ -588,7 +588,6 @@
   background: #4ec879;
   box-shadow: 0 0 6px rgba(78, 200, 121, 0.9);
 }
-.settings-btn { width: 46px; height: 46px; font-size: 20px; line-height: 1; }
 .settings-row { justify-content: flex-start; flex-wrap: wrap; }
 
 /* 🎙️ first-use neural voice download banner — live %, then a 5s ready flash.
@@ -780,6 +779,29 @@
 .kid-chip-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kid-chip-swap { color: rgba(255, 255, 255, 0.6); font-size: 14px; flex: none; }
 .play-top-right { display: flex; align-items: center; gap: 8px; flex: none; }
+/* #parent-door — the grown-up corner: ONE labeled tap opens the parent portal.
+   Quiet, low-salience pill (deliberately NOT an emoji-explosion) so a parent
+   finds it and a pre-reader's finger isn't drawn to a mystery glyph. */
+.parent-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.parent-btn:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.45); }
+.parent-btn:active { transform: scale(0.96); }
+.parent-btn-emoji { font-size: 16px; line-height: 1; }
 .stars-pill {
   background: linear-gradient(135deg, rgba(255, 209, 102, 0.28), rgba(255, 166, 60, 0.18));
   border: 1px solid rgba(255, 209, 102, 0.45);
@@ -1920,6 +1942,35 @@
 .garden-tile-name { display: block; }
 .garden-tile-sum { display: block; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65); margin-top: 2px; }
 .garden-tile-fresh { display: block; font-style: normal; margin-top: 2px; font-size: 11px; font-weight: 900; color: var(--nv-mint); }
+/* #1396 — the "living world" strip: Nova + the Garden stay VISIBLE on home
+   (not folded into More). Two compact tiles under the week card. */
+.home-wilds {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: var(--content-max);
+}
+.wild-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 10px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.14), rgba(255, 209, 102, 0.08));
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+  min-width: 0;
+  transition: transform 0.08s ease, background 0.12s ease;
+}
+.wild-tile:hover { background: linear-gradient(135deg, rgba(76, 201, 240, 0.24), rgba(255, 209, 102, 0.14)); }
+.wild-tile:active { transform: scale(0.97); }
+.wild-tile-emoji { font-size: 26px; line-height: 1; }
+.wild-tile-label { font-size: 14px; font-weight: 800; color: #eafff4; }
+.wild-tile-sum { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65); text-align: center; }
 .cal-strip {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -2860,8 +2911,11 @@
   .play-top { flex-wrap: nowrap; }
   .play-top-right { gap: 6px; flex-shrink: 0; }
   .voice-chip { width: 40px; height: 40px; font-size: 17px; }
-  .settings-btn { width: 40px; height: 40px; font-size: 18px; }
   .scan-btn { width: 44px; height: 44px; font-size: 30px; }
+  .parent-btn { padding: 7px 9px; font-size: 12px; gap: 4px; }
+  .parent-btn-emoji { font-size: 13px; }
+  .wild-tile { padding: 10px 8px; }
+  .wild-tile-label { font-size: 13px; }
   .kid-chip { gap: 6px; padding: 8px 10px 8px 8px; font-size: 15px; }
 }
 

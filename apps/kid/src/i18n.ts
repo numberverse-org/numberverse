@@ -367,6 +367,10 @@ export interface Strings {
   /** Folded-away "More" menu on the minimal home screen (Worlds/Nova/Garden/
    *  Cards/Castle + Nova's funny-voice name game). */
   moreMenu: string;
+  /** Labeled parent-portal door on the home corner — 1 tap → goParent (PIN gate). */
+  parentDoor: string;
+  /** aria-label for the persistent Nova+Garden "living world" strip on home. */
+  wildsLabel: string;
   round: (r: number, total: number) => string;
   pickBuddy: string;
   kidsName: string;
@@ -1108,6 +1112,8 @@ export const STR: Record<Lang, Strings> = {
     worldsBtn: "Worlds",
     homeBtn: "Home",
     moreMenu: "More",
+    parentDoor: "Parents",
+    wildsLabel: "Nova & my garden",
     round: (r, total) => `Round ${r}/${total}`,
     pickBuddy: "Pick a buddy",
     kidsName: "Kid's name",
@@ -1830,6 +1836,8 @@ export const STR: Record<Lang, Strings> = {
     worldsBtn: "জগৎ",
     homeBtn: "হোম",
     moreMenu: "আরও",
+    parentDoor: "অভিভাবক",
+    wildsLabel: "নোভা ও আমার বাগান",
     round: (r, total) => `রাউন্ড ${r}/${total}`,
     pickBuddy: "বন্ধু বাছাই করুন",
     kidsName: "বাচ্চার নাম",

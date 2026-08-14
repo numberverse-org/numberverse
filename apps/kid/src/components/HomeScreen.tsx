@@ -108,6 +108,8 @@ export interface HomeScreenProps {
   goCards: () => void;
   goGarden: () => void;
   goNova: () => void;
+  /** Labeled parent-portal door on the home corner — 1 tap → goParent (PIN gate). */
+  onParent: () => void;
 }
 
 export default function HomeScreen({
@@ -119,7 +121,7 @@ export default function HomeScreen({
   setScreen, setScanCode, setScanError, setScanOpen, setGoalNotice, setTourStep, setVoiceFunVolState,
   closeChallenge, closeTour, installApp, pickChallenge, resumeSession, snapshotSession, startChallenge,
   startContrastDrill, startPlayWorld, startSingleSkill, stopScanner, goAchievements, goAvatar,
-  goBadges, goCards, goGarden, goNova,
+  goBadges, goCards, goGarden, goNova, onParent,
 }: HomeScreenProps) {
   const t = STR[lang];
     // #1122 — the journey view (recommended next skill + the stop path around
@@ -268,9 +270,8 @@ export default function HomeScreen({
                       {/* ⏳ downloading → 🎙️ neural voice ready (green dot) → 🔊 device voice · ⚠️ download failed (#1318) */}
                       {neural.state === "loading" ? "⏳" : neural.state === "error" ? "⚠️" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
                     </button>
-                    <button className="icon-btn settings-btn" onClick={() => setScreen("settings")} aria-label={t.settingsTitle}>
-                      ⚙️
-                    </button>
+                    {/* #1395 — one settings trigger, not two: the voice-chip
+                        already opens Settings and carries the voice state. */}
                     {/* #139 — flashcard QR → mini-game: scan (or type) a card. */}
                     <button
                       className="icon-btn scan-btn"
@@ -279,6 +280,13 @@ export default function HomeScreen({
                       title={t.scanCard}
                     >
                       📷
+                    </button>
+                    {/* #parent-door — the grown-up corner: ONE labeled tap opens
+                        the parent portal. goParent() re-arms the PIN gate, so a
+                        kid tapping it lands on the gate — never the analytics. */}
+                    <button className="parent-btn" onClick={onParent} aria-label={t.parentDoor}>
+                      <span className="parent-btn-emoji" aria-hidden="true">👨‍👩‍👧</span>
+                      <span className="parent-btn-label">{t.parentDoor}</span>
                     </button>
                   </>
                 )}
@@ -388,6 +396,27 @@ export default function HomeScreen({
                 </div>
               </div>
             )}
+
+            {/* #1396 — the living world is VISIBLE, not buried: Nova (the
+                friend) and the Garden (the growing thing) get a persistent
+                one-tap strip right under the week card, so a kid landing on
+                home SEES their owl + garden. Everything else stays in More. */}
+            <div className="home-wilds" role="group" aria-label={t.wildsLabel}>
+              <button className="wild-tile" onClick={goNova}>
+                <span className="wild-tile-emoji" aria-hidden="true"><Icon name="nova" size={26} /></span>
+                <span className="wild-tile-label">{t.novaMeet}</span>
+              </button>
+              <button className="wild-tile" onClick={goGarden}>
+                <span className="wild-tile-emoji" aria-hidden="true">🌱</span>
+                <span className="wild-tile-label">{t.gardenTile}</span>
+                {gardenTile && (
+                  <span className="wild-tile-sum">
+                    {t.gardenTileSum(gardenTile.plants, gardenTile.fruits)}
+                    {gardenTile.fresh && <em className="garden-tile-fresh">{t.gardenTileFresh}</em>}
+                  </span>
+                )}
+              </button>
+            </div>
 
             {/* 🦉 Moni's gentle review prompt (#328) — skills mastered but DUE
                 for a spaced-review brush-up. Soft, non-blocking, offline-safe
@@ -786,25 +815,8 @@ export default function HomeScreen({
                   <span className="play-icon-emoji" aria-hidden="true">🗺️</span>
                   <span>{t.worldsLabel}</span>
                 </button>
-                <button className="play-icon" onClick={goNova}>
-                  <span className="play-icon-emoji" aria-hidden="true"><Icon name="nova" size={30} /></span>
-                  <span>{t.novaMeet}</span>
-                </button>
-                <button className="play-icon" onClick={goGarden}>
-                  <span className="play-icon-emoji" aria-hidden="true">🌱</span>
-                  <span>
-                    {/* #769 — the garden teases itself on home: "N plants · M
-                        fruits", plus a "new growth!" cue when it outgrew the
-                        snapshot the kid last SAW (updated on Garden open). */}
-                    <span className="garden-tile-name">{t.gardenTile}</span>
-                    {gardenTile && (
-                      <span className="garden-tile-sum">
-                        {t.gardenTileSum(gardenTile.plants, gardenTile.fruits)}
-                        {gardenTile.fresh && <em className="garden-tile-fresh">{t.gardenTileFresh}</em>}
-                      </span>
-                    )}
-                  </span>
-                </button>
+                {/* Nova + Garden were promoted to the persistent .home-wilds
+                    strip above — not repeated here (#1396). */}
                 <button className="play-icon" onClick={goCards}>
                   <span className="play-icon-emoji" aria-hidden="true">🏆</span>
                   <span>{t.cardsTile}</span>

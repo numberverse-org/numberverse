@@ -2564,6 +2564,7 @@ export default function App() {
       goCards={goCards}
       goGarden={goGarden}
       goNova={goNova}
+      onParent={goParent}
     />
     </Suspense>
     );
