@@ -410,6 +410,8 @@ export const SKILLS: Skill[] = [
   { id: 'bn-days-months', band: 1, subject: 'bangla', title: 'Days & months', titleBn: 'সপ্তাহ ও মাস', description: 'Order the 7 days and the 12 Bangla months', descriptionBn: '৭ দিন আর ১২ বাংলা মাস সঠিক ধারায় সাজাই', commonCore: ['RF.K.1'], nctbCode: 'c1-bangla-9', classNumber: 1, game: 'game-bndaysmonths' },
   // #44 — hear a word, build it from letter tiles (band 1 spelling)
   { id: 'bn-spelling', band: 1, subject: 'bangla', title: 'Bangla spelling', titleBn: 'বানান শিখি', description: 'Hear a word and build it by tapping letter tiles in order', descriptionBn: 'শব্দ শুনে অক্ষরের টালি সঠিক ধারায় টিপে বানান করি', commonCore: ['RF.1.2'], nctbCode: 'c1-bangla-10', classNumber: 1, game: 'game-bnspelling' },
+  // #1140 — production spelling: type the heard Bangla word (tier 1-2 taps, tier 3+ types)
+  { id: 'bn-spell-type', band: 1, subject: 'bangla', title: 'Spell by typing', titleBn: 'টাইপ করে বানান', description: 'Hear a Bangla word and spell it by typing it with the letter keys', descriptionBn: 'বাংলা শব্দ শুনে অক্ষরের বোতামে টাইপ করে বানান করি', commonCore: ['RF.1.2'], nctbCode: 'c1-bangla-12', classNumber: 1, game: 'game-banglaspell', typing: true, challenge: true, dataLevels: [1, 2, 3, 4, 5, 6] },
   // #48 — pick the right pronoun in a sentence (band 3)
   { id: 'bn-pronouns', band: 3, subject: 'bangla', title: 'Bangla pronouns', titleBn: 'সর্বনাম', description: 'Fill the right pronoun (আমি, তুমি, সে…) into a sentence', descriptionBn: 'বাক্যে সঠিক সর্বনাম বসাই (আমি, তুমি, সে…)', commonCore: ['L.3.1'], nctbCode: 'c3-bangla-10', classNumber: 3, game: 'game-bnpronouns' },
   // #49 — count DOWN from 100 by 1s (rocket blast-off; band 2)
@@ -573,6 +575,7 @@ export const GAMES: GameConfig[] = [
   // #43/#44/#48/#49 — new 2026 pipeline games
   { id: 'game-bndaysmonths', skillId: 'bn-days-months', difficultyLevels: [4, 5, 6, 7, 7, 7], targetSuccess: 0.8 },
   { id: 'game-bnspelling', skillId: 'bn-spelling', difficultyLevels: [2, 3, 3, 4, 4, 5], targetSuccess: 0.8 },
+  { id: 'game-banglaspell', skillId: 'bn-spell-type', difficultyLevels: [1, 2, 3, 4, 5, 6], targetSuccess: 0.8 },
   { id: 'game-bnpronouns', skillId: 'bn-pronouns', difficultyLevels: [3, 3, 4, 4, 5, 5], targetSuccess: 0.8 },
   { id: 'game-countback', skillId: 'count-back-100', difficultyLevels: [10, 20, 30, 40, 60, 100], targetSuccess: 0.8 },
   // #51/#53/#54/#56 — new 2026 English games
@@ -626,6 +629,7 @@ export const GAME_SCENES: Record<string, string> = {
   'game-casematch': 'CaseMatch',
   'game-bndaysmonths': 'BanglaDays',
   'game-bnspelling': 'BanglaSpell',
+  'game-banglaspell': 'BanglaSpell',
   'game-bnpronouns': 'Pronoun',
   'game-countback': 'CountBack',
   'game-countpop': 'CountPop',

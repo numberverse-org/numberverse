@@ -240,6 +240,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str]] = [
     # 2026 backlog content (#43, #44, #48, #49)
     ("bn-days-months", 1, "bangla", "Days & months", "সপ্তাহ ও মাস"),
     ("bn-spelling", 1, "bangla", "Bangla spelling", "বানান শিখি"),
+    ("bn-spell-type", 1, "bangla", "Spell by typing", "টাইপ করে বানান"),
     ("bn-pronouns", 3, "bangla", "Bangla pronouns", "সর্বনাম"),
     ("count-back-100", 2, "math", "Count back from 100", "উল্টো গোনা"),
     # 2026 backlog content (#51, #53, #54, #56)
