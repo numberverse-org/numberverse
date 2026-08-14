@@ -12,6 +12,7 @@ import {
   todayIso,
   NOVA_DAILY_CAP,
   speciesEmoji,
+  challengeQualityCoins,
 } from "../store";
 
 /**
@@ -28,7 +29,7 @@ const T = {
     title: "🛁 Bath Time",
     hint: "Pop the bubbles to wash Nova clean!",
     clean: "Clean! ✨",
-    sparkle: "So fresh & sparkly! +1 🪙 🧼",
+    sparkle: "So fresh & sparkly! +2 🪙 🧼",
     cap: "You earned ALL your coins today! 🪙✨",
     close: "✕",
   },
@@ -36,7 +37,7 @@ const T = {
     title: "🛁 গোসলের সময়",
     hint: "বুদবুদ ফুটিয়ে নোভাকে ধুইয়ে দাও!",
     clean: "পরিষ্কার! ✨",
-    sparkle: "কী ঝকঝকে! +1 🪙 🧼",
+    sparkle: "কী ঝকঝকে! +2 🪙 🧼",
     cap: "আজ সব কয়েন জিতেছ! 🪙✨",
     close: "✕",
   },
@@ -223,7 +224,10 @@ export class BathNovaScene extends Phaser.Scene {
     // Nova sparkles + loses the soap cap
     this.soap.setVisible(false);
     this.burstHearts();
-    const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
+    // #1194 — quality-tiered via the shared helper: fully washing Nova clean
+    // (clean == CLEAN_NEEDED) is the perfect tier → 2 coins.
+    const coins = challengeQualityCoins(this.clean / CLEAN_NEEDED);
+    const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
     const T = this.t();
     if (granted > 0) {
       speak(T.sparkle);

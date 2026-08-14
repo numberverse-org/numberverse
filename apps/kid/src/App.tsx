@@ -17,7 +17,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
@@ -342,12 +342,19 @@ export default function App() {
   const mistakes = useKidStore((s) => s.mistakes);
   const kothaStories = useKidStore((s) => s.stories);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
+  // #1196 — the anti-grind cap: when today's LEARNING coins are maxed, a small
+  // 🎯 chip on the HUD explains the coins went quiet (stars keep counting).
+  const coinsCapped = useKidStore((s) => {
+    const n = kid ? s.nova[kid.id] : undefined;
+    if (!n) return false;
+    return n.earnDay === todayIso() && (n.earnedToday ?? 0) >= NOVA_DAILY_CAP;
+  });
   // #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
   // (deterministic, offline). Progress counts only when a round matches today's
-  // type; every type pays the same bonus (reward parity).
+  // type; harder types pay more (#1189).
   const quest = useKidStore((s) => {
     const n = s.nova[kid?.id ?? ""];
-    if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false };
+    if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false, reward: NOVA_QUEST_REWARD };
     const today = todayIso();
     const todayFresh = n.questDay === today;
     const type: QuestType = todayFresh && n.questType ? (n.questType as QuestType) : questTypeFor(kid?.id ?? "", today);
@@ -357,6 +364,7 @@ export default function App() {
       target: QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET,
       done: todayFresh ? !!n.questDone : false,
       today: todayFresh,
+      reward: QUEST_REWARDS[type] ?? NOVA_QUEST_REWARD,
     };
   });
   const sessionStreakCount = sessionStreak(events);
@@ -1695,6 +1703,10 @@ export default function App() {
           const e: RoundResult = { gameId: step.gameId, skillId: step.skillId, correct, difficulty, responseMs: Math.max(0, Math.round(ms)) };
           addEvent(kid.id, e);
           // #1187 — the coin economy rewards effort: harder rounds pay more.
+          const preEarned = (() => {
+            const pn = useKidStore.getState().nova[kid.id];
+            return pn && pn.earnDay === todayIso() ? pn.earnedToday ?? 0 : 0;
+          })();
           novaAwardRound(kid.id, correct, difficulty);
           // #133 — screen-reader cue for every round (matches the on-screen flash).
           announce(correct ? t.a11yRight : t.a11yWrong);
@@ -1705,11 +1717,28 @@ export default function App() {
           const mastered = !!(st && st.pMastered >= MASTERY_THRESHOLD);
           const questDone = novaQuestProgress(kid.id, { correct, mastered, freshSkill });
           if (questDone) {
-            // THE moment the quest finishes — cheer once, aloud, in the app's language.
+            // THE moment the quest finishes — cheer once, aloud, in the app's
+            // language, with that day's TYPE-SPECIFIC reward (#1189).
             cancelSpeech();
             tada();
             const bn = getAppLang() === "bn";
-            speak(t.questCompleteSpeak(NOVA_QUEST_REWARD), { lang: bn ? "bn" : "en" });
+            const qtype = useKidStore.getState().nova[kid.id]?.questType as QuestType | undefined;
+            speak(t.questCompleteSpeak(QUEST_REWARDS[qtype ?? "rounds"] ?? NOVA_QUEST_REWARD), { lang: bn ? "bn" : "en" });
+          }
+          // #1196 — the moment the daily coin cap is reached, reward feedback
+          // must NOT drop to nothing: learning keeps paying (stars, combo,
+          // mastery) but currency stops. Cheer the cap once, warmly, so the
+          // switch to "no more coins today" feels celebrated, not punished
+          // (the persistent HUD 🎯 chip then marks the rest of the day).
+          if (correct) {
+            const an = useKidStore.getState().nova[kid.id];
+            const postEarned = an && an.earnDay === todayIso() ? an.earnedToday ?? 0 : 0;
+            if (preEarned < NOVA_DAILY_CAP && postEarned >= NOVA_DAILY_CAP) {
+              cancelSpeech();
+              tada();
+              const bn = getAppLang() === "bn";
+              speak(t.hudCoinsMaxed, { lang: bn ? "bn" : "en" });
+            }
           }
           // #292 — Nova reaction: exactly ONE per round, highest-priority wins.
           // Win streaks / setbacks / reteach moments get a floating Nova face.
@@ -4677,7 +4706,10 @@ export default function App() {
               <span className="round-chip">{t.round(Math.min(roundsDone + 1, ROUNDS_TO_FINISH), ROUNDS_TO_FINISH)}</span>
               <span className="stars">⭐ {stars}</span>
               {sessionStreakCount >= 2 && <span className="hud-streak">🔥 {sessionStreakCount}</span>}
-              <span className="hud-coins">🪙 {novaCoins}</span>
+              <span className="hud-coins">
+                🪙 {novaCoins}
+                {coinsCapped && <em className="hud-coins-maxed" title={t.hudCoinsMaxed} aria-label={t.hudCoinsMaxed}>🎯</em>}
+              </span>
               <button
                 className="hud-music"
                 onClick={() => setMuted(toggleMusicMute())}

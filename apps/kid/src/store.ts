@@ -138,11 +138,22 @@ export function roundCoinTier(difficulty?: number): number {
   if (d >= 4) return 2;
   return NOVA_COINS_PER_ROUND;
 }
+/* #1194 — ONE consistent "good work = more" rule across ALL challenge scenes.
+ * perfect/clean play (quality ≥ 0.85) pays double; ordinary participation pays
+ * the base 1. This generalises FetchScene's old `good ? 2 : 1` so every
+ * challenge game follows the same quality → coins ladder. */
+export function challengeQualityCoins(quality: number): number {
+  return quality >= 0.85 ? 2 : 1;
+}
 export const NOVA_COINS_PER_SESSION = 3;
 export const NOVA_DAILY_BONUS = 2;
 export const NOVA_CARE_GAIN = 5;
-/** Daily coin reward for feeding/playing with Nova (once each, within the cap). */
+/** Daily coin reward for feeding/playing with Nova (once each). */
 export const NOVA_CARE_COINS = 1;
+/** #1192 — care coins have their OWN tiny daily cap (2 = one feed + one play),
+ *  entirely separate from the learning NOVA_DAILY_CAP. Caring never crowds
+ *  out learning rewards, and vice versa. */
+export const NOVA_CARE_DAILY_CAP = 2;
 /** Daily Quest — play NOVA_QUEST_TARGET rounds in one calendar day to win a bonus. */
 export const NOVA_QUEST_TARGET = 3;
 export const NOVA_QUEST_REWARD = 5;
@@ -151,9 +162,17 @@ export const NOVA_QUEST_REWARD = 5;
  * anti-grind cap still applies). Once per skill — naturally rate-limited. */
 export const NOVA_MASTERY_REWARD = 5;
 /* #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
- * (deterministic hash of kid+date → stable offline, no server). All types pay
- * the same NOVA_QUEST_REWARD — reward parity by design. */
+ * (deterministic hash of kid+date → stable offline, no server). */
 export type QuestType = "rounds" | "stars" | "master" | "newgame";
+/* #1189 — quest reward is no longer flat: HARDER mission types visibly pay
+ * more. 'master a skill' (a several-minute arc) pays double the easy
+ * 'play N rounds' volume; 'try a new game' (exploration) pays in between. */
+export const QUEST_REWARDS: Record<QuestType, number> = {
+  rounds: NOVA_QUEST_REWARD,
+  stars: NOVA_QUEST_REWARD,
+  master: 10,
+  newgame: 7,
+};
 export const QUEST_TYPES: readonly QuestType[] = ["rounds", "stars", "master", "newgame"];
 export const QUEST_TARGETS: Record<QuestType, number> = {
   rounds: NOVA_QUEST_TARGET, // play N rounds
@@ -171,6 +190,12 @@ export function questTypeFor(kidId: string, dateIso: string): QuestType {
 /** #281 — 7-day login calendar: growing coin bonuses for consecutive play days.
  *  Every reward sits inside the daily anti-grind cap (NOVA_DAILY_CAP). */
 export const NOVA_CALENDAR_REWARDS = [3, 4, 5, 6, 7, 8, 10] as const;
+/* #1195 — a mastery box must always out-pay a passive daily login: base 5
+ * (calendar mid-range) + 2 per band above 1 + 0–2 luck. A band-1 mastery pays
+ * 5–7, a band-5 mastery 13–15 — clearly above the day-7 calendar's 10. */
+export function boxReward(band?: number): number {
+  return 5 + Math.max(0, (band ?? 1) - 1) * 2 + Math.floor(Math.random() * 3);
+}
 /** Position (1..7) in the 7-day login cycle for a given streak length. */
 export function calendarCycleDay(streak: number): number {
   return streak > 0 ? ((streak - 1) % NOVA_CALENDAR_REWARDS.length) + 1 : 1;
@@ -183,7 +208,10 @@ export const NOVA_BIRTHDAY_COINS = 10;
 export const NOVA_SHARE_REWARD = 5;
 /* ── The kid's pet: an egg that hatches and grows as they learn ── */
 export const PET_GROW_SESSION = 0.25; // each completed session
-export const PET_GROW_MASTERY = 0.3; // each newly mastered skill
+/* #1193 — a mastery is the BIG moment: ONE full growth step (egg → hatch →
+ * young → grown in 3 masteries). The old 0.3 was barely distinguishable from
+ * a routine session (0.25) or a feed (0.2), so mastery barely moved the pet. */
+export const PET_GROW_MASTERY = 1;
 export const PET_GROW_FEED = 0.2; // feeding it, once daily
 export const PET_MAX_STAGE = 3; // 0 egg → 1 hatch → 2 young → 3 grown (per species)
 
@@ -255,6 +283,12 @@ export interface NovaState {
   /** Coins earned today (capped at NOVA_DAILY_CAP). */
   earnedToday: number;
   earnDay: string;
+  /** #1192 — care coins (feed/play) tracked SEPARATELY from learning coins:
+   *  they go to the spendable total but never consume the learning daily cap,
+   *  and the care total renders as a distinct 🐾 badge. */
+  careCoins: number;
+  careDay: string;
+  careEarnedToday: number;
   /** Daily Quest state — a ROTATING mission (rounds/stars/master/new-game)
    *  pays a bonus. `questType` = the day's deterministic type, `questProgress`
    *  = type-specific progress (questRounds kept for older-save migration). */
@@ -314,6 +348,9 @@ export function defaultNova(): NovaState {
     played: "",
     earnedToday: 0,
     earnDay: "",
+    careCoins: 0,
+    careDay: "",
+    careEarnedToday: 0,
     questDay: "",
     questRounds: 0,
     questDone: false,
@@ -477,7 +514,7 @@ interface KidState {
   /** #284 — open the next unclaimed mastery mystery box. Coins stay inside the
    *  daily anti-grind cap (cap-full → the box waits for another day; no real
    *  money, kid-safe). Returns { skillId, coins } — skillId null = no boxes. */
-  novaOpenBox: (kidId: string, unclaimed: string[]) => { skillId: string | null; coins: number };
+  novaOpenBox: (kidId: string, unclaimed: { id: string; band?: number }[]) => { skillId: string | null; coins: number };
   /** A parent shared this kid's progress → +NOVA_SHARE_REWARD coins, once per
    *  calendar day. Returns true when the reward was actually granted. */
   novaShareReward: (kidId: string) => boolean;
@@ -1078,8 +1115,13 @@ export const useKidStore = create<KidState>()(
           const today = todayIso();
           if (action === "feed" && cur.fed === today) return { nova: s.nova };
           if (action === "play" && cur.played === today) return { nova: s.nova };
-          const earnedToday = cur.earnDay === today ? cur.earnedToday : 0;
-          const add = Math.min(NOVA_CARE_COINS, Math.max(0, NOVA_DAILY_CAP - earnedToday));
+          // #1192 — care coins live on their OWN daily cap (2/day), never the
+          // learning NOVA_DAILY_CAP, and are tallied in careCoins so the UI can
+          // show a distinct 🐾 badge. The spendable `coins` still grows, but the
+          // learning `earnedToday` is untouched — caring can't crowd out
+          // learning rewards (and vice versa).
+          const careDay = cur.careDay === today ? cur.careEarnedToday ?? 0 : 0;
+          const add = Math.min(NOVA_CARE_COINS, Math.max(0, NOVA_CARE_DAILY_CAP - careDay));
           const affection = Math.min(100, cur.affection + NOVA_CARE_GAIN);
           return {
             nova: {
@@ -1088,8 +1130,9 @@ export const useKidStore = create<KidState>()(
                 ...cur,
                 coins: cur.coins + add,
                 totalEarned: cur.totalEarned + add,
-                earnedToday: earnedToday + add,
-                earnDay: today,
+                careCoins: (cur.careCoins ?? 0) + add,
+                careDay: today,
+                careEarnedToday: careDay + add,
                 affection,
                 ...(action === "feed" ? { fed: today } : { played: today }),
               },
@@ -1125,8 +1168,10 @@ export const useKidStore = create<KidState>()(
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           const earnedToday = cur.earnDay === today ? cur.earnedToday : 0;
+          // #1189 — the harder quest types pay more (master 10, newgame 7,
+          // rounds/stars 5). Still bounded by the daily anti-grind cap.
           const reward = reached
-            ? Math.min(NOVA_QUEST_REWARD, Math.max(0, NOVA_DAILY_CAP - earnedToday))
+            ? Math.min(QUEST_REWARDS[type], Math.max(0, NOVA_DAILY_CAP - earnedToday))
             : 0;
           return {
             nova: {
@@ -1235,19 +1280,21 @@ export const useKidStore = create<KidState>()(
         return newly;
       },
 
-      /* ── #284 mastery mystery boxes: opening one awards 2–5 coins inside the
-           daily cap. The boxed skill ids the kid has mastered come from App.tsx
-           (it knows the catalog); the store just marks them opened + pays. ── */
+      /* ── #284/#1195 — mastery mystery boxes: opening one pays a band-scaled
+           reward (boxReward: 5–7 band-1 … 13–15 band-5) that ALWAYS out-pays a
+           passive daily login, inside the daily cap. The boxed skill ids come
+           from App.tsx (it knows the catalog + each skill's band); the store
+           marks them opened + pays. ── */
 
       novaOpenBox: (kidId, unclaimed) => {
         const n = get().nova[kidId] ?? defaultNova();
         const stored = n.boxes ?? [];
-        const next = unclaimed.find((id) => !stored.includes(id));
+        const next = unclaimed.find((u) => !stored.includes(u.id));
         if (!next) return { skillId: null, coins: 0 };
         const today = todayIso();
         const earnedToday = n.earnDay === today ? n.earnedToday : 0;
-        if (earnedToday >= NOVA_DAILY_CAP) return { skillId: next, coins: 0 }; // cap full → box waits
-        const add = Math.min(2 + Math.floor(Math.random() * 4), NOVA_DAILY_CAP - earnedToday); // 2..5
+        if (earnedToday >= NOVA_DAILY_CAP) return { skillId: next.id, coins: 0 }; // cap full → box waits
+        const add = Math.min(boxReward(next.band), NOVA_DAILY_CAP - earnedToday);
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           return {
@@ -1255,7 +1302,7 @@ export const useKidStore = create<KidState>()(
               ...s.nova,
               [kidId]: {
                 ...cur,
-                boxes: [...(cur.boxes ?? []), next],
+                boxes: [...(cur.boxes ?? []), next.id],
                 coins: cur.coins + add,
                 totalEarned: cur.totalEarned + add,
                 earnedToday: (cur.earnDay === today ? cur.earnedToday : 0) + add,
@@ -1264,7 +1311,7 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
-        return { skillId: next, coins: add };
+        return { skillId: next.id, coins: add };
       },
 
       /* ── Share reward: parent shared this kid's progress → once/day bonus ── */

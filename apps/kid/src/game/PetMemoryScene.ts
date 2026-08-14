@@ -12,6 +12,7 @@ import {
   todayIso,
   NOVA_DAILY_CAP,
   speciesEmoji,
+  challengeQualityCoins,
 } from "../store";
 
 /**
@@ -28,6 +29,7 @@ const T = {
     hint: "Flip the cards & match the pets!",
     match: "Match!",
     done: "All matched! +1 🪙 🎉",
+    perfect: "Perfect memory! +2 🪙 ⭐",
     cap: "You earned ALL your coins today! 🪙✨",
     close: "✕",
   },
@@ -36,6 +38,7 @@ const T = {
     hint: "কার্ড উল্টাও আর মিল খুঁজে বের করো!",
     match: "মিলেছে!",
     done: "সব মিলেছে! +1 🪙 🎉",
+    perfect: "নিখুঁত স্মৃতি! +2 🪙 ⭐",
     cap: "আজ সব কয়েন জিতেছ! 🪙✨",
     close: "✕",
   },
@@ -74,6 +77,7 @@ export class PetMemoryScene extends Phaser.Scene {
 
   private cards: Card[] = [];
   private open: Card[] = [];
+  private attempts = 0; // #1194 — pair-flip attempts (quality tier)
   private matchedCount = 0;
   private busy = false;
 
@@ -119,6 +123,7 @@ export class PetMemoryScene extends Phaser.Scene {
     this.cards = [];
     this.open = [];
     this.matchedCount = 0;
+    this.attempts = 0;
     this.busy = false;
     // two of each face, shuffled
     const pairs: number[] = [];
@@ -173,6 +178,7 @@ export class PetMemoryScene extends Phaser.Scene {
     this.open.push(card);
     if (this.open.length === 2) {
       this.busy = true;
+      this.attempts += 1;
       const [a, b] = this.open;
       if (a.faceKey === b.faceKey) {
         // match!
@@ -236,15 +242,16 @@ export class PetMemoryScene extends Phaser.Scene {
 
   private finishRound() {
     win();
-    const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
+    // #1194 — quality-tiered: matching every pair on the FIRST try (6 pair
+    // flips for 6 faces) is the 2-coin perfect tier; any extra attempt drops
+    // to the 1-coin base.
+    const perfect = this.attempts <= FACES.length;
+    const coins = challengeQualityCoins(perfect ? 1 : 0.5);
+    const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
     const T = this.t();
-    if (granted > 0) {
-      speak(T.done);
-      this.showMsg(T.done, 1700);
-    } else {
-      speak(T.cap);
-      this.showMsg(T.cap, 1700);
-    }
+    const msgText = granted > 0 ? (perfect ? T.perfect : T.done) : T.cap;
+    speak(msgText);
+    this.showMsg(msgText, 1700);
     this.time.delayedCall(2100, () => {
       this.cards.forEach((cd) => cd.c.destroy());
       this.deal();

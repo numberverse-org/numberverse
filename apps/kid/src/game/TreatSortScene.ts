@@ -12,6 +12,7 @@ import {
   todayIso,
   NOVA_DAILY_CAP,
   speciesEmoji,
+  challengeQualityCoins,
 } from "../store";
 
 /**
@@ -30,6 +31,7 @@ const T = {
     nice: "Nice! 🎉",
     wrong: "That one goes in the other bowl! 🤗",
     reward: "All sorted! Nova is full! +1 🪙 💛",
+    perfect: "Perfect sort! Nova is delighted! +2 🪙 ⭐",
     cap: "You earned ALL your coins today! 🪙✨",
     close: "✕",
   },
@@ -39,6 +41,7 @@ const T = {
     nice: "বাহ্! 🎉",
     wrong: "ওটা অন্য বাটিতে যাবে! 🤗",
     reward: "সব সাজানো! নোভার পেট ভরা! +1 🪙 💛",
+    perfect: "নিখুঁত সাজানো! নোভা খুব খুশি! +2 🪙 ⭐",
     cap: "আজ সব কয়েন জিতেছ! 🪙✨",
     close: "✕",
   },
@@ -70,6 +73,7 @@ export class TreatSortScene extends Phaser.Scene {
 
   private bowls: Bowl[] = [];
   private placed = 0;
+  private wrongs = 0; // #1194 — wrong-bowl drops (quality tier)
   private roundDone = false;
 
   constructor() {
@@ -236,6 +240,7 @@ export class TreatSortScene extends Phaser.Scene {
     } else {
       // wrong bowl (or dropped elsewhere) — gentle return, no shame
       bad();
+      this.wrongs += 1;
       if (best) this.wiggleBowl(best);
       speak(this.t().wrong);
       this.tweens.killTweensOf(go);
@@ -261,15 +266,15 @@ export class TreatSortScene extends Phaser.Scene {
 
   private finishRound() {
     win();
-    const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
+    // #1194 — quality-tiered: a clean sort (zero wrong drops) is the 2-coin
+    // perfect tier, any mistake drops to the 1-coin base.
+    const perfect = this.wrongs === 0;
+    const coins = challengeQualityCoins(perfect ? 1 : 0.5);
+    const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
     const T = this.t();
-    if (granted > 0) {
-      speak(T.reward);
-      this.showMsg(T.reward, 1700);
-    } else {
-      speak(T.cap);
-      this.showMsg(T.cap, 1700);
-    }
+    const msgText = granted > 0 ? (perfect ? T.perfect : T.reward) : T.cap;
+    speak(msgText);
+    this.showMsg(msgText, 1700);
     this.time.delayedCall(2000, () => this.scene.restart({ kidId: this.kidId, onBack: this.onBack }));
   }
 

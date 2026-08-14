@@ -12,6 +12,7 @@ import {
   todayIso,
   NOVA_DAILY_CAP,
   speciesEmoji,
+  challengeQualityCoins,
 } from "../store";
 
 /**
@@ -30,6 +31,7 @@ const T = {
     found: "You found me! 🎉",
     hint2: "Look there — I'm right behind it! 👀",
     reward: "Peek-a-boo! +1 🪙 💛",
+    perfect: "Peek-a-boo! Found me first try! +2 🪙 ⭐",
     cap: "You earned ALL your coins today! 🪙✨",
     close: "✕",
   },
@@ -39,6 +41,7 @@ const T = {
     found: "পেয়ে গেছ! 🎉",
     hint2: "ওদিকে দেখো — আমি তার পেছনে! 👀",
     reward: "কু-কু! +1 🪙 💛",
+    perfect: "কু-কু! প্রথম চেষ্টাতেই পেয়ে গেছ! +2 🪙 ⭐",
     cap: "আজ সব কয়েন জিতেছ! 🪙✨",
     close: "✕",
   },
@@ -178,15 +181,15 @@ export class HideSeekScene extends Phaser.Scene {
 
   private finishRound() {
     win();
-    const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
+    // #1194 — quality-tiered: finding Nova on the very first tap is the 2-coin
+    // perfect tier; any miss drops to the 1-coin base.
+    const perfect = this.misses === 0;
+    const coins = challengeQualityCoins(perfect ? 1 : 0.5);
+    const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
     const T = this.t();
-    if (granted > 0) {
-      speak(T.reward);
-      this.showMsg(T.reward, 1500);
-    } else {
-      speak(T.cap);
-      this.showMsg(T.cap, 1500);
-    }
+    const msgText = granted > 0 ? (perfect ? T.perfect : T.reward) : T.cap;
+    speak(msgText);
+    this.showMsg(msgText, 1500);
     this.time.delayedCall(1900, () => {
       this.objs.forEach((o) => o.text.destroy());
       this.nova.setDepth(50);

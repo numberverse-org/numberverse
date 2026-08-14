@@ -179,18 +179,22 @@ export function correctCelebrate(
   // it — the meter reset on every miss with almost nowhere showing the climb).
   floatText(scene, x, y - 84, `x${combo} 🔥`, "#ffe8a3", 20);
 
-  if (combo === 2) {
+  // #1191 — hard-band answers ESCALATE ONE TIER SOONER: a hard problem at
+  // combo 3 already reads AMAZING, at combo 5 SUPER STAR. Easy work still has
+  // to climb the full ladder — the fireworks stay earned.
+  const tier = combo + (hard ? 1 : 0);
+  if (tier === 2) {
     floatText(scene, x, y - 40, "Nice! ✨", "#9be1a6", 24);
     return;
   }
-  if (combo === 3) {
+  if (tier === 3) {
     comboChime(combo);
     confettiBurst(scene, x, y, 16);
     const t = floatText(scene, x, y - 52, hard ? "WOW! 🔥" : "WOW! 🎉", NV_GOLD, 30);
     scene.data.set("nv:combo-fx", t);
     return;
   }
-  if (combo === 4 || combo === 5) {
+  if (tier === 4 || tier === 5) {
     comboChime(combo);
     confettiBurst(scene, x, y, hard ? 34 : 26);
     starBurst(scene, x, y, hard ? 9 : 6);

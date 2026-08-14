@@ -12,6 +12,7 @@ import {
   todayIso,
   NOVA_DAILY_CAP,
   speciesEmoji,
+  challengeQualityCoins,
 } from "../store";
 
 /**
@@ -205,7 +206,9 @@ export class FetchScene extends Phaser.Scene {
   private finishThrow(targetX: number) {
     win();
     const good = targetX >= this.scale.width * GOOD_THROW_FRACTION;
-    const coins = good ? 2 : 1;
+    // #1194 — quality-tiered via the shared helper: a far "good" throw is the
+    // 2-coin perfect tier, any normal throw is the 1-coin base tier.
+    const coins = challengeQualityCoins(good ? 1 : 0.5);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
     const T = this.t();
     const msgText = granted <= 0 ? T.cap : good ? T.good : T.normal;

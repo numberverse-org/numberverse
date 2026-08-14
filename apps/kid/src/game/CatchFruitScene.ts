@@ -12,6 +12,7 @@ import {
   todayIso,
   NOVA_DAILY_CAP,
   speciesEmoji,
+  challengeQualityCoins,
 } from "../store";
 
 /**
@@ -33,6 +34,7 @@ const T = {
     catch: ["Got it! 🎯", "Caught! 🍎", "Nice grab! 🧺", "Great catch! ⭐"],
     miss: "Oops… it fell. Try again!",
     reward: "Nice round! +1 🪙 for the basket! 💛",
+    perfect: "Perfect round! +2 🪙 for the basket! ⭐",
     cap: "You earned ALL your coins today! 🪙✨",
     close: "✕",
   },
@@ -42,6 +44,7 @@ const T = {
     catch: ["ধরেছি! 🎯", "পেয়েছি! 🍎", "দারুণ! 🧺", "বাহ্! ⭐"],
     miss: "ওহ… পড়ে গেল। আবার চেষ্টা করো!",
     reward: "বাহ্! ঝুড়িতে ভরে +1 🪙! 💛",
+    perfect: "দারুণ! ঝুড়িতে ভরে +2 🪙! ⭐",
     cap: "আজ সব কয়েন জিতেছ! 🪙✨",
     close: "✕",
   },
@@ -248,15 +251,15 @@ export class CatchFruitScene extends Phaser.Scene {
 
   private finishRound() {
     win();
-    const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
+    // #1194 — quality-tiered: a full-catch round (6/6) is the 2-coin perfect
+    // tier, any drop drops to the 1-coin base.
+    const quality = this.tossed ? this.caught / this.tossed : 0.5;
+    const coins = challengeQualityCoins(quality);
+    const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
     const T = this.t();
-    if (granted > 0) {
-      speak(T.reward);
-      this.showMsg(T.reward, 1600);
-    } else {
-      speak(T.cap);
-      this.showMsg(T.cap, 1600);
-    }
+    const msgText = granted > 0 ? (quality >= 0.85 ? T.perfect : T.reward) : T.cap;
+    speak(msgText);
+    this.showMsg(msgText, 1600);
     this.time.delayedCall(1800, () => this.startRound());
   }
 

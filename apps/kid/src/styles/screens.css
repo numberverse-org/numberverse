@@ -3513,6 +3513,8 @@
 
 /* game HUD coin counter */
 .hud-coins { color: var(--nv-gold); white-space: nowrap; font-weight: 800; }
+/* #1196 — small "coins maxed" 🎯 chip beside the HUD coin count */
+.hud-coins-maxed { margin-left: 4px; font-style: normal; cursor: help; font-size: 12px; }
 
 /* ══════════════════════════ FEEL PASS — juice & celebrations ══════════════════════════ */
 

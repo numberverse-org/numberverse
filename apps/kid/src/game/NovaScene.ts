@@ -34,8 +34,8 @@ const NOVA_T = {
     tapHint: "Tap me to play!",
     tapMsgs: ["Whoo-hoo! 😄", "That tickles! 😆", "You're my best friend! 💛"],
     feedMsg: "Yummy! Thanks! 🍎",
-    feedReward: "Yummy! +1 🪙 for a tasty meal! 💛",
-    playReward: "Wheee! +1 🪙 for playing! 🎈",
+    feedReward: "Yummy! +1 🐾 for a tasty meal! 💛",
+    playReward: "Wheee! +1 🐾 for playing! 🎈",
     dailyCap: "You earned ALL your coins today! 🪙✨ See you tomorrow!",
     doneTodayFeed: "I'm full now — see you tomorrow! 🍎💛",
     doneTodayPlay: "We already played lots today! 🎈💛",
@@ -75,8 +75,8 @@ const NOVA_T = {
     tapHint: "আমায় ছুঁয়ে খেলো!",
     tapMsgs: ["হু-হু! 😄", "টিকলি! 😆", "তুমি আমার সেরা বন্ধু! 💛"],
     feedMsg: "মমম! ধন্যবাদ! 🍎",
-    feedReward: "মমম! ভালো খাবারে +1 🪙! 💛",
-    playReward: "উহু! খেলায় +1 🪙! 🎈",
+    feedReward: "মমম! ভালো খাবারে +1 🐾! 💛",
+    playReward: "উহু! খেলায় +1 🐾! 🎈",
     dailyCap: "আজ সব কয়েন জিতেছ! 🪙✨ কাল আবার দেখা হবে!",
     doneTodayFeed: "আমি ভর্তি — কাল দেখা হবে! 🍎💛",
     doneTodayPlay: "আজ তো অনেক খেললাম! 🎈💛",
@@ -630,6 +630,7 @@ export class NovaScene extends Phaser.Scene {
   private walletChip!: Phaser.GameObjects.Image;
   private wallet!: Phaser.GameObjects.Text;
   private walletSub!: Phaser.GameObjects.Text;
+  private careBadge!: Phaser.GameObjects.Text; // #1192 — 🐾 care coins, distinct from 🪙
   private streakStrip!: Phaser.GameObjects.Container;
   private streakText!: Phaser.GameObjects.Text;
   private streakDots: Phaser.GameObjects.Image[] = [];
@@ -1082,6 +1083,9 @@ export class NovaScene extends Phaser.Scene {
       .setDepth(400);
     this.wallet = this.add.text(0, 0, "", txt(16, NV_GOLD, { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
     this.walletSub = this.add.text(0, 0, "", txt(9, "#c9d4ff", { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
+    // #1192 — a tiny 🐾 chip sits left of the wallet so care coins are visibly
+    // a SEPARATE reward from learning coins (they never share the daily cap).
+    this.careBadge = this.add.text(0, 0, "", txt(11, "#ffc2d9", { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
 
     // streak strip: 🔥 3-day streak + dots
     this.streakText = this.add.text(0, 0, "", txt(12, NV_GOLD, { bold: true, shadow: false })).setOrigin(0.5).setDepth(400);
@@ -2345,7 +2349,8 @@ export class NovaScene extends Phaser.Scene {
       return;
     }
     if (coinAdded > 0) {
-      this.floatCoin(`+${coinAdded} 🪙`);
+      // #1192 — care earns its OWN currency (🐾), never the learning cap
+      this.floatCoin(`+${coinAdded} 🐾`);
       if (earnedToday >= NOVA_DAILY_CAP) this.say(T.dailyCap, 2200);
       else this.say(action === "feed" ? T.feedReward : T.playReward, 1800);
     } else if (earnedToday >= NOVA_DAILY_CAP) {
@@ -2660,6 +2665,7 @@ export class NovaScene extends Phaser.Scene {
 
     this.wallet.setText(`🪙 ${nova.coins}`);
     this.walletSub.setText(this.t().daily(Math.min(earnedToday, NOVA_DAILY_CAP)));
+    this.careBadge.setText(`🐾 ${nova.careCoins ?? 0}`);
     this.tweens.add({ targets: this.wallet, scale: 1.18, duration: 120, yoyo: true });
 
     this.streakText.setText(`🔥 ${this.t().streak(nova.streak)}`);
@@ -2716,10 +2722,12 @@ export class NovaScene extends Phaser.Scene {
     this.walletChip.setPosition(W - 52, topY);
     this.wallet.setPosition(W - 52, topY - 2);
     this.walletSub.setPosition(W - 52, topY + 24);
+    // 🐾 care badge — left of the wallet chip (room pill shrinks to make room)
+    this.careBadge.setPosition(W - 52 - 46 - 20, topY);
 
-    // room pill width: fit between back (right edge ~69) and wallet (left edge W-98)
+    // room pill width: fit between back (right edge ~69) and care badge (left edge W-118)
     const backRight = 69;
-    const walletLeft = W - 98;
+    const walletLeft = W - 52 - 46 - 20 - this.careBadge.width / 2 - 10;
     const pillMax = Math.min(250, walletLeft - backRight - 14);
     const pillW = Math.min(pillMax, Math.max(146, this.roomLabel.width + 74));
     this.roomPill.setPosition(W / 2, topY);

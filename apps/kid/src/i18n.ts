@@ -245,6 +245,8 @@ export interface Strings {
   boxOpen: string;
   boxCapSpeak: string;
   boxRewardSpeak: (name: string, coins: number) => string;
+  /* #1196 — HUD chip when today's learning coins hit the anti-grind cap */
+  hudCoinsMaxed: string;
   /* #294 — streak-freeze tokens */
   freezePill: (n: number) => string;
   freezeEarnedSpeak: string;
@@ -944,6 +946,7 @@ export const STR: Record<Lang, Strings> = {
     boxOpen: "Open",
     boxCapSpeak: "The box will open tomorrow — the daily reward is full!",
     boxRewardSpeak: (name, coins) => `${name}, you found ${coins} coins in the box! 🎁`,
+    hudCoinsMaxed: "Coins maxed for today! Keep learning — stars still count 🎯",
     /* #294 — streak-freeze tokens */
     freezePill: (n) => `🧊 ${n}`,
     freezeEarnedSpeak: "You earned a freeze token — your streak is safe!",
@@ -1620,6 +1623,7 @@ export const STR: Record<Lang, Strings> = {
     boxOpen: "খোলো",
     boxCapSpeak: "বক্সটা কাল খুলবে — আজকের পুরস্কার ভরে গেছে!",
     boxRewardSpeak: (name, coins) => `${name}, বক্সে ${coins}টা কয়েন পেয়েছো! 🎁`,
+    hudCoinsMaxed: "আজকের কয়েন ভরে গেছে! শিখতে থাকো — তারকারা এখনও গুনবে 🎯",
     /* #294 — streak-freeze tokens */
     freezePill: (n) => `🧊 ${bnNum(n)}`,
     freezeEarnedSpeak: "তুমি ফ্রিজ টোকেন পেয়েছো — তোমার ধারা নিরাপদ!",

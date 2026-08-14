@@ -39,7 +39,7 @@ export interface HomeScreenProps {
     won: "win" | "tie" | "lose" | null;
     coins: number;
   } | null;
-  quest: { type: QuestType; progress: number; target: number; done: boolean; today: boolean };
+  quest: { type: QuestType; progress: number; target: number; done: boolean; today: boolean; reward: number };
   tourStep: number | null;
   projector: boolean;
   neural: ReturnType<typeof speechStatus>["neural"];
@@ -439,7 +439,7 @@ export default function HomeScreen({
               <span className="quest-title">{t.questTitle}</span>
               {quest.done ? (
                 <span className="quest-line">
-                  {t.questDoneText} <span className="quest-reward">{t.questReward(NOVA_QUEST_REWARD)}</span>
+                  {t.questDoneText} <span className="quest-reward">{t.questReward(quest.reward)}</span>
                 </span>
               ) : questBlocked ? (
                 <span className="quest-line">{t.questRest}</span>
@@ -638,7 +638,7 @@ export default function HomeScreen({
                 <button
                   className="box-open"
                   onClick={() => {
-                    const res = useKidStore.getState().novaOpenBox(kid.id, unclaimedBoxes.map((s) => s.id));
+                    const res = useKidStore.getState().novaOpenBox(kid.id, unclaimedBoxes.map((s) => ({ id: s.id, band: s.band })));
                     if (res.coins > 0) {
                       tada();
                       speak(t.boxRewardSpeak(kid.name, res.coins));
