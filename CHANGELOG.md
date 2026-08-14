@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.38 (fix: reconcile classNumber vs nctbCode prefix on 6 band-3/4 skills (#1153))
+
+41bfbcd fix: reconcile classNumber with nctbCode class prefix across 6 skills (#1153)
+
 ## 15 Aug 2026 — 0.53.37 (fix: goal-progress/goal-nudge span home column; drop redundant margin-top (#1111))
 
 59dea9b fix: goal-progress/goal-nudge span the home column; drop redundant margin-top (#1111)
