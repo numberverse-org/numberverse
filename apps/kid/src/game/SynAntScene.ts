@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -253,6 +254,7 @@ export class SynAntScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.floatMsg(`${t("saGreat")} ${this.current.target.word} → ${picked}`, 0x4ade80);
       speak(`${this.current.target.word} — ${picked}`, { lang: "en" });
       (this.optionBtns[i].getData("nv-btn") as { setCorrect: () => void } | undefined)?.setCorrect();

@@ -17,7 +17,17 @@ import { NV_GOLD, NV_PINK } from "./ui"; // tokenized #591
  *
  * Kids chase the combo — consecutive correct answers turn into visible,
  * audible fireworks. Wrong answers quietly reset it (learning stays warm).
+ *
+ * #1061/#1062 — the engine also reads the ROUND'S DIFFICULTY (1-based level
+ * index) so EFFORT escalates independently of streak: a hard level-4+ problem
+ * gets a "Tough one! 💪" nod even on the first correct answer, and the combo
+ * words gain a hard-problem register. Callers pass it via the optional
+ * `{ difficulty }` arg, or a scene can set `this.data.set("nv:difficulty", n)`
+ * once per round and every shared reward path picks it up.
  */
+
+/** A round at this difficulty (or above) counts as a hard problem. */
+export const HARD_DIFFICULTY = 4;
 
 /** Current combo for a scene (0 = none). Resets on scene shutdown. */
 export function comboOf(scene: Phaser.Scene): number {
@@ -141,9 +151,26 @@ export function starBurst(scene: Phaser.Scene, x: number, y: number, n = 10) {
 }
 
 /** The escalating correct-answer celebration. Call from shared correct paths. */
-export function correctCelebrate(scene: Phaser.Scene, x: number, y: number) {
+export function correctCelebrate(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  opts?: { difficulty?: number }
+) {
+  const difficulty =
+    opts?.difficulty ?? (scene.data.get("nv:difficulty") as number | undefined) ?? 0;
+  const hard = difficulty >= HARD_DIFFICULTY;
   const combo = bumpCombo(scene);
-  if (combo < 2) return; // base pop + sparkle handled by the scene itself
+  if (combo < 2) {
+    // #1062 — EFFORT escalates even at combo 1: a hard problem is a win on its
+    // own, so it gets a small star burst + a "Tough one!" nod (the scene's own
+    // pop/sparkle still fires on every correct).
+    if (hard) {
+      starBurst(scene, x, y, 4);
+      floatText(scene, x, y - 40, "Tough one! 💪", "#9be1a6", 22);
+    }
+    return; // base pop + sparkle handled by the scene itself
+  }
 
   if (combo === 2) {
     floatText(scene, x, y - 40, "Nice! ✨", "#9be1a6", 24);
@@ -152,22 +179,22 @@ export function correctCelebrate(scene: Phaser.Scene, x: number, y: number) {
   if (combo === 3) {
     comboChime(combo);
     confettiBurst(scene, x, y, 16);
-    const t = floatText(scene, x, y - 52, "WOW! 🎉", NV_GOLD, 30);
+    const t = floatText(scene, x, y - 52, hard ? "WOW! 🔥" : "WOW! 🎉", NV_GOLD, 30);
     scene.data.set("nv:combo-fx", t);
     return;
   }
   if (combo === 4 || combo === 5) {
     comboChime(combo);
-    confettiBurst(scene, x, y, 26);
-    starBurst(scene, x, y, 6);
-    const t = floatText(scene, x, y - 58, "AMAZING! 🌟", NV_PINK, 32);
+    confettiBurst(scene, x, y, hard ? 34 : 26);
+    starBurst(scene, x, y, hard ? 9 : 6);
+    const t = floatText(scene, x, y - 58, hard ? "AMAZING! 🔥" : "AMAZING! 🌟", NV_PINK, 32);
     scene.data.set("nv:combo-fx", t);
     return;
   }
-  // 6+ → everything
+  // 6+ → everything (a hard-problem SUPER STAR lands bigger)
   comboChime(combo);
-  confettiBurst(scene, x, y, 38);
-  starBurst(scene, x, y, 10);
-  const t = floatText(scene, x, y - 64, "SUPER STAR! ⭐", "#c4b5fd", 34);
+  confettiBurst(scene, x, y, hard ? 50 : 38);
+  starBurst(scene, x, y, hard ? 14 : 10);
+  const t = floatText(scene, x, y - 64, hard ? "SUPER STAR! 💫🔥" : "SUPER STAR! ⭐", "#c4b5fd", 34);
   scene.data.set("nv:combo-fx", t);
 }

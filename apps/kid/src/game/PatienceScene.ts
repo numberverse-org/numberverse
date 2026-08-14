@@ -4,6 +4,7 @@ import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -202,6 +203,7 @@ export class PatienceScene extends Phaser.Scene {
     this.clearDistraction();
     if (this.pulse) this.pulse.stop();
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     // the reward appears — pop in with a sparkle burst

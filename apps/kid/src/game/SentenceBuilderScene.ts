@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -247,6 +248,7 @@ export class SentenceBuilderScene extends Phaser.Scene {
     const s = this.sentence;
     speak(`${s.s} ${s.v} ${s.o}`, { lang: "bn" });
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.floatMsg(`${s.s} ${s.v} ${s.o}`);
     this.qInRound++;
     if (this.qInRound >= SENTENCES_PER_ROUND) {

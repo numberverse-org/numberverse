@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -207,6 +208,7 @@ export class CompoundEnScene extends Phaser.Scene {
     this.locked = true;
     pop();
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.resultText.setText(`${this.word.left} + ${this.word.right} = ${this.word.full}`).setStyle(txt(26, NV_GOLD, { bold: true, outline: true })).setOrigin(0.5);
     this.floatMsg(t("ceGreat"));
     const ms = Math.max(1, this.time.now - this.startedAt);

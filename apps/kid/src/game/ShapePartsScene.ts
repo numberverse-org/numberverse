@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -278,6 +279,7 @@ export class ShapePartsScene extends Phaser.Scene {
     }
     this.locked = true;
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     (c.getData("nv-btn") as { setCorrect: () => void } | undefined)?.setCorrect();
     speak(digit(target), { lang: getAppLang() === "bn" ? "bn" : "en" });
     this.floatMsg(t("spGreat", { n: digit(target) }));

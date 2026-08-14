@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -137,6 +138,8 @@ export abstract class TapChoiceScene extends Phaser.Scene {
 
   private startRound() {
     this.clearRound();
+    // #1061 — expose this round's difficulty to the shared celebration engine.
+    this.data.set("nv:difficulty", this.levelIndex + 1);
     const cfg = this.cfg();
     const pool = cfg.items.filter((it) => it.tier <= (this.levelIndex < 2 ? 1 : this.levelIndex < 4 ? 2 : 3));
     Phaser.Utils.Array.Shuffle(pool);
@@ -214,9 +217,12 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
     pop();
     win();
+    // #1198 — the config bases are the pattern: every derived scene gets the
+    // full combo reward (confetti/starBurst) for free, not a bare audio blip.
+    const hit = this.cards.find((c) => c.choice === ch)!;
+    correctCelebrate(this, hit.c.x, hit.c.y);
     this.floatMsg(t(cfg.greatKey));
     speak(t(cfg.speakKey, { choice: t(ch.key), name: t(cfg.nameKeys[it.id]) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
-    const hit = this.cards.find((c) => c.choice === ch)!;
     this.flashCard(hit, 0x4ade80);
     this.time.delayedCall(750, () => this.advance());
   }

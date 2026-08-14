@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -166,6 +167,7 @@ export class FracSetScene extends Phaser.Scene {
     if (sel === this.target) {
       this.locked = true;
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.correct++;
       this.items.forEach((i) => {
         if (i.selected) this.tweens.add({ targets: i.c, scale: 1.15, duration: 140, yoyo: true, ease: "Back.easeOut" });

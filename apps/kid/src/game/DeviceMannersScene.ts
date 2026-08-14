@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -254,6 +255,7 @@ export class DeviceMannersScene extends Phaser.Scene {
             if (this.state !== "booting") return;
             pop();
             win();
+            correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
             speak(t("dmSpeakOn"), { lang: getAppLang() === "bn" ? "bn" : "en" });
             this.floatMsg(t("dmReady"), 0x4ade80);
             this.setBusy(600);

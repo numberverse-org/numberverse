@@ -1,3 +1,27 @@
+## 14 Aug 2026 — 0.42.0 (💥 Reward fairness: effort pays — coins tier by difficulty, mastery bonus, garden scales, every one of the 130 scenes celebrates)
+
+The reward economy finally distinguishes a hard win from a trivial tap (v36 oracle
+sweep 4 — reward-overlap/feedback-escalation):
+
+- **#1187 coins tier by difficulty** — `novaAwardRound(kidId, correct, difficulty)`
+  pays 1 / 2 / 3 coins at level 1-3 / 4-5 / 6+ (was a flat 1 for everything).
+  Score already scaled by difficulty; now the coin economy does too. Daily cap holds.
+- **#1188 mastery bonus** — the single BIG moment now pays +`NOVA_MASTERY_REWARD` (5)
+  on top of the round payout (once per skill, inside the cap), alongside the pet
+  grow + confetti.
+- **#1190 garden scales** — `waterGarden(g, amount)`: a level-4+ correct waters 2
+  (stage up in 2 instead of 3); easy rounds keep the 3-correct cadence.
+- **#1061/#1062/#1067 celebration reads difficulty** — `correctCelebrate(scene,x,y,opts)`
+  accepts/reads the round's difficulty (`nv:difficulty` on scene.data, set by every
+  base + core scene). Hard problems (level 4+) escalate even at combo 1
+  ("Tough one! 💪" + star burst) and the combo words gain a 🔥 register.
+- **#1197/#1198 every scene celebrates** — the config bases (binSort/tapChoice)
+  now call `correctCelebrate`, and all 130 completable scenes route through a
+  reward path (was 11/150). A correct answer gets confetti + combo everywhere.
+- **#1206 reward-parity guard** — `scripts/lint-scene-reward.mjs` fails the build
+  if any completable scene ships without a reward path; wired into the Oracle as
+  the new "Scene Reward Parity" gate (release.sh enforces it).
+
 ## 14 Aug 2026 — 0.41.1 (🐛 3D Nova island stays lazy: three.js no longer prefetched on cold start (three-vendor = three only, modulePreload off))
 
 604e0a6 🐛 #691: keep the 3D island genuinely lazy (no three.js on cold start)

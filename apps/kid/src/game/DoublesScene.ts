@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -99,6 +100,7 @@ export class DoublesScene extends Phaser.Scene {
   private startRound() {
     this.clearTiles();
     this.locked = false;
+    this.data.set("nv:difficulty", this.levelIndex + 1); // #1061 — reward engine sees round hardness
     this.total = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     this.answered = 0;
     this.correct = 0;
@@ -196,6 +198,7 @@ export class DoublesScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, tile.x, tile.y); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.correct++;
       const ms = Math.max(1, this.time.now - this.startedAt);
       this.speakStrategy();

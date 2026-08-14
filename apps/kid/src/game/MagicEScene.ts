@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -164,6 +165,7 @@ export class MagicEScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       // The magic-e reveal: the e flies into the slot, fuses, and glows gold.
       this.eText.setText("e").setColor(NV_GOLD);
       this.tweens.add({ targets: this.eSlot, scale: 1.25, duration: 160, yoyo: true, ease: "Back.easeOut" });

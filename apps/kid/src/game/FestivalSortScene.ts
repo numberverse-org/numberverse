@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -234,6 +235,7 @@ export class FestivalSortScene extends Phaser.Scene {
     this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
     pop();
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.floatMsg(t("fcGreat"));
     speak(t("fcSpeak", { item: t(NAME_KEY[it.id]), festival: t(FESTIVAL_KEY[it.festival]) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
     this.flashBin(bin, 0x4ade80);

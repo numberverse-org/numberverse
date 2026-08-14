@@ -219,6 +219,7 @@ export class RegroupScene extends Phaser.Scene {
       return;
     }
     this.makeProblem();
+    this.data.set("nv:difficulty", LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]); // #1061 — reward engine sees round hardness
     this.cur = 0;
     this.carry = 0;
     this.borrow = 0;

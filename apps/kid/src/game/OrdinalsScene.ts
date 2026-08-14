@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -216,6 +217,7 @@ export class OrdinalsScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       const runner = this.runners.find((r) => r.pos === pos)!;
       this.paintRunner(runner.face, 0x4ade80);
       this.tweens.add({ targets: runner.c, scale: 1.22, duration: 150, yoyo: true, ease: "Back.easeOut" });

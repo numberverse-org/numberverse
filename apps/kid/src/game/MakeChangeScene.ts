@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak, bnNumber, enNumber, cancelSpeech } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -269,6 +270,7 @@ export class MakeChangeScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.correct++;
       this.floatMsg(t("chGreat"));
       const bn = getAppLang() === "bn";

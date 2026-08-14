@@ -128,6 +128,16 @@ export const NOVA_OUTFITS: NovaOutfit[] = [
 /** Max coins a kid can earn from games in one calendar day (anti-grind). */
 export const NOVA_DAILY_CAP = 20;
 export const NOVA_COINS_PER_ROUND = 1;
+/* #1187 — harder rounds pay more: the economy rewards EFFORT, not just
+ * participation. difficulty = the scene's 1-based level index (what it already
+ * reports to onRoundDone and uses to scale score). Levels 4+ visibly worth
+ * more; level 6+ = 3 coins. The daily cap still bounds everything. */
+export function roundCoinTier(difficulty?: number): number {
+  const d = difficulty && difficulty > 0 ? difficulty : 1;
+  if (d >= 6) return 3;
+  if (d >= 4) return 2;
+  return NOVA_COINS_PER_ROUND;
+}
 export const NOVA_COINS_PER_SESSION = 3;
 export const NOVA_DAILY_BONUS = 2;
 export const NOVA_CARE_GAIN = 5;
@@ -136,6 +146,10 @@ export const NOVA_CARE_COINS = 1;
 /** Daily Quest — play NOVA_QUEST_TARGET rounds in one calendar day to win a bonus. */
 export const NOVA_QUEST_TARGET = 3;
 export const NOVA_QUEST_REWARD = 5;
+/* #1188 — mastering a skill is the single "BIG moment": a distinct coin bonus
+ * on top of the round payout (granted via novaChallengeReward, so the daily
+ * anti-grind cap still applies). Once per skill — naturally rate-limited. */
+export const NOVA_MASTERY_REWARD = 5;
 /* #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
  * (deterministic hash of kid+date → stable offline, no server). All types pay
  * the same NOVA_QUEST_REWARD — reward parity by design. */
@@ -417,7 +431,7 @@ interface KidState {
   recordWrong: (kidId: string, skillId: string, gameId: string, difficulty: number, correct?: unknown, wrong?: unknown) => void;
   recordSession: (kidId: string) => void;
   reset: () => void;
-  novaAwardRound: (kidId: string, correct: boolean) => void;
+  novaAwardRound: (kidId: string, correct: boolean, difficulty?: number) => void;
   /** #280 — Beat-Nova challenge prize: a flat grant, still inside the daily
    *  anti-grind cap (cap-full → 0, no carry-over). Returns the coins actually
    *  granted so the UI can announce them. */
@@ -457,7 +471,7 @@ interface KidState {
    *  calendar day. Returns true when the reward was actually granted. */
   novaShareReward: (kidId: string) => boolean;
   /** Water the kid's garden with one correct answer. */
-  gardenWater: (kidId: string) => void;
+  gardenWater: (kidId: string, amount?: number) => void;
   /** A skill was just mastered → plant its trophy flower. */
   gardenMastery: (kidId: string, skillId: string, title: string) => void;
   /** Nova's birthday gift — claimable once per calendar year (a real bonus, bypasses the daily cap). */
@@ -711,9 +725,11 @@ export const useKidStore = create<KidState>()(
 
       /* ── Nova economy: coins come from real learning, never ads or money ── */
 
-      /** A correct round pays NOVA_COINS_PER_ROUND, capped by the daily cap. */
-      novaAwardRound: (kidId, correct) => {
+      /** A correct round pays coins tiered by difficulty (#1187), capped by the
+       *  daily cap — harder levels are visibly worth more. */
+      novaAwardRound: (kidId, correct, difficulty) => {
         if (!correct) return;
+        const coins = roundCoinTier(difficulty);
         const n = get().nova[kidId] ?? defaultNova();
         const today = todayIso();
         const earnedToday = n.earnDay === today ? n.earnedToday : 0;
@@ -722,7 +738,7 @@ export const useKidStore = create<KidState>()(
           const cur = s.nova[kidId] ?? defaultNova();
           const todayEarned = cur.earnDay === today ? cur.earnedToday : 0;
           if (todayEarned >= NOVA_DAILY_CAP) return { nova: s.nova };
-          const add = Math.min(NOVA_COINS_PER_ROUND, NOVA_DAILY_CAP - todayEarned);
+          const add = Math.min(coins, NOVA_DAILY_CAP - todayEarned);
           return {
             nova: {
               ...s.nova,
@@ -1191,10 +1207,10 @@ export const useKidStore = create<KidState>()(
 
       /* ── Growth Garden: correct answers water it, mastery plants flowers ── */
 
-      gardenWater: (kidId) =>
+      gardenWater: (kidId, amount) =>
         set((s) => {
           const g = s.garden[kidId] ?? emptyGarden();
-          const next = waterGarden(g);
+          const next = waterGarden(g, amount);
           if (next === g) return { garden: s.garden }; // full garden — nothing to grow
           return { garden: { ...s.garden, [kidId]: next } };
         }),

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -225,6 +226,7 @@ export class IdiomsScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       const word = t(MEAN_KEYS[picked - 1]);
       this.floatMsg(`${t("idGreat")} ${word}`, 0x4ade80);
       speak(word, { lang: getAppLang() === "bn" ? "bn" : "en" });

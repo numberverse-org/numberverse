@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -163,6 +164,7 @@ export class PrepositionsScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       obj.disableInteractive();
       this.tweens.add({ targets: obj, x: this.tx, y: this.ty, scale: 1.15, duration: 160, ease: "Back.easeOut", onComplete: () => this.tweens.add({ targets: obj, scale: 1, duration: 140 }) });
       const sentence = `The ${this.obj.name} is ${this.prep} ${this.prep === "between" ? "the boxes" : "the box"}!`;

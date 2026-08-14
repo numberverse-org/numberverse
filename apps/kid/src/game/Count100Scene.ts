@@ -114,6 +114,7 @@ export class Count100Scene extends Phaser.Scene {
     this.total = 0;
     this.startedAt = this.time.now;
     const target = this.roundTarget;
+    this.data.set("nv:difficulty", target); // #1061 — reward engine sees round hardness
     this.roundText.setText(frameText("count100Round", SKILL_ID, this.levelIndex, { n: this.levelIndex + 1, target }));
     this.instruction.set(t("count100Make", { n: target }));
     this.refresh();

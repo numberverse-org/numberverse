@@ -137,6 +137,7 @@ export class FruitTreeScene extends Phaser.Scene {
     this.clearRound();
     const level = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     this.target = level;
+    this.data.set("nv:difficulty", level); // #1061 — reward engine sees round hardness
     this.leftCount = Phaser.Math.Between(1, Math.max(1, this.target - 1));
     this.rightCount = this.target - this.leftCount;
     this.startedAt = this.time.now;

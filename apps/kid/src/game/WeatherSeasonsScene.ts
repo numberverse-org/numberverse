@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -239,6 +240,7 @@ export class WeatherSeasonsScene extends Phaser.Scene {
     this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
     pop();
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.floatMsg(t("wsGreat"));
     speak(t("wsSpeak", { item: t(NAME_KEY[it.id]), season: t(SEASON_KEY[it.season]) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
     this.flashBin(bin, 0x4ade80);

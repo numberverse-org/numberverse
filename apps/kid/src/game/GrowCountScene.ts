@@ -93,6 +93,7 @@ export class GrowCountScene extends Phaser.Scene {
   private startRound() {
     this.clearRound();
     this.target = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    this.data.set("nv:difficulty", this.target); // #1061 — reward engine sees round hardness
     this.planted = 0;
     this.startedAt = this.time.now;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);

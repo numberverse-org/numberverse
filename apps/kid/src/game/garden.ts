@@ -65,10 +65,13 @@ function wildSprout(): GardenPlant {
 }
 
 /**
- * Water the garden with ONE correct answer. Returns the (possibly new) state.
- * Pure — the caller persists it.
+ * Water the garden — a correct answer adds water. #1190: the amount can scale
+ * with round difficulty (a hard win waters more, up to WATER_PER_STAGE), so the
+ * garden keeps its 3-correct cadence for easy rounds but a hard/band-4+ correct
+ * advances a stage in 2. Pure — the caller persists it.
  */
-export function waterGarden(g: GardenState): GardenState {
+export function waterGarden(g: GardenState, amount = 1): GardenState {
+  const add = Math.max(1, Math.min(Math.round(amount), WATER_PER_STAGE));
   let plant = activePlant(g);
   if (!plant) {
     // No plant is still growing — plant a wild sprout (unless the garden is full).
@@ -76,7 +79,7 @@ export function waterGarden(g: GardenState): GardenState {
     plant = wildSprout();
     g = { plants: [...g.plants, plant] };
   }
-  const water = plant.water + 1;
+  const water = plant.water + add;
   if (water >= WATER_PER_STAGE) {
     // Stage up (or fruit) — one big, visible jump feels better than many tiny ones.
     const stage = Math.min(5, plant.stage + 1);

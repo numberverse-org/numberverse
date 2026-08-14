@@ -4,6 +4,7 @@ import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -236,6 +237,7 @@ export class VillageCityScene extends Phaser.Scene {
   private finishRound() {
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
+    correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     const m = this.add

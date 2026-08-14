@@ -118,6 +118,7 @@ export class CountPopScene extends Phaser.Scene {
   private startRound() {
     this.nextExpected = 1;
     this.roundCount = 0;
+    this.data.set("nv:difficulty", this.roundTarget); // #1061 — reward engine sees round hardness
     this.startedAt = this.time.now;
     this.bubbles.forEach((b) => b.sprite.destroy());
     this.bubbles = [];

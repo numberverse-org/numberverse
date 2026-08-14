@@ -284,6 +284,17 @@ def l2_nova_perf():
     bits.append(f"throttle={has_throttle} reduced={has_reduced} dynres={has_dynres} fadeOnly={fade} noAutoRotate={auto_rotate_off}")
     return ok, "; ".join(bits)
 
+def l2_scene_reward():
+    """💥 Scene Reward Parity (#1206) — every completable scene must celebrate a
+    correct answer (confetti/combo), not ship a bare audio blip. Runs the same
+    guard as scripts/lint-scene-reward.mjs so release.sh and CI agree."""
+    try:
+        r = run(["node", "scripts/lint-scene-reward.mjs"], timeout=60)
+    except Exception as e:
+        return False, f"guard failed to run: {e}"
+    out = (r.stdout or "").strip() or (r.stderr or "").strip()
+    return r.returncode == 0, out
+
 # ══ LAYER 3 — Quality & Trust ════════════════════════════════════════════════
 def l3_tsc():
     p = run(["./node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.json"], cwd=KID, timeout=180)
@@ -539,6 +550,7 @@ CHECKS = [
     ("🛠️ Eng",      "Deployment Engineer",        "deploy.sh present", l2_deploy),
     ("🛠️ Eng",      "Performance Engineer",       "bundle budget", l2_perf),
     ("🛠️ Eng",      "3D Nova Perf",               "island chunk + glb + a11y levers", l2_nova_perf),
+    ("🛠️ Eng",      "Scene Reward Parity",        "every scene celebrates", l2_scene_reward),
     ("🛡️ Trust",    "QA Lead",                    "audit.mjs", l2_scenes),
     ("🛡️ Trust",    "Type-Safety Officer",        "tsc --noEmit", l3_tsc),
     ("🛡️ Trust",    "Progress/Cert Verifier",     "thresholds+rewards", l3_progress),

@@ -131,6 +131,7 @@ export class CompoundScene extends Phaser.Scene {
 
   private startRound() {
     this.clearTiles();
+    this.data.set("nv:difficulty", this.levelIndex + 1); // #1061 — reward engine sees round hardness
     this.qInRound = 0;
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));

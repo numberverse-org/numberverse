@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -136,6 +137,7 @@ export class YesNoScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.floatMsg(t("ynGreat"));
       this.time.delayedCall(250, () =>
         speak(v ? `Yes, ${this.item.s.toLowerCase().replace(/\.$/, "")}!` : `No, ${this.item.s.toLowerCase().replace(/\.$/, "")}!`, { lang: "en" })

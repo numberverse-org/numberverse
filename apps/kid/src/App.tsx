@@ -15,7 +15,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setQuietLevel as setAudioQuiet } from "./game/audio";
@@ -1604,7 +1604,8 @@ export default function App() {
           // the server's own rounding validator for stale queued events).
           const e: RoundResult = { gameId: step.gameId, skillId: step.skillId, correct, difficulty, responseMs: Math.max(0, Math.round(ms)) };
           addEvent(kid.id, e);
-          novaAwardRound(kid.id, correct);
+          // #1187 — the coin economy rewards effort: harder rounds pay more.
+          novaAwardRound(kid.id, correct, difficulty);
           // #133 — screen-reader cue for every round (matches the on-screen flash).
           announce(correct ? t.a11yRight : t.a11yWrong);
           // every completed round advances today's Daily Quest — the mission
@@ -1638,8 +1639,9 @@ export default function App() {
           else if (correct && streakNow >= 5) novaReact("amaze");
           else if (correct && streakNow >= 3) novaReact("cheer");
           else if (!correct && streakBefore >= 3) novaReact("setback");
-          // GROWTH: a correct answer waters the garden…
-          if (correct) gardenWater(kid.id);
+          // GROWTH: a correct answer waters the garden — harder rounds water
+          // more (#1190): level 4+ advances a stage in 2 instead of 3.
+          if (correct) gardenWater(kid.id, difficulty >= 4 ? 2 : 1);
           // …and a skill that just crossed the mastery bar plants a trophy flower.
           // (masteryPlant dedupes per skill — one flower, ever. masteredBeforeRef
           //  is left untouched so the done-screen "New skill mastered!" still cheers.)
@@ -1650,6 +1652,9 @@ export default function App() {
             // + a spoken cheer, not just a badge on the done screen. One per skill.
             if (!masteredBeforeRef.current.has(step.skillId)) {
               useKidStore.getState().petGrowMastery(kid.id);
+              // #1188 — mastery is the BIG moment: a distinct coin bonus (once
+              // per skill, inside the daily cap) on top of the round payout.
+              useKidStore.getState().novaChallengeReward(kid.id, NOVA_MASTERY_REWARD);
               masteredBeforeRef.current.add(step.skillId);
               cancelSpeech();
               tada();

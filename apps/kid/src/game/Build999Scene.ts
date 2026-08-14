@@ -118,6 +118,7 @@ export class Build999Scene extends Phaser.Scene {
     this.total = 0;
     this.startedAt = this.time.now;
     const target = this.roundTarget;
+    this.data.set("nv:difficulty", target); // #1061 — reward engine sees round hardness
     this.roundText.setText(t("build999Round", { n: this.levelIndex + 1, target }));
     this.meter.set(0, 3);
     this.instruction.set(t("build999Make", { n: target }));
