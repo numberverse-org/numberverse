@@ -75,6 +75,8 @@ const CONJUNCT_FACTS: CombineFact[] = CONJUNCTS.map((c) => ({ parts: [c.base, c.
 const WORD_FACTS: CombineFact[] = WORDS.map((w) => ({ parts: w.parts, combined: w.combined, hint: w.combined }));
 const BUTTON_RADIUS = 56;
 const ROUNDS_TO_FINISH = 3;
+const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
+const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
 
 /**
  * Bangla Matras — combine a letter with its matra.
@@ -86,6 +88,10 @@ export class BnMatrasScene extends Phaser.Scene {
   private startedAt = 0;
   private conjunctMode = false;
   private wordsMode = false;
+  private challenge = false; // #1158 — band 6-7 independent mode (timed rounds, no reveal)
+  private challengeDone = false;
+  private challengeTimer?: Phaser.Time.TimerEvent;
+  private challengeBar?: Phaser.GameObjects.Rectangle;
   private facts: CombineFact[] = MATRA_FACTS;
   private target!: CombineFact;
   private buttons: { sprite: Phaser.GameObjects.Container; value: string }[] = [];
@@ -101,13 +107,19 @@ export class BnMatrasScene extends Phaser.Scene {
     super("BnMatras");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string }) {
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; mode?: string; challenge?: boolean }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
     // #20 — conjuncts mode (bn-conjuncts) shares the combine mechanic.
     this.conjunctMode = data.mode === "conjuncts";
     // #759 — words mode (bn-matra-words, band 3) shares it too: syllable→word.
     this.wordsMode = data.mode === "words";
+    // #1158 — challenge mode: band 6-7 skills (skill.challenge → App passes it)
+    // get a per-round countdown bar and no hint/reveal on wrong.
+    this.challenge = !!data.challenge;
+    if (this.challenge) {
+      this.challengeBar = this.add.rectangle(0, 122, 0, 6, CHALLENGE_BAR).setOrigin(0, 0.5).setAlpha(0);
+    }
     this.facts = this.wordsMode ? WORD_FACTS : this.conjunctMode ? CONJUNCT_FACTS : MATRA_FACTS;
     this.background = this.add.graphics();
     this.drawBackground();
@@ -151,6 +163,48 @@ export class BnMatrasScene extends Phaser.Scene {
     this.factText.setText(`${this.target.parts[0]} + ${this.target.parts[1]} = ?`);
     speak(this.target.combined);
     this.spawnButtons(n);
+    this.armChallenge();
+  }
+
+  /** #1158 — challenge-mode countdown: a gold bar drains over CHALLENGE_SECONDS;
+   *  time-up records a WRONG round (streak breaks, no coin, block does NOT
+   *  advance) and deals the next round. No re-teach, no reveal — the older kid
+   *  races the clock, and the combo/coin economy feels the miss. */
+  private armChallenge() {
+    if (!this.challenge) return;
+    if (this.challengeTimer) this.challengeTimer.remove(false);
+    this.challengeDone = false;
+    const bar = this.challengeBar;
+    if (bar) {
+      this.tweens.killTweensOf(bar);
+      bar.setPosition(20, 122).setSize(Math.min(this.scale.width - 40, 320), 6).setScale(1, 1).setAlpha(1);
+      this.tweens.add({ targets: bar, scaleX: 0, duration: CHALLENGE_SECONDS * 1000, ease: "Linear.easeNone" });
+    }
+    this.challengeTimer = this.time.delayedCall(CHALLENGE_SECONDS * 1000, () => {
+      if (this.challengeDone) return;
+      this.challengeDone = true;
+      // A time-up is a completed (failed) round: the App counts it toward the
+      // block (roundsDone), the meter reflects it, and a fresh round deals.
+      // No open-wrong is recorded (no tap) so a fully-timed-out block still
+      // advances the session — the wrong events make BKT drop the tier.
+      this.roundsDone++;
+      this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levelIndex + 1);
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  private disarmChallenge() {
+    if (this.challengeTimer) {
+      this.challengeTimer.remove(false);
+      this.challengeTimer = undefined;
+    }
+    if (this.challengeBar) {
+      this.tweens.killTweensOf(this.challengeBar);
+      this.challengeBar.setAlpha(0);
+    }
   }
 
   private spawnButtons(n: number) {
@@ -176,9 +230,12 @@ export class BnMatrasScene extends Phaser.Scene {
         hintBn: "শব্দটির সাথে মিলিয়ে সঠিক অক্ষরটি বেছে নাও",
         correct: () => this.target.combined,
         options: () => this.buttons,
+        challenge: this.challenge, // #1158 — no banner/reveal; solve it yourself
       });
       return;
     }
+    this.challengeDone = true; // the round is solved — stop the countdown
+    this.disarmChallenge();
     pop();
     correctButton(container);
     this.buttons.forEach((b) => b.sprite.disableInteractive());
