@@ -551,12 +551,17 @@ export default function HomeScreen({
               <div className="home-path-head">
                 <span className="home-path-title">🛣️ {t.homePath}</span>
                 <span className="season-chip">{SEASON_EMOJI[season]} {season === "snow" ? t.seasonSnow : season === "flowers" ? t.seasonFlowers : season === "fireflies" ? t.seasonFireflies : t.seasonLeaves}</span>
-                <span className="home-path-prog">
-                  {journeyDone ? t.champion : stops.length ? t.journeyProgress(doneCount, stops.length) : ""}
-                </span>
-                <button className="home-path-link" onClick={() => setScreen("worlds")}>
-                  {t.homeViewJourney}
-                </button>
+                {/* #1108-followup — the progress + "view journey" link are one
+                    right-aligned group: on narrow phones they wrap together as a
+                    unit instead of the link falling alone onto its own row. */}
+                <div className="home-path-head-right">
+                  <span className="home-path-prog">
+                    {journeyDone ? t.champion : stops.length ? t.journeyProgress(doneCount, stops.length) : ""}
+                  </span>
+                  <button className="home-path-link" onClick={() => setScreen("worlds")}>
+                    {t.homeViewJourney}
+                  </button>
+                </div>
               </div>
               <div className="home-path-strip" role="list">
                 <div className="season-particles" aria-hidden="true">

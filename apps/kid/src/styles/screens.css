@@ -20,6 +20,12 @@
   /* Short phones (iPhone SE, small Androids): if the home/worlds content is
      taller than the screen it scrolls instead of clipping at the edges. */
   overflow-y: auto;
+  /* #1108-followup — mobile responsive: NEVER allow a screen to scroll
+     sideways. overflow-y:auto alone makes overflow-x compute to auto too, so
+     any child wider than the viewport (path head, bday pickers, banners) shows
+     a horizontal scrollbar. Hidden here = every screen is mobile-safe even if
+     an edge case overflows; the real overflow sources are fixed too. */
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
@@ -110,7 +116,7 @@
   max-width: 440px;
   padding: 4px 0 10px;
 }
-.head-title { text-align: left; }
+.head-title { text-align: left; min-width: 0; flex: 0 1 auto; }
 .head-title h2 {
   font-size: 22px;
   background: linear-gradient(90deg, #7de3ff, var(--nv-gold));
@@ -730,15 +736,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   max-width: 440px;
+  flex-wrap: wrap; /* last-resort: right cluster wraps instead of overflowing on very narrow phones */
 }
 .kid-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   max-width: 58%;
+  min-width: 0; /* let a long name ellipsize instead of forcing the top bar wider */
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
@@ -751,7 +759,7 @@
 }
 .kid-chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kid-chip-swap { color: rgba(255, 255, 255, 0.6); font-size: 14px; flex: none; }
-.play-top-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.play-top-right { display: flex; align-items: center; gap: 8px; flex: none; }
 .stars-pill {
   background: linear-gradient(135deg, rgba(255, 209, 102, 0.28), rgba(255, 166, 60, 0.18));
   border: 1px solid rgba(255, 209, 102, 0.45);
@@ -1119,6 +1127,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Mobile responsive: title + season chip + progress + link used to be
+     flex:none nowrap — at ≤360px the chip alone (175px) pushed the "view
+     journey" link past the viewport edge (right:416 on a 360px screen).
+     Wrap so the chip drops to its own row instead of overflowing. */
+  flex-wrap: wrap;
+}
+.home-path-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
 }
 .home-path-title {
   font-size: 15px;
@@ -1166,8 +1187,14 @@
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
   padding: 8px 12px;
-  flex: none;
+  /* Mobile responsive: shrink + ellipsize instead of forcing the row wider
+     (it alone was 175px on a 290px row and pushed the view-journey link off
+     the screen on narrow phones). */
+  flex: 0 1 auto;
+  min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .season-particles {
   position: absolute;
@@ -2422,7 +2449,7 @@
 .year-val { display: flex; flex-direction: column; align-items: center; min-width: 120px; }
 .year-num { font-size: 30px; font-weight: 800; color: #edf2f4; }
 .year-age { font-size: 12px; color: var(--nv-gray); }
-.bday-row { display: flex; justify-content: center; gap: 18px; }
+.bday-row { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
 .bday-field { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .bday-field .year-row { gap: 10px; }
 .bday-field .year-btn { width: 42px; height: 42px; font-size: 22px; }
@@ -3791,7 +3818,8 @@
 
 /* rank chip on the worlds header */
 .rank-chip {
-  flex: none;
+  flex: 0 1 auto; /* mobile responsive: shrink + ellipsize instead of pushing the header's right buttons off-screen */
+  min-width: 0;
   margin-left: auto;
   font-size: 14px;
   font-weight: 800;
@@ -3801,6 +3829,8 @@
   border-radius: 999px;
   padding: 8px 11px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* HUD combo flame */
