@@ -911,6 +911,18 @@ export function stepForSkill(skill: Skill, challenge = false): SessionStep {
   };
 }
 
+/** #1123 — Moni's plan cache. moniPlanFor() folded two 305-entry maps (mastery
+ *  + catalog) and ran the full moni.plan() algorithm on EVERY call — and it's
+ *  called per step-start (moniLevelIndex→adaptiveLevelIndex, App.tsx:1763) and
+ *  per render (parent panel + done screen). The plan only depends on
+ *  (kidId, skills, moniWrongStreak, Moni profile, strictness, now) — so cache
+ *  the RESULT on those store refs + a 60s bucket. Within a session step all
+ *  callers share ONE plan; a store change (new round) or a minute rollover
+ *  rebuilds it. */
+let moniPlanCacheKey = "";
+let moniPlanCacheRefs: [unknown, unknown, unknown, unknown] | null = null;
+let moniPlanCacheResult: ReturnType<typeof moni.plan> | null = null;
+
 /** 🧠 MONI — the child's next move, from the tiny tutor.
  *  Returns Moni's plan (focus skill, difficulty, game, tone) once the kid has
  *  enough rounds for Moni to see a pattern (>= 4, same bar as the parent card).
@@ -919,7 +931,18 @@ export function stepForSkill(skill: Skill, challenge = false): SessionStep {
 export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null {
   const st = useKidStore.getState();
   const profile = st.moni[kidId];
-  if (!profile || profile.totalRounds < 4) return null;
+  if (!profile || profile.totalRounds < 4) {
+    moniPlanCacheKey = ""; // a reset/ineligible profile must never reuse a stale plan
+    return null;
+  }
+
+  // Fast path: same kid + same minute + identical store refs → reuse the plan.
+  const strictness = st.moniStrictness?.[kidId] ?? "steady";
+  const refs: [unknown, unknown, unknown, unknown] = [st.skills, st.moniWrongStreak, profile, strictness];
+  const key = `${kidId}:${Math.floor(Date.now() / 60_000)}`;
+  if (moniPlanCacheKey === key && moniPlanCacheRefs && moniPlanCacheRefs.every((r, i) => r === refs[i])) {
+    return moniPlanCacheResult;
+  }
 
   // Mastery map for every skill the app knows about (pMastered + streak +
   // wrongStreak + lastPractice) — what Moni plans against. lastPractice feeds
@@ -948,9 +971,18 @@ export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null 
     // Parent-set strictness (#333) shapes Moni's tone + difficulty deltas. It
     // defaults to "steady" (Moni's own automatic read) when never set. `now`
     // is passed explicitly so the review-due computation is deterministic.
-    return moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, st.moniStrictness?.[kidId] ?? "steady", Date.now());
+    const plan = moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, strictness, Date.now());
+    moniPlanCacheKey = key;
+    moniPlanCacheRefs = refs;
+    moniPlanCacheResult = plan;
+    return plan;
   } catch {
-    return null; // a malformed profile must never break the session loop
+    // A malformed profile must never break the session loop. Cache the null for
+    // the minute too — it can't self-heal within a store snapshot.
+    moniPlanCacheKey = key;
+    moniPlanCacheRefs = refs;
+    moniPlanCacheResult = null;
+    return null;
   }
 }
 
