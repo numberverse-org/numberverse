@@ -1942,6 +1942,9 @@ export default function App() {
         startLevelIndex,
         mode: step.mode,
         challenge,
+        // #1140 — production spelling: scenes that accept typed answers read
+        // this flag from the skill (bn-spell-type) instead of a scene branch.
+        typing: (getSkill(step.skillId) as { typing?: boolean } | undefined)?.typing,
         // #20 — scenes that vary content per skill (BgsFacts heritage) read it.
         skill: step.skillId,
         // Remediation re-runs the narrated concept demo (FruitAdd) so the wrong

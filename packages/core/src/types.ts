@@ -58,6 +58,11 @@ export interface Skill {
    *  band-6 skill reteaches ITS OWN floor (e.g. ×6, not ×2). A new band-pair
    *  range is a data entry, not a scene branch. */
   dataLevels?: number[];
+  /** Production-spelling flag (#1140). A spelling scene that supports typing
+   *  (BanglaSpellScene) reads this: when true the app passes `typing: true` so
+   *  higher tiers switch from tap-the-tile recognition to type-the-word
+   *  production. Tier 1-2 of the skill keep the tap path. */
+  typing?: boolean;
   /** Older-kid challenge mode (#1158 #1166). Band 6-7 skills that reuse a
    *  lower-band scene flag this: the app runs them in "independent mode" — no
    *  forced re-demo on reteach, reteach stays at the current tier (never drops
