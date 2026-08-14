@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.14 (🐛 #1114 cal-strip: container-query-scaled tile stack (top/coin/gap) + nowrap — 7-column calendar stays square at every width, 🪙{n} no longer wraps on narrow phones)";
-export const APP_VERSION = "0.53.14";
+export const APP_BUILD = "14 Aug 2026 · 0.53.15 (🐛 #1115 home screen bottom offset: single safe-area calc (16px + env()) instead of app-safe-area + 28px double-stack — quest lands above the fold on short notched phones)";
+export const APP_VERSION = "0.53.15";
