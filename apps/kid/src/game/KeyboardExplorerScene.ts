@@ -6,12 +6,15 @@ import { pop, win, bad } from "./audio";
 import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
+import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD, NV_GREEN, NV_RED } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-keyboard")?.difficultyLevels ?? [4, 4, 5, 5, 6, 6];
 const ROUNDS_TO_FINISH = 3;
+const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
+const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
 
 /** Real QWERTY rows; the top number row is added for number/mixed hunts. */
 const LETTER_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
@@ -66,6 +69,7 @@ export class KeyboardExplorerScene extends Phaser.Scene {
   private stepIdx = 0;
   private wrongs = 0;
   private busy = false;
+  private roundSeq = 0;
   private titleText!: Phaser.GameObjects.Text;
   private roundText!: Phaser.GameObjects.Text;
   private meter!: RoundMeterApi;
@@ -73,15 +77,23 @@ export class KeyboardExplorerScene extends Phaser.Scene {
   private tallyText!: Phaser.GameObjects.Text;
   private targetBadge!: Phaser.GameObjects.Container;
   private targetChar!: Phaser.GameObjects.Text;
+  private keyHintText!: Phaser.GameObjects.Text;
+  private challenge = false; // #1158 — older-kid timed mode (no reveal on miss)
+  private challengeDone = false;
+  private challengeTimer?: Phaser.Time.TimerEvent;
+  private challengeBar?: Phaser.GameObjects.Rectangle;
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
 
   constructor() {
     super("KeyboardExplorer");
   }
 
-  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
+  private keyHandler = (event: KeyboardEvent) => this.handleKeyDown(event);
+
+  create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number; challenge?: boolean }) {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    this.challenge = !!data.challenge;
     gameBackground(this, "candy");
     this.titleText = this.add
       .text(0, 0, t("titleKeyboard"), txt(34, "#ffffff", { bold: true }))
@@ -90,15 +102,27 @@ export class KeyboardExplorerScene extends Phaser.Scene {
       .text(0, 0, "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = roundMeter(this);
+    if (this.challenge) {
+      this.challengeBar = this.add.rectangle(0, 122, 0, 6, CHALLENGE_BAR).setOrigin(0, 0.5).setAlpha(0);
+    }
     this.prompt = this.add
       .text(0, 0, "", txt(26, "#ffffff", { bold: true, outline: true, wrap: 340 }))
       .setOrigin(0.5);
     this.tallyText = this.add
       .text(0, 0, "", txt(20, "#ffffff", { bold: true, outline: true }))
       .setOrigin(0.5);
+    this.keyHintText = this.add
+      .text(0, 0, t("keyboardKeyHint"), txt(16, NV_GOLD, { bold: true, outline: true, wrap: 320 }))
+      .setOrigin(0.5)
+      .setVisible(false);
 
     this.buildTargetBadge();
     this.buildKeys();
+
+    // #1139 — real-keyboard path: the physical key IS the tap. Tablets and
+    // no-keyboard devices keep the on-screen QWERTY tap path below as fallback.
+    this.input.keyboard?.on("keydown", this.keyHandler);
+    this.events.once("shutdown", () => this.input.keyboard?.off("keydown", this.keyHandler));
 
     onSceneResize(this, () => this.layout());
     this.layout();
@@ -114,6 +138,8 @@ export class KeyboardExplorerScene extends Phaser.Scene {
     this.prompt.setPosition(width / 2, height * 0.18);
     this.prompt.setWordWrapWidth(Math.max(200, width - 60));
     this.targetBadge.setPosition(width / 2, height * 0.3);
+    this.keyHintText.setPosition(width / 2, height * 0.3 + 70);
+    this.keyHintText.setWordWrapWidth(Math.max(200, width - 60));
     this.positionKeyboard();
   }
 
@@ -195,6 +221,7 @@ export class KeyboardExplorerScene extends Phaser.Scene {
   }
 
   private startRound() {
+    this.roundSeq++;
     const mode = modeFor(this.levelIndex);
     const count = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     this.pool = poolFor(mode);
@@ -216,6 +243,10 @@ export class KeyboardExplorerScene extends Phaser.Scene {
     this.tallyText.setText(`${digit(this.stepIdx)}/${digit(this.sequence.length)}`);
     this.positionKeyboard();
     this.showTarget();
+    // #1139 — a visible nudge that BOTH the real keyboard and the on-screen
+    // keys answer the same question (tablets can still tap the QWERTY).
+    this.keyHintText.setText(t("keyboardKeyHint")).setVisible(true);
+    this.armChallenge();
   }
 
   private showTarget() {
@@ -237,6 +268,43 @@ export class KeyboardExplorerScene extends Phaser.Scene {
       this.floatMsg(t("kbQ", { key: this.keyLabel(target) }), 0xf87171);
       return;
     }
+    this.correctKey(key);
+  }
+
+  /** #1139 — the physical keyboard routes through the SAME correct action as
+   *  tapping the on-screen key: pop + celebrate + win + advance. A wrong key
+   *  gets the shared hintWrong nudge (challenge mode suppresses the reveal). */
+  private handleKeyDown(event: KeyboardEvent) {
+    if (this.busy) return;
+    const key = event.key;
+    if (!/^[a-zA-Z0-9]$/.test(key)) return;
+    event.preventDefault();
+    const ch = key.toUpperCase();
+    const target = this.sequence[this.stepIdx];
+    if (!target) return;
+    if (ch !== target) {
+      this.wrongs++;
+      this.physicalWrong(target, this.keys.get(ch));
+      return;
+    }
+    const targetKey = this.keys.get(target);
+    if (targetKey) this.correctKey(targetKey);
+  }
+
+  private physicalWrong(target: string, pressed?: KeyRef) {
+    const container = pressed && pressed.c.visible ? pressed.c : this.targetBadge;
+    hintWrong(this, container, {
+      hint: () => t("kbQ", { key: this.keyLabel(target) }),
+      hintBn: () => t("kbQ", { key: this.keyLabel(target) }),
+      correct: () => target,
+      keepOnWrong: true, // keys stay available — the QWERTY is never retired
+      challenge: this.challenge, // #1158 — no banner/reveal in challenge mode
+    });
+  }
+
+  /** Shared correct path for the on-screen tap and the physical keydown. */
+  private correctKey(key: KeyRef) {
+    const target = this.sequence[this.stepIdx];
     this.busy = true;
     pop();
     win();
@@ -246,10 +314,17 @@ export class KeyboardExplorerScene extends Phaser.Scene {
     this.tallyText.setText(`${digit(this.stepIdx)}/${digit(this.sequence.length)}`);
     this.floatMsg(t("kbGreat"), 0x4ade80);
     speak(t("kbSpeak", { key: this.keyLabel(target) }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    const finished = this.stepIdx >= this.sequence.length;
+    if (finished) {
+      this.challengeDone = true;
+      this.disarmChallenge();
+    }
+    const seq = this.roundSeq;
     this.time.delayedCall(500, () => {
+      if (seq !== this.roundSeq) return; // a challenge timeout already moved on
       this.busy = false;
-      if (this.stepIdx < this.sequence.length) this.showTarget();
-      else this.finishRound();
+      if (finished) this.finishRound();
+      else this.showTarget();
     });
   }
 
@@ -265,12 +340,56 @@ export class KeyboardExplorerScene extends Phaser.Scene {
   }
 
   private finishRound() {
+    this.disarmChallenge();
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.floatMsg(`${t("kbDone")}  ${digit(this.sequence.length)}/${digit(this.sequence.length)}`, 0xffd166);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(this.wrongs === 0, ms, this.levelIndex + 1);
     this.time.delayedCall(2000, () => {
+      if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
+      this.levelIndex++;
+      this.startRound();
+    });
+  }
+
+  /** #1158 — challenge-mode countdown: a gold bar drains over CHALLENGE_SECONDS
+   *  for the whole key-hunt round. Time-up records a wrong round and deals the
+   *  next one; no re-teach, no reveal — the older kid races the clock. */
+  private armChallenge() {
+    if (!this.challenge) return;
+    if (this.challengeTimer) this.challengeTimer.remove(false);
+    this.challengeDone = false;
+    const bar = this.challengeBar;
+    if (bar) {
+      this.tweens.killTweensOf(bar);
+      bar.setPosition(20, 122).setSize(Math.min(this.scale.width - 40, 320), 6).setScale(1, 1).setAlpha(1);
+      this.tweens.add({ targets: bar, scaleX: 0, duration: CHALLENGE_SECONDS * 1000, ease: "Linear.easeNone" });
+    }
+    this.challengeTimer = this.time.delayedCall(CHALLENGE_SECONDS * 1000, () => this.onChallengeTimeout());
+  }
+
+  private disarmChallenge() {
+    if (this.challengeTimer) {
+      this.challengeTimer.remove(false);
+      this.challengeTimer = undefined;
+    }
+    if (this.challengeBar) {
+      this.tweens.killTweensOf(this.challengeBar);
+      this.challengeBar.setAlpha(0);
+    }
+  }
+
+  private onChallengeTimeout() {
+    if (this.challengeDone) return;
+    this.challengeDone = true;
+    this.disarmChallenge();
+    this.roundSeq++; // invalidate any in-flight correct→next-target callback
+    this.busy = true;
+    this.roundsDone++;
+    this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
+    this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levelIndex + 1);
+    this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
       this.startRound();
