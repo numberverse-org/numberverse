@@ -1799,6 +1799,7 @@ export class NovaScene extends Phaser.Scene {
         // full pet mini-game (#104) — launch over a paused Nova, return on close
         this.scene.launch(act.scene, {
           kidId: this.kidId,
+          kidName: this.kidName,
           onBack: () => this.returnFromMiniGame(act.scene!),
         });
         this.scene.pause("Nova");

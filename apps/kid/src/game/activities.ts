@@ -29,6 +29,15 @@ export const ACTIVITIES: ActivityDef[] = [
   { id: "game-hide", scene: "HideSeek", emoji: "🙈", name: "Hide & Seek", nameBn: "লুকোচুরি" },
   { id: "game-memory", scene: "PetMemory", emoji: "🃏", name: "Pet Memory", nameBn: "মনে রাখো" },
   { id: "game-tuckin", scene: "TuckIn", emoji: "🌙", name: "Tuck-in", nameBn: "ঘুম পাড়াও" },
+  { id: "game-dance", scene: "PetDance", emoji: "🪩", name: "Dance Party", nameBn: "ডান্স পার্টি" },
+  { id: "game-says", scene: "NovaSays", emoji: "🗣️", name: "Nova Says", nameBn: "নোভা বলে" },
+  { id: "game-walk", scene: "PetWalk", emoji: "🚶", name: "Pet Walk", nameBn: "পোষা ভ্রমণ" },
+  { id: "game-hatch", scene: "EggHatch", emoji: "🥚", name: "Egg Hatch", nameBn: "ডিম ফুটাও" },
+  { id: "game-gallery", scene: "SpeciesGallery", emoji: "🐣", name: "Species Gallery", nameBn: "প্রজাতির গ্যালারি" },
+  { id: "game-dressup", scene: "DressUp", emoji: "🎩", name: "Dress-up", nameBn: "সাজাও" },
+  { id: "game-birthday", scene: "PetBirthday", emoji: "🎂", name: "Pet Birthday", nameBn: "জন্মদিন" },
+  { id: "game-photobooth", scene: "PhotoBooth", emoji: "📸", name: "Photo Booth", nameBn: "ফটো বুথ" },
+  { id: "game-sleepwake", scene: "SleepWake", emoji: "🌙", name: "Sleep & Wake", nameBn: "ঘুম ও জাগরণ" },
 
   /* ── pet-care: Nova is the kid's pet — bath, brush, cuddle, the works ── */
   { id: "bath", emoji: "🛁", name: "Bath", nameBn: "স্নান" },

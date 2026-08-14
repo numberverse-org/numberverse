@@ -343,6 +343,11 @@ export interface NovaState {
    *  condition lives in App.tsx (reads the skill catalog); the store persists
    *  the earned set so a NEW achievement can be celebrated exactly once. */
   achievements: string[];
+  /** #603 — sleep/wake day-night rhythm. `awake` persists the light state
+   *  (a night visit shows Nova sleepy, never locks out); `lastGreeted` is the
+   *  last ISO date the wake-greeting was spoken (once per day, by name). */
+  awake: boolean;
+  lastGreeted: string;
 }
 
 export function defaultNova(): NovaState {
@@ -382,6 +387,8 @@ export function defaultNova(): NovaState {
     species: "owl",
     adoptedPets: [],
     achievements: [],
+    awake: true,
+    lastGreeted: "",
   };
 }
 
@@ -540,6 +547,9 @@ interface KidState {
   novaMarkGardenSeen: (kidId: string) => void;
   /** Nova's birthday gift — claimable once per calendar year (a real bonus, bypasses the daily cap). */
   novaBirthday: (kidId: string) => void;
+  /** #603 — persist the sleep/wake day-night rhythm state + the wake-greeting
+   *  date (the wake line is spoken once per calendar day, by name). */
+  novaSleepWake: (kidId: string, awake: boolean) => void;
   /** The pet takes a bigger step when a skill is newly mastered. */
   petGrowMastery: (kidId: string) => void;
   /** Feed the pet — grows it once per calendar day. */
@@ -1381,6 +1391,22 @@ export const useKidStore = create<KidState>()(
           };
         });
       },
+
+      /* ── #603 — sleep/wake rhythm: a light day-night state, never a lockout.
+           `awake` persists so a night visit shows Nova sleepy; the wake line
+           is spoken once per calendar day, by name (lastGreeted). ── */
+      novaSleepWake: (kidId, awake) =>
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const today = todayIso();
+          const lastGreeted = awake ? today : cur.lastGreeted;
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: { ...cur, awake, lastGreeted },
+            },
+          };
+        }),
 
       /* ── Growth Garden: correct answers water it, mastery plants flowers ── */
 
