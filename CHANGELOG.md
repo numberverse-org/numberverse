@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.33 (perf: measure ReadStory word chips on shared canvas ctx (#1103))
+
+7384d08 perf: measure ReadStory word chips with shared canvas context (#1103)
+e8003b1 perf: measure ReadStory word chips with shared canvas context (#1103)
+
 ## 15 Aug 2026 — 0.53.32 (perf: rAF-debounce RotateOverlay resize reads (#1106))
 
 b1462b6 Merge branch 'nv-1106': rAF-debounce RotateOverlay resize reads (#1106)

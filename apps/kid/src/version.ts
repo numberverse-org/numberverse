@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.32 (perf: rAF-debounce RotateOverlay resize reads (#1106))";
-export const APP_VERSION = "0.53.32";
+export const APP_BUILD = "15 Aug 2026 · 0.53.33 (perf: measure ReadStory word chips on shared canvas ctx (#1103))";
+export const APP_VERSION = "0.53.33";
