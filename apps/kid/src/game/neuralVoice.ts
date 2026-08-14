@@ -540,6 +540,9 @@ async function seedSwVoiceCache() {
  * moat): IndexedDB, no network, no analytics. */
 const CACHE_DB = "nv-wav-cache";
 const CACHE_STORE = "waves";
+/** #1235 — bump this when the record shape / indexes change; onupgradeneeded
+ *  then REBUILDS the store so the 'ts' LRU index can't silently drift. */
+const CACHE_DB_VERSION = 1;
 const CACHE_MAX_BYTES = 30 * 1024 * 1024; // LRU cap (~600 short phrases)
 const CACHE_MAX_TEXT = 100;               // only short phrases — long unique lines waste space
 const CACHE_TOUCH_MS = 60_000;            // refresh LRU timestamp at most once/minute/entry
@@ -548,18 +551,58 @@ let cacheDbPromise: Promise<IDBDatabase | null> | null = null;
 function openVoiceCache(): Promise<IDBDatabase | null> {
   if (cacheDbPromise) return cacheDbPromise;
   cacheDbPromise = new Promise((resolve) => {
+    let blockedTimer: ReturnType<typeof setTimeout> | null = null;
     try {
-      const req = indexedDB.open(CACHE_DB, 1);
+      const req = indexedDB.open(CACHE_DB, CACHE_DB_VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
+        // #1235 — schema drift: if the store exists but lacks the 'ts' index it
+        // was built by an OLD version — rebuild it so LRU eviction stays
+        // authoritative (a stale shape would silently break eviction).
+        if (db.objectStoreNames.contains(CACHE_STORE)) {
+          const old = req.transaction?.objectStore(CACHE_STORE);
+          if (old && !old.indexNames.contains("ts")) {
+            db.deleteObjectStore(CACHE_STORE);
+          }
+        }
         if (!db.objectStoreNames.contains(CACHE_STORE)) {
           const store = db.createObjectStore(CACHE_STORE, { keyPath: "key" });
           store.createIndex("ts", "ts"); // LRU eviction by last-used
         }
       };
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => resolve(null);
-      req.onblocked = () => resolve(null);
+      req.onsuccess = async () => {
+        const db = req.result || null;
+        if (blockedTimer) {
+          clearTimeout(blockedTimer);
+          blockedTimer = null;
+        }
+        if (!db) {
+          resolve(null);
+          return;
+        }
+        // #1232 — ONE lightweight ledger seed per page load (keys/bytes/ts only,
+        // walked via the 'ts' index cursor so it's already LRU-ordered); after
+        // this, put/get touch the in-memory ledger — never a per-store getAll.
+        await seedLruLedger(db);
+        resolve(db);
+      };
+      req.onerror = () => {
+        if (blockedTimer) {
+          clearTimeout(blockedTimer);
+          blockedTimer = null;
+        }
+        resolve(null);
+      };
+      req.onblocked = () => {
+        // #1235 — another tab holds the OLD-version connection open. Don't
+        // silently disable the cache: give it a moment to close (up to 4s),
+        // then fall back to uncached speech rather than hanging forever.
+        if (blockedTimer) return;
+        blockedTimer = setTimeout(() => {
+          console.warn("[neuralVoice] wave-cache upgrade blocked >4s — using uncached speech");
+          resolve(null);
+        }, 4000);
+      };
     } catch {
       resolve(null); // IDB unavailable (private mode / insecure) — cache is best-effort
     }
@@ -571,20 +614,112 @@ function cacheKey(spk: number, text: string): string {
   return spk + ":" + text;
 }
 
+/** DEV-ONLY test hook — exposes the wave-cache internals for the runtime smoke
+ *  test (real IndexedDB). Folds to `undefined` in production builds
+ *  (import.meta.env.DEV = false → dead branch eliminated), so it never ships. */
+export const __nvTestCache =
+  import.meta.env.DEV
+    ? {
+        put: (spk: number, text: string, blob: Blob) => voiceCachePut(spk, text, blob),
+        get: (spk: number, text: string) => voiceCacheGet(spk, text),
+        ledger: () => ({ size: lruMap?.size ?? 0, bytes: lruBytes }),
+        waitLedger: () => openVoiceCache(),
+        bump: (hit: boolean) => bumpCache(hit),
+        flushMetric: () => flushCacheMetric(),
+        metric: () => ({ h: cacheHits, m: cacheMisses }),
+      }
+    : undefined;
+
+/* ── #1232 in-memory LRU ledger ──────────────────────────────────────────────
+ * The wave cache used to store.getAll() + sort the WHOLE store on EVERY put to
+ * enforce the byte cap — O(n) over every cached phrase inside a readwrite tx.
+ * Now the {key,bytes,ts} bookkeeping lives in memory, seeded once at open, and
+ * eviction walks the Map from the oldest end (insertion order = ts order from
+ * the 'ts' index cursor). The blob payloads are never held in memory — the
+ * cursor hands each record one at a time and only the small fields are kept. */
+let lruMap: Map<string, { bytes: number; ts: number }> | null = null;
+let lruBytes = 0;
+
+function seedLruLedger(db: IDBDatabase): Promise<void> {
+  return new Promise((resolve) => {
+    if (!db.objectStoreNames.contains(CACHE_STORE)) {
+      lruMap = new Map();
+      lruBytes = 0;
+      resolve();
+      return;
+    }
+    try {
+      const store = db.transaction(CACHE_STORE, "readonly").objectStore(CACHE_STORE);
+      if (!store.indexNames.contains("ts")) {
+        lruMap = new Map();
+        lruBytes = 0;
+        resolve();
+        return;
+      }
+      const req = store.index("ts").openCursor(); // ts ascending → oldest FIRST = LRU head
+      const map = new Map<string, { bytes: number; ts: number }>();
+      let total = 0;
+      req.onsuccess = () => {
+        const cur = req.result as IDBCursorWithValue | null;
+        if (cur) {
+          const rec = cur.value as { key?: string; bytes?: number; ts?: number };
+          const k = rec.key ?? "";
+          if (k !== "") {
+            const bytes = rec.bytes || 0;
+            total += bytes;
+            map.set(k, { bytes, ts: rec.ts || 0 });
+          }
+          cur.continue();
+        } else {
+          lruMap = map;
+          lruBytes = total;
+          resolve();
+        }
+      };
+      req.onerror = () => {
+        lruMap = map;
+        lruBytes = total;
+        resolve();
+      };
+    } catch {
+      lruMap = new Map();
+      lruBytes = 0;
+      resolve();
+    }
+  });
+}
+
 async function voiceCacheGet(spk: number, text: string): Promise<Blob | undefined> {
   const db = await openVoiceCache();
   if (!db) return undefined;
+  const key = cacheKey(spk, text);
   return new Promise((resolve) => {
     try {
-      const tx = db.transaction(CACHE_STORE, "readwrite"); // readwrite so we can refresh ts
+      // #1234 — READONLY on the read path (was readwrite "so we can refresh ts"):
+      // a cache READ must never contend with concurrent writes (warmCommonPhrases
+      // pre-synthesis) on the speech path. LRU bookkeeping updates in memory;
+      // the rare on-disk ts refresh is a small deferred write.
+      const tx = db.transaction(CACHE_STORE, "readonly");
       const store = tx.objectStore(CACHE_STORE);
-      const req = store.get(cacheKey(spk, text));
+      const req = store.get(key);
       req.onsuccess = () => {
         const rec = req.result as { blob: Blob; ts: number } | undefined;
         if (!rec) { resolve(undefined); return; }
         if (Date.now() - rec.ts > CACHE_TOUCH_MS) {
           rec.ts = Date.now();
-          store.put(rec); // keep LRU roughly true with few writes
+          if (lruMap) {
+            const prev = lruMap.get(key);
+            lruMap.delete(key);
+            lruMap.set(key, { bytes: prev?.bytes ?? 0, ts: rec.ts }); // move to LRU tail
+          }
+          void (() => {
+            try {
+              const wtx = db.transaction(CACHE_STORE, "readwrite");
+              wtx.objectStore(CACHE_STORE).put(rec); // ≤1/min/entry — cheap
+            } catch {
+              /* best-effort */
+            }
+          })();
         }
         resolve(rec.blob);
       };
@@ -598,31 +733,32 @@ async function voiceCacheGet(spk: number, text: string): Promise<Blob | undefine
 async function voiceCachePut(spk: number, text: string, blob: Blob): Promise<void> {
   const db = await openVoiceCache();
   if (!db || blob.size <= 0) return;
+  const key = cacheKey(spk, text);
+  const now = Date.now();
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(CACHE_STORE, "readwrite");
       const store = tx.objectStore(CACHE_STORE);
-      store.put({ key: cacheKey(spk, text), blob, ts: Date.now(), bytes: blob.size });
-      // Issue getAll SYNCHRONOUSLY after put — a gap between IDB requests lets
-      // the tx auto-commit (IndexedDB lifetime footgun), silently dropping the
-      // eviction. Same-task issuance keeps the tx alive.
-      const allReq = store.getAll();
-      allReq.onsuccess = () => {
-        const all = allReq.result as Array<{ key: string; bytes: number; ts: number }>;
-        let total = all.reduce((s, r) => s + (r.bytes || 0), 0);
-        if (total > CACHE_MAX_BYTES) {
-          const oldest = all.slice().sort((a, b) => a.ts - b.ts);
-          for (const rec of oldest) {
-            if (total <= CACHE_MAX_BYTES) break;
-            store.delete(rec.key);
-            total -= rec.bytes || 0;
-          }
+      store.put({ key, blob, ts: now, bytes: blob.size });
+      // #1232 — eviction from the in-memory ledger (seeded once at open): no
+      // per-store getAll + sort. Same-task issuance keeps the delete requests
+      // inside the live tx. Falls back to uncapped (best-effort) if the ledger
+      // somehow wasn't seeded.
+      if (lruMap) {
+        const prev = lruMap.get(key);
+        if (prev) lruBytes -= prev.bytes;
+        lruMap.delete(key);
+        lruMap.set(key, { bytes: blob.size, ts: now }); // newest = LRU tail
+        lruBytes += blob.size;
+        while (lruBytes > CACHE_MAX_BYTES && lruMap.size > 0) {
+          const oldestKey = lruMap.keys().next().value as string;
+          const oldest = lruMap.get(oldestKey)!;
+          store.delete(oldestKey);
+          lruBytes -= oldest.bytes;
+          lruMap.delete(oldestKey);
         }
-        resolve();
-      };
-      allReq.onerror = () => resolve();
-      tx.onabort = () => resolve();
-      tx.onerror = () => resolve();
+      }
+      resolve();
     } catch {
       resolve(); // best-effort — a full cache never breaks speech
     }
@@ -632,14 +768,35 @@ async function voiceCachePut(spk: number, text: string, blob: Blob): Promise<voi
 /** Privacy-safe on-device meter: synth hit vs miss (localStorage, no network). */
 let cacheHits = 0;
 let cacheMisses = 0;
-function bumpCache(hit: boolean) {
-  if (hit) cacheHits++;
-  else cacheMisses++;
+let cacheMetricTimer: ReturnType<typeof setTimeout> | null = null;
+/** #1233 — don't localStorage-write on EVERY spoken line (every praise/prompt/
+ *  count word hits/misses the cache). Coalesce into one trailing write per 500ms
+ *  and always flush on page exit / tab hide. */
+function scheduleCacheMetricWrite() {
+  if (cacheMetricTimer) return;
+  cacheMetricTimer = setTimeout(() => {
+    cacheMetricTimer = null;
+    writeCacheMetric();
+  }, 500);
+}
+function writeCacheMetric() {
   try {
     localStorage.setItem("nv_cache_metric", JSON.stringify({ h: cacheHits, m: cacheMisses }));
   } catch {
     /* noop */
   }
+}
+function flushCacheMetric() {
+  if (cacheMetricTimer) {
+    clearTimeout(cacheMetricTimer);
+    cacheMetricTimer = null;
+  }
+  writeCacheMetric();
+}
+function bumpCache(hit: boolean) {
+  if (hit) cacheHits++;
+  else cacheMisses++;
+  scheduleCacheMetricWrite();
 }
 function loadCacheMetric() {
   try {
@@ -654,6 +811,13 @@ function loadCacheMetric() {
   }
 }
 loadCacheMetric();
+// #1233 — never lose the trailing metric write: flush on page exit / tab hide.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushCacheMetric);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushCacheMetric();
+  });
+}
 
 /** Resolve a WAV for text — cache-hit returns INSTANTLY (no synth), miss synths
  *  then stores (best-effort, LRU-capped). */

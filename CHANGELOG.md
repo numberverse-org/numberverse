@@ -1,3 +1,41 @@
+## 14 Aug 2026 — 0.42.2 (⚡ Voice-cache: in-memory LRU ledger replaces per-store getAll, readonly cache reads, debounced synth meter, IDB schema-drift guard)
+
+⚡ #1232 #1234 #1233 #1235 #1231: voice-cache + settings-write storage-blocking
+
+## 14 Aug 2026 — 0.42.2 (⚡ Voice-cache: in-memory LRU ledger replaces per-store getAll, readonly cache reads, debounced synth meter, IDB schema-drift guard)
+
+The v36 storage-blocking cluster (round 2) — the on-device Bangla voice cache and
+the settings-fetch path no longer burn the main thread:
+
+- **#1232 no more per-store getAll** — `voiceCachePut` used to `getAll()` + sort
+  the WHOLE wave cache on EVERY store to enforce the byte cap (O(n) inside a
+  readwrite tx, ~30× in a row during idle pre-synthesis). It now keeps an
+  in-memory LRU ledger `{key,bytes,ts}` seeded ONCE at cache open via a `ts`-index
+  cursor (oldest-first, blobs never held), and eviction walks the Map head — no
+  scan, no sort, no blob payloads in RAM.
+- **#1234 readonly cache reads** — `voiceCacheGet` opened a `readwrite` tx just
+  "so we can refresh ts", contending with concurrent pre-synthesis writes on the
+  speech path. It now reads `readonly`; the LRU touch updates the in-memory ledger
+  (moving the entry to the tail) and the rare on-disk ts refresh is a small
+  deferred write (≤1/min/entry).
+- **#1233 debounced synth meter** — `bumpCache` did a synchronous
+  `localStorage.setItem(JSON.stringify)` on EVERY spoken line (hit or miss). It
+  now coalesces into one trailing write per 500ms and always flushes on
+  `pagehide` / tab-hide.
+- **#1235 IDB schema-drift guard** — `openVoiceCache` hard-coded
+  `indexedDB.open(CACHE_DB, 1)` with no migration path. Version is now a constant;
+  `onupgradeneeded` REBUILDS a store that lacks the `ts` index (so LRU eviction
+  can't silently break); `onblocked` waits up to 4s for the old connection to
+  close instead of silently disabling the cache.
+- **#1231 skip redundant settings writes** — `fetchKidSettings` serialized the
+  full multi-kid settings map on EVERY successful fetch even when the server
+  returned the exact same settings. It now compares (JSON equality) and skips the
+  `setItem` when nothing changed.
+
+Runtime-verified against real IndexedDB (seed 34MB → put → LRU evicts the oldest
+5; touch moves an entry to the tail so it survives the next eviction; metric write
+= 1 coalesced write, flush-safe). The DEV test hook folds out of the prod bundle.
+
 ## 14 Aug 2026 — 0.42.1 (⚡ Storage-blocking: debounced persist, memoized reads, coalesced wrong-tap stories, bounded outboxes)
 
 b32a655 ⚡ storage-blocking: debounced persist (150ms trailing), memoized settings/playtime reads, coalesced wrong-tap stories, hard-capped outboxes (#1227 #1230 #1228 #1229)

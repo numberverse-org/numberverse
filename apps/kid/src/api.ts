@@ -932,11 +932,17 @@ export async function fetchKidSettings(kidId: string): Promise<KidSettings> {
     });
     if (!res.ok) throw new Error(`settings ${res.status}`);
     const s = (await res.json()) as KidSettings;
+    const prev = cache[kidId];
     cache[kidId] = s;
-    try {
-      localStorage.setItem(LS_SETTINGS, JSON.stringify(cache));
-    } catch {
-      /* storage full — ignore */
+    // #1231 — skip the full-map serialization when the server returned the SAME
+    // settings we already cached (the common re-fetch case). The write path only
+    // pays when something actually changed.
+    if (prev !== s && JSON.stringify(prev) !== JSON.stringify(s)) {
+      try {
+        localStorage.setItem(LS_SETTINGS, JSON.stringify(cache));
+      } catch {
+        /* storage full — ignore */
+      }
     }
     return s;
   } catch {
