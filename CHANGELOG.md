@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.53.39 (fix: distinct game ids for en-shapes + bn consonants (cross-subject/cell collision) (#1152 #1156))
+
+3614fa2 fix: split en-shapes + bn-benjonborno onto their own game ids (#1152 #1156)
+
 ## 15 Aug 2026 — 0.53.38 (fix: reconcile classNumber vs nctbCode prefix on 6 band-3/4 skills (#1153))
 
 41bfbcd fix: reconcile classNumber with nctbCode class prefix across 6 skills (#1153)
