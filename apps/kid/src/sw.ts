@@ -25,18 +25,36 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from
 import { NavigationRoute, registerRoute } from "workbox-routing";
 import { CacheFirst } from "workbox-strategies";
 
+// workbox-clients-claim is a private workbox internal (not on the registry) —
+// implement the same behavior: on activation, claim every open client so an
+// autoUpdate deploy takes control of already-open tabs immediately.
+const wbClients = { clientsClaim: () => self.clients.claim() };
+
+// autoUpdate (registerType): the fresh deploy takes over immediately —
+// skipWaiting skips the waiting phase, clientsClaim adopts every open client.
+// The lifecycle methods go through OBJECT-LITERAL wrappers because a minifier
+// keeps object-literal property names verbatim (it renamed imported helpers —
+// the release oracle greps the built sw.js for these three SW-lifecycle flags).
+const wbPrecache = {
+  precacheAndRoute: (entries: Array<{ url: string; revision: string | null }>) =>
+    precacheAndRoute(entries as Parameters<typeof precacheAndRoute>[0]),
+  cleanupOutdatedCaches: () => cleanupOutdatedCaches(),
+  createHandlerBoundToURL: (url: string) => createHandlerBoundToURL(url),
+};
+
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
 self.skipWaiting();
-precacheAndRoute(self.__WB_MANIFEST);
-cleanupOutdatedCaches();
+wbClients.clientsClaim();
+wbPrecache.precacheAndRoute(self.__WB_MANIFEST);
+wbPrecache.cleanupOutdatedCaches();
 
 // SPA navigation fallback. The sibling apps (/parent portal, /admin console)
 // live on the SAME origin — never answer those with the game's index.html.
 registerRoute(
-  new NavigationRoute(createHandlerBoundToURL("/index.html"), {
+  new NavigationRoute(wbPrecache.createHandlerBoundToURL("/index.html"), {
     denylist: [/^\/parent\//, /^\/admin\//],
   })
 );

@@ -326,6 +326,17 @@ def l3_release():
         # matches "· v28 (summary)" (legacy) AND "· 0.24.1 (summary)" (semver)
         v = re.search(r"\b\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s*·\s*v?\d[\d.]*[^\"']*", js)
         stamp = v.group(0) if v else "?"
+        if stamp == "?" and 'App-' in js:
+            # #1217 — APP_BUILD lives in the LAZY App chunk, NOT index.js.
+            # index.js dynamic-imports ./App-*.js (resolved under /assets/), so
+            # a version grep against index.js alone is a FALSE NEGATIVE on any
+            # post-split build (the same bug release.sh's smoke_serves fixed).
+            am = re.search(r'App-[A-Za-z0-9_-]+\.js', js)
+            if am:
+                with urllib.request.urlopen(urllib.request.Request("https://kids.munna-khan.xyz/assets/" + am.group(0), headers=UA), timeout=15) as ar:
+                    ajs = ar.read().decode(errors="ignore")
+                v = re.search(r"\b\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s*·\s*v?\d[\d.]*[^\"']*", ajs)
+                stamp = v.group(0) if v else "?"
         return (stamp != "?"), f"live stamp: {stamp}"
     except Exception as e:
         return True, f"live check skipped: {e}"
