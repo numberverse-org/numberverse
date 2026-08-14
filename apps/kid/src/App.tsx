@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import "./styles/screens.css"; // #1177 — deferred screen CSS rides the lazy App chunk (never blocks first paint)
 // Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
 // `import type` is erased and the main bundle carries ZERO engine bytes.
@@ -396,48 +397,59 @@ export default function App() {
   }, [mistakes, parentKidId, kid?.id, kids]);
   const kothaStories = useKidStore((s) => s.stories);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
+  // #1126 — today's ISO date (cached in store.ts, so this is a string lookup,
+  // not a fresh Date per selector call). Stable across renders within a minute.
+  const todayOnce = todayIso();
   // #1196 — the anti-grind cap: when today's LEARNING coins are maxed, a small
   // 🎯 chip on the HUD explains the coins went quiet (stars keep counting).
   const coinsCapped = useKidStore((s) => {
     const n = kid ? s.nova[kid.id] : undefined;
     if (!n) return false;
-    return n.earnDay === todayIso() && (n.earnedToday ?? 0) >= NOVA_DAILY_CAP;
+    return n.earnDay === todayOnce && (n.earnedToday ?? 0) >= NOVA_DAILY_CAP;
   });
   // #287/#293 — Daily Quest VARIETY: the mission type rotates per kid per day
   // (deterministic, offline). Progress counts only when a round matches today's
   // type; harder types pay more (#1189).
-  const quest = useKidStore((s) => {
-    const n = s.nova[kid?.id ?? ""];
-    if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false, reward: NOVA_QUEST_REWARD };
-    const today = todayIso();
-    const todayFresh = n.questDay === today;
-    const type: QuestType = todayFresh && n.questType ? (n.questType as QuestType) : questTypeFor(kid?.id ?? "", today);
-    return {
-      type,
-      progress: todayFresh ? n.questProgress ?? (type === "rounds" ? n.questRounds ?? 0 : 0) : 0,
-      target: QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET,
-      done: todayFresh ? !!n.questDone : false,
-      today: todayFresh,
-      reward: QUEST_REWARDS[type] ?? NOVA_QUEST_REWARD,
-    };
-  });
+  // #1126 — useShallow lets zustand's reference bail-out work: quest returns an
+  // object, so without it every store tick re-rendered App even when the quest
+  // values were unchanged.
+  const quest = useKidStore(
+    useShallow((s) => {
+      const n = s.nova[kid?.id ?? ""];
+      if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false, reward: NOVA_QUEST_REWARD };
+      const today = todayOnce;
+      const todayFresh = n.questDay === today;
+      const type: QuestType = todayFresh && n.questType ? (n.questType as QuestType) : questTypeFor(kid?.id ?? "", today);
+      return {
+        type,
+        progress: todayFresh ? n.questProgress ?? (type === "rounds" ? n.questRounds ?? 0 : 0) : 0,
+        target: QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET,
+        done: todayFresh ? !!n.questDone : false,
+        today: todayFresh,
+        reward: QUEST_REWARDS[type] ?? NOVA_QUEST_REWARD,
+      };
+    })
+  );
   const sessionStreakCount = sessionStreak(events);
   const novaDayStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
   // #281 — 7-day login calendar: which cycle position is "today" (from the
   // streak anchor), and whether today's bonus is claimable. Claiming requires
   // today's first session — a reward for DAILY play, not a free login tap.
-  const calendar = useKidStore((s) => {
-    const n = s.nova[kid?.id ?? ""];
-    if (!n) return null;
-    const today = todayIso();
-    const playedToday = n.lastDay === today;
-    const pos = playedToday
-      ? calendarCycleDay(n.streak)
-      : n.lastDay === dayIsoAgo(1)
-        ? calendarCycleDay(n.streak + 1) // today would extend the streak → next tile
-        : 1; // missed a day → fresh restart at day 1
-    return { pos, claimable: playedToday && n.calendarDay !== today, claimedToday: n.calendarDay === today };
-  });
+  // #1126 — useShallow: calendar's object otherwise broke the bail-out too.
+  const calendar = useKidStore(
+    useShallow((s) => {
+      const n = s.nova[kid?.id ?? ""];
+      if (!n) return null;
+      const today = todayOnce;
+      const playedToday = n.lastDay === today;
+      const pos = playedToday
+        ? calendarCycleDay(n.streak)
+        : n.lastDay === dayIsoAgo(1)
+          ? calendarCycleDay(n.streak + 1) // today would extend the streak → next tile
+          : 1; // missed a day → fresh restart at day 1
+      return { pos, claimable: playedToday && n.calendarDay !== today, claimedToday: n.calendarDay === today };
+    })
+  );
   // #294 — streak-freeze tokens (earned on the day-7 calendar tile; each saves
   // one missed day). Shown as a 🧊 pill in the calendar chip.
   const freezeCount = useKidStore((s) => (kid ? s.nova[kid.id]?.freezes ?? 0 : 0));
@@ -605,12 +617,14 @@ export default function App() {
   // so we can hide the stale flame and welcome the kid back warmly instead.
   const novaLastDay = useKidStore((s) => (kid ? s.nova[kid.id]?.lastDay ?? "" : ""));
   // Birthday gift claimed this calendar year? (gift is once per year)
-  const bdayClaimed = useKidStore((s) => (kid ? s.nova[kid.id]?.bdayYear === String(new Date().getFullYear()) : false));
+  // #1126 — both read the cached todayOnce instead of a fresh Date per selector
+  // call (bdayClaimed used to build `new Date()` inline on every store tick).
+  const bdayClaimed = useKidStore((s) => (kid ? s.nova[kid.id]?.bdayYear === todayOnce.slice(0, 4) : false));
   // The pet — an egg that hatches and grows as the kid learns. Values are read
   // reactively so every mastered skill, completed session, and feeding updates it.
   const petStage = useKidStore((s) => (kid ? s.nova[kid.id]?.petStage ?? 0 : 0));
   const petProgress = useKidStore((s) => (kid ? s.nova[kid.id]?.petProgress ?? 0 : 0));
-  const petFedToday = useKidStore((s) => (kid ? s.nova[kid.id]?.petFed === todayIso() : false));
+  const petFedToday = useKidStore((s) => (kid ? s.nova[kid.id]?.petFed === todayOnce : false));
   // #19 — the adopted pet species (owl starter). Names/looks come from the
   // NOVA_SPECIES registry so adding a locale or a species is pure config.
   const petSpecies = useKidStore((s) => (kid ? s.nova[kid.id]?.species ?? "owl" : "owl"));

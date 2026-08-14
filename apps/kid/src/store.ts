@@ -406,15 +406,35 @@ function growPet(state: { petStage: number; petProgress: number }, amount: numbe
   return { petStage, petProgress };
 }
 
-export function todayIso(): string {
-  const d = new Date();
+/* #1126 — local-day date cached in a 60s bucket: todayIso()/dayIsoAgo() are
+ * called from MANY reactive store selectors (quest, calendar, coinsCapped,
+ * petFedToday, bdayClaimed) which re-run on every store change. Each call used
+ * to construct + format a fresh Date; now both reuse one Date per minute. A
+ * session can never meaningfully straddle local midnight within a minute. */
+let todayCache: Date | null = null;
+let todayCacheAt = 0;
+
+function todayDate(): Date {
+  const now = Date.now();
+  if (!todayCache || now - todayCacheAt >= 60_000) {
+    todayCache = new Date(now);
+    todayCacheAt = now;
+  }
+  return todayCache;
+}
+
+function isoOf(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+export function todayIso(): string {
+  return isoOf(todayDate());
+}
+
 export function dayIsoAgo(daysAgo: number): string {
-  const d = new Date();
+  const d = new Date(todayDate());
   d.setDate(d.getDate() - daysAgo);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return isoOf(d);
 }
 
 /** Wrong-answer ledger for one kid+skill. `open` is the count of wrongs not yet
