@@ -1,3 +1,10 @@
+## 14 Aug 2026 — 0.42.4 (offline-first: SW answers /api at the network boundary (cached GET replay + 503 queue) — no sync request escapes the cache offline)
+
+eb0516d 🔧 SW lifecycle flags survive minify (object-literal wrappers for skipWaiting/clientsClaim/cleanupOutdatedCaches); oracle live-stamp check reads the lazy App chunk (#1217 split)
+da63399 🔌 offline-first: SW is the /api network boundary — never-reject handler (cached GET replay + 503 queue) so no sync request escapes the cache offline; validateParentSession only logs out on 401/403; navigator.onLine fast-path gates (#264)
+33ad78c 🔧 release smoke: serve App chunk from /assets/ (index.js's relative import resolves there — fixes the 0.42.3 false-fail)
+a0c5802 🔧 release smoke: grep the lazy App chunk for the version stamp (#1217 split moved APP_VERSION out of index.js — 0.42.3's good deploy was falsely rolled back)
+
 ## 14 Aug 2026 — 0.42.3 (startup: lazy App chunk, splash-first, Phaser off boot graph, deferred SW+rehydrate, safe reads, planned-locale tree-shake)
 
 09ff392 🚀 startup-blocking cluster: lazy App chunk (splash-first paint), Phaser off boot graph via vendor-cjs helper split, deferred SW + store rehydrate, safe readLS boot reads, single-parse loadKids/settings/playtime, planned-locale tree-shake (#1217-#1226)

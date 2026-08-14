@@ -60,10 +60,10 @@ import Nova3DHome from "./nova3d/Nova3DHome";
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
  *  stamp, the new build hasn't landed yet — force-reload / reinstall the PWA). */
-const APP_BUILD = "14 Aug 2026 · 0.42.3 (startup: lazy App chunk, splash-first, Phaser off boot graph, deferred SW+rehydrate, safe reads, planned-locale tree-shake)";
+const APP_BUILD = "14 Aug 2026 · 0.42.4 (offline-first: SW answers /api at the network boundary (cached GET replay + 503 queue) — no sync request escapes the cache offline)";
 /** Semantic version (0.MAJOR.MINOR.PATCH) — auto-bumped by release.sh to
  *  0.<N>.0 for every vN release, so the app reports a real version number. */
-const APP_VERSION = "0.42.3";
+const APP_VERSION = "0.42.4";
 
 export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar";
 /** Rounds per skill before advancing to the next skill in a world.
