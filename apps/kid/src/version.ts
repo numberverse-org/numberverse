@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.46.0 (neural-voice retry + honest no-Bn line; pooled CompareScene cards (#1318 #1319 #1324))";
-export const APP_VERSION = "0.46.0";
+export const APP_BUILD = "14 Aug 2026 · 0.47.0 (sight words: full Fry 2nd-100 pool for level 2 (#1258))";
+export const APP_VERSION = "0.47.0";

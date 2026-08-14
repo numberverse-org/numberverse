@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.47.0 (sight words: full Fry 2nd-100 pool for level 2 (#1258))
+
+514de7f feat(sight-words): full Fry 2nd-100 pool for level 2 (#1258)
+
 ## 14 Aug 2026 — 0.46.0 (neural-voice retry + honest no-Bn line; pooled CompareScene cards (#1318 #1319 #1324))
 
 49445dd feat(voice+pooling): neural-voice retry & honest no-Bn line; pooled CompareScene cards (#1318 #1319 #1324)
