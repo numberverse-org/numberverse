@@ -63,7 +63,7 @@
 /* worlds-screen "play next" banner — full-width so it reads as THE button */
 .play-now {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   animation: play-now-pulse 1.6s ease-in-out infinite;
 }
 /* glow-ring pulse only — the button body itself stays still so its :active
@@ -113,7 +113,7 @@
   align-items: center;
   gap: 14px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   padding: 4px 0 10px;
 }
 .head-title { text-align: left; min-width: 0; flex: 0 1 auto; }
@@ -130,7 +130,7 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   overflow-y: auto;
   padding-bottom: 12px;
 }
@@ -178,7 +178,7 @@
   display: flex;
   gap: 6px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
@@ -208,7 +208,7 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   overflow-y: auto;
   padding: 2px 2px 12px;
 }
@@ -340,7 +340,7 @@
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   overflow-y: auto;
   padding: 6px 2px 12px;
 }
@@ -594,8 +594,9 @@
 /* 🎙️ first-use neural voice download banner — live %, then a 5s ready flash.
    Positioned under the top bar; fades away entirely once the voice is cached. */
 .voice-dl-banner {
-  /* #1118 — match the home column (440px) instead of shrink-wrapping to a
-     content pill: the banner now aligns with the hero/play cards around it,
+  /* #1118 — match the home column (--home-col-w, scales with #1090) instead
+     of shrink-wrapping to a content pill: the banner now aligns with the
+     hero/play cards around it,
      and its entry is animated so the one-time first-run mount (voice model
      download) reads as a smooth reveal rather than a jarring ~57px reflow
      that momentarily pushes Play below the fold. */
@@ -897,7 +898,7 @@
   position: relative;
   overflow: hidden;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   background: linear-gradient(135deg, #ffe9a8, var(--nv-orange), var(--nv-pink));
   border: 2px solid rgba(255, 255, 255, 0.7);
   border-radius: 22px;
@@ -975,7 +976,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   padding: 12px 14px;
   background: linear-gradient(135deg, rgba(255, 218, 145, 0.16), rgba(255, 255, 255, 0.04));
   border: 1px solid rgba(255, 214, 128, 0.3);
@@ -1039,7 +1040,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   padding: 12px 14px;
   background: linear-gradient(135deg, rgba(110, 231, 183, 0.14), rgba(255, 255, 255, 0.04));
   border: 1px solid rgba(110, 231, 183, 0.32);
@@ -1111,7 +1112,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   padding: 12px 14px;
   font: inherit;
   text-align: left;
@@ -2040,7 +2041,7 @@
    behind one quiet toggle so the landing is ONE action, not a control panel. */
 .more-menu {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   text-align: center;
   color: #c7d5e0;
 }
@@ -2087,7 +2088,7 @@
 /* ---- in-game Add Kid form (mobile-first, no browser prompts) ---- */
 .form-card {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
@@ -2184,7 +2185,7 @@
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 2px 6px;
 }
 .avatar-part-label {
@@ -2207,7 +2208,7 @@
 }
 .avatar-save {
   margin-top: 6px;
-  max-width: 560px;
+  max-width: var(--content-max);
   width: 100%;
 }
 
@@ -2217,7 +2218,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 620px;
+  max-width: var(--content-max);
   padding: 14px 16px;
   margin: 0 auto;
   border-radius: 20px;
@@ -2253,7 +2254,7 @@
 }
 .challenge-sheet {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   padding: 22px 20px;
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(30, 41, 72, 0.98), rgba(18, 26, 50, 0.98));
@@ -2514,7 +2515,7 @@
 
 .world-progress-card {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
@@ -2531,7 +2532,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   margin-top: 4px;
 }
 .skip-chip {
@@ -2566,7 +2567,7 @@
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   overflow-y: auto;
   padding-bottom: 12px;
 }
@@ -2632,7 +2633,7 @@
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 2px 4px 24px;
 }
 .tree-head {
@@ -3630,7 +3631,7 @@
 
 /* outfit shop */
 .nova-shop {
-  width: 100%; max-width: 440px;
+  width: 100%; max-width: var(--content-max);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
@@ -4000,7 +4001,7 @@
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 2px 6px 24px;
   overflow-y: auto;
 }
@@ -4043,7 +4044,7 @@
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
   width: 100%;
-  max-width: 620px;
+  max-width: var(--content-max);
   padding: 2px 6px 24px;
   overflow-y: auto;
 }
@@ -4144,7 +4145,7 @@
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 2px 6px 24px;
   overflow-y: auto;
 }
@@ -4210,7 +4211,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 30px 16px;
   text-align: center;
 }
@@ -4228,7 +4229,7 @@
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 18px 12px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 4px 6px 24px;
   overflow-y: auto;
 }
@@ -4275,7 +4276,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 26px 16px;
   text-align: center;
 }
@@ -4291,7 +4292,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: 2px 6px 24px;
   overflow-y: auto;
 }
@@ -5274,7 +5275,7 @@
 /* ── syllabus guest banner (browsing before sign-in) ───────────────────── */
 .syllabus-guest-banner {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -5299,7 +5300,7 @@
 /* ── INTERACTIVE SYLLABUS (what kids learn) ─────────────────────────────── */
 .syllabus-wrap {
   width: 100%;
-  max-width: 440px;
+  max-width: var(--content-max);
   display: flex;
   flex-direction: column;
   gap: 14px;
