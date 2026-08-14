@@ -137,6 +137,11 @@ function getWorker(): Worker {
 let watchInterval: ReturnType<typeof setInterval> | null = null;
 let watchDeadline = 0;
 let watchTimeout: (() => void) | null = null;
+/** Full stall window for a synth. `kickWatchdog()` must never reset the
+ *  deadline below this: the first warm-up synth's ORT session build is a
+ *  silent stretch (no fetch progress), and a low-end phone can spend most of
+ *  this window building the session before the first inference. */
+const SYNTH_WATCHDOG_MS = 60_000;
 function armWatchdog(ms: number, onTimeout: () => void) {
   watchDeadline = Date.now() + ms;
   watchTimeout = onTimeout;
@@ -160,9 +165,19 @@ function disarmWatchdog() {
   watchInterval = null;
 }
 /** Any fetch progress from the worker resets the watchdog — a 20MB model
- *  download on slow Wi-Fi must be allowed to take its time. */
+ *  download on slow Wi-Fi must be allowed to take its time. The window must be
+ *  no smaller than the arm in `synthNow()`, otherwise the first fetch kicks the
+ *  deadline below the full session-build window. */
 function kickWatchdog() {
-  if (watchDeadline) watchDeadline = Date.now() + 30_000;
+  if (watchDeadline) watchDeadline = Date.now() + SYNTH_WATCHDOG_MS;
+}
+
+/** Re-arm the current watchdog with the full window. Used when the worker
+ *  finishes its fetch phase and is about to enter the silent compute stretch
+ *  (phonemizer + ORT session build + inference), so that stretch is measured
+ *  against a fresh full window rather than the tail of a download deadline. */
+function rearmWatchdog() {
+  if (watchDeadline && watchTimeout) armWatchdog(SYNTH_WATCHDOG_MS, watchTimeout);
 }
 
 /** Mark the voice failed with a reason — shown in the parent-panel voice card
@@ -178,14 +193,21 @@ function failNeural(msg: string) {
 function onMessage(ev: MessageEvent) {
   const data = ev.data as WorkerMsg;
   if (data.kind !== "fetch") return;
-  kickWatchdog(); // progress = the worker is alive
   if (data.blob) {
+    // Completed fetch — the worker is now entering the silent compute phase
+    // (phonemizer + ORT session build + inference). Re-arm with the full
+    // window so a slow first session build is never cut short by the deadline
+    // left over from the download.
+    rearmWatchdog();
     blobs[data.url] = data.blob;
     markFileDone(data.url);
     if (data.url === MODEL) markReady(); // model cached ⇒ every earlier asset already is
-  } else if (data.total) {
-    urlLoaded[data.url] = data.loaded ?? 0;
-    bumpProgress();
+  } else {
+    kickWatchdog(); // progress = the worker is alive
+    if (data.total) {
+      urlLoaded[data.url] = data.loaded ?? 0;
+      bumpProgress();
+    }
   }
 }
 
@@ -285,7 +307,7 @@ function synthNow(text: string, spk: number): Promise<Blob> {
       }
     };
     w.addEventListener("message", onMsg);
-    armWatchdog(60_000, () => fail(new Error("voice worker stalled (timeout)")));
+    armWatchdog(SYNTH_WATCHDOG_MS, () => fail(new Error("voice worker stalled (timeout)")));
     try {
       w.postMessage({
         kind: "init",
