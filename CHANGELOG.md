@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.32 (perf: rAF-debounce RotateOverlay resize reads (#1106))
+
+b1462b6 Merge branch 'nv-1106': rAF-debounce RotateOverlay resize reads (#1106)
+e333f51 perf: rAF-debounce RotateOverlay resize reads (#1106)
+
 ## 15 Aug 2026 — 0.53.31 (perf: measure RhymeTime chip widths on a shared canvas context — no more hidden Phaser Text objects per word per layout (#1102))
 
 c2a0e71 Merge branch 'nv-1102': measure RhymeTime chips with shared canvas context (#1102)
