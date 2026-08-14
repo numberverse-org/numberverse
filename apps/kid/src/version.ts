@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.10 (⚡ #1126 todayIso cache + quest/calendar useShallow — no per-tick Date build or object churn)";
-export const APP_VERSION = "0.53.10";
+export const APP_BUILD = "14 Aug 2026 · 0.53.11 (⚡ #1127 onRoundDone: O(1) streak/wrongs tail ref — no 3× events scans per round)";
+export const APP_VERSION = "0.53.11";

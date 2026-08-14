@@ -1,3 +1,10 @@
+## 14 Aug 2026 — 0.53.11 (⚡ #1127 onRoundDone: O(1) streak/wrongs tail ref — no 3× events scans per round)
+
+879b2f1 🔤 #1386-#1390 Bangla font: Noto Sans Bengali + real weight faces + fix letter/line-spacing
+bd35e26 📦 fonts: commit Noto Sans Bengali 800/900 (rest of the boot.css stack)
+0b009a2 📦 fonts: commit Noto Sans Bengali 500/600/700 (referenced by boot.css font stack)
+6c2d199 ⚡ #1127 onRoundDone: O(1) streak/wrongs from a maintained tail ref
+
 ## 14 Aug 2026 — 0.53.10 (⚡ #1126 todayIso cache + quest/calendar useShallow — no per-tick Date build or object churn)
 
 5963ead ⚡ #1126 todayIso/dayIsoAgo: cached local-day Date + selectors use todayOnce/useShallow
