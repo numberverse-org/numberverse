@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.28 (perf: cache safe-area insets — SAB/SAT no longer force a getComputedStyle reflow on every call, refreshed only on resize/orientationchange (#1099))
+
+e589ca0 Merge branch 'nv-1099': cache safe-area insets (#1099)
+1cd07d2 🎯 perf: cache safe-area insets instead of forced reflow per call (#1099)
+
 ## 15 Aug 2026 — 0.53.27 (world-map road + journey spine gutter now scale with --node-gutter clamp(42px,9.5%,54px) so connectors clear badges on wide columns (#1097))
 
 efd8661 Merge branch 'nv-1097': scale map/journey route gutter with --node-gutter (#1097)

@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.27 (world-map road + journey spine gutter now scale with --node-gutter clamp(42px,9.5%,54px) so connectors clear badges on wide columns (#1097))";
-export const APP_VERSION = "0.53.27";
+export const APP_BUILD = "15 Aug 2026 · 0.53.28 (perf: cache safe-area insets — SAB/SAT no longer force a getComputedStyle reflow on every call, refreshed only on resize/orientationchange (#1099))";
+export const APP_VERSION = "0.53.28";
