@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Icon } from "./components/Icon";
-import "./styles.css";
+import "./styles/boot.css"; // #1177 — splash + base tokens only; screens.css rides the lazy App chunk
 
 /**
  * #1217 — the heavy graph (App → @numberverse/core tables, the full zustand

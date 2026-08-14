@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import "./styles/screens.css"; // #1177 — deferred screen CSS rides the lazy App chunk (never blocks first paint)
 // Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
 // `import type` is erased and the main bundle carries ZERO engine bytes.
 import type { Game } from "phaser";

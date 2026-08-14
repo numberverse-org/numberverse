@@ -41,6 +41,12 @@ const ALLOWED_OFFLINE_FAILS = [
   (u: string) => u.includes("/voice/"), // neural-voice model: CacheFirst, first-use download (#114 known gap)
   (u: string) => u.includes("/api/v1/auth/google/status"), // Google button probe (feature-gated)
   (u: string) => u.includes("accounts.google.com"), // Google Identity client script
+  // Cloudflare injects a challenge-platform script into the HTML response for
+  // bot-suspect clients (headless Chromium is sometimes challenged). The SW
+  // precaches the TRANSFORMED index.html, so offline the injected <script> URL
+  // fails — benign third-party infra, never an app request, exactly like the
+  // Google Identity script above.
+  (u: string) => u.includes("/cdn-cgi/challenge-platform/"),
 ];
 
 /** Reload with the network OFF; return {failed, rendered}. */
