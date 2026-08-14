@@ -45,7 +45,7 @@ import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, worldProgress, worldEmoji,
-  worldUnlocked, totalMastered, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
+  worldUnlocked, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
   challengeEligible, challengeStartLevelIndex,
@@ -3085,7 +3085,9 @@ export default function App() {
     const famStars = kids.reduce((sum, k) => sum + (stats[k.id]?.stars ?? 0), 0);
     const famPoints = kids.reduce((sum, k) => sum + (stats[k.id]?.score ?? 0), 0);
     const famSessions = kids.reduce((sum, k) => sum + (stats[k.id]?.sessions ?? 0), 0);
-    const famMastered = kids.reduce((sum, k) => sum + totalMastered(skillsMap, k.id), 0);
+    // #1120 — one pass over the cached unit groups for ALL kids (was N kids ×
+    // a full totalMastered catalog re-scan per kid, every render).
+    const famMastered = [...masteredCounts(skillsMap, kids.map((k) => k.id)).values()].reduce((a, b) => a + b, 0);
     const PARENT_PORTAL = "/parent/"; // full Next.js portal (same origin)
     return (
       <div className="app">

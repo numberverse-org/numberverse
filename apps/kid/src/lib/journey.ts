@@ -536,6 +536,32 @@ export let filterMaxBand: number | null = null; // null = no cap
 export let filterFocusSubject: string | null = null;
 export let filterFocusBand: number | null = null;
 
+/** #1120 — the 305-skill catalog grouped into LEARNABLE UNITS, rebuilt ONLY
+ *  when the subject filter changes. totalMastered/worldProgress used to
+ *  re-filter + re-group the whole catalog on EVERY call — and App.tsx has 13+
+ *  call sites per render (kid reducers, leaderboard rows, world progress), so
+ *  every store tick ran thousands of filter + skillMastered iterations with
+ *  zero memoization. Now these helpers iterate this single cached structure.
+ *  Built from the initial (unfiltered) filterSkills at module scope so first
+ *  render behaves exactly as before applyKidControls runs. */
+export let gameUnits: { key: string; band: number; members: Skill[] }[] = [];
+
+function buildGameUnits() {
+  const byKey = new Map<string, { key: string; band: number; members: Skill[] }>();
+  for (const s of filterSkills) {
+    if (!s.game) continue;
+    const key = `${s.band}:${s.family ?? `__${s.id}`}`;
+    let u = byKey.get(key);
+    if (!u) {
+      u = { key, band: s.band, members: [] };
+      byKey.set(key, u);
+    }
+    u.members.push(s);
+  }
+  gameUnits = [...byKey.values()];
+}
+buildGameUnits();
+
 export function applyKidControls(
   enabledSubjects: string[] | null,
   maxBand: number | null,
@@ -548,6 +574,7 @@ export function applyKidControls(
   filterMaxBand = maxBand;
   filterFocusSubject = focusSubject;
   filterFocusBand = focusBand;
+  buildGameUnits();
 }
 
 /** #257 — subject id of a skill (for focus-pin ordering in session pools). */
@@ -603,34 +630,42 @@ function unitKey(s: Skill): string {
   return `${s.band}:${s.family ?? `__${s.id}`}`;
 }
 
-/** True when ANY member of a skill's family unit is mastered — mastering one
- *  tier of a family (e.g. concrete apples) counts the whole concept. */
-function unitMastered(skills: SkillMap, kidId: string, s: Skill): boolean {
-  return filterSkills.some(
-    (m) => m.band === s.band && (m.family ?? `__${m.id}`) === (s.family ?? `__${s.id}`) && skillMastered(skills, kidId, m.id)
-  );
+/** True when ANY member of a cached unit is mastered (#1120 — O(members) on the
+ *  cached group, no catalog re-scan). */
+function unitMasteredFrom(skills: SkillMap, kidId: string, u: { members: Skill[] }): boolean {
+  return u.members.some((m) => skillMastered(skills, kidId, m.id));
 }
 
 export function worldProgress(skills: SkillMap, kidId: string, band: number): { mastered: number; total: number; pct: number } {
-  const units = new Map<string, Skill[]>();
-  for (const s of filterSkills) {
-    if (s.band !== band || !s.game) continue;
-    const key = s.family ?? `__${s.id}`;
-    if (!units.has(key)) units.set(key, []);
-    units.get(key)!.push(s);
-  }
   let mastered = 0;
-  for (const members of units.values()) {
-    if (members.some((m) => skillMastered(skills, kidId, m.id))) mastered++;
+  let total = 0;
+  for (const u of gameUnits) {
+    if (u.band !== band) continue;
+    total++;
+    if (unitMasteredFrom(skills, kidId, u)) mastered++;
   }
-  const total = units.size || 1;
-  return { mastered, total, pct: Math.round((mastered / total) * 100) };
+  const t = total || 1;
+  return { mastered, total: t, pct: Math.round((mastered / t) * 100) };
 }
 
 /** Total learnable units in the whole journey — the "Y" in "X mastered / Y".
- *  Subject filters (parent controls) are honoured, exactly like the old count. */
+ *  Subject filters (parent controls) are honoured, exactly like the old count.
+ *  #1120 — O(1) off the cached unit group. */
 export function progressUnitCount(): number {
-  return new Set(filterSkills.filter((s) => s.game).map((s) => unitKey(s))).size;
+  return gameUnits.length;
+}
+
+/** #1120 — mastered-unit count for MANY kids in one pass over the cached unit
+ *  groups (instead of N kids × the old full-catalog re-filter per call).
+ *  Returns a Map<kidId, count>; every kid in the list gets an entry. */
+export function masteredCounts(skills: SkillMap, kidIds: string[]): Map<string, number> {
+  const out = new Map<string, number>(kidIds.map((id) => [id, 0]));
+  for (const u of gameUnits) {
+    for (const kidId of kidIds) {
+      if (unitMasteredFrom(skills, kidId, u)) out.set(kidId, (out.get(kidId) ?? 0) + 1);
+    }
+  }
+  return out;
 }
 
 /** Learnable units in one band from the FULL catalog — the parent syllabus shows
@@ -689,15 +724,12 @@ export function worldUnlocked(skills: SkillMap, kidId: string, band: number): bo
   return prev.mastered / prev.total >= UNLOCK_THRESHOLD;
 }
 
+/** #1120 — O(units) over the cached unit groups (was O(n²): re-filtering the
+ *  whole 305-skill catalog + re-grouping units on every call, 13+ times/render). */
 export function totalMastered(skills: SkillMap, kidId: string): number {
-  const seen = new Set<string>();
   let n = 0;
-  for (const s of filterSkills) {
-    if (!s.game) continue;
-    const key = unitKey(s);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (unitMastered(skills, kidId, s)) n++;
+  for (const u of gameUnits) {
+    if (unitMasteredFrom(skills, kidId, u)) n++;
   }
   return n;
 }
