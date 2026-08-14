@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 // Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
 // `import type` is erased and the main bundle carries ZERO engine bytes.
 import type { Game } from "phaser";
@@ -37,8 +37,6 @@ import { STR, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
 import VoiceCheck from "./components/VoiceCheck";
 import StoryInspector from "./components/StoryInspector";
 import CountUp from "./components/CountUp";
-import AddKidForm from "./components/AddKidForm";
-import HomeScreen from "./components/HomeScreen";
 import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
@@ -55,7 +53,16 @@ import {
   type ChallengeQ, type ContrastTemplate, type ContrastRound, type AvatarParts, type SeasonKey,
 } from "./lib/journey";
 import { KidAvatar, AvatarBuilder, QuietChrome } from "./components/Avatar";
-import Nova3DHome from "./nova3d/Nova3DHome";
+// #1183 — Nova3DHome (wrapper + WebGL probe) is lazy like its Nova3D island:
+// the wrapper is only fetched/parsed the first time a kid actually opens the
+// 3D screen, keeping the probe + wrapper code out of the main bundle.
+const Nova3DHome = lazy(() => import("./nova3d/Nova3DHome"));
+// #1178 — the heaviest non-initial screens are lazy chunks too: only fetched
+// + parsed the first time the kid actually routes to them. Keeps the App chunk
+// (the boot→splash→interactive path) to the screens a first visitor can reach
+// (welcome, parent gate, kidpick, worlds) and defers home/avatar/addkid.
+const HomeScreen = lazy(() => import("./components/HomeScreen"));
+const AddKidForm = lazy(() => import("./components/AddKidForm"));
 
 /** Build stamp — shown in the parent panel footer. Bump on every deploy so a
  *  stale service-worker cache is instantly visible (if the phone shows an old
@@ -83,9 +90,23 @@ function readLS(key: string): string | null {
 }
 const AVATARS = AVATAR_KEYS;
 
+/** #1178/#1186 — shared Suspense fallback while a lazy screen chunk resolves
+ *  (SW-precached → a fast flash). Same spinner as the engine-boot overlay. */
+function ScreenFallback() {
+  return (
+    <div className="screen-suspense" role="status">
+      <span className="game-boot-spinner" aria-hidden="true" />
+    </div>
+  );
+}
+
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
+  // #1186 — the async engine chunk shows a visible state over the canvas
+  // instead of a blank gap: spinner while it loads, a retry button if it fails.
+  const [gameBoot, setGameBoot] = useState<"loading" | "ready" | "error">("loading");
+  const [gameBootNonce, setGameBootNonce] = useState(0); // retry re-arms the boot
   const sessionRef = useRef<SessionStep[]>([]);
   /** #253 — the in-progress session survives a kid switch. `sessionRef` holds
    *  the CURRENT kid's steps; this map holds abandoned mid-flight sessions keyed
@@ -366,11 +387,23 @@ export default function App() {
   // mastered. Feeds the Week Warrior badge and the home card (both offline).
   const weekSkill = kid ? skillOfWeek(skillsMap, kid.id) : undefined;
   const weekDone = !!kid && !!weekSkill && skillMastered(skillsMap, kid.id, weekSkill.id);
-  const earnedBadgeKey = kid
-    ? BADGES.filter((b) => b.earned({ sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone }))
-        .map((b) => b.id)
-        .join(",")
-    : "";
+  // #1185 — these derivations are memoized + only depend on primitive/stable
+  // values (never the store objects themselves, whose fallback literals change
+  // identity every render), so a store tick that doesn't touch mastery/stats
+  // skips all the badge/achievement/trophy/box filtering on first render.
+  const kidMasteredCount = useMemo(() => (kid ? totalMastered(skillsMap, kid.id) : 0), [skillsMap, kid?.id]);
+  const kidWorlds = useMemo(() => (kid ? fullyMasteredWorlds(skillsMap, kid.id) : 0), [skillsMap, kid?.id]);
+  const earnedBadgeKey = useMemo(
+    () =>
+      kid
+        ? BADGES.filter((b) =>
+            b.earned({ sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: kidWorlds, weekDone })
+          )
+            .map((b) => b.id)
+            .join(",")
+        : "",
+    [kid?.id, badgeStats.sessions, badgeStats.stars, badgeStreak, kidWorlds, weekDone]
+  );
   useEffect(() => {
     if (!kid || !earnedBadgeKey) return;
     const earned = earnedBadgeKey.split(",").filter(Boolean);
@@ -392,22 +425,26 @@ export default function App() {
   const achPets = useKidStore((s) => (kid ? s.nova[kid.id]?.adoptedPets?.length ?? 0 : 0));
   const achPetStage = useKidStore((s) => (kid ? s.nova[kid.id]?.petStage ?? 0 : 0));
   const storedAchs = useKidStore((s) => (kid ? s.nova[kid.id]?.achievements ?? [] : []));
-  const earnedAchKey = kid
-    ? ACHIEVEMENTS.filter((a) =>
-        a.earned({
-          sessions: achStats.sessions,
-          stars: achStats.stars,
-          mastered: totalMastered(skillsMap, kid.id),
-          streak: achStreak,
-          coins: achCoins,
-          worlds: fullyMasteredWorlds(skillsMap, kid.id),
-          pets: achPets,
-          petStage: achPetStage,
-        })
-      )
-        .map((a) => a.id)
-        .join(",")
-    : "";
+  const earnedAchKey = useMemo(
+    () =>
+      kid
+        ? ACHIEVEMENTS.filter((a) =>
+            a.earned({
+              sessions: achStats.sessions,
+              stars: achStats.stars,
+              mastered: kidMasteredCount,
+              streak: achStreak,
+              coins: achCoins,
+              worlds: kidWorlds,
+              pets: achPets,
+              petStage: achPetStage,
+            })
+          )
+            .map((a) => a.id)
+            .join(",")
+        : "",
+    [kid?.id, achStats.sessions, achStats.stars, kidMasteredCount, achStreak, achCoins, kidWorlds, achPets, achPetStage]
+  );
   useEffect(() => {
     if (!kid || !earnedAchKey) return;
     const earned = earnedAchKey.split(",").filter(Boolean);
@@ -422,14 +459,18 @@ export default function App() {
     }
   }, [kid?.id, earnedAchKey, storedAchs.join(",")]);
   // #277 — land trophies: celebrating a NEWLY fully-mastered land exactly once.
-  const earnedTrophyKey = kid
-    ? BANDS.filter((b) => {
-        const p = worldProgress(skillsMap, kid.id, b.id);
-        return p.total > 0 && p.mastered === p.total;
-      })
-        .map((b) => b.id)
-        .join(",")
-    : "";
+  const earnedTrophyKey = useMemo(
+    () =>
+      kid
+        ? BANDS.filter((b) => {
+            const p = worldProgress(skillsMap, kid.id, b.id);
+            return p.total > 0 && p.mastered === p.total;
+          })
+            .map((b) => b.id)
+            .join(",")
+        : "",
+    [skillsMap, kid?.id]
+  );
   useEffect(() => {
     if (!kid || !earnedTrophyKey) return;
     const earned = earnedTrophyKey.split(",").filter(Boolean).map(Number);
@@ -446,14 +487,20 @@ export default function App() {
   // #284 — mastery mystery boxes: every mastered skill that hasn't been boxed
   // yet shows as an unopened box on home (newest mastery first).
   const storedBoxes = useKidStore((s) => (kid ? s.nova[kid.id]?.boxes ?? [] : []));
-  const unclaimedBoxes = kid
-    ? filterSkills
-        .filter((s) => s.game && skillMastered(skillsMap, kid.id, s.id) && !storedBoxes.includes(s.id))
-        .sort(
-          (a, b) =>
-            ((skillsMap[`${kid.id}:${b.id}`]?.lastPractice ?? 0) - (skillsMap[`${kid.id}:${a.id}`]?.lastPractice ?? 0))
-        )
-    : [];
+  const unclaimedBoxes = useMemo(
+    () =>
+      kid
+        ? filterSkills
+            .filter((s) => s.game && skillMastered(skillsMap, kid.id, s.id) && !storedBoxes.includes(s.id))
+            .sort(
+              (a, b) =>
+                ((skillsMap[`${kid.id}:${b.id}`]?.lastPractice ?? 0) - (skillsMap[`${kid.id}:${a.id}`]?.lastPractice ?? 0))
+            )
+        : [],
+    // `storedBoxes.join()` (a stable primitive) — NOT storedBoxes itself, whose
+    // `?? []` fallback is a fresh array identity every render.
+    [skillsMap, kid?.id, storedBoxes.join(",")]
+  );
   // Streak kindness: the store only refreshes `streak` at session-complete, so
   // after a missed day the badge would show a STALE flame. Track the anchor day
   // so we can hide the stale flame and welcome the kid back warmly instead.
@@ -1517,12 +1564,21 @@ export default function App() {
     }
     const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
     vv?.addEventListener("resize", refreshCanvas);
+    setGameBoot("loading");
+    let alive = true; // #1186 — a stale resolve must not set error after teardown
     bootGame(mountEl).then((g) => {
-      if (!g || gameRef.current !== null) return; // torn down mid-load / already set
+      if (!alive) return; // torn down mid-load
+      if (!g) {
+        // #1186 — chunk load failed: visible retry, not a silent blank canvas.
+        setGameBoot("error");
+        return;
+      }
       gameRef.current = g;
+      setGameBoot("ready");
       (window as unknown as Record<string, unknown>).__NV_GAME__ = g;
     });
     return () => {
+      alive = false;
       gameRef.current = null;
       activeSceneRef.current = null;
       (window as unknown as Record<string, unknown>).__NV_GAME__ = null;
@@ -1531,7 +1587,7 @@ export default function App() {
       vv?.removeEventListener("resize", refreshCanvas);
       teardownGame();
     };
-  }, [screen]);
+  }, [screen, gameBootNonce]);
 
   /* ── Nova companion home: greet the kid right after profile selection ── */
   useEffect(() => {
@@ -2151,6 +2207,7 @@ export default function App() {
 
   if (screen === "home" && kid) {
     return (
+    <Suspense fallback={<ScreenFallback />}>
     <HomeScreen
       kid={kid}
       lang={lang}
@@ -2219,6 +2276,7 @@ export default function App() {
       goGarden={goGarden}
       goNova={goNova}
     />
+    </Suspense>
     );
   }
 
@@ -3600,7 +3658,11 @@ export default function App() {
   }
 
   if (screen === "addkid") {
-    return <AddKidForm t={t} lang={lang} onSave={addKid} onCancel={() => setScreen("kidpick")} />;
+    return (
+      <Suspense fallback={<ScreenFallback />}>
+        <AddKidForm t={t} lang={lang} onSave={addKid} onCancel={() => setScreen("kidpick")} />
+      </Suspense>
+    );
   }
 
   /* #285 — Custom avatar builder: mix-and-match base + hat + glasses + outfit
@@ -4571,12 +4633,14 @@ export default function App() {
      where the pet games live. */
   if (screen === "nova3d") {
     return (
-      <Nova3DHome
-        kidName={kid?.name ?? ""}
-        kidId={kid?.id ?? ""}
-        onBack2d={() => setScreen("nova")}
-        onExit={() => setScreen("home")}
-      />
+      <Suspense fallback={<div className="nova3d-loading" aria-live="polite">{t.islandLoading}</div>}>
+        <Nova3DHome
+          kidName={kid?.name ?? ""}
+          kidId={kid?.id ?? ""}
+          onBack2d={() => setScreen("nova")}
+          onExit={() => setScreen("home")}
+        />
+      </Suspense>
     );
   }
 
@@ -4641,6 +4705,19 @@ export default function App() {
           </button>
         )}
         <div ref={mountRef} className="game-wrap" />
+        {/* #1186 — visible engine state: a spinner during the async chunk load,
+            and a tap-to-retry when the chunk fails (never a silent blank canvas). */}
+        {gameBoot === "error" && (
+          <div className="game-boot-error" role="alert">
+            <p>{lang === "bn" ? "খেলা শুরু করতে আবার চেষ্টা করো" : "Tap to retry the game"}</p>
+            <button onClick={() => setGameBootNonce((n) => n + 1)}>↻</button>
+          </div>
+        )}
+        {gameBoot !== "ready" && gameBoot !== "error" && (
+          <div className="game-boot-loading" role="status" aria-label={lang === "bn" ? "খেলা লোড হচ্ছে…" : "Loading game…"}>
+            <span className="game-boot-spinner" aria-hidden="true" />
+          </div>
+        )}
         {/* #292 — Nova reaction pack v2: a floating Nova face bubble for win
             streaks / setbacks / reteach moments. Rendered as a DOM overlay so
             it works over EVERY game scene (no Phaser changes needed). */}

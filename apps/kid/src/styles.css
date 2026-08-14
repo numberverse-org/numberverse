@@ -6427,3 +6427,65 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   font: 800 9px/1.2 var(--nv-font, system-ui, sans-serif);
   color: #ffe9a8;
 }
+
+/* #1183 — lazy 3D-island Suspense fallback (wrapper + probe load) */
+.nova3d-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nv-text, #334);
+  background: radial-gradient(120% 120% at 50% 10%, #d9f1ff 0%, #a8d8f0 55%, #7fc4e4 100%);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* #1186 — engine boot overlay: spinner while the async chunk loads, retry on failure */
+.game-boot-loading, .game-boot-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #d9f1ff 0%, #a8d8f0 100%);
+  z-index: 5;
+}
+.game-boot-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.55);
+  border-top-color: #ffd166;
+  animation: nv-spin 0.9s linear infinite;
+}
+@keyframes nv-spin {
+  to { transform: rotate(360deg); }
+}
+.game-boot-error {
+  flex-direction: column;
+  gap: 12px;
+  color: #0b2545;
+  font-weight: 700;
+}
+.game-boot-error button {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: #ffd166;
+  color: #0b2545;
+  font-size: 1.6rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* #1178 — lazy screen chunk Suspense fallback (brief — chunks are SW-precached) */
+.screen-suspense {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nv-bg, #d9f1ff);
+  z-index: 40;
+}

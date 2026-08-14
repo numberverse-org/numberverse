@@ -186,19 +186,34 @@ function SplashScreen({ ready }: { ready: boolean }) {
     // #1225 — kick SW registration here (post-paint), never in the boot path.
     void deferSWRegistration();
   }, []);
+  // #1182 — dismissal is READINESS-based, not a fixed ~2.35s block on every
+  // launch: the countdown only starts once the App chunk resolved (ready), the
+  // timers are a short premium-feel FLOOR (0.8s hide / 1.25s gone), and a tap
+  // on the splash dismisses it instantly once the app is interactive underneath.
   useEffect(() => {
     if (!ready) return;
-    const hide = window.setTimeout(() => setPhase("hide"), 1700);
-    const gone = window.setTimeout(() => setPhase("gone"), 2350);
+    const hide = window.setTimeout(() => setPhase("hide"), 800);
+    const gone = window.setTimeout(() => setPhase("gone"), 1250);
     return () => {
       window.clearTimeout(hide);
       window.clearTimeout(gone);
     };
   }, [ready]);
+  const dismiss = () => {
+    if (!ready) return; // chunk still loading — tapping must not skip to a blank app
+    setPhase("gone");
+  };
   if (phase === "gone") return null;
   const bn = bootBn;
   return (
-    <div className={`splash ${phase === "hide" ? "splash-hide" : ""}`} aria-hidden="true">
+    <div
+      className={`splash ${phase === "hide" ? "splash-hide" : ""}`}
+      aria-hidden="true"
+      onClick={dismiss}
+      onPointerDown={(e) => {
+        if (e.pointerType !== "mouse") dismiss(); // instant dismiss on touch/pen
+      }}
+    >
       <div className="splash-glow splash-glow-a" />
       <div className="splash-glow splash-glow-b" />
       {/* floating bubbles — soft, alive, no noise */}
