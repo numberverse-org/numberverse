@@ -1,3 +1,12 @@
+## 14 Aug 2026 — 0.42.11 (data-overlap #1167-#1176: per-skill dataLevels ranges + band-pair game reuse fixes)
+
+74edc2a 🎯 #1170 band-pair skills carry own dataLevels range
+5e72afa 🎛️ DATA MODE SELECTOR #1169: scene variants are data, not magic
+507722f 🏛️ BGS FACTS BANK MERGE #1174: one fact pool + canonical heritage spellings
+f67ad39 🔠 SIGHT WORD BANK #1175: shared pools + cross-bank overlap lint
+1f9b092 🐫 SORT SHARED BASE #1173: festival + weather join BinSortScene
+11c249b 📚 shared word banks: CVC/Bangla-kid/Bangla-number/English-alphabet single-source modules (#1167 #1168 #1171 #1172 #1176)
+
 ## 14 Aug 2026 — 0.42.10 (reward-overlap: care paws vs learning coins, quality-tier challenge rewards, type-scaled quests (#1189 #1191 #1192 #1194 #1195 #1196))
 
 b09879c 🪙 reward-overlap cluster: care paws vs learning coins, quality-tier challenge rewards (#1189 #1191 #1192 #1194 #1195 #1196)
