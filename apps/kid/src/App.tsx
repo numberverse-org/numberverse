@@ -1589,6 +1589,29 @@ export default function App() {
     setScreen("home");
   };
 
+  /* ── #357 — predicted next scene: the HOME screen is where the next tap is
+     most likely "PLAY", so warm the engine chunk at idle (fetch + parse + eval
+     off the critical path). bootGame() later does `import("./engine")` — a
+     module-cache hit → the first game opens instantly. Budget-safe: the chunk
+     is already in the SW precache (bytes are fetched at install regardless),
+     so this only shifts parse/eval to idle time, never adds network. One-shot
+     per mount (engineWarmedRef). */
+  const engineWarmedRef = useRef(false);
+  useEffect(() => {
+    if (screen !== "home" || engineWarmedRef.current) return;
+    engineWarmedRef.current = true;
+    const warm = () => {
+      void import("./game/engine").catch(() => { /* best-effort — boot() retries */ });
+    };
+    const ric = (window as unknown as { requestIdleCallback?: (fn: () => void, o: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof ric === "function") {
+      const id = ric(warm, { timeout: 2500 });
+      return () => (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id);
+    }
+    const to = setTimeout(warm, 800);
+    return () => clearTimeout(to);
+  }, [screen]);
+
   /* ── Create + boot Phaser for the game canvas (playing / Nova / Garden) ──
      The engine + scenes are a DYNAMIC chunk (issue #15) — bootGame() imports it
      lazily. If the user leaves before the chunk loads, teardown() bumps a
