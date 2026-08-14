@@ -1,3 +1,8 @@
+## 14 Aug 2026 — 0.42.2 (⚡ Voice-cache: in-memory LRU ledger, readonly cache reads, debounced synth meter, IDB schema-drift guard)
+
+1462c3f fix: silent onblocked fallback (no console.warn — audit forbids debug logging in shipped code)
+0dae649 ⚡ voice-cache storage-blocking: in-memory LRU ledger (no per-store getAll), readonly cache reads, debounced synth meter, IDB schema-drift guard, skip redundant settings writes (#1232 #1234 #1233 #1235 #1231)
+
 ## 14 Aug 2026 — 0.42.2 (⚡ Voice-cache: in-memory LRU ledger replaces per-store getAll, readonly cache reads, debounced synth meter, IDB schema-drift guard)
 
 ⚡ #1232 #1234 #1233 #1235 #1231: voice-cache + settings-write storage-blocking
