@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.8 (⚡ #1124 parent heatmap: mistakes ledger pre-aggregated once (not per panel render))
+
+59db282 ⚡ #1124 parent heatmap: pre-aggregate mistakes ledger once, not per render
+
 ## 14 Aug 2026 — 0.53.7 (⚡ #1123 moniPlanFor: cached plan — one 305-map fold per step, not per call)
 
 14c52ea ⚡ #1123 moniPlanFor: cache the plan on (kidId, store refs, 60s bucket)
