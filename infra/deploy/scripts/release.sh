@@ -122,10 +122,11 @@ smoke_serves() {
   [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 100000 ] || return 1
   grep -qF "$want" "$SMOKE_BODY" && return 0
   # stamp not in index.js → fetch the lazy App chunk it references and grep that.
-  appjs=$(grep -oE '(assets/)?App-[A-Za-z0-9_-]+\.js' "$SMOKE_BODY" | head -1 || true)
+  # index.js sits in /assets/, so its RELATIVE import "./App-*.js" resolves to
+  # /assets/App-*.js — always serve from the assets dir.
+  appjs=$(grep -oE 'App-[A-Za-z0-9_-]+\.js' "$SMOKE_BODY" | head -1 || true)
   [ -n "$appjs" ] || return 1
-  appjs="${appjs#assets/}"
-  curl -sL --max-time 30 "$@" "$base/$appjs?$bust" -o "$SMOKE_BODY" || return 1
+  curl -sL --max-time 30 "$@" "$base/assets/$appjs?$bust" -o "$SMOKE_BODY" || return 1
   [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 100000 ] || return 1
   grep -qF "$want" "$SMOKE_BODY"
 }
