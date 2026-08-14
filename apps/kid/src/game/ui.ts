@@ -144,17 +144,35 @@ export const BTN_ORANGE = { top: 0xffb35c, bottom: 0xef7a18, text: "#4a2200" };
 export const BTN_PURPLE = { top: 0xc4b5fd, bottom: 0x7c3aed, text: "#1b0b3f" };
 export const BTN_RED = { top: 0xff8fa3, bottom: 0xe11d48, text: "#4c0519" };
 
+/** WCAG relative luminance of an 0xRRGGBB color (0..1). */
+function relLum(hex: number): number {
+  const c = (v: number) => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * c((hex >> 16) & 255) + 0.7152 * c((hex >> 8) & 255) + 0.0722 * c(hex & 255);
+}
+
+/** WCAG contrast ratio between two relative luminances. */
+function contrastRatio(a: number, b: number): number {
+  const hi = Math.max(a, b), lo = Math.min(a, b);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 /** Build a button style from an arbitrary hex color (lighten top / deepen bottom). */
 export function btnFromColor(hex: number): BtnStyle {
   const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
   const lighten = (v: number, f: number) => Math.round(v + (255 - v) * f);
   const darken = (v: number, f: number) => Math.round(v * f);
-  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-  return {
-    top: (lighten(r, 0.35) << 16) | (lighten(g, 0.35) << 8) | lighten(b, 0.35),
-    bottom: (darken(r, 0.55) << 16) | (darken(g, 0.55) << 8) | darken(b, 0.55),
-    text: lum > 150 ? "#2b1500" : "#ffffff",
-  };
+  const top = (lighten(r, 0.35) << 16) | (lighten(g, 0.35) << 8) | lighten(b, 0.35);
+  const bottom = (darken(r, 0.55) << 16) | (darken(g, 0.55) << 8) | darken(b, 0.55);
+  // Pick the label color by WCAG contrast against the face's MID tone (the
+  // `mix(top,bottom,0.45)` the label actually sits on) — a single `lum > 150`
+  // sent white text onto green/cyan/teal mid-tones and blended into the face.
+  const midLum = relLum(mix(top, bottom, 0.45));
+  const dark = "#2b1500", white = "#ffffff";
+  const text = contrastRatio(midLum, relLum(0x2b1500)) >= contrastRatio(midLum, relLum(0xffffff)) ? dark : white;
+  return { top, bottom, text };
 }
 
 /* ─────────────────────────── face textures ─────────────────────────── */
@@ -247,7 +265,7 @@ function cardFaceTex(scene: Phaser.Scene, w: number, h: number, top: number, bot
   ctx.shadowBlur = 10;
   ctx.shadowOffsetY = 5;
   ctx.beginPath();
-  ctx.roundRect(X, Y, X * 2, Y * 2, rad * 2);
+  ctx.roundRect(0, 0, X * 2, Y * 2, rad * 2);
   ctx.fillStyle = rgb(bottom);
   ctx.fill();
   ctx.shadowColor = "transparent";
@@ -258,19 +276,19 @@ function cardFaceTex(scene: Phaser.Scene, w: number, h: number, top: number, bot
   g.addColorStop(0, rgb(top));
   g.addColorStop(1, rgb(bottom));
   ctx.beginPath();
-  ctx.roundRect(X, Y, X * 2, Y * 2, rad * 2);
+  ctx.roundRect(0, 0, X * 2, Y * 2, rad * 2);
   ctx.fillStyle = g;
   ctx.fill();
   // top sheen
   ctx.beginPath();
-  ctx.roundRect(X, Y, X * 2, Y * 0.9, rad * 2);
+  ctx.roundRect(0, 0, X * 2, Y * 0.9, rad * 2);
   ctx.fillStyle = "rgba(255,255,255,0.18)";
   ctx.fill();
   // glass edge
   ctx.strokeStyle = "rgba(255,255,255,0.5)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(X + 1, Y + 1, X * 2 - 2, Y * 2 - 2, rad * 2);
+  ctx.roundRect(1, 1, X * 2 - 2, Y * 2 - 2, rad * 2);
   ctx.stroke();
   tex.refresh();
   faceCache.set(key, key);
