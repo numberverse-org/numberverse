@@ -597,11 +597,9 @@ function openVoiceCache(): Promise<IDBDatabase | null> {
         // #1235 — another tab holds the OLD-version connection open. Don't
         // silently disable the cache: give it a moment to close (up to 4s),
         // then fall back to uncached speech rather than hanging forever.
+        // (no console.warn — the shipped-code audit forbids debug logging)
         if (blockedTimer) return;
-        blockedTimer = setTimeout(() => {
-          console.warn("[neuralVoice] wave-cache upgrade blocked >4s — using uncached speech");
-          resolve(null);
-        }, 4000);
+        blockedTimer = setTimeout(() => resolve(null), 4000);
       };
     } catch {
       resolve(null); // IDB unavailable (private mode / insecure) — cache is best-effort
