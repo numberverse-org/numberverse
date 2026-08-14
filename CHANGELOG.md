@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.0 (perf: warm the engine chunk at home idle so the first game opens instantly (#357))
+
+1c0f4da perf(scene-preload): warm the engine chunk at home idle for instant first-play (#357)
+
 ## 14 Aug 2026 — 0.52.0 (polish: friendly loading copy on every spinner (screen + engine boot) + full state audit (#346))
 
 fe957ca feat(polish): friendly loading copy on every spinner + state audit (#346)

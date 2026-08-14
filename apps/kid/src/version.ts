@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.52.0 (polish: friendly loading copy on every spinner (screen + engine boot) + full state audit (#346))";
-export const APP_VERSION = "0.52.0";
+export const APP_BUILD = "14 Aug 2026 · 0.53.0 (perf: warm the engine chunk at home idle so the first game opens instantly (#357))";
+export const APP_VERSION = "0.53.0";
