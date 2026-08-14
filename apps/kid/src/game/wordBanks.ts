@@ -88,6 +88,22 @@ export const SIGHT_WORDS_L3: string[] = [
   "cut", "young", "talk", "soon", "list", "song", "being", "leave", "family", "it's",
 ];
 
+/* ════════════ Bangla heritage tokens — shared spellings (#1174) ════════════ */
+
+/** Canonical Bangla spellings for the cultural tokens that surface in BOTH the
+ *  BGS heritage fact drill (#1174) AND the festival sort scene (#213), so no
+ *  spelling drift ("নকশি কাঁথা" vs "নকশী কাঁথা") can ever sneak in again. */
+export const BANGLA_HERITAGE_TOKENS = {
+  pohelaBoishakh: "পহেলা বৈশাখ",
+  pohelaFalgun: "পহেলা ফাল্গুন",
+  nakshiKantha: "নকশী কাঁথা",
+  dhakaiMuslin: "ঢাকাই মসলিন",
+  pitha: "পিঠা",
+  nabanna: "নবান্ন",
+  hilsa: "ইলিশ",
+  boishakh: "বৈশাখ",
+} as const;
+
 /* ════════════════ Bangla kid words — read & spell (#1168) ════════════════ */
 
 export interface BanglaKidWord {

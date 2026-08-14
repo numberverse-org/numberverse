@@ -2304,7 +2304,7 @@ const BN: Record<string, Entry> = {
   fcEid: "ঈদ",
   fcPantaBhat: "পান্তা ভাত",
   fcHilsaFish: "ইলিশ মাছ",
-  fcNakshiKantha: "নকশি কাঁথা",
+  fcNakshiKantha: "নকশী কাঁথা", // #1174 — canonical spelling, matches wordBanks BANGLA_HERITAGE_TOKENS
   fcAlpana: "আলপনা",
   fcShobhajatra: "মঙ্গল শোভাযাত্রা",
   fcBasantiClothes: "বাসন্তী পোশাক",

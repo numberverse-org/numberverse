@@ -23,12 +23,22 @@ interface Fact {
   /** #20 — heritage facts shown only for the bgs-heritage skill (band 7). */
   kind?: "heritage";
 }
+// #1174 — heritage cultural tokens (নকশী কাঁথা, পহেলা বৈশাখ…) come from the ONE
+// canonical spelling bank, so the fact drill can never drift from the festival
+// sort scene (fcNakshiKantha / fcBoishakh read the same spellings).
+import { BANGLA_HERITAGE_TOKENS as H } from "./wordBanks";
+
+/** ONE fact bank, both skills (#1174): plain entries are the band-5 national
+ *  facts; `kind: "heritage"` entries are the band-7 heritage-only drill. The
+ *  national-fish fact lives ONCE here (its heritage twin was a duplicate), and
+ *  shared cultural spellings resolve through H. */
 const FACTS: Fact[] = [
+  // ── national facts (bgs-bangladesh) ──
   { q: "Capital of Bangladesh?", options: ["ঢাকা", "চট্টগ্রাম", "খুলনা"], answer: "ঢাকা", emoji: "🏙️", tier: 1 },
   { q: "National flower?", options: ["শাপলা", "গোলাপ", "সূর্যমুখী"], answer: "শাপলা", emoji: "🌸", tier: 1, trick: "শিমুল" },
   { q: "National animal?", options: ["বাঘ", "সিংহ", "হাতি"], answer: "বাঘ", emoji: "🐅", tier: 1 },
   { q: "National bird?", options: ["দোয়েল", "কাক", "ময়ূর"], answer: "দোয়েল", emoji: "🐦", tier: 1, trick: "বুলবুলি" },
-  { q: "National fish?", options: ["ইলিশ", "রুই", "কাতলা"], answer: "ইলিশ", emoji: "🐟", tier: 1, trick: "পাবদা" },
+  { q: "National fish?", options: [H.hilsa, "রুই", "কাতলা"], answer: H.hilsa, emoji: "🐟", tier: 1, trick: "পাবদা" },
   { q: "Longest river?", options: ["পদ্মা", "মেঘনা", "যমুনা"], answer: "পদ্মা", emoji: "🌊", tier: 2 },
   { q: "Largest sea beach?", options: ["কক্সবাজার", "পটুয়াখালী", "সেন্ট মার্টিন"], answer: "কক্সবাজার", emoji: "🏖️", tier: 2 },
   { q: "National fruit?", options: ["কাঁঠাল", "আম", "কলা"], answer: "কাঁঠাল", emoji: "🍈", tier: 2, trick: "লিচু" },
@@ -40,31 +50,27 @@ const FACTS: Fact[] = [
   { q: "What is our money called?", options: ["টাকা", "রুপি", "ডলার"], answer: "টাকা", emoji: "💵", tier: 2, trick: "পয়সা" },
   { q: "Highest mountain peak?", options: ["তাজিংডং", "কেওক্রাডং", "চিম্বুক"], answer: "তাজিংডং", emoji: "⛰️", tier: 2, trick: "সাজেক" },
   { q: "Victory Day?", options: ["১৬ ডিসেম্বর", "২৬ মার্চ", "২১ ফেব্রুয়ারি"], answer: "১৬ ডিসেম্বর", emoji: "🎉", tier: 3, trick: "১৪ ডিসেম্বর" },
-];
-
-/** #20 — Band 7 heritage facts: festivals, crafts, foods, landmarks.
- *  Real, kid-safe, and they keep the tier ladder honest (all tier 3). */
-const HERITAGE_FACTS: Fact[] = [
-  { q: "Which festival celebrates the Bangla New Year?", options: ["পহেলা বৈশাখ", "দীপাবলি", "ক্রিসমাস"], answer: "পহেলা বৈশাখ", emoji: "🎭", tier: 3, trick: "পহেলা ফাল্গুন", kind: "heritage" },
-  { q: "The spring festival of colors is called…?", options: ["পহেলা ফাল্গুন", "শবে বরাত", "ইদের চাঁদ"], answer: "পহেলা ফাল্গুন", emoji: "🌼", tier: 3, trick: "বসন্ত উৎসব", kind: "heritage" },
-  { q: "What winter treat is a steamed rice-cake?", options: ["পিঠা", "বিরিয়ানি", "রুটি"], answer: "পিঠা", emoji: "🍥", tier: 3, trick: "পায়েস", kind: "heritage" },
-  { q: "Which world-famous fine cloth is from Bengal?", options: ["ঢাকাই মসলিন", "সিল্ক", "ডেনিম"], answer: "ঢাকাই মসলিন", emoji: "🧵", tier: 3, trick: "লেহেঙ্গা", kind: "heritage" },
-  { q: "Embroidered quilt stitched by village women is…?", options: ["নকশী কাঁথা", "কম্বল", "তসর"], answer: "নকশী কাঁথা", emoji: "🪡", tier: 3, trick: "দুপাট্টা", kind: "heritage" },
+  // ── heritage facts (bgs-heritage, band 7) — all tier 3 ──
+  { q: "Which festival celebrates the Bangla New Year?", options: [H.pohelaBoishakh, "দীপাবলি", "ক্রিসমাস"], answer: H.pohelaBoishakh, emoji: "🎭", tier: 3, trick: H.pohelaFalgun, kind: "heritage" },
+  { q: "The spring festival of colors is called…?", options: [H.pohelaFalgun, "শবে বরাত", "ইদের চাঁদ"], answer: H.pohelaFalgun, emoji: "🌼", tier: 3, trick: "বসন্ত উৎসব", kind: "heritage" },
+  { q: "What winter treat is a steamed rice-cake?", options: [H.pitha, "বিরিয়ানি", "রুটি"], answer: H.pitha, emoji: "🍥", tier: 3, trick: "পায়েস", kind: "heritage" },
+  { q: "Which world-famous fine cloth is from Bengal?", options: [H.dhakaiMuslin, "সিল্ক", "ডেনিম"], answer: H.dhakaiMuslin, emoji: "🧵", tier: 3, trick: "লেহেঙ্গা", kind: "heritage" },
+  { q: "Embroidered quilt stitched by village women is…?", options: [H.nakshiKantha, "কম্বল", "তসর"], answer: H.nakshiKantha, emoji: "🪡", tier: 3, trick: "দুপাট্টা", kind: "heritage" },
   { q: "The 60-dome mosque is at…?", options: ["বাগেরহাট", "ঢাকা", "সিলেট"], answer: "বাগেরহাট", emoji: "🕌", tier: 3, trick: "পাহাড়পুর", kind: "heritage" },
   { q: "The ancient Buddhist monastery Somapura is in…?", options: ["পাহাড়পুর", "বরিশাল", "কক্সবাজার"], answer: "পাহাড়পুর", emoji: "🏛️", tier: 3, trick: "ময়নামতি", kind: "heritage" },
-  { q: "Our national fish is…?", options: ["ইলিশ", "রুই", "কাতলা"], answer: "ইলিশ", emoji: "🐟", tier: 3, trick: "পাবদা", kind: "heritage" },
-  { q: "The harvest festival after the rice season is…?", options: ["নবান্ন", "ইদ", "বসন্ত"], answer: "নবান্ন", emoji: "🌾", tier: 3, trick: "পিঠা উৎসব", kind: "heritage" },
-  { q: "Pohela Boishakh falls in which month?", options: ["বৈশাখ", "জ্যৈষ্ঠ", "আষাঢ়"], answer: "বৈশাখ", emoji: "📅", tier: 3, trick: "ফাল্গুন", kind: "heritage" },
+  { q: "The harvest festival after the rice season is…?", options: [H.nabanna, "ইদ", "বসন্ত"], answer: H.nabanna, emoji: "🌾", tier: 3, trick: "পিঠা উৎসব", kind: "heritage" },
+  { q: "Pohela Boishakh falls in which month?", options: [H.boishakh, "জ্যৈষ্ঠ", "আষাঢ়"], answer: H.boishakh, emoji: "📅", tier: 3, trick: "ফাল্গুন", kind: "heritage" },
 ];
 const BUTTON_RADIUS = 54;
 const ROUNDS_TO_FINISH = 3;
 
 /** Facts that match the current level — symbols → geography → history.
- *  Heritage mode (bgs-heritage) shows only the band-7 heritage facts. */
+ *  Heritage mode (bgs-heritage, band 7) shows ALL the `kind: "heritage"` facts
+ *  (every one is tier 3, so a low start level must never empty the pool). */
 function factsForLevel(level: number, heritage: boolean): Fact[] {
+  if (heritage) return FACTS.filter((f) => f.kind === "heritage");
   const tier = level >= 4 ? 3 : level >= 2 ? 2 : 1;
-  const pool = heritage ? HERITAGE_FACTS : FACTS;
-  return pool.filter((f) => f.tier <= tier);
+  return FACTS.filter((f) => f.tier <= tier && !f.kind);
 }
 
 /**
