@@ -502,3 +502,19 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .update-banner-card { animation: none; }
 }
+
+/* ══ #1324 — frame-jank probe pill (?nvperf=1) ════════════════════════════════
+   Tiny corner readout while a game runs on a low-end phone being profiled. */
+.nv-perf-pill {
+  position: fixed;
+  right: 8px;
+  bottom: max(8px, var(--sab));
+  z-index: 3000;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(3, 10, 28, 0.82);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  color: var(--nv-gold);
+  font: 700 11px/1.4 "Nunito", system-ui, sans-serif;
+  pointer-events: none;
+}

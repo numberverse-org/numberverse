@@ -43,6 +43,8 @@ export interface HomeScreenProps {
   tourStep: number | null;
   projector: boolean;
   neural: ReturnType<typeof speechStatus>["neural"];
+  /** #1318 — retry the failed neural-voice download (App re-arms its poll). */
+  onRetryNeural: () => void;
   tts: SpeechReadiness | null;
   installEvt: Event | null;
   swActive: boolean;
@@ -109,7 +111,7 @@ export interface HomeScreenProps {
 }
 
 export default function HomeScreen({
-  kid, lang, skillsMap, settings, challenge, quest, tourStep, projector, neural, tts, installEvt,
+  kid, lang, skillsMap, settings, challenge, quest, tourStep, projector, neural, onRetryNeural, tts, installEvt,
   swActive, scanOpen, scanCode, scanError, goalMin, goalNotice, limitNotice, todayPlayed, weekSkill,
   weekDone, bdayClaimed, petFedToday, petProgress, petSpecies, petStage, novaDayStreak, novaLastDay,
   unclaimedBoxes, freezeCount, calendar, capWaiting, gardenTile, freshSkillHint, goalPct, playLimitReached, launchCardCode, voiceFunVol,
@@ -243,13 +245,13 @@ export default function HomeScreen({
                 {!projector && (
                   <>
                     <button
-                      className={`voice-chip${voiceOk === false ? " warn" : ""}${neural.ready ? " neural-ready" : ""}`}
+                      className={`voice-chip${voiceOk === false || neural.state === "error" ? " warn" : ""}${neural.ready ? " neural-ready" : ""}`}
                       onClick={() => setScreen("settings")}
                       aria-label={t.settingsVoice}
-                      title={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100))) : undefined}
+                      title={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100))) : neural.state === "error" ? t.voiceDlFailed : undefined}
                     >
-                      {/* ⏳ downloading → 🎙️ neural voice ready (green dot) → 🔊 device voice */}
-                      {neural.state === "loading" ? "⏳" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
+                      {/* ⏳ downloading → 🎙️ neural voice ready (green dot) → 🔊 device voice · ⚠️ download failed (#1318) */}
+                      {neural.state === "loading" ? "⏳" : neural.state === "error" ? "⚠️" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
                     </button>
                     <button className="icon-btn settings-btn" onClick={() => setScreen("settings")} aria-label={t.settingsTitle}>
                       ⚙️
@@ -270,8 +272,17 @@ export default function HomeScreen({
 
             {/* 🎙️ On-device Bangla voice — first-use download banner (live %),
                 then a 5s "ready ✓" flash. Appears ONCE; after that the voice is
-                cached offline, so kids never see permanent noise. */}
-            {neural.state === "loading" ? (
+                cached offline, so kids never see permanent noise. #1318 — a
+                failed download (flaky Wi-Fi) shows the honest message + a
+                visible Retry instead of silently falling back forever. */}
+            {neural.state === "error" ? (
+              <div className="voice-dl-banner warn" role="status">
+                <span>⚠️ {t.voiceDlFailed}</span>
+                <button className="voice-dl-retry" onClick={onRetryNeural}>
+                  {t.voiceRetry}
+                </button>
+              </div>
+            ) : neural.state === "loading" ? (
               <div className="voice-dl-banner" role="status">
                 🎙️ {t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100)))}
               </div>

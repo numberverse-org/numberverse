@@ -219,6 +219,10 @@ const SHIPPED_DIRS = [
   join(ROOT, "apps", "admin", "src"),    // admin console
 ];
 const CONSOLE_BAD = /\bconsole\.(log|debug|info|warn|trace)\(/g;
+// #1324 — perfProbe.ts is the low-end-device frame-jank profiler; it NEVER
+// runs for kids (gated behind ?nvperf=1 / window.__NV_PERF_ENABLED__) and its
+// console.info is the only way its session summary reaches the operator.
+const CONSOLE_ALLOW = new Set(["apps/kid/src/game/perfProbe.ts"]);
 let consoleHits = 0;
 for (const dir of SHIPPED_DIRS) {
   if (!existsSync(dir)) continue;
@@ -227,6 +231,7 @@ for (const dir of SHIPPED_DIRS) {
       const p = join(d, e.name);
       if (e.isDirectory()) { walk(p); continue; }
       if (!/\.(ts|tsx|js|mjs)$/.test(e.name)) continue;
+      if (CONSOLE_ALLOW.has(p.replace(ROOT + "/", ""))) continue;
       const src = readFileSync(p, "utf8");
       let m;
       while ((m = CONSOLE_BAD.exec(src))) {

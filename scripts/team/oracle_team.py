@@ -382,7 +382,9 @@ def l5_release_mgr():
     # #1321 — the release stamp moved to version.ts (the update banner + parent
     # footer read the same source); grep that file, not App.tsx.
     app = (KID / "src" / "version.ts").read_text()
-    m = re.search(r'APP_BUILD\s*=\s*"([^"]+)"', app)
+    # Line-anchor so a `APP_BUILD = "…"` in the doc comment can never be read
+    # as the live stamp (the comment must also avoid the literal pattern).
+    m = re.search(r'^export const APP_BUILD\s*=\s*"([^"]+)"', app, re.MULTILINE)
     tr = (ROOT / "TRACKER.md").read_text(errors="ignore")
     # TRACKER says "> Last updated: 11 Aug 2026" — parse the day/month/year
     dated = re.search(r"Last updated:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", tr)

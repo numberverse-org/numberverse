@@ -7,7 +7,7 @@ import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
+import { txt, cardPool, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, type CardPool, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-compare")?.difficultyLevels ?? [3, 3, 3, 3, 3, 3];
@@ -55,9 +55,13 @@ export class CompareScene extends Phaser.Scene {
   private adj!: AdjDegrees;
   private item!: { e: string; noun: string };
   private superlative = false;
-  private tiles: { sprite: Phaser.GameObjects.Container; val: string }[] = [];
+  /** #1324 — the option-row cards are POOLED (recycled every question) so a
+   *  round makes zero new GameObjects after the pool warms up. */
+  private tiles: Phaser.GameObjects.Container[] = [];
+  private tilePool!: CardPool;
   private pics: Phaser.GameObjects.Text[] = [];
   private chips: Phaser.GameObjects.Container[] = [];
+  private chipPool!: CardPool;
   private chipVals: string[] = [];
   private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
   private background!: Phaser.GameObjects.Graphics;
@@ -84,6 +88,10 @@ export class CompareScene extends Phaser.Scene {
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
     this.prompt.set(t("cmPrompt"));
+    // #1324 — one pool per fixed geometry (option row + rule-strip chips). The
+    // pool grows to the row's high-water mark, then recycles forever.
+    this.tilePool = cardPool(this, CARD_W, CARD_H, BTN_NEUTRAL, 30);
+    this.chipPool = cardPool(this, 96, 48, BTN_NEUTRAL, 22);
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
     this.layout();
     this.startRound();
@@ -117,11 +125,11 @@ export class CompareScene extends Phaser.Scene {
   }
 
   private buildStrip() {
-    this.chips.forEach((c) => c.destroy());
+    this.chipPool.releaseAll(this.chips);
     this.chips = [];
     this.chipVals = [this.adj.p, this.adj.c, this.adj.s];
     this.chipVals.forEach((val, i) => {
-      const chip = modernCardButton(this, 0, 0, 96, 48, val, BTN_NEUTRAL, 22);
+      const chip = this.chipPool.claim(val, 0, 0, 96, 48);
       chip.disableInteractive();
       this.chips.push(chip);
       // pulse + speak each chip in order — the rule demo
@@ -171,9 +179,16 @@ export class CompareScene extends Phaser.Scene {
       cardH: CARD_H,
     });
     bank.forEach((val, i) => {
-      const tile = modernCardButton(this, gl.startX + i * gl.spacingX, gl.cy, gl.cardW, gl.cardH, val, BTN_NEUTRAL, 30);
-      tile.on("pointerdown", () => this.tap(tile, val));
-      this.tiles.push({ sprite: tile, val });
+      // #1324 — claim a pooled card (same geometry CARD_W × CARD_H): the tap
+      // handler is bound ONCE per container and reads the current value from
+      // container data, so no listener churn across questions either.
+      const tile = this.tilePool.claim(val, gl.startX + i * gl.spacingX, gl.cy, gl.cardW, gl.cardH);
+      tile.setData("nv-val", val);
+      if (!tile.getData("nv-tile-bound")) {
+        tile.setData("nv-tile-bound", true);
+        tile.on("pointerdown", () => this.tap(tile, tile.getData("nv-val") as string));
+      }
+      this.tiles.push(tile);
     });
     if (isNewAdj || demoFirst) this.buildStrip();
     this.time.delayedCall(350, () => speak(correct, { lang: "en" }));
@@ -201,7 +216,8 @@ export class CompareScene extends Phaser.Scene {
       hint: () => "Two things → -er, three things → -est!",
       hintBn: () => "দুই জিনিস → -er, তিন জিনিস → -est!",
       correct: () => correct,
-      options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.val })),
+      options: () =>
+        this.tiles.filter((tile) => tile !== container).map((tile) => ({ sprite: tile, value: tile.getData("nv-val") as string })),
     });
     this.time.delayedCall(500, () => speak(correct, { lang: "en" }));
   }
@@ -228,7 +244,9 @@ export class CompareScene extends Phaser.Scene {
   }
 
   private clearTiles() {
-    this.tiles.forEach((o) => o.sprite.destroy());
+    // #1324 — release back to the pool (hidden + non-interactive) instead of
+    // destroying: the next question reuses these exact containers.
+    this.tilePool.releaseAll(this.tiles);
     this.tiles = [];
   }
 }

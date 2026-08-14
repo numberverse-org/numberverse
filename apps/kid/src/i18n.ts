@@ -603,6 +603,12 @@ export interface Strings {
   voiceNeuralLoading: (pct: number) => string;
   voiceNeuralError: string;
   voiceNeuralIdle: string;
+  /* #1318 — retry after a failed model download (visible button + honest text) */
+  voiceRetry: string;
+  voiceDlFailed: string;
+  /* #1319 — honest "no Bangla voice yet" line (device TTS exists but only for
+     English → Bangla lines are dropped until the on-device voice lands) */
+  settingsVoiceNoBn: string;
   voiceCacheHit: (pct: number) => string;
   /* Bangla voice picker (choose among the model's 16 speakers) */
   voicePickTitle: string;
@@ -1323,6 +1329,9 @@ export const STR: Record<Lang, Strings> = {
     voiceNeuralLoading: (pct) => `On-device Bangla neural voice downloading… ${pct}%`,
     voiceNeuralError: "Neural voice unavailable — Bangla falls back to the device voice.",
     voiceNeuralIdle: "On-device Bangla neural voice downloads on first use (once, then offline forever).",
+    voiceRetry: "Try again",
+    voiceDlFailed: "The Bangla voice download didn't finish — tap to try again, or the device voice reads meanwhile.",
+    settingsVoiceNoBn: "No Bangla voice on this device yet — the on-device voice downloads on first use.",
     voiceCacheHit: (pct) => `🎙️ Voice cache: ${pct}% of lines instant (on-device, offline)`,
     voicePickTitle: "🎙️ Bangla voice",
     voicePickHint: "Pick who reads Bangla — all on-device, same on every device.",
@@ -2041,6 +2050,9 @@ export const STR: Record<Lang, Strings> = {
     voiceNeuralLoading: (pct) => `ডিভাইসে বাংলা নিউরাল ভয়েস ডাউনলোড হচ্ছে… ${pct}%`,
     voiceNeuralError: "নিউরাল ভয়েস পাওয়া যায়নি — বাংলা ডিভাইসের ভয়েসে পড়ে।",
     voiceNeuralIdle: "ডিভাইসে বাংলা নিউরাল ভয়েস প্রথম ব্যবহারে ডাউনলোড হয় (একবার, তারপর চিরকাল অফলাইন)।",
+    voiceRetry: "আবার চেষ্টা করো",
+    voiceDlFailed: "বাংলা ভয়েস ডাউনলোড শেষ হয়নি — আবার চেষ্টা করতে ট্যাপ করো, না হলে ডিভাইসের ভয়েস পড়বে।",
+    settingsVoiceNoBn: "এই ডিভাইসে এখনো বাংলা ভয়েস নেই — প্রথম ব্যবহারে ডিভাইসের বাংলা ভয়েস ডাউনলোড হয়।",
     voiceCacheHit: (pct) => `🎙️ ভয়েস ক্যাশ: ${pct}% লাইন তাৎক্ষণিক (ডিভাইসে, অফলাইনে)`,
     voicePickTitle: "🎙️ বাংলা ভয়েস",
     voicePickHint: "বাংলা পড়বে কে বাছো — সব ডিভাইসে একই, সব অফলাইন।",

@@ -9,6 +9,7 @@
  * type is erased at build time, so zero runtime Phaser bytes land here).
  */
 import type { Game } from "phaser";
+import { startPerfProbe, stopPerfProbe } from "./perfProbe"; // #1324 — frame-jank measuring stick
 
 let bootPromise: Promise<Game | null> | null = null;
 let current: Game | null = null;
@@ -31,6 +32,7 @@ export function boot(parent: HTMLElement): Promise<Game | null> {
         if (gen !== generation) return null; // torn down mid-load → never create
         const g = m.createGame(parent);
         current = g;
+        startPerfProbe(); // #1324 — only when ?nvperf=1 (or __NV_PERF_ENABLED__)
         return g;
       })
       .catch((e) => {
@@ -60,4 +62,5 @@ export function teardown(): void {
   current = null;
   bootPromise = null;
   g?.destroy(true);
+  stopPerfProbe(); // #1324 — log the session summary (no-op unless ?nvperf=1)
 }

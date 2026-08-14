@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { speak, speechStatus } from "../game/speech";
-import { getNeuralSpeaker, setNeuralSpeaker, NEURAL_VOICES, neuralSpeak } from "../game/neuralVoice";
+import { getNeuralSpeaker, setNeuralSpeaker, NEURAL_VOICES, neuralSpeak, retryNeuralVoice } from "../game/neuralVoice";
 import type { Strings } from "../i18n";
 
 export default function VoiceCheck({ t }: { t: Strings }) {
@@ -33,6 +33,19 @@ export default function VoiceCheck({ t }: { t: Strings }) {
       ) : (
         <div className="voice-body">
           <p className="voice-line">{st.neural.supported ? (neuralLine ?? null) : null}</p>
+          {st.neural.state === "error" && (
+            // #1318 — retry the failed model download right here (a fresh
+            // worker is created; cached files are reused, so this is cheap).
+            <button
+              className="ghost-btn mini voice-test-btn"
+              onClick={() => {
+                retryNeuralVoice();
+                setSt(speechStatus());
+              }}
+            >
+              ↻ {t.voiceRetry}
+            </button>
+          )}
           {st.neural.ready && st.neural.cache && st.neural.cache.hits + st.neural.cache.misses > 0 ? (
             <p className="voice-line">{t.voiceCacheHit(Math.round(st.neural.cache.hitRate * 100))}</p>
           ) : null}

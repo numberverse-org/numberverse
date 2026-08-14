@@ -406,6 +406,71 @@ export function wrapPrompt(scene: Phaser.Scene, t: Phaser.GameObjects.Text, pad 
   t.setAlign("center");
 }
 
+/* ─────────────────────── #1324 — card pooling (GC churn) ───────────────────────
+ * Round-based scenes destroy + re-create their option cards every question
+ * (~1s apart) — a steady stream of small allocations that shows up as frame
+ * jank on low-end phones. cardPool() keeps a fixed pool of modernCardButton
+ * containers and RECYCLES them: claim() re-labels + repositions + re-enables,
+ * release() hides + disables. The pool grows only to the row's high-water
+ * mark, then stops allocating entirely — steady-state rounds make ZERO new
+ * GameObjects. The texture (cardFaceTex) was already cached; this kills the
+ * per-round object churn that remained. */
+
+export interface CardPool {
+  /** Claim a card for a new option (reuses a pooled one, or grows the pool). */
+  claim(label: string, x: number, y: number, w: number, h: number, style?: BtnStyle, labelSize?: number): Phaser.GameObjects.Container;
+  /** Return a card to the pool (hidden + non-interactive, ready for reuse). */
+  release(c: Phaser.GameObjects.Container): void;
+  /** Release a whole row of cards at once. */
+  releaseAll(cards: Phaser.GameObjects.Container[]): void;
+}
+
+export function cardPool(
+  scene: Phaser.Scene,
+  w: number,
+  h: number,
+  style: BtnStyle = BTN_NEUTRAL,
+  labelSize = 30
+): CardPool {
+  const free: Phaser.GameObjects.Container[] = [];
+  const grow = (): Phaser.GameObjects.Container => {
+    const c = modernCardButton(scene, 0, -1000, w, h, "", style, labelSize);
+    c.setData("nv-pooled", true);
+    c.setVisible(false).disableInteractive();
+    free.push(c);
+    return c;
+  };
+  return {
+    claim(label, x, y, ww = w, hh = h, s = style, ls = labelSize) {
+      const c = free.pop() ?? grow();
+      const api = c.getData("nv-btn") as ModernBtnApi | undefined;
+      // Same pool geometry → just relabel; a caller with a different w/h/style
+      // should build its own pool (keeps this path allocation-free).
+      api?.setLabel(label);
+      if (ww !== w || hh !== h || s !== style || ls !== labelSize) {
+        c.destroy();
+        return modernCardButton(scene, x, y, ww, hh, label, s, ls);
+      }
+      c.setPosition(x, y);
+      c.setVisible(true);
+      c.setInteractive({ useHandCursor: true });
+      return c;
+    },
+    release(c) {
+      if (c.getData("nv-pooled")) {
+        c.disableInteractive();
+        c.setVisible(false);
+        free.push(c);
+      } else {
+        c.destroy();
+      }
+    },
+    releaseAll(cards) {
+      for (const c of cards) this.release(c);
+    },
+  };
+}
+
 /* ─────────────────────────── round-progress meter ─────────────────────────── */
 
 export interface RoundMeterApi {

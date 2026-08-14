@@ -877,6 +877,16 @@ function bootPreload() {
   else window.setTimeout(kick, 1000);
 }
 
+/** #1318 — explicit RETRY after a failed download. failNeural() already reset
+ *  `preloadStarted`, so this is the honest name for the same re-arm: a fresh
+ *  worker is created and the big files re-download (any file already in memory
+ *  OR in the nv-voice runtime cache is reused — a flaky-Wi-Fi retry is cheap).
+ *  Callable from the home/settings/parent retry buttons; the caller then
+ *  re-snapshots speechStatus() so the UI watches the download land. */
+export function retryNeuralVoice(): void {
+  preloadNeuralVoice();
+}
+
 /** Bangla words 0–20 — MUST mirror `bnNumber()` in speech.ts (the game speaks
  *  counting via those exact strings, so the cache keys align). Kept local here
  *  to avoid a circular import; if bnNumber changes, update this table too. */

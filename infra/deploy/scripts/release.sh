@@ -39,15 +39,18 @@ python3 - "$TODAY" "$VERSION" "$SUMMARY" <<'PY'
 import re, sys
 today, version, summary = sys.argv[1], sys.argv[2], sys.argv[3]
 # #1321 — the stamp lives in version.ts (the update banner + parent footer both
-# read it); grep that file, NOT App.tsx.
+# read it); grep that file, NOT App.tsx. The regexes LINE-ANCHOR on `^export`
+# (re.MULTILINE) so a stray `const APP_BUILD = "…"` in the doc comment can
+# never absorb the stamp (that happened once on 0.45.1 — the build string got
+# baked into the comment).
 app = "apps/kid/src/version.ts"
 s = open(app, encoding="utf-8").read()
-s = re.sub(r'const APP_BUILD = "[^"]*"', f'const APP_BUILD = "{today} · {version} ({summary})"', s)
+s = re.sub(r'^export const APP_BUILD = "[^"]*"', f'export const APP_BUILD = "{today} · {version} ({summary})"', s, flags=re.MULTILINE)
 # True SEMVER — the release version IS the semver, used verbatim (0.MAJOR.MINOR.PATCH).
 semver = version
-if not re.search(r"const APP_VERSION = ", s):
-    s = s.replace('const APP_BUILD = ', f'const APP_VERSION = "{semver}";\n', 1)
-s = re.sub(r'const APP_VERSION = "[^"]*"', f'const APP_VERSION = "{semver}"', s)
+if not re.search(r"^export const APP_VERSION = ", s, flags=re.MULTILINE):
+    s = s.replace('export const APP_BUILD = ', f'export const APP_VERSION = "{semver}";\n', 1)
+s = re.sub(r'^export const APP_VERSION = "[^"]*"', f'export const APP_VERSION = "{semver}"', s, flags=re.MULTILINE)
 open(app, "w", encoding="utf-8").write(s)
 tr = "TRACKER.md"
 t = open(tr, encoding="utf-8").read()
@@ -76,7 +79,10 @@ echo "  ✓ CHANGELOG.md prepended ($RANGE)"
 
 echo "── 4/6 Commit + tag ────────────────────────────"
 echo "$VERSION" > docs/LATEST_RELEASE.md   # arms the 24/7 release train after this release
-git add apps/kid/src/App.tsx TRACKER.md CHANGELOG.md docs/LATEST_RELEASE.md
+# #1321 — the stamp lives in version.ts (single source shared by boot + App),
+# so the release commit MUST include it, not App.tsx. App.tsx imports ./version
+# and needs no stamp edits of its own.
+git add apps/kid/src/version.ts TRACKER.md CHANGELOG.md docs/LATEST_RELEASE.md
 git commit -q -m "chore: $VERSION release — $SUMMARY"
 git tag -a "$VERSION" -m "$VERSION — $SUMMARY"
 echo "  ✓ committed + tagged $VERSION (release train armed)"

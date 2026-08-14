@@ -32,7 +32,7 @@ import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady 
 import { wrongLedger } from "./game/wrongLedger";
 import { emptyGarden, gardenSummary } from "./game/garden";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
-import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, NEURAL_VOICES } from "./game/neuralVoice";
+import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, retryNeuralVoice, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
 import { startRecording, stopRecording } from "./game/voiceRecorder";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
@@ -317,6 +317,12 @@ export default function App() {
     const iv = window.setInterval(() => setNeural(speechStatus().neural), 1500);
     return () => window.clearInterval(iv);
   }, [neural.ready, neural.state]);
+  // #1318 — visible Retry after a failed model download: re-arms the preload
+  // and re-snapshots the status so the poll above watches the download again.
+  const retryNeural = useCallback(() => {
+    retryNeuralVoice();
+    setNeural(speechStatus().neural);
+  }, []);
   // Brief "🎙️ voice ready ✓" flash the moment the download lands (then it's
   // cached offline forever — no permanent kid-facing noise).
   const [neuralFlash, setNeuralFlash] = useState(false);
@@ -2328,6 +2334,7 @@ export default function App() {
       tourStep={tourStep}
       projector={projector}
       neural={neural}
+      onRetryNeural={retryNeural}
       tts={tts}
       installEvt={installEvt}
       swActive={swActive}
@@ -2415,9 +2422,11 @@ export default function App() {
       : tts && tts.available
         ? tts.bnPick
           ? t.settingsVoiceOk(tts.bnPick)
-          : tts.enPick
-            ? t.settingsVoiceOk(tts.enPick)
-            : t.settingsVoiceNone
+          : lang === "bn"
+            ? t.settingsVoiceNoBn // #1319 — device has only an English voice: Bangla is dropped (#387) until the on-device voice lands — don't claim "Voice ready".
+            : tts.enPick
+              ? t.settingsVoiceOk(tts.enPick)
+              : t.settingsVoiceNone
         : t.settingsVoiceNone;
     // Parent controls land on this screen as immutable rules: when the parent
     // switched reading/music off for this profile, the kid sees WHY the
@@ -2503,6 +2512,16 @@ export default function App() {
                   <p className="settings-voice-status">{voiceLine}</p>
                   {neural.state === "loading" && !neuralOn && (
                     <p className="settings-voice-note">{t.settingsVoiceDownload(Math.round(neural.progress * 100))}</p>
+                  )}
+                  {neural.state === "error" && !neuralOn && (
+                    // #1318 — a failed model download shows the honest message
+                    // + a visible Retry (the voice silently fell back before).
+                    <div className="settings-voice-error">
+                      <p className="settings-voice-note warn">⚠️ {t.voiceDlFailed}</p>
+                      <button className="ghost-btn mini" onClick={retryNeural}>
+                        {t.voiceRetry}
+                      </button>
+                    </div>
                   )}
                   <button
                     className="ghost-btn mini voice-test-btn"
