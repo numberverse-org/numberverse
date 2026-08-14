@@ -1,8 +1,9 @@
+import json
 import uuid
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field, field_validator
 
 
 # #696 — the kid app times rounds with Phaser's high-res clock, so a serialized
@@ -241,7 +242,9 @@ class WeeklyOut(BaseModel):
 
 
 class ProgressBatchIn(BaseModel):
-    events: list[ProgressEventIn]
+    # #833 — cap the batch so record_progress can't be used as a bulk-row/
+    # mastery-lookup amplifier. 200 is far above the documented ~40-per-sync.
+    events: list[ProgressEventIn] = Field(max_length=200)
     # #9 — multi-device sync: the client's current coin balance per kid
     # ("<kid_id>": int). The server keeps the max ever reported (newest-wins),
     # so a kid's Nova wallet follows them across devices.
@@ -260,6 +263,12 @@ class KidSnapshotOut(BaseModel):
 
 
 # ── Kotha (কথা) — RAG knowledge lake ──
+# #835 — hard ceiling for one story's context envelope (~16 KiB). It is far
+# above real learning-moment payloads while still stopping JSONB-storage and
+# recursive-scrub abuse before the handler walks it.
+CONTEXT_MAX_BYTES = 16 * 1024
+
+
 class LearningStoryIn(BaseModel):
     kid_id: uuid.UUID
     skill_id: str
@@ -275,6 +284,25 @@ class LearningStoryIn(BaseModel):
     response_ms: RoundedInt = None
     wrong_streak: RoundedInt = None
     context: dict = Field(default_factory=dict)
+
+    @field_validator("context")
+    @classmethod
+    def _context_byte_budget(cls, v: dict) -> dict:
+        """#835 — the context envelope is stored as JSONB and walked recursively
+        by scrub.redact_context before insert. Bound its serialized size up front
+        so a giant/deep envelope fails validation (422) instead of becoming a
+        storage + CPU abuse surface."""
+        if not v:
+            return v
+        try:
+            size = len(json.dumps(v, separators=(",", ":"), default=str))
+        except (TypeError, ValueError, RecursionError):
+            # Non-JSON-serializable or absurdly deep shapes would fail at JSONB
+            # insert anyway; reject cleanly here.
+            raise ValueError("context must be JSON-serializable") from None
+        if size > CONTEXT_MAX_BYTES:
+            raise ValueError(f"context too large (max {CONTEXT_MAX_BYTES} bytes)")
+        return v
 
 
 class LearningStoryOut(BaseModel):

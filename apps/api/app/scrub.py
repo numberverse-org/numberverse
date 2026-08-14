@@ -36,6 +36,11 @@ _MAC = re.compile(r"\b(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\b")
 
 REDACTION = "[REDACTED]"
 
+# #835 — a story context envelope is small; unbounded nesting is adversarial.
+# Stop recursing past this depth so redact_context can't be used as a CPU sink.
+MAX_CONTEXT_DEPTH = 20
+CONTEXT_TRUNCATED = "[CONTEXT_TRUNCATED]"
+
 
 def redact_text(s: str) -> str:
     """Return `s` with every PII-shaped token replaced. Idempotent."""
@@ -50,23 +55,32 @@ def redact_text(s: str) -> str:
     return out
 
 
-def redact_context(ctx: dict[str, Any] | None) -> dict[str, Any] | None:
+def redact_context(
+    ctx: dict[str, Any] | None,
+    max_depth: int = MAX_CONTEXT_DEPTH,
+) -> dict[str, Any] | None:
     """Deep-redact a story context envelope before storage (#270).
 
     Walks nested dicts/lists and rewrites string leaves; every other type is
-    kept as-is. Never mutates the caller's dict."""
+    kept as-is. Never mutates the caller's dict.
+
+    #835 — recursion is capped at `max_depth`; any deeper subtree is replaced
+    with a truncation marker so an adversarially nested envelope can't burn CPU.
+    """
     if ctx is None:
         return None
 
-    def walk(v: Any) -> Any:
+    def walk(v: Any, depth: int = 0) -> Any:
         if isinstance(v, str):
             return redact_text(v)
+        if depth >= max_depth:
+            return CONTEXT_TRUNCATED
         if isinstance(v, dict):
-            return {k: walk(x) for k, x in v.items()}
+            return {k: walk(x, depth + 1) for k, x in v.items()}
         if isinstance(v, list):
-            return [walk(x) for x in v]
+            return [walk(x, depth + 1) for x in v]
         if isinstance(v, tuple):
-            return tuple(walk(x) for x in v)
+            return tuple(walk(x, depth + 1) for x in v)
         return v
 
     return walk(ctx)
