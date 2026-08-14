@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.6 (⚡ #1122 journey: cache journeyStops + memoized journey derivations — no catalog re-filter per render)
+
+bbef1b8 ⚡ #1122 journey: cache journeyStops list + memoize render-site derivations
+
 ## 14 Aug 2026 — 0.53.5 (⚡ worldProgress: per-band unit index — one pass over that band's units (#1121))
 
 1c7242e ⚡ #1121 worldProgress: per-band unit index — one pass over that band's units

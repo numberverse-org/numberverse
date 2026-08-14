@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.53.5 (⚡ worldProgress: per-band unit index — one pass over that band's units (#1121))";
-export const APP_VERSION = "0.53.5";
+export const APP_BUILD = "14 Aug 2026 · 0.53.6 (⚡ #1122 journey: cache journeyStops + memoized journey derivations — no catalog re-filter per render)";
+export const APP_VERSION = "0.53.6";
