@@ -123,6 +123,11 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  /* -- home column system (#1112): primary home blocks sit in a 440px column,
+     content cards are deliberate centered 320px insets inside it. Keeping both
+     widths as tokens makes the gutter relationship explicit + future-proof. -- */
+  --home-col-w: 440px;    /* primary home column (.play-top, .home-hero, …) */
+  --home-card-w: 320px;   /* centered inset card (.quest-chip, .pet-card, …) */
 }
 
 html, body, #root { height: 100%; background-color: #140a3a; }

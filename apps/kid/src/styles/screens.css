@@ -738,7 +738,7 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--home-col-w);
   flex-wrap: wrap; /* last-resort: right cluster wraps instead of overflowing on very narrow phones */
 }
 .kid-chip {
@@ -792,7 +792,7 @@
   color: #3d0a1c;
   box-shadow: 0 9px 0 #b23a3a, 0 18px 36px rgba(255, 159, 67, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.6);
   width: 100%;
-  max-width: 440px;
+  max-width: var(--home-col-w);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
   display: flex;
   flex-direction: column;
@@ -843,7 +843,7 @@
   align-items: center;
   gap: 14px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--home-col-w);
   background: linear-gradient(135deg, rgba(76, 201, 240, 0.16), rgba(46, 196, 182, 0.1));
   border: 1px solid rgba(76, 201, 240, 0.3);
   border-radius: 24px;
@@ -1116,7 +1116,7 @@
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 440px;
+  max-width: var(--home-col-w);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 22px;
@@ -1447,7 +1447,7 @@
   align-items: center;
   gap: 4px;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--home-card-w);
   background: linear-gradient(135deg, rgba(76, 201, 240, 0.18), rgba(46, 196, 182, 0.14));
   border: 1.5px solid rgba(76, 201, 240, 0.4);
   border-radius: 16px;
@@ -1477,7 +1477,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--home-card-w);
   background: linear-gradient(135deg, rgba(255, 209, 102, 0.14), rgba(255, 143, 163, 0.12));
   border: 1.5px solid rgba(255, 209, 102, 0.38);
   border-radius: 16px;
@@ -1554,7 +1554,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--home-card-w);
   background: linear-gradient(135deg, rgba(255, 143, 163, 0.18), rgba(255, 209, 102, 0.16));
   border: 1.5px solid rgba(255, 143, 163, 0.45);
   border-radius: 16px;
@@ -1605,7 +1605,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--home-card-w);
   background: linear-gradient(135deg, rgba(255, 215, 130, 0.2), rgba(196, 181, 253, 0.18));
   border: 1.5px solid rgba(255, 215, 130, 0.5);
   border-radius: 16px;
@@ -1788,7 +1788,7 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--home-card-w);
   background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), rgba(255, 143, 163, 0.12));
   border: 1.5px solid rgba(255, 209, 102, 0.38);
   border-radius: 16px;
