@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.3 (📱 mobile-responsive: kill horizontal overflow, screens no longer scroll sideways)
+
+ad007e6 📱 mobile-responsive: kill horizontal overflow so screens can't scroll sideways
+
 ## 14 Aug 2026 — 0.53.2 (🐛 kill RESIZE layout thrash — coalesce once/frame + size-skip (#1108))
 
 d1cfd99 🐛 #1108 kill RESIZE layout thrash (coalesce once/frame + size-skip)
