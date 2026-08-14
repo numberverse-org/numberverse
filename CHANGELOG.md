@@ -1,3 +1,9 @@
+## 15 Aug 2026 — 0.53.26 (confetti/birthday fall now keyed to container height — no more fixed 108vh/190px overshoot on tall cards (#1098))
+
+8089802 Merge branch 'nv-1098': tie confetti/bday fall to container height (#1098)
+2da4ad2 🎉 kid: tie confetti/bday fall to container height via container queries (#1098)
+f7969dd 🗑 Nova: remove obsolete DOM-owl CSS (230x215 fixed stage) — Phaser NovaScene already scales 0.6→1.22 by viewport (#1096)
+
 ## 15 Aug 2026 — 0.53.25 (play-top: kid chip + right control cluster always share one row — shrink cluster under 400px, cap chip at 52%, nowrap so long names ellipsize instead of wrapping (#1095))
 
 05e03ac 🎨 play-top: single-row guarantee — chip + right cluster never wrap (#1095)
