@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.53.9 (⚡ #1125 startChallenge: per-kid mastery stats cached — no skills scan per tap)
+
+8d1672a ⚡ #1125 startChallenge: per-kid mastery stats folded once per skills ref
+
 ## 14 Aug 2026 — 0.53.8 (⚡ #1124 parent heatmap: mistakes ledger pre-aggregated once (not per panel render))
 
 59db282 ⚡ #1124 parent heatmap: pre-aggregate mistakes ledger once, not per render
