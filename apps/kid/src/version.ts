@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.53.26 (confetti/birthday fall now keyed to container height — no more fixed 108vh/190px overshoot on tall cards (#1098))";
-export const APP_VERSION = "0.53.26";
+export const APP_BUILD = "15 Aug 2026 · 0.53.27 (world-map road + journey spine gutter now scale with --node-gutter clamp(42px,9.5%,54px) so connectors clear badges on wide columns (#1097))";
+export const APP_VERSION = "0.53.27";

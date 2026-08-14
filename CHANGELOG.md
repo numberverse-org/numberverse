@@ -1,3 +1,8 @@
+## 15 Aug 2026 — 0.53.27 (world-map road + journey spine gutter now scale with --node-gutter clamp(42px,9.5%,54px) so connectors clear badges on wide columns (#1097))
+
+efd8661 Merge branch 'nv-1097': scale map/journey route gutter with --node-gutter (#1097)
+3171131 🎨 map/journey: scale route gutter with --node-gutter (#1097)
+
 ## 15 Aug 2026 — 0.53.26 (confetti/birthday fall now keyed to container height — no more fixed 108vh/190px overshoot on tall cards (#1098))
 
 8089802 Merge branch 'nv-1098': tie confetti/bday fall to container height (#1098)
