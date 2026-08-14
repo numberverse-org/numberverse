@@ -23,6 +23,94 @@ for _h in logging.getLogger().handlers:
 install_errorlog()
 log = logging.getLogger("numberverse")
 
+# #836 — abuse guard: FastAPI/Starlette impose no global request-body cap, so a
+# client can POST an arbitrarily large JSON document and force Pydantic to
+# deserialize the whole thing (memory/CPU exhaustion). 1 MiB is far beyond any
+# real Numberverse payload (auth, progress, content metadata, etc.).
+MAX_REQUEST_BODY_BYTES = 1 * 1024 * 1024
+
+
+class RequestBodySizeLimitMiddleware:
+    """Pure-ASGI request-body size guard.
+
+    Rejects Content-Length over budget with an immediate 413, and also counts
+    chunked/unknown-length bodies as they stream in, rejecting once they cross
+    the budget. Dependency-free so it runs before any framework machinery.
+    """
+
+    def __init__(self, app, max_body_bytes: int = MAX_REQUEST_BODY_BYTES):
+        self.app = app
+        self.max_body_bytes = max_body_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        content_length = self._content_length(scope)
+        if content_length is not None and content_length > self.max_body_bytes:
+            await self._send_413(send)
+            return
+
+        state = {"received": 0, "response_started": False, "rejected": False}
+
+        async def limited_receive():
+            if state["rejected"]:
+                return {"type": "http.disconnect"}
+            message = await receive()
+            if message["type"] == "http.request":
+                state["received"] += len(message.get("body", b""))
+                if state["received"] > self.max_body_bytes:
+                    state["rejected"] = True
+                    if not state["response_started"]:
+                        await self._send_413(send)
+                    # Stop the downstream app from consuming the rest of the
+                    # oversized stream; it would just waste CPU/network.
+                    return {"type": "http.disconnect"}
+            return message
+
+        async def limited_send(message):
+            if message["type"] == "http.response.start":
+                state["response_started"] = True
+            if state["rejected"]:
+                return
+            await send(message)
+
+        try:
+            await self.app(scope, limited_receive, limited_send)
+        except Exception:
+            # Once we've already emitted 413, swallowing downstream errors is
+            # intentional — we are closing the exchange early.
+            if state["rejected"]:
+                return
+            raise
+
+    @staticmethod
+    def _content_length(scope):
+        lengths = []
+        for name, value in scope.get("headers", []):
+            if name.lower() != b"content-length":
+                continue
+            try:
+                lengths.append(int(value.decode("latin-1").strip()))
+            except (ValueError, UnicodeDecodeError):
+                continue
+        return max(lengths) if lengths else None
+
+    async def _send_413(self, send):
+        body = b'{"detail":"Request body too large"}'
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
+
 
 async def _embed_loop():
     """📚 KOTHA background embed job (#329) — runs on schedule, never crashes.
@@ -76,6 +164,9 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Range", "X-Total-Count"],
 )
+
+# Must be outermost so oversized bodies are rejected before CORS/framework work.
+app.add_middleware(RequestBodySizeLimitMiddleware)
 
 app.include_router(auth.router)
 app.include_router(kids.router)
