@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import {
   observe,
   decay,
@@ -224,6 +224,17 @@ export function speciesEmoji(speciesId: string, stage: number): string {
  *  triggers an eager drain — it never deletes: stories are only removed by
  *  `clearStories` AFTER the server confirms them (no data loss before drain). */
 export const STORY_QUEUE_CAP = 300;
+
+/** 📚 KOTHA OFFLINE CEILING (#1229) — STORY_QUEUE_CAP triggers an eager DRAIN,
+ *  but if the drain can't run (offline / server down) the persisted array would
+ *  grow without bound, ballooning the localStorage blob that every persist
+ *  serializes. Past this HARD ceiling no NEW entries are queued for any of the
+ *  three outboxes (stories / pending / accel): the already-queued ones stay
+ *  intact and drain first-in-first-out the moment we're online. 2× the drain cap
+ *  — normal online play never notices it; only a long offline stretch is
+ *  affected, and the latest learning still lands in mistakes/moni (the
+ *  interactive store) — only the downstream Kotha/progress mirror pauses. */
+export const STORY_HARD_CAP = 600;
 
 export interface NovaState {
   coins: number;
@@ -497,6 +508,68 @@ interface KidState {
 
 const keyOf = (kidId: string, skillId: string) => `${kidId}:${skillId}`;
 
+/** #1227 — debounce the persist write.
+ *  zustand's persist calls storage.setItem on EVERY set(): a full JSON.stringify
+ *  of the entire persisted blob (skills + mistakes + stats + nova + garden +
+ *  pending + stories + accel + moni…) + a synchronous localStorage.write — all on
+ *  the main thread. A single played round fires several set()s back-to-back
+ *  (addEvent, recordWrong, novaAwardRound…), each blocking ~10–70ms.
+ *
+ *  We wrap createJSONStorage's setItem in a TRAILING-EDGE 150ms debounce that
+ *  coalesces rapid state churn (wrong taps, round rewards, combo resets) into ONE
+ *  write of the LATEST snapshot. Both the stringify AND the localStorage write
+ *  run inside the flushed call — the hot path only does the cheap in-memory set().
+ *
+ *  Flush guarantee: pagehide/beforeunload flush synchronously, so a normal tab
+ *  close never loses the trailing snapshot. Worst case (aggressive OS kill) loses
+ *  <150ms of state — an acceptable trade for removing per-set main-thread jank. */
+function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
+  const base = createJSONStorage<S>(() => localStorage);
+  if (!base) return undefined;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let pending: { name: string; value: { state: S; version?: number } } | null = null;
+  const write = () => {
+    if (!pending) return;
+    const p = pending;
+    pending = null;
+    try {
+      base.setItem(p.name, p.value);
+    } catch {
+      /* storage full / unavailable — the next set() re-queues */
+    }
+  };
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    write();
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+  }
+  return {
+    getItem: (name) => base.getItem(name),
+    setItem: (name, value) => {
+      pending = { name, value };
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        write();
+      }, 150);
+    },
+    removeItem: (name) => {
+      pending = null;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      base.removeItem(name);
+    },
+  };
+}
+
 /**
  * Local-first adaptive store (P2):
  * - Each answer runs the BKT-lite observe() from core (with spaced-repetition decay).
@@ -555,29 +628,38 @@ export const useKidStore = create<KidState>()(
           const mNext: MistakeState = e.correct
             ? { ...mNorm, open: 0 }
             : { ...mNorm, wrong: mNorm.wrong + 1, open: mNorm.open + 1, lastAt: now, lastDifficulty: e.difficulty };
+          // #1229 — offline ceiling: past STORY_HARD_CAP we stop queueing NEW
+          // entries (already-queued ones drain first-in-first-out when online).
+          const pending = s.pending ?? [];
+          const stories = s.stories ?? [];
+          const nextPending =
+            pending.length >= STORY_HARD_CAP ? pending : [...pending, { uid: genUid(), kidId, ...e, ts: now }];
           return {
             events: [...s.events, e],
             // durable outbox — survives reloads; the sync drains it online
-            pending: [...s.pending, { uid: genUid(), kidId, ...e, ts: now }],
+            pending: nextPending,
             // durable Kotha outbox — the story of this learning moment
-            stories: [
-              ...(s.stories ?? []),
-              {
-                uid: genUid(),
-                kidId,
-                skillId: e.skillId,
-                gameId: e.gameId,
-                outcome: e.correct,
-                errorKind: e.correct ? null : diag.kind,
-                misconceptionCode: mis?.code ?? null,
-                action: diag.action.type,
-                difficulty: e.difficulty,
-                responseMs: e.responseMs,
-                wrongStreak,
-                context: { reason: diag.reason, message: diag.action.message },
-                ts: now,
-              },
-            ],
+            stories:
+              stories.length >= STORY_HARD_CAP
+                ? stories
+                : [
+                    ...stories,
+                    {
+                      uid: genUid(),
+                      kidId,
+                      skillId: e.skillId,
+                      gameId: e.gameId,
+                      outcome: e.correct,
+                      errorKind: e.correct ? null : diag.kind,
+                      misconceptionCode: mis?.code ?? null,
+                      action: diag.action.type,
+                      difficulty: e.difficulty,
+                      responseMs: e.responseMs,
+                      wrongStreak,
+                      context: { reason: diag.reason, message: diag.action.message },
+                      ts: now,
+                    },
+                  ],
             score: s.score + (e.correct ? e.difficulty : 0),
             stars: s.stars + (e.correct ? 1 : 0),
             skills: { ...s.skills, [mk]: updated },
@@ -632,6 +714,45 @@ export const useKidStore = create<KidState>()(
         set((s) => {
           const m = s.mistakes[mk] ?? initialMistake(now, difficulty);
           const day = todayIso();
+          // #89 — carry the CORRECT answer too so the parent panel can show
+          // "picked X → answer Y" (the exact question's two sides) from the
+          // same offline story ledger — no extra fetch, no schema change.
+          const story = {
+            uid: genUid(),
+            kidId,
+            skillId,
+            gameId,
+            outcome: false,
+            errorKind: diag.kind,
+            misconceptionCode: misCode,
+            action: diag.action.type,
+            difficulty,
+            responseMs: 0,
+            wrongStreak,
+            context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null, correctAnswer: typeof correct === "number" ? correct : null },
+            ts: now,
+          } as KothaStory;
+          // #1228 — coalesce a wrong-tap BURST: consecutive wrongs on the SAME
+          // skill within 5s are one learning moment, not N stories. The keypad
+          // mash becomes a single story whose wrongStreak/answers/latest
+          // diagnosis keep updating — the array doesn't grow per tap (the
+          // hottest drill-scene path).
+          const stories = s.stories ?? [];
+          const last = stories[stories.length - 1];
+          const sameBurst =
+            last != null &&
+            last.outcome === false &&
+            last.context?.source === "wrong-tap" &&
+            last.kidId === kidId &&
+            last.skillId === skillId &&
+            typeof last.ts === "number" &&
+            now - last.ts <= 5000;
+          const nextStories = sameBurst
+            ? [...stories.slice(0, -1), { ...last, wrongStreak, misconceptionCode: misCode, context: story.context, ts: now }]
+            : // #1229 — offline ceiling: stop queueing NEW stories past the hard cap.
+              stories.length >= STORY_HARD_CAP
+              ? stories
+              : [...stories, story];
           return {
             mistakes: {
               ...(s.mistakes ?? {}),
@@ -646,27 +767,7 @@ export const useKidStore = create<KidState>()(
             },
             moni: { ...(s.moni ?? {}), [kidId]: moniNext },
             moniWrongStreak: { ...(s.moniWrongStreak ?? {}), [mk]: wrongStreak },
-            stories: [
-              ...(s.stories ?? []),
-              {
-                uid: genUid(),
-                kidId,
-                skillId,
-                gameId,
-                outcome: false,
-                errorKind: diag.kind,
-                misconceptionCode: misCode,
-                action: diag.action.type,
-                difficulty,
-                responseMs: 0,
-                wrongStreak,
-                // #89 — carry the CORRECT answer too so the parent panel can show
-                // "picked X → answer Y" (the exact question's two sides) from the
-                // same offline story ledger — no extra fetch, no schema change.
-                context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null, correctAnswer: typeof correct === "number" ? correct : null },
-                ts: now,
-              },
-            ],
+            stories: nextStories,
           };
         });
       },
@@ -697,12 +798,16 @@ export const useKidStore = create<KidState>()(
             lastPractice: now,
             lastDecay: now,
           };
+          // #1229 — offline ceiling: past STORY_HARD_CAP, stop queueing NEW
+          // accel entries (the queued ones drain first-in-first-out when online).
+          const accel = s.accel ?? [];
+          const nextAccel =
+            accel.length >= STORY_HARD_CAP
+              ? accel
+              : [...accel, { uid: genUid(), kidId, skillId, reason, bandFrom, bandTo, ts: now }];
           return {
             skills: { ...s.skills, [mk]: mastered },
-            accel: [
-              ...(s.accel ?? []),
-              { uid: genUid(), kidId, skillId, reason, bandFrom, bandTo, ts: now },
-            ],
+            accel: nextAccel,
           };
         });
       },
@@ -1223,6 +1328,6 @@ export const useKidStore = create<KidState>()(
           return { garden: { ...s.garden, [kidId]: next } };
         }),
     }),
-    { name: "nv_store_v1", partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness }) }
+    { name: "nv_store_v1", storage: debouncedPersistStorage(), partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness }) }
   )
 );

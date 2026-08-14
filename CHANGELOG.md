@@ -1,6 +1,33 @@
-## 14 Aug 2026 — 0.42.0 (💥 Reward fairness: effort pays — coins tier by difficulty, mastery bonus, garden scales, every one of the 130 scenes celebrates)
+## 14 Aug 2026 — 0.42.1 (⚡ Storage-blocking: persist writes debounced 150ms, settings/playtime reads memoized, wrong-tap stories coalesced, outboxes hard-capped)
 
-24b1949 💥 #1187 #1188 #1190 #1061 #1062 #1067 #1197 #1198 #1206: reward fairness — effort pays
+⚡ #1227 #1230 #1228 #1229: storage-blocking — no more per-set full-state stringify, no per-render re-parse, bounded outboxes
+
+## 14 Aug 2026 — 0.42.1 (⚡ Storage-blocking: persist writes debounced 150ms, settings/playtime reads memoized, wrong-tap stories coalesced, outboxes hard-capped)
+
+The v36 storage-blocking cluster — the kid app's hot path no longer pays a full
+JSON.stringify + localStorage write on EVERY action, and the persisted blobs stay
+bounded no matter how long a kid plays offline:
+
+- **#1227 debounced persist** — the zustand persist config now uses a custom
+  `storage` adapter that wraps `createJSONStorage` with a TRAILING-EDGE 150ms
+  debounce. N rapid actions (round + wrong taps + coin award…) coalesce into ONE
+  write of the LATEST snapshot; both the stringify AND the localStorage write
+  happen in the flushed call. `pagehide`/`beforeunload` flush synchronously, so a
+  normal tab close never loses the trailing snapshot.
+- **#1230 memoized sync reads** — `cachedKidSettings` and `todayMinutes` (the
+  first-paint / daily-limit render-path reads) used to `JSON.parse(localStorage)`
+  on EVERY call. They now read a module-level in-memory cache that's parsed once
+  and kept fresh on the explicit write path (`fetchKidSettings` /
+  `addTodayMinutes`).
+- **#1228 wrong-tap burst coalescing** — `recordWrong` (the hottest drill-scene
+  path) no longer appends a Kotha story per tap: consecutive wrongs on the SAME
+  skill within 5s collapse into ONE story whose wrongStreak / wrong+correct
+  answers / latest diagnosis keep updating. A keypad mash = one story, not dozens.
+- **#1229 bounded outboxes** — stories/pending/accel only shrank on server
+  confirm (STORY_QUEUE_CAP just triggered a drain). Now a hard offline ceiling
+  `STORY_HARD_CAP` (600 = 2× the drain cap) stops queueing NEW entries past it:
+  the already-queued ones stay intact and drain FIFO the moment we're online; the
+  latest learning still lands in mistakes/moni. The persisted blob can't balloon.
 
 ## 14 Aug 2026 — 0.42.0 (💥 Reward fairness: effort pays — coins tier by difficulty, mastery bonus, garden scales, every one of the 130 scenes celebrates)
 

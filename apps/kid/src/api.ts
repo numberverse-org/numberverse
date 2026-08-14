@@ -900,12 +900,21 @@ export function todayLimitMin(settings: KidSettings): number | null {
 
 const LS_SETTINGS = "nv_kid_settings"; // { localKidId: KidSettings }
 
+// #1230 — in-memory parsed cache. readSettingsCache feeds the FIRST-PAINT render
+// path and used to JSON.parse(localStorage.getItem(...)) on EVERY call, blocking
+// the main thread per render. Now the parse happens once; fetchKidSettings
+// mutates + writes the same cached reference so it stays fresh on the explicit
+// write path. (A multi-tab write won't be seen until reload — fine for a kid app.)
+let settingsCache: Record<string, KidSettings> | null = null;
+
 function readSettingsCache(): Record<string, KidSettings> {
+  if (settingsCache) return settingsCache;
   try {
-    return JSON.parse(localStorage.getItem(LS_SETTINGS) ?? "{}") as Record<string, KidSettings>;
+    settingsCache = JSON.parse(localStorage.getItem(LS_SETTINGS) ?? "{}") as Record<string, KidSettings>;
   } catch {
-    return {};
+    settingsCache = {};
   }
+  return settingsCache;
 }
 
 /** Per-kid parent controls, cached locally so offline play still respects the
@@ -944,19 +953,30 @@ export function cachedKidSettings(kidId: string): KidSettings {
  *  played per date (rolling 7 days) so the parent's limit resets each day. */
 const LS_PLAYTIME = "nv_play_minutes";
 
-export function todayMinutes(): number {
+// #1230 — same memoization as settingsCache: todayMinutes() ran a synchronous
+// JSON.parse(localStorage) on EVERY call (daily-limit gate, per-render). The
+// parsed map now lives in memory; addTodayMinutes mutates the same reference and
+// writes it back, keeping the cache in sync on the explicit write path.
+let playtimeCache: Record<string, number> | null = null;
+
+function readPlaytimeCache(): Record<string, number> {
+  if (playtimeCache) return playtimeCache;
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_PLAYTIME) ?? "{}") as Record<string, number>;
-    return raw[new Date().toISOString().slice(0, 10)] ?? 0;
+    playtimeCache = JSON.parse(localStorage.getItem(LS_PLAYTIME) ?? "{}") as Record<string, number>;
   } catch {
-    return 0;
+    playtimeCache = {};
   }
+  return playtimeCache;
+}
+
+export function todayMinutes(): number {
+  return readPlaytimeCache()[new Date().toISOString().slice(0, 10)] ?? 0;
 }
 
 export function addTodayMinutes(mins: number): number {
   const today = new Date().toISOString().slice(0, 10);
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_PLAYTIME) ?? "{}") as Record<string, number>;
+    const raw = readPlaytimeCache();
     raw[today] = (raw[today] ?? 0) + mins;
     // prune anything older than a week
     const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
