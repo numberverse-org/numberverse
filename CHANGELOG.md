@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.12 (older-kid challenge mode: band 6-7 independent + timed rounds (#1158 #1165 #1166))
+
+771e776 🎯 older-kid challenge mode #1158 #1165 #1166: band 6-7 independent + timed rounds
+
 ## 14 Aug 2026 — 0.42.11 (data-overlap #1167-#1176: per-skill dataLevels ranges + band-pair game reuse fixes)
 
 74edc2a 🎯 #1170 band-pair skills carry own dataLevels range
