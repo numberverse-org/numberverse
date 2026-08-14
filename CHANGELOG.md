@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.50.0 (9 new pet mini-games: Dance, Nova Says, Pet Walk, Egg Hatch, Species Gallery, Dress-up, Pet Birthday, Photo Booth, Sleep & Wake (#598 #603 #607 #608 #609 #610 #613 #615 #616))
+
+f61551d feat(pet): 9 new Nova mini-games — Dance, Nova Says, Pet Walk, Egg Hatch, Species Gallery, Dress-up, Pet Birthday, Photo Booth, Sleep & Wake (#104 #598 #603 #607 #608 #609 #610 #613 #615 #616)
+
 ## 14 Aug 2026 — 0.49.0 (skip-count step ladder +2/+5/+10 per band (#1273))
 
 11f8d86 feat(skip-count): step ladder +2/+5/+10 per band (#1273)

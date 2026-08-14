@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "14 Aug 2026 · 0.49.0 (skip-count step ladder +2/+5/+10 per band (#1273))";
-export const APP_VERSION = "0.49.0";
+export const APP_BUILD = "14 Aug 2026 · 0.50.0 (9 new pet mini-games: Dance, Nova Says, Pet Walk, Egg Hatch, Species Gallery, Dress-up, Pet Birthday, Photo Booth, Sleep & Wake (#598 #603 #607 #608 #609 #610 #613 #615 #616))";
+export const APP_VERSION = "0.50.0";
