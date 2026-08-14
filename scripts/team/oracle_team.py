@@ -38,6 +38,17 @@ NO_PAGE = "--no-page" in sys.argv
 # code/catalog/visual role still runs, so a PR is judged on the actual tree.
 CI_MODE = "--ci" in sys.argv
 BOX_ONLY_ROLES = {"Security Auditor", "Monitoring Watch", "Chronic-Issue Examiner", "Precedent Recorder"}
+
+def kid_css() -> str:
+    """Concatenate ALL app CSS — #1177 split styles.css into styles/*.css (boot
+    + screens), so checks must read across every sheet, not one monolith. Falls
+    back to the legacy single file if the styles/ dir is ever absent."""
+    d = KID / "src" / "styles"
+    if d.is_dir():
+        parts = [f.read_text(errors="ignore") for f in sorted(d.glob("*.css"))]
+        if parts:
+            return "\n".join(parts)
+    return (KID / "src" / "styles.css").read_text(errors="ignore")
 TODAY = date.today().isoformat()
 
 results = []  # {layer, role, name, status, detail}
@@ -273,7 +284,7 @@ def l2_nova_perf():
     # vestibular/WCAG source gates (the runtime a11y checks live in the #690
     # Playwright suite; here we guard the shipped levers they depend on).
     nova = (KID / "src" / "nova3d" / "Nova3D.tsx").read_text(errors="ignore")
-    css = (KID / "src" / "styles.css").read_text(errors="ignore")
+    css = kid_css()
     cam = (KID / "src" / "nova3d" / "camera.tsx").read_text(errors="ignore")
     has_throttle = "lastBurstMs" in nova and "350" in nova          # no flash > 3/s
     has_reduced = "data-motion={reduced ? \"reduced\" : \"full\"}" in nova
@@ -348,7 +359,7 @@ def l4_season():
     src_blob = "\n".join(
         f.read_text(errors="ignore") for f in (KID / "src").rglob("*")
         if f.suffix in (".ts", ".tsx"))
-    css = (KID / "src" / "styles.css").read_text()
+    css = kid_css()
     return ("currentSeason" in src_blob and "season-snow" in css), "season system present"
 
 def l4_feedback():
@@ -526,7 +537,7 @@ def l7_svg_wellformed():
                 if ok else f"emoji({emoji}) < rendered({rendered}) or viewBox missing")
 
 def l7_theme_wiring():
-    css = (KID / "src" / "styles.css").read_text()
+    css = kid_css()
     wired = all(x in css for x in [".map-island", "--c1", "--c2-22", ".world-card"])
     return wired, ("land vars + map/card themed classes wired in styles.css" if wired
                    else "theme wiring incomplete (.map-island/--c1/--c2-22/.world-card)")
