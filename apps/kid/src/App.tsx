@@ -2106,6 +2106,8 @@ export default function App() {
     );
   }
 
+  if (screen === "home" && kid) {
+    return (
     <HomeScreen
       kid={kid}
       lang={lang}
@@ -2174,6 +2176,8 @@ export default function App() {
       goGarden={goGarden}
       goNova={goNova}
     />
+    );
+  }
 
   if (screen === "settings") {
     // 🔐 Kid-facing Settings = KID controls ONLY (sound, screen, language,

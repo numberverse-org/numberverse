@@ -1,4 +1,3 @@
-import { NV_BROWN, NV_COCOA, NV_GOLD, NV_GRAY, NV_GREEN, NV_INK, NV_ORANGE, NV_PINK, NV_SKY } from "../game/ui"; // tokenized #591
 /* ═══════════════════════════════════════════════════════════════════════════
    Numberverse SVG asset library — crisp, consistent vector art that replaces
    OS-dependent emoji. One style: rounded, soft-shadowed "stickers". Every SVG
@@ -26,10 +25,10 @@ const NOVA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 210">
 <defs>
   <filter id="s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#06122a" flood-opacity="0.3"/></filter>
   <linearGradient id="nb" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color=NV_COCOA/><stop offset="0.5" stop-color="#8a5c33"/><stop offset="1" stop-color="#a06a3a"/>
+    <stop offset="0" stop-color="#7a4e2a"/><stop offset="0.5" stop-color="#8a5c33"/><stop offset="1" stop-color="#a06a3a"/>
   </linearGradient>
   <linearGradient id="nw" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0" stop-color="#5a3a20"/><stop offset="0.55" stop-color=NV_COCOA/><stop offset="1" stop-color="#4f331b"/>
+    <stop offset="0" stop-color="#5a3a20"/><stop offset="0.55" stop-color="#7a4e2a"/><stop offset="1" stop-color="#4f331b"/>
   </linearGradient>
   <radialGradient id="ni" cx="0.42" cy="0.38" r="0.78">
     <stop offset="0" stop-color="#ffe37a"/><stop offset="0.5" stop-color="#f4ae3f"/><stop offset="0.85" stop-color="#d8871a"/><stop offset="1" stop-color="#b96b0f"/>
@@ -79,7 +78,7 @@ const NOVA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 210">
   </g>
 <g clip-path="url(#chestclip)">
     <ellipse cx="80" cy="150" rx="30" ry="40" fill="url(#nc)"/>
-    <g fill=NV_COCOA opacity="0.8">
+    <g fill="#7a4e2a" opacity="0.8">
       <path d="M52 116 q14 6 28 0 q-6 3 -14 3 q-9 0 -14 -3 Z"/>
       <path d="M50 126 q15 6 30 0 q-7 3 -15 3 q-9 0 -15 -3 Z"/>
       <path d="M50 136 q15 6 30 0 q-7 3 -15 3 q-9 0 -15 -3 Z"/>
@@ -122,9 +121,9 @@ const NOVA = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 210">
   <path d="M80 100 Q 82 102 80 104 Q 78 102 80 100 Z" fill="#2a2a24"/>
 <g>
     <path d="M48 30 Q 40 12 32 8 Q 40 14 42 26 Q 44 34 48 30 Z" fill="#5a3a20"/>
-    <path d="M54 32 Q 50 14 44 6 Q 52 14 52 28 Z" fill=NV_COCOA/>
+    <path d="M54 32 Q 50 14 44 6 Q 52 14 52 28 Z" fill="#7a4e2a"/>
     <path d="M112 30 Q 120 12 128 8 Q 120 14 118 26 Q 116 34 112 30 Z" fill="#5a3a20"/>
-    <path d="M106 32 Q 110 14 116 6 Q 108 14 108 28 Z" fill=NV_COCOA/>
+    <path d="M106 32 Q 110 14 116 6 Q 108 14 108 28 Z" fill="#7a4e2a"/>
   </g>
 </g>
 </svg>`;
@@ -144,16 +143,16 @@ const AVATARS: Record<string, Asset> = {
       <path d="M50 22 L26 33 L40 88 L50 92 Z" fill="#fdf3dd"/>
       <circle cx="50" cy="52" r="26" fill="#f58a3c"/>
       <circle cx="40" cy="52" r="11" fill="#f58a3c"/><circle cx="60" cy="52" r="11" fill="#f58a3c"/>
-      <circle cx="42" cy="52" r="5" fill=NV_BROWN/><circle cx="58" cy="52" r="5" fill=NV_BROWN/>
-      <path d="M50 62 L56 68 L50 74 L44 68 Z" fill=NV_BROWN/></g>`),
+      <circle cx="42" cy="52" r="5" fill="#3b2418"/><circle cx="58" cy="52" r="5" fill="#3b2418"/>
+      <path d="M50 62 L56 68 L50 74 L44 68 Z" fill="#3b2418"/></g>`),
   },
   panda: {
     emoji: "🐼",
     svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="40" fill="#f4f6f8"/>
-      <circle cx="32" cy="38" r="13" fill=NV_INK/><circle cx="68" cy="38" r="13" fill=NV_INK/>
-      <circle cx="40" cy="54" r="7" fill=NV_INK/><circle cx="60" cy="54" r="7" fill=NV_INK/>
+      <circle cx="32" cy="38" r="13" fill="#3b3b3b"/><circle cx="68" cy="38" r="13" fill="#3b3b3b"/>
+      <circle cx="40" cy="54" r="7" fill="#3b3b3b"/><circle cx="60" cy="54" r="7" fill="#3b3b3b"/>
       <circle cx="42" cy="54" r="2.6" fill="#fff"/><circle cx="58" cy="54" r="2.6" fill="#fff"/>
-      <ellipse cx="50" cy="72" rx="15" ry="11" fill=NV_INK/>
+      <ellipse cx="50" cy="72" rx="15" ry="11" fill="#3b3b3b"/>
       <circle cx="44" cy="70" r="2" fill="#fff"/><circle cx="56" cy="70" r="2" fill="#fff"/></g>`),
   },
   lion: {
@@ -185,10 +184,10 @@ const AVATARS: Record<string, Asset> = {
     emoji: "🐨",
     svg: view(`<g filter="url(#s)"><circle cx="50" cy="52" r="38" fill="#9aa7b0"/>
       <circle cx="30" cy="36" r="15" fill="#6d7a86"/><circle cx="70" cy="36" r="15" fill="#6d7a86"/>
-      <circle cx="42" cy="56" r="7" fill=NV_INK/><circle cx="58" cy="56" r="7" fill=NV_INK/>
+      <circle cx="42" cy="56" r="7" fill="#3b3b3b"/><circle cx="58" cy="56" r="7" fill="#3b3b3b"/>
       <circle cx="44" cy="56" r="2.6" fill="#fff"/><circle cx="56" cy="56" r="2.6" fill="#fff"/>
       <ellipse cx="50" cy="74" rx="14" ry="10" fill="#c2cdd6"/>
-      <ellipse cx="50" cy="74" rx="5" ry="3.5" fill=NV_INK/></g>`),
+      <ellipse cx="50" cy="74" rx="5" ry="3.5" fill="#3b3b3b"/></g>`),
   },
   /* KayKit adventurers — CC0 3D models (Kay Lousberg, kaylousberg.com)
      rendered to transparent sprites. Static PNGs, precached by the PWA. */
@@ -205,7 +204,7 @@ const WORLDS: Record<string, Asset> = {
   "sprout-grove": {
     emoji: "🌱",
     svg: view(`<g filter="url(#s)"><path d="M50 84 C50 60 40 40 24 30 C22 52 30 72 50 84 Z" fill="#2ec4b6"/>
-      <path d="M50 84 C50 64 60 46 76 38 C78 58 70 76 50 84 Z" fill=NV_GREEN/>
+      <path d="M50 84 C50 64 60 46 76 38 C78 58 70 76 50 84 Z" fill="#4ade80"/>
       <rect x="47" y="76" width="6" height="18" rx="3" fill="#8a5a2b"/>
       <path d="M44 90 Q50 96 56 90" stroke="#2ec4b6" stroke-width="3" fill="none" stroke-linecap="round"/></g>`),
   },
@@ -237,9 +236,9 @@ const WORLDS: Record<string, Asset> = {
   "star-academy": {
     emoji: "🚀",
     svg: view(`<g filter="url(#s)"><path d="M50 8 C62 22 66 40 64 58 L36 58 C34 40 38 22 50 8 Z" fill="#c4b5fd"/>
-      <circle cx="50" cy="38" r="8" fill="#5ee6ff" stroke=NV_INK stroke-width="3"/>
-      <path d="M36 58 L64 58 L56 82 L44 82 Z" fill=NV_PINK/>
-      <path d="M44 82 L40 92 L50 84 Z" fill=NV_ORANGE/><path d="M56 82 L60 92 L50 84 Z" fill=NV_ORANGE/>
+      <circle cx="50" cy="38" r="8" fill="#5ee6ff" stroke="#3b3b3b" stroke-width="3"/>
+      <path d="M36 58 L64 58 L56 82 L44 82 Z" fill="#ff8fa3"/>
+      <path d="M44 82 L40 92 L50 84 Z" fill="#ffb35c"/><path d="M56 82 L60 92 L50 84 Z" fill="#ffb35c"/>
       <rect x="48" y="60" width="4" height="14" rx="2" fill="#fff" opacity="0.7"/></g>`),
   },
   "jungle-canopy": {
@@ -304,17 +303,17 @@ const SUBJECTS: Record<string, Asset> = {
 
 const SHAPES: Record<string, Asset> = {
   circle: { emoji: "🔵", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="34" fill="#5fb6e8"/></g>`) },
-  square: { emoji: "🟨", svg: view(`<g filter="url(#s)"><rect x="18" y="18" width="64" height="64" rx="8" fill=NV_GOLD/></g>`) },
+  square: { emoji: "🟨", svg: view(`<g filter="url(#s)"><rect x="18" y="18" width="64" height="64" rx="8" fill="#ffd166"/></g>`) },
   triangle: { emoji: "🔺", svg: view(`<g filter="url(#s)"><path d="M50 16 L86 82 L14 82 Z" fill="#5fad6a"/></g>`) },
-  star: { emoji: "⭐", svg: view(`<g filter="url(#s)"><path d="M50 12 L61 40 L90 41 L67 61 L75 92 L50 74 L25 92 L33 61 L10 41 L39 40 Z" fill=NV_GOLD stroke="#efb419" stroke-width="3"/></g>`) },
+  star: { emoji: "⭐", svg: view(`<g filter="url(#s)"><path d="M50 12 L61 40 L90 41 L67 61 L75 92 L50 74 L25 92 L33 61 L10 41 L39 40 Z" fill="#ffd166" stroke="#efb419" stroke-width="3"/></g>`) },
   diamond: { emoji: "💠", svg: view(`<g filter="url(#s)"><path d="M50 14 L86 50 L50 86 L14 50 Z" fill="#c4b5fd"/><path d="M50 32 L68 50 L50 68 L32 50 Z" fill="#5ee6ff"/></g>`) },
   heart: { emoji: "❤️", svg: view(`<g filter="url(#s)"><path d="M50 88 C24 70 14 52 20 36 C25 22 42 20 50 32 C58 20 75 22 80 36 C86 52 76 70 50 88 Z" fill="#ff6b7a"/></g>`) },
-  ring: { emoji: "⭕", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="32" fill="none" stroke=NV_ORANGE stroke-width="14"/></g>`) },
-  moon: { emoji: "🌙", svg: view(`<g filter="url(#s)"><path d="M58 14 A38 38 0 1 0 86 62 A30 30 0 1 1 58 14 Z" fill=NV_GOLD/></g>`) },
+  ring: { emoji: "⭕", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="32" fill="none" stroke="#ffb35c" stroke-width="14"/></g>`) },
+  moon: { emoji: "🌙", svg: view(`<g filter="url(#s)"><path d="M58 14 A38 38 0 1 0 86 62 A30 30 0 1 1 58 14 Z" fill="#ffd166"/></g>`) },
   egg: { emoji: "🥚", svg: view(`<g filter="url(#s)"><path d="M50 14 C70 22 74 40 70 56 C66 72 58 84 50 84 C42 84 34 72 30 56 C26 40 30 22 50 14 Z" fill="#fdf3dd"/></g>`) },
   arrow: { emoji: "⬆️", svg: view(`<g filter="url(#s)"><path d="M50 10 L78 38 L62 38 L62 84 L38 84 L38 38 L22 38 Z" fill="#5fb6e8"/></g>`) },
-  bolt: { emoji: "⚡", svg: view(`<g filter="url(#s)"><path d="M58 8 L28 56 L46 56 L40 92 L72 42 L52 42 Z" fill=NV_GOLD stroke="#efb419" stroke-width="3"/></g>`) },
-  flower: { emoji: "🌼", svg: view(`<g filter="url(#s)"><circle cx="50" cy="24" r="12" fill=NV_PINK/><circle cx="76" cy="38" r="12" fill=NV_PINK/><circle cx="68" cy="64" r="12" fill=NV_PINK/><circle cx="32" cy="64" r="12" fill=NV_PINK/><circle cx="24" cy="38" r="12" fill=NV_PINK/><circle cx="50" cy="50" r="14" fill=NV_GOLD/></g>`) },
+  bolt: { emoji: "⚡", svg: view(`<g filter="url(#s)"><path d="M58 8 L28 56 L46 56 L40 92 L72 42 L52 42 Z" fill="#ffd166" stroke="#efb419" stroke-width="3"/></g>`) },
+  flower: { emoji: "🌼", svg: view(`<g filter="url(#s)"><circle cx="50" cy="24" r="12" fill="#ff8fa3"/><circle cx="76" cy="38" r="12" fill="#ff8fa3"/><circle cx="68" cy="64" r="12" fill="#ff8fa3"/><circle cx="32" cy="64" r="12" fill="#ff8fa3"/><circle cx="24" cy="38" r="12" fill="#ff8fa3"/><circle cx="50" cy="50" r="14" fill="#ffd166"/></g>`) },
 };
 
 /* ────────────────────────────── animals ────────────────────────────── */
@@ -322,7 +321,7 @@ const SHAPES: Record<string, Asset> = {
 const ANIMALS: Record<string, Asset> = {
   fish: { emoji: "🐟", svg: view(`<g filter="url(#s)"><ellipse cx="44" cy="50" rx="34" ry="20" fill="#5fb6e8"/>
     <path d="M72 50 L92 36 L92 64 Z" fill="#4c96d8"/>
-    <circle cx="30" cy="46" r="4" fill=NV_BROWN/><circle cx="31" cy="45" r="1.5" fill="#fff"/>
+    <circle cx="30" cy="46" r="4" fill="#3b2418"/><circle cx="31" cy="45" r="1.5" fill="#fff"/>
     <path d="M26 56 Q34 62 42 56" stroke="#4c96d8" stroke-width="2.5" fill="none" stroke-linecap="round"/></g>`) },
   tiger: { emoji: "🐯", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="36" fill="#f4a261"/>
     <path d="M36 18 L32 4 L46 14 Z" fill="#d9822b"/><path d="M64 18 L68 4 L54 14 Z" fill="#d9822b"/>
@@ -333,18 +332,18 @@ const ANIMALS: Record<string, Asset> = {
   eagle: { emoji: "🦅", svg: view(`<g filter="url(#s)"><path d="M14 40 Q40 26 86 40 L76 60 Q50 50 24 60 Z" fill="#8a5426"/>
     <ellipse cx="50" cy="50" rx="22" ry="26" fill="#b5654b"/>
     <circle cx="42" cy="48" r="4.5" fill="#fff"/><circle cx="58" cy="48" r="4.5" fill="#fff"/>
-    <circle cx="43" cy="48" r="2" fill=NV_BROWN/><circle cx="57" cy="48" r="2" fill=NV_BROWN/>
+    <circle cx="43" cy="48" r="2" fill="#3b2418"/><circle cx="57" cy="48" r="2" fill="#3b2418"/>
     <path d="M50 56 L56 62 L50 68 L44 62 Z" fill="#ffb843"/></g>`) },
   dolphin: { emoji: "🐬", svg: view(`<g filter="url(#s)"><path d="M14 52 Q50 18 86 46 Q70 66 46 62 Q30 60 24 72 Q20 80 14 52 Z" fill="#8fbfe0"/>
     <path d="M80 48 L94 40 L88 54 Z" fill="#6d9dc5"/>
-    <circle cx="30" cy="50" r="3.5" fill=NV_BROWN/><circle cx="31" cy="49" r="1.4" fill="#fff"/></g>`) },
+    <circle cx="30" cy="50" r="3.5" fill="#3b2418"/><circle cx="31" cy="49" r="1.4" fill="#fff"/></g>`) },
   elephant: { emoji: "🐘", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="34" fill="#9aa7b0"/>
     <circle cx="26" cy="30" r="12" fill="#9aa7b0"/><circle cx="74" cy="30" r="12" fill="#9aa7b0"/>
-    <circle cx="38" cy="54" r="5" fill=NV_BROWN/><circle cx="62" cy="54" r="5" fill=NV_BROWN/>
+    <circle cx="38" cy="54" r="5" fill="#3b2418"/><circle cx="62" cy="54" r="5" fill="#3b2418"/>
     <path d="M50 66 Q54 76 50 82 Q46 76 50 66 Z" fill="#7d8a96"/></g>`) },
   bird: { emoji: "🐦", svg: view(`<g filter="url(#s)"><ellipse cx="46" cy="52" rx="26" ry="22" fill="#5fad6a"/>
-    <path d="M68 44 L86 40 L70 52 Z" fill=NV_ORANGE/><circle cx="30" cy="48" r="4" fill="#fff"/>
-    <circle cx="31" cy="47" r="2" fill=NV_BROWN/><path d="M34 62 L42 58 L44 66 Z" fill="#ffb843"/>
+    <path d="M68 44 L86 40 L70 52 Z" fill="#ffb35c"/><circle cx="30" cy="48" r="4" fill="#fff"/>
+    <circle cx="31" cy="47" r="2" fill="#3b2418"/><path d="M34 62 L42 58 L44 66 Z" fill="#ffb843"/>
     <path d="M58 30 L66 18 L72 30 Z" fill="#4f9760"/></g>`) },
   frog: { emoji: "🐸", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="32" fill="#5fad6a"/>
     <circle cx="24" cy="28" r="9" fill="#4f9760"/><circle cx="76" cy="28" r="9" fill="#4f9760"/>
@@ -356,24 +355,24 @@ const ANIMALS: Record<string, Asset> = {
     <circle cx="42" cy="48" r="4.5" fill="#5a3416"/><circle cx="58" cy="48" r="4.5" fill="#5a3416"/>
     <ellipse cx="50" cy="62" rx="7" ry="4.5" fill="#8a5426"/></g>`) },
   butterfly: { emoji: "🦋", svg: view(`<g filter="url(#s)"><path d="M50 50 Q34 22 14 26 Q10 46 26 54 Q12 62 16 82 Q36 78 50 50 Z" fill="#c4b5fd"/>
-    <path d="M50 50 Q66 22 86 26 Q90 46 74 54 Q88 62 84 82 Q64 78 50 50 Z" fill=NV_PINK/>
+    <path d="M50 50 Q66 22 86 26 Q90 46 74 54 Q88 62 84 82 Q64 78 50 50 Z" fill="#ff8fa3"/>
     <ellipse cx="50" cy="50" rx="7" ry="16" fill="#b5654b"/>
-    <path d="M50 42 L44 30 M50 58 L56 70" stroke=NV_BROWN stroke-width="2" fill="none" stroke-linecap="round"/></g>`) },
+    <path d="M50 42 L44 30 M50 58 L56 70" stroke="#3b2418" stroke-width="2" fill="none" stroke-linecap="round"/></g>`) },
   turtle: { emoji: "🐢", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="56" rx="30" ry="22" fill="#4f9760"/>
     <path d="M34 56 Q28 34 50 28 Q72 34 66 56 Z" fill="#3c7a49"/>
     <circle cx="22" cy="58" r="8" fill="#6d9dc5"/><circle cx="78" cy="58" r="8" fill="#6d9dc5"/>
-    <circle cx="18" cy="58" r="2.6" fill=NV_BROWN/>
+    <circle cx="18" cy="58" r="2.6" fill="#3b2418"/>
     <path d="M28 72 L44 76 L50 88 L56 76 L72 72 L56 72 L50 80 L44 72 Z" fill="#3c7a49"/></g>`) },
   deer: { emoji: "🦌", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="30" fill="#c9855a"/>
     <path d="M30 24 L22 6 L34 18 Z" fill="#8a5a2b"/><path d="M70 24 L78 6 L66 18 Z" fill="#8a5a2b"/>
     <path d="M22 6 L14 0 L26 4 Z" fill="#8a5a2b"/><path d="M78 6 L86 0 L74 4 Z" fill="#8a5a2b"/>
     <path d="M40 44 L60 44 L56 56 L44 56 Z" fill="#fdf3dd"/>
-    <circle cx="42" cy="54" r="4" fill=NV_BROWN/><circle cx="58" cy="54" r="4" fill=NV_BROWN/>
-    <ellipse cx="50" cy="66" rx="6" ry="4" fill=NV_BROWN/></g>`) },
+    <circle cx="42" cy="54" r="4" fill="#3b2418"/><circle cx="58" cy="54" r="4" fill="#3b2418"/>
+    <ellipse cx="50" cy="66" rx="6" ry="4" fill="#3b2418"/></g>`) },
   /* Nova 2.0's plush star-owl — same character as the mascot, so the AnimalHome
      answer card and CountingSong's Nova all match the logo/room design. */
   owl: { emoji: "🦉", svg: view(`<defs><filter id="s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#06122a" flood-opacity="0.3"/></filter>
-  <linearGradient id="nb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color=NV_COCOA/><stop offset="0.5" stop-color="#8a5c33"/><stop offset="1" stop-color="#a06a3a"/></linearGradient>
+  <linearGradient id="nb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4e2a"/><stop offset="0.5" stop-color="#8a5c33"/><stop offset="1" stop-color="#a06a3a"/></linearGradient>
   <radialGradient id="ni" cx="0.42" cy="0.38" r="0.78"><stop offset="0" stop-color="#ffe37a"/><stop offset="0.5" stop-color="#f4ae3f"/><stop offset="0.85" stop-color="#d8871a"/><stop offset="1" stop-color="#b96b0f"/></radialGradient>
   <clipPath id="cc"><ellipse cx="50" cy="64" rx="20" ry="22"/></clipPath>
 </defs>
@@ -381,8 +380,8 @@ const ANIMALS: Record<string, Asset> = {
   <ellipse cx="50" cy="92" rx="30" ry="6" fill="#06122a" opacity="0.18"/>
   <path d="M30 16 Q26 2 18 0 Q24 6 26 18 Z" fill="#5a3a20"/>
   <path d="M70 16 Q74 2 82 0 Q76 6 74 18 Z" fill="#5a3a20"/>
-  <path d="M30 16 Q28 24 30 30 Q24 22 30 16 Z" fill=NV_COCOA/>
-  <path d="M70 16 Q72 24 70 30 Q76 22 70 16 Z" fill=NV_COCOA/>
+  <path d="M30 16 Q28 24 30 30 Q24 22 30 16 Z" fill="#7a4e2a"/>
+  <path d="M70 16 Q72 24 70 30 Q76 22 70 16 Z" fill="#7a4e2a"/>
   <ellipse cx="24" cy="66" rx="10" ry="16" fill="#5a3a20"/>
   <ellipse cx="76" cy="66" rx="10" ry="16" fill="#5a3a20"/>
   <path d="M50 12 C 28 16 18 40 18 58 C 18 76 32 88 50 88 C 68 88 82 76 82 58 C 82 40 72 16 50 12 Z" fill="url(#nb)"/>
@@ -391,7 +390,7 @@ const ANIMALS: Record<string, Asset> = {
   <path d="M62 40 a9 9 0 1 0 0.1 0 Z" fill="#f4ead0"/>
   <g clip-path="url(#cc)">
     <ellipse cx="50" cy="64" rx="20" ry="22" fill="#ead9b0"/>
-    <g fill=NV_COCOA opacity="0.8"><path d="M30 50 q10 4 20 0 q-4 2 -10 2 q-6 0 -10 -2 Z"/><path d="M30 58 q10 4 20 0 q-4 2 -10 2 q-6 0 -10 -2 Z"/><path d="M30 66 q10 4 20 0 q-4 2 -10 2 q-6 0 -10 -2 Z"/><path d="M32 74 q9 3 18 0 q-4 2 -9 2 q-6 0 -9 -2 Z"/></g>
+    <g fill="#7a4e2a" opacity="0.8"><path d="M30 50 q10 4 20 0 q-4 2 -10 2 q-6 0 -10 -2 Z"/><path d="M30 58 q10 4 20 0 q-4 2 -10 2 q-6 0 -10 -2 Z"/><path d="M30 66 q10 4 20 0 q-4 2 -10 2 q-6 0 -10 -2 Z"/><path d="M32 74 q9 3 18 0 q-4 2 -9 2 q-6 0 -9 -2 Z"/></g>
   </g>
   <ellipse cx="40" cy="40" rx="9" ry="9.5" fill="#3a2a1c"/>
   <ellipse cx="60" cy="40" rx="9" ry="9.5" fill="#3a2a1c"/>
@@ -408,70 +407,70 @@ const ANIMALS: Record<string, Asset> = {
     <path d="M56 85 Q58 90 61 95 Q56 92 54 88 Z"/><path d="M62 84 Q66 90 69 94 Q65 91 62 87 Z"/>
   </g>
 </g>`) },
-  penguin: { emoji: "🐧", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="52" rx="24" ry="36" fill=NV_INK/>
+  penguin: { emoji: "🐧", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="52" rx="24" ry="36" fill="#3b3b3b"/>
     <ellipse cx="50" cy="60" rx="15" ry="24" fill="#fff"/>
     <circle cx="40" cy="42" r="5" fill="#fff"/><circle cx="60" cy="42" r="5" fill="#fff"/>
-    <circle cx="42" cy="42" r="2.4" fill=NV_BROWN/><circle cx="58" cy="42" r="2.4" fill=NV_BROWN/>
+    <circle cx="42" cy="42" r="2.4" fill="#3b2418"/><circle cx="58" cy="42" r="2.4" fill="#3b2418"/>
     <path d="M50 70 L56 78 L50 86 L44 78 Z" fill="#ffb843"/></g>`) },
-  rhino: { emoji: "🦏", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="54" rx="32" ry="26" fill=NV_GRAY/>
+  rhino: { emoji: "🦏", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="54" rx="32" ry="26" fill="#8d99ae"/>
     <path d="M30 40 L10 44 L26 52 Z" fill="#6d7a86"/>
-    <circle cx="36" cy="52" r="4" fill=NV_BROWN/><circle cx="60" cy="52" r="4" fill=NV_BROWN/>
+    <circle cx="36" cy="52" r="4" fill="#3b2418"/><circle cx="60" cy="52" r="4" fill="#3b2418"/>
     <path d="M58 40 L66 34 L64 44 Z" fill="#6d7a86"/></g>`) },
   bat: { emoji: "🦇", svg: view(`<g filter="url(#s)"><path d="M50 40 Q40 16 14 20 Q8 44 26 52 Q18 66 22 78 L38 66 L46 84 L50 76 L54 84 L62 66 L78 78 Q82 66 74 52 Q92 44 86 20 Q60 16 50 40 Z" fill="#4a3b6b"/>
-    <circle cx="42" cy="44" r="3.4" fill=NV_GOLD/><circle cx="58" cy="44" r="3.4" fill=NV_GOLD/></g>`) },
+    <circle cx="42" cy="44" r="3.4" fill="#ffd166"/><circle cx="58" cy="44" r="3.4" fill="#ffd166"/></g>`) },
   crocodile: { emoji: "🐊", svg: view(`<g filter="url(#s)"><path d="M18 58 Q34 40 52 50 Q70 40 84 52 Q88 60 80 62 L22 66 Q16 64 18 58 Z" fill="#4f9760"/>
     <path d="M20 60 L50 56 L30 68 Z" fill="#3c7a49"/>
-    <circle cx="30" cy="54" r="3" fill="#fff"/><circle cx="31" cy="53" r="1.6" fill=NV_BROWN/>
+    <circle cx="30" cy="54" r="3" fill="#fff"/><circle cx="31" cy="53" r="1.6" fill="#3b2418"/>
     <path d="M18 58 L8 54 L14 62 Z" fill="#fdf3dd"/>
     <path d="M82 60 L92 62 L82 66 Z" fill="#3c7a49"/></g>`) },
   camel: { emoji: "🐪", svg: view(`<g filter="url(#s)"><path d="M26 58 Q18 70 20 78 Q34 74 30 62 Q28 56 26 58 Z" fill="#e8a24f"/>
     <path d="M30 58 Q34 34 50 30 Q66 34 70 58 Q78 62 82 70 Q86 78 80 78 L36 78 Q30 74 30 58 Z" fill="#e8a24f"/>
-    <circle cx="66" cy="52" r="3.6" fill=NV_BROWN/>
+    <circle cx="66" cy="52" r="3.6" fill="#3b2418"/>
     <path d="M70 58 L78 62 L72 66 Z" fill="#a86a40"/>
     <path d="M80 78 L88 84 L78 86 Z" fill="#a86a40"/></g>`) },
   parrot: { emoji: "🦜", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="52" rx="24" ry="30" fill="#5fad6a"/>
-    <circle cx="42" cy="44" r="5" fill="#fff"/><circle cx="43" cy="43" r="2.4" fill=NV_BROWN/>
-    <path d="M50 66 Q60 74 54 80 Q48 74 50 66 Z" fill=NV_PINK/>
-    <path d="M62 40 L78 36 L80 48 Z" fill=NV_SKY/>
-    <path d="M64 30 L72 16 L80 30 Z" fill=NV_PINK/><path d="M34 28 L40 16 L48 30 Z" fill=NV_SKY/></g>`) },
+    <circle cx="42" cy="44" r="5" fill="#fff"/><circle cx="43" cy="43" r="2.4" fill="#3b2418"/>
+    <path d="M50 66 Q60 74 54 80 Q48 74 50 66 Z" fill="#ff8fa3"/>
+    <path d="M62 40 L78 36 L80 48 Z" fill="#4cc9f0"/>
+    <path d="M64 30 L72 16 L80 30 Z" fill="#ff8fa3"/><path d="M34 28 L40 16 L48 30 Z" fill="#4cc9f0"/></g>`) },
   cat: { emoji: "🐱", svg: view(`<g filter="url(#s)"><path d="M50 16 L34 4 L36 24 Z" fill="#e8a24f"/><path d="M50 16 L66 4 L64 24 Z" fill="#e8a24f"/>
     <circle cx="50" cy="54" r="32" fill="#f4a261"/>
-    <circle cx="40" cy="52" r="5.5" fill=NV_BROWN/><circle cx="60" cy="52" r="5.5" fill=NV_BROWN/>
+    <circle cx="40" cy="52" r="5.5" fill="#3b2418"/><circle cx="60" cy="52" r="5.5" fill="#3b2418"/>
     <path d="M44 66 Q50 72 56 66" stroke="#5a3416" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    <path d="M50 60 L54 66 L50 72 L46 66 Z" fill=NV_PINK/></g>`) },
+    <path d="M50 60 L54 66 L50 72 L46 66 Z" fill="#ff8fa3"/></g>`) },
   dog: { emoji: "🐶", svg: view(`<g filter="url(#s)"><path d="M36 26 L28 8 L44 20 Z" fill="#8a5426"/><path d="M64 26 L72 8 L56 20 Z" fill="#8a5426"/>
     <ellipse cx="50" cy="50" rx="26" ry="30" fill="#c9855a"/>
     <ellipse cx="50" cy="58" rx="14" ry="12" fill="#fdf3dd"/>
-    <circle cx="42" cy="46" r="4.5" fill=NV_BROWN/><circle cx="58" cy="46" r="4.5" fill=NV_BROWN/>
-    <ellipse cx="50" cy="64" rx="5" ry="3.5" fill=NV_BROWN/>
+    <circle cx="42" cy="46" r="4.5" fill="#3b2418"/><circle cx="58" cy="46" r="4.5" fill="#3b2418"/>
+    <ellipse cx="50" cy="64" rx="5" ry="3.5" fill="#3b2418"/>
     <path d="M34 72 L38 66 L42 74 Z" stroke="#8a5426" stroke-width="2" fill="none" stroke-linecap="round"/></g>`) },
   cow: { emoji: "🐮", svg: view(`<g filter="url(#s)"><circle cx="50" cy="52" r="34" fill="#fdf3dd"/>
     <ellipse cx="50" cy="52" rx="20" ry="26" fill="#4a3b6b" opacity="0.28"/>
-    <path d="M32 24 L28 8 L42 20 Z" fill=NV_INK/><path d="M68 24 L72 8 L58 20 Z" fill=NV_INK/>
-    <circle cx="40" cy="50" r="5" fill=NV_INK/><circle cx="60" cy="50" r="5" fill=NV_INK/>
+    <path d="M32 24 L28 8 L42 20 Z" fill="#3b3b3b"/><path d="M68 24 L72 8 L58 20 Z" fill="#3b3b3b"/>
+    <circle cx="40" cy="50" r="5" fill="#3b3b3b"/><circle cx="60" cy="50" r="5" fill="#3b3b3b"/>
     <circle cx="42" cy="50" r="2" fill="#fff"/><circle cx="58" cy="50" r="2" fill="#fff"/>
-    <ellipse cx="50" cy="64" rx="12" ry="8" fill=NV_PINK/>
+    <ellipse cx="50" cy="64" rx="12" ry="8" fill="#ff8fa3"/>
     <ellipse cx="50" cy="64" rx="4" ry="3" fill="#e05c4e"/></g>`) },
   duck: { emoji: "🦆", svg: view(`<g filter="url(#s)"><ellipse cx="44" cy="56" rx="28" ry="22" fill="#fdf3dd"/>
     <circle cx="66" cy="42" r="10" fill="#fdf3dd"/>
-    <circle cx="70" cy="40" r="3" fill=NV_BROWN/>
+    <circle cx="70" cy="40" r="3" fill="#3b2418"/>
     <path d="M74 42 L88 46 L74 50 Z" fill="#ffb843"/>
     <path d="M28 64 Q20 76 26 84 L40 78 Q34 70 34 66 Z" fill="#ffb843"/></g>`) },
   horse: { emoji: "🐴", svg: view(`<g filter="url(#s)"><ellipse cx="50" cy="54" rx="30" ry="34" fill="#8a5426"/>
     <path d="M60 34 L72 18 L78 34 Z" fill="#a86a40"/>
     <ellipse cx="70" cy="28" rx="12" ry="14" fill="#a86a40"/>
-    <circle cx="76" cy="26" r="3.4" fill=NV_BROWN/>
+    <circle cx="76" cy="26" r="3.4" fill="#3b2418"/>
     <path d="M78 34 L88 38 L78 42 Z" fill="#6d4a26"/>
     <path d="M34 64 L24 76 L36 78 Q42 70 40 64 Z" fill="#c9855a"/></g>`) },
   goat: { emoji: "🐐", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="30" fill="#e8eef4"/>
     <path d="M30 26 L22 10 L34 22 Z" fill="#c2cdd6"/><path d="M70 26 L78 10 L66 22 Z" fill="#c2cdd6"/>
     <path d="M20 12 L16 4 L24 8 Z" fill="#9fb4c8"/><path d="M80 12 L84 4 L76 8 Z" fill="#9fb4c8"/>
     <ellipse cx="50" cy="60" rx="12" ry="9" fill="#fff"/>
-    <circle cx="42" cy="52" r="4" fill=NV_BROWN/><circle cx="58" cy="52" r="4" fill=NV_BROWN/>
+    <circle cx="42" cy="52" r="4" fill="#3b2418"/><circle cx="58" cy="52" r="4" fill="#3b2418"/>
     <ellipse cx="50" cy="66" rx="4" ry="2.8" fill="#c9855a"/></g>`) },
-  pig: { emoji: "🐷", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="34" fill=NV_PINK/>
+  pig: { emoji: "🐷", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="34" fill="#ff8fa3"/>
     <path d="M34 26 L26 14 L38 22 Z" fill="#f78aa2"/><path d="M66 26 L74 14 L62 22 Z" fill="#f78aa2"/>
-    <circle cx="40" cy="52" r="4" fill=NV_BROWN/><circle cx="60" cy="52" r="4" fill=NV_BROWN/>
+    <circle cx="40" cy="52" r="4" fill="#3b2418"/><circle cx="60" cy="52" r="4" fill="#3b2418"/>
     <ellipse cx="50" cy="66" rx="9" ry="6" fill="#f78aa2"/>
     <ellipse cx="44" cy="66" rx="2.4" ry="1.6" fill="#c9435f"/><ellipse cx="56" cy="66" rx="2.4" ry="1.6" fill="#c9435f"/></g>`) },
 };
@@ -483,7 +482,7 @@ const FOOD: Record<string, Asset> = {
     <path d="M44 34 Q50 22 62 26 Q56 38 44 34 Z" fill="#4f9760"/>
     <rect x="49" y="20" width="4" height="12" rx="2" fill="#8a5426"/>
     <ellipse cx="40" cy="50" rx="5" ry="9" fill="#ff8a7a" opacity="0.5"/></g>`) },
-  banana: { emoji: "🍌", svg: view(`<g filter="url(#s)"><path d="M28 18 Q16 46 34 78 Q42 88 58 84 Q70 80 72 72 Q40 78 40 56 Q42 34 28 18 Z" fill=NV_GOLD/>
+  banana: { emoji: "🍌", svg: view(`<g filter="url(#s)"><path d="M28 18 Q16 46 34 78 Q42 88 58 84 Q70 80 72 72 Q40 78 40 56 Q42 34 28 18 Z" fill="#ffd166"/>
     <path d="M40 78 L28 86 L34 78 Z" fill="#8a5a2b"/>
     <path d="M30 30 Q24 44 30 60" stroke="#f4c542" stroke-width="3" fill="none" stroke-linecap="round"/></g>`) },
   grapes: { emoji: "🍇", svg: view(`<g filter="url(#s)"><circle cx="36" cy="62" r="11" fill="#8a63f0"/><circle cx="58" cy="62" r="11" fill="#8a63f0"/>
@@ -492,34 +491,34 @@ const FOOD: Record<string, Asset> = {
     <path d="M47 24 Q40 32 42 40 M47 24 Q54 32 52 40" stroke="#4f9760" stroke-width="3" fill="none" stroke-linecap="round"/></g>`) },
   strawberry: { emoji: "🍓", svg: view(`<g filter="url(#s)"><path d="M50 26 C68 34 72 56 50 82 C28 56 32 34 50 26 Z" fill="#e05c4e"/>
     <path d="M40 24 Q50 18 60 24 Q58 30 50 30 Q42 30 40 24 Z" fill="#4f9760"/>
-    <circle cx="44" cy="46" r="2" fill=NV_GOLD/><circle cx="56" cy="52" r="2" fill=NV_GOLD/><circle cx="48" cy="62" r="2" fill=NV_GOLD/><circle cx="56" cy="66" r="2" fill=NV_GOLD/></g>`) },
+    <circle cx="44" cy="46" r="2" fill="#ffd166"/><circle cx="56" cy="52" r="2" fill="#ffd166"/><circle cx="48" cy="62" r="2" fill="#ffd166"/><circle cx="56" cy="66" r="2" fill="#ffd166"/></g>`) },
   orange: { emoji: "🍊", svg: view(`<g filter="url(#s)"><circle cx="50" cy="54" r="28" fill="#f4a261"/>
     <circle cx="50" cy="54" r="26" fill="none" stroke="#e8893a" stroke-width="2"/>
     <circle cx="50" cy="54" r="8" fill="#f78aa2"/>
     <path d="M40 30 L34 18 L46 26 Z" fill="#4f9760"/></g>`) },
   egg2: { emoji: "🥚", svg: view(`<g filter="url(#s)"><path d="M50 16 C68 24 72 40 68 54 C64 70 56 82 50 82 C44 82 36 70 32 54 C28 40 32 24 50 16 Z" fill="#fff3dc" stroke="#e8d3a8" stroke-width="2"/></g>`) },
-  sun: { emoji: "☀️", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="22" fill=NV_GOLD/>
-    <g stroke=NV_GOLD stroke-width="6" stroke-linecap="round"><path d="M50 12 V6 M50 88 V94 M12 50 H6 M88 50 H94"/><path d="M23 23 L19 19 M77 77 L81 81 M77 23 L81 19 M23 77 L19 81"/></g></g>`) },
+  sun: { emoji: "☀️", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="22" fill="#ffd166"/>
+    <g stroke="#ffd166" stroke-width="6" stroke-linecap="round"><path d="M50 12 V6 M50 88 V94 M12 50 H6 M88 50 H94"/><path d="M23 23 L19 19 M77 77 L81 81 M77 23 L81 19 M23 77 L19 81"/></g></g>`) },
   ball: { emoji: "⚽", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="32" fill="#fff"/>
-    <path d="M50 50 L62 34 M50 50 L30 36 M50 50 L42 68 M50 50 L62 66 M50 50 L38 52" stroke=NV_INK stroke-width="2.5"/>
-    <circle cx="50" cy="50" r="12" fill="none" stroke=NV_INK stroke-width="2.5"/></g>`) },
-  hat: { emoji: "🎩", svg: view(`<g filter="url(#s)"><rect x="30" y="36" width="40" height="26" rx="4" fill=NV_INK/>
-    <path d="M34 36 L34 26 Q50 10 66 26 L66 36 Z" fill=NV_INK/>
+    <path d="M50 50 L62 34 M50 50 L30 36 M50 50 L42 68 M50 50 L62 66 M50 50 L38 52" stroke="#3b3b3b" stroke-width="2.5"/>
+    <circle cx="50" cy="50" r="12" fill="none" stroke="#3b3b3b" stroke-width="2.5"/></g>`) },
+  hat: { emoji: "🎩", svg: view(`<g filter="url(#s)"><rect x="30" y="36" width="40" height="26" rx="4" fill="#3b3b3b"/>
+    <path d="M34 36 L34 26 Q50 10 66 26 L66 36 Z" fill="#3b3b3b"/>
     <rect x="22" y="60" width="56" height="12" rx="6" fill="#4a3b6b"/>
-    <rect x="28" y="20" width="44" height="8" rx="4" fill=NV_PINK/></g>`) },
+    <rect x="28" y="20" width="44" height="8" rx="4" fill="#ff8fa3"/></g>`) },
   bed: { emoji: "🛏️", svg: view(`<g filter="url(#s)"><rect x="16" y="34" width="68" height="16" rx="6" fill="#8a5426"/>
-    <rect x="18" y="44" width="40" height="24" rx="6" fill=NV_PINK/>
+    <rect x="18" y="44" width="40" height="24" rx="6" fill="#ff8fa3"/>
     <rect x="58" y="40" width="26" height="14" rx="5" fill="#5fb6e8"/>
     <rect x="58" y="50" width="26" height="12" rx="5" fill="#f4f6f8"/></g>`) },
   car: { emoji: "🚗", svg: view(`<g filter="url(#s)"><path d="M20 56 L28 34 Q30 28 36 28 L64 28 Q70 28 72 34 L80 56 Q82 60 78 62 L22 62 Q18 60 20 56 Z" fill="#e05c4e"/>
     <rect x="34" y="30" width="32" height="14" rx="6" fill="#5ee6ff"/>
-    <circle cx="30" cy="62" r="8" fill=NV_INK/><circle cx="70" cy="62" r="8" fill=NV_INK/>
+    <circle cx="30" cy="62" r="8" fill="#3b3b3b"/><circle cx="70" cy="62" r="8" fill="#3b3b3b"/>
     <circle cx="30" cy="62" r="3" fill="#9aa7b0"/><circle cx="70" cy="62" r="3" fill="#9aa7b0"/></g>`) },
-  bus: { emoji: "🚌", svg: view(`<g filter="url(#s)"><rect x="16" y="30" width="68" height="38" rx="10" fill=NV_ORANGE/>
+  bus: { emoji: "🚌", svg: view(`<g filter="url(#s)"><rect x="16" y="30" width="68" height="38" rx="10" fill="#ffb35c"/>
     <rect x="22" y="32" width="56" height="18" rx="6" fill="#5ee6ff"/>
-    <circle cx="30" cy="66" r="7" fill=NV_INK/><circle cx="70" cy="66" r="7" fill=NV_INK/>
+    <circle cx="30" cy="66" r="7" fill="#3b3b3b"/><circle cx="70" cy="66" r="7" fill="#3b3b3b"/>
     <circle cx="30" cy="66" r="2.6" fill="#9aa7b0"/><circle cx="70" cy="66" r="2.6" fill="#9aa7b0"/></g>`) },
-  flower2: { emoji: "🌸", svg: view(`<g filter="url(#s)"><circle cx="50" cy="24" r="11" fill=NV_PINK/><circle cx="74" cy="38" r="11" fill=NV_PINK/><circle cx="65" cy="62" r="11" fill=NV_PINK/><circle cx="35" cy="62" r="11" fill=NV_PINK/><circle cx="26" cy="38" r="11" fill=NV_PINK/><circle cx="50" cy="50" r="13" fill=NV_GOLD/></g>`) },
+  flower2: { emoji: "🌸", svg: view(`<g filter="url(#s)"><circle cx="50" cy="24" r="11" fill="#ff8fa3"/><circle cx="74" cy="38" r="11" fill="#ff8fa3"/><circle cx="65" cy="62" r="11" fill="#ff8fa3"/><circle cx="35" cy="62" r="11" fill="#ff8fa3"/><circle cx="26" cy="38" r="11" fill="#ff8fa3"/><circle cx="50" cy="50" r="13" fill="#ffd166"/></g>`) },
 };
 
 /* ────────────────────────────── homes + EnLetters extras ────────────────────────────── */
@@ -533,7 +532,7 @@ const THINGS: Record<string, Asset> = {
   tree: {
     emoji: "🌳",
     svg: view(`<g filter="url(#s)"><circle cx="34" cy="34" r="16" fill="#4f9760"/><circle cx="52" cy="24" r="18" fill="#5fad6a"/><circle cx="66" cy="36" r="16" fill="#4f9760"/><circle cx="48" cy="42" r="18" fill="#5fad6a"/>
-      <rect x="45" y="52" width="10" height="28" rx="4" fill="#8a5a2b"/><circle cx="56" cy="26" r="5" fill=NV_PINK/></g>`),
+      <rect x="45" y="52" width="10" height="28" rx="4" fill="#8a5a2b"/><circle cx="56" cy="26" r="5" fill="#ff8fa3"/></g>`),
   },
   cloud: {
     emoji: "☁️",
@@ -546,10 +545,10 @@ const THINGS: Record<string, Asset> = {
   },
   kite: {
     emoji: "🪁",
-    svg: view(`<g filter="url(#s)"><path d="M50 18 L84 46 L50 70 L16 46 Z" fill=NV_PINK/>
+    svg: view(`<g filter="url(#s)"><path d="M50 18 L84 46 L50 70 L16 46 Z" fill="#ff8fa3"/>
       <path d="M50 18 L50 70 M16 46 L84 46" stroke="#fff" stroke-width="3"/>
       <path d="M50 46 L34 34 M50 46 L66 58" stroke="#c9435f" stroke-width="2.5"/>
-      <path d="M50 70 L44 88 Q50 94 56 88 Z" fill=NV_ORANGE/>
+      <path d="M50 70 L44 88 Q50 94 56 88 Z" fill="#ffb35c"/>
       <path d="M84 46 L94 40 L88 52 Z" fill="#5fb6e8"/></g>`),
   },
 };
@@ -557,27 +556,27 @@ const THINGS: Record<string, Asset> = {
 const THINGS2: Record<string, Asset> = {
   trophy: {
     emoji: "🏆",
-    svg: view(`<g filter="url(#s)"><path d="M30 16 H70 V40 Q70 58 50 62 Q30 58 30 40 Z" fill=NV_GOLD/>
+    svg: view(`<g filter="url(#s)"><path d="M30 16 H70 V40 Q70 58 50 62 Q30 58 30 40 Z" fill="#ffd166"/>
       <rect x="44" y="62" width="12" height="14" rx="3" fill="#efb419"/>
       <path d="M38 80 L62 80 L58 90 L42 90 Z" fill="#efb419"/>
-      <path d="M30 16 L20 20 Q16 32 26 38 L30 34 Z" fill=NV_ORANGE/>
-      <path d="M70 16 L80 20 Q84 32 74 38 L70 34 Z" fill=NV_ORANGE/>
+      <path d="M30 16 L20 20 Q16 32 26 38 L30 34 Z" fill="#ffb35c"/>
+      <path d="M70 16 L80 20 Q84 32 74 38 L70 34 Z" fill="#ffb35c"/>
       <path d="M44 36 L50 28 L56 36 L50 34 Z" fill="#efb419"/></g>`),
   },
   rat: {
     emoji: "🐀",
     svg: view(`<g filter="url(#s)"><circle cx="50" cy="58" r="20" fill="#b0a8c0"/>
       <circle cx="38" cy="40" r="10" fill="#b0a8c0"/>
-      <circle cx="38" cy="38" r="2.4" fill=NV_INK/>
+      <circle cx="38" cy="38" r="2.4" fill="#3b3b3b"/>
       <circle cx="52" cy="40" r="3.5" fill="#e05c4e"/>
-      <path d="M42 42 Q38 35 44 34 Z" fill=NV_PINK/>
+      <path d="M42 42 Q38 35 44 34 Z" fill="#ff8fa3"/>
       <path d="M66 52 Q86 38 80 56 Q90 62 74 64 Z" fill="#b0a8c0"/>
       <path d="M50 78 Q52 88 50 92 M50 78 Q46 88 48 92" stroke="#b0a8c0" stroke-width="3" fill="none" stroke-linecap="round"/></g>`),
   },
   hen: {
     emoji: "🐔",
     svg: view(`<g filter="url(#s)"><circle cx="46" cy="58" r="22" fill="#f4a261"/>
-      <circle cx="44" cy="48" r="6" fill="#fff"/><circle cx="46" cy="48" r="3" fill=NV_INK/>
+      <circle cx="44" cy="48" r="6" fill="#fff"/><circle cx="46" cy="48" r="3" fill="#3b3b3b"/>
       <path d="M56 54 L72 58 L56 62 Z" fill="#e07b39"/>
       <path d="M50 52 L56 42 Q54 40 52 43 L48 47 Z" fill="#e05c4e"/>
       <path d="M38 70 Q26 64 32 56" stroke="#e05c4e" stroke-width="6" fill="none" stroke-linecap="round"/>
