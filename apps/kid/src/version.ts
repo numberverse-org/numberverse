@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.59.0 (feat: 4 new mechanic engines — ArcadeCatch physics fast-round facts, TraceScene glyph handwriting, ExploreGarden no-pressure free play, BanglaSpell typing hybrid (#1140 #1142 #1143 #1144))";
-export const APP_VERSION = "0.59.0";
+export const APP_BUILD = "15 Aug 2026 · 0.60.0 (feat: memory recall engine, drag-sort economy (13 BinSort subclasses), real-key KeyboardExplorer (#1141 #1145 #1139))";
+export const APP_VERSION = "0.60.0";

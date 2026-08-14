@@ -1,3 +1,13 @@
+## 15 Aug 2026 — 0.60.0 (feat: memory recall engine, drag-sort economy (13 BinSort subclasses), real-key KeyboardExplorer (#1141 #1145 #1139))
+
+290d662 merge #1139: KeyboardExplorer real keys
+e63efaa remove stray apps/kid/node_modules symlink from tracking
+f6df694 merge #1145: drag-sort economy
+816cf70 merge #1141: MemoryScene recall engine
+ecfe7e6 #1139: KeyboardExplorer real-key path — physical keydown + on-screen fallback, challenge bar
+4ac0548 #1145: drag-sort economy — FiveSenses + FestivalSort onto BinSortScene, 4 new classification skills (odd/even, vowel-consonant, corner sort, plant/animal)
+ce54710 #1141: MemoryScene — shared flip-grid recall engine (tiered 6-20 cards), 4 memory variants (compounds/matras/number-bonds/synonyms)
+
 ## 15 Aug 2026 — 0.59.0 (feat: 4 new mechanic engines — ArcadeCatch physics fast-round facts, TraceScene glyph handwriting, ExploreGarden no-pressure free play, BanglaSpell typing hybrid (#1140 #1142 #1143 #1144))
 
 b5f63ef merge #1144: TraceScene glyph tracing
