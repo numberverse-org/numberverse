@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -180,6 +181,7 @@ export class BgsFactsScene extends Phaser.Scene {
     this.sparkle(container.x, container.y);
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
+    correctCelebrate(this, container.x, container.y); // #1204 — uniform fact-drill celebration
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(true, ms, this.levelIndex + 1);

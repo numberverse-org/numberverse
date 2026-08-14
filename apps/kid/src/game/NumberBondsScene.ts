@@ -5,6 +5,7 @@ import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speakMath } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -170,6 +171,10 @@ export class NumberBondsScene extends Phaser.Scene {
     this.sparkle(container.x, container.y);
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
+    // #1201 — the ten-frame is already the bonds diagram; the shared reward
+    // path (correctCelebrate) brings the escalation + streak chip so the
+    // prerequisite concept celebrates like the regrouping scenes it feeds.
+    correctCelebrate(this, container.x, container.y);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(true, ms, this.shown);

@@ -12,16 +12,9 @@ import { answerRow } from "./layout";
 import { getAppLang } from "./locale";
 import { correctCelebrate } from "./celebrate";
 
+import { generateColumnProblem, solveColumn, digitsNum, columnAnswer, type ColumnProblem } from "./columnMath";
+
 const LEVELS = GAMES.find((g) => g.id === "game-regroup")?.difficultyLevels ?? [2, 3, 4, 5, 6, 8];
-/** Per-level generation: digits = columns shown, double = tens column also carries/borrows. */
-const LEVEL_CFG = [
-  { digits: 2, double: false }, // L0: 2-digit, ones carry/borrow only
-  { digits: 2, double: true  }, // L1: 2-digit, full
-  { digits: 3, double: false }, // L2: 3-digit, ones carry/borrow
-  { digits: 3, double: true  }, // L3: 3-digit, ones + tens
-  { digits: 3, double: true  }, // L4: 3-digit, full, larger
-  { digits: 3, double: true  }, // L5: 3-digit, full
-];
 const BUTTON_RADIUS = 46;
 const ROUNDS_TO_FINISH = 3;
 const COLW = 58;
@@ -235,73 +228,18 @@ export class RegroupScene extends Phaser.Scene {
     this.prepColumn();
   }
 
-  private numA(): number { return this.aD[0] + this.aD[1] * 10 + this.aD[2] * 100; }
-  private numB(): number { return this.bD[0] + this.bD[1] * 10 + this.bD[2] * 100; }
+  private numA(): number { return digitsNum(this.aD); }
+  private numB(): number { return digitsNum(this.bD); }
 
-  /** Generate an add/sub problem within the level's digit count. Problems are
-   *  engineered so the written method ONLY needs the columns we show:
-   *   • add — ones ALWAYS carry; tens carries on `double` levels (a 2-digit
-   *           double add rolls into a NEW hundreds column, drawn on the board;
-   *           a 3-digit add never overflows the hundreds).
-   *   • sub — ones ALWAYS borrow; 3-digit `double` ALSO borrows across the tens
-   *           (the hundreds pays 1). No negatives, no leading zeros. */
+  /** #1200 — the engineered problem generation lives in columnMath.ts
+   *  (shared pure logic; AddRegroup/SubBorrow keep their own block-based
+   *  presentations but the carry/borrow MATH is centralised here). */
   private makeProblem() {
-    const cfg = LEVEL_CFG[Math.min(this.levelIndex, LEVEL_CFG.length - 1)];
-    this.digits = cfg.digits;
-    this.mode = Math.random() < 0.5 ? "add" : "sub";
-    if (this.mode === "add") {
-      const ao = Phaser.Math.Between(1, 9);
-      const bo = Phaser.Math.Between(10 - ao, 9); // ones ALWAYS carry → ao+bo ∈ [10,18]
-      let at: number, bt: number;
-      if (cfg.double) {
-        at = Phaser.Math.Between(1, 9);
-        bt = Phaser.Math.Between(9 - at, 9); // at+bt ≥ 9 → +ones-carry ≥ 10 → tens carries
-      } else {
-        at = Phaser.Math.Between(0, 8);
-        bt = Phaser.Math.Between(0, 8 - at); // at+bt ≤ 8 → +1 ≤ 9 → 2-digit result
-      }
-      let ah = 0, bh = 0;
-      if (cfg.digits === 3) {
-        if (cfg.double) {
-          ah = Phaser.Math.Between(1, 8);
-          bh = Phaser.Math.Between(0, 8 - ah); // +1 from tens ≤ 9 → no 4th digit
-        } else {
-          ah = Phaser.Math.Between(1, 9);
-          bh = Phaser.Math.Between(0, 9 - ah); // no tens carry → ≤ 9
-        }
-      }
-      this.aD = [ao, at, ah];
-      this.bD = [bo, bt, bh];
-    } else {
-      const ao = Phaser.Math.Between(0, 8);
-      const bo = Phaser.Math.Between(ao + 1, 9); // ones ALWAYS borrow → ao < bo
-      const useTensBorrow = cfg.digits === 3 && cfg.double;
-      let at: number, bt: number;
-      if (useTensBorrow) {
-        // bt ≥ at: after the ones-borrow the tens needs to borrow too — the
-        // hundreds column pays the 1 (the cascade).
-        at = Phaser.Math.Between(1, 9);
-        bt = Phaser.Math.Between(at, 9);
-      } else {
-        // minuend tens ≥ subtrahend tens + 2: no tens borrow, and the tens
-        // answer is never a leading 0. A 2-digit sub can't borrow twice without
-        // going negative.
-        at = Phaser.Math.Between(2, 9);
-        bt = Phaser.Math.Between(0, at - 2);
-      }
-      let ah = 0, bh = 0;
-      if (cfg.digits === 3) {
-        if (cfg.double) {
-          ah = Phaser.Math.Between(3, 9);
-          bh = Phaser.Math.Between(1, ah - 2); // ah ≥ bh+2 → hundreds survives the cascade
-        } else {
-          ah = Phaser.Math.Between(2, 9);
-          bh = Phaser.Math.Between(0, ah - 2); // ah-1 ≥ bh → no hundreds borrow
-        }
-      }
-      this.aD = [ao, at, ah];
-      this.bD = [bo, bt, bh];
-    }
+    const p: ColumnProblem = generateColumnProblem(this.levelIndex);
+    this.digits = p.digits;
+    this.mode = p.mode;
+    this.aD = p.aD;
+    this.bD = p.bD;
   }
 
   /** Prepare the current column: compute its correct digit, set the prompt, spawn buttons. */
@@ -310,25 +248,16 @@ export class RegroupScene extends Phaser.Scene {
     const i = this.cur;
     const show = this.digits;
     if (i >= show) { this.finishRound(); return; }
-    let correct: number;
     const col = i === 0 ? t("tapOnes") : i === 1 ? t("tapTens") : t("tapHundreds");
-    if (this.mode === "add") {
-      const sum = this.aD[i] + this.bD[i] + this.carry;
-      correct = sum % 10;
-    } else {
-      const top = this.aD[i] - this.borrow;
-      if (top < this.bD[i]) {
-        this.borrowedThis[i] = true;
-        if (i + 1 < show) this.lentThis[i + 1] = true;
-        correct = 10 + top - this.bD[i];
-      } else {
-        correct = top - this.bD[i];
-      }
-    }
-    this.correctDigit = correct;
+    // #1200 — the per-column correct digit (with borrow/lend flags) is the
+    // shared columnMath.solveColumn; the scene only mirrors its UI state.
+    const s = solveColumn(i, this.mode, this.aD, this.bD, this.carry, this.borrow, show);
+    if (s.borrows) this.borrowedThis[i] = true;
+    if (s.lends) this.lentThis[i + 1] = true;
+    this.correctDigit = s.digit;
     this.prompt.set(col);
     this.drawBoard();
-    this.spawnButtons(correct);
+    this.spawnButtons(s.digit);
   }
 
   private spawnButtons(correct: number) {
@@ -416,7 +345,7 @@ export class RegroupScene extends Phaser.Scene {
     }
     this.drawBoard();
     const ms = Math.max(1, this.time.now - this.startedAt);
-    const ans = this.aD[0] + this.aD[1] * 10 + this.aD[2] * 100 + (this.mode === "add" ? 1 : -1) * (this.bD[0] + this.bD[1] * 10 + this.bD[2] * 100);
+    const ans = columnAnswer(this.aD, this.bD, this.mode); // #1200 — shared column-math core
     const op = this.mode === "add" ? "+" : "−";
     win();
     speak(t("regroupWin", { a: this.numA(), op, b: this.numB(), c: ans }), { rate: 0.92 });

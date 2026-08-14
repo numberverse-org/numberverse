@@ -5,6 +5,7 @@ import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speak, bnNumber, enNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -171,6 +172,7 @@ export class OddEvenScene extends Phaser.Scene {
     this.sparkle(container.x, container.y);
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
+    correctCelebrate(this, container.x, container.y); // #1205 — combo escalation + streak chip
     const bn = getAppLang() === "bn";
     speak(t("oeGreat"), { cancel: false });
     speak(this.answerEven ? t("oeEven") : t("oeOdd"), { cancel: false });

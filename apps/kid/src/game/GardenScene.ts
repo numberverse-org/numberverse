@@ -4,6 +4,7 @@ import { STAGE_EMOJI, STAGE_NAME_EN, STAGE_NAME_BN, type GardenState } from "./g
 import { gameBackground } from "./backgrounds";
 import { txt, promptTxt, NV_GOLD } from "./ui";
 import { speak } from "./speech";
+import { confettiBurst, starBurst, floatText } from "./celebrate";
 import { getAppLang } from "./locale";
 import { SAT, SAB } from "./safeArea";
 
@@ -175,9 +176,14 @@ export class GardenScene extends Phaser.Scene {
     c.setSize(cardW(), 92);
     c.setInteractive({ useHandCursor: true });
     c.on("pointerdown", () => {
-      // a happy pat — the plant springs and says its name
+      // a happy pat — the plant springs and says its name. #1203 — the garden
+      // spent its polish on ambient idle tweens but the ONE interactive payoff
+      // (this tap) was silent; give it a burst + nod like the quiz scenes.
       this.tweens.add({ targets: c, scaleX: 1.18, scaleY: 1.18, duration: 110, yoyo: true, ease: "Back.easeOut" });
       speak(bn ? `${plant.title} — ${STAGE_NAME_BN[stage]}` : `${plant.title} — ${STAGE_NAME_EN[stage]}`);
+      confettiBurst(this, c.x, c.y - 10, 12);
+      starBurst(this, c.x, c.y - 20, 4);
+      floatText(this, c.x, c.y - 70, bn ? "বাগান বাড়ছে! 🌱" : "Your garden is growing! 🌱", "#9be1a6", 20);
     });
     // the growing plant gently pulses — kids' eyes are drawn to it
     if (active) {

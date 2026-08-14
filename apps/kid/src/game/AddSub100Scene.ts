@@ -3,6 +3,7 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
+import { correctCelebrate } from "./celebrate";
 import { speakMath } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -140,6 +141,9 @@ export class AddSub100Scene extends Phaser.Scene {
     this.sparkle(container.x, container.y);
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
+    // #1202 — the 'to 100' milestone (a big confidence moment) routes its win
+    // through the shared reward path so it celebrates like AddRegroup/SubBorrow.
+    correctCelebrate(this, container.x, container.y);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(true, ms, this.answer);

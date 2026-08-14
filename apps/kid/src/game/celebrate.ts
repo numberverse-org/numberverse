@@ -172,6 +172,13 @@ export function correctCelebrate(
     return; // base pop + sparkle handled by the scene itself
   }
 
+  // #1199 — surface the STREAK uniformly. Every scene that routes through the
+  // shared reward path shows a small "x{n} 🔥" chip floating up above the
+  // escalation word, so a 5-in-a-row is visibly a 5-in-a-row everywhere (it
+  // used to be tracked by celebrate.ts but only a handful of scenes displayed
+  // it — the meter reset on every miss with almost nowhere showing the climb).
+  floatText(scene, x, y - 84, `x${combo} 🔥`, "#ffe8a3", 20);
+
   if (combo === 2) {
     floatText(scene, x, y - 40, "Nice! ✨", "#9be1a6", 24);
     return;
