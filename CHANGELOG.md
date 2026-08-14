@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.5 (render-blocking: lazy HomeScreen/AddKidForm/Nova3DHome chunks, memoized badge/achievement/trophy/box derivations, readiness-based + tap-to-dismiss splash, engine-boot spinner + retry, nova3d Suspense fallback)
+
+c583d9a 🚀 render-blocking: lazy HomeScreen/AddKidForm/Nova3DHome chunks (App 517k→417k), memoize badge/achievement/trophy/box derivations, splash is readiness-based + tap-to-dismiss, engine boot shows spinner + tap-to-retry, nova3d lazy Suspense fallback (#1182 #1183 #1185 #1186 #1178)
+
 ## 14 Aug 2026 — 0.42.4 (offline-first: SW answers /api at the network boundary (cached GET replay + 503 queue) — no sync request escapes the cache offline)
 
 eb0516d 🔧 SW lifecycle flags survive minify (object-literal wrappers for skipWaiting/clientsClaim/cleanupOutdatedCaches); oracle live-stamp check reads the lazy App chunk (#1217 split)
