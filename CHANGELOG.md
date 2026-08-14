@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.9 (10 scene UX fixes for pre-readers (#1236-#1245))
+
+c3dacf8 💻 UX/cognitive-load: 10 scene fixes for pre-readers (#1236-#1245)
+
 ## 14 Aug 2026 — 0.42.8 (skill families: overlapping ids collapse into one-concept tiers (#1207-#1216))
 
 9ae015e 🏷️ skill families: collapse overlapping skill ids into one-concept tiers (#1207-#1216)
