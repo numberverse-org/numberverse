@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.51.0 (curriculum strand-gaps: band-4 BGS civic facts, band-3 matra-words, band-5 ICT/sci/EN comprehension, bands 6-7 English+science (sentences & paragraphs, human body) (#756 #757 #758 #759 #760 #761))
+
+a1ff82a feat(curriculum): close #756 #757 #758 #759 #760 #761 — BGS/sci/ICT/EN strand gaps
+
 ## 14 Aug 2026 — 0.50.0 (9 new pet mini-games: Dance, Nova Says, Pet Walk, Egg Hatch, Species Gallery, Dress-up, Pet Birthday, Photo Booth, Sleep & Wake (#598 #603 #607 #608 #609 #610 #613 #615 #616))
 
 f61551d feat(pet): 9 new Nova mini-games — Dance, Nova Says, Pet Walk, Egg Hatch, Species Gallery, Dress-up, Pet Birthday, Photo Booth, Sleep & Wake (#104 #598 #603 #607 #608 #609 #610 #613 #615 #616)
