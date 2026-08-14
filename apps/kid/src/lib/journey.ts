@@ -545,6 +545,10 @@ export let filterFocusBand: number | null = null;
  *  Built from the initial (unfiltered) filterSkills at module scope so first
  *  render behaves exactly as before applyKidControls runs. */
 export let gameUnits: { key: string; band: number; members: Skill[] }[] = [];
+/** #1121 — per-band view of the same cached units, so worldProgress touches
+ *  only its band's units instead of scanning all 7 bands' worth. Rebuilt
+ *  alongside gameUnits (only on applyKidControls). */
+export let gameUnitsByBand = new Map<number, { key: string; band: number; members: Skill[] }[]>();
 
 function buildGameUnits() {
   const byKey = new Map<string, { key: string; band: number; members: Skill[] }>();
@@ -559,6 +563,16 @@ function buildGameUnits() {
     u.members.push(s);
   }
   gameUnits = [...byKey.values()];
+  const byBand = new Map<number, { key: string; band: number; members: Skill[] }[]>();
+  for (const u of gameUnits) {
+    let arr = byBand.get(u.band);
+    if (!arr) {
+      arr = [];
+      byBand.set(u.band, arr);
+    }
+    arr.push(u);
+  }
+  gameUnitsByBand = byBand;
 }
 buildGameUnits();
 
@@ -639,10 +653,14 @@ function unitMasteredFrom(skills: SkillMap, kidId: string, u: { members: Skill[]
 export function worldProgress(skills: SkillMap, kidId: string, band: number): { mastered: number; total: number; pct: number } {
   let mastered = 0;
   let total = 0;
-  for (const u of gameUnits) {
-    if (u.band !== band) continue;
-    total++;
-    if (unitMasteredFrom(skills, kidId, u)) mastered++;
+  // #1121 — single pass over ONLY this band's cached units (was two filters
+  // over the whole catalog per band, everywhere in render).
+  const units = gameUnitsByBand.get(band);
+  if (units) {
+    for (const u of units) {
+      total++;
+      if (unitMasteredFrom(skills, kidId, u)) mastered++;
+    }
   }
   const t = total || 1;
   return { mastered, total: t, pct: Math.round((mastered / t) * 100) };
