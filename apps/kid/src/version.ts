@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.56.0 (feat: band 6-7 math breadth (algebra/negatives/ratio/geometry/stats, 11 skills, 2 scenes) + age-graded mission bar for bands 5-7 (#1160 #1162))";
-export const APP_VERSION = "0.56.0";
+export const APP_BUILD = "15 Aug 2026 · 0.57.0 (feat: band 6-7 science/english/ict — 15 skills, 2 new scenes (coding logic, science facts), depth ladders in 5 existing scenes (#1161))";
+export const APP_VERSION = "0.57.0";

@@ -1,3 +1,9 @@
+## 15 Aug 2026 — 0.57.0 (feat: band 6-7 science/english/ict — 15 skills, 2 new scenes (coding logic, science facts), depth ladders in 5 existing scenes (#1161))
+
+a434d6d fix: child-safety gate — rephrase new band 6-7 science content to established safe vocabulary (0 unsafe hits) (#1161)
+23e8d4c merge: #1161 band 6-7 science/english/ict
+92cf697 feat: band 6-7 science/english/ict — 15 skills, 2 new scenes (coding logic, science facts), depth ladders in 5 existing scenes (#1161)
+
 ## 15 Aug 2026 — 0.56.0 (feat: band 6-7 math breadth (algebra/negatives/ratio/geometry/stats, 11 skills, 2 scenes) + age-graded mission bar for bands 5-7 (#1160 #1162))
 
 e06756e fix: mirror 11 new band 6-7 math skills in API seed for audit parity (#1160)
