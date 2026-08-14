@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.54.1 (fix: NCTB math cell renumber (c3 data adjacent, c4 contiguous) + shared-scene ladder doc (#1154 #1155 #1157))
+
+294bbd7 fix: renumber c3/c4 math cells (data-skills adjacent, c4 contiguous) + doc shared-scene ladders (#1154 #1155 #1157)
+
 ## 15 Aug 2026 — 0.54.0 (feat: labeled Parents door on home (1-tap portal) + Nova/Garden living-world strip; drop redundant settings gear (#1395 #1396 #1397); incl. #1152/#1156 game-id splits)
 
 e24fe18 feat: labeled Parents door (1-tap) + visible Nova/Garden living-world strip on home (#1395 #1396)

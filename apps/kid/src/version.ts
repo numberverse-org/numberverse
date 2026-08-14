@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.54.0 (feat: labeled Parents door on home (1-tap portal) + Nova/Garden living-world strip; drop redundant settings gear (#1395 #1396 #1397); incl. #1152/#1156 game-id splits)";
-export const APP_VERSION = "0.54.0";
+export const APP_BUILD = "15 Aug 2026 · 0.54.1 (fix: NCTB math cell renumber (c3 data adjacent, c4 contiguous) + shared-scene ladder doc (#1154 #1155 #1157))";
+export const APP_VERSION = "0.54.1";
