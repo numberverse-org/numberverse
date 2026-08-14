@@ -1,3 +1,7 @@
+## 14 Aug 2026 — 0.42.1 (⚡ Storage-blocking: debounced persist, memoized reads, coalesced wrong-tap stories, bounded outboxes)
+
+b32a655 ⚡ storage-blocking: debounced persist (150ms trailing), memoized settings/playtime reads, coalesced wrong-tap stories, hard-capped outboxes (#1227 #1230 #1228 #1229)
+
 ## 14 Aug 2026 — 0.42.1 (⚡ Storage-blocking: persist writes debounced 150ms, settings/playtime reads memoized, wrong-tap stories coalesced, outboxes hard-capped)
 
 ⚡ #1227 #1230 #1228 #1229: storage-blocking — no more per-set full-state stringify, no per-render re-parse, bounded outboxes
