@@ -4,6 +4,8 @@
  * All sounds are tiny, synthesized, zero-asset — fast + offline-friendly.
  */
 
+import { prefersReducedMotion } from "./reducedMotion";
+
 let ctx: AudioContext | null = null;
 
 export function ensureAudio(): AudioContext | null {
@@ -160,6 +162,7 @@ function haptic(pattern: number | number[]) {
   try {
     if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
     if (localStorage.getItem("nv_haptics") === "0") return;
+    if (prefersReducedMotion()) return;
     navigator.vibrate(pattern);
   } catch {
     /* some browsers throw when unfocused — never let that break a sound */
