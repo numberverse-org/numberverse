@@ -1,7 +1,23 @@
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field
+
+
+# #696 — the kid app times rounds with Phaser's high-res clock, so a serialized
+# `response_ms` can carry a fraction (e.g. 1234.456). Pydantic v2 rejects
+# float→int even in lax mode, which 422s the WHOLE /progress or /stories batch
+# and wedges the client's durable outbox. Round to whole ms before the int
+# check — this also un-sticks events queued BEFORE the client-side rounding fix.
+def _round_int(v: int | float | str | None) -> int | float | str | None:
+    if isinstance(v, float):
+        return round(v)
+    return v
+
+
+RoundedInt = Annotated[int | None, BeforeValidator(_round_int)]
+RoundedIntRequired = Annotated[int, BeforeValidator(_round_int)]
 
 
 # ── Auth ──
@@ -199,9 +215,9 @@ class ProgressEventIn(BaseModel):
     skill_id: str
     game_id: str
     correct: bool
-    response_ms: int | None = None
+    response_ms: RoundedInt = None
     difficulty: float | None = None
-    timestamp: int | None = None
+    timestamp: RoundedInt = None
 
 
 # ── Weekly report (parent-facing "show me my kid learned this week") ──
@@ -256,8 +272,8 @@ class LearningStoryIn(BaseModel):
     misconception_code: str | None = None
     action: str | None = None
     difficulty: float | None = None
-    response_ms: int | None = None
-    wrong_streak: int | None = None
+    response_ms: RoundedInt = None
+    wrong_streak: RoundedInt = None
     context: dict = Field(default_factory=dict)
 
 
@@ -287,8 +303,8 @@ class AccelerationIn(BaseModel):
     skill_id: str
     # easy | know | moving-on | parent — why this skill was skipped.
     reason: str = Field(pattern=r"^(easy|know|moving-on|parent)$")
-    band_from: int = Field(ge=1, le=5)
-    band_to: int = Field(ge=1, le=5)
+    band_from: RoundedIntRequired = Field(ge=1, le=5)
+    band_to: RoundedIntRequired = Field(ge=1, le=5)
     uid: str | None = None
 
 

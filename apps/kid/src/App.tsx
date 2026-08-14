@@ -1599,7 +1599,10 @@ export default function App() {
           // lands, or the fresh state is already consumed.)
           const pre = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
           const freshSkill = !pre || (pre.attempts ?? 0) === 0;
-          const e: RoundResult = { gameId: step.gameId, skillId: step.skillId, correct, difficulty, responseMs: ms };
+          // #696 — Phaser's high-res clock yields fractional ms; the API's
+          // response_ms is int, so round at the source (defense in depth with
+          // the server's own rounding validator for stale queued events).
+          const e: RoundResult = { gameId: step.gameId, skillId: step.skillId, correct, difficulty, responseMs: Math.max(0, Math.round(ms)) };
           addEvent(kid.id, e);
           novaAwardRound(kid.id, correct);
           // #133 — screen-reader cue for every round (matches the on-screen flash).
