@@ -1,3 +1,12 @@
+## 15 Aug 2026 — 0.65.0 (admin console: role boundary + audit log, story-health ops surface, typed-confirm deletes, typed config form, real logout, 401-vs-403 (#843 #844 #845 #846 #847 #849 #850 #851))
+
+e977a2f Merge nv-844: admin console ops surface + typed deletes/config (#844 #845 #847 #849)
+841d29a Merge nv-850: admin auth fixes + dep hygiene (#843 #850 #851)
+03a38b0 Merge nv-846: admin role boundary + audit log + config validation (#846 #847)
+34321c9 🖥️ admin console: story-health ops surface, typed-confirm deletes, typed config form, shared httpClient (#844 #845 #847 #849)
+b397f60 🧹 admin: real server-side logout, 401-vs-403, drop unused core dep (#843 #850 #851)
+9f0598c 🔐 admin: role boundary (super_admin) + audit log + config JSONB schema validation (#846 #847)
+
 ## 15 Aug 2026 — 0.64.0 (api: admin CRUD caps+feedback, sync-contract 200, UTC windows, typed models, non-dev credential guard (#840 #842 #848 #852 #853 #854 #857 #858 #859 #860))
 
 54ace14 Merge nv-842: non-dev credential guard (#842)
