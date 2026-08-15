@@ -8,7 +8,7 @@ from .config import settings
 from .db import Base, engine, SessionLocal
 from .migrations import apply_column_migrations
 from .models import Kid, KidSettings, Profile, Skill, Subject, Subscription
-from .security import hash_password
+from .security import hash_password, verify_password
 
 log = logging.getLogger("numberverse.seed")
 
@@ -306,6 +306,16 @@ async def _ensure_profile(
         # forward (legacy is_admin already grants it, but make the role real).
         if is_admin and existing.is_admin and existing.role != "super_admin":
             existing.role = "super_admin"
+        # #842 — the bootstrap admin's password is owned by the OPERATOR via
+        # NV_ADMIN_PASSWORD (non-dev boots refuse the default). A pre-rotation
+        # row (seeded with the old env value, or the old default) must re-hash
+        # to the current env value on every boot so changing NV_ADMIN_PASSWORD
+        # is the deterministic rotation path — the console account always
+        # matches the env, never a stale hash. Non-admin profiles are created
+        # once and never re-seeded.
+        if is_admin and not verify_password(password, existing.password_hash):
+            existing.password_hash = hash_password(password)
+            log.info("Rotated %s password to match NV_ADMIN_PASSWORD (#842)", email)
         return existing
     profile = Profile(
         email=email,
