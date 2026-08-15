@@ -213,7 +213,7 @@ export class IdiomsScene extends Phaser.Scene {
       const api = this.optionBtns[i].getData("nv-btn") as { setLabel: (s: string) => void } | undefined;
       api?.setLabel(t(MEAN_KEYS[this.options[i] - 1]));
     }
-    speak(this.current.phrase, { lang: "bn" }); // the idiom is always Bangla
+    speak(this.current.phrase); // the idiom is always Bangla
   }
 
   private speakExample() {

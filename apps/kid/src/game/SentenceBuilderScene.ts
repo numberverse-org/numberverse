@@ -203,8 +203,8 @@ export class SentenceBuilderScene extends Phaser.Scene {
       // Distractor (grey) — retire it. Colored-but-out-of-order — keep it alive.
       hintWrong(this, container, {
         keepOnWrong: role !== "none",
-        hint: () => this.hintText(next),
-        hintBn: () => this.hintTextBn(next),
+        hint: () => t(this.hintKey(next)),
+        hintBn: () => t(this.hintKey(next)),
         correct: () => nextWord,
         options: () => this.tiles.map((o) => ({ sprite: o.sprite, value: o.word })),
       });
@@ -223,7 +223,7 @@ export class SentenceBuilderScene extends Phaser.Scene {
       duration: 240,
       ease: "Back.easeOut",
       onComplete: () => {
-        speak(word, { lang: "bn" });
+        speak(word);
         this.filled[idx] = word;
         this.locked = false;
         if (this.filled.every((f) => f !== null)) {
@@ -233,21 +233,15 @@ export class SentenceBuilderScene extends Phaser.Scene {
     });
   }
 
-  private hintText(next: Role): string {
-    if (next === "subject") return "Start with WHO — who is doing it!";
-    if (next === "verb") return "Now the ACTION — what is happening!";
-    return "Finish with the rest of the sentence!";
-  }
-
-  private hintTextBn(next: Role): string {
-    if (next === "subject") return "কার কথা — কে করছে, তা দিয়ে শুরু করো!";
-    if (next === "verb") return "এবার কাজটা — কী ঘটছে!";
-    return "শেষ করো বাক্যটার বাকিটা দিয়ে!";
+  private hintKey(next: Role): string {
+    if (next === "subject") return "sbHintSubject";
+    if (next === "verb") return "sbHintVerb";
+    return "sbHintObject";
   }
 
   private finishSentence() {
     const s = this.sentence;
-    speak(`${s.s} ${s.v} ${s.o}`, { lang: "bn" });
+    speak(`${s.s} ${s.v} ${s.o}`);
     win();
     correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
     this.floatMsg(`${s.s} ${s.v} ${s.o}`);

@@ -83,7 +83,7 @@ export class PoliteScene extends Phaser.Scene {
       .text(0, 0, "", txt(64, "#ffffff", { outline: true }))
       .setOrigin(0.5).setDepth(2);
     this.replayBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 28);
-    this.replayBtn.on("pointerdown", () => speak(this.sc.text, { lang: "bn" }));
+    this.replayBtn.on("pointerdown", () => speak(this.sc.text));
     onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
@@ -138,7 +138,7 @@ export class PoliteScene extends Phaser.Scene {
       tile.on("pointerdown", () => this.tap(tile, word));
       this.tiles.push({ sprite: tile, word });
     });
-    this.time.delayedCall(350, () => speak(sc.text, { lang: "bn" }));
+    this.time.delayedCall(350, () => speak(sc.text));
   }
 
   private tap(container: Phaser.GameObjects.Container, word: string) {
@@ -149,19 +149,19 @@ export class PoliteScene extends Phaser.Scene {
       win();
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.tweens.add({ targets: container, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
-      this.time.delayedCall(200, () => speak(this.sc.a, { lang: "bn" }));
+      this.time.delayedCall(200, () => speak(this.sc.a));
       this.floatMsg(t("plGreat"));
       this.qInRound++;
       this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
       return;
     }
     hintWrong(this, container, {
-      hint: () => "What's the polite word for this moment?",
-      hintBn: () => "এই মুহূর্তে ভদ্র শব্দটা কী?",
+      hint: () => t("plHint"),
+      hintBn: () => t("plHint"),
       correct: () => this.sc.a,
       options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.word })),
     });
-    this.time.delayedCall(500, () => speak(this.sc.text, { lang: "bn" }));
+    this.time.delayedCall(500, () => speak(this.sc.text));
   }
 
   private finishRound() {

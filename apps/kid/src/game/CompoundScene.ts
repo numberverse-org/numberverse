@@ -198,8 +198,8 @@ export class CompoundScene extends Phaser.Scene {
     const outOfOrder = word === this.c.b && this.placed[0] === null;
     hintWrong(this, container, {
       keepOnWrong: outOfOrder,
-      hint: () => (outOfOrder ? "Tap the FIRST word first!" : "That word doesn't belong in this picture!"),
-      hintBn: () => (outOfOrder ? "আগে প্রথম শব্দটা টিপো!" : "এই শব্দটা এ ছবিতে নেই!"),
+      hint: () => t(outOfOrder ? "cpHintFirst" : "cpHintNotHere"),
+      hintBn: () => t(outOfOrder ? "cpHintFirst" : "cpHintNotHere"),
       correct: () => this.placed[0] === null ? this.c.a : this.c.b,
       options: () => this.tiles.filter((o) => this.placed[0] === null || this.placed[1] === null).map((o) => ({ sprite: o.sprite, value: o.word })),
     });
@@ -221,7 +221,7 @@ export class CompoundScene extends Phaser.Scene {
       onComplete: () => {
         const word = slot === 0 ? this.c.a : this.c.b;
         this.placed[slot] = word;
-        speak(word, { lang: "bn" });
+        speak(word);
         if (slot === 0) this.placedTextA.setText(word);
         else this.placedTextB.setText(word);
       },
@@ -234,7 +234,7 @@ export class CompoundScene extends Phaser.Scene {
     this.fusedText.setText(this.c.word);
     correctCelebrate(this, this.fusedText.x, this.fusedText.y);
     this.tweens.add({ targets: this.fusedText, scale: 1.18, duration: 160, yoyo: true, ease: "Back.easeOut" });
-    speak(this.c.word, { lang: "bn" });
+    speak(this.c.word);
     this.floatMsg(t("cpGreat"));
     this.qInRound++;
     if (this.qInRound >= QUESTIONS_PER_ROUND) {

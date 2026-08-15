@@ -181,8 +181,8 @@ export class MatraMatrixScene extends Phaser.Scene {
           correctCelebrate(this, this.scale.width / 2, this.scale.height * 0.32);
           this.time.delayedCall(420, () => {
             this.fullWordText.setText(this.mw.word);
-            speak(this.mw.word, { lang: "bn" });
-            this.time.delayedCall(650, () => speak(this.mw.name, { lang: "bn" }));
+            speak(this.mw.word);
+            this.time.delayedCall(650, () => speak(this.mw.name));
             this.floatMsg(t("mmGreat"));
           });
         },
@@ -192,8 +192,8 @@ export class MatraMatrixScene extends Phaser.Scene {
       return;
     }
     hintWrong(this, container, {
-      hint: () => "That matra doesn't make this word — try again!",
-      hintBn: () => "এই মাত্রায় শব্দটা হবে না — আবার চেষ্টা করো!",
+      hint: () => t("mmHint"),
+      hintBn: () => t("mmHint"),
       correct: () => this.mw.m,
       options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.m })),
     });

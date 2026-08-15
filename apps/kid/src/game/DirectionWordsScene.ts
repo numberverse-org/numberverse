@@ -170,8 +170,9 @@ export class DirectionWordsScene extends Phaser.Scene {
     const dx = this.path[this.stepIdx + 1].x - this.path[this.stepIdx].x;
     const dy = this.path[this.stepIdx + 1].y - this.path[this.stepIdx].y;
     this.inst = DIRS.find((d) => d.dx === dx && d.dy === dy)!;
-    this.instText.setText(this.inst.arrow + " " + this.inst.label + " যাও");
-    this.time.delayedCall(350, () => speak(this.inst.label + " যাও", { lang: "bn" }));
+    const go = t("dwGo", { dir: this.inst.label });
+    this.instText.setText(this.inst.arrow + " " + go);
+    this.time.delayedCall(350, () => speak(go));
   }
 
   private buildButtons() {
@@ -226,12 +227,12 @@ export class DirectionWordsScene extends Phaser.Scene {
       return;
     }
     hintWrong(this, container, {
-      hint: () => "Listen again — which way?",
-      hintBn: () => "আবার শোনো — কোন দিকে?",
+      hint: () => t("dwListenHint"),
+      hintBn: () => t("dwListenHint"),
       correct: () => this.inst.key,
       options: () => this.buttons.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.dir.key })),
     });
-    this.time.delayedCall(500, () => speak(this.inst.label + " যাও", { lang: "bn" }));
+    this.time.delayedCall(500, () => speak(t("dwGo", { dir: this.inst.label })));
   }
 
   private finishRound() {

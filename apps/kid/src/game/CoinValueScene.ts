@@ -14,11 +14,11 @@ import { SAB } from "./safeArea";
 const LEVELS = GAMES.find((g) => g.id === "game-coinvalues")?.difficultyLevels ?? [8, 8, 12, 12, 20, 20];
 const ROUNDS_TO_FINISH = 3;
 const QUESTIONS_PER_ROUND = 5;
-/** ৳ denominations + their Bangla names (spoken) + Bangla numerals printed on coins. */
+/** ৳ denominations + their spoken-name i18n keys + Bangla numerals printed on coins. */
 const DENOMS = [
-  { v: 1, bn: "এক টাকা", g: "৳১", r: 34 },
-  { v: 2, bn: "দুই টাকা", g: "৳২", r: 40 },
-  { v: 5, bn: "পাঁচ টাকা", g: "৳৫", r: 46 },
+  { v: 1, name: "cvOneTaka", g: "৳১", r: 34 },
+  { v: 2, name: "cvTwoTaka", g: "৳২", r: 40 },
+  { v: 5, name: "cvFiveTaka", g: "৳৫", r: 46 },
 ];
 
 /**
@@ -119,12 +119,12 @@ export class CoinValueScene extends Phaser.Scene {
         tile.on("pointerdown", () => this.answerRecognize(tile, x.v));
         this.coins.push({ sprite: tile, v: x.v });
       });
-      this.time.delayedCall(400, () => speak(d.bn, { lang: "bn" }));
+      this.time.delayedCall(400, () => speak(t(d.name)));
     } else {
       this.prompt.set(t("cvCount"));
       this.showCoin.setVisible(false);
       this.totalText.setText("৳" + digit(this.pickTotal()));
-      this.sumText.setText("০");
+      this.sumText.setText(digit(0));
       this.trayRow.setVisible(true);
       const y = this.scale.height - 150 - SAB();
       const gap = this.scale.width / 5;
@@ -133,7 +133,7 @@ export class CoinValueScene extends Phaser.Scene {
         tile.on("pointerdown", () => this.addToTray(tile, x.v));
         this.coins.push({ sprite: tile, v: x.v });
       });
-      this.time.delayedCall(400, () => speak("৳" + digit(this.target), { lang: "bn" }));
+      this.time.delayedCall(400, () => speak("৳" + digit(this.target)));
     }
   }
 
@@ -178,15 +178,15 @@ export class CoinValueScene extends Phaser.Scene {
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.tweens.add({ targets: container, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
       const d = DENOMS.find((x) => x.v === this.target)!;
-      this.time.delayedCall(200, () => speak(d.bn, { lang: "bn" }));
+      this.time.delayedCall(200, () => speak(t(d.name)));
       this.floatMsg(t("cvGreat"));
       this.qInRound++;
       this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
       return;
     }
     hintWrong(this, container, {
-      hint: () => "Look at the Bangla number on the coin!",
-      hintBn: () => "কয়েনের গায়ের বাংলা সংখ্যাটা দেখো!",
+      hint: () => t("cvCoinHint"),
+      hintBn: () => t("cvCoinHint"),
       correct: () => this.target,
       options: () => this.coins.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.v })),
     });
@@ -208,7 +208,7 @@ export class CoinValueScene extends Phaser.Scene {
       this.locked = true;
       win();
       this.floatMsg(t("cvGreat"));
-      this.time.delayedCall(200, () => speak("৳" + digit(this.target), { lang: "bn" }));
+      this.time.delayedCall(200, () => speak("৳" + digit(this.target)));
       this.qInRound++;
       this.time.delayedCall(1000, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
     } else if (this.traySum > this.target) {
@@ -248,7 +248,7 @@ export class CoinValueScene extends Phaser.Scene {
     this.trayRow.removeAll(true);
     this.tray = [];
     this.traySum = 0;
-    this.sumText.setText("০");
+    this.sumText.setText(digit(0));
   }
   private clearCoins() {
     this.coins.forEach((o) => o.sprite.destroy());

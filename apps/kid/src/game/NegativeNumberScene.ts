@@ -167,7 +167,7 @@ export class NegativeNumberScene extends Phaser.Scene {
       if (v !== 0 && Math.abs(v) % 2 !== 0) continue;
       const x = cx + v * unit;
       const lbl = this.add
-        .text(x, cy + 18, numLabel(v), txt(15, v === 0 ? "#ffd166" : "#ffffff", { bold: true, shadow: false }))
+        .text(x, cy + 18, numLabel(v), txt(15, v === 0 ? NV_GOLD : "#ffffff", { bold: true, shadow: false }))
         .setOrigin(0.5, 0);
       this.lineLabels.push(lbl);
     }

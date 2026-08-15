@@ -117,7 +117,7 @@ export class ReadStoryScene extends Phaser.Scene {
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
     this.readAllBtn = modernCardButton(this, 0, 0, 150, 56, "🔊 " + t("rsReadAll"), BTN_ORANGE, 22, 138);
-    this.readAllBtn.on("pointerdown", () => speak(this.story.s.flat().map(stripPunc).join(" "), { lang: "bn" }));
+    this.readAllBtn.on("pointerdown", () => speak(this.story.s.flat().map(stripPunc).join(" ")));
     this.doneBtn = modernCardButton(this, 0, 0, 190, 56, "→ " + t("rsDoneReading"), BTN_PRIMARY, 22, 176);
     this.doneBtn.on("pointerdown", () => this.startQuiz());
     onSceneResize(this, () => this.layout());
@@ -183,7 +183,7 @@ export class ReadStoryScene extends Phaser.Scene {
         chip.on("pointerdown", () => {
           if (this.locked) return;
           pop();
-          speak(stripPunc(c.word), { lang: "bn" });
+          speak(stripPunc(c.word));
         });
         this.chips.push({ sprite: chip, word: c.word });
         x += c.w + CHIP_GAP;
@@ -229,7 +229,7 @@ export class ReadStoryScene extends Phaser.Scene {
       this.optionTiles.push({ sprite: tile, emoji });
     });
     // read the question aloud — comprehension is sound-first too
-    this.time.delayedCall(350, () => speak(this.q.q, { lang: "bn" }));
+    this.time.delayedCall(350, () => speak(this.q.q));
   }
 
   private answer(container: Phaser.GameObjects.Container, emoji: string) {
@@ -240,7 +240,7 @@ export class ReadStoryScene extends Phaser.Scene {
       win();
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.tweens.add({ targets: container, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
-      this.time.delayedCall(200, () => speak(this.q.as, { lang: "bn" }));
+      this.time.delayedCall(200, () => speak(this.q.as));
       this.floatMsg(t("rsGreat"));
       this.qInRound++;
       this.qIndex++;
@@ -252,12 +252,12 @@ export class ReadStoryScene extends Phaser.Scene {
       return;
     }
     hintWrong(this, container, {
-      hint: () => "Read the story again in your head — what did it say?",
-      hintBn: () => "গল্পটা আবার মনে করো — কী বলা ছিল?",
+      hint: () => t("rsHint"),
+      hintBn: () => t("rsHint"),
       correct: () => this.q.a,
       options: () => this.optionTiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.emoji })),
     });
-    this.time.delayedCall(500, () => speak(this.q.q, { lang: "bn" }));
+    this.time.delayedCall(500, () => speak(this.q.q));
   }
 
   private finishRound() {

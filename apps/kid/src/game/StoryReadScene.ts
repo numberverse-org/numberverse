@@ -95,7 +95,7 @@ export class StoryReadScene extends Phaser.Scene {
       .setDepth(2);
     this.readBtn = modernCardButton(this, 0, 0, 84, 60, "🔊", BTN_ORANGE, 32);
     this.readBtn.on("pointerdown", () => {
-      speak(`${this.story.text} ${this.story.q}`, { lang: "bn" });
+      speak(`${this.story.text} ${this.story.q}`);
     });
     this.readBtn.setDepth(3);
     onSceneResize(this, () => this.layout());
@@ -148,7 +148,7 @@ export class StoryReadScene extends Phaser.Scene {
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     const opts = [s.a, ...s.d.slice(0, n - 1)].sort(() => Math.random() - 0.5);
     this.answer = opts;
-    speak(`${s.text} ${s.q}`, { lang: "bn" });
+    speak(`${s.text} ${s.q}`);
     this.showStory();
     this.prompt.set(s.q);
     const cols = n <= 3 ? n : 2;
@@ -178,8 +178,8 @@ export class StoryReadScene extends Phaser.Scene {
     if (this.locked) return;
     if (emoji !== this.story.a) {
       hintWrong(this, container, {
-        hint: () => "Listen to the story again — who/what is it about?",
-        hintBn: () => "গল্পটা আবার শোনো — কার/কী নিয়ে গল্প?",
+        hint: () => t("srHint"),
+        hintBn: () => t("srHint"),
         correct: () => this.story.a,
         options: () => this.answers.map((o) => ({ sprite: o.sprite, value: o.emoji })),
       });

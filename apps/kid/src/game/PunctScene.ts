@@ -187,8 +187,8 @@ export class PunctScene extends Phaser.Scene {
     if (this.locked) return;
     if (p !== this.sentence.p) {
       hintWrong(this, container, {
-        hint: () => this.hintText(this.sentence.p),
-        hintBn: () => this.hintTextBn(this.sentence.p),
+        hint: () => t(this.hintKey(this.sentence.p)),
+        hintBn: () => t(this.hintKey(this.sentence.p)),
         correct: () => PUNC_GLYPH[this.sentence.p],
         options: () => this.options.map((o) => ({ sprite: o.sprite, value: PUNC_GLYPH[o.p] })),
       });
@@ -204,7 +204,7 @@ export class PunctScene extends Phaser.Scene {
     this.tweens.add({ targets: this.placedText, scale: 1, duration: 260, ease: "Back.easeOut" });
     this.slotBox.clear();
     // read the DIFFERENCE aloud — the sentence with its real punctuation
-    speak(`${this.sentence.text}${PUNC_GLYPH[p]}`, { lang: "bn" });
+    speak(`${this.sentence.text}${PUNC_GLYPH[p]}`);
     this.floatSmall(this.scale.width / 2, this.scale.height * 0.31, t("puGreat"));
     this.qInRound++;
     if (this.qInRound >= QUESTIONS_PER_ROUND) {
@@ -214,16 +214,10 @@ export class PunctScene extends Phaser.Scene {
     }
   }
 
-  private hintText(p: Punc): string {
-    if (p === "?") return "This sentence asks a question — tap the ?";
-    if (p === "!") return "This sentence is excited — tap the !";
-    return "This sentence states something — tap the ।";
-  }
-
-  private hintTextBn(p: Punc): string {
-    if (p === "?") return "এটা প্রশ্ন — প্রশ্ন চিহ্ন (?) টিপো";
-    if (p === "!") return "এটা বিস্ময় — বিস্ময় চিহ্ন (!) টিপো";
-    return "এটা বিবৃত বাক্য — দাঁড়ি (।) টিপো";
+  private hintKey(p: Punc): string {
+    if (p === "?") return "puHintQuestion";
+    if (p === "!") return "puHintExclaim";
+    return "puHintStatement";
   }
 
   private finishRound() {

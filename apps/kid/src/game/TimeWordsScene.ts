@@ -158,7 +158,7 @@ export class TimeWordsScene extends Phaser.Scene {
         ease: "Back.easeOut",
         onComplete: () => {
           this.boxes[this.placed].label.setText(ev.e + " " + ev.word);
-          speak(ev.word, { lang: "bn" });
+          speak(ev.word);
           container.setVisible(false);
         },
       });
@@ -176,8 +176,8 @@ export class TimeWordsScene extends Phaser.Scene {
     const isDistractor = !this.set.some((x) => x.word === ev.word);
     hintWrong(this, container, {
       keepOnWrong: !isDistractor,
-      hint: () => "Which came first — yesterday, today, or tomorrow?",
-      hintBn: () => "কোনটা আগে — গতকাল, আজ, না আগামীকাল?",
+      hint: () => t("twHint"),
+      hintBn: () => t("twHint"),
       correct: () => expected,
       options: () => this.cards.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.word })),
     });

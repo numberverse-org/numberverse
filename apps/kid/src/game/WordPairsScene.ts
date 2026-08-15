@@ -164,7 +164,7 @@ export class WordPairsScene extends Phaser.Scene {
     this.targetEmoji.setText(targetEmoji);
     this.targetText.setText(this.targetWord);
     this.prompt.set(this.mode === "antonym" ? t("wpAntonym") : t("wpSynonym"));
-    speak(`${targetEmoji} ${this.targetWord}`, { lang: "bn" });
+    speak(`${targetEmoji} ${this.targetWord}`);
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     const opts = [this.correctWord, ...this.pickDistractors(this.mode, this.targetWord, this.correctWord, n - 1)]
       .sort(() => Math.random() - 0.5);
@@ -208,8 +208,8 @@ export class WordPairsScene extends Phaser.Scene {
     if (this.locked) return;
     if (word !== this.correctWord) {
       hintWrong(this, container, {
-        hint: () => (this.mode === "antonym" ? "Tap the OPPOSITE word!" : "Tap the word with the SAME meaning!"),
-        hintBn: () => (this.mode === "antonym" ? "বিপরীত শব্দটা টিপো!" : "একই অর্থের শব্দটা টিপো!"),
+        hint: () => t(this.mode === "antonym" ? "wpHintAntonym" : "wpHintSynonym"),
+        hintBn: () => t(this.mode === "antonym" ? "wpHintAntonym" : "wpHintSynonym"),
         correct: () => this.correctWord,
         options: () => this.options.map((o) => ({ sprite: o.sprite, value: o.word })),
       });
@@ -218,7 +218,7 @@ export class WordPairsScene extends Phaser.Scene {
     this.locked = true;
     pop();
     correctButton(container);
-    speak(`${this.targetWord} — ${this.correctWord}`, { lang: "bn" });
+    speak(`${this.targetWord} — ${this.correctWord}`);
     this.floatSmall(container.x, container.y - 52, t("wpGreat"));
     this.qInRound++;
     this.qTotal++;

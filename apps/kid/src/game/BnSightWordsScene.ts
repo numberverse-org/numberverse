@@ -181,7 +181,7 @@ export class BnSightWordsScene extends Phaser.Scene {
     const card = item.sprite;
     this.showRing(card);
     this.tweens.add({ targets: card, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
-    speak(this.target, { lang: "bn" });
+    speak(this.target);
     const ringMs = RING_MS[Math.min(this.levelIndex, RING_MS.length - 1)];
     if (ringMs > 0) {
       this.time.delayedCall(ringMs, () => {
@@ -248,8 +248,8 @@ export class BnSightWordsScene extends Phaser.Scene {
       this.streak = 0;
       this.streakText.setText(t("sightWallStreak", { n: 0 }));
       hintWrong(this, container, {
-        hint: () => `The popped word is "${this.target}" — tap it!`,
-        hintBn: () => `ওঠা শব্দটি "${this.target}" — সেটা টিপো!`,
+        hint: () => t("sightWallHint", { word: this.target }),
+        hintBn: () => t("sightWallHint", { word: this.target }),
         correct: () => this.target,
         options: () => this.wall.filter((o) => !o.done).map((o) => ({ sprite: o.sprite, value: o.word })),
       });
@@ -260,7 +260,7 @@ export class BnSightWordsScene extends Phaser.Scene {
     this.ring.clear();
     pop();
     correctButton(container);
-    speak(this.target, { lang: "bn" });
+    speak(this.target);
     this.streak++;
     this.streakText.setText(t("sightWallStreak", { n: this.streak }));
     this.floatSmall(container.x, container.y - 52, t("sightWallGreat"));

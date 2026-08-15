@@ -73,7 +73,7 @@ export class NumberWordsScene extends Phaser.Scene {
       .text(0, 0, "", txt(64, "#ffffff", { bold: true, outline: true }))
       .setOrigin(0.5).setDepth(3);
     this.replayBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 28);
-    this.replayBtn.on("pointerdown", () => speak(NUM[this.target], { lang: "bn" }));
+    this.replayBtn.on("pointerdown", () => speak(NUM[this.target]));
     onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
@@ -123,7 +123,7 @@ export class NumberWordsScene extends Phaser.Scene {
       this.tiles.push({ sprite: tile, n: num });
     });
     // Speak every number: word→digit speaks the word up front.
-    if (this.mode === "wd") this.time.delayedCall(400, () => speak(NUM[n], { lang: "bn" }));
+    if (this.mode === "wd") this.time.delayedCall(400, () => speak(NUM[n]));
   }
 
   private nearDistractors(n: number, stage: { min: number; max: number }, count: number): number[] {
@@ -151,19 +151,19 @@ export class NumberWordsScene extends Phaser.Scene {
       win();
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.tweens.add({ targets: container, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
-      this.time.delayedCall(200, () => speak(NUM[this.target], { lang: "bn" }));
+      this.time.delayedCall(200, () => speak(NUM[this.target]));
       this.floatMsg(t("nwGreat"));
       this.qInRound++;
       this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
       return;
     }
     hintWrong(this, container, {
-      hint: () => "Listen again — which number is it?",
-      hintBn: () => "আবার শোনো — সংখ্যাটা কত?",
+      hint: () => t("nwHint"),
+      hintBn: () => t("nwHint"),
       correct: () => this.target,
       options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.n })),
     });
-    this.time.delayedCall(500, () => speak(NUM[this.target], { lang: "bn" }));
+    this.time.delayedCall(500, () => speak(NUM[this.target]));
   }
 
   private finishRound() {

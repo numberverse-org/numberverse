@@ -133,8 +133,8 @@ export class PronounScene extends Phaser.Scene {
     if (this.locked) return;
     if (value !== this.target.a) {
       hintWrong(this, container, {
-        hint: () => `Think about who is speaking: ${this.target.en.replace("____", "…")}`,
-        hintBn: () => `কে কথা বলছে ভাবো — ছবিটা দেখো!`,
+        hint: () => t("pronounHint", { sentence: this.target.en.replace("____", "…") }),
+        hintBn: () => t("pronounHint"),
         correct: () => this.target.a,
         options: () => this.answers.map((o) => ({ sprite: o.sprite, value: o.value })),
       });
@@ -146,7 +146,7 @@ export class PronounScene extends Phaser.Scene {
     ringCorrect(this, container);
     const full = this.target.s.replace("____", this.target.a);
     this.sentenceText.setText(full);
-    speak(full, { lang: "bn" });
+    speak(full);
     this.prompt.set(t("pronounGreat"));
     this.qInRound++;
     this.time.delayedCall(700, () => {

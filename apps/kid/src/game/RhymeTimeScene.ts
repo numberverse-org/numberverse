@@ -183,7 +183,7 @@ export class RhymeTimeScene extends Phaser.Scene {
       return;
     }
     const chip = this.chips[idx].sprite;
-    speak(this.chips[idx].word, { lang: "bn" });
+    speak(this.chips[idx].word);
     const guide = GUIDE[Math.min(this.levelIndex, GUIDE.length - 1)];
     if (guide >= 2) {
       this.showRing(chip);
@@ -215,7 +215,7 @@ export class RhymeTimeScene extends Phaser.Scene {
       const target = this.chips[this.wordIdx].sprite;
       this.tweens.add({ targets: target, scale: 1.1, duration: 120, yoyo: true });
       this.floatMsg(t("ryAgain"));
-      speak(this.chips[this.wordIdx].word, { lang: "bn" });
+      speak(this.chips[this.wordIdx].word);
       return;
     }
     this.locked = true;
@@ -223,7 +223,7 @@ export class RhymeTimeScene extends Phaser.Scene {
     pop();
     playNote(MELODY[this.wordIdx % MELODY.length], 0.24);
     ringCorrect(this, container);
-    speak(this.chips[this.wordIdx].word, { lang: "bn" });
+    speak(this.chips[this.wordIdx].word);
     const idx = this.wordIdx;
     this.time.delayedCall(320, () => {
       if (this.wordIdx === idx) this.advance(idx + 1);
@@ -232,7 +232,7 @@ export class RhymeTimeScene extends Phaser.Scene {
 
   private singWhole() {
     if (!this.rhyme) return;
-    speak(this.rhyme.words.join(" "), { lang: "bn" });
+    speak(this.rhyme.words.join(" "));
   }
 
   private finishRhyme() {

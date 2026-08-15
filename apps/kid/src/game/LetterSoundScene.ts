@@ -96,7 +96,7 @@ export class LetterSoundScene extends Phaser.Scene {
   }
 
   private playSound() {
-    speak(this.target, { lang: "bn" });
+    speak(this.target);
   }
 
   private startRound() {
@@ -153,15 +153,15 @@ export class LetterSoundScene extends Phaser.Scene {
       pop();
       correctCelebrate(this, container.x, container.y);
       this.tweens.add({ targets: container, scale: 1.12, duration: 140, yoyo: true, ease: "Back.easeOut" });
-      this.time.delayedCall(200, () => speak(this.target, { lang: "bn" }));
+      this.time.delayedCall(200, () => speak(this.target));
       this.floatMsg(t("lsGreat"));
       this.qInRound++;
       this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
       return;
     }
     hintWrong(this, container, {
-      hint: () => "Listen again — tap the letter you HEARD!",
-      hintBn: () => "আবার শোনো — যে বর্ণটা শুনলে, সেটা টিপো!",
+      hint: () => t("lsHint"),
+      hintBn: () => t("lsHint"),
       correct: () => this.target,
       options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.letter })),
     });

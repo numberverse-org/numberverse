@@ -178,7 +178,7 @@ export class BanglaSpellScene extends Phaser.Scene {
     }
     this.target = w;
     this.emojiText.setText(w.emoji);
-    speak(w.word, { lang: "bn" });
+    speak(w.word);
 
     if (this.isTypingLevel()) {
       this.typingActive = true;
@@ -230,8 +230,8 @@ export class BanglaSpellScene extends Phaser.Scene {
     const expected = this.target.letters[this.solvedCount];
     if (letter !== expected) {
       hintWrong(this, container, {
-        hint: () => `Which letter comes next in ${this.target.word}?`,
-        hintBn: () => `${this.target.word} শব্দে কোন অক্ষরটা পরের?`,
+        hint: () => t("spellNextHint", { word: this.target.word }),
+        hintBn: () => t("spellNextHint", { word: this.target.word }),
         correct: () => expected,
         options: () => this.tiles.map((o) => ({ sprite: o.sprite, value: o.letter })),
         challenge: this.challenge, // #1158 — no banner/reveal in challenge mode
@@ -255,7 +255,7 @@ export class BanglaSpellScene extends Phaser.Scene {
     if (this.solvedCount >= this.target.letters.length) {
       this.locked = true;
       win();
-      speak(this.target.word, { lang: "bn" });
+      speak(this.target.word);
       this.prompt.set(t("spellGreat", { w: this.target.word }));
       this.floatMsg(this.target.word);
       this.qInRound++;
@@ -367,8 +367,8 @@ export class BanglaSpellScene extends Phaser.Scene {
       return;
     }
     hintWrong(this, this.slots[0], {
-      hint: () => `Type the Bangla word for ${this.target.word} with English letters.`,
-      hintBn: () => `${this.target.word} শব্দটা ইংরেজি অক্ষরে টাইপ করো।`,
+      hint: () => t("typeSpellHint", { word: this.target.word }),
+      hintBn: () => t("typeSpellHint", { word: this.target.word }),
       correct: () => this.target.word,
       keepOnWrong: true, // live input slots are never retired
       challenge: this.challenge, // #1158 — no reveal in challenge mode
@@ -386,7 +386,7 @@ export class BanglaSpellScene extends Phaser.Scene {
     correctButton(lastSlot);
     ringCorrect(this, lastSlot);
     win();
-    speak(this.target.word, { lang: "bn" });
+    speak(this.target.word);
     this.prompt.set(t("spellGreat", { w: this.target.word }));
     this.floatMsg(this.target.word);
     this.qInRound++;

@@ -99,7 +99,7 @@ export class RiddleScene extends Phaser.Scene {
       .text(0, 0, "", txt(20, NV_GOLD, { bold: true, align: "center" }))
       .setOrigin(0.5);
     this.replayBtn = modernCardButton(this, 0, 0, 96, 60, "🔊", BTN_ORANGE, 28);
-    this.replayBtn.on("pointerdown", () => speak(this.rd.text, { lang: "bn" }));
+    this.replayBtn.on("pointerdown", () => speak(this.rd.text));
     onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
@@ -154,7 +154,7 @@ export class RiddleScene extends Phaser.Scene {
       tile.on("pointerdown", () => this.tap(tile, emoji));
       this.tiles.push({ sprite: tile, emoji });
     });
-    this.time.delayedCall(350, () => speak(rd.text, { lang: "bn" }));
+    this.time.delayedCall(350, () => speak(rd.text));
   }
 
   private tap(container: Phaser.GameObjects.Container, emoji: string) {
@@ -166,7 +166,7 @@ export class RiddleScene extends Phaser.Scene {
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.emojiText.setText(this.rd.e);
       this.tweens.add({ targets: container, scale: 1.15, duration: 140, yoyo: true, ease: "Back.easeOut" });
-      this.time.delayedCall(250, () => speak(this.rd.a, { lang: "bn" }));
+      this.time.delayedCall(250, () => speak(this.rd.a));
       this.floatMsg(t("rdGreat"));
       this.qInRound++;
       this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
@@ -175,21 +175,21 @@ export class RiddleScene extends Phaser.Scene {
     this.wrongCount++;
     this.roundWrongs++;
     hintWrong(this, container, {
-      hint: () => "Think hard — re-read the clue!",
-      hintBn: () => "ভেবে দেখো — ক্লুটা আবার শোনো!",
+      hint: () => t("rdHint"),
+      hintBn: () => t("rdHint"),
       correct: () => this.rd.e,
       options: () => this.tiles.filter((o) => o.sprite !== container).map((o) => ({ sprite: o.sprite, value: o.emoji })),
     });
     if (this.wrongCount === 1) {
       this.hintText.setText(t("rdHintCat", { cat: this.rd.cat }));
-      speak(t("rdHintCat", { cat: this.rd.cat }), { lang: "bn" });
+      speak(t("rdHintCat", { cat: this.rd.cat }));
     } else if (this.wrongCount === 2) {
       this.hintText.setText(t("rdHintLetter", { l: this.rd.letter }));
-      speak(t("rdHintLetter", { l: this.rd.letter }), { lang: "bn" });
+      speak(t("rdHintLetter", { l: this.rd.letter }));
     } else {
       // Third miss — reveal and move on.
       this.hintText.setText(t("rdReveal", { a: this.rd.a }));
-      speak(t("rdReveal", { a: this.rd.a }), { lang: "bn" });
+      speak(t("rdReveal", { a: this.rd.a }));
       this.locked = true;
       this.emojiText.setText(this.rd.e);
       this.tiles.forEach((o) => {
