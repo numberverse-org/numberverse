@@ -1237,8 +1237,12 @@ export default function App() {
     else requestFullscreen();
   };
 
-  const goNova = () => setScreen(kid ? "nova" : "kidpick");
-  const goGarden = () => setScreen(kid ? "garden" : "kidpick");
+  // #1398 — Home only renders with an active kid, and every goNova/goGarden
+  // call site is already inside a kid-guarded screen. Dropping the kidpick
+  // fallback removes a dead-end branch that could never help (and would dump
+  // a signed-in kid back on the profile picker).
+  const goNova = () => setScreen("nova");
+  const goGarden = () => setScreen("garden");
   const goCards = () => setScreen(kid ? "cards" : "kidpick");
   const goBadges = () => setScreen(kid ? "badges" : "kidpick");
   const goAchievements = () => setScreen(kid ? "achievements" : "kidpick");
