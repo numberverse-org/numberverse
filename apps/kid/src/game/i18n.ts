@@ -15,6 +15,7 @@
  */
 
 import { getAppLang } from "./locale";
+import { bnNum } from "../i18n-core";
 
 export type TVars = Record<string, string | number>;
 type Entry = string | ((vars?: TVars) => string);
@@ -3106,4 +3107,14 @@ export function langOf(): string {
 /** Exposed for the i18n parity audit: which locale codes have a dictionary. */
 export function shippedLocaleCodes(): string[] {
   return Object.keys(DICTS).sort();
+}
+
+/**
+ * Locale-aware digit glyph: Bangla kids see "৫", English kids see "5".
+ * Forced locale: pass "en" or "bn" to override the current UI language.
+ * This is the single replacement for the old per-scene digit()/bnNum() helpers.
+ */
+export function digit(n: number, forcedLang?: string): string {
+  const lang = forcedLang ?? getAppLang();
+  return lang === "bn" ? bnNum(n) : String(n);
 }

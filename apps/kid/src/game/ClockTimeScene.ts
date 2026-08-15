@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
@@ -15,12 +15,6 @@ const LEVELS = GAMES.find((g) => g.id === "game-clock")?.difficultyLevels ?? [1,
 const ROUNDS_TO_FINISH = 3;
 const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
 const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
-const BN_D = "০১২৩৪৫৬৭৮৯";
-
-function bdDigits(s: string | number): string {
-  return String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]);
-}
-
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -220,7 +214,7 @@ export class ClockTimeScene extends Phaser.Scene {
     for (let i = 1; i <= 12; i++) {
       const a = (i * 30 * Math.PI) / 180;
       const rr = r * 0.74;
-      const label = getAppLang() === "bn" ? bdDigits(i) : String(i);
+      const label = getAppLang() === "bn" ? digit(i) : String(i);
       const n = this.add
         .text(cx + rr * Math.sin(a), cy - rr * Math.cos(a), label, txt(16, NV_NAVY, { bold: true, shadow: false }))
         .setOrigin(0.5);
@@ -290,7 +284,7 @@ export class ClockTimeScene extends Phaser.Scene {
 
   private fmtDigital(t: DigitalTime): string {
     const s = `${t.h}:${String(t.m).padStart(2, "0")}`;
-    return getAppLang() === "bn" ? bdDigits(s) : s;
+    return getAppLang() === "bn" ? digit(s) : s;
   }
 
   /** Speak the time in words ("half past three" / "সাড়ে তিনটা"). */
@@ -299,13 +293,13 @@ export class ClockTimeScene extends Phaser.Scene {
     const num = (n: number) => (bn ? bnNumber(n) : enNumber(n));
     const h = this.curTime.h;
     const m = this.curTime.m;
-    if (m === 0) return t("timeOClock", { h: num(h) });
-    if (m === 30) return t("timeHalfPast", { h: num(h) });
-    if (m === 15) return t("timeQuarterPast", { h: num(h) });
-    if (m === 45) return t("timeQuarterTo", { h: num((h % 12) + 1) });
+    if (m === 0) return t("timeOClock", { h: digit(h) });
+    if (m === 30) return t("timeHalfPast", { h: digit(h) });
+    if (m === 15) return t("timeQuarterPast", { h: digit(h) });
+    if (m === 45) return t("timeQuarterTo", { h: digit((h % 12) + 1) });
     // 3:05 → "three oh five" (EN); Bangla template already reads "তিনটা পাঁচ মিনিট"
-    const mWord = m < 10 && !bn ? `oh ${num(m)}` : num(m);
-    return t("timeExact", { h: num(h), m: mWord });
+    const mWord = m < 10 && !bn ? `oh ${digit(m)}` : digit(m);
+    return t("timeExact", { h: digit(h), m: mWord });
   }
 
   private tap(container: Phaser.GameObjects.Container, picked: DigitalTime) {

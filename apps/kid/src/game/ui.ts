@@ -757,11 +757,13 @@ export function correctButton(c: Phaser.GameObjects.Container) {
 
 /** Add a golden ring + pop without recoloring (color-identity buttons). */
 export function ringCorrect(scene: Phaser.Scene, c: Phaser.GameObjects.Container) {
-  const { width, height } = c.getBounds();
-  const rad = Math.max(width, height) / 2;
-  const ring = scene.add.circle(c.x, c.y, rad + 6, 0xffd166, 0).setStrokeStyle(5, 0xffd166).setDepth(4000);
-  scene.tweens.add({ targets: ring, scale: 1.35, alpha: 0, duration: 420, ease: "Quad.easeOut", onComplete: () => ring.destroy() });
-  scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
+  if (!prefersReducedMotion()) {
+    const { width, height } = c.getBounds();
+    const rad = Math.max(width, height) / 2;
+    const ring = scene.add.circle(c.x, c.y, rad + 6, 0xffd166, 0).setStrokeStyle(5, 0xffd166).setDepth(4000);
+    scene.tweens.add({ targets: ring, scale: 1.35, alpha: 0, duration: 420, ease: "Quad.easeOut", onComplete: () => ring.destroy() });
+    scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
+  }
   // combo juice: escalating fireworks as the kid chains correct answers
   correctCelebrate(scene, c.x, c.y);
 }

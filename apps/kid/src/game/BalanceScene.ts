@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
@@ -16,12 +16,6 @@ const LEVELS = GAMES.find((g) => g.id === "game-balance")?.difficultyLevels ?? [
 /** Weight gap per level — the higher the level, the closer the counts get. */
 const GAPS = [3, 3, 2, 2, 1, 1];
 const ROUNDS_TO_FINISH = 3;
-const BN_D = "০১২৩৪৫৬৭৮৯";
-
-function bdDigits(s: string | number): string {
-  return String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]);
-}
-
 type Side = "left" | "right";
 
 /**
@@ -158,7 +152,7 @@ export class BalanceScene extends Phaser.Scene {
     }
     // count badge
     const badge = this.add
-      .text(0, h / 2 - 26, bdDigits(count), txt(30, "#ffffff", { bold: true, outline: true, shadow: false }))
+      .text(0, h / 2 - 26, digit(count), txt(30, "#ffffff", { bold: true, outline: true, shadow: false }))
       .setOrigin(0.5);
     c.add(badge);
     c.setSize(w, h);
@@ -194,7 +188,7 @@ export class BalanceScene extends Phaser.Scene {
     const num = (n: number) => (bn ? bnNumber(n) : enNumber(n));
     const heavier = Math.max(this.leftCount, this.rightCount);
     const lighter = Math.min(this.leftCount, this.rightCount);
-    speak(t("balanceHeavier", { x: num(heavier), y: num(lighter) }), { lang: bn ? "bn" : "en" });
+    speak(t("balanceHeavier", { x: digit(heavier), y: digit(lighter) }), { lang: bn ? "bn" : "en" });
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
     this.roundsDone++;

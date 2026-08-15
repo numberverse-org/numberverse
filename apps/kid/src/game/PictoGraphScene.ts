@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -12,15 +12,6 @@ import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundM
 import { answerRow } from "./layout";
 import { SAB } from "./safeArea";
 
-/** The KEY doubles as the difficulty ladder: one picture = 2, then 5, then 10. */
-const KEYS = GAMES.find((g) => g.id === "game-picto")?.difficultyLevels ?? [2, 2, 5, 5, 10, 10];
-const ROUNDS_TO_FINISH = 3;
-const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-
-/** Bangla kids read ১৫; English kids 15 — same numeral, local digits. */
-function bdDigits(s: string | number): string {
-  return getAppLang() === "bn" ? String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(s);
-}
 
 interface PictoCat {
   emoji: string;
@@ -221,7 +212,7 @@ export class PictoGraphScene extends Phaser.Scene {
     bg.strokeRoundedRect(-112, -18, 224, 36, 18);
     const emoji = this.add.text(-86, 0, "🍎", txt(22, "#ffffff")).setOrigin(0.5);
     const txt_ = this.add
-      .text(-34, 0, t("pictoKey", { n: bdDigits(this.key) }), txt(bn ? 17 : 16, "#ffffff", { bold: true }))
+      .text(-34, 0, t("pictoKey", { n: digit(this.key) }), txt(bn ? 17 : 16, "#ffffff", { bold: true }))
       .setOrigin(0, 0.5);
     this.keyChip.add([bg, emoji, txt_]);
   }
@@ -258,7 +249,7 @@ export class PictoGraphScene extends Phaser.Scene {
     const { y, xFor } = answerRow(this, 3, 58, 14);
     const opts = this.buildOptions();
     opts.forEach((v, i) => {
-      const label = bdDigits(v);
+      const label = digit(v);
       const c = modernAnswerButton(this, xFor(i), y, 58, label, i === 0 ? BTN_PRIMARY : BTN_ORANGE, { labelSize: 30 });
       c.on("pointerdown", () => this.tap(c, v));
       this.buttons.push({ sprite: c, value: v });
@@ -284,7 +275,7 @@ export class PictoGraphScene extends Phaser.Scene {
   private tap(container: Phaser.GameObjects.Container, value: number) {
     if (value !== this.answer) {
       const bn = getAppLang() === "bn";
-      const k = bdDigits(this.key);
+      const k = digit(this.key);
       hintWrong(this, container, {
         hint: () => (this.qType === "howmany" ? t("pictoHintHowMany", { w: this.qWord, k }) : t("pictoHintMost")),
         hintBn: () => (this.qType === "howmany" ? t("pictoHintHowMany", { w: this.qWord, k }) : t("pictoHintMost")),

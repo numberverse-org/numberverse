@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { floatText } from "./celebrate";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -252,11 +253,7 @@ export class RhymeTimeScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(26, NV_GOLD, { bold: true, outline: true }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 900, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.6, text, NV_GOLD, 26, -28);
   }
 
   private clearChips() {

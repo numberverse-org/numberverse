@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { floatText } from "./celebrate";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -449,10 +450,7 @@ export class BanglaSpellScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.72, text, txt(30, NV_GOLD, { bold: true, outline: true }))
-      .setOrigin(0.5).setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 800, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.72, text, NV_GOLD, 30, -24);
   }
 
   private clearRound() {

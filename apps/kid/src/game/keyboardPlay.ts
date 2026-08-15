@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { digit } from "./i18n";
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
 
@@ -16,11 +17,6 @@ import { t } from "./i18n";
  * Nothing changes in the scene files themselves — it rides the same display
  * list the swipe-to-answer gesture layer already uses.
  */
-
-const BN_D = "০১২৩৪৫৬৭৮৯";
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 let focusIndex = -1;
 let focused: Phaser.GameObjects.Container | null = null;

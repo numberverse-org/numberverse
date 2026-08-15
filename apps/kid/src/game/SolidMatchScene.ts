@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -281,11 +281,7 @@ export class SolidMatchScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.4, text, txt(28, NV_GOLD, { bold: true, outline: true, wrap: 320 }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.4, text, NV_GOLD, 28, -24);
   }
 
   private clearAll() {
@@ -441,11 +437,6 @@ export class SolidMatchScene extends Phaser.Scene {
   }
 }
 
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
-
-const BN_D = "০১২৩৪৫৬৭৮৯";
 
 /** Wrong-answer feedback without hintWrong's "keep on wrong" retirement. */
 function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container, correct: () => string) {
