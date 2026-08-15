@@ -1,3 +1,8 @@
+## 16 Aug 2026 — 0.71.2 (fix: QuestionWords scene key mismatch — game engine boots (game-qwords → QuestionWords))
+
+067ef5e 🐛 fix: QuestionWords scene key must equal catalog value (game-qwords → QuestionWords)
+2baf7e3 monitor: GitHub reachability watchdog — regional-block vs global-outage detection + TG alert (#github-region-block)
+
 ## 15 Aug 2026 — 0.71.1 (unblock deploy: Docker Hub uv base + PK-aware migration dedupe + e2e fixes)
 
 3dab0a5 fix: 0.71.0 release blockers — ghcr.io-unblocked api base (Docker Hub + uv from PyPI), PK-aware constraint migration dedupe (uq_kid_skill collision), e2e mock query-string globs + exact Sign-out selector + offline manifest contract via SW fetch
