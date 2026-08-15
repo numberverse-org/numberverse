@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.74.0 (batch-5: parent Moni control (#1041-1043) — strictness synced via KidSettings, portal + kid app both directions)
+
+88ed067 feat: parent-control of Moni strictness — synced via KidSettings (#1041/#1042/#1043)
+
 ## 16 Aug 2026 — 0.73.0 (batch-4: game-ladder integrity (#1051-1055) — scenes now read LEVELS[levelIndex])
 
 ec05729 fix: game-ladder integrity — 6 scenes now read LEVELS[levelIndex] (#1051-#1055)
