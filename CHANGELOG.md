@@ -1,5 +1,6 @@
-## 15 Aug 2026 — 0.66.0 (kid-first wave: 10 Bengali mistranslations fixed, role guardrail (require_role), bundle split boot 1.83MB→46kB, Nova3D lazy, three-vendor split)
+## 15 Aug 2026 — 0.66.0 (kid-first wave: 10 Bengali mistranslations fixed, role guardrail (require_role), bundle split boot 1.83MB→46kB, Nova3D lazy, three-vendor split, smoke-test boot-chunk floor fix)
 
+60272bc fix(deploy): smoke/rollback 100k floor rejects split boot chunk (46k) — false-negative rollback of good 0.66.0 deploy
 a15ff1f fix(bundle): split three into lazy three-vendor — island chunk 1027KiB→167KiB (oracle 1MiB budget) (#879)
 2a2d78b chore: lockfile — drop @numberverse/core from admin importer (#850)
 c890b16 merge: #879,#880 bundle splitting + lazy Nova3D
