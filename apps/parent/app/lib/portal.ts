@@ -297,6 +297,34 @@ export const ARCHIVE_LANGS = {
   },
 } as const;
 
+/** 📈 #1492 — recent-activity feed pagination strings (EN + BN). The feed now
+ *  derives its rows from the same full-history cursor as the archive and pages
+ *  client-side, so these labels keep the show-more affordance bilingual. */
+export const ACTIVITY_LANGS = {
+  en: {
+    showMore: "Show more",
+    showLess: "Show less",
+  },
+  bn: {
+    showMore: "আরও দেখুন",
+    showLess: "কম দেখুন",
+  },
+} as const;
+
+/** #1516/#1519 — portal loading/refresh strings (EN + BN). The first data load
+ *  shows a neutral skeleton, and manual sync dims the data area with a small
+ *  in-flight line instead of leaving stale figures unannounced. */
+export const LOADING_LANGS = {
+  en: {
+    familyProgress: "Loading your family's progress…",
+    refreshing: "Refreshing your data…",
+  },
+  bn: {
+    familyProgress: "আপনার পরিবারের অগ্রগতি লোড হচ্ছে…",
+    refreshing: "তথ্য রিফ্রেশ হচ্ছে…",
+  },
+} as const;
+
 export const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
