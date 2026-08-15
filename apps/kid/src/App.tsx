@@ -227,6 +227,14 @@ export default function App() {
     const id = readLS("nv_kid_id"); // #1219 — guarded read
     return list.some((k) => k.id === id) ? "home" : "kidpick";
   });
+  // #1352 — a simple screen history stack. Every forward navigation pushes the
+  // previous screen, so the in-app back buttons and the PWA/system back gesture
+  // both return to the screen the kid actually came from (never a hard-coded
+  // home). `poppingRef` suppresses the next push when a back gesture is the
+  // thing that changed the screen.
+  const screenStackRef = useRef<Screen[]>([]);
+  const prevScreenRef = useRef(screen);
+  const poppingRef = useRef(false);
   // Worlds screen shows the single linear learning journey by default.
   const [journeyView, setJourneyView] = useState(true);
   const [mapView, setMapView] = useState(false);
@@ -639,6 +647,61 @@ export default function App() {
   // NOVA_SPECIES registry so adding a locale or a species is pure config.
   const petSpecies = useKidStore((s) => (kid ? s.nova[kid.id]?.species ?? "owl" : "owl"));
   const t = STR[lang];
+
+  // #1352 — in-app back is the SAME path as the PWA/system back gesture:
+  // prefer `history.back()` so the browser history and our screen stack stay
+  // in sync, then the `popstate` listener below performs the actual pop.
+  const goBack = useCallback(() => {
+    if (screenStackRef.current.length === 0) {
+      // No in-app history yet (fresh load / already at the root). Keep the
+      // kid inside the app instead of letting a stray back gesture close it.
+      setScreen(kid ? "home" : "parent");
+      return;
+    }
+    if (typeof window !== "undefined" && window.history && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    // History API unavailable — fall back to an in-memory pop.
+    const prev = screenStackRef.current.pop();
+    if (prev) {
+      poppingRef.current = true;
+      setScreen(prev);
+    }
+  }, [kid]);
+
+  // #1352 — record every FORWARD screen change on the stack and mirror it to
+  // the browser history so a PWA/system back gesture can pop it. Screen changes
+  // caused by `goBack`/`popstate` are marked with `poppingRef` and skipped.
+  useEffect(() => {
+    if (prevScreenRef.current === screen) return;
+    const prev = prevScreenRef.current;
+    prevScreenRef.current = screen;
+    if (poppingRef.current) {
+      poppingRef.current = false;
+      return;
+    }
+    screenStackRef.current.push(prev);
+    try {
+      window.history.pushState({ nvScreen: screen }, "");
+    } catch {
+      /* history unavailable — in-memory back buttons still work */
+    }
+  }, [screen]);
+
+  // #1352 — the browser/PWA back gesture pops the same in-app stack that the
+  // on-screen back buttons use. When the stack is empty the browser is free to
+  // leave the app (there is nothing in-app to go back to).
+  useEffect(() => {
+    const onPop = () => {
+      const prev = screenStackRef.current.pop();
+      if (!prev) return;
+      poppingRef.current = true;
+      setScreen(prev);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const [fsActive, setFsActive] = useState(false);
   // 🎬 #350 reduced motion — explicit in-app choice wins over the OS pref.
@@ -1775,8 +1838,10 @@ export default function App() {
     activeSceneRef.current = null;
     setRoundsDone(0);
     setSessionIdx(0);
-    // Back to the PLAY screen — one simple place a child always returns to.
-    setScreen("home");
+    // #1380 — return to the screen the game was launched from (world detail,
+    // home, syllabus, etc.), not a hard-coded home. `goBack` pops the same
+    // history stack used by the PWA/system back gesture.
+    goBack();
   };
 
   /* ── #357 — predicted next scene: the HOME screen is where the next tap is
@@ -1880,7 +1945,9 @@ export default function App() {
       game.scene.start("Nova", {
         kidId: kid.id,
         kidName: kid.name,
-        onBack: () => setScreen("home"),
+        // #1353/#1381 — Nova's back button returns to the screen that opened
+        // it (home, cards, worlds, done, …) instead of always home.
+        onBack: goBack,
         onPlay: () => setScreen("home"),
         recTitle: rec?.title ?? null,
         recTitleBn: rec?.titleBn ?? null,
@@ -1892,7 +1959,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [screen, kid]);
+  }, [screen, kid, goBack]);
 
   /* ── The Growth Garden: the kid's living proof of every correct answer ── */
   useEffect(() => {
@@ -1907,7 +1974,8 @@ export default function App() {
       game.scene.start("Garden", {
         kidId: kid.id,
         kidName: kid.name,
-        onBack: () => setScreen("home"),
+        // #1353/#1378 — the garden returns to the screen that opened it.
+        onBack: goBack,
       });
       // #769 — snapshot the garden the kid is ABOUT to see, so Home can cue
       // "new growth!" whenever it outgrew the last visit.
@@ -1918,7 +1986,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [screen, kid]);
+  }, [screen, kid, goBack]);
 
   /* ── Start the scene for the current session step ── */
   useEffect(() => {
@@ -2495,7 +2563,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goStart} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.syllabusTitle}</h2>
               <p className="head-sub">{t.syllabusSub}</p>
@@ -2743,7 +2811,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>⚙️ {t.settingsTitle}</h2>
               <p className="head-sub">{t.settingsSub}</p>
@@ -3130,7 +3198,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen gate-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+              <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -3234,7 +3302,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+              <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -3396,7 +3464,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.parentTitle}</h2>
               <p className="head-sub">{t.parentSub}</p>
@@ -4006,7 +4074,7 @@ export default function App() {
       <div className="app">
         <main className="screen lb-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.lbTitle}</h2>
               <p className="head-sub">{t.lbSub}</p>
@@ -4088,7 +4156,7 @@ export default function App() {
           <header className="screen-head">
             <button
               className="icon-btn"
-              onClick={() => setScreen(kids.length ? "home" : "addkid")}
+              onClick={goBack}
               aria-label={t.back}
             >
               ‹
@@ -4157,7 +4225,7 @@ export default function App() {
           speak(lang === "bn" ? t.avatarSaveSpeak(kid.name) : t.avatarSaveSpeak(kid.name));
           setScreen("home");
         }}
-        onBack={() => setScreen("home")}
+        onBack={goBack}
         onNova={() => setScreen("nova")}
       />
     );
@@ -4174,7 +4242,7 @@ export default function App() {
           {/* #248 — quiet-hours dim + 🌙 badge */}
           {quietChrome}
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>🏆 {t.cardsTitle}</h2>
               <p className="head-sub">{t.cardsSub(collected, totalCards)}</p>
@@ -4285,7 +4353,7 @@ export default function App() {
           {/* #248 — quiet-hours dim + 🌙 badge */}
           {quietChrome}
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{kid ? <AvatarIcon emoji={kid.avatar} size={26} /> : null} {kid?.name ? t.worldsOf(kid.name) : t.worldsOf("")}</h2>
               <p className="head-sub">{mapView ? t.mapSub : journeyView ? t.journeySub : t.masterSkillsSub}</p>
@@ -4668,7 +4736,7 @@ export default function App() {
             className="screen-head worlddetail-head"
             style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
           >
-            <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
               <p className="head-sub">{prog.total === 0 ? t.worldNoLessons : t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
@@ -4995,7 +5063,7 @@ export default function App() {
       <div className="app">
         <main className="screen badges-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.badgeTitle}</h2>
               <p className="head-sub">{t.badgeSub(earnedCount, BADGES.length)}</p>
@@ -5039,7 +5107,7 @@ export default function App() {
       <div className="app">
         <main className="screen tr-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.trTitle}</h2>
               <p className="head-sub">{t.trSub(trophyCount, rows.length)}</p>
@@ -5094,7 +5162,7 @@ export default function App() {
       <div className="app">
         <main className="screen ach-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>{t.achTitle}</h2>
               <p className="head-sub">{t.achSub(unlockedCount, ACHIEVEMENTS.length)}</p>
@@ -5140,7 +5208,7 @@ export default function App() {
       <div className="app">
         <main className="screen castle-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2>🏰 {t.castleTitle}</h2>
               <p className="head-sub">{t.castleBuilt(builtCount, towers.length)}</p>
@@ -5201,7 +5269,7 @@ export default function App() {
     return (
       <div className="cert-screen" role="document" aria-label={t.certTitle}>
         <div className="cert-toolbar no-print">
-          <button className="icon-btn" onClick={() => setScreen("home")} aria-label={t.certBack}>‹</button>
+          <button className="icon-btn" onClick={goBack} aria-label={t.certBack}>‹</button>
           <span className="cert-toolbar-title">{t.certTitle}</span>
           <button className="cert-share-btn" onClick={() => void shareCert()}>{t.certShare}</button>
           <button className="cert-print-btn" onClick={() => window.print()}>{t.certPrint}</button>
@@ -5374,9 +5442,10 @@ export default function App() {
             </>
           )}
         </div>
-        {/* Garden has its own little back button — home is one tap away */}
+        {/* Garden has its own little back button — it returns to the screen
+            that opened the garden (matches the Garden scene's onBack). */}
         {inGarden && (
-          <button className="hud-back garden-back" onClick={() => setScreen("home")} aria-label={t.homeBtn}>
+          <button className="hud-back garden-back" onClick={goBack} aria-label={t.homeBtn}>
             ‹
           </button>
         )}
