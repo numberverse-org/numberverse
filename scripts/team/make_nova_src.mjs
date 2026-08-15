@@ -17,7 +17,7 @@
 // the workspace so this script runs from the repo root without a hoist.
 import * as THREE from "../../apps/kid/node_modules/three/build/three.module.js";
 import { GLTFExporter } from "../../apps/kid/node_modules/three/examples/jsm/exporters/GLTFExporter.js";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,7 +41,9 @@ if (!globalThis.FileReader) {
 }
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const out = process.argv[2] ? join(process.cwd(), process.argv[2]) : join(root, "apps/kid/public/assets/nova_src.gltf");
+// #989 — the source .gltf is NOT shipped: keep it outside public/ so Vite
+// never copies the multi-MB intermediate into dist (only nova.glb ships).
+const out = process.argv[2] ? join(process.cwd(), process.argv[2]) : join(root, "apps/kid/assets-src/nova_src.gltf");
 
 function owlNode() {
   const owl = new THREE.Group();
@@ -95,5 +97,6 @@ function owlNode() {
 const owl = owlNode();
 const exporter = new GLTFExporter();
 const result = await exporter.parseAsync(owl, { binary: false });
+mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(result, null, 2));
 console.log(`✓ wrote ${out} (placeholder owl source, feet at y=0)`);

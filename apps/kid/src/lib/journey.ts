@@ -7,7 +7,7 @@
  * { en, bn } pairs here; the Strings/STR table lives in ../i18n.ts. */
 import { BANDS, SKILLS, GAME_SCENES, getGame, getSkill, getFamily, nextDifficulty, moni, DEFAULT_MONI_PARAMS, type Band, type ErrorKind, type Skill } from "@numberverse/core";
 import { useKidStore, NOVA_SPECIES, type RoundResult, type MistakeState } from "../store";
-import { bnNum, BN_MONTHS, type Lang, type Strings } from "../i18n";
+import { bnNum, BN_MONTHS, type Lang, type Strings } from "../i18n-core";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "../game/ui";
 /** Max skills per guided play session — each skill gets a proper block.
  *  World sessions now sweep every unmastered skill in the band (min 6). */

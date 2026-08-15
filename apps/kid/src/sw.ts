@@ -24,6 +24,7 @@ import { ExpirationPlugin } from "workbox-expiration";
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
 import { CacheFirst } from "workbox-strategies";
+import type { WorkboxPlugin } from "workbox-core";
 
 // workbox-clients-claim is a private workbox internal (not on the registry) —
 // implement the same behavior: on activation, claim every open client so a
@@ -144,12 +145,31 @@ wbPrecache.cleanupOutdatedCaches();
 // live on the SAME origin — never answer those with the game's index.html.
 registerRoute(
   new NavigationRoute(wbPrecache.createHandlerBoundToURL("/index.html"), {
-    denylist: [/^\/parent\//, /^\/admin\//],
+    // #992 — match the sibling app prefixes regardless of trailing slash or
+    // letter case (/parent, /Parent/, /ADMIN …) so a navigation to any variant
+    // never falls back to the game's index.html.
+    denylist: [/^\/parent(?:\/|$)/i, /^\/admin(?:\/|$)/i],
   })
 );
 
 // Neural-voice assets (piper phonemizer + per-language model + onnx runtime):
 // way over the precache cap, so CacheFirst on first use — then fully offline.
+// #991 — the biggest asset (the ~110MB model) must NOT be subject to the 5 MiB
+// precache cap (maximumFileSizeToCacheInBytes) — this route gives /voice/ its
+// OWN explicit large-response guard so the model can actually land in Cache
+// Storage instead of being silently skipped.
+const VOICE_MAX_CACHE_BYTES = 150 * 1024 * 1024; // ~110MB model + ORT wasm headroom
+const voiceSizeGuard: WorkboxPlugin = {
+  cacheWillUpdate: async ({ response }) => {
+    if (!response || (response.status !== 200 && response.status !== 0)) return null;
+    const declared = response.headers.get("content-length");
+    if (declared) {
+      const bytes = Number(declared);
+      if (Number.isFinite(bytes) && bytes > VOICE_MAX_CACHE_BYTES) return null;
+    }
+    return response;
+  },
+};
 registerRoute(
   /\/voice\/.*$/,
   new CacheFirst({
@@ -157,6 +177,7 @@ registerRoute(
     plugins: [
       new ExpirationPlugin({ maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 180 }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
+      voiceSizeGuard,
     ],
   }),
   "GET"

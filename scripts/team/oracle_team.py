@@ -228,15 +228,21 @@ def l2_scenes():
 
 def l2_pwa():
     vc = (KID / "vite.config.ts").read_text()
-    has_ignore = "og-card.png" in vc
+    # #993 — og-card.png moved INTO the precache (offline social sharing). It
+    # must be referenced as an included asset and must NOT be excluded by any
+    # globIgnores entry.
+    has_include = "og-card.png" in vc
+    has_ignore = re.search(r"globIgnores\s*:\s*\[[^\]]*og-card\.png", vc) is not None
     sw = (KID / "dist" / "sw.js")
     if sw.exists():
         sw_src = sw.read_text(errors="ignore")
         has_flags = all(x in sw_src for x in ["skipWaiting", "clientsClaim", "cleanupOutdatedCaches"])
         if not has_flags:
             return False, "sw.js missing skipWaiting/clientsClaim/cleanupOutdatedCaches"
-    ok = has_ignore
-    return ok, "og-card ignore present" + (" + sw flags verified" if sw.exists() else " (no local sw.js — box builds)")
+        if "og-card.png" not in sw_src:
+            return False, "sw.js missing og-card.png in precache manifest"
+    ok = has_include and not has_ignore
+    return ok, "og-card precached (not ignored)" + (" + sw flags verified" if sw.exists() else " (no local sw.js — box builds)")
 
 def l2_share():
     f = KID / "src" / "game" / "shareImage.ts"

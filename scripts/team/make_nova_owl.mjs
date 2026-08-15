@@ -19,7 +19,7 @@
  *   • ANIMATION — six loopable clips sampled at 30 fps: idle, walk, hop, fly,
  *     spin, dance.
  *
- * Output: apps/kid/public/assets/nova_src.gltf (feeds build_nova_glb.sh →
+ * Output: apps/kid/assets-src/nova_src.gltf (feeds build_nova_glb.sh →
  * nova.glb via Meshopt + KTX2). Pivot: feet at y=0.
  *
  *   node scripts/team/make_nova_owl.mjs [out.gltf]
@@ -27,7 +27,7 @@
 import * as THREE from "../../apps/kid/node_modules/three/build/three.module.js";
 import { GLTFExporter } from "../../apps/kid/node_modules/three/examples/jsm/exporters/GLTFExporter.js";
 import { mergeGeometries } from "../../apps/kid/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { polyfillBrowserGlobals, makeTexture, makeNormalMap, makeORM, fbm, valueNoise } from "./gltf_helpers.mjs";
@@ -35,9 +35,11 @@ import { polyfillBrowserGlobals, makeTexture, makeNormalMap, makeORM, fbm, value
 polyfillBrowserGlobals();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+// #989 — keep the source .gltf outside public/ (Vite copies public/ verbatim,
+// so an intermediate here would ship as dead dist weight).
 const OUT = process.argv[2]
   ? join(process.cwd(), process.argv[2])
-  : join(ROOT, "apps/kid/public/assets/nova_src.gltf");
+  : join(ROOT, "apps/kid/assets-src/nova_src.gltf");
 
 // ───────────────────────────────── skeleton ─────────────────────────────────
 
@@ -793,6 +795,7 @@ async function main() {
   const exporter = new GLTFExporter();
   const gltf = await exporter.parseAsync(scene, { binary: false, animations: clips });
 
+  mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(gltf, null, 2));
 
   console.log(`✓ wrote ${OUT}`);

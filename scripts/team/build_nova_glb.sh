@@ -20,7 +20,9 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-SRC="${1:-apps/kid/public/assets/nova_src.gltf}"
+# #989 — the source .gltf lives OUTSIDE public/ so it never ships in dist;
+# only the compiled nova.glb below is a public asset.
+SRC="${1:-apps/kid/assets-src/nova_src.gltf}"
 OUT="${2:-apps/kid/public/assets/nova.glb}"
 GT="apps/kid/node_modules/.bin/gltf-transform"
 MAX_BYTES=$((2 * 1024 * 1024))   # < 2 MiB target

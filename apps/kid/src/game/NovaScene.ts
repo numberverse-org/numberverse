@@ -5,7 +5,7 @@ import { cancelSpeech } from "./speech";
 import { txt, NV_COCOA, NV_GOLD } from "./ui";
 import { getAppLang, currentFestival } from "./locale";
 import { t } from "./i18n";
-import { bnNum } from "../i18n";
+import { bnNum } from "../i18n-core";
 import {
   useKidStore,
   NOVA_OUTFITS,
