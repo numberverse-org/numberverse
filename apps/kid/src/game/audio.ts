@@ -65,6 +65,26 @@ export function isSfxMuted(): boolean {
   return sfxMuted;
 }
 
+/* #1468 — kid-side sound mute. The kid-facing mute (HUD + Settings) is a
+ * combined sound+song switch: one tap silences BOTH the background bed
+ * (musicMuted below) and this SFX/feedback layer. Kept separate from the
+ * parent's `sfxMuted` above so a parent's reading-off rule can never be undone
+ * by a kid tap, and persisted like nv_music so the choice survives reload. */
+let kidSfxMuted = typeof localStorage !== "undefined" ? localStorage.getItem("nv_sfx_kid") === "1" : false;
+export function setKidSfxMuted(v: boolean) {
+  kidSfxMuted = v;
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem("nv_sfx_kid", kidSfxMuted ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  }
+}
+export function isKidSfxMuted(): boolean {
+  return kidSfxMuted;
+}
+
 type SoundLayer = "sfx" | "music";
 
 function tone(
@@ -82,7 +102,7 @@ function tone(
   const g = c.createGain();
   o.type = type;
   o.frequency.value = freq;
-  const v = vol * quietLevel * (layer === "music" ? musicVolume : sfxMuted ? 0 : sfxVolume);
+  const v = vol * quietLevel * (layer === "music" ? musicVolume : sfxMuted || kidSfxMuted ? 0 : sfxVolume);
   g.gain.setValueAtTime(Math.max(v, 0.0001), t);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g);
@@ -200,7 +220,7 @@ export function whooshUp() {
   o.type = "sine";
   o.frequency.setValueAtTime(220, t);
   o.frequency.exponentialRampToValueAtTime(1180, t + 0.5);
-  g.gain.setValueAtTime(Math.max(0.12 * quietLevel * (sfxMuted ? 0 : sfxVolume), 0.0001), t); // #243/#248/#831 — sfx balance + quiet hours + master SFX mute
+  g.gain.setValueAtTime(Math.max(0.12 * quietLevel * (sfxMuted || kidSfxMuted ? 0 : sfxVolume), 0.0001), t); // #243/#248/#831/#1468 — sfx balance + quiet hours + master/kid SFX mute
   g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
   o.connect(g);
   g.connect(c.destination);
@@ -394,6 +414,24 @@ export function toggleMusicMute(): boolean {
     }
   }
   return musicMuted;
+}
+
+/** #1468 — the kid-facing mute is a combined sound+song switch: one tap
+ *  silences the background bed AND the SFX feedback layer (pop/bad/win/click).
+ *  Returns the new muted state (music and kid SFX always move together). */
+export function toggleSoundMute(): boolean {
+  const next = !musicMuted;
+  musicMuted = next;
+  kidSfxMuted = next;
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem("nv_music", musicMuted ? "1" : "0");
+      localStorage.setItem("nv_sfx_kid", kidSfxMuted ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  }
+  return next;
 }
 
 export function isMusicMuted(): boolean {

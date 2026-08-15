@@ -1329,7 +1329,7 @@ export const STR: Record<Lang, Strings> = {
     settingsParentsHint: "Progress, per-kid controls and the full portal — grown-ups only.",
     settingsParentsGo: "Open parent area",
     settingsParentsSignin: "Sign in as parent",
-    settingsMusicRow: "Background music",
+    settingsMusicRow: "Sound", // #1468 — one kid-facing switch now covers music + SFX
     settingsVoiceNeural: (v) => `Neural Bangla voice — ${v} (offline)`,
     settingsVoiceOff: "Reading is off",
     settingsReadingOff: "A parent turned reading off — ask them to turn it back on.",
@@ -1471,8 +1471,8 @@ export const STR: Record<Lang, Strings> = {
     a11yMastered: (title) => `You mastered ${title}!`,
     a11yVoiceOn: "Reading is on.",
     a11yVoiceOff: "Reading is off.",
-    a11yMusicOn: "Background music is on.",
-    a11yMusicOff: "Background music is off.",
+    a11yMusicOn: "Sound is on.", // #1468 — covers music + SFX
+    a11yMusicOff: "Sound is off.", // #1468 — covers music + SFX
     contrastOops: (correct) => `That's the trick! The answer is ${correct}. Try again!`,
     contrastDoneTitle: "Pattern beaten! 🏆",
     contrastDoneBody: "You looked at them side by side and found the difference. Moni is SO proud — let's keep it sharp!",
@@ -2073,7 +2073,7 @@ export const STR: Record<Lang, Strings> = {
     settingsParentsHint: "শেখার খবর, নিয়ন্ত্রণ ও পূর্ণ পোর্টাল — শুধু বড়দের জন্য।",
     settingsParentsGo: "মা-বাবার অংশ খুলুন",
     settingsParentsSignin: "মা-বাবা হিসেবে সাইন ইন করুন",
-    settingsMusicRow: "ব্যাকগ্রাউন্ড মিউজিক",
+    settingsMusicRow: "শব্দ", // #1468 — one kid-facing switch now covers music + SFX
     settingsVoiceNeural: (v) => `বাংলা ভয়েস — ${v} (অফলাইন)`,
     settingsVoiceOff: "পড়া বন্ধ",
     settingsReadingOff: "মা-বাবা পড়া বন্ধ করে দিয়েছেন — আবার চালাতে তাদের বলুন।",
@@ -2213,8 +2213,8 @@ export const STR: Record<Lang, Strings> = {
     a11yMastered: (title) => `তুমি ${title} আয়ত্ত করেছ!`,
     a11yVoiceOn: "পড়া চালু আছে।",
     a11yVoiceOff: "পড়া বন্ধ আছে।",
-    a11yMusicOn: "ব্যাকগ্রাউন্ড মিউজিক চালু আছে।",
-    a11yMusicOff: "ব্যাকগ্রাউন্ড মিউজিক বন্ধ আছে।",
+    a11yMusicOn: "শব্দ চালু আছে।", // #1468 — covers music + SFX
+    a11yMusicOff: "শব্দ বন্ধ আছে।", // #1468 — covers music + SFX
     contrastOops: (correct) => `এইটাই কৌশল! উত্তর হলো ${correct}। আবার চেষ্টা করো!`,
     contrastDoneTitle: "প্যাটার্ন জয় করেছ! 🏆",
     contrastDoneBody: "পাশাপাশি দেখে তুমি পার্থক্যটা খুঁজে পেয়েছ। মণি খুব গর্বিত — ধার ধরে রাখো!",
