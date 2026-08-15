@@ -1,3 +1,12 @@
+## 15 Aug 2026 — 0.64.0 (api: admin CRUD caps+feedback, sync-contract 200, UTC windows, typed models, non-dev credential guard (#840 #842 #848 #852 #853 #854 #857 #858 #859 #860))
+
+54ace14 Merge nv-842: non-dev credential guard (#842)
+e3921b8 Merge nv-852: API sync-contract + typed models (#852 #853 #857 #858 #859 #860)
+382180b Merge nv-840: admin list/filter/sort/range hardening (#840 #848 #854 #860)
+338b1de 🔐 api: refuse non-dev startup with default JWT secret/admin password (#842)
+c016018 🐛 api: UUID kid_id params, 200 sync ack, UTC weekly windows, typed stats/reset models (#852 #853 #857 #858 #859 #860)
+a93654b 🛡️ admin: cap sort/filter/range, 400 on bad parse, UUID id 422, naive-UTC now (#840 #848 #854 #860)
+
 ## 15 Aug 2026 — 0.63.1 (🛡️ kids: rate-limit all write/destructive routes (#837))
 
 d128bf9 🛡️ kids: rate-limit write/destructive routes (#837)
