@@ -17,7 +17,7 @@ export default function VoiceCheck({ t }: { t: Strings }) {
     ? st.neural.ready
       ? t.voiceNeuralReady
       : st.neural.state === "loading"
-        ? t.voiceNeuralLoading(Math.min(99, Math.round(st.neural.progress * 100)))
+        ? t.voiceNeuralLoading(Math.min(100, Math.round(st.neural.progress * 100)))
         : st.neural.state === "error"
           ? `${t.voiceNeuralError}${st.neural.error ? ` (${st.neural.error})` : ""}`
           : t.voiceNeuralIdle

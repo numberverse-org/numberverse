@@ -803,6 +803,12 @@ export interface Strings {
   islandLoading: string;
   /* #346 — friendly loading copy for the engine/lazy-screen spinners */
   loadingGame: string;
+  /* #1377/#1408 — kid-facing game-chunk load failure + recovery */
+  gameLoadError: string;
+  gameLoadErrorHint: string;
+  gameLoadRetry: string;
+  /* #1376 — storage-full / QuotaExceeded write warning */
+  storageFull: string;
   islandBeta: string;
   islandHint: string;
   islandNoWebgl: string;
@@ -1567,6 +1573,10 @@ export const STR: Record<Lang, Strings> = {
     islandTitle: "🦉 Nova's 3D Island",
     islandLoading: "Building the island…",
     loadingGame: "Loading game…",
+    gameLoadError: "The game couldn't load this time.",
+    gameLoadErrorHint: "Check your connection, then tap to try again.",
+    gameLoadRetry: "Try again",
+    storageFull: "This device can't save progress right now — please ask a grown-up to free some space.",
     islandBeta: "New · beta",
     islandHint: "Drag to look around · pinch to zoom",
     islandNoWebgl: "3D isn't supported on this device — back to 2D Nova!",
@@ -2324,6 +2334,10 @@ export const STR: Record<Lang, Strings> = {
     islandTitle: "🦉 নোভার ৩ডি দ্বীপ",
     islandLoading: "দ্বীপ তৈরি হচ্ছে…",
     loadingGame: "খেলা লোড হচ্ছে…",
+    gameLoadError: "এবার খেলাটি লোড করা যায়নি।",
+    gameLoadErrorHint: "ইন্টারনেট দেখে আবার চেষ্টা করতে ট্যাপ করো।",
+    gameLoadRetry: "আবার চেষ্টা করো",
+    storageFull: "এই ডিভাইসে এখন খেলার অগ্রগতি জমা হচ্ছে না — একজন বড়োকে জায়গা খালি করতে বলো।",
     islandBeta: "নতুন · বিটা",
     islandHint: "ঘুরাতে টেনে ধরো · জুম করতে চিমটি",
     islandNoWebgl: "এই ডিভাইসে ৩ডি নেই — ২ডি নোভায় ফিরে গেছি!",

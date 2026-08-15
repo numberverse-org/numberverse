@@ -78,6 +78,19 @@ let jobChain: Promise<void> = Promise.resolve();
 let preloadStarted = false;
 let gestured = false;
 
+/** #1375 — one-shot listeners invoked when the neural model transitions to
+ *  ready. speech.ts uses this to flush the latest Bangla line that was held
+ *  while no bn Web-Speech voice existed (never a wrong-language voice). */
+type NeuralReadyListener = () => void;
+const readyWaiters: NeuralReadyListener[] = [];
+export function onNeuralReady(cb: NeuralReadyListener): () => void {
+  readyWaiters.push(cb);
+  return () => {
+    const i = readyWaiters.indexOf(cb);
+    if (i >= 0) readyWaiters.splice(i, 1);
+  };
+}
+
 /** The big files, by byte size — used for a coarse overall download progress.
  *  The model is the ~20MB int8 build (weight-only QDQ, see Dockerfile.web's
  *  `voice` stage / infra/deploy/scripts/quantize_voice.py). We preload these IN
@@ -217,7 +230,9 @@ function bumpProgress() {
     // Done files count their full size (wire bytes may be gzip-smaller).
     loaded += doneFiles.has(u) ? n : Math.min(urlLoaded[u] ?? 0, n);
   }
-  progress = Math.min(0.99, loaded / totalBigBytes);
+  // #1407 — the download bar is allowed to reach 100% the moment the last big
+  // file lands (the subsequent silent warm-up is a readiness step, not bytes).
+  progress = Math.min(1, loaded / totalBigBytes);
 }
 
 function markReady() {
@@ -225,6 +240,16 @@ function markReady() {
   state = "ready";
   progress = 1;
   urlLoaded = {};
+  // #1375 — any Bangla lines held because no bn Web-Speech voice existed can
+  // now speak on the freshly-ready neural voice (latest-wins, no stale queue).
+  const waiters = readyWaiters.splice(0);
+  for (const cb of waiters) {
+    try {
+      cb();
+    } catch {
+      /* a listener must never break the ready transition */
+    }
+  }
 }
 
 /* ──────────────────────── speaker selection (the 16 voices) ────────────────────────
