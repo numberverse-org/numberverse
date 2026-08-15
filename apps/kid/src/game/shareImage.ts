@@ -16,7 +16,7 @@
  * #267 — the wa.me fallback goes through the core external-link allowlist
  * (https only), so no app can ever be launched from the share flow.
  */
-import { openExternal, stripPngMetadata } from "@numberverse/core";
+import { isAllowedExternalUrl, stripPngMetadata } from "@numberverse/core";
 import { NV_GOLD, NV_MINT, NV_NAVY, NV_SKY } from "./ui"; // tokenized #591
 
 export interface ShareCardData {
@@ -394,7 +394,15 @@ export async function sharePng(
     a.click();
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(a.href as string), 4000);
-    if (waUrl) openExternal(waUrl, "_blank");
+    // #790 — core is pure (no browser globals): the allowlist check lives in
+    // core, while the window.open call lives here in the kid app.
+    if (waUrl && isAllowedExternalUrl(waUrl)) {
+      try {
+        window.open(waUrl, "_blank", "noopener,noreferrer");
+      } catch {
+        /* best-effort share */
+      }
+    }
     return "downloaded";
   } catch {
     return "unsupported";

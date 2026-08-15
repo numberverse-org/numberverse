@@ -592,6 +592,8 @@ export interface Strings {
   pinResetCta: string;
   pinMismatch: string;
   pinCurrentWrong: string;
+  /* #819 — WebCrypto PBKDF2 unavailable (non-secure context). */
+  pinCryptoError: string;
   pinKeep: string;
   pinLockCardTitle: string;
   pinLockCardSub: string;
@@ -626,6 +628,8 @@ export interface Strings {
   secEmpty: string;
   secRecovered: string;
   secMismatch: string;
+  /* #819 — WebCrypto PBKDF2 unavailable (non-secure context). */
+  secCryptoError: string;
   /* about / version */
   settingsAboutSub: string;
   settingsVoice: string;

@@ -531,7 +531,22 @@ export default function App() {
       setMasteryShowcase((cur) => (cur && cur.nonce === nonce ? null : cur));
     }, 2600);
   }, []);
-  const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestProgress, gardenWater, gardenMastery } = useKidStore();
+  // #1179 — the single `useKidStore()` destructure re-rendered App on EVERY
+  // store tick (nova/garden/stories/pending/…). Subscribe to each slice instead:
+  // actions are stable references, and the state slices below only change when
+  // the HUD actually needs them (score/stars/events/stats).
+  const score = useKidStore((s) => s.score);
+  const stars = useKidStore((s) => s.stars);
+  const events = useKidStore((s) => s.events);
+  const stats = useKidStore((s) => s.stats);
+  const addEvent = useKidStore((s) => s.addEvent);
+  const reset = useKidStore((s) => s.reset);
+  const recordSession = useKidStore((s) => s.recordSession);
+  const novaAwardRound = useKidStore((s) => s.novaAwardRound);
+  const novaCompleteSession = useKidStore((s) => s.novaCompleteSession);
+  const novaQuestProgress = useKidStore((s) => s.novaQuestProgress);
+  const gardenWater = useKidStore((s) => s.gardenWater);
+  const gardenMastery = useKidStore((s) => s.gardenMastery);
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
   // #1124 — parent-panel wrong-answer heatmap: pre-aggregate the (unbounded,
@@ -1199,6 +1214,10 @@ export default function App() {
   const [recoverPass, setRecoverPass] = useState("");
   const [recoverBusy, setRecoverBusy] = useState(false);
   const [recoverError, setRecoverError] = useState<string | null>(null);
+  // #819 — PIN/QA hashing is now async (PBKDF2). These refs serialize a single
+  // in-flight verification so a fast double-submit can't race itself.
+  const pinVerifyingRef = useRef(false);
+  const secBusyRef = useRef(false);
   const resetSec = () => { setSecStep("pick"); setSecQid(0); setSecAnswer(""); setSecConfirm(""); setSecError(null); };
   const resetSecTries = () => { setSecTries(0); setSecLocked(false); };
   /** #247 — open the ask view WITHOUT resetting the brute-force attempt count,
@@ -1207,7 +1226,7 @@ export default function App() {
   /** #247 — leave the Q&A view (skip first-use setup, or cancel an edit). */
   const secSkip = () => { setSecView("none"); resetSec(); };
   /** #247 — save the Q&A (confirm step). */
-  const secSave = () => {
+  const secSave = async () => {
     if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
     if (secAnswer.trim() !== secConfirm.trim()) {
       setSecError(t.secMismatch);
@@ -1215,7 +1234,12 @@ export default function App() {
       setSecConfirm("");
       return;
     }
-    setSecurityQA(String(secQid), secAnswer.trim());
+    try {
+      await setSecurityQA(String(secQid), secAnswer.trim());
+    } catch {
+      setSecError(t.secCryptoError);
+      return;
+    }
     setSecView("none");
     resetSec();
   };
@@ -1247,10 +1271,20 @@ export default function App() {
     }
   };
   /** #247 — answer the recovery question → reset the PIN here, in place. */
-  const secRecover = () => {
-    if (secLocked) return;
+  const secRecover = async () => {
+    if (secLocked || secBusyRef.current) return;
     if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
-    if (verifySecurityQA(secAnswer.trim())) {
+    secBusyRef.current = true;
+    let ok = false;
+    try {
+      ok = await verifySecurityQA(secAnswer.trim());
+    } catch {
+      secBusyRef.current = false;
+      setSecError(t.secCryptoError);
+      return;
+    }
+    secBusyRef.current = false;
+    if (ok) {
       clearParentPin(); // QA stays — reuse it for the next reset.
       setSecView("none");
       resetSec();
@@ -1281,19 +1315,32 @@ export default function App() {
     setPinDigits(next);
     setPinError(null);
     setPinNotice(null);
-    if (next.length === 4) pinSubmit(next);
+    if (next.length === 4) void pinSubmit(next);
   };
   /** The 4-digit value is complete → run the step logic. `hasParentPin()` is
    *  the source of truth for setup-vs-unlock: with no PIN, "current" is
    *  meaningless, so the first entry is treated as the new-PIN stage. A device
    *  with no PIN can never accidentally hit the verify branch. */
-  const pinSubmit = (value: string) => {
+  const pinSubmit = async (value: string) => {
+    if (pinVerifyingRef.current) return;
     const setupWasFirst = !hasParentPin(); // before any new-PIN save below
     const hasPin = hasParentPin();
     const step = hasPin ? pinStep : pinStep === "confirm" ? "confirm" : "new";
     // Verify the current PIN (unlock, or change-current) — only when one exists.
     if (hasPin && step === "current") {
-      if (verifyParentPin(value)) {
+      pinVerifyingRef.current = true;
+      let ok = false;
+      try {
+        ok = await verifyParentPin(value);
+      } catch {
+        pinVerifyingRef.current = false;
+        pinResetPad();
+        setPinError(t.pinCryptoError);
+        shakePinPad();
+        return;
+      }
+      pinVerifyingRef.current = false;
+      if (ok) {
         pinResetPad();
         if (pinMode === "change") { setPinStep("new"); setPinError(null); }
         else { setPinOk(true); }
@@ -1322,7 +1369,14 @@ export default function App() {
     }
     // Confirmation: must match the staged PIN → save, then open the panel.
     if (value === pinPending) {
-      setParentPin(value);
+      try {
+        await setParentPin(value);
+      } catch {
+        pinResetPad();
+        setPinError(t.pinCryptoError);
+        shakePinPad();
+        return;
+      }
       pinResetPad();
       setPinPending("");
       setPinMode("unlock");
@@ -3965,7 +4019,7 @@ export default function App() {
                       placeholder={t.secAnswerPlaceholder}
                       autoFocus
                       onChange={(e) => { setSecAnswer(e.target.value); setSecError(null); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") secRecover(); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") void secRecover(); }}
                     />
                   )}
                   {secError && <p className="gate-error" role="alert">{secError}</p>}
@@ -3974,7 +4028,7 @@ export default function App() {
                     {secLocked ? (
                       <button className="pin-btn pin-btn-primary" onClick={() => { setSecView("password"); resetSec(); setRecoverError(null); }}>{t.pinRecoverWithPassword}</button>
                     ) : (
-                      <button className="pin-btn pin-btn-primary" onClick={secRecover}>{t.secSave}</button>
+                      <button className="pin-btn pin-btn-primary" onClick={() => void secRecover()}>{t.secSave}</button>
                     )}
                   </div>
                 </div>
@@ -4017,7 +4071,7 @@ export default function App() {
                       placeholder={t.secConfirmTitle}
                       autoFocus
                       onChange={(e) => { setSecConfirm(e.target.value); setSecError(null); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") secSave(); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") void secSave(); }}
                     />
                   )}
                   {secError && <p className="gate-error" role="alert">{secError}</p>}
@@ -4033,7 +4087,7 @@ export default function App() {
                           if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
                           setSecStep("confirm");
                           setSecError(null);
-                        } else secSave();
+                        } else void secSave();
                       }}
                     >
                       {secStep === "confirm" ? t.secSave : t.secNext}

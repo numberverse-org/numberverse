@@ -1233,9 +1233,27 @@ let kidsCache: Kid[] | null = null;
 
 export function loadKids(): Kid[] {
   if (kidsCache) return kidsCache;
+  // #818 — parse once, guard the storage read, and shape-check every entry so
+  // a tampered/corrupt nv_kids blob can never surface as a non-Kid object.
   try {
     const raw = localStorage.getItem("nv_kids");
-    kidsCache = raw ? (JSON.parse(raw) as Kid[]) : [];
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    kidsCache = Array.isArray(parsed)
+      ? parsed
+          .filter((k): k is Record<string, unknown> => typeof k === "object" && k !== null && !Array.isArray(k))
+          .filter((k) => typeof k.id === "string" && typeof k.name === "string")
+          .map((k) => ({
+            id: k.id as string,
+            name: k.name as string,
+            avatar: typeof k.avatar === "string" ? k.avatar : "🦉",
+            birthYear: typeof k.birthYear === "number" && k.birthYear > 0 ? k.birthYear : new Date().getFullYear(),
+            ...(typeof k.birthMonth === "number" ? { birthMonth: k.birthMonth } : {}),
+            ...(typeof k.birthDay === "number" ? { birthDay: k.birthDay } : {}),
+            ...(typeof k.avatarParts === "object" && k.avatarParts !== null && !Array.isArray(k.avatarParts)
+              ? { avatarParts: k.avatarParts as Kid["avatarParts"] }
+              : {}),
+          }))
+      : [];
   } catch {
     /* ignore */
     kidsCache = [];
