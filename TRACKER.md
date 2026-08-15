@@ -1,6 +1,14 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🎢 0.78.0 RELEASED — ENGINE DIFFICULTY-RAMP (#1056–#1060) 16 Aug 2026 ✅
+- **#1056** — binSort/tapChoice `queueSize` no longer clamps at the 6-entry ladder ceiling (`ladderValue` grows +1/level past it); the tier pool is DEMAND-driven (`poolTierFor` opens exactly the tiers that serve the queue), so levels past 5-6 are never byte-identical.
+- **#1057** — `rounds: 3` is now the easiest-level base; the shared engines grow rounds-to-finish with the adaptive level (`roundsForLevel`).
+- **#1059** — fixed `levelIndex++` replaced by a live success ramp (`nextLevelIndex`): two clean rounds step up two, two missed ease back; Moni still sets the STARTING index, the engine adapts from there, and `onRoundDone` reports the difficulty earned.
+- **#1058** — shared per-item countdown (`timePerItemMs`) with a shrinking bar gated by level; enabled on FoodSource + MaterialSort so LongVowel is no longer the sole timer-ramped scene. New `timeUp` key EN+BN.
+- **#1060** — DayNight WHY starts at level 1 with a per-level distractor ramp (3→5 options, 2-row layout); CompareFrac runs a 6-stage level-driven progression with growing question count; Compare superlative becomes a probability ramp (level 1 → 55%… level 4+ → 100%).
+- New shared module `apps/kid/src/game/difficulty.ts`. Gates: kid tsc + audit (0 errors) + oracle SHIP-OK + live smoke. All 5 issues closed with evidence.
+
 ## 🗄️ HOUSKEEPING BATCH MERGED — PG BACKUP + OFFLINE VERIFY + AUTO-ROLLBACK + UPTIME MONITOR + COLD-START BASELINE 13 Aug 2026 ✅ (user: "do all the pendings")
 - **🗄️ Postgres backup #122** — `infra/backup/pg_backup.sh`: nightly pg_dump (3:30am cron on box), 14-dump retention, gzip-integrity, restore drill **live=12 drill=12 PASSES**. Scope-safe: only `numberverse-demo-postgres-1`.
 - **📴 Offline verification #114** — `docs/OFFLINE.md`: 22-entry precache (cold+warm matrix), **zero network calls on launch**, offline-degrading api.ts outbox. Known gap (neural voice after first online session) documented.
