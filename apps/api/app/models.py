@@ -121,6 +121,10 @@ class KidSettings(Base):
             "(,(-|[0-9]{1,2}:[0-9]{2}-[0-9]{1,2}:[0-9]{2})){6}$'",
             name="ck_kid_settings_quiet_windows",
         ),
+        CheckConstraint(
+            "moni_strictness IS NULL OR moni_strictness IN ('gentle', 'steady', 'challenging')",
+            name="ck_kid_settings_moni_strictness",
+        ),
     )
 
     kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), primary_key=True)
@@ -177,6 +181,17 @@ class KidSettings(Base):
     # until the parent resumes. Survives reload (served with settings, cached
     # on-device). Auto-migrated (server_default "false" → existing kids run).
     paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # #1041/#1042/#1043 — parent-adjustable MONI STRICTNESS: the difficulty
+    # knob. "gentle" | "steady" | "challenging" — how hard the adaptive tutor
+    # pushes this kid (planner.ts shifts difficulty −1/+1 + tone). "steady" is
+    # Moni's own automatic read (the neutral default). SYNCED: the parent
+    # portal sets it, the kid app pulls it on every settings fetch so the
+    # parent's choice applies on every device, and the kid app's own parent
+    # area pushes it back up (device-local was the #1043 bug). Auto-migrated
+    # (server_default "steady" → existing kids keep the neutral default).
+    moni_strictness: Mapped[str] = mapped_column(
+        String(16), default="steady", server_default="steady"
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

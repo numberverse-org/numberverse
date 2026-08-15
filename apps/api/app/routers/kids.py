@@ -211,6 +211,12 @@ async def put_kid_settings(
     s.voice_speed = body.voice_speed
     # #272 — SAFETY: parent kill-switch. Instant pause / resume, per kid.
     s.paused = body.paused
+    # #1041/#1042 — parent-adjustable Moni strictness (the difficulty knob).
+    # The Literal in KidSettingsIn already rejects bad values at the boundary;
+    # the extra guard keeps a future non-Literal caller from tripping the DB
+    # CheckConstraint (models.py ck_kid_settings_moni_strictness).
+    if body.moni_strictness in {"gentle", "steady", "challenging"}:
+        s.moni_strictness = body.moni_strictness
     await db.commit()
     await db.refresh(s)
     return s

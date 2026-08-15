@@ -518,7 +518,29 @@ export const DEFAULT_SETTINGS: KidSettingsT = {
   voice_tone: null,
   voice_speed: null,
   paused: false,
+  moni_strictness: "steady",
 };
+
+/** #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.
+ *  EN + BN — same country-pack seam as PAUSE_LANGS. gentle/steady/challenging
+ *  shifts how hard Moni pushes (planner difficulty −1/0/+1 + tone). "steady"
+ *  is Moni's own automatic read. Synced to the kid app via KidSettings. */
+export const MONI_LANGS = {
+  en: {
+    title: "🧠 How hard should Moni push?",
+    help: "Gentle eases difficulty back, challenging takes it a step up. Moni keeps adapting — this nudges its target.",
+    gentle: "Gentle",
+    steady: "Steady",
+    challenging: "Challenging",
+  },
+  bn: {
+    title: "🧠 মনির ধাক্কা কেমন হোক?",
+    help: "নরম = ধাপ পিছিয়ে নেয়, চ্যালেঞ্জিং = ধাপ উপরে তোলে। মনি নিজেই মানিয়ে নেয় — এটা শুধু তার লক্ষ্য টান দেয়।",
+    gentle: "নরম",
+    steady: "স্থির",
+    challenging: "চ্যালেঞ্জিং",
+  },
+} as const;
 
 /** #272 — SAFETY: instant pause (parent kill-switch). EN + BN strings for the
  *  portal block — same country-pack seam as VOICE_LANGS. */

@@ -99,6 +99,10 @@ export interface KidSettings {
    *  (kid-safe "learning break" screen; survives reload) until a parent
    *  resumes. Off by default. */
   paused?: boolean;
+  /** #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.
+   *  "gentle" | "steady" | "challenging" — how hard Moni pushes this kid
+   *  (steady = Moni's own automatic read). Synced to the kid app. */
+  moni_strictness?: "gentle" | "steady" | "challenging";
   updated_at?: string | null;
 }
 

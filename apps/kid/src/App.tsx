@@ -20,7 +20,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, updateKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { googleEnabled, googleClientId } from "./googleAuthMeta";
 import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, coinSound, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
@@ -1438,6 +1438,22 @@ export default function App() {
     }, 30_000);
     return () => window.clearInterval(iv);
   }, [kid?.id]);
+  // #1041/#1043 — pull the parent's MoniStrictness DOWN from the server into the
+  // zustand store (journey.ts reads st.moniStrictness[kidId] when it calls
+  // moni.plan()). A device-side change from this device's parent area is honored
+  // over a stale server value for 2 min (the PUT can lag the 30s poll); after
+  // that the server wins — the parent portal is authoritative.
+  const lastLocalStrictnessAt = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!kid || settings.moni_strictness == null) return;
+    const s = settings.moni_strictness;
+    const local = useKidStore.getState().moniStrictness?.[kid.id] ?? "steady";
+    if (s === local) return;
+    const lastLocal = lastLocalStrictnessAt.current[kid.id];
+    if (lastLocal && Date.now() - lastLocal < 2 * 60_000) return; // honor a fresh local choice
+    useKidStore.getState().setMoniStrictness(kid.id, s);
+  }, [kid?.id, settings.moni_strictness]);
+
   // #272 — "restart screen": when the parent RESUMES (paused flips true→false),
   // drop the kid back to a fresh home rather than resuming mid-game.
   const wasPaused = useRef(false);
@@ -4457,7 +4473,19 @@ export default function App() {
                                     key={opt}
                                     className={`moni-strictness-opt${cur === opt ? " active" : ""}`}
                                     aria-pressed={cur === opt}
-                                    onClick={() => useKidStore.getState().setMoniStrictness(activeKid.id, opt)}
+                                    onClick={() => {
+                                      // #1043 — set the device-local store AND push
+                                      // up to the server so the parent portal + every
+                                      // other device see it (the portal's GET was the
+                                      // only sync direction before). Best-effort PUT:
+                                      // offline, the local value stands and the next
+                                      // fetch re-syncs.
+                                      useKidStore.getState().setMoniStrictness(activeKid.id, opt);
+                                      if (typeof lastLocalStrictnessAt === "object") {
+                                        lastLocalStrictnessAt.current[activeKid.id] = Date.now();
+                                      }
+                                      void updateKidSettings(activeKid.id, { moni_strictness: opt });
+                                    }}
                                   >
                                     {label}
                                   </button>

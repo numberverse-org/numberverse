@@ -10,6 +10,7 @@ import {
   FOCUS_BANDS,
   LEARNING_LANGS,
   LIMIT_CHOICES,
+  MONI_LANGS,
   PAUSE_LANGS,
   SUBJECTS,
   VOICE_LANGS,
@@ -133,6 +134,30 @@ export default function LearningControls({
     >
       {activeSettings.paused ? PAUSE_LANGS[wizLang].resume : PAUSE_LANGS[wizLang].pause}
     </button>
+  </div>
+
+  {/* #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.
+      gentle/steady/challenging shifts how hard Moni pushes this kid
+      (planner difficulty −1/0/+1 + tone). "steady" = Moni's own automatic
+      read. Synced to the kid app via KidSettings — applies on every device. */}
+  <div className="ctrl-block">
+    <h3>{MONI_LANGS[wizLang].title}</h3>
+    <p className="muted small">{MONI_LANGS[wizLang].help}</p>
+    <div className="toggle-grid">
+      {(["gentle", "steady", "challenging"] as const).map((opt) => {
+        const cur = activeSettings.moni_strictness ?? "steady";
+        return (
+          <button
+            key={opt}
+            className={`toggle-chip${cur === opt ? " on" : ""}`}
+            aria-pressed={cur === opt}
+            onClick={() => patchSettings({ moni_strictness: opt })}
+          >
+            {MONI_LANGS[wizLang][opt]}
+          </button>
+        );
+      })}
+    </div>
   </div>
 
   <div className="ctrl-block">

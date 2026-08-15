@@ -931,6 +931,15 @@ export interface KidSettings {
    *  (kid-safe "learning break" screen, survives reload) until a parent
    *  resumes. Off by default. */
   paused: boolean;
+  /** #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.
+   *  "gentle" | "steady" | "challenging" — how hard Moni pushes this kid
+   *  (planner difficulty −1/0/+1 + tone). "steady" = Moni's own automatic
+   *  read. Optional so older on-device caches (which predate the field) still
+   *  pass the REQUIRED_SETTING_FIELDS shape-check; the read sites default to
+   *  "steady" and the next server fetch fills it in. Synced via KidSettings:
+   *  the parent portal sets it and the kid app pulls it on every settings
+   *  fetch (device-local was the #1043 bug). */
+  moni_strictness?: "gentle" | "steady" | "challenging";
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -954,6 +963,7 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   voice_tone: null,
   voice_speed: null,
   paused: false,
+  moni_strictness: "steady",
 };
 
 /** Local YYYY-MM-DD for a date — daily counters must follow the kid's local
@@ -1102,6 +1112,43 @@ export async function fetchKidSettings(kidId: string): Promise<KidSettings> {
 /** The most recent cached settings for a kid (synchronous, for first paint). */
 export function cachedKidSettings(kidId: string): KidSettings {
   return readSettingsCache()[kidId] ?? KID_SETTINGS_DEFAULT;
+}
+
+/** #1043 — push a settings PATCH up to the server (the parent portal's GET was
+ *  the only direction before; a device-side edit never left the box). The kid
+ *  app's own parent area uses this so MoniStrictness changes reach the portal
+ *  and every other device. Best-effort: a failure leaves the local cache as
+ *  the source of truth and the next fetch re-syncs (offline-first). */
+export async function updateKidSettings(
+  kidId: string,
+  patch: Partial<KidSettings>,
+): Promise<KidSettings | null> {
+  const identity = await ensureIdentity();
+  if (!identity) return null;
+  const serverKid = identity.kidFor(kidId);
+  if (!serverKid) return null;
+  try {
+    const res = await fetch(`${API}/kids/${serverKid}/settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${identity.token}`,
+      },
+      body: JSON.stringify({ ...cachedKidSettings(kidId), ...patch }),
+    });
+    if (!res.ok) throw new Error(`settings PUT ${res.status}`);
+    const s = (await res.json()) as KidSettings;
+    const cache = readSettingsCache();
+    cache[kidId] = s;
+    try {
+      localStorage.setItem(LS_SETTINGS, JSON.stringify(cache));
+    } catch {
+      /* storage full — ignore */
+    }
+    return s;
+  } catch {
+    return null;
+  }
 }
 
 /** Start-of-day playtime tracker for the daily-limit gate. Stores minutes

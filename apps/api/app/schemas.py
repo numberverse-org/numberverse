@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, EmailStr, Field, field_validator
 
@@ -177,6 +177,11 @@ class KidSettingsIn(BaseModel):
     # #272 — SAFETY: parent kill-switch. True = this kid's games are paused
     # until a parent resumes (one-tap, kid-safe message, survives reload).
     paused: bool = False
+    # #1041/#1042 — parent-adjustable MONI STRICTNESS: the difficulty knob.
+    # gentle/steady/challenging = how hard Moni pushes this kid. "steady" is
+    # Moni's automatic read (default). Literal rejects anything else at the
+    # boundary so the DB constraint can never trip on a bad write.
+    moni_strictness: Literal["gentle", "steady", "challenging"] = "steady"
 
 
 class KidSettingsOut(BaseModel):
@@ -202,6 +207,7 @@ class KidSettingsOut(BaseModel):
     voice_tone: str | None = None
     voice_speed: float | None = None
     paused: bool = False
+    moni_strictness: str = "steady"
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
