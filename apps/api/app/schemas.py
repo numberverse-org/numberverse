@@ -44,6 +44,7 @@ class ProfileOut(BaseModel):
     email: EmailStr
     display_name: str | None = None
     is_admin: bool = False
+    role: str = "user"  # #846 — "user" | "admin" | "super_admin"
     aggregate_opt_in: bool = False  # #330 parent privacy opt-in
 
     model_config = {"from_attributes": True}

@@ -58,6 +58,16 @@ async def get_current_profile(
 
 
 async def require_admin(profile: Profile = Depends(get_current_profile)) -> Profile:
-    if not profile.is_admin:
+    # #846 — role boundary. "admin" and "super_admin" are the real roles now;
+    # legacy is_admin=True rows (pre-role) still pass until the console moves.
+    if profile.role not in {"admin", "super_admin"} and not profile.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin privileges required")
+    return profile
+
+
+async def require_super_admin(profile: Profile = Depends(get_current_profile)) -> Profile:
+    # #846 — destructive / tenant-wide operations need the top role. The legacy
+    # is_admin flag is accepted as super_admin-equivalent for backward compat.
+    if profile.role != "super_admin" and not profile.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Super admin privileges required")
     return profile

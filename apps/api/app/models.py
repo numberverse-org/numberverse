@@ -17,6 +17,10 @@ class Profile(Base):
     password_hash: Mapped[str] = mapped_column(String)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # #846 — role boundary: "user" | "admin" | "super_admin". `is_admin` is kept
+    # for backward compat while the console migrates to roles; a legacy is_admin
+    # row still passes require_admin/require_super_admin.
+    role: Mapped[str] = mapped_column(String(32), default="user", server_default="user")
     # #330 — parent opt-in: may this family's (anonymized) learning stories be
     # aggregated into cross-kid "classroom" insights? Default OFF. Aggregates
     # are computed only from opted-in families and carry zero kid identity.
@@ -295,3 +299,22 @@ class ConfigEntry(Base):
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class AdminAudit(Base):
+    """#846 — append-only audit trail for admin CRUD + config writes.
+
+    One row per create/update/delete issued through the admin router. `admin_id`
+    is deliberately a bare UUID (no FK) so deleting a profile never deletes the
+    paper trail. `detail` carries the change shape (writable field names, config
+    previous/new values) but never credential material (no password_hash)."""
+
+    __tablename__ = "admin_audit"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    admin_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    action: Mapped[str] = mapped_column(String(32))
+    resource: Mapped[str] = mapped_column(String(64))
+    item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
