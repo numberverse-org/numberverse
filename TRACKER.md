@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧠 MONI DIFFICULTY CLUSTER (#1044/#1046/#1047/#1048) 16 Aug 2026 ✅ → 0.84.0
+- **#1047 foundation (single-threaded, core+store+journey):** `planner.plan()` gains a 7th `perSkillDeltas` param (skillId → signed level offset, clamped ±2) layered on top of global strictness; kid store gains `moniSkillDeltas` (kidId→skillId→delta) + `setSkillDelta`/`bumpSkillDelta` (partialized + v0→v1 migration); `journey.moniPlanFor` folds deltas into the cache key + plan call. 5 new regression checks (#1047 base/−1/+2/non-focus no-op/strictness+skill stack) → 23 total, all green.
+- **#1044 parent per-subject stepper:** new `moni_subject_deltas` on `kid_settings` (JSONB column, Pydantic-clamped ±2 via `field_validator`, router PUT `or None` clears); synced parent→API→kid store (App.tsx effect expands each subject onto its skills, parent-authoritative, never clobbers a later #1048 tap). `LearningControls` gains a −/0/+ stepper per subject (EN+BN `MONI_DELTA_LANGS`). New `test_moni_subject_deltas.py` (9 checks, clamped/None/default/out) wired into CI.
+- **#1048 kid feedback:** done screen gains "too easy / too hard" buttons → `bumpSkillDelta(kid.id, <plan focus skill>, ±1)` with a warm confirmation line (EN+BN `moniFb*`); resets on every fresh session.
+- **#1046 parent visibility:** the Moni card shows the EFFECTIVE plan difficulty (`moniLevel(n)` → "Level N of 5") + the focus skill in "Moni's next move" (plans stay on-device, no API sync — surfaced where the parent reads).
+- Gates: kid tsc 0 (only foreign nova3d/Outfit3D error), parent tsc 0, api compileall ✓, moni 23/23 ✓, #1044 schema 9/9 ✓, i18n en=bn=802. Commit 7aa8f54.
+
 ## 🧩 SCENE-PATTERNS CLUSTER (#997–#1004) 16 Aug 2026 ✅ → 0.83.0 (fan-out via 3 waves)
 - **Wave A** (3 parallel subagents): #1002 89 scenes stop hardcoding `onRoundDone?.(true,...)` → pass derived round correctness (correct===total, target reached, questions-answered) or a `// #1002 correct-by-design` comment — the adaptive-difficulty signal is now honest; #1003 new `sceneArchetypes.ts` registry (172 keys, 23 challenge) so sweeps stop flagging challenge scenes for missing round wiring; #1004 all 14 `hintWrongLocal()` copies → shared `hints.hintWrong()` (wrongLedger + confidence-adaptive reveal everywhere).
 - **Wave B** (2 parallel): #997 verified ALREADY consolidated (batch-3 5f4542a — all 69 `private floatMsg` are thin wrappers delegating to `celebrate.floatText`, zero local tween reimpls, strict scan); #1001 ported 20 scenes' inline `T={en,bn}` tables → 126 central i18n keys (en 1618=bn 1618) — 0 local tables remain.
