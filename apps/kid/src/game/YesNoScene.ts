@@ -8,7 +8,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, BTN_CORRECT, BTN_RED, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
+import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-yesno")?.difficultyLevels ?? [0, 0, 0, 0, 0, 0];
@@ -95,9 +95,11 @@ export class YesNoScene extends Phaser.Scene {
     // 🔁 glyph turns it into a visible REPLAY button.
     this.slowBtn = modernCardButton(this, 0, 0, 118, 64, "🐢🔁", BTN_NEUTRAL, 26);
     this.slowBtn.on("pointerdown", () => this.speakLine(0.7));
-    this.yesBtn = modernCardButton(this, 0, 0, 150, 96, `✅ ${t("ynYes")}`, BTN_CORRECT, 30);
+    // #1383 — both YES and NO start NEUTRAL (no green/red pre-coloring): the
+    // color verdict is only applied AFTER the child answers, never before.
+    this.yesBtn = modernCardButton(this, 0, 0, 150, 96, `✓ ${t("ynYes")}`, BTN_NEUTRAL, 30);
     this.yesBtn.on("pointerdown", () => this.answer(true));
-    this.noBtn = modernCardButton(this, 0, 0, 150, 96, `❌ ${t("ynNo")}`, BTN_RED, 30);
+    this.noBtn = modernCardButton(this, 0, 0, 150, 96, `✕ ${t("ynNo")}`, BTN_NEUTRAL, 30);
     this.noBtn.on("pointerdown", () => this.answer(false));
 
     onSceneResize(this, () => this.layout());
@@ -149,6 +151,9 @@ export class YesNoScene extends Phaser.Scene {
       this.locked = true;
       pop();
       win();
+      // #1383 — color the chosen button green only NOW, after the child answered.
+      const hit = v ? this.yesBtn : this.noBtn;
+      (hit.getData("nv-btn") as { setCorrect: () => void } | undefined)?.setCorrect();
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.floatMsg(t("ynGreat"));
       this.time.delayedCall(250, () =>

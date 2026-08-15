@@ -7,7 +7,7 @@ import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
+import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, answerFlash } from "./ui";
 import { SAB } from "./safeArea";
 import { makeDraggableTo } from "./gestures";
 
@@ -321,21 +321,26 @@ export class ComputerSafetyScene extends Phaser.Scene {
   }
 
   private flashBin(bin: { c: Phaser.GameObjects.Container }, color: number, alpha = 0.9) {
-    const g = this.add.graphics();
     const { cardW, cardH } = this.binGeom;
-    g.lineStyle(5, color, alpha);
-    g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 18);
-    bin.c.addAt(g, 0);
-    this.time.delayedCall(900, () => g.destroy());
+    answerFlash(this, bin.c, color, {
+      w: cardW,
+      h: cardH,
+      alpha,
+      radius: 18,
+      glyph: color === 0x4ade80 ? "check" : "cross",
+    });
   }
 
   private flashPart(c: Phaser.GameObjects.Container, color: number) {
-    const g = this.add.graphics();
     const { cardW, cardH } = this.partGeom;
-    g.lineStyle(5, color, 0.9);
-    g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
-    c.addAt(g, 0);
-    this.time.delayedCall(700, () => g.destroy());
+    answerFlash(this, c, color, {
+      w: cardW,
+      h: cardH,
+      alpha: 0.9,
+      duration: 700,
+      radius: 16,
+      glyph: "check",
+    });
   }
 
   private advance() {

@@ -5,7 +5,7 @@ import { resetCombo } from "./celebrate";
 import { prefersReducedMotion } from "./reducedMotion";
 import { t } from "./i18n";
 import { getKidName } from "./kidName";
-import { NV_GOLD } from "./ui";  // tokenized #591
+import { NV_SKY, NV_NAVY } from "./ui"; // tokenized #591
 
 /**
  * Wrong answers are a LEARNING MOMENT, never a punishment.
@@ -36,16 +36,29 @@ export function wrongTap(
   const name = getKidName();
   speak(t("almost", { name }));
   const msg = t("almostBubble", { name });
-  const tip = scene.add
-    .text(target.x, (target.y as number) - 64, msg, {
+  // #1362/#1382 — a wrong-answer nudge must NOT share the sunshine-gold praise
+  // color. Give it a soft sky-blue speech bubble with navy text so "almost"
+  // reads as "keep trying", never as "great!".
+  const tx = scene.add
+    .text(0, 0, msg, {
       fontSize: "17px",
-      color: NV_GOLD,
+      color: NV_NAVY,
       fontStyle: "bold",
-      stroke: "#1d3557",
-      strokeThickness: 4,
+      align: "center",
+      wordWrap: { width: 240 },
     })
-    .setOrigin(0.5)
-    .setDepth(5000);
+    .setOrigin(0.5);
+  const padX = 14;
+  const padY = 9;
+  const bubbleW = Math.max(64, tx.width + padX * 2);
+  const bubbleH = Math.max(38, tx.height + padY * 2);
+  const bubble = scene.add.graphics();
+  bubble.fillStyle(0x0b2545, 0.18);
+  bubble.fillRoundedRect(-bubbleW / 2 - 2, -bubbleH / 2 + 5, bubbleW + 4, bubbleH + 4, 20);
+  bubble.fillStyle(Phaser.Display.Color.HexStringToColor(NV_SKY).color, 0.96);
+  bubble.fillRoundedRect(-bubbleW / 2, -bubbleH / 2, bubbleW, bubbleH, 20);
+  bubble.fillTriangle(-7, bubbleH / 2 - 2, 7, bubbleH / 2 - 2, 0, bubbleH / 2 + 11);
+  const tip = scene.add.container(target.x, (target.y as number) - 64, [bubble, tx]).setDepth(5000);
   scene.tweens.add({
     targets: tip,
     y: tip.y - 46,

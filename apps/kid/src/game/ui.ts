@@ -175,6 +175,20 @@ export function btnFromColor(hex: number): BtnStyle {
   return { top, bottom, text };
 }
 
+/** Small white ✓ badge added to an answer button on correct. Gives a
+ *  SHAPE backup to the green flash (#1363) so color-only vision still sees
+ *  which answer was right. */
+function addCorrectBadge(scene: Phaser.Scene, c: Phaser.GameObjects.Container, x: number, y: number, r: number) {
+  const prev = c.getData("nv-correct-badge") as Phaser.GameObjects.Container | undefined;
+  if (prev && prev.active) prev.destroy();
+  const badge = scene.add.container(x, y).setDepth(30);
+  badge.add(scene.add.circle(0, 0, r, 0xffffff, 1).setStrokeStyle(2, 0x0b2545, 1));
+  badge.add(scene.add.text(0, 0, "✓", { fontSize: `${Math.round(r * 1.25)}px`, color: "#0b2545", fontStyle: "bold" }).setOrigin(0.5));
+  c.add(badge);
+  c.setData("nv-correct-badge", badge);
+  scene.tweens.add({ targets: badge, scale: 1.35, duration: 180, yoyo: true, ease: "Back.easeOut" });
+}
+
 /* ─────────────────────────── face textures ─────────────────────────── */
 
 const faceCache = new Map<string, string>();
@@ -349,9 +363,11 @@ export function modernAnswerButton(
       face.setTexture(faceTex(scene, r, BTN_CORRECT.top, BTN_CORRECT.bottom)).setDisplaySize(r * 2, r * 2);
       scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
       scene.tweens.add({ targets: face, alpha: 0.35, duration: 60, yoyo: true, repeat: 1 });
+      addCorrectBadge(scene, c, Math.round(r * 0.7), -Math.round(r * 0.7), Math.max(9, Math.round(r * 0.3)));
     },
     setDisabled() {
       c.disableInteractive();
+      c.setAlpha(0.45);
     },
     setLabel(t: string) {
       if (labelText) labelText.setText(t);
@@ -400,9 +416,12 @@ export function modernCardButton(
     setCorrect() {
       face.setTexture(cardFaceTex(scene, w, h, BTN_CORRECT.top, BTN_CORRECT.bottom)).setDisplaySize(w, h);
       scene.tweens.add({ targets: c, scale: 1.08, duration: 130, yoyo: true, ease: "Back.easeOut" });
+      const badgeR = Math.max(10, Math.round(Math.min(w, h) * 0.16));
+      addCorrectBadge(scene, c, Math.round(w / 2 - badgeR - 2), Math.round(-h / 2 + badgeR + 2), badgeR);
     },
     setDisabled() {
       c.disableInteractive();
+      c.setAlpha(0.45);
     },
     setLabel(t: string) {
       if (labelText) labelText.setText(t);
@@ -727,4 +746,44 @@ export function ringCorrect(scene: Phaser.Scene, c: Phaser.GameObjects.Container
   scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
   // combo juice: escalating fireworks as the kid chains correct answers
   correctCelebrate(scene, c.x, c.y);
+}
+
+/**
+ * Shared right/wrong site flash for custom cards and bins that are NOT built
+ * with modernAnswerButton/modernCardButton. The stroke is paired with a
+ * ✓ (correct) or ✕ (wrong) badge so the verdict never relies on green-vs-red
+ * color alone (#1364/#1385).
+ */
+export function answerFlash(
+  scene: Phaser.Scene,
+  c: Phaser.GameObjects.Container,
+  color: number,
+  opts: { w: number; h: number; alpha?: number; duration?: number; radius?: number; glyph?: "check" | "cross" }
+) {
+  const { w, h } = opts;
+  const alpha = opts.alpha ?? 0.9;
+  const duration = opts.duration ?? 900;
+  const radius = opts.radius ?? 16;
+  const g = scene.add.graphics();
+  g.lineStyle(6, color, alpha);
+  g.strokeRoundedRect(-w / 2, -h / 2, w, h, radius);
+  c.addAt(g, 0);
+  let mark: Phaser.GameObjects.Text | null = null;
+  if (opts.glyph) {
+    mark = scene.add
+      .text(w / 2 - 16, -h / 2 + 16, opts.glyph === "check" ? "✓" : "✕", {
+        fontSize: "28px",
+        color: opts.glyph === "check" ? "#052e16" : "#4c0519",
+        fontStyle: "bold",
+        stroke: "#ffffff",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
+    c.add(mark);
+  }
+  scene.time.delayedCall(duration, () => {
+    if (g.active) g.destroy();
+    if (mark && mark.active) mark.destroy();
+  });
 }
