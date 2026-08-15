@@ -215,7 +215,7 @@ export class CompoundEnScene extends Phaser.Scene {
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.slot1Val === this.word.left && this.slot2Val === this.word.right, ms, this.levelIndex + 1);
     this.time.delayedCall(350, () => speak(this.word.full, { lang: "en" }));
     this.time.delayedCall(1400, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.floatMsg(t("ceDone"));

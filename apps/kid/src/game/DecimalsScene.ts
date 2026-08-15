@@ -189,7 +189,7 @@ export class DecimalsScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     // #1170 — difficulty is the skill's ladder value (decimal places), not the index.
-    this.onRoundDone?.(true, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+    this.onRoundDone?.(value === correctVal, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

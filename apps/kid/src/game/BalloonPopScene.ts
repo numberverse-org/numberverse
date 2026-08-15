@@ -197,7 +197,7 @@ export class BalloonPopScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(value === target, ms, this.levelIndex + 1);
     this.time.delayedCall(850, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

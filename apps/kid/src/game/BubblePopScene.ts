@@ -78,6 +78,7 @@ export class BubblePopScene extends Phaser.Scene {
     super("BubblePop");
   }
 
+  // #1003 archetype: challenge
   create(data: { kidId?: string; onBack?: () => void }) {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;

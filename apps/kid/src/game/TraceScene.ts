@@ -409,7 +409,9 @@ export class TraceScene extends Phaser.Scene {
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     const ms = Math.max(1, this.time.now - this.startedAt);
     const level = this.currentLevel();
-    this.onRoundDone?.(true, ms, level);
+    // #1002 — tracing is correct-by-design once the glyph is covered enough;
+    // report the real coverage condition that triggered completion.
+    this.onRoundDone?.(this.coveredCount / (this.displayPts.length || 1) >= COMPLETE_AT, ms, level);
     speak(this.spokenGlyphName());
     this.time.delayedCall(900, () => {
       this.completing = false;

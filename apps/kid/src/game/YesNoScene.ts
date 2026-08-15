@@ -167,7 +167,7 @@ export class YesNoScene extends Phaser.Scene {
       const ms = Math.max(1, this.time.now - this.startedAt);
       this.roundsDone++;
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-      this.onRoundDone?.(true, ms, this.levelIndex + 1);
+      this.onRoundDone?.(v === this.item.a, ms, this.levelIndex + 1);
       this.time.delayedCall(1400, () => {
         if (this.roundsDone >= ROUNDS_TO_FINISH) this.floatMsg(t("ynDone"));
         if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;

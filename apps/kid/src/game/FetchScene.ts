@@ -79,6 +79,7 @@ export class FetchScene extends Phaser.Scene {
     super("Fetch");
   }
 
+  // #1003 archetype: challenge
   create(data: { kidId?: string; onBack?: () => void }) {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;

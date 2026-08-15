@@ -9,6 +9,7 @@ import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
 import { SAB } from "./safeArea";
+import { hintWrong } from "./hints";
 
 const LEVELS = GAMES.find((g) => g.id === "game-subborrow")?.difficultyLevels ?? [5, 6, 8, 8, 10, 10];
 const ROUNDS_TO_FINISH = 3;
@@ -320,9 +321,23 @@ export class SubBorrowScene extends Phaser.Scene {
     }
     bad();
     this.locked = true;
-    hintWrongLocal(this, tile, () => digit(target));
+    hintWrong(this, tile, {
+      hint: () =>
+        t("boSub", {
+          x: digit(s === 1 ? this.oM + 10 : this.tM - 1),
+          y: digit(s === 1 ? this.oS : this.tS),
+          n: digit(target),
+        }),
+      hintBn: () =>
+        t("boSub", {
+          x: digit(s === 1 ? this.oM + 10 : this.tM - 1),
+          y: digit(s === 1 ? this.oS : this.tS),
+          n: digit(target),
+        }),
+      correct: () => digit(target),
+      options: () => this.tiles.map((o) => ({ sprite: o.sprite, value: digit(o.val) })),
+    });
     if (s === 1) {
-      this.floatMsg(t("boSub", { x: digit(this.oM + 10), y: digit(this.oS), n: digit(target) }), this.scale.width / 2, this.scale.height * 0.56);
       this.time.delayedCall(1400, () => this.askStep(1));
     } else {
       this.time.delayedCall(1100, () => this.askStep(2));
@@ -360,16 +375,4 @@ export class SubBorrowScene extends Phaser.Scene {
     this.tiles.forEach((o) => o.sprite.destroy());
     this.tiles = [];
   }
-}
-
-/** Wrong-answer feedback without hintWrong's "keep on wrong" retirement. */
-function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container, correct: () => string) {
-  scene.tweens.add({ targets: tile, scale: 0.9, duration: 90, yoyo: true, ease: "Sine.easeInOut" });
-  tile.setAlpha(0.4);
-  tile.disableInteractive();
-  const m = scene.add
-    .text(tile.x, tile.y - 40, correct(), txt(22, NV_GREEN, { bold: true, outline: true }))
-    .setOrigin(0.5)
-    .setDepth(40);
-  scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });
 }

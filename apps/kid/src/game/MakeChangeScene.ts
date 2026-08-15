@@ -7,8 +7,9 @@ import { correctCelebrate , floatText } from "./celebrate";
 import { speak, bnNumber, enNumber, cancelSpeech } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_CORRECT, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_CORRECT, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
+import { hintWrong } from "./hints";
 
 const LEVELS = GAMES.find((g) => g.id === "game-makechange")?.difficultyLevels ?? [4, 5, 6, 8, 8, 10];
 const ROUNDS_TO_FINISH = 3;
@@ -282,7 +283,12 @@ export class MakeChangeScene extends Phaser.Scene {
     }
     bad();
     this.locked = true;
-    hintWrongLocal(this, tile, () => `৳${digit(this.c)}`);
+    hintWrong(this, tile, {
+      hint: () => t("tapHint"),
+      hintBn: () => t("tapHint"),
+      correct: () => `৳${digit(this.c)}`,
+      options: () => this.cards.map((o) => ({ sprite: o.sprite, value: o.val })),
+    });
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.advance(ms);
   }
@@ -522,16 +528,4 @@ export class MakeChangeScene extends Phaser.Scene {
     this.fewestMode = false;
     this.noteCount = 0;
   }
-}
-
-/** Wrong-answer feedback without hintWrong's "keep on wrong" retirement. */
-function hintWrongLocal(scene: Phaser.Scene, tile: Phaser.GameObjects.Container, correct: () => string) {
-  scene.tweens.add({ targets: tile, scale: 0.9, duration: 90, yoyo: true, ease: "Sine.easeInOut" });
-  tile.setAlpha(0.4);
-  tile.disableInteractive();
-  const m = scene.add
-    .text(tile.x, tile.y - 40, correct(), txt(20, NV_GREEN, { bold: true, outline: true }))
-    .setOrigin(0.5)
-    .setDepth(40);
-  scene.tweens.add({ targets: m, y: m.y - 20, alpha: 0, duration: 700, onComplete: () => m.destroy() });
 }

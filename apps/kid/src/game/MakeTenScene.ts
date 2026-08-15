@@ -9,7 +9,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
-import { hintWrongLocal } from "./hints"; // #1086 — shared tile-drill hint-renderer
+import { hintWrong } from "./hints";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-maketen")?.difficultyLevels ?? [5, 6, 8, 8, 10, 10];
@@ -194,7 +194,12 @@ export class MakeTenScene extends Phaser.Scene {
     }
     bad();
     this.locked = true;
-    hintWrongLocal(this, tile, () => digit(ans));
+    hintWrong(this, tile, {
+      hint: () => t("tapHint"),
+      hintBn: () => t("tapHint"),
+      correct: () => digit(ans),
+      options: () => this.tiles.map((o) => ({ sprite: o.sprite, value: digit(o.val) })),
+    });
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.advance(ms);
   }

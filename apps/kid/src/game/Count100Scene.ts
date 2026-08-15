@@ -184,7 +184,7 @@ export class Count100Scene extends Phaser.Scene {
     win();
     speak(t("count100DoneSpeak", { n: target }), { rate: 0.9 });
     correctCelebrate(this, width / 2, Math.round(height * 0.32));
-    this.onRoundDone?.(true, ms, target);
+    this.onRoundDone?.(this.total >= target, ms, target);
     this.levelIndex++;
     this.time.delayedCall(800, () => this.startRound());
   }

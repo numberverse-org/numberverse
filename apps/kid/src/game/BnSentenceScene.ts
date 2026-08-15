@@ -178,7 +178,7 @@ export class BnSentenceScene extends Phaser.Scene {
       const ms = Math.max(1, this.time.now - this.startedAt);
       this.roundsDone++;
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-      this.onRoundDone?.(true, ms, this.levelIndex + 1);
+      this.onRoundDone?.(this.built.length === this.sentence.length, ms, this.levelIndex + 1);
       this.time.delayedCall(900, () => {
         if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
         this.levelIndex++;

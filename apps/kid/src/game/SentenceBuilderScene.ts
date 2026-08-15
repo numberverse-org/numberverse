@@ -264,7 +264,7 @@ export class SentenceBuilderScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.floatMsg(t("sbDone"));
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.qInRound >= SENTENCES_PER_ROUND, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

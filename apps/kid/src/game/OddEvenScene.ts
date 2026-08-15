@@ -173,7 +173,7 @@ export class OddEvenScene extends Phaser.Scene {
     speak(this.answerEven ? t("oeEven") : t("oeOdd"), { cancel: false });
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.shown);
+    this.onRoundDone?.(even === this.answerEven, ms, this.shown);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

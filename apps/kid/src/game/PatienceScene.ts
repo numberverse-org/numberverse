@@ -222,7 +222,9 @@ export class PatienceScene extends Phaser.Scene {
       this.tweens.add({ targets: m, y: m.y - 26, alpha: 0, duration: 1200, onComplete: () => m.destroy() });
     }
     const ms = Math.max(1, this.time.now - this.startedAt);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    // #1002 — patience is correct-by-design: the success signal is that the
+    // wait finished (roundDone), not a tapped answer.
+    this.onRoundDone?.(this.roundDone, ms, this.levelIndex + 1);
     this.time.delayedCall(1100, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

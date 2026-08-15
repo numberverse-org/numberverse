@@ -314,7 +314,7 @@ export class CountingSongScene extends Phaser.Scene {
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.nextExpected > n, ms, this.levelIndex + 1);
     this.time.delayedCall((n + 1) * 500 + 2200, () => {
       if (!this.scene.isActive()) return;
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;

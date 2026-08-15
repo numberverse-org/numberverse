@@ -62,6 +62,7 @@ export class RiddleScene extends Phaser.Scene {
   private startedAt = 0;
   private locked = false;
   private wrongCount = 0;
+  private roundWrongs = 0;
   private rd!: Riddle;
   private tiles: { sprite: Phaser.GameObjects.Container; emoji: string }[] = [];
   private emojiText!: Phaser.GameObjects.Text;
@@ -118,6 +119,7 @@ export class RiddleScene extends Phaser.Scene {
   private startRound() {
     this.clearTiles();
     this.qInRound = 0;
+    this.roundWrongs = 0;
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
@@ -171,6 +173,7 @@ export class RiddleScene extends Phaser.Scene {
       return;
     }
     this.wrongCount++;
+    this.roundWrongs++;
     hintWrong(this, container, {
       hint: () => "Think hard — re-read the clue!",
       hintBn: () => "ভেবে দেখো — ক্লুটা আবার শোনো!",
@@ -202,7 +205,9 @@ export class RiddleScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.floatMsg(t("rdDone"));
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    // #1002 — a perfect riddle round answers every clue without a wrong tap
+    // (a reveal after three misses counts as wrong).
+    this.onRoundDone?.(this.roundWrongs === 0, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

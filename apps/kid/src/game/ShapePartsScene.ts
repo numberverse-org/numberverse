@@ -343,7 +343,7 @@ export class ShapePartsScene extends Phaser.Scene {
     this.floatMsg(t("spDone"));
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.answered >= this.total, ms, this.levelIndex + 1);
     this.time.delayedCall(1800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

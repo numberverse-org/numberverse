@@ -244,7 +244,7 @@ export class RhymeTimeScene extends Phaser.Scene {
     this.floatMsg(t("ryDone"));
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, Math.max(1, this.time.now - this.startedAt), this.levelIndex + 1);
+    this.onRoundDone?.(this.wordIdx >= this.chips.length, Math.max(1, this.time.now - this.startedAt), this.levelIndex + 1);
     this.time.delayedCall(1000, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

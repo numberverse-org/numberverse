@@ -259,7 +259,7 @@ export class HumanBodyScene extends Phaser.Scene {
     correctCelebrate(this, container.x, container.y);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(value === this.target.answer, ms, this.levelIndex + 1);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

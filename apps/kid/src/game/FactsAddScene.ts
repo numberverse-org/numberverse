@@ -7,8 +7,8 @@ import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
-import { hintWrongLocal } from "./hints"; // #1086 — shared tile-drill hint-renderer
+import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
+import { hintWrong } from "./hints";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-addfacts")?.difficultyLevels ?? [6, 8, 10, 10, 12, 12];
@@ -165,7 +165,12 @@ export class FactsAddScene extends Phaser.Scene {
     bad();
     this.locked = true;
     this.totalMs += Math.max(1, this.time.now - this.qStart);
-    hintWrongLocal(this, tile, () => digit(this.a + this.b));
+    hintWrong(this, tile, {
+      hint: () => t("tapTry"),
+      hintBn: () => t("tapTry"),
+      correct: () => digit(this.a + this.b),
+      options: () => this.tiles.map((o) => ({ sprite: o.sprite, value: digit(o.val) })),
+    });
     this.advance();
   }
 

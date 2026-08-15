@@ -247,7 +247,7 @@ export class FruitTreeScene extends Phaser.Scene {
     // THE GROWTH: the bag apples fly onto the tree, the tree swells, a ring pulses.
     this.growApplesOntoTree();
     correctCelebrate(this, this.tree.x, this.tree.y - 40);
-    this.onRoundDone?.(true, ms, this.target);
+    this.onRoundDone?.(value === this.target, ms, this.target);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.time.delayedCall(850, () => {

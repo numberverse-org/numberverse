@@ -250,7 +250,7 @@ export class PizzaFracScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.target.den);
+    this.onRoundDone?.(label === this.target.label, ms, this.target.den);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

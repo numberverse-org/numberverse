@@ -389,7 +389,7 @@ export class MeasurementScene extends Phaser.Scene {
     speak(t(this.correctKey(), { x, y }), { lang: bn ? "bn" : "en" });
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(side === this.answerSide, ms, this.levelIndex + 1);
     this.time.delayedCall(950, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

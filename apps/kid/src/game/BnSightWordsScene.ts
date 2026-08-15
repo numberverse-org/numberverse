@@ -274,7 +274,9 @@ export class BnSightWordsScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.floatMsg(t("sightWallDone"));
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    // #1002 — a perfect wall round taps every word without a wrong/timeout
+    // (both reset `streak`), so the streak must equal the wall size.
+    this.onRoundDone?.(this.streak === this.wall.length, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

@@ -213,7 +213,7 @@ export class PluralsScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     const ms = Math.max(1, this.time.now - this.startedAt);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.pos >= this.bag.length, ms, this.levelIndex + 1);
     this.time.delayedCall(500, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

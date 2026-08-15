@@ -364,10 +364,11 @@ export class AnimalHomeScene extends Phaser.Scene {
   /** Round done (either kind) → advance; next round flips homes ⇄ babies. */
   private completeRound() {
     const ms = Math.max(1, this.time.now - this.startedAt);
+    const total = this.roundKind === "babies" ? this.babyQueue.length : this.queue.length;
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.qIdx >= total, ms, this.levelIndex + 1);
     this.time.delayedCall(500, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.roundKind = this.roundKind === "homes" ? "babies" : "homes"; // alternate

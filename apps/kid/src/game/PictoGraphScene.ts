@@ -301,7 +301,7 @@ export class PictoGraphScene extends Phaser.Scene {
     }
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(value === this.answer, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

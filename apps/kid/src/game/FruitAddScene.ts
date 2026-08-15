@@ -427,7 +427,7 @@ export class FruitAddScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.target);
+    this.onRoundDone?.(value === this.target, ms, this.target);
     if (this.teaching) {
       // ── Teach round done → celebrate the equation, then REAL drills ──
       this.teaching = false;

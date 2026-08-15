@@ -9,7 +9,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
-import { hintWrongLocal } from "./hints"; // #1086 — shared tile-drill hint-renderer
+import { hintWrong } from "./hints";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-doubles")?.difficultyLevels ?? [6, 8, 10, 10, 12, 12];
@@ -205,10 +205,12 @@ export class DoublesScene extends Phaser.Scene {
     }
     bad();
     this.locked = true;
-    this.hintText
-      .setText(t("dblHint", { d: digit(this.base), dd: digit(this.base * 2), o: digit(this.b - this.base), n: digit(this.a + this.b) }))
-      .setVisible(true);
-    hintWrongLocal(this, tile, () => digit(this.a + this.b));
+    hintWrong(this, tile, {
+      hint: () => t("tapHint"),
+      hintBn: () => t("tapHint"),
+      correct: () => digit(this.a + this.b),
+      options: () => this.tiles.map((o) => ({ sprite: o.sprite, value: digit(o.val) })),
+    });
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.advance(ms);
   }

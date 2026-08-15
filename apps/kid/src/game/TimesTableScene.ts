@@ -292,7 +292,7 @@ export class TimesTableScene extends Phaser.Scene {
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     // #1170 — report difficulty from the SKILL's own ladder (a band-6 ×9 drill
     // reports 9, and a band-3 ×2 reports 2), not the shared game ladder.
-    this.onRoundDone?.(true, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+    this.onRoundDone?.(value === this.answer, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

@@ -219,7 +219,11 @@ export class CatchBugScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.floatBig(t("catchWoo"));
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(
+      this.tapCaught >= this.tapTotal && this.dragCaught >= this.dragTotal,
+      ms,
+      this.levelIndex + 1
+    );
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

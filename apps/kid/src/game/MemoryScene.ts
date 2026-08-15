@@ -431,7 +431,7 @@ export class MemoryScene extends Phaser.Scene {
       speak(this.conceptLine(), { lang: this.sayLang() });
       this.roundsDone++;
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-      this.onRoundDone?.(true, ms, this.levelIndex + 1);
+      this.onRoundDone?.(this.matchedCount >= this.pairs.length, ms, this.levelIndex + 1);
       this.time.delayedCall(800, () => {
         if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
         this.levelIndex++;

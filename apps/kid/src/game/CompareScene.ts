@@ -235,10 +235,11 @@ export class CompareScene extends Phaser.Scene {
 
   private finishRound() {
     const ms = Math.max(1, this.time.now - this.startedAt);
+    const qTarget = QUESTIONS_PER_ROUND + Math.min(3, Math.floor(this.levelIndex / 3));
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.floatMsg(t("cmDone"));
-    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.onRoundDone?.(this.qInRound >= qTarget, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

@@ -161,7 +161,7 @@ export class CvcBuildScene extends DragReorderScene {
     this.qInRound++;
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.time.delayedCall(900, () => {
-      this.onRoundDone?.(true, ms, this.levelIndex + 1);
+      this.onRoundDone?.(this.slotContents.every((c) => c !== null), ms, this.levelIndex + 1);
       if (this.qInRound >= QUESTIONS_PER_ROUND) {
         this.roundsDone++;
         this.meter.set(this.roundsDone, this.cfg().rounds);

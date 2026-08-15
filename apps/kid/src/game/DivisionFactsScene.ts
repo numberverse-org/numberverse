@@ -192,7 +192,7 @@ export class DivisionFactsScene extends Phaser.Scene {
     correctCelebrate(this, container.x, container.y); // #1204 — uniform fact-drill celebration
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(true, ms, this.divisor);
+    this.onRoundDone?.(value === this.answer, ms, this.divisor);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

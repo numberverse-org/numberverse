@@ -232,7 +232,7 @@ export class ReadAloudScene extends Phaser.Scene {
       const ms = Math.max(1, this.time.now - this.startedAt);
       this.roundsDone++;
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-      this.onRoundDone?.(true, ms, this.levelIndex + 1);
+      this.onRoundDone?.(val === this.item.a, ms, this.levelIndex + 1);
       if (this.readAloud) this.time.delayedCall(400, () => speak(this.item.s, { lang: "en" }));
       this.time.delayedCall(1300, () => {
         if (this.roundsDone >= ROUNDS_TO_FINISH) this.floatMsg(t("raDone"));
