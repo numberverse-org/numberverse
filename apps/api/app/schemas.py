@@ -22,21 +22,38 @@ RoundedIntRequired = Annotated[int, BeforeValidator(_round_int)]
 
 
 # ── Auth ──
+# bcrypt only reads the first 72 bytes of a password; silently accepting
+# anything longer would let visually-different passphrases authenticate as the
+# same one (#1490). Every password field on this API is capped at 72 chars.
+BCRYPT_MAX_PASSWORD_LENGTH = 72
+
+
 class SignupIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
     display_name: str | None = None
 
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=BCRYPT_MAX_PASSWORD_LENGTH)
 
 
 class GoogleAuthIn(BaseModel):
     """Client-supplied Google ID token (verified server-side)."""
 
     id_token: str = Field(min_length=10)
+
+
+class SetPasswordIn(BaseModel):
+    """#1488 — Google-token-backed recovery for a Google-only account. A parent
+    who has been signing in with Google proves they still own the Google account
+    (fresh ID token), then picks a real password and becomes email/password
+    login-capable. Follows the same 8..72 char password policy as every other
+    password field."""
+
+    id_token: str = Field(min_length=10)
+    new_password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
 
 
 class ProfileOut(BaseModel):
@@ -46,6 +63,11 @@ class ProfileOut(BaseModel):
     is_admin: bool = False
     role: str = "user"  # #846 — "user" | "admin" | "super_admin"
     aggregate_opt_in: bool = False  # #330 parent privacy opt-in
+    # #1487 — "google" | "local" | None. None = legacy/local (Google-only rows
+    # created before this column existed can't be identified, so they keep local
+    # semantics). The parent portal uses this to hide/route the change-password
+    # form for Google-only accounts.
+    auth_provider: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -57,7 +79,7 @@ class TokenOut(BaseModel):
 
 class ChangePasswordIn(BaseModel):
     current_password: str
-    new_password: str = Field(min_length=8)
+    new_password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
 
 
 class ProfileUpdateIn(BaseModel):

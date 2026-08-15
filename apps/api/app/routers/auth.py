@@ -10,6 +10,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import Profile, Session
+from ..ratelimit import AuthAttemptGuard
 from ..schemas import (
     ChangePasswordIn,
     GoogleAuthIn,
@@ -17,6 +18,7 @@ from ..schemas import (
     ProfileOut,
     ProfileUpdateIn,
     SessionOut,
+    SetPasswordIn,
     SignupIn,
     TokenOut,
 )
@@ -24,6 +26,42 @@ from ..security import create_access_token, hash_password, sha256_token, verify_
 from ..session_guard import revoke_other_sessions  # #265 — password change kills every OTHER session
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+# #1489 — credential endpoints get their own failure-aware limiter (exponential
+# lockout) rather than the throughput-oriented sliding window used by the write
+# routers. Login keys on email+IP; change-password keys on profile+IP.
+_LOGIN_GUARD = AuthAttemptGuard()
+_PASSWORD_GUARD = AuthAttemptGuard()
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _verify_google_token(id_token: str) -> dict:
+    """Verify a Google ID token server-side and return its decoded claims.
+
+    Shared by /google (login/signup) and /set-password (recovery). A missing
+    NV_GOOGLE_CLIENT_ID is a 501 so the kid app can hide the button instead of
+    surfacing a dead-end error (#382)."""
+    client_id = settings.google_client_id
+    if not client_id:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Google sign-in not configured")
+    try:
+        from google.auth.exceptions import GoogleAuthError
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+
+        return google_id_token.verify_oauth2_token(id_token, google_requests.Request(), client_id)
+    except (ValueError, GoogleAuthError) as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google credential") from e
+
+
+def _google_email(info: dict) -> str:
+    email = (info.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Google account has no email")
+    return email
 
 
 async def _issue_session(profile: Profile, request: Request, db: AsyncSession) -> str:
@@ -57,6 +95,7 @@ async def signup(body: SignupIn, request: Request, db: AsyncSession = Depends(ge
         email=body.email.lower(),
         password_hash=hash_password(body.password),
         display_name=body.display_name,
+        auth_provider="local",
     )
     db.add(profile)
     await db.flush()  # assign profile.id before minting its session
@@ -67,9 +106,15 @@ async def signup(body: SignupIn, request: Request, db: AsyncSession = Depends(ge
 
 @router.post("/login", response_model=TokenOut)
 async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_db)):
-    profile = await db.scalar(select(Profile).where(Profile.email == body.email.lower()))
+    email = body.email.lower()
+    ip = _client_ip(request)
+    # #1489 — fail fast on a locked account/IP BEFORE the DB lookup and bcrypt.
+    _LOGIN_GUARD.raise_if_locked(f"login:email:{email}", f"login:ip:{ip}")
+    profile = await db.scalar(select(Profile).where(Profile.email == email))
     if not profile or not verify_password(body.password, profile.password_hash):
+        _LOGIN_GUARD.record_failure(f"login:email:{email}", f"login:ip:{ip}")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    _LOGIN_GUARD.reset(f"login:email:{email}", f"login:ip:{ip}")
     token = await _issue_session(profile, request, db)
     return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
 
@@ -92,20 +137,8 @@ async def google_auth(body: GoogleAuthIn, request: Request, db: AsyncSession = D
     Google account for that email is proof enough. Requires
     NV_GOOGLE_CLIENT_ID in the API env (501 when unset → the kid app hides the
     Google button rather than surfacing an error)."""
-    client_id = settings.google_client_id
-    if not client_id:
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Google sign-in not configured")
-    try:
-        from google.auth.exceptions import GoogleAuthError
-        from google.auth.transport import requests as google_requests
-        from google.oauth2 import id_token
-
-        info = id_token.verify_oauth2_token(body.id_token, google_requests.Request(), client_id)
-    except (ValueError, GoogleAuthError) as e:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google credential") from e
-    email = (info.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Google account has no email")
+    info = _verify_google_token(body.id_token)
+    email = _google_email(info)
     profile = await db.scalar(select(Profile).where(Profile.email == email))
     if not profile:
         profile = Profile(
@@ -113,8 +146,12 @@ async def google_auth(body: GoogleAuthIn, request: Request, db: AsyncSession = D
             # Google-only account: a random password nobody knows. The parent
             # keeps signing in with Google (the `login` route needs the real
             # password, which only they could set by signing up with it).
+            # `auth_provider="google"` is the signal #1487 exposes so the portal
+            # routes these parents to /set-password instead of the dead-end
+            # change-password form.
             password_hash=hash_password(secrets.token_urlsafe(24)),
             display_name=info.get("name") or info.get("given_name"),
+            auth_provider="google",
         )
         db.add(profile)
         await db.flush()  # assign profile.id before minting its session
@@ -228,6 +265,41 @@ async def revoke_session(
     await db.commit()
 
 
+@router.post("/set-password", status_code=status.HTTP_204_NO_CONTENT)
+async def set_password(body: SetPasswordIn, db: AsyncSession = Depends(get_db)):
+    """#1488 — password recovery for a Google-only account.
+
+    A parent who previously only signed in with Google can prove they still own
+    the Google account with a fresh ID token and then set a real password. The
+    account is flipped to `local` so email/password login works from then on.
+    There is intentionally NO forgot-password/email-reset endpoint yet: this
+    service has no email-sending infrastructure, so the Google-token-backed
+    set-password is the minimum viable recovery path.
+
+    Credential material is never exposed: a token whose email has no matching
+    Google-only profile gets the same generic 400 as an already-local account.
+    All existing sessions are revoked — the old random-hash credential era is
+    over and any leaked tokens die with it."""
+    info = _verify_google_token(body.id_token)
+    email = _google_email(info)
+    profile = await db.scalar(select(Profile).where(Profile.email == email))
+    if not profile or profile.auth_provider != "google":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Google account not recognized or password already set",
+        )
+    profile.password_hash = hash_password(body.new_password)
+    profile.auth_provider = "local"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    sessions = (
+        await db.scalars(
+            select(Session).where(Session.profile_id == profile.id, Session.revoked_at.is_(None))
+        )
+    ).all()
+    revoke_other_sessions(sessions, None, now)
+    await db.commit()
+
+
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
     body: ChangePasswordIn,
@@ -237,8 +309,21 @@ async def change_password(
 ):
     """Change the account password. Revokes every OTHER session so a leaked
     password's logins die immediately — only the device you're on stays in."""
+    # #1487 — a Google-only account has no current password to verify (the hash
+    # is a random, unknowable value). Route it to /set-password instead of the
+    # old silent 401 loop.
+    if profile.auth_provider == "google":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Google accounts can't change a password here — set a password first",
+        )
+    ip = _client_ip(request)
+    # #1489 — fail fast when this profile or IP is locked, BEFORE bcrypt.
+    _PASSWORD_GUARD.raise_if_locked(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     if not verify_password(body.current_password, profile.password_hash):
+        _PASSWORD_GUARD.record_failure(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current password is incorrect")
+    _PASSWORD_GUARD.reset(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     profile.password_hash = hash_password(body.new_password)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     current = getattr(request.state, "session", None)

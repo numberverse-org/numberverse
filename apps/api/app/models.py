@@ -15,6 +15,12 @@ class Profile(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String)
+    # #1487 — how this parent authenticates. "google" | "local" | None. NULL is
+    # legacy/local behavior (pre-column rows are unknown, so they keep the old
+    # password semantics). Google-created accounts get a random un-knowable
+    # password_hash; this flag is how the portal avoids showing them a
+    # change-password form that can never succeed.
+    auth_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # #846 — role boundary: "user" | "admin" | "super_admin". `is_admin` is kept
