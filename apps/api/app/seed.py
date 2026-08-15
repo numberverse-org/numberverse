@@ -296,19 +296,27 @@ async def create_tables() -> None:
     await apply_column_migrations()
 
 
-async def _ensure_profile(db: AsyncSession, email: str, password: str, display_name: str, is_admin: bool) -> Profile:
+async def _ensure_profile(
+    db: AsyncSession, email: str, password: str, display_name: str, is_admin: bool, role: str = "user"
+) -> Profile:
     existing = await db.scalar(select(Profile).where(Profile.email == email))
     if existing:
+        # #846 — idempotently backfill the bootstrap admin's role on an existing
+        # DB so the pre-role operator account keeps super_admin access going
+        # forward (legacy is_admin already grants it, but make the role real).
+        if is_admin and existing.is_admin and existing.role != "super_admin":
+            existing.role = "super_admin"
         return existing
     profile = Profile(
         email=email,
         password_hash=hash_password(password),
         display_name=display_name,
         is_admin=is_admin,
+        role=role,
     )
     db.add(profile)
     await db.flush()
-    log.info("Created profile %s (admin=%s)", email, is_admin)
+    log.info("Created profile %s (admin=%s, role=%s)", email, is_admin, role)
     return profile
 
 
@@ -321,7 +329,7 @@ async def seed() -> None:
         # so this default only ever seeds during local dev/test runs. Deliberately
         # NOT a random per-restart password — that would lock the console out.
         admin = await _ensure_profile(
-            db, settings.admin_email, settings.admin_password, "Numberverse Admin", True
+            db, settings.admin_email, settings.admin_password, "Numberverse Admin", True, "super_admin"
         )
         demo = await _ensure_profile(db, "demo@numberverse.dev", "demo1234", "Demo Parent", False)
 

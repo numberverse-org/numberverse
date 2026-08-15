@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
-from ..deps import require_admin
+from ..deps import require_admin, require_super_admin
 from ..models import (
+    AdminAudit,
     ConfigEntry,
     ContentItem,
     Kid,
@@ -42,6 +43,11 @@ WHITELIST: dict[str, type] = {
 }
 
 UUID_MODELS = {Profile, Kid, Subscription, KidSettings}
+
+# #846 — deletions that are tenant-wide / product-wide and therefore need the
+# super_admin role (or a legacy is_admin profile). Catalog rows (skills,
+# content_items) and per-kid settings stay at the normal admin boundary.
+SUPER_ADMIN_DELETES = {"profiles", "kids", "subscriptions", "config"}
 
 # Per-resource writable fields for the generic admin CRUD below. POST/PUT
 # bodies may contain anything; only these keys are accepted. This keeps every
@@ -117,10 +123,72 @@ WRITABLE_FIELDS: dict[str, set[str]] = {
 }
 
 # Never writable through this router, even if a future edit accidentally adds
-# them to WRITABLE_FIELDS. `id` is set by the DB/URL; `is_admin` is an authz
-# flag; `password_hash` is credential material. Those may only change through
-# the auth flows.
-DENIED_WRITE_FIELDS = {"id", "is_admin", "password_hash"}
+# them to WRITABLE_FIELDS. `id` is set by the DB/URL; `is_admin` and `role`
+# (#846) are authz flags; `password_hash` is credential material. Those may
+# only change through the auth flows.
+DENIED_WRITE_FIELDS = {"id", "is_admin", "role", "password_hash"}
+
+
+# #847 — the config resource is a JSONB key/value store; the only key the
+# product reads today is `adaptive` (progress._adaptive_params). Each known key
+# documents its allowed value shape here so a typo can't silently break every
+# learning round. This is deliberately NOT a generic JSON-schema engine — just
+# the shapes we actually serve.
+CONFIG_SCHEMAS: dict[str, dict] = {
+    "adaptive": {
+        "type": "object",
+        "required": ["pLearn", "pGuess", "pSlip"],
+        "properties": {
+            "pLearn": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "pGuess": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "pSlip": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        },
+    },
+}
+
+
+def _validate_config(key: str, value: Any) -> dict:
+    """#847 — explicit per-key shape check for config values.
+
+    Unknown keys and malformed shapes are a 422 so the product config can only
+    ever be changed into a state the consumer already understands."""
+    if not key:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Config key is required")
+    schema = CONFIG_SCHEMAS.get(key)
+    if schema is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown config key")
+    if schema.get("type") == "object":
+        if not isinstance(value, dict):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, f"Config '{key}' must be an object"
+            )
+        for field in schema.get("required", []):
+            if field not in value:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Config '{key}' missing required field: {field}",
+                )
+        for field, prop in schema.get("properties", {}).items():
+            if field not in value:
+                continue
+            v = value[field]
+            if prop.get("type") == "number":
+                if isinstance(v, bool) or not isinstance(v, (int, float)):
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Config '{key}.{field}' must be a number",
+                    )
+                if "minimum" in prop and v < prop["minimum"]:
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Config '{key}.{field}' must be >= {prop['minimum']}",
+                    )
+                if "maximum" in prop and v > prop["maximum"]:
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Config '{key}.{field}' must be <= {prop['maximum']}",
+                    )
+    return value
 
 
 def _jsonable(value: Any) -> Any:
@@ -158,7 +226,7 @@ def _writable_payload(resource: str, body: dict) -> dict:
 
     Return only the body keys present in the per-resource WRITABLE_FIELDS
     allow-list. Unknown keys and DENIED_WRITE_FIELDS (`id`, `is_admin`,
-    `password_hash`) are never passed through to the ORM model.
+    `role`, `password_hash`) are never passed through to the ORM model.
     """
     allowed = WRITABLE_FIELDS.get(resource, set())
     return {k: v for k, v in body.items() if k in allowed and k not in DENIED_WRITE_FIELDS}
@@ -173,6 +241,37 @@ def _pk_value(model: type, raw: str) -> Any:
         except ValueError:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid id") from None
     return raw
+
+
+def _obj_pk(obj: Any) -> Any:
+    """Single-column primary key value of a created row (for the audit trail)."""
+    pk_cols = list(obj.__table__.primary_key.columns)
+    if len(pk_cols) == 1:
+        return getattr(obj, pk_cols[0].name)
+    return None
+
+
+def _write_audit(
+    db: AsyncSession,
+    profile: Profile,
+    action: str,
+    resource: str,
+    item_id: Any = None,
+    detail: Any = None,
+) -> None:
+    """#846 — append an admin audit row. Always called, never gated.
+
+    `detail` only ever carries allow-listed change shape (field names, config
+    values) — credential columns such as password_hash are never included."""
+    db.add(
+        AdminAudit(
+            admin_id=profile.id,
+            action=action,
+            resource=resource,
+            item_id=str(item_id) if item_id is not None else None,
+            detail=_jsonable(detail),
+        )
+    )
 
 
 @router.get("/stats")
@@ -598,14 +697,34 @@ async def get_resource(
 async def create_resource(
     resource: str,
     body: dict,
-    _: Profile = Depends(require_admin),
+    profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     model = WHITELIST.get(resource)
     if not model:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
-    obj = model(**_writable_payload(resource, body))
+
+    # #846 — config writes are product-wide: a typo breaks every learning round.
+    # #847 — validate the value against the known key shape before it persists.
+    if resource == "config":
+        await require_super_admin(profile)
+        payload = _writable_payload(resource, body)
+        key = payload.get("key")
+        value = payload.get("value")
+        _validate_config(key, value)
+        obj = model(key=key, value=value)
+        db.add(obj)
+        await db.flush()
+        _write_audit(db, profile, "create", "config", key, {"value": _jsonable(value)})
+        await db.commit()
+        await db.refresh(obj)
+        return _row_to_dict(obj)
+
+    payload = _writable_payload(resource, body)
+    obj = model(**payload)
     db.add(obj)
+    await db.flush()  # populate server-assigned PKs (UUID) before auditing
+    _write_audit(db, profile, "create", resource, _obj_pk(obj), {"fields": sorted(payload)})
     await db.commit()
     await db.refresh(obj)
     return _row_to_dict(obj)
@@ -616,7 +735,7 @@ async def update_resource(
     resource: str,
     item_id: str,
     body: dict,
-    _: Profile = Depends(require_admin),
+    profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     model = WHITELIST.get(resource)
@@ -625,8 +744,36 @@ async def update_resource(
     obj = await db.get(model, _pk_value(model, item_id))
     if not obj:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    for key, val in _writable_payload(resource, body).items():
+
+    # #846 — config writes are product-wide and need super_admin.
+    # #847 — validate the incoming value against the key's known shape, and
+    # record the previous value in the audit trail before it is overwritten.
+    if resource == "config":
+        await require_super_admin(profile)
+        payload = _writable_payload(resource, body)
+        previous = _jsonable(obj.value)
+        new_key = payload.get("key", obj.key)
+        new_value = payload.get("value", obj.value)
+        if "key" in payload or "value" in payload:
+            _validate_config(new_key, new_value)
+        if "key" in payload:
+            obj.key = payload["key"]
+        if "value" in payload:
+            obj.value = payload["value"]
+        detail = {"previous": previous}
+        if "value" in payload:
+            detail["value"] = _jsonable(new_value)
+        if "key" in payload and payload["key"] != item_id:
+            detail["key"] = payload["key"]
+        _write_audit(db, profile, "update", "config", item_id, detail)
+        await db.commit()
+        await db.refresh(obj)
+        return _row_to_dict(obj)
+
+    payload = _writable_payload(resource, body)
+    for key, val in payload.items():
         setattr(obj, key, val)
+    _write_audit(db, profile, "update", resource, item_id, {"fields": sorted(payload)})
     await db.commit()
     await db.refresh(obj)
     return _row_to_dict(obj)
@@ -636,14 +783,19 @@ async def update_resource(
 async def delete_resource(
     resource: str,
     item_id: str,
-    _: Profile = Depends(require_admin),
+    profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     model = WHITELIST.get(resource)
     if not model:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    # #846 — tenant-wide / product-wide deletions need the top role. Catalog
+    # rows and per-kid settings stay at the normal admin boundary.
+    if resource in SUPER_ADMIN_DELETES:
+        await require_super_admin(profile)
     obj = await db.get(model, _pk_value(model, item_id))
     if not obj:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     await db.delete(obj)
+    _write_audit(db, profile, "delete", resource, item_id, {"id": item_id})
     await db.commit()
