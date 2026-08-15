@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..bandlock import skill_band_allowed
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_profile
+from ..deps import get_current_profile, org_scoped, resolve_org_id
 from ..models import AccelerationLog, ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
 from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn, StoryStatsOut
@@ -72,6 +72,21 @@ async def _adaptive_params(db: AsyncSession) -> dict:
 router = APIRouter(prefix="/api/v1", tags=["progress"])
 
 
+async def _get_owned_kid(
+    kid_id: uuid.UUID,
+    profile: Profile,
+    db: AsyncSession,
+    org_id: uuid.UUID | None = None,
+) -> Kid:
+    """#962 — resolve a kid the caller owns, scoped to profile and optionally org."""
+    stmt = select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id)
+    stmt = org_scoped(stmt, org_id)
+    kid = await db.scalar(stmt)
+    if not kid:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    return kid
+
+
 # #853 — this handler is fully synchronous and commits before returning, so the
 # response is the imperative result (200), not a queued acknowledgement (202).
 @router.post("/progress", status_code=status.HTTP_200_OK)
@@ -83,7 +98,7 @@ async def record_progress(
     params = await _adaptive_params(db)
     kid_ids = {e.kid_id for e in body.events}
     for kid_id in kid_ids:
-        owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+        owned = await _get_owned_kid(kid_id, profile, db)
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
 
@@ -154,7 +169,7 @@ async def get_mastery(
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
-    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     result = await db.scalars(select(SkillMastery).where(SkillMastery.kid_id == kid_id).order_by(SkillMastery.skill_id))
@@ -183,7 +198,7 @@ async def get_kid_snapshot(
     kid from after the parent signs in. E2E-friendly by construction — mastery
     + coins only, never voice/face/raw answers. Conflict resolution is
     newest-wins on the client (more accumulated corrects / higher coins win)."""
-    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     mastery = await db.scalars(
@@ -236,7 +251,7 @@ async def record_stories(
         )
     kid_ids = {s.kid_id for s in body}
     for kid_id in kid_ids:
-        owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+        owned = await _get_owned_kid(kid_id, profile, db)
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
 
@@ -312,7 +327,7 @@ async def record_acceleration(
         )
     kid_ids = {a.kid_id for a in body}
     for kid_id in kid_ids:
-        owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+        owned = await _get_owned_kid(kid_id, profile, db)
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
 
@@ -372,7 +387,7 @@ async def get_stories(
     """Read a kid's Kotha stories (newest first). Filterable by skill, error
     kind, action and misconception code — the RAG search hook. Pass
     `skill_id` + `error_kind` to find a kid's recurring mistakes on a skill."""
-    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     limit = min(max(limit, 1), 500)
@@ -394,7 +409,7 @@ async def story_stats(
     """Kotha counts — the shape of a kid's learning. Returns total stories plus
     counts grouped by skill, error kind and misconception code, so the app can
     surface "this kid keeps confusing tens and ones" without paging through rows."""
-    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
 
@@ -429,7 +444,7 @@ async def get_acceleration(
     """🚀 #249 — the kid's acceleration plan: every "skipped ahead" entry (newest
     first), with the reason and the band jump. The parent portal renders this
     card offline from the already-fetched payload."""
-    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     result = await db.scalars(select(AccelerationLog).where(AccelerationLog.kid_id == kid_id).order_by(AccelerationLog.created_at.desc()))

@@ -6,9 +6,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from .db import get_db
-from .models import Profile, Session
+from .models import OrgMember, Profile, Session
 from .security import decode_token, sha256_token
 
 # #868 — authorization-model guardrail. Kid-app devices are parent-credentialed
@@ -171,3 +172,204 @@ require_admin = require_role("admin", "super_admin")
 
 # #846 — destructive / tenant-wide operations need the top role.
 require_super_admin = require_role("super_admin")
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Multi-tenancy: scoping & org-member auth (#962-#964, #968)
+# ═════════════════════════════════════════════════════════════════════════
+
+
+def org_scoped(stmt: Select, org_id: uuid.UUID | None) -> Select:
+    """#963 — THE single sanctioned way to add a tenant filter to a query.
+
+    Used by every router that reads/writes tenant-scoped data.  When `org_id`
+    is None (consumer/single-tenant path), the statement is returned unchanged
+    — no extra WHERE clause is added, so null-tenant queries stay fast.
+
+    Usage::
+
+        stmt = org_scoped(select(Kid).where(Kid.id == kid_id), org_id)
+
+    Every model method/property that accesses tenant data MUST route through
+    this helper; never hand-roll a `.where(Model.org_id == org_id)` filter
+    outside this function.
+
+    The helper recursively walks the statement's FROM elements (handles joins)
+    and applies ``org_id`` to EVERY referenced table that exposes an ``org_id``
+    column.  This makes org-scoped joins (e.g. SkillMastery JOIN Kid) safe by
+    construction: the Kid table in the join is filtered to the caller's org.
+    """
+    if org_id is None:
+        return stmt
+
+    from sqlalchemy.sql.util import find_tables
+
+    seen: set[str] = set()
+    for table in find_tables(stmt, check_columns=True):
+        # `find_tables` can yield the same table multiple times (once per
+        # reference site in the statement); dedupe on table key so we only
+        # apply the org filter once per table.
+        table_key = f"{table.schema}.{table.name}" if table.schema else table.name
+        if table_key in seen:
+            continue
+        seen.add(table_key)
+        if "org_id" in table.c:
+            stmt = stmt.where(table.c.org_id == org_id)
+    return stmt
+
+
+async def resolve_org_id(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> uuid.UUID | None:
+    """Resolve the effective org_id for the current request.
+
+    Resolution order:
+      1. `request.state.org_id` — set by `require_org_member` (JWT/domain).
+      2. X-Org-ID header — explicit override for service accounts.
+      3. Hostname-based resolution (future: subdomain → org slug lookup).
+
+    Returns None in the single-tenant (consumer) path.
+    """
+    # Already resolved by require_org_member.
+    org_id = getattr(request.state, "org_id", None)
+    if org_id is not None:
+        return org_id
+
+    # Explicit header override (service accounts, admin tools).
+    header_org = request.headers.get("X-Org-ID")
+    if header_org:
+        try:
+            return uuid.UUID(header_org)
+        except (ValueError, AttributeError):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID header")
+
+    return None
+
+
+async def _resolve_org_member(
+    profile: Profile,
+    db: AsyncSession,
+    *,
+    org_id: uuid.UUID,
+    min_role: str | None,
+) -> OrgMember:
+    """Resolve and validate an OrgMember row for the given profile + org.
+
+    Raises 403 if the profile is not a member of the org, or if the member's
+    role is below the minimum required role.
+
+    Role hierarchy: owner > admin > teacher.
+    """
+    stmt = select(OrgMember).where(
+        OrgMember.org_id == org_id,
+        OrgMember.profile_id == profile.id,
+    )
+    member = await db.scalar(stmt)
+    if not member:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Not a member of this organization",
+        )
+    if min_role:
+        _validate_role_hierarchy(member.role, min_role)
+    return member
+
+
+_ROLE_RANK = {"teacher": 0, "admin": 1, "owner": 2}
+
+
+def _validate_role_hierarchy(actual: str, minimum: str) -> None:
+    """Check that `actual` is at least `minimum` in the role hierarchy.
+
+    Raises 403 if the actual role is insufficient.
+    """
+    if _ROLE_RANK.get(actual, -1) < _ROLE_RANK.get(minimum, 0):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Insufficient org role: need at least '{minimum}', got '{actual}'",
+        )
+
+
+def require_org_member(org_id_source: str = "header", min_role: str | None = None):
+    """#964 — dependency that resolves an OrgMember and stashes org_id on the request.
+
+    Parameters:
+        org_id_source: how to obtain the org_id:
+            - "header"    — from X-Org-ID request header (default).
+            - "path"      — from a URL path param named `org_id`.
+            - "domain"    — from the Host header (future: subdomain→slug lookup).
+        min_role: minimum role required ("teacher", "admin", "owner").  None = any member.
+
+    On success, sets `request.state.org_id` and `request.state.org_member` so
+    downstream routes can access them.
+
+    Usage::
+
+        @router.get("/org/{org_id}/classrooms")
+        async def list_classrooms(
+            org_id: uuid.UUID,
+            _: OrgMember = Depends(require_org_member("path", min_role="teacher")),
+            ...
+        ):
+            stmt = org_scoped(select(Classroom), org_id)
+            ...
+    """
+
+    async def _dependency(
+        request: Request,
+        profile: Profile = Depends(get_current_profile),
+        db: AsyncSession = Depends(get_db),
+    ) -> OrgMember:
+        nonlocal org_id_source
+
+        resolved_org_id: uuid.UUID | None = None
+
+        if org_id_source == "header":
+            header_val = request.headers.get("X-Org-ID")
+            if header_val:
+                try:
+                    resolved_org_id = uuid.UUID(header_val)
+                except (ValueError, AttributeError):
+                    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+        elif org_id_source == "path":
+            # Extract org_id from path params (FastAPI injects it).
+            raw = request.path_params.get("org_id")
+            if raw:
+                if isinstance(raw, uuid.UUID):
+                    resolved_org_id = raw
+                else:
+                    try:
+                        resolved_org_id = uuid.UUID(str(raw))
+                    except (ValueError, AttributeError):
+                        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid org_id in path")
+        elif org_id_source == "domain":
+            # Future: resolve org from Host header → org.slug lookup.
+            raise HTTPException(
+                status.HTTP_501_NOT_IMPLEMENTED,
+                "Domain-based org resolution not yet implemented",
+            )
+        else:
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"Unknown org_id_source: {org_id_source}",
+            )
+
+        if resolved_org_id is None:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Org ID is required for this endpoint",
+            )
+
+        member = await _resolve_org_member(
+            profile, db,
+            org_id=resolved_org_id,
+            min_role=min_role,
+        )
+
+        # Stash on request for downstream use.
+        request.state.org_id = resolved_org_id
+        request.state.org_member = member
+        return member
+
+    return _dependency

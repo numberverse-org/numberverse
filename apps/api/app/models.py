@@ -88,6 +88,13 @@ class Kid(Base):
     consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     consent_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    # #961 — multi-tenancy: nullable FK so existing single-org rows keep working.
+    # A NULL org_id means the kid belongs to a consumer (parent) profile only;
+    # a non-NULL org_id ties the kid to a school/organization tenant.
+    org_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     profile: Mapped[Profile] = relationship(back_populates="kids")
     mastery: Mapped[list["SkillMastery"]] = relationship(back_populates="kid", cascade="all, delete-orphan")
     settings: Mapped["KidSettings | None"] = relationship(back_populates="kid", cascade="all, delete-orphan")
@@ -373,12 +380,21 @@ class Subscription(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
+    # #969 — B2B: org-level subscriptions (school/bulk license).  NULL means
+    # this is a consumer subscription (profile-scoped).
+    org_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # #969 — seat count for org-level licenses (how many kids/profiles covered).
+    seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
     plan: Mapped[str] = mapped_column(String, default="free", server_default="free")
     store: Mapped[str | None] = mapped_column(String, nullable=True)
     store_ref: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="active", server_default="active")
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    profile: Mapped[Profile] = relationship()
 
 
 class PushSubscription(Base):
@@ -499,4 +515,187 @@ class AdminAudit(Base):
     resource: Mapped[str] = mapped_column(String(64))
     item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Multi-tenancy models (#961-#969)
+# ═════════════════════════════════════════════════════════════════════════
+
+
+class Organization(Base):
+    """#961 — a tenant (school, district, tutoring org) in the B2B model.
+
+    Every org-anchored entity (OrgMember, TenantConfig, OrgSyllabus, Classroom,
+    ClassroomKid) FK's here.  An org is created by the control panel; a global
+    admin or super-admin provisions it and assigns the first OrgOwner."""
+
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    # #965 — optional display name (defaults to name if unset).
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    # #965 — the org's "slug" for subdomain-based routing (optional).
+    slug: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class OrgMember(Base):
+    """#961, #964 — membership + role within an organization.
+
+    A Profile may belong to zero, one, or many orgs.  Each membership carries
+    a role that controls what the member can see/do within the org:
+      - owner      — full org control (billing, settings, member management)
+      - admin      — manage classrooms, syllabus, view all class progress
+      - teacher    — manage own classrooms, view own class progress
+    """
+
+    __tablename__ = "org_members"
+    __table_args__ = (
+        UniqueConstraint("org_id", "profile_id", name="uq_org_member"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(32), default="teacher", server_default="teacher")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    org: Mapped[Organization] = relationship()
+    profile: Mapped[Profile] = relationship()
+
+
+class TenantConfig(Base):
+    """#965 — per-org branding + feature flags, with a global-default row.
+
+    The global default row has org_id=NULL and is unique-only-NULLS (Postgres
+    allows many NULLs in a unique constraint — we enforce a single global row
+    at the application layer).  When an org has no explicit TenantConfig row,
+    every field falls back to the global row, then to hardcoded Numberverse
+    defaults.
+
+    Fields that are NULL on the org row inherit from the global row; fields
+    that are NULL on the global row inherit hardcoded defaults.
+    """
+
+    __tablename__ = "tenant_config"
+    # org_id is unique+nullable: at most one config per org, and at most one
+    # global row (NULL).  Postgres allows many NULLs so we enforce the single
+    # global row at the application layer.
+    __table_args__ = (
+        UniqueConstraint("org_id", name="uq_tenant_config_org"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, unique=True
+    )
+    # Branding — NULL means "inherit from global default".
+    brand_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    primary_color: Mapped[str | None] = mapped_column(String, nullable=True)
+    accent_color: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Domain/subdomain for automatic org resolution.
+    domains: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    # Locale override (e.g. "bn-BD").
+    default_locale: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Arbitrary feature flags as JSONB ({"disable_sound": true, ...}).
+    feature_flags: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    org: Mapped[Organization | None] = relationship()
+
+
+class OrgSyllabus(Base):
+    """#966 — per-org skill overrides: reorder / toggle / relabel / set difficulty.
+
+    Each row maps one skill to an org-specific presentation.  If no row exists
+    for an org+skill pair, the global Skill catalog is used as-is.  This table
+    is how a school board (NCTB / Cambridge / Edexcel) maps its curriculum onto
+    the Numberverse skill graph.
+    """
+
+    __tablename__ = "org_syllabus"
+    __table_args__ = (
+        UniqueConstraint("org_id", "skill_id", name="uq_org_syllabus_skill"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    skill_id: Mapped[str] = mapped_column(
+        ForeignKey("skills.id", ondelete="CASCADE"), index=True
+    )
+    # Override fields — NULL means "use the global Skill value".
+    subject_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    grade_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    sort_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Difficulty multiplier or override JSON for the org's students.
+    difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    org: Mapped[Organization] = relationship()
+
+
+class Classroom(Base):
+    """#967 — a teacher's classroom within an org.
+
+    A classroom is the unit of rosters, assignments, and class-progress views.
+    A teacher (org member with teacher+ role) creates classrooms and manages
+    their kids' rosters via the join table below.
+    """
+
+    __tablename__ = "classrooms"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    # The teacher who owns/created this classroom.  NULL when the teacher's
+    # membership is deleted (SET NULL keeps the classroom rows intact).
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("org_members.id", ondelete="SET NULL"), nullable=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    org: Mapped[Organization] = relationship()
+
+
+class ClassroomKid(Base):
+    """#967 — roster join: which kids are in which classroom.
+
+    A kid can be in multiple classrooms (e.g. math class + reading intervention).
+    The composite PK prevents duplicate entries.
+    """
+
+    __tablename__ = "classroom_kids"
+    __table_args__ = (
+        UniqueConstraint("classroom_id", "kid_id", name="uq_classroom_kid"),
+    )
+
+    classroom_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("classrooms.id", ondelete="CASCADE"), primary_key=True
+    )
+    kid_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kids.id", ondelete="CASCADE"), primary_key=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
