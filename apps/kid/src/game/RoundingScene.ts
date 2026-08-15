@@ -13,7 +13,10 @@ import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, roundMeter, type R
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-round")?.difficultyLevels ?? [40, 80, 120, 400, 700, 999];
-
+/** Skill seed for deterministic framing rotation. */
+const SKILL_ID = GAMES.find((g) => g.id === "game-round")?.skillId ?? "round-nearest-10-100";
+const ROUNDS_TO_FINISH = 3;
+const BUTTON_RADIUS = 50;
 
 /**
  * Round It — round a number to the nearest ten or hundred on a NUMBER LINE.

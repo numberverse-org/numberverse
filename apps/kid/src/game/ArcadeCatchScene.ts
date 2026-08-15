@@ -5,12 +5,36 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
-import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
 import { hintWrong } from "./hints";
 import { SAB } from "./safeArea";
 
+/**
+ * ArcadeCatch — the FIRST true Phaser ARCADE-physics lesson (#1142).
+ * A fact flashes at the top ("6 × 7 = ?") while three answer tokens fall
+ * under gravity, drifting as they drop, and three cloud baskets float near
+ * the ground. The kid taps the correct falling answer before it lands.
+ *
+ * The four "fast round" skills (facts-fast-add/sub/mult/div) all share this
+ * scene — `skillId` picks the fact generator, so the scene serves the same
+ * fact families as FactsAdd/SubFacts/TimesTable/DivisionFacts, but under
+ * real time-pressure with the #1158 challenge-bar contract (gold bar draining
+ * over 12s). ROUNDS_TO_FINISH = 5; onRoundDone fires every round like the
+ * other drill scenes.
+ */
+
+type FactType = "add" | "sub" | "mult" | "div";
+
+const GAME_ID = "game-arcadecatch";
+const LEVELS = GAMES.find((g) => g.id === GAME_ID)?.difficultyLevels ?? [1, 2, 3, 4, 5, 6];
+const ROUNDS_TO_FINISH = 5;
+const CHALLENGE_SECONDS = 12; // #1158 — the drained gold bar is the pressure
+const CHALLENGE_BAR = 0xffb703;
+const TOKEN_SIZE = 96;
+const GRAVITY = 60; // gentle fall — the kid reads, then reacts
+const TOKEN_KEY = "nv-arcade-token";
+const CLOUD_KEY = "nv-arcade-cloud";
 
 interface FallingToken {
   sprite: Phaser.Physics.Arcade.Sprite;

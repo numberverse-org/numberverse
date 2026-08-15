@@ -12,7 +12,9 @@ import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } 
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-barchart")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
-
+/** Skill seed for deterministic framing rotation. */
+const SKILL_ID = GAMES.find((g) => g.id === "game-barchart")?.skillId ?? "data-barchart";
+const ROUNDS_TO_FINISH = 3;
 
 interface ChartCat {
   emoji: string;

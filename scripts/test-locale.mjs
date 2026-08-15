@@ -5,8 +5,10 @@
  * Run:  pnpm --filter @numberverse/core build && node scripts/test-locale.mjs
  *
  * Proves the app is language+country EXTENSIBLE as a config addition:
- *   1. Registry: en + bn are shipped; ar + hi are planned scaffolds with the
- *      right RTL + digit metadata (Bangla today, Arabic/Hindi later).
+ *   1. Registry: en + bn are shipped; ar + hi are planned scaffolds in their
+ *      OWN tree-shaken module (PLANNED_LOCALES) with the right RTL + digit
+ *      metadata (Bangla today, Arabic/Hindi later) — registerPlannedLocales()
+ *      merges them in for a preview/research build.
  *   2. Digit rendering: each locale's numerals map 0-9 (০১২৩ … ٠١٢٣ … ०१२३).
  *   3. Fallback: unknown locale codes never break — they resolve to English.
  *   4. i18n table: the shipped-locale dictionary registry + parity over every
@@ -18,7 +20,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { LOCALES, getLocale, shippedLocales, formatNumber, isRtl, currentFestival } = require("../packages/core/dist/index.js");
+const { LOCALES, getLocale, shippedLocales, formatNumber, isRtl, currentFestival, PLANNED_LOCALES, registerPlannedLocales } = require("../packages/core/dist/index.js");
 
 let fails = 0;
 const check = (name, got, want) => {
@@ -30,16 +32,22 @@ const check = (name, got, want) => {
   }
 };
 
-console.log("①  Registry — shipped locales en+bn, planned ar+hi…");
+console.log("①  Registry — shipped locales en+bn; planned ar+hi tree-shaken…");
 check("en shipped", LOCALES.en.status, "shipped");
 check("bn shipped", LOCALES.bn.status, "shipped");
-check("ar planned (scaffold)", LOCALES.ar.status, "planned");
-check("hi planned (scaffold)", LOCALES.hi.status, "planned");
+check("ar NOT in shipped registry (tree-shake)", LOCALES.ar, undefined);
+check("hi NOT in shipped registry (tree-shake)", LOCALES.hi, undefined);
 check("shippedLocales() sorted", shippedLocales(), ["bn", "en"]);
 check("bn curriculum is Bangladesh", LOCALES.bn.curriculum, "nctb-bangladesh");
-check("ar is RTL", LOCALES.ar.dir, "rtl");
+check("planned ar scaffold", PLANNED_LOCALES.ar.status, "planned");
+check("planned hi scaffold", PLANNED_LOCALES.hi.status, "planned");
+check("ar is RTL", PLANNED_LOCALES.ar.dir, "rtl");
 check("en is LTR", isRtl("en"), false);
-check("ar isRtl true", isRtl("ar"), true);
+check("registerPlannedLocales() extends the registry", (() => {
+  registerPlannedLocales(LOCALES);
+  return LOCALES.ar?.dir;
+})(), "rtl");
+check("ar isRtl true after registration", isRtl("ar"), true);
 
 console.log("②  Digit rendering — each locale's numeral set…");
 check("en latin", formatNumber(123, "en"), "123");
@@ -58,8 +66,8 @@ console.log("⑤  Festivals — country config, the UI just reads the active one
 check("bn has Boishakh", LOCALES.bn.festivals.some((f) => f.key === "boishakh"), true);
 check("bn has Eid (lunar config)", LOCALES.bn.festivals.filter((f) => f.key.startsWith("eid_")).length, 2);
 check("en has Christmas", LOCALES.en.festivals.some((f) => f.key === "christmas"), true);
-check("ar has Ramadan (planned)", LOCALES.ar.festivals.some((f) => f.key === "ramadan"), true);
-check("hi has Diwali (planned)", LOCALES.hi.festivals.some((f) => f.key === "diwali"), true);
+check("ar has Ramadan (planned)", PLANNED_LOCALES.ar.festivals.some((f) => f.key === "ramadan"), true);
+check("hi has Diwali (planned)", PLANNED_LOCALES.hi.festivals.some((f) => f.key === "diwali"), true);
 check("off-season → null", currentFestival("bn", new Date("2026-08-15T12:00:00")), null);
 check("Boishakh window active", currentFestival("bn", new Date("2026-04-14T12:00:00"))?.key, "boishakh");
 check("lunar Eid window active", currentFestival("bn", new Date("2026-03-20T12:00:00"))?.key, "eid_fitr");

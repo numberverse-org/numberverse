@@ -3114,7 +3114,7 @@ export function shippedLocaleCodes(): string[] {
  * Forced locale: pass "en" or "bn" to override the current UI language.
  * This is the single replacement for the old per-scene digit()/bnNum() helpers.
  */
-export function digit(n: number, forcedLang?: string): string {
+export function digit(n: string | number, forcedLang?: string): string {
   const lang = forcedLang ?? getAppLang();
   return lang === "bn" ? bnNum(n) : String(n);
 }

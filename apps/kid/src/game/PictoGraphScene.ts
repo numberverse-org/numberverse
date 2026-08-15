@@ -12,6 +12,9 @@ import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundM
 import { answerRow } from "./layout";
 import { SAB } from "./safeArea";
 
+/** The KEY doubles as the difficulty ladder: one picture = 2, then 5, then 10. */
+const KEYS = GAMES.find((g) => g.id === "game-picto")?.difficultyLevels ?? [2, 2, 5, 5, 10, 10];
+const ROUNDS_TO_FINISH = 3;
 
 interface PictoCat {
   emoji: string;

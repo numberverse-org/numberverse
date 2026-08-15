@@ -6,7 +6,7 @@
 export const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
 export const BN_MONTHS = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
 
-export function bnNum(n: number): string {
+export function bnNum(n: string | number): string {
   return String(n).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
 }
 
