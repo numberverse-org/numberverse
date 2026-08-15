@@ -23,7 +23,6 @@ import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD,
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled, googleClientId } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, coinSound, setQuietLevel as setAudioQuiet } from "./game/audio";
-import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setVoiceTone, setVoiceSpeed, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
@@ -48,7 +47,7 @@ import {
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, kidMasteryStats, worldProgress, worldEmoji,
   worldUnlocked, unlockGap, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
-  moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
+  moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache, masteryDisplayPct,
   MAX_KIDS_PER_FAMILY,
   challengeEligible, challengeStartLevelIndex,
   MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
@@ -80,6 +79,9 @@ export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "w
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
+/** #1361 — wait for the last round's combo FX (float text ~950ms, confetti up
+ *  to ~1200ms) to finish before the session-done tada + screen land. */
+const ROUND_END_TO_DONE_MS = 1200;
 /** #1164 — land-boss duel length: longer than the casual owl challenge (5). */
 const BOSS_ROUNDS = 7;
 
@@ -1855,10 +1857,13 @@ export default function App() {
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
   const toggleCard = (skillId: string) => {
     click();
+    // #1357 — key the flipped state by kid + skill so siblings sharing a
+    // device never inherit each other's flipped cards.
+    const key = `${kid?.id ?? "?"}:${skillId}`;
     setFlippedCards((prev) => {
       const next = new Set(prev);
-      if (next.has(skillId)) next.delete(skillId);
-      else next.add(skillId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
@@ -2415,30 +2420,29 @@ export default function App() {
           // try a new game). Progress counts only when this round matches it.
           const st = useKidStore.getState().skills[`${kid.id}:${step.skillId}`];
           const mastered = !!(st && st.pMastered >= masteryThresholdFor(step.skillId));
+          const bn = getAppLang() === "bn";
+          // #1358 — a single round can complete the quest, hit the coin cap AND
+          // master a skill. Pick ONE spoken cheer for the round instead of three
+          // cancel-and-speak bursts (which left only the last fragment audible).
+          let cheer: string | null = null;
           const questDone = novaQuestProgress(kid.id, { correct, mastered, freshSkill });
+          // #1435/#1436 — the quest reward is no longer auto-granted here:
+          // completion arms the claim step on Home, and the claim itself speaks
+          // the coins ACTUALLY paid (which can be $0 when the daily cap is full,
+          // so no coin amount is promised in this cheer).
           if (questDone) {
-            // THE moment the quest finishes — cheer once, aloud, in the app's
-            // language. #1435/#1436 — the reward is no longer auto-granted or
-            // announced here: completion arms the claim step on Home, and the
-            // claim itself speaks the coins ACTUALLY paid.
-            cancelSpeech();
-            tada();
-            const bn = getAppLang() === "bn";
-            speak(t.questReadySpeak, { lang: bn ? "bn" : "en" });
+            cheer = t.questReadySpeak;
           }
           // #1196 — the moment the daily coin cap is reached, reward feedback
           // must NOT drop to nothing: learning keeps paying (stars, combo,
           // mastery) but currency stops. Cheer the cap once, warmly, so the
           // switch to "no more coins today" feels celebrated, not punished
           // (the persistent HUD 🎯 chip then marks the rest of the day).
-          if (correct) {
+          if (correct && !cheer) {
             const an = useKidStore.getState().nova[kid.id];
             const postEarned = an && an.earnDay === todayIso() ? an.earnedToday ?? 0 : 0;
             if (preEarned < NOVA_DAILY_CAP && postEarned >= NOVA_DAILY_CAP) {
-              cancelSpeech();
-              tada();
-              const bn = getAppLang() === "bn";
-              speak(t.hudCoinsMaxed, { lang: bn ? "bn" : "en" });
+              cheer = t.hudCoinsMaxed;
             }
           }
           // #292 — Nova reaction: exactly ONE per round, highest-priority wins.
@@ -2501,8 +2505,9 @@ export default function App() {
           if (mastered) {
             gardenMastery(kid.id, step.skillId, step.title);
             // PET + 🎉 #290 IN-THE-MOMENT: a brand-new mastery is the BIG moment —
-            // the pet takes a step AND we celebrate RIGHT NOW with a confetti burst
-            // + a spoken cheer, not just a badge on the done screen. One per skill.
+            // the pet takes a step AND we cheer RIGHT NOW with a spoken line, not
+            // just a badge on the done screen. One per skill. The scene's own
+            // correctCelebrate combo burst already handles confetti (#1359).
             if (!masteredBeforeRef.current.has(step.skillId)) {
               useKidStore.getState().petGrowMastery(kid.id);
               // #1188 — mastery is the BIG moment: a distinct coin bonus (once
@@ -2510,24 +2515,23 @@ export default function App() {
               const masteryCoins = useKidStore.getState().novaChallengeReward(kid.id, NOVA_MASTERY_REWARD);
               const novaAfter = useKidStore.getState().nova[kid.id];
               masteredBeforeRef.current.add(step.skillId);
-              // #1443/#1446 — make the bonus visible + audible right now, and
-              // put the pet that just grew + the coin on screen next to the
-              // confetti burst (not just a silent store bump).
+              // #1443/#1446 — make the bonus visible right now: the pet that
+              // just grew + the coin go on screen next to the scene's combo
+              // burst (not just a silent store bump). The spoken mastery line
+              // goes through the single per-round cheer below (#1358).
               if (masteryCoins > 0) flashCoin(masteryCoins);
               showMasteryShowcase(
                 masteryCoins,
                 speciesEmoji(novaAfter?.species ?? "owl", novaAfter?.petStage ?? 0)
               );
-              cancelSpeech();
-              tada();
-              const bn = getAppLang() === "bn";
-              speak(t.masterySpeak(step.title), { lang: bn ? "bn" : "en" });
+              cheer = t.masterySpeak(step.title);
               announce(t.a11yMastered(step.title)); // #133 — screen-reader cue
-              const sc = game.scene.getScene(step.scene);
-              if (sc && sc.scale) {
-                confettiBurst(sc, sc.scale.width / 2, Math.min(sc.scale.height * 0.35, 240), 44);
-              }
             }
+          }
+          if (cheer) {
+            cancelSpeech();
+            tada();
+            speak(cheer, { lang: bn ? "bn" : "en" });
           }
           void syncProgress();
           setRoundsDone((n) => n + 1);
@@ -2623,13 +2627,18 @@ export default function App() {
           speak(t.freezeNotEnough(freezeMissGap - 1));
         }
       }
-      tada();
-      cancelSpeech();
       // #253 — the session finished: drop any saved snapshot so a later switch
       // back starts fresh (a completed session is nothing to resume).
       if (kid) clearSavedSession(kid.id);
       breakReturnRef.current = "done";
-      setTimeout(() => setScreen(breakPendingRef.current ? "break" : "done"), 400);
+      // #1361 — sequence the two celebrations: wait for the last round's combo
+      // FX (float text/confetti) to finish, THEN play the session-done tada and
+      // show the done screen (whose confetti + spoken cheer start on arrival).
+      window.setTimeout(() => {
+        cancelSpeech();
+        tada();
+        setScreen(breakPendingRef.current ? "break" : "done");
+      }, ROUND_END_TO_DONE_MS);
     }
   }, [roundsDone, sessionIdx, screen, kid, mistakes, recordSession, novaCompleteSession]);
 
@@ -3054,8 +3063,8 @@ export default function App() {
                     {skills.map((s) => {
                       const { title, desc } = L(s);
                       const ms = kid ? skillsMap[`${kid.id}:${s.id}`] : undefined;
-                      const pct = ms ? Math.round(ms.pMastered * 100) : 0;
-                      const mastered = pct >= Math.round(masteryThresholdFor(s.id) * 100);
+                      const pct = masteryDisplayPct(ms, s.id);
+                      const mastered = !!ms && ms.pMastered >= masteryThresholdFor(s.id);
                       const tappable = !!kid && !!s.game;
                       return (
                         <button
@@ -4522,8 +4531,8 @@ export default function App() {
                       <div className="skill-list">
                         {filterSkills.filter((s) => s.game).map((skill) => {
                           const ms = skillsMap[`${activeKid.id}:${skill.id}`];
-                          const pct = ms ? Math.round(ms.pMastered * 100) : 0;
-                          const mastered = pct >= Math.round(masteryThresholdFor(skill.id) * 100);
+                          const pct = masteryDisplayPct(ms, skill.id);
+                          const mastered = !!ms && ms.pMastered >= masteryThresholdFor(skill.id);
                           return (
                             <div key={skill.id} className="skill-row">
                               <span className="skill-emoji"><Icon name={skill.subject} size={30} /></span>
@@ -4780,7 +4789,7 @@ export default function App() {
                   </div>
                   <div className="cards-grid">
                     {cards.map((c) => {
-                      const flipped = flippedCards.has(c.skill.id);
+                      const flipped = flippedCards.has(`${kid.id}:${c.skill.id}`);
                       const title = lang === "bn" && c.skill.titleBn ? c.skill.titleBn : c.skill.title;
                       const cls = c.mastered ? "mastered" : "locked";
                       return (
@@ -5322,8 +5331,8 @@ export default function App() {
               <div className="tree-trunk" aria-hidden="true" />
               {bandSkills.map((skill, i) => {
                 const st = skillsMap[`${kid.id}:${skill.id}`];
-                const pct = st ? Math.round(st.pMastered * 100) : 0;
-                const mastered = pct >= Math.round(masteryThresholdFor(skill.id) * 100);
+                const pct = masteryDisplayPct(st, skill.id);
+                const mastered = !!st && st.pMastered >= masteryThresholdFor(skill.id);
                 const isNext = nextSkill?.id === skill.id;
                 const side = i % 2 === 0 ? "left" : "right";
                 const title = lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
@@ -5929,6 +5938,10 @@ export default function App() {
     // #1467 — a parent who turned music off for this profile keeps that rule
     // mid-game: the HUD mute mirrors the Settings switch's musicLocked guard.
     const musicLocked = settings.music_enabled === false;
+    // #1434 — the HUD's mastery bar reads the SAME per-skill display metric as
+    // the skill-tree bars, so the in-game loop and long-term loop feel unified.
+    const curMastery = inGame && kid && curStep ? skillsMap[`${kid.id}:${curStep.skillId}`] : undefined;
+    const curMasteryPct = curStep ? masteryDisplayPct(curMastery, curStep.skillId) : 0;
     return (
       <div className="app game-app">
         {/* #248 — quiet-hours dim also belongs over the game canvas (not just home). */}
@@ -5966,6 +5979,19 @@ export default function App() {
               {curStep ? <span className="hud-skill">{curStep.title}</span> : null}
               {curReteach && <span className="hud-reteach">🎯 {t.practicePill}</span>}
               <span className="round-chip">{t.round(Math.min(roundsDone + 1, ROUNDS_TO_FINISH), ROUNDS_TO_FINISH)}</span>
+              {curStep && kid && (
+                <span
+                  className="hud-mastery"
+                  role="progressbar"
+                  aria-label={t.hudMastery}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={curMasteryPct}
+                  title={t.hudMastery}
+                >
+                  <span className={`hud-mastery-fill${curMasteryPct >= 100 ? " done" : ""}`} style={{ width: `${curMasteryPct}%` }} />
+                </span>
+              )}
               <span className="stars">⭐ {stars}</span>
               {sessionStreakCount >= 2 && <span className="hud-streak">🔥 {sessionStreakCount}</span>}
               <span className="hud-coins">

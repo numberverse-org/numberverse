@@ -591,8 +591,10 @@ interface KidState {
   novaCare: (kidId: string, action: "feed" | "play") => void;
   /** Every completed round advances today's Daily Quest — the mission TYPE
    *  rotates per kid per day (rounds / stars / master / new-game). Progress
-   *  counts only when the round matches today's type. Returns true the moment
-   *  the quest completes (so the caller can celebrate once). */
+   *  counts only when the round matches today's type. Returns the quest outcome
+   *  (done, type and coins actually granted) so the caller can celebrate once
+   *  WITHOUT re-reading the store — and can stay silent when the cap made the
+   *  reward $0. */
   novaQuestProgress: (
     kidId: string,
     sig: { correct?: boolean; mastered?: boolean; freshSkill?: boolean }

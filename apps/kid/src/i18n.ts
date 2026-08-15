@@ -333,6 +333,8 @@ export interface Strings {
   boxRewardSpeak: (name: string, coins: number) => string;
   /* #1196 — HUD chip when today's learning coins hit the anti-grind cap */
   hudCoinsMaxed: string;
+  /* #1434 — in-game mastery bar label (ties the HUD to the skill-tree bar) */
+  hudMastery: string;
   /* #294 — streak-freeze tokens */
   freezePill: (n: number) => string;
   freezeEarnedSpeak: string;
@@ -1202,6 +1204,7 @@ export const STR: Record<Lang, Strings> = {
     capRewardCal: "calendar bonus 🪙",
     capRewardBoth: "mystery box 🎁 and calendar bonus 🪙",
     hudCoinsMaxed: "Coins maxed for today! Keep learning — stars still count 🎯",
+    hudMastery: "Skill mastery",
     /* #294 — streak-freeze tokens */
     freezePill: (n) => `🧊 ${n}`,
     freezeEarnedSpeak: "You earned a freeze token — your streak is safe!",
@@ -2037,6 +2040,7 @@ export const STR: Record<Lang, Strings> = {
     capRewardCal: "ক্যালেন্ডার বোনাস 🪙",
     capRewardBoth: "মিস্ট্রি বক্স 🎁 আর ক্যালেন্ডার বোনাস 🪙",
     hudCoinsMaxed: "আজকের কয়েন ভরে গেছে! শিখতে থাকো — তারকারা এখনও গুনবে 🎯",
+    hudMastery: "দক্ষতার অগ্রগতি",
     /* #294 — streak-freeze tokens */
     freezePill: (n) => `🧊 ${bnNum(n)}`,
     freezeEarnedSpeak: "তুমি ফ্রিজ টোকেন পেয়েছো — তোমার ধারা নিরাপদ!",
