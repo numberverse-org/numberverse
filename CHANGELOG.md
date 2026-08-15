@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.77.0 (strictness=auto for unset kids + honest worlds label (#1049 #1050))
+
+b7c161b 🧠 strictness=auto fix + honest worlds label (#1049, #1050)
+
 ## 16 Aug 2026 — 0.76.0 (sync-state hardening: per-channel state + backoff + band-skip requeue + token revalidation (#1026-1031))
 
 7fa87b8 🔄 sync-state hardening: #1026-1031 backoff, per-channel state, band-skip requeue, token revalidation
