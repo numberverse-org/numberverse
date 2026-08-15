@@ -37,14 +37,7 @@
   --nv-mint: #2ec4b6;
   --nv-sky: #4cc9f0;
   --nv-amber: #ffd27a;
-}* { box-sizing: border-box; margin: 0; padding: 0; }
-
-/* 🎨 #254 — dashboard light/dark theme. All surface/ink colors are CSS
-   variables; `html.theme-light` swaps the whole palette (dark is the default
-   so nothing changes for existing users). Native controls follow suit via
-   color-scheme. The #250 high-contrast class re-declares the dark palette so
-   a11y mode always renders with maximum contrast, regardless of theme. */
-
+}
 
 html.theme-light {
   color-scheme: light;
@@ -88,8 +81,10 @@ body {
 .shell { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
 
 /* #619 — persistent section navigation: the dashboard widens to fit a sticky
-   left sidebar; anchored cards sit clear of the top on jump. */
-.shell:has(.portal-nav) { max-width: 1240px; }
+   left sidebar; anchored cards sit clear of the top on jump. The class is set
+   explicitly on the shell (not :has()) so older browsers without :has() still
+   get the wide layout. */
+.shell.shell-wide { max-width: 1240px; }
 .portal-layout { display: flex; gap: 22px; align-items: flex-start; }
 .portal-nav {
   position: sticky; top: 14px;
@@ -1479,9 +1474,13 @@ td { font-size: 14px; }
 }
 
 /* 🧏 #250 — GLOBAL accessibility classes (on <html>, shared with the kid app
-   via the nv_a11y localStorage key). `zoom` scales the whole portal for big
-   text; high contrast boosts borders + text + focus. */
+   via the nv_a11y localStorage key). Big text scales the whole portal; the
+   @supports fallback keeps the toggle working on engines that lack `zoom`.
+   High contrast boosts borders + text + focus. */
 html.nv-big-text { zoom: 1.2; }
+@supports not (zoom: 1) {
+  html.nv-big-text { font-size: 120%; }
+}
 
 html.nv-high-contrast body { background: #00121f; }
 html.nv-high-contrast .shell { background: #00121f; }
@@ -1530,3 +1529,10 @@ html.nv-high-contrast {
   --nv-ok: #a7f3d0;
   --nv-amber: #ffd27a;
 }
+
+/* #764 — spacing utilities for the on-device data actions (kept last so they
+   reliably override the component defaults they compose with). */
+.gap-8 { gap: 8px; }
+.justify-between { justify-content: space-between; }
+.m-0 { margin: 0; }
+.mt-8 { margin-top: 8px; }

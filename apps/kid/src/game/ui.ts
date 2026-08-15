@@ -4,6 +4,7 @@ import { assetIcon } from "./svgAssets";
 import { starPop } from "./audio";
 import { enableSwipeToAnswer } from "./gestures";
 import { matureRender } from "./renderBand"; // #1040/#1035 — older-kid font stack
+import { prefersReducedMotion } from "./reducedMotion";
 
 /**
  * Modern 2026-style game UI: soft gradient buttons with glass edges,
@@ -150,10 +151,10 @@ export interface BtnStyle {
 
 export const BTN_PRIMARY = { top: 0x3ee6ff, bottom: 0x0c9ce2, text: "#052e3f" };
 export const BTN_NEUTRAL = { top: 0xeaf0f7, bottom: 0xa4b4c8, text: "#1e293b" };
-export const BTN_CORRECT = { top: 0x4ade80, bottom: 0x12a150, text: "#052e16" };
-export const BTN_ORANGE = { top: 0xffb35c, bottom: 0xef7a18, text: "#4a2200" };
+export const BTN_CORRECT = { top: Phaser.Display.Color.HexStringToColor(NV_GREEN).color, bottom: 0x12a150, text: "#052e16" };
+export const BTN_ORANGE = { top: Phaser.Display.Color.HexStringToColor(NV_ORANGE).color, bottom: 0xef7a18, text: "#4a2200" };
 export const BTN_PURPLE = { top: 0xc4b5fd, bottom: 0x7c3aed, text: "#1b0b3f" };
-export const BTN_RED = { top: 0xff8fa3, bottom: 0xe11d48, text: "#4c0519" };
+export const BTN_RED = { top: Phaser.Display.Color.HexStringToColor(NV_PINK).color, bottom: 0xe11d48, text: "#4c0519" };
 
 /** WCAG relative luminance of an 0xRRGGBB color (0..1). */
 function relLum(hex: number): number {
@@ -556,7 +557,11 @@ export function roundMeter(scene: Phaser.Scene): RoundMeterApi {
           const star = scene.add
             .circle(x, 0, R, 0xffd166)
             .setStrokeStyle(Math.max(2, Math.round(R * 0.28)), 0xefb419);
-          scene.tweens.add({ targets: star, scale: 1.35, duration: 150, yoyo: true, ease: "Back.easeOut" });
+          // #783 — the newly-filled star's pop honours reduced motion: the star
+          // still fills gold instantly, it just doesn't bounce.
+          if (!prefersReducedMotion()) {
+            scene.tweens.add({ targets: star, scale: 1.35, duration: 150, yoyo: true, ease: "Back.easeOut" });
+          }
           container.add(star);
           if (!played) {
             played = true;

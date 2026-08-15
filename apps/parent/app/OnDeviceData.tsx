@@ -233,15 +233,12 @@ export default function OnDeviceData() {
       })}
 
       <hr />
-      <div
-        className="row-buttons"
-        style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}
-      >
-        <p className="muted small" style={{ margin: 0 }}>
+      <div className="row-buttons justify-between gap-8">
+        <p className="muted small m-0">
           Total on this device: <strong>{fmt(totalBytes)}</strong> · server-side data is separate and can be
           downloaded from your account below.
         </p>
-        <div className="row-buttons" style={{ gap: 8, flexWrap: "wrap" }}>
+        <div className="row-buttons gap-8">
           {confirmingAll ? (
             <div className="confirm-group">
               <button className="btn danger" onClick={clearAll}>
@@ -273,12 +270,9 @@ export default function OnDeviceData() {
         </div>
       </div>
       {(deletedMsg || exportMsg) && (
-        <div
-          className="row-buttons"
-          style={{ justifyContent: "space-between", alignItems: "center", marginTop: 8 }}
-        >
-          {deletedMsg ? <p className="ok" style={{ margin: 0 }}>{deletedMsg}</p> : <span />}
-          {exportMsg ? <p className="err" style={{ margin: 0 }}>{exportMsg}</p> : <span />}
+        <div className="row-buttons justify-between mt-8">
+          {deletedMsg ? <p className="ok m-0">{deletedMsg}</p> : <span />}
+          {exportMsg ? <p className="err m-0">{exportMsg}</p> : <span />}
         </div>
       )}
     </section>

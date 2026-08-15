@@ -413,6 +413,7 @@
 .map-island-wrap { position: relative; z-index: 1; display: flex; align-items: center; min-height: 96px; }
 .map-island {
   position: relative;
+  z-index: 1; /* keep the glass card above the floating terrain deco */
   display: flex;
   align-items: center;
   gap: 14px;
@@ -433,8 +434,19 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 .map-island:active { transform: scale(0.98); }
-.map-island.locked { opacity: 0.5; cursor: default; }
+.map-island.locked { cursor: default; }
 .map-island.locked:active { transform: none; }
+/* #778 — a locked land reads as "not yet", not "broken": the island keeps its
+   color and card, while the lock badge grays out and the copy steps back. */
+.map-island.locked .map-island-badge {
+  filter: grayscale(0.85) brightness(0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.map-island.locked .map-island-name { color: rgba(255, 255, 255, 0.74); }
+.map-island.locked .map-island-age,
+.map-island.locked .map-island-sub { color: rgba(255, 255, 255, 0.52); }
+.map-island.locked .map-island-num { color: rgba(255, 255, 255, 0.5); border-color: rgba(255, 255, 255, 0.28); }
+.map-island.locked .progress-bar { opacity: 0.5; }
 /* the island medallion — a glowing orb in each land's color */
 .map-island-badge {
   flex: none;
@@ -465,19 +477,27 @@
   flex: none;
   font-size: 12px;
   font-weight: 900;
-  color: var(--c2, #7de3ff);
+  color: #fff; /* white on glass — the light c2 tint is only the border */
   border: 2px solid var(--c2, #7de3ff);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 999px;
   padding: 2px 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
-.map-island-go { flex: none; font-size: 18px; color: var(--c3, #7de3ff); }
+.map-island-go {
+  flex: none;
+  font-size: 18px;
+  color: #fff; /* white on glass — the light c3 tint stays in the badge, not the glyph */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
 .map-island.locked .map-island-go { color: rgba(255, 255, 255, 0.45); }
-/* tiny floating terrain deco around each island */
-.map-island-deco { position: absolute; inset: 0; pointer-events: none; z-index: -1; }
+/* tiny floating terrain deco around each island — kept on the wrap (outside
+   the glass card) so it peeks around the edges instead of being buried. */
+.map-island-deco { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .map-deco { position: absolute; font-size: 20px; opacity: 0.5; animation: decoFloat 3.2s ease-in-out infinite; }
 .map-deco.d0 { top: -10px; right: 14px; }
 .map-deco.d1 { bottom: -8px; right: 44px; animation-delay: 0.6s; }
-.map-deco.d2 { top: 6px; right: 60px; animation-delay: 1.2s; }
+.map-deco.d2 { top: -12px; right: 88px; animation-delay: 1.2s; }
 @keyframes decoFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
@@ -485,9 +505,21 @@
 
 /* ---- journey region themed per world ---- */
 .journey-region-head {
+  position: relative;
+  overflow: hidden;
   border-left: 4px solid var(--c2, var(--nv-sky));
   /* soft tint of the land color — hex 22 → ~13% alpha, safe on all WebViews */
   background: linear-gradient(90deg, var(--c2-22, rgba(76, 201, 240, 0.14)), rgba(46, 196, 182, 0.08));
+}
+/* #775 — lead the header strip with the land's deep accent so every region
+   reads as its own place, not just a tinted bar. */
+.journey-region-head::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--c1, var(--nv-navy)), var(--c2, var(--nv-sky)), var(--c3, #9be7ff));
+  z-index: 1;
 }
 .journey-road-open {
   display: flex;
@@ -516,7 +548,8 @@
   position: absolute;
   left: 0; right: 0; top: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--c2, var(--nv-sky)), var(--c3, #9be7ff));
+  /* #775 — the land's deep accent leads the strip (c1 → mid → light). */
+  background: linear-gradient(90deg, var(--c1, var(--nv-navy)), var(--c2, var(--nv-sky)), var(--c3, #9be7ff));
   z-index: 1;
 }
 .worlddetail-head::after {
@@ -528,6 +561,15 @@
   background: radial-gradient(circle, var(--c2-22, rgba(76, 201, 240, 0.2)), transparent 70%);
   pointer-events: none;
 }
+/* #776 — the same floating terrain deco from the map follows into the
+   world-detail header, so the land keeps its little companions. */
+.worlddetail-deco { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.worlddetail-deco-item { position: absolute; font-size: 22px; opacity: 0.55; animation: decoFloat 3.2s ease-in-out infinite; }
+.worlddetail-deco-item.d0 { top: -8px; right: 10px; }
+.worlddetail-deco-item.d1 { bottom: -4px; right: 62px; animation-delay: 0.6s; }
+.worlddetail-deco-item.d2 { top: 4px; right: 116px; animation-delay: 1.2s; }
+.worlddetail-head .icon-btn,
+.worlddetail-head .head-title { position: relative; z-index: 1; }
 
 /* ---- HUD + game canvas (mobile, fills available space) ---- */
 .hud {
@@ -6074,10 +6116,13 @@
 .settings-row-sub { font-size: 12px; font-weight: 500; color: #8fa9c9; line-height: 1.3; }
 
 /* 🧏 #250 — GLOBAL accessibility classes (on <html>, shared with the parent
-   portal via the nv_a11y localStorage key). `zoom` scales the whole UI — the
-   app's type is px-based, so this is the honest way to get "big text" that
-   actually reaches every screen. High contrast boosts borders + text + focus. */
+   portal via the nv_a11y localStorage key). Big text scales the whole UI; the
+   @supports fallback keeps the toggle working on engines that lack `zoom`.
+   High contrast boosts borders + text + focus. */
 html.nv-big-text { zoom: 1.2; }
+@supports not (zoom: 1) {
+  html.nv-big-text { font-size: 120%; }
+}
 
 html.nv-high-contrast .app { background: #00131f; }
 html.nv-high-contrast .screen { background: #00131f; }

@@ -1538,7 +1538,7 @@ export default function ParentDashboard() {
   }
 
   return (
-    <main className="shell">
+    <main className={`shell${!initialLoading && kids.length > 0 ? " shell-wide" : ""}`}>
       <header className="topbar">
         <span className="brand">🔢 <b>Numberverse</b> <span className="muted">Parent Portal</span></span>
         {/* 🧏 #250 — global accessibility toggles (shared with the kid app). */}

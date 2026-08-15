@@ -4,7 +4,7 @@ import { t as sceneT } from "./i18n";
 import { prefersReducedMotion } from "./reducedMotion";
 import { matureRender } from "./renderBand"; // #1035 — float text follows the band font
 import { speak } from "./speech"; // #1066 — say the hard-win acknowledgment aloud
-import { NV_GOLD, NV_PINK } from "./ui"; // tokenized #591
+import { NV_GOLD, NV_PINK, NV_SKY, NV_ORANGE } from "./ui"; // tokenized #591
 
 /**
  * Combo + celebration engine — the "juice" of a correct answer.
@@ -107,7 +107,16 @@ export function floatText(
  *  the floating text + chime the caller already fires. */
 export function confettiBurst(scene: Phaser.Scene, x: number, y: number, n = 24) {
   if (prefersReducedMotion()) return;
-  const colors = [0xffd166, 0x4cc9f0, 0xff8fa3, 0x2ec4b6, 0xc4b5fd, 0xffb35c];
+  // #784 — NV_* tokens for the colors that have one; the teal/lavender extras
+  // are intentional land accents without a token yet.
+  const colors = [
+    Phaser.Display.Color.HexStringToColor(NV_GOLD).color,
+    Phaser.Display.Color.HexStringToColor(NV_SKY).color,
+    Phaser.Display.Color.HexStringToColor(NV_PINK).color,
+    0x2ec4b6,
+    0xc4b5fd,
+    Phaser.Display.Color.HexStringToColor(NV_ORANGE).color,
+  ];
   for (let i = 0; i < n; i++) {
     const w = Phaser.Math.Between(6, 12);
     const h = Phaser.Math.Between(4, 9);
