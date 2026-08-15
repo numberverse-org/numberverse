@@ -191,7 +191,7 @@ jobs:
         run: node scripts/secret-scan.mjs
 
   offline-e2e:
-    name: offline-e2e
+    name: e2e
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -203,9 +203,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Install Playwright chromium
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Offline no-network fallback e2e (#264)
+      - name: Install Playwright browsers (chromium + firefox + webkit)
+        run: pnpm exec playwright install --with-deps
+      - name: Numberverse e2e (#264 offline, #925 sync drain, #926 cross-app, #927 portal)
         run: pnpm exec playwright test
 
   oracle:
