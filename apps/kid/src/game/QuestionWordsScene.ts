@@ -72,7 +72,11 @@ export class QuestionWordsScene extends Phaser.Scene {
   private meter!: RoundMeterApi;
 
   constructor() {
-    super("QWords");
+    // #1337 — key MUST equal the catalog value GAME_SCENES['game-qwords'] =
+    // 'QuestionWords'. engine.ts assertCatalogCovered() throws at boot if any
+    // catalog key is not a reachable scene key — 'QWords' (vs 'QuestionWords')
+    // silently broke the whole engine chunk (game never booted).
+    super("QuestionWords");
   }
 
   create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
