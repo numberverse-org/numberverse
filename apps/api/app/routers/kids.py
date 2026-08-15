@@ -17,6 +17,7 @@ from ..schemas import (
     KidSettingsIn,
     KidSettingsOut,
     KidUpdateIn,
+    ResetOut,
     WeakSkillOut,
     WeeklyDayOut,
     WeeklyOut,
@@ -226,7 +227,10 @@ async def get_kid_weekly(
     learned this week" card. Aggregates round events + mastery crossings.
     Times are UTC (events are stamped server-side), dates are calendar days."""
     owned = await _get_owned_kid(kid_id, profile, db)
-    now = date.today()
+    # #857 — events are stamped `datetime.now(timezone.utc)` server-side, so the
+    # week window and "today" must derive from UTC too. A naive `date.today()`
+    # would shift the 7-day window and "mastered today" on a non-UTC host.
+    now = datetime.now(timezone.utc).date()
     start = now - timedelta(days=6)
 
     events = (
@@ -240,6 +244,7 @@ async def get_kid_weekly(
 
     rounds = len(events)
     correct = sum(1 for e in events if e.correct)
+    # #859 — minutes is a response-time proxy (Σ response_ms), NOT session time.
     minutes = round(sum(e.response_ms or 0 for e in events) / 60000.0, 1)
     by_day: dict[date, list[ProgressEvent]] = {}
     for e in events:
@@ -253,6 +258,7 @@ async def get_kid_weekly(
             WeeklyDayOut(
                 date=d.isoformat(),
                 rounds=len(ev),
+                # #859 — same response-time proxy, not session duration.
                 minutes=round(sum(x.response_ms or 0 for x in ev) / 60000.0, 1),
             )
         )
@@ -291,9 +297,10 @@ async def get_kid_weekly(
     ).all()
     mastered_ids = sorted(m.skill_id for m in mastered)
 
-    # #244 — "mastered TODAY": ≥80% AND last practiced since local midnight.
+    # #244 — "mastered TODAY": ≥80% AND last practiced since UTC midnight.
     # Feeds the portal's daily play-summary headline without a second query
-    # shape (the weekly fetch already carries it to the client).
+    # shape (the weekly fetch already carries it to the client). #857 — `now`
+    # is the UTC calendar day, so this midnight matches the UTC-stamped events.
     today_start = datetime.combine(now, time.min)
     mastered_today = (
         await db.scalars(
@@ -320,7 +327,8 @@ async def get_kid_weekly(
     )
 
 
-@router.post("/{kid_id}/reset", status_code=status.HTTP_200_OK)
+# #858 — typed response model instead of an ad-hoc dict (schemas.ResetOut).
+@router.post("/{kid_id}/reset", response_model=ResetOut, status_code=status.HTTP_200_OK)
 async def reset_kid_progress(
     kid_id: uuid.UUID,
     profile: Profile = Depends(KID_WRITE_RATE_LIMIT),
@@ -332,4 +340,4 @@ async def reset_kid_progress(
     await db.execute(delete(SkillMastery).where(SkillMastery.kid_id == kid_id))
     await db.execute(delete(ProgressEvent).where(ProgressEvent.kid_id == kid_id))
     await db.commit()
-    return {"reset": True, "kid_id": str(kid_id)}
+    return ResetOut(reset=True, kid_id=str(kid_id))

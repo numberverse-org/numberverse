@@ -225,14 +225,14 @@ class ProgressEventIn(BaseModel):
 class WeeklyDayOut(BaseModel):
     date: str  # YYYY-MM-DD
     rounds: int
-    minutes: float
+    minutes: float  # #859 — response-time proxy (Σ response_ms/60000), NOT session time
 
 
 class WeeklyOut(BaseModel):
     days: list[WeeklyDayOut]      # last 7 days, oldest → newest
     rounds: int                   # rounds played this week
-    correct_pct: int              # 0–100 first-try/round accuracy
-    minutes: float                # active learning minutes (≈ Σ response_ms)
+    correct_pct: int              # 0–100 accuracy — intentionally rounded to int (#859)
+    minutes: float                # #859 — response-time proxy (Σ response_ms), NOT session duration
     active_days: int              # distinct days with at least one round
     mastered_this_week: list[str]  # skill ids now ≥80% + last practiced this week
     mastered_today: list[str] = []  # #244 — ≥80% + last practiced today
@@ -260,6 +260,13 @@ class KidSnapshotOut(BaseModel):
     avatar: str | None = None
     coins: int = 0
     mastery: list[MasteryOut]
+
+
+# #858 — explicit response shape for POST /kids/{kid_id}/reset (was an ad-hoc
+# dict). `kid_id` is the echoed string id the client passed back in.
+class ResetOut(BaseModel):
+    reset: bool
+    kid_id: str
 
 
 # ── Kotha (কথা) — RAG knowledge lake ──
@@ -321,6 +328,15 @@ class LearningStoryOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# #858 — explicit response shape for GET /kids/{kid_id}/stories/stats (was an
+# ad-hoc dict). Each dict is skill/error/misconception → count.
+class StoryStatsOut(BaseModel):
+    total: int
+    by_skill: dict[str, int]
+    by_error_kind: dict[str, int]
+    by_misconception: dict[str, int]
 
 
 # ── 🚀 Acceleration plan (#249) ──
