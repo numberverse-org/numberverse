@@ -134,7 +134,7 @@ const AVATARS = AVATAR_KEYS;
  *  (SW-precached → a fast flash). Same spinner as the engine-boot overlay.
  *  #346 — kid-friendly copy + an accessible label (no bare blank spinner). */
 function ScreenFallback() {
-  const bn = (localStorage.getItem("nv_lang") || "en") === "bn";
+  const bn = getAppLang() === "bn";
   return (
     <div className="screen-suspense" role="status" aria-label={STR[bn ? "bn" : "en"].loadingGame}>
       <span className="game-boot-spinner" aria-hidden="true" />
@@ -1439,6 +1439,17 @@ export default function App() {
   const announce = useCallback((text: string) => {
     if (srLiveRef.current) srLiveRef.current.textContent = text;
   }, []);
+  // #1403/#1455 — one language-switch path for the welcome buttons, Settings
+  // pills AND the in-game HUD toggle: persist via the locale layer, speak the
+  // new language aloud, and mirror it to the screen-reader live region.
+  const changeLang = useCallback((next: Lang) => {
+    if (next === lang) return;
+    setLang(next);
+    const line = STR[next].langSwitched;
+    cancelSpeech();
+    speak(line, { lang: next === "bn" ? "bn" : "en" });
+    announce(line);
+  }, [announce, lang]);
   // #136 — projector keyboard nav: Enter on home plays the next lesson.
   const playRef = useRef<() => void>(() => {});
   useEffect(() => {
@@ -2554,7 +2565,7 @@ export default function App() {
       // skill attempts. Any wrongs recorded so far stay in the ledger.
       wrongLedger.setContext(null);
     };
-  }, [screen, world, kid, sessionIdx, reteachNonce, addEvent, novaAwardRound, novaQuestProgress, gardenWater, gardenMastery]);
+  }, [screen, world, kid, sessionIdx, reteachNonce, lang, addEvent, novaAwardRound, novaQuestProgress, gardenWater, gardenMastery]);
 
   /* ── Advance to the next skill after ROUNDS_TO_FINISH rounds — BUT only if
      the current step's wrongs are RESOLVED (open === 0). If the kid still has
@@ -2923,7 +2934,7 @@ export default function App() {
                 className={`welcome-lang${lang === "en" ? " active" : ""}`}
                 role="radio"
                 aria-checked={lang === "en"}
-                onClick={() => setLang("en")}
+                onClick={() => changeLang("en")}
               >
                 {t.welcomeEnglish}
               </button>
@@ -2931,7 +2942,7 @@ export default function App() {
                 className={`welcome-lang${lang === "bn" ? " active" : ""}`}
                 role="radio"
                 aria-checked={lang === "bn"}
-                onClick={() => setLang("bn")}
+                onClick={() => changeLang("bn")}
               >
                 {t.welcomeBangla}
               </button>
@@ -3576,17 +3587,17 @@ export default function App() {
             <div className="settings-lang-pills">
               <button
                 className={`settings-lang-pill${lang === "en" ? " active" : ""}`}
-                onClick={() => setLang("en")}
+                onClick={() => changeLang("en")}
                 aria-pressed={lang === "en"}
               >
-                English
+                {getLocale("en").nativeName}
               </button>
               <button
                 className={`settings-lang-pill${lang === "bn" ? " active" : ""}`}
-                onClick={() => setLang("bn")}
+                onClick={() => changeLang("bn")}
                 aria-pressed={lang === "bn"}
               >
-                বাংলা
+                {getLocale("bn").nativeName}
               </button>
             </div>
           </div>
@@ -6032,6 +6043,17 @@ export default function App() {
                 aria-haspopup="dialog"
               >
                 🦋
+              </button>
+              {/* #1404 — in-scene language switch: no need to leave the lesson.
+                  The scene restarts with the new locale via the `lang` dep on
+                  the playing effect below. */}
+              <button
+                className="hud-music"
+                onClick={() => changeLang(lang === "bn" ? "en" : "bn")}
+                aria-label={t.langSwitch}
+                title={t.langSwitch}
+              >
+                🌐
               </button>
               {/* #22 — sibling co-op: only when a second profile exists on this
                   device. Tap → pass the device to a sibling mid-session. */}

@@ -90,6 +90,49 @@ const NOVA_T = {
     seasonal: (festival: string) => `🎉 ${festival} only`,
     festEid: "Eid",
     festBoishakh: "Pohela Boishakh",
+    /* #1411 — reaction voice lines (poke / activity reactions) */
+    patDizzy: "Whoa whoa whoa! Too many pats! 😵",
+    slap: "Ow! What was that? 😵",
+    laugh: "Hoo hoo ha ha! 😂",
+    yawn: "Yaaawn… so sleepy! 🥱",
+    sneeze: "Achoo! 🤧",
+    dance: "Boogie! 🕺",
+    spin: "Wheee! 🌀",
+    wave: "Hi there! 👋",
+    jump: "Boing! 🦘",
+    twirl: "Twirl! ✨",
+    wink: "Wink! 😉",
+    blink: "Blink blink! 😴",
+    grumpy: "Hmph! 😤",
+    happy: "Yay! 😄",
+    sad: "Ohh… 😢",
+    scared: "Eek! 😨",
+    shocked: "Whoa! 😲",
+    excited: "Woo-hoo! 🤩",
+    sleepy: "Mm… sleepy 😪",
+    snore: "Zzz… 💤",
+    whistle: "Pew pew! 🎵",
+    sing: "La la la! 🎵",
+    heart: "Love you! 💛",
+    dizzy: "Whoa, dizzy… 😵",
+    stretch: "Big stretch! 🙆",
+    peek: "Peekaboo! 🙈",
+    hide: "Boo! 👀",
+    cheer: "Yay! 🎉",
+    hmm: "Hmm… 🤔",
+    highfive: "High five! ✋",
+    gobble: "Nom nom! 😋",
+    glow: "Sparks! ✨",
+    zoom: "Zoomies! 💨",
+    disco: "Disco! 🪩",
+    bath: "Rub-a-dub-dub! 🛁",
+    brush: "So smooth! ✨",
+    hug: "Hug time! 🤗",
+    kiss: "Mwah! 😘",
+    scritch: "Mmm… scritches! 😌",
+    nap: "So cozy… nap time… 💤",
+    fly: "I can fly! 🪶",
+    read: "Once upon a time… 📖",
   },
   bn: {
     greeting: (name: string) => `হু, ${name}! আমি নোভা 🦉`,
@@ -146,6 +189,49 @@ const NOVA_T = {
     seasonal: (festival: string) => `🎉 শুধু ${festival}`,
     festEid: "ঈদ",
     festBoishakh: "পহেলা বৈশাখ",
+    /* #1411 — reaction voice lines (poke / activity reactions) */
+    patDizzy: "আরে আরে! এত টিপাটিপি! 😵",
+    slap: "ওহ! ওটা কী হলো? 😵",
+    laugh: "হু হু হা হা! 😂",
+    yawn: "হাই… কী ঘুম পেয়েছে! 🥱",
+    sneeze: "হাচো! 🤧",
+    dance: "নাচো নাচো! 🕺",
+    spin: "উহু! ঘুরছি! 🌀",
+    wave: "হ্যালো! 👋",
+    jump: "লাফ! 🦘",
+    twirl: "পাক খাই! ✨",
+    wink: "চোখ টিপি! 😉",
+    blink: "পিটপিট! 😴",
+    grumpy: "হুঁ! 😤",
+    happy: "ইয়া! 😄",
+    sad: "ওহ… 😢",
+    scared: "উফ্! 😨",
+    shocked: "ওয়াও! 😲",
+    excited: "হুররে! 🤩",
+    sleepy: "হুম… ঘুম ঘুম 😪",
+    snore: "ঘুম… 💤",
+    whistle: "ফিউ ফিউ! 🎵",
+    sing: "লা লা লা! 🎵",
+    heart: "ভালোবাসি! 💛",
+    dizzy: "ওহ, মাথা ঘুরছে… 😵",
+    stretch: "আরাম করে মেলে ধরি! 🙆",
+    peek: "উঁকিঝুঁকি! 🙈",
+    hide: "বু! 👀",
+    cheer: "ইয়া! 🎉",
+    hmm: "হুম… 🤔",
+    highfive: "হাই ফাইভ! ✋",
+    gobble: "মম মম! 😋",
+    glow: "ঝলমলে! ✨",
+    zoom: "সোঁ সোঁ! 💨",
+    disco: "ডিস্কো! 🪩",
+    bath: "কচকচ! স্নান! 🛁",
+    brush: "চকচকে! ✨",
+    hug: "জড়িয়ে ধরি! 🤗",
+    kiss: "চুমু! 😘",
+    scritch: "হুম… চুলকানি! 😌",
+    nap: "আরাম… ঘুমের সময়… 💤",
+    fly: "আমি উড়তে পারি! 🪶",
+    read: "একদিনের গল্প… 📖",
   },
 };
 type NovaLang = keyof typeof NOVA_T;
@@ -2059,7 +2145,7 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.eyeR, scaleX: 0.5, scaleY: 1.5, duration: 100, yoyo: true, repeat: 5 });
     this.burstEmoji("😵", 5, 30);
     this.burstEmoji("⭐", 3, 20);
-    this.say("Whoa whoa whoa! Too many pats! 😵", 2000);
+    this.say(this.t().patDizzy, 2000);
   }
 
   /** Any kid interaction wakes Nova if she dozed off and restarts the idle
@@ -2171,7 +2257,7 @@ export class NovaScene extends Phaser.Scene {
     this.shake(7, 70, 4);
     this.tilt(-5, 120, 3);
     this.burstEmoji("💢", 4);
-    this.say("Ow! What was that? 😵", 1600);
+    this.say(this.t().slap, 1600);
   }
 
   private actLaugh() {
@@ -2179,7 +2265,7 @@ export class NovaScene extends Phaser.Scene {
     this.pulse(1.1, 4, 220);
     this.tilt(5, 140, 4);
     this.burstEmoji("😂", 3, 28);
-    this.say("Hoo hoo ha ha! 😂", 1600);
+    this.say(this.t().laugh, 1600);
   }
 
   private actYawn() {
@@ -2189,7 +2275,7 @@ export class NovaScene extends Phaser.Scene {
     this.wingWave("L", -42, 1);
     this.wingWave("R", 42, 1);
     this.time.delayedCall(700, () => this.squintEye("L", 1, 120, 0));
-    this.say("Yaaawn… so sleepy! 🥱", 1600);
+    this.say(this.t().yawn, 1600);
   }
 
   private actSneeze() {
@@ -2198,7 +2284,7 @@ export class NovaScene extends Phaser.Scene {
     this.shake(5, 60, 2);
     this.burstEmoji("💨", 4);
     this.burstEmoji("🤧", 1, 30);
-    this.say("Achoo! 🤧", 1500);
+    this.say(this.t().sneeze, 1500);
   }
 
   private actDance() {
@@ -2206,21 +2292,21 @@ export class NovaScene extends Phaser.Scene {
     this.tilt(7, 130, 6);
     this.pulse(1.06, 6, 180);
     this.burstEmoji("🎵", 2, 22);
-    this.say("Boogie! 🕺", 1500);
+    this.say(this.t().dance, 1500);
   }
 
   private actSpin() {
     win();
     this.tweens.add({ targets: this.root, angle: 360, duration: 700, ease: "Sine.easeInOut", onComplete: () => this.root.setAngle(0) });
     this.burstEmoji("🌀", 3);
-    this.say("Wheee! 🌀", 1500);
+    this.say(this.t().spin, 1500);
   }
 
   private actWave() {
     pop();
     this.wingWave("L", -55, 3);
     this.burstEmoji("👋", 2, 26);
-    this.say("Hi there! 👋", 1500);
+    this.say(this.t().wave, 1500);
   }
 
   private actJump() {
@@ -2228,14 +2314,14 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.root, y: { from: this.baseY, to: this.baseY - 60 }, duration: 300, yoyo: true, repeat: 1, ease: "Quad.easeOut" });
     this.tweens.add({ targets: this.shadow, alpha: 0.3, duration: 150, yoyo: true, repeat: 1 });
     this.burstEmoji("⭐", 3);
-    this.say("Boing! 🦘", 1500);
+    this.say(this.t().jump, 1500);
   }
 
   private actTwirl() {
     win();
     this.tweens.add({ targets: this.root, angle: 720, duration: 900, ease: "Sine.easeInOut", onComplete: () => this.root.setAngle(0) });
     this.burstEmoji("✨", 4, 22);
-    this.say("Twirl! ✨", 1500);
+    this.say(this.t().twirl, 1500);
   }
 
   private actWink() {
@@ -2243,13 +2329,13 @@ export class NovaScene extends Phaser.Scene {
     this.squintEye("R", 0.1, 200, 0);
     this.time.delayedCall(500, () => this.squintEye("R", 1, 160, 0));
     this.burstEmoji("😉", 1, 30);
-    this.say("Wink! 😉", 1500);
+    this.say(this.t().wink, 1500);
   }
 
   private actBlink() {
     this.bothEyes(0.1, 120, 3);
     this.burstEmoji("😴", 1, 26);
-    this.say("Blink blink! 😴", 1500);
+    this.say(this.t().blink, 1500);
   }
 
   private actGrumpy() {
@@ -2258,14 +2344,14 @@ export class NovaScene extends Phaser.Scene {
     this.squintEye("L", 0.4, 200, 0);
     this.squintEye("R", 0.4, 200, 0);
     this.burstEmoji("😤", 2);
-    this.say("Hmph! 😤", 1500);
+    this.say(this.t().grumpy, 1500);
   }
 
   private actHappy() {
     pop();
     this.pulse(1.12, 3, 200);
     this.burstEmoji("😄", 2, 26);
-    this.say("Yay! 😄", 1500);
+    this.say(this.t().happy, 1500);
   }
 
   private actSad() {
@@ -2274,7 +2360,7 @@ export class NovaScene extends Phaser.Scene {
     this.squintEye("L", 0.3, 250, 0);
     this.squintEye("R", 0.3, 250, 0);
     this.burstEmoji("😢", 2, 24);
-    this.say("Ohh… 😢", 1500);
+    this.say(this.t().sad, 1500);
   }
 
   private actScared() {
@@ -2283,7 +2369,7 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.eyeL, scale: 1.6, duration: 120, yoyo: true, repeat: 3 });
     this.tweens.add({ targets: this.eyeR, scale: 1.6, duration: 120, yoyo: true, repeat: 3 });
     this.burstEmoji("💦", 3);
-    this.say("Eek! 😨", 1500);
+    this.say(this.t().scared, 1500);
   }
 
   private actShocked() {
@@ -2292,14 +2378,14 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.eyeR, scale: 1.7, duration: 150, yoyo: true });
     this.pulse(1.08, 1, 200);
     this.burstEmoji("😲", 1, 30);
-    this.say("Whoa! 😲", 1500);
+    this.say(this.t().shocked, 1500);
   }
 
   private actExcited() {
     win();
     this.pulse(1.15, 6, 150);
     this.burstEmoji("⭐", 5, 20);
-    this.say("Woo-hoo! 🤩", 1500);
+    this.say(this.t().excited, 1500);
   }
 
   private actSleepy() {
@@ -2307,20 +2393,20 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.root, angle: 4, duration: 500, yoyo: true });
     this.time.delayedCall(900, () => this.bothEyes(1, 250, 0));
     this.burstEmoji("😪", 1, 28);
-    this.say("Mm… sleepy 😪", 1500);
+    this.say(this.t().sleepy, 1500);
   }
 
   private actSnore() {
     this.bothEyes(0.1, 500, 0);
     this.burstEmoji("💤", 3, 26);
-    this.say("Zzz… 💤", 1500);
+    this.say(this.t().snore, 1500);
   }
 
   private actWhistle() {
     win();
     this.tweens.add({ targets: this.owl, scaleX: 1.06, scaleY: 0.96, duration: 160, yoyo: true, repeat: 1 });
     this.burstEmoji("🎶", 2, 24);
-    this.say("Pew pew! 🎵", 1500);
+    this.say(this.t().whistle, 1500);
   }
 
   private actSing() {
@@ -2328,7 +2414,7 @@ export class NovaScene extends Phaser.Scene {
     this.pulse(1.06, 4, 260);
     this.burstEmoji("🎤", 2, 26);
     this.burstEmoji("🎵", 2, 20);
-    this.say("La la la! 🎵", 1500);
+    this.say(this.t().sing, 1500);
   }
 
   private actHeart() {
@@ -2336,7 +2422,7 @@ export class NovaScene extends Phaser.Scene {
     this.pulse(1.08, 2, 240);
     this.burstEmoji("💛", 6, 26);
     this.tweens.add({ targets: this.glowImg, alpha: 0.9, duration: 300, yoyo: true, ease: "Sine.easeInOut" });
-    this.say("Love you! 💛", 1600);
+    this.say(this.t().heart, 1600);
   }
 
   private actDizzy() {
@@ -2345,7 +2431,7 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.eyeL, scaleX: 0.6, scaleY: 1.4, duration: 120, yoyo: true, repeat: 3 });
     this.tweens.add({ targets: this.eyeR, scaleX: 0.6, scaleY: 1.4, duration: 120, yoyo: true, repeat: 3 });
     this.burstEmoji("😵", 2, 28);
-    this.say("Whoa, dizzy… 😵", 1600);
+    this.say(this.t().dizzy, 1600);
   }
 
   private actStretch() {
@@ -2353,7 +2439,7 @@ export class NovaScene extends Phaser.Scene {
     this.wingWave("L", -60, 1);
     this.wingWave("R", 60, 1);
     this.tweens.add({ targets: this.root, scaleY: this.baseScale * 1.06, duration: 500, yoyo: true, ease: "Sine.easeInOut" });
-    this.say("Big stretch! 🙆", 1500);
+    this.say(this.t().stretch, 1500);
   }
 
   private actHide() {
@@ -2368,7 +2454,7 @@ export class NovaScene extends Phaser.Scene {
         this.tweens.add({ targets: this.root, y: this.baseY, alpha: 1, duration: 260, ease: "Back.easeOut" });
       },
     });
-    this.say("Peekaboo! 🙈", 1500);
+    this.say(this.t().peek, 1500);
   }
 
   private actPeek() {
@@ -2379,7 +2465,7 @@ export class NovaScene extends Phaser.Scene {
       } });
     } });
     this.burstEmoji("👀", 1, 30);
-    this.say("Boo! 👀", 1500);
+    this.say(this.t().hide, 1500);
   }
 
   private actCheer() {
@@ -2388,7 +2474,7 @@ export class NovaScene extends Phaser.Scene {
     this.wingWave("R", 70, 2);
     this.pulse(1.1, 3, 200);
     this.burstEmoji("🎉", 4, 24);
-    this.say("Yay! 🎉", 1500);
+    this.say(this.t().cheer, 1500);
   }
 
   private actHmm() {
@@ -2396,7 +2482,7 @@ export class NovaScene extends Phaser.Scene {
     this.squintEye("L", 0.5, 220, 0);
     this.time.delayedCall(500, () => this.squintEye("L", 1, 180, 0));
     this.burstEmoji("🤔", 1, 28);
-    this.say("Hmm… 🤔", 1500);
+    this.say(this.t().hmm, 1500);
   }
 
   private actHighfive() {
@@ -2404,21 +2490,21 @@ export class NovaScene extends Phaser.Scene {
     this.wingWave("R", 80, 2);
     this.pulse(1.08, 1, 160);
     this.burstEmoji("✋", 2, 28);
-    this.say("High five! ✋", 1500);
+    this.say(this.t().highfive, 1500);
   }
 
   private actGobble() {
     win();
     this.tweens.add({ targets: this.owl, scaleX: 1.18, scaleY: 0.9, duration: 130, yoyo: true, repeat: 3 });
     this.burstEmoji("😋", 2, 26);
-    this.say("Nom nom! 😋", 1500);
+    this.say(this.t().gobble, 1500);
   }
 
   private actGlow() {
     win();
     this.tweens.add({ targets: this.glowImg, alpha: 0.95, duration: 400, yoyo: true, ease: "Sine.easeInOut" });
     this.burstEmoji("✨", 5, 22);
-    this.say("Sparks! ✨", 1500);
+    this.say(this.t().glow, 1500);
   }
 
   private actZoom() {
@@ -2432,7 +2518,7 @@ export class NovaScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
       onComplete: () => this.tweens.add({ targets: this.root, x: this.baseX, duration: 220, ease: "Sine.easeInOut" }),
     });
-    this.say("Zoomies! 💨", 1500);
+    this.say(this.t().zoom, 1500);
   }
 
   private actDisco() {
@@ -2442,7 +2528,7 @@ export class NovaScene extends Phaser.Scene {
     this.burstEmoji("🪩", 1, 34);
     this.burstEmoji("✨", 4, 18);
     this.tweens.add({ targets: this.glowImg, alpha: 0.9, duration: 200, yoyo: true, repeat: 5 });
-    this.say("Disco! 🪩", 1500);
+    this.say(this.t().disco, 1500);
   }
 
   /* ── pet-care: Nova is the kid's pet — bath, brush, cuddle, the works ── */
@@ -2458,7 +2544,7 @@ export class NovaScene extends Phaser.Scene {
       this.burstEmoji("💦", 3, 18);
       this.burstEmoji("✨", 3, 18);
     });
-    this.say("Rub-a-dub-dub! 🛁", 1700);
+    this.say(this.t().bath, 1700);
   }
 
   /** 🪮 Brush — long smooth sweeps, sparkles fly off the feathers. */
@@ -2467,7 +2553,7 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.owl, scaleX: 1.12, scaleY: 0.94, duration: 150, yoyo: true, repeat: 2, ease: "Sine.easeInOut" });
     this.wingWave("L", -34, 3);
     this.time.delayedCall(220, () => this.burstEmoji("✨", 4, 18));
-    this.say("So smooth! ✨", 1500);
+    this.say(this.t().brush, 1500);
   }
 
   /** 🤗 A big cozy hug — Nova squishes in close. */
@@ -2477,7 +2563,7 @@ export class NovaScene extends Phaser.Scene {
     this.tilt(-6, 260, 1);
     this.burstEmoji("🤗", 3, 28);
     this.burstEmoji("💛", 3, 22);
-    this.say("Hug time! 🤗", 1600);
+    this.say(this.t().hug, 1600);
   }
 
   /** 😘 Blow a kiss — hearts drift up from the beak. */
@@ -2486,7 +2572,7 @@ export class NovaScene extends Phaser.Scene {
     this.tweens.add({ targets: this.owl, scaleX: 1.12, scaleY: 0.92, duration: 120, yoyo: true, repeat: 1 });
     this.burstEmoji("😘", 2, 30);
     this.burstEmoji("💛", 4, 20);
-    this.say("Mwah! 😘", 1500);
+    this.say(this.t().kiss, 1500);
   }
 
   /** 🫳 Head scritches — Nova leans in, happy squint, gentle bob. */
@@ -2498,7 +2584,7 @@ export class NovaScene extends Phaser.Scene {
     this.time.delayedCall(420, () => this.bothEyes(1, 160, 0));
     this.tweens.add({ targets: this.root, y: this.baseY - 8, duration: 150, yoyo: true, repeat: 3, ease: "Sine.easeInOut" });
     this.burstEmoji("🫳", 2, 26);
-    this.say("Mmm… scritches! 😌", 1700);
+    this.say(this.t().scritch, 1700);
   }
 
   /** 🛏️ Nap — Nova settles down, dozes off, then wakes with a start. */
@@ -2514,7 +2600,7 @@ export class NovaScene extends Phaser.Scene {
       this.bothEyes(1, 200, 0);
       this.burstEmoji("😳", 2, 24);
     });
-    this.say("So cozy… nap time… 💤", 1900);
+    this.say(this.t().nap, 1900);
   }
 
   /** 🪶 Fly — Nova spreads her wings and soars out over the screen. */
@@ -2538,7 +2624,7 @@ export class NovaScene extends Phaser.Scene {
       },
     });
     this.burstEmoji("🪶", 3, 20);
-    this.say("I can fly! 🪶", 1600);
+    this.say(this.t().fly, 1600);
   }
 
   /** 📖 Read — Nova opens a storybook and bobs along. */
@@ -2549,7 +2635,7 @@ export class NovaScene extends Phaser.Scene {
     const book = this.add.text(beak.x + 30, beak.y + 6, "📖", txt(30, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5).setDepth(9000);
     this.tweens.add({ targets: book, y: book.y - 14, duration: 500, yoyo: true, repeat: 1, onComplete: () => book.destroy() });
     this.burstEmoji("📚", 2, 22);
-    this.say("Once upon a time… 📖", 1700);
+    this.say(this.t().read, 1700);
   }
 
   /* ── care / buy / equip ── */
