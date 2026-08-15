@@ -110,6 +110,14 @@ export default defineConfig({
             // #879 — zustand is the local-first state runtime; keep it out of
             // the entry so store changes don't re-touch the boot chunk.
             if (id.includes("node_modules/zustand/")) return "state";
+            // #1217 — three core + examples (GLTF/KTX2/OrbitControls loaders)
+            // ONLY. @react-three/fiber stays out so R3F's React dependency is
+            // NOT pulled into three-vendor (that would make the entry share
+            // React through three-vendor → three.js fetched on every cold
+            // start). three is only ever imported by the lazy Nova3D island,
+            // so this chunk is pulled lazily alongside it — keeping the island
+            // chunk under the 1MiB oracle budget (#879).
+            if (id.includes("node_modules/three")) return "three-vendor";
             // Phaser engine + scenes stay in their own dynamic-import chunk
             // (gameHost.ts boot() already lazy-loads it — DO NOT change).
             if (id.includes("phaser")) return "phaser-vendor";
