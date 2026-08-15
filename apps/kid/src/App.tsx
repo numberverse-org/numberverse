@@ -29,7 +29,7 @@ import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpe
 import { getAppLang, setAppLang, getLocale, currentFestival } from "./game/locale";
 import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { readA11y, writeA11y, initA11y, type A11yPrefs } from "./game/a11y";
-import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady } from "./game/gameHost";
+import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady, startSceneWithFade, fadeOutScene } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
 import { emptyGarden, gardenSummary } from "./game/garden";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
@@ -227,6 +227,10 @@ export default function App() {
    *  flags (reteach > 0) after the mastery gate blocks an advance. */
   const [reteachNonce, setReteachNonce] = useState(0);
   const activeSceneRef = useRef<string | null>(null);
+  // #1449 — true while a leaveGame() fade-out is in flight; pending scene-start
+  // callbacks use it to abandon their own fade-out instead of starting a new
+  // scene on top of the screen that is about to unmount.
+  const leavingGameRef = useRef(false);
   // #1127 — incremental streak/wrongs tail for the round loop. `events` grows
   // per session and onRoundDone used to run THREE O(events) tail scans every
   // round (sessionStreak(evs.slice(0,-1)) + sessionStreak(evs) + a wrongs loop).
@@ -2091,17 +2095,30 @@ export default function App() {
     setKidPaused(false);
     cancelSpeech();
     const game = gameRef.current;
-    if (game) {
-      if (activeSceneRef.current) game.scene.stop(activeSceneRef.current);
-      game.scene.start("Boot");
-    }
+    const activeSceneKey = activeSceneRef.current;
     activeSceneRef.current = null;
-    setRoundsDone(0);
-    setSessionIdx(0);
-    // #1380 — return to the screen the game was launched from (world detail,
-    // home, syllabus, etc.), not a hard-coded home. `goBack` pops the same
-    // history stack used by the PWA/system back gesture.
-    goBack();
+    // #1449 — fade the live scene to black BEFORE the DOM screen swap, and do
+    // NOT synchronously restart the empty Boot scene (that was an abrupt cut to
+    // a blank navy canvas while Home finished mounting).
+    const finish = () => {
+      leavingGameRef.current = false;
+      setRoundsDone(0);
+      setSessionIdx(0);
+      // #1380 — return to the screen the game was launched from (world detail,
+      // home, syllabus, etc.), not a hard-coded home. `goBack` pops the same
+      // history stack used by the PWA/system back gesture.
+      goBack();
+    };
+    if (game && activeSceneKey) {
+      leavingGameRef.current = true;
+      const duration = reduceMotion ? 0 : 160;
+      fadeOutScene(game, activeSceneKey, duration, () => {
+        game.scene.stop(activeSceneKey);
+        finish();
+      });
+    } else {
+      finish();
+    }
   };
 
   /** #1426 — kid-initiated pause: freeze the active lesson scene and show a
@@ -2130,14 +2147,17 @@ export default function App() {
     ensureAudio();
     setKidPaused(false);
   };
+  };
 
-  /* ── #357 — predicted next scene: the HOME screen is where the next tap is
-     most likely "PLAY", so warm the engine chunk at idle (fetch + parse + eval
-     off the critical path). bootGame() later does `import("./engine")` — a
-     module-cache hit → the first game opens instantly. Budget-safe: the chunk
-     is already in the SW precache (bytes are fetched at install regardless),
-     so this only shifts parse/eval to idle time, never adds network. One-shot
-     per mount (engineWarmedRef). */
+  /* ── #357/#1450 — predicted next scene: HOME (and the kid-pick screen that
+     feeds it) is where the next tap is most likely "PLAY", so warm the engine
+     chunk at idle (fetch + parse + eval off the critical path). Warming on
+     kid-pick too — not only after the kid reaches Home — means the first PLAY
+     tap isn't racing a still-cold engine chunk. bootGame() later does
+     `import("./engine")` — a module-cache hit → the first game opens instantly.
+     Budget-safe: the chunk is already in the SW precache (bytes are fetched at
+     install regardless), so this only shifts parse/eval to idle time, never
+     adds network. One-shot per mount (engineWarmedRef). */
   const engineWarmedRef = useRef(false);
   useEffect(() => {
     // #1410 — warm the engine chunk on the pre-play gates too (welcome + parent),
@@ -2203,7 +2223,11 @@ export default function App() {
         return;
       }
       gameRef.current = g;
-      setGameBoot("ready");
+      // #1447 — do NOT mark the engine ready here. `createGame()` returning is
+      // only the Phaser instance existing; the first scene may still be booting
+      // (a navy canvas). The active-scene start callbacks flip this to "ready"
+      // once their scene has actually rendered, so the loading overlay stays up
+      // until there is something real to look at.
       (window as unknown as Record<string, unknown>).__NV_GAME__ = g;
     }).catch(() => {
       // #1377 — an unexpected boot rejection must surface the same recovery
@@ -2228,26 +2252,32 @@ export default function App() {
     const mountEl = mountRef.current;
     let active = true;
     const start = (game: Game) => {
-      if (!active || screen !== "nova") return;
-      if (activeSceneRef.current && activeSceneRef.current !== "Nova") {
-        game.scene.stop(activeSceneRef.current);
-      }
+      if (!active || screen !== "nova" || leavingGameRef.current) return;
       // Nova greets the kid BY NAME with TODAY'S PLAN — the recommended next
       // skill + their current streak — computed fresh from the local store.
       const st = useKidStore.getState();
       const rec = recommendedSkill(st.skills, kid.id);
-      game.scene.start("Nova", {
-        kidId: kid.id,
-        kidName: kid.name,
-        // #1353/#1381 — Nova's back button returns to the screen that opened
-        // it (home, cards, worlds, done, …) instead of always home.
-        onBack: goBack,
-        onPlay: () => setScreen("home"),
-        recTitle: rec?.title ?? null,
-        recTitleBn: rec?.titleBn ?? null,
-        streak: st.nova[kid.id]?.streak ?? 0,
+      startSceneWithFade({
+        game,
+        fromKey: activeSceneRef.current,
+        toKey: "Nova",
+        data: {
+          kidId: kid.id,
+          kidName: kid.name,
+          // #1353/#1381 — Nova's back button returns to the screen that opened
+          // it (home, cards, worlds, done, …) instead of always home.
+          onBack: goBack,
+          onPlay: () => setScreen("home"),
+          recTitle: rec?.title ?? null,
+          recTitleBn: rec?.titleBn ?? null,
+          streak: st.nova[kid.id]?.streak ?? 0,
+        },
+        isCancelled: () => leavingGameRef.current,
+        onStarted: () => {
+          activeSceneRef.current = "Nova";
+        },
+        onRendered: () => setGameBoot("ready"),
       });
-      activeSceneRef.current = "Nova";
     };
     whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {
@@ -2261,20 +2291,26 @@ export default function App() {
     const mountEl = mountRef.current;
     let active = true;
     const start = (game: Game) => {
-      if (!active || screen !== "garden") return;
-      if (activeSceneRef.current && activeSceneRef.current !== "Garden") {
-        game.scene.stop(activeSceneRef.current);
-      }
-      game.scene.start("Garden", {
-        kidId: kid.id,
-        kidName: kid.name,
-        // #1353/#1378 — the garden returns to the screen that opened it.
-        onBack: goBack,
+      if (!active || screen !== "garden" || leavingGameRef.current) return;
+      startSceneWithFade({
+        game,
+        fromKey: activeSceneRef.current,
+        toKey: "Garden",
+        data: {
+          kidId: kid.id,
+          kidName: kid.name,
+          // #1353/#1378 — the garden returns to the screen that opened it.
+          onBack: goBack,
+        },
+        isCancelled: () => leavingGameRef.current,
+        onStarted: () => {
+          activeSceneRef.current = "Garden";
+        },
+        onRendered: () => setGameBoot("ready"),
       });
       // #769 — snapshot the garden the kid is ABOUT to see, so Home can cue
       // "new growth!" whenever it outgrew the last visit.
       useKidStore.getState().novaMarkGardenSeen(kid.id);
-      activeSceneRef.current = "Garden";
     };
     whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {
@@ -2311,16 +2347,20 @@ export default function App() {
     // wrong tap (resolve-to-complete: wrongs accumulate until a correct solve).
     wrongLedger.setContext({ kidId: kid.id, skillId: step.skillId, gameId: step.gameId, difficulty: startLevelIndex });
     const start = (game: Game) => {
-      if (!active || screen !== "playing") return;
-      // stop the previous scene so two games never render at once
-      if (activeSceneRef.current && activeSceneRef.current !== step.scene) {
-        game.scene.stop(activeSceneRef.current);
-      }
-      // Use the SceneManager directly (not target.scene.start): at boot time the
-      // scene instance may not exist yet (Phaser creates it lazily on first start),
-      // so `getScene(key)` can return null even when `game.isBooted` is true.
-      // `game.scene.start` creates the instance if needed and passes data through.
-      game.scene.start(step.scene, {
+      if (!active || screen !== "playing" || leavingGameRef.current) return;
+      // #1448 — fade the previous scene out before stopping it, then fade the
+      // next scene in. `startSceneWithFade` uses the SceneManager directly (not
+      // `target.scene.start`): at boot time the scene instance may not exist yet
+      // (Phaser creates it lazily on first start), so `getScene(key)` can return
+      // null even when `game.isBooted` is true. The helper falls back to
+      // `game.scene.start`, which creates the instance if needed and passes data
+      // through.
+      startSceneWithFade({
+        game,
+        fromKey: activeSceneRef.current,
+        toKey: step.scene,
+        isCancelled: () => leavingGameRef.current,
+        data: {
         startLevelIndex,
         mode: step.mode,
         challenge,
@@ -2493,8 +2533,12 @@ export default function App() {
           void syncProgress();
           setRoundsDone((n) => n + 1);
         },
+        },
+        onStarted: () => {
+          activeSceneRef.current = step.scene;
+        },
+        onRendered: () => setGameBoot("ready"),
       });
-      activeSceneRef.current = step.scene;
     };
     whenGameReady(mountEl, start); // waits for the async engine chunk
     return () => {

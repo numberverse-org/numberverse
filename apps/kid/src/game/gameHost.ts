@@ -8,12 +8,87 @@
  * This module is part of the MAIN bundle — it only `import type`s Phaser (the
  * type is erased at build time, so zero runtime Phaser bytes land here).
  */
-import type { Game } from "phaser";
+import type { Game, Scene } from "phaser";
 import { startPerfProbe, stopPerfProbe } from "./perfProbe"; // #1324 — frame-jank measuring stick
 
 let bootPromise: Promise<Game | null> | null = null;
 let current: Game | null = null;
 let generation = 0;
+
+/** #1448 — quick, kid-friendly scene fade. Short enough to feel snappy, long
+ *  enough to hide the old-scene stop / new-scene start seam (and the one-frame
+ *  blank a synchronous hard cut used to flash). */
+const SCENE_FADE_MS = 150;
+
+export interface SceneStartOptions {
+  game: Game;
+  /** Key of the scene to fade out (may be null on first boot). */
+  fromKey: string | null;
+  /** Key of the scene to start after the fade. */
+  toKey: string;
+  /** Data passed through to `game.scene.start`. */
+  data?: object;
+  /** Invoked after `game.scene.start` has run (the new scene may not be
+   *  visible yet). Use this to update React refs immediately. */
+  onStarted?: (scene: Scene | null) => void;
+  /** Invoked once the new scene has actually rendered — the point where the
+   *  boot/loading overlay is finally safe to unmount (#1447). */
+  onRendered?: () => void;
+  /** Return true to abandon a pending fade-out before starting the next scene
+   *  (e.g. the kid pressed Back mid-transition). */
+  isCancelled?: () => boolean;
+}
+
+/**
+ * #1448 — fade the current scene out, stop it, start the next scene, then fade
+ * it back in. Works for the boot path too (`fromKey` null → only the fade-in),
+ * and for restarting the SAME scene (pass `fromKey === toKey`).
+ *
+ * Kept in gameHost (the MAIN bundle) on purpose: it only imports Phaser types,
+ * so no Phaser runtime bytes land in the app chunk — the same guarantee as the
+ * rest of this module (#15).
+ */
+export function startSceneWithFade({ game, fromKey, toKey, data, onStarted, onRendered, isCancelled }: SceneStartOptions): void {
+  const from = fromKey ? game.scene.getScene(fromKey) : null;
+  const begin = () => {
+    if (isCancelled?.()) return;
+    game.scene.start(toKey, data);
+    const next = game.scene.getScene(toKey);
+    if (next) {
+      next.cameras.main.fadeIn(SCENE_FADE_MS, 0, 0, 0);
+      next.events.once("render", () => onRendered?.());
+    } else {
+      // Defensive: never leave the loading overlay stuck on a missing scene.
+      onRendered?.();
+    }
+    onStarted?.(next);
+  };
+
+  if (!from) {
+    begin();
+    return;
+  }
+
+  from.cameras.main.fadeOut(SCENE_FADE_MS, 0, 0, 0);
+  from.cameras.main.once("camerafadeoutcomplete", () => {
+    game.scene.stop(fromKey as string);
+    if (isCancelled?.()) return;
+    begin();
+  });
+}
+
+/** #1449 — fade a scene to black without starting a replacement. The caller
+ *  stops the scene and swaps the DOM screen in the completion callback, so the
+ *  old canvas stays visible (and covered by the fade) until Home is ready. */
+export function fadeOutScene(game: Game, key: string, duration: number, onComplete: () => void): void {
+  const scene = game.scene.getScene(key);
+  if (!scene || duration <= 0) {
+    onComplete();
+    return;
+  }
+  scene.cameras.main.fadeOut(duration, 0, 0, 0);
+  scene.cameras.main.once("camerafadeoutcomplete", onComplete);
+}
 
 /** The live game, if one is currently created. */
 export function getGame(): Game | null {
