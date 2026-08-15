@@ -5157,7 +5157,21 @@ export default function App() {
      where the pet games live. */
   if (screen === "nova3d") {
     return (
-      <Suspense fallback={<div className="nova3d-loading" aria-live="polite">{t.islandLoading}</div>}>
+      <Suspense
+        fallback={
+          // #880 — the lazy Nova3DHome chunk is SW-precached; show the same
+          // spinner + friendly copy as the other lazy-screen fallbacks.
+          <div
+            className="nova3d-loading"
+            role="status"
+            aria-label={t.islandLoading}
+            style={{ flexDirection: "column", gap: 12 }}
+          >
+            <span className="game-boot-spinner" aria-hidden="true" />
+            <span className="screen-suspense-txt">{t.islandLoading}</span>
+          </div>
+        }
+      >
         <Nova3DHome
           kidName={kid?.name ?? ""}
           kidId={kid?.id ?? ""}

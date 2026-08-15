@@ -70,12 +70,17 @@ export default defineConfig({
       },
     }),
   ],
-  // #691 — the 3D island must never force a >1MB chunk download. three.js +
-  // R3F move to their own cacheable vendor chunk, so the lazy island chunk
-  // stays small and the vendor chunk survives island app updates.
+  // #879 — the main entry bundle must stay lean: react, zustand and core are
+  // pinned into named vendor chunks instead of flowing into the default entry
+  // chunk unpredictably. three/@react-three/* stay OUT of this config entirely:
+  // Nova3DHome is lazy in App.tsx (#880), so three.js/fiber only ever ride the
+  // lazy nova3d chunk.
   build: {
+    // #879 — any chunk over 500 kB (pre-gzip) triggers the Vite size warning,
+    // so a heavy dep sneaking back into the entry is caught at build time.
+    chunkSizeWarningLimit: 500,
     // #691 — keep the island + games genuinely lazy: no modulepreload links
-    // (they made three-vendor/phaser-vendor fetch on every cold start; the
+    // (they made the nova3d/phaser chunks fetch on every cold start; the
     // lazy chunks should download only when a kid actually enters them).
     modulePreload: false,
     rollupOptions: {
@@ -88,12 +93,25 @@ export default defineConfig({
           // 1.4 MB of Phaser must download+execute before the splash paints.
           // Give the helper its own tiny chunk so boot only ever touches it.
           if (id.includes("commonjsHelpers")) return "vendor-cjs";
+          // #879 — @numberverse/core is a workspace symlink; Vite resolves it
+          // to the real /packages/core/ path (no node_modules segment), so it
+          // must be matched before the node_modules guard below.
+          if (
+            id.includes("@numberverse/core") ||
+            id.includes("/packages/core/")
+          ) return "core";
           if (id.includes("node_modules")) {
-            // three core + examples (GLTF/KTX2/OrbitControls loaders) ONLY.
-            // @react-three/fiber stays out so R3F's React dependency is NOT
-            // pulled into three-vendor (that made the entry share React
-            // through three-vendor → three.js fetched on every cold start).
-            if (id.includes("node_modules/three")) return "three-vendor";
+            // #879 — react + react-dom (and react/jsx-runtime, which shares
+            // the node_modules/react path) form the entry's runtime chunk.
+            if (
+              id.includes("node_modules/react/") ||
+              id.includes("node_modules/react-dom/")
+            ) return "react";
+            // #879 — zustand is the local-first state runtime; keep it out of
+            // the entry so store changes don't re-touch the boot chunk.
+            if (id.includes("node_modules/zustand/")) return "state";
+            // Phaser engine + scenes stay in their own dynamic-import chunk
+            // (gameHost.ts boot() already lazy-loads it — DO NOT change).
             if (id.includes("phaser")) return "phaser-vendor";
           }
         },
