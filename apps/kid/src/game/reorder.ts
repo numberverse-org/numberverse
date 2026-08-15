@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { digit } from "./i18n";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
@@ -125,14 +126,8 @@ export interface DragReorderData {
   levels?: number[];
 }
 
-const BN_D = "০১২৩৪৫৬৭৮৯";
 const CHALLENGE_SECONDS = 15; // #1158 — per-round countdown in challenge mode
 const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
-
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
-
 export abstract class DragReorderScene extends Phaser.Scene {
   protected levelIndex = 0;
   protected roundsDone = 0;

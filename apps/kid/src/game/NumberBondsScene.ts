@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { getAppLang } from "./locale";
 import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -19,11 +19,7 @@ const SKILL_10 = "number-bonds-10";
 const SKILL_20 = "number-bonds-20";
 const ROUNDS_TO_FINISH = 3;
 const BUTTON_RADIUS = 52;
-const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-/** Bangla kids read ৮; English kids 8 — same numeral, local digits. */
-function bdDigits(s: string | number): string {
-  return getAppLang() === "bn" ? String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(s);
-}
+
 
 /**
  * Number Bonds to 10 / 20 — "How many more to make 10 (or 20)?"
@@ -113,7 +109,7 @@ export class NumberBondsScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.prompt.set(frameText("howManyMore", this.skillId, this.levelIndex));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.shownText.setText(bdDigits(this.shown));
+    this.shownText.setText(digit(this.shown));
     speakMath("bonds", this.shown, this.target);
     this.drawTenFrame();
     this.spawnButtons();
@@ -150,7 +146,7 @@ export class NumberBondsScene extends Phaser.Scene {
     const values = [...opts].sort(() => Math.random() - 0.5);
     const { radius, y, xFor } = answerRow(this, values.length, BUTTON_RADIUS, 14);
     values.forEach((value, i) => {
-      const c = modernAnswerButton(this, xFor(i), y, radius, bdDigits(value));
+      const c = modernAnswerButton(this, xFor(i), y, radius, digit(value));
       c.on("pointerdown", () => this.tap(c, value));
       this.buttons.push({ sprite: c, value });
     });
@@ -160,7 +156,7 @@ export class NumberBondsScene extends Phaser.Scene {
     if (value !== this.answer) {
       hintWrong(this, container, {
         hint: () => `Which number joins ${this.shown} to make ${this.target}?`,
-        hintBn: () => `${bdDigits(this.shown)} এর সাথে কত যোগ করলে ${bdDigits(this.target)} হয়?`,
+        hintBn: () => `${digit(this.shown)} এর সাথে কত যোগ করলে ${digit(this.target)} হয়?`,
         correct: () => this.answer,
         options: () => this.buttons,
       });

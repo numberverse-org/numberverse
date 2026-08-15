@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -12,12 +12,7 @@ import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-elapsed")?.difficultyLevels ?? [4, 5, 6, 8, 8, 10];
 const ROUNDS_TO_FINISH = 3;
-const BN_D = "০১২৩৪৫৬৭৮৯";
 
-/** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 /** hh:mm with padded minutes — 2:45, 12:05 (Bangla digits when bn). */
 function fmtTime(h: number, m: number): string {
@@ -278,11 +273,7 @@ export class ElapsedTimeScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.42, text, txt(28, NV_GOLD, { bold: true, outline: true, wrap: 320 }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.42, text, NV_GOLD, 28, -24);
   }
 
   private clearButtons() {

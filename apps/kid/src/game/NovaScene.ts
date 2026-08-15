@@ -4,8 +4,7 @@ import { speak } from "./speech";
 import { cancelSpeech } from "./speech";
 import { txt, NV_COCOA, NV_GOLD } from "./ui";
 import { getAppLang, currentFestival } from "./locale";
-import { t } from "./i18n";
-import { bnNum } from "../i18n-core";
+import { t, digit } from "./i18n";
 import {
   useKidStore,
   NOVA_OUTFITS,
@@ -155,15 +154,15 @@ const NOVA_T = {
     playCta: "খেলি!",
     playSub: "কয়েন জিতো · ধারা চালিয়ে যাও 🔥",
     /* #765 — daily quest + claimable 7-day calendar mirrored from Home. */
-    calDay: (pos: number) => `দিন ${bnNum(pos)}`,
-    calClaim: (reward: number) => `+${bnNum(reward)} 🪙`,
+    calDay: (pos: number) => `দিন ${digit(pos)}`,
+    calClaim: (reward: number) => `+${digit(reward)} 🪙`,
     calClaimed: "✓",
     calNotReady: "আগে একটি খেলা খেলো, তারপর বোনাস নাও!",
     questType: { rounds: "🎯 রাউন্ড", stars: "⭐ তারা", master: "🏅 মাস্টারি", newgame: "🆕 নতুন খেলা" },
     questSpeak: (label: string, progress: number, target: number) =>
-      `আজকের চ্যালেঞ্জ: ${label} — ${bnNum(progress)}/${bnNum(target)}! যেকোনো সময় এখানে ট্যাপ করো!`,
+      `আজকের চ্যালেঞ্জ: ${label} — ${digit(progress)}/${digit(target)}! যেকোনো সময় এখানে ট্যাপ করো!`,
     questDoneSpeak: (label: string) => `আজকের চ্যালেঞ্জ শেষ — ${label} সম্পূর্ণ! দারুণ! 💛`,
-    calSpeak: (add: number) => `দিনের বোনাস! +${bnNum(add)} কয়েন! 🎁`,
+    calSpeak: (add: number) => `দিনের বোনাস! +${digit(add)} কয়েন! 🎁`,
     calCapSpeak: "কয়েনের পেয়ালা ভরে গেছে — এই বোনাস কাল নিরাপদে অপেক্ষা করবে! 🌙",
     calFreezeSpeak: "দারুণ! একটি স্ট্রিক-ফ্রিজ টোকেন — একটি মিস করা দিন নিরাপদ! 🧊",
     /* #766 — care decay: a gentle 'come back' when affection lapsed. */
@@ -1403,11 +1402,11 @@ export class NovaScene extends Phaser.Scene {
       const isToday = day === pos;
       const state = isToday && claimable ? "claim" : day < pos || claimedToday ? "done" : isToday ? "wait" : "future";
       if (state === "claim") {
-        c.setText(`🪙${bnNum(NOVA_CALENDAR_REWARDS[i])}`).setColor("#052e3f");
+        c.setText(`🪙${digit(NOVA_CALENDAR_REWARDS[i])}`).setColor("#052e3f");
       } else if (state === "done") {
         c.setText("✓").setColor("#9fd7ff");
       } else if (state === "wait") {
-        c.setText(`🪙${bnNum(NOVA_CALENDAR_REWARDS[i])}`).setColor("#ffe08a");
+        c.setText(`🪙${digit(NOVA_CALENDAR_REWARDS[i])}`).setColor("#ffe08a");
       } else {
         c.setText("🔒").setColor("#8aa0c8");
       }
@@ -1429,7 +1428,7 @@ export class NovaScene extends Phaser.Scene {
 
     // ── freeze pill (#768) — sits right after the streak dots.
     const freezes = nova.freezes ?? 0;
-    this.freezePill.setText(`🧊 ${bnNum(freezes)}`);
+    this.freezePill.setText(`🧊 ${digit(freezes)}`);
     this.freezePill.setVisible(freezes > 0);
     this.freezePill.setPosition(this.streakText.width / 2 + 12 + 7 * 13 + 10, 0);
   }

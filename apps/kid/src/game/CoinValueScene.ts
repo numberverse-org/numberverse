@@ -1,10 +1,10 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -20,8 +20,6 @@ const DENOMS = [
   { v: 2, bn: "দুই টাকা", g: "৳২", r: 40 },
   { v: 5, bn: "পাঁচ টাকা", g: "৳৫", r: 46 },
 ];
-const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-const bnNum = (n: number) => String(n).split("").map((c) => BN_DIGITS[Number(c)]).join("");
 
 /**
  * Coin values — পয়সা চিনি (#170).
@@ -125,7 +123,7 @@ export class CoinValueScene extends Phaser.Scene {
     } else {
       this.prompt.set(t("cvCount"));
       this.showCoin.setVisible(false);
-      this.totalText.setText("৳" + bnNum(this.pickTotal()));
+      this.totalText.setText("৳" + digit(this.pickTotal()));
       this.sumText.setText("০");
       this.trayRow.setVisible(true);
       const y = this.scale.height - 150 - SAB();
@@ -135,7 +133,7 @@ export class CoinValueScene extends Phaser.Scene {
         tile.on("pointerdown", () => this.addToTray(tile, x.v));
         this.coins.push({ sprite: tile, v: x.v });
       });
-      this.time.delayedCall(400, () => speak("৳" + bnNum(this.target), { lang: "bn" }));
+      this.time.delayedCall(400, () => speak("৳" + digit(this.target), { lang: "bn" }));
     }
   }
 
@@ -205,12 +203,12 @@ export class CoinValueScene extends Phaser.Scene {
     // reflow centered in local coordinates
     this.tray.forEach((c, i) => c.setPosition((i - (this.tray.length - 1) / 2) * 64, 0));
     this.traySum += v;
-    this.sumText.setText(bnNum(this.traySum));
+    this.sumText.setText(digit(this.traySum));
     if (this.traySum === this.target) {
       this.locked = true;
       win();
       this.floatMsg(t("cvGreat"));
-      this.time.delayedCall(200, () => speak("৳" + bnNum(this.target), { lang: "bn" }));
+      this.time.delayedCall(200, () => speak("৳" + digit(this.target), { lang: "bn" }));
       this.qInRound++;
       this.time.delayedCall(1000, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
     } else if (this.traySum > this.target) {
@@ -243,11 +241,7 @@ export class CoinValueScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(28, NV_GOLD, { bold: true, outline: true }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 1000, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.6, text, NV_GOLD, 28, -28);
   }
 
   private clearTray() {

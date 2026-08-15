@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
@@ -20,12 +20,6 @@ const CROSS_FROM_LEVEL = 4;
 const MODES = ["length", "weight", "capacity"] as const;
 type MeasureMode = (typeof MODES)[number];
 type Side = "left" | "right";
-
-const BN_D = "০১২৩৪৫৬৭৮৯";
-
-function bdDigits(s: string | number): string {
-  return String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]);
-}
 
 /**
  * Measurement — "Which is longer / heavier / holds more?"
@@ -184,7 +178,7 @@ export class MeasurementScene extends Phaser.Scene {
 
   private displayLabel(value: number, unitKey: string): string {
     const bn = getAppLang() === "bn";
-    const num = bn ? bdDigits(value) : String(value);
+    const num = bn ? digit(value) : String(value);
     return `${num} ${t(unitKey)}`;
   }
 

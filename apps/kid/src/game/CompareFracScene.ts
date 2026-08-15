@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -11,12 +11,7 @@ import { txt, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
 
 const LEVELS = GAMES.find((g) => g.id === "game-comparefrac")?.difficultyLevels ?? [0, 0, 1, 1, 2, 2];
 const ROUNDS_TO_FINISH = 3;
-const BN_D = "০১২৩৪৫৬৭৮৯";
 
-/** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 interface Frac {
   num: number;
@@ -329,11 +324,7 @@ export class CompareFracScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string, color = 0xffd166) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.3, text, txt(26, `#${color.toString(16).padStart(6, "0")}`, { bold: true, outline: true, wrap: 340 }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1500, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.3, text, `#${color.toString(16).padStart(6, "0")}`, 26, -24);
   }
 
   private clearPizzas() {

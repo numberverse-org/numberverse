@@ -1,6 +1,7 @@
 import Phaser from "phaser";
+import { floatText } from "./celebrate";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
@@ -14,12 +15,7 @@ import { SAB } from "./safeArea";
 const LEVELS = GAMES.find((g) => g.id === "game-countback")?.difficultyLevels ?? [10, 20, 30, 40, 60, 100];
 const ROUNDS_TO_FINISH = 3;
 const START = 100;
-const BN_D = "০১২৩৪৫৬৭৮৯";
 
-/** Local digits — Bangla kids see ১০০, English kids 100. */
-function num(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 /**
  * Count back from 100 (#49).
@@ -97,8 +93,8 @@ export class CountBackScene extends Phaser.Scene {
     this.prompt.set(t("countBackPrompt"));
     this.rocket.setPosition(this.scale.width * 0.88, this.rocketY0);
     this.rocket.setScale(1);
-    speak(num(this.current), { lang: getAppLang() === "bn" ? "bn" : "en" });
-    this.currentText.setText(num(this.current));
+    speak(digit(this.current), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    this.currentText.setText(digit(this.current));
     this.askStep();
   }
 
@@ -123,7 +119,7 @@ export class CountBackScene extends Phaser.Scene {
     const bw = Math.min(120, this.scale.width / (n + 0.5) - 14);
     const by = this.scale.height - 84 - SAB();
     opts.sort(() => Math.random() - 0.5).forEach((value, i) => {
-      const c = modernAnswerButton(this, gap * (i + 1), by, bw / 2, num(value), BTN_PRIMARY, { labelSize: 26 });
+      const c = modernAnswerButton(this, gap * (i + 1), by, bw / 2, digit(value), BTN_PRIMARY, { labelSize: 26 });
       c.on("pointerdown", () => this.tap(c, value));
       this.answers.push({ sprite: c, value });
     });
@@ -134,10 +130,10 @@ export class CountBackScene extends Phaser.Scene {
     if (value !== this.target) {
       bad();
       hintWrong(this, container, {
-        hint: () => `One less than ${num(this.current)}.`,
-        hintBn: () => `${num(this.current)}-এর আগের সংখ্যা।`,
-        correct: () => num(this.target),
-        options: () => this.answers.map((o) => ({ sprite: o.sprite, value: num(o.value) })),
+        hint: () => `One less than ${digit(this.current)}.`,
+        hintBn: () => `${digit(this.current)}-এর আগের সংখ্যা।`,
+        correct: () => digit(this.target),
+        options: () => this.answers.map((o) => ({ sprite: o.sprite, value: digit(o.value) })),
       });
       return;
     }
@@ -147,8 +143,8 @@ export class CountBackScene extends Phaser.Scene {
     ringCorrect(this, container);
     this.current = this.target;
     this.doneThisRound++;
-    this.currentText.setText(num(this.current));
-    speak(num(this.current), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    this.currentText.setText(digit(this.current));
+    speak(digit(this.current), { lang: getAppLang() === "bn" ? "bn" : "en" });
     // rocket climbs as the countdown progresses
     const p = this.doneThisRound / this.needThisRound;
     this.rocket.y = this.rocketY0 - p * this.scale.height * 0.34;
@@ -185,10 +181,7 @@ export class CountBackScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.6, text, txt(30, NV_GOLD, { bold: true, outline: true }))
-      .setOrigin(0.5).setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 900, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.6, text, NV_GOLD, 30, -24);
   }
 
   private clearRound() {

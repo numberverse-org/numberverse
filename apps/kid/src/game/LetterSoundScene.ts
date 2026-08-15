@@ -8,7 +8,7 @@ import { speak } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD } from "./ui";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-lettersound")?.difficultyLevels ?? [2, 2, 3, 3, 4, 4];
@@ -182,11 +182,7 @@ export class LetterSoundScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.5, text, txt(28, NV_GOLD, { bold: true, outline: true }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 28, alpha: 0, duration: 1000, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.5, text, NV_GOLD, 28, -28);
   }
 
   private clearTiles() {

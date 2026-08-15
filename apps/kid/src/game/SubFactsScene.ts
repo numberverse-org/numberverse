@@ -1,10 +1,10 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
@@ -17,12 +17,7 @@ const QUESTION_TIME = 6000; // ms per fact — a real timed drill
 const FAST_MS = 2500; // faster than this → ⚡
 const NUM_MIN = 0;
 const NUM_MAX = 20;
-const BN_D = "০১২৩৪৫৬৭৮৯";
 
-/** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 /**
  * Subtraction facts to 20 fluency — the minus twin of FactsAddScene (#189).
@@ -303,11 +298,7 @@ export class SubFactsScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string) {
-    const m = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.68, text, txt(24, NV_GOLD, { bold: true, outline: true, wrap: 300 }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
+    floatText(this, this.scale.width / 2, this.scale.height * 0.68, text, NV_GOLD, 24, -24);
   }
 
   private clearTiles() {

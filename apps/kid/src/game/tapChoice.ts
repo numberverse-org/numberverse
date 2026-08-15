@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { digit } from "./i18n";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
@@ -56,11 +57,6 @@ export interface TapChoiceConfig {
   nameKeys: Record<string, string>;
   rounds: number;
   cols: number;
-}
-
-const BN_D = "০১২৩৪৫৬৭৮৯";
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
 }
 
 export abstract class TapChoiceScene extends Phaser.Scene {

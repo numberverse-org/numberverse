@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { getAppLang } from "./locale";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
@@ -12,14 +12,7 @@ import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } 
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-barchart")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
-/** Skill seed for deterministic framing rotation. */
-const SKILL_ID = GAMES.find((g) => g.id === "game-barchart")?.skillId ?? "data-barchart";
-const ROUNDS_TO_FINISH = 3;
-const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-/** Bangla kids read ৩; English kids 3 — same numeral, local digits. */
-function bdDigits(s: string | number): string {
-  return getAppLang() === "bn" ? String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(s);
-}
+
 
 interface ChartCat {
   emoji: string;
@@ -184,7 +177,7 @@ export class BarChartScene extends Phaser.Scene {
       const pick = cats[Math.floor(Math.random() * cats.length)];
       this.answerIdx = cats.indexOf(pick);
       const n = pick.count;
-      this.prompt.set(t("chartWhich", { n: bdDigits(n) }));
+      this.prompt.set(t("chartWhich", { n: digit(n) }));
       speak(t("chartWhichSpeak", { word: bn ? bnNumber(n) : String(n) }), { lang: bn ? "bn" : "en" });
     } else {
       this.qType = "howmany";
@@ -233,7 +226,7 @@ export class BarChartScene extends Phaser.Scene {
       const label = this.add.text(0, this.baselineY + 26, bn ? cat.bn : cat.en, txt(15, "#ffffff", { align: "center" })).setOrigin(0.5, 0);
       c.add(label);
       // count badge on the bar top
-      const badge = this.add.text(0, topY + 14, bdDigits(cat.count), txt(16, NV_NAVY, { bold: true })).setOrigin(0.5);
+      const badge = this.add.text(0, topY + 14, digit(cat.count), txt(16, NV_NAVY, { bold: true })).setOrigin(0.5);
       c.add(badge);
       // tap target = the whole column (emoji + bar + word)
       const hitH = this.baselineY - topY + 52;

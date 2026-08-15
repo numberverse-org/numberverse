@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
-import { correctCelebrate } from "./celebrate";
+import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
@@ -12,12 +12,7 @@ import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-addregroup")?.difficultyLevels ?? [5, 6, 8, 8, 10, 10];
 const ROUNDS_TO_FINISH = 3;
-const BN_D = "০১২৩৪৫৬৭৮৯";
 
-/** Local digits — Bangla kids see ১ ২ ৩, English kids 1 2 3. */
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 /**
  * 2-digit addition with regrouping (visual) (#192).
@@ -324,6 +319,7 @@ export class AddRegroupScene extends Phaser.Scene {
         const full = this.tensDigit * 10 + this.onesDigit;
         this.floatMsg(t("arSum", { t: digit(this.tensA), t2: digit(this.tensB), c: digit(1), n: digit(this.tensDigit) }), this.scale.width / 2, this.scale.height * 0.56);
         speak(digit(full), { lang: getAppLang() === "bn" ? "bn" : "en" });
+        this.correct++;
         const ms = Math.max(1, this.time.now - this.startedAt);
         this.advance(ms);
       }
@@ -364,11 +360,7 @@ export class AddRegroupScene extends Phaser.Scene {
   }
 
   private floatMsg(text: string, x: number, y: number) {
-    const m = this.add
-      .text(x, y, text, txt(24, NV_GOLD, { bold: true, outline: true, wrap: 300 }))
-      .setOrigin(0.5)
-      .setDepth(30);
-    this.tweens.add({ targets: m, y: m.y - 24, alpha: 0, duration: 1400, onComplete: () => m.destroy() });
+    floatText(this, x, y, text, NV_GOLD, 24, -24);
   }
 
   private clearTiles() {

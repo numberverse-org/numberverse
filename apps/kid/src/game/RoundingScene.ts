@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { getAppLang } from "./locale";
 import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -13,15 +13,7 @@ import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, roundMeter, type R
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-round")?.difficultyLevels ?? [40, 80, 120, 400, 700, 999];
-/** Skill seed for deterministic framing rotation. */
-const SKILL_ID = GAMES.find((g) => g.id === "game-round")?.skillId ?? "round-nearest-10-100";
-const ROUNDS_TO_FINISH = 3;
-const BUTTON_RADIUS = 50;
-const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-/** Bangla kids read ৪৭; English kids 47 — same numeral, local digits. */
-function bdDigits(s: string | number): string {
-  return getAppLang() === "bn" ? String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(s);
-}
+
 
 /**
  * Round It — round a number to the nearest ten or hundred on a NUMBER LINE.
@@ -133,9 +125,9 @@ export class RoundingScene extends Phaser.Scene {
     this.frac = (n - this.lower) / this.step();
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
-    this.prompt.set(frameText(this.toHundred ? "round100Prompt" : "round10Prompt", SKILL_ID, this.levelIndex, { n: bdDigits(n) }));
+    this.prompt.set(frameText(this.toHundred ? "round100Prompt" : "round10Prompt", SKILL_ID, this.levelIndex, { n: digit(n) }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.shownText.setText(bdDigits(n));
+    this.shownText.setText(digit(n));
     const bn = getAppLang() === "bn";
     speak(t(this.toHundred ? "roundSpeak100" : "roundSpeak10", { word: bn ? bnNumber(n) : String(n) }), { lang: bn ? "bn" : "en" });
     this.drawLine();
@@ -173,7 +165,7 @@ export class RoundingScene extends Phaser.Scene {
       { x: rightX, value: this.upper },
     ];
     opts.forEach((o) => {
-      const c = modernAnswerButton(this, o.x, y, BUTTON_RADIUS, bdDigits(o.value), BTN_PRIMARY, { labelSize: 30 });
+      const c = modernAnswerButton(this, o.x, y, BUTTON_RADIUS, digit(o.value), BTN_PRIMARY, { labelSize: 30 });
       c.on("pointerdown", () => this.tap(c, o.value));
       this.buttons.push({ sprite: c, value: o.value });
     });
@@ -189,7 +181,7 @@ export class RoundingScene extends Phaser.Scene {
     if (value !== this.correct) {
       hintWrong(this, container, {
         hint: () => `${this.shown} is closer to ${this.correct}!`,
-        hintBn: () => `${bdDigits(this.shown)} ${bdDigits(this.correct)} এর কাছাকাছি!`,
+        hintBn: () => `${digit(this.shown)} ${digit(this.correct)} এর কাছাকাছি!`,
         correct: () => this.correct,
         options: () => this.buttons,
       });

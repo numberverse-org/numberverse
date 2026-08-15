@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { digit } from "./i18n";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
@@ -65,12 +66,6 @@ export interface BinSortConfig {
   grid: 2 | 4 | 5;
   /** Rounds to finish per level. */
   rounds: number;
-}
-
-const BN_D = "০১২৩৪৫৬৭৮৯";
-
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
 }
 
 export abstract class BinSortScene extends Phaser.Scene {

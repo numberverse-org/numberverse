@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
@@ -22,11 +22,6 @@ const CHALLENGE_BAR = 0xffb703; // gold; the drained bar = the pressure
 /** Bilingual helper — this scene is data-first; UI copy lives here instead of
  *  growing the central i18n table (skill titles live in skills.ts). */
 const L = (en: string, bn: string) => (getAppLang() === "bn" ? bn : en);
-
-const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-function bdDigits(s: string | number): string {
-  return getAppLang() === "bn" ? String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(s);
-}
 
 interface MemPair {
   a: string; // face A
@@ -104,11 +99,11 @@ const BONDS_TO_10: Array<[number, number]> = [
 
 function bondPairs(): MemPair[] {
   const bn = getAppLang() === "bn";
-  const target = bdDigits(10);
+  const target = digit(10);
   return BONDS_TO_10.map(([a, b]) => ({
-    a: bdDigits(a),
-    b: bdDigits(b),
-    say: bn ? `${bdDigits(a)} আর ${bdDigits(b)} মিলে ${target}!` : `${a} and ${b} make 10!`,
+    a: digit(a),
+    b: digit(b),
+    say: bn ? `${digit(a)} আর ${digit(b)} মিলে ${target}!` : `${a} and ${b} make 10!`,
   }));
 }
 

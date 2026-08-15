@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { getAppLang } from "./locale";
 import { frameText } from "./framing";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -12,12 +12,6 @@ import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { answerRow } from "./layout";
-
-const BN_D = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
-/** Bangla kids read ৫০; English kids 50 — same numeral, local digits. */
-function bdDigits(s: string | number): string {
-  return getAppLang() === "bn" ? String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(s);
-}
 
 const LEVELS = GAMES.find((g) => g.id === "game-oddeven")?.difficultyLevels ?? [10, 20, 30, 50, 80, 100];
 /** Skill seed for deterministic framing rotation. */
@@ -109,7 +103,7 @@ export class OddEvenScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.prompt.set(frameText("oddEvenPrompt", SKILL_ID, this.levelIndex));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.shownText.setText(bdDigits(this.shown));
+    this.shownText.setText(digit(this.shown));
     this.drawPairs();
     this.spawnButtons();
     // Spoken feedback (#746): read the number, then the question — EN or BN

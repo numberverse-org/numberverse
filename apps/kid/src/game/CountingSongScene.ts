@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { win, playNote, pop } from "./audio";
@@ -19,14 +19,8 @@ const ROUNDS_TO_FINISH = 3;
  *  is its own note, so the kid literally PLAYS the melody by tapping in order. */
 const NOTES = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25, 587.33, 659.25];
 const BEAT_MS = 580;
-const BN_D = "০১২৩৪৫৬৭৮৯";
 /** Sunny-song button colors (a different color per row feels like a toy). */
 const BTN_STYLES = [BTN_PRIMARY, btnFromColor(0xf97316), btnFromColor(0x22c55e), btnFromColor(0xeab308)];
-
-function bdDigits(s: string | number): string {
-  return String(s).replace(/[0-9]/g, (d) => BN_D[Number(d)]);
-}
-
 /**
  * Nova's Counting Song — a musical counting game.
  * Band 1 (ages 2–4, math). Nova SINGS the numbers 1..N as a rising melody with
@@ -159,7 +153,7 @@ export class CountingSongScene extends Phaser.Scene {
       const x = gl.startX + (i % cols) * gl.spacingX;
       const y = gl.cy - gridH / 2 + Math.floor(i / cols) * gl.spacingY;
       const style = BTN_STYLES[Math.floor(i / cols) % BTN_STYLES.length];
-      const label = getAppLang() === "bn" ? bdDigits(v) : String(v);
+      const label = getAppLang() === "bn" ? digit(v) : String(v);
       const c = modernAnswerButton(this, x, y, gl.cardW / 2, label, style, {
         labelSize: Math.max(24, Math.round(gl.cardW * 0.42)),
       });

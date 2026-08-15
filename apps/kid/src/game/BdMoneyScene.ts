@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
-import { t } from "./i18n";
+import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
@@ -15,11 +15,6 @@ const LEVELS = GAMES.find((g) => g.id === "game-bdtaka")?.difficultyLevels ?? [3
 const ROUNDS_TO_FINISH = 3;
 const CARD_RADIUS = 48;
 
-const BN_D = "০১২৩৪৫৬৭৮৯";
-/** Bangla digits in the app's language — Bangla kids see ৳৫, English kids ৳5. */
-function digit(n: number): string {
-  return getAppLang() === "bn" ? String(n).replace(/[0-9]/g, (d) => BN_D[Number(d)]) : String(n);
-}
 
 /** Real Bangladesh taka — small ones are coins, bigger ones are notes. */
 const DENOMS = [
