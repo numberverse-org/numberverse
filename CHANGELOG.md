@@ -1,3 +1,15 @@
+## 15 Aug 2026 — 0.66.0 (kid-first wave: 10 Bengali mistranslations fixed, role guardrail (require_role), bundle split boot 1.83MB→46kB, Nova3D lazy, three-vendor split)
+
+a15ff1f fix(bundle): split three into lazy three-vendor — island chunk 1027KiB→167KiB (oracle 1MiB budget) (#879)
+2a2d78b chore: lockfile — drop @numberverse/core from admin importer (#850)
+c890b16 merge: #879,#880 bundle splitting + lazy Nova3D
+2472130 merge: #869-#878 Bengali kid-facing translations
+a65a8c1 merge: #868 role guardrail (require_role factory)
+c5413a7 feat(auth): role guardrail — require_role factory, JWT role claim (#868)
+77f2a0e perf(bundle): split vendor chunks + lazy Nova3D, boot entry 1.83MB → 46kB (#879,#880)
+cecb132 fix(i18n): correct 10 Bengali kid-facing mistranslations (#869-#878)
+9ad4073 🐛 game: commit PetFeedScene.ts — required by engine.ts but was stuck in .git/info/exclude
+
 ## 15 Aug 2026 — 0.65.1 (🔐 seed: bootstrap admin password re-hashes to NV_ADMIN_PASSWORD on boot — env change now rotates the live console login (#842))
 
 61ed882 🔐 seed: bootstrap admin password re-hashes to NV_ADMIN_PASSWORD every boot (#842)
