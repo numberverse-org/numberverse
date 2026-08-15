@@ -414,13 +414,61 @@ class ContentItem(Base):
 
 
 class ConfigEntry(Base):
+    """Global + per-tenant config store. A row with tenant_id=NULL is a global
+    default; a row with tenant_id=<profile UUID> is a per-org override. The
+    resolve_config(tenant_id) helper merges them: global defaults first, then
+    per-tenant overrides layered on top, so a school can set its own default_locale
+    ('bn'|'en'), teacher_view, offline flags, branding keys, etc. without touching
+    the global config."""
+
     __tablename__ = "config"
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
+    # NULL = global default; non-NULL = per-tenant override (cascades away with
+    # the profile so org deletion cleans up its config).
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     value: Mapped[dict] = mapped_column(JSONB)
+    default_locale: Mapped[str | None] = mapped_column(String(8), nullable=True,
+        comment="Per-org default locale override ('bn'|'en'); NULL = use global")
+    feature_flags: Mapped[dict | None] = mapped_column(JSONB, nullable=True,
+        comment="Per-org feature flag overrides (teacher_view, offline, etc.)")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+def resolve_config(tenant_id: uuid.UUID | None, session) -> dict:
+    """Merge global ConfigEntry defaults with per-tenant overrides.
+
+    Returns a single dict: global keys first, then any per-tenant keys layered
+    on top (tenant wins on conflict). Handles the common case where only global
+    config exists (no per-tenant rows) for single-tenant deployments.
+    """
+    result: dict[str, object] = {}
+    # 1. Gather all global entries (tenant_id IS NULL).
+    global_rows = session.query(ConfigEntry).filter(
+        ConfigEntry.tenant_id.is_(None)
+    ).all()
+    for row in global_rows:
+        result[row.key] = row.value
+        if row.default_locale:
+            result.setdefault("default_locale", row.default_locale)
+        if row.feature_flags:
+            result.setdefault("feature_flags", row.feature_flags)
+    # 2. Layer per-tenant overrides on top.
+    if tenant_id is not None:
+        tenant_rows = session.query(ConfigEntry).filter(
+            ConfigEntry.tenant_id == tenant_id
+        ).all()
+        for row in tenant_rows:
+            result[row.key] = row.value
+            if row.default_locale:
+                result["default_locale"] = row.default_locale
+            if row.feature_flags:
+                result["feature_flags"] = row.feature_flags
+    return result
 
 
 class AdminAudit(Base):
