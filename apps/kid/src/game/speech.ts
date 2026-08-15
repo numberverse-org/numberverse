@@ -38,6 +38,7 @@
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
 import { neuralSpeak, neuralCancel, isNeuralReady, neuralStatus, onNeuralReady } from "./neuralVoice";
+import { hasUnsafeText } from "./speechSafety";
 
 let voices: SpeechSynthesisVoice[] = [];
 /** Monotonic token — only the newest speak() actually plays (rapid-tap safe). */
@@ -569,11 +570,19 @@ export function speak(text: string, opts: SpeakOpts = {}) {
     .replace(/\s+/g, " ")
     .trim();
   if (!clean) return;
+  // #901 — runtime content-safety backstop: `speak()` is fed dynamic text
+  // (kid names, interpolated skill titles) that no static gate can see, so
+  // refuse to synthesize an unsafe line. English words are checked before the
+  // Bangla normalizer transliterates them out of the Latin alphabet.
+  if (hasUnsafeText(clean, "en")) return;
   // 🗣️ #381 — Bangla pronunciation: the neural phonemizer (espeak-ng) only
   // reads Bangla script well. Latin words (Nova, Moni, kid names, game names)
   // and Western digits come out garbled. Normalize BEFORE synthesis so the
   // voice always says clear Bangla words.
-  if (lang === "bn") clean = bnNormalize(clean);
+  if (lang === "bn") {
+    clean = bnNormalize(clean);
+    if (hasUnsafeText(clean, "bn")) return;
+  }
 
   // Only the LATEST speak wins (except queue mode) — stale deferred speaks
   // from a previous question are skipped, so rapid taps never stack.

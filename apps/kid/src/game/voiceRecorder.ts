@@ -17,14 +17,25 @@
 let recorder: MediaRecorder | null = null;
 let chunks: Blob[] = [];
 let blobUrl: string | null = null;
+let maxTimer: ReturnType<typeof setTimeout> | null = null;
 
 export type RecordState = "idle" | "recording" | "denied" | "unsupported";
+export type RecordedClip = { url: string | null; seconds: number };
 
-/** Ask for the mic and start recording (call from a tap handler). */
-export async function startRecording(): Promise<RecordState> {
+/** Hard ceiling for an on-device dictation clip (#904). The recorder auto-stops
+ *  at this length so a long-press record can never become a hidden capture. */
+export const MAX_RECORD_SECONDS = 30;
+
+/** Ask for the mic and start recording (call from a tap handler).
+ *  `onAutoStop` fires when the hard ceiling stops the recording for review. */
+export async function startRecording(onAutoStop?: (clip: RecordedClip) => void): Promise<RecordState> {
   if (blobUrl) {
     URL.revokeObjectURL(blobUrl);
     blobUrl = null;
+  }
+  if (maxTimer) {
+    clearTimeout(maxTimer);
+    maxTimer = null;
   }
   chunks = [];
   let stream: MediaStream;
@@ -42,11 +53,20 @@ export async function startRecording(): Promise<RecordState> {
     if (e.data.size > 0) chunks.push(e.data);
   };
   recorder.start();
+  maxTimer = setTimeout(() => {
+    if (recorder && recorder.state === "recording") {
+      void stopRecording().then((clip) => onAutoStop?.(clip));
+    }
+  }, MAX_RECORD_SECONDS * 1000);
   return "recording";
 }
 
 /** Stop and return a playable object URL (or null if nothing was captured). */
-export function stopRecording(): Promise<{ url: string | null; seconds: number }> {
+export function stopRecording(): Promise<RecordedClip> {
+  if (maxTimer) {
+    clearTimeout(maxTimer);
+    maxTimer = null;
+  }
   return new Promise((resolve) => {
     if (!recorder) {
       resolve({ url: null, seconds: 0 });
@@ -77,8 +97,8 @@ export function stopRecording(): Promise<{ url: string | null; seconds: number }
   });
 }
 
-/** Cancel a recording without keeping anything. */
-export function cancelRecording(): void {
+/** Delete a finished clip and release its object URL (the local review path). */
+export function clearRecording(): void {
   if (recorder && recorder.state === "recording") {
     recorder.onstop = null;
     recorder.stop();
@@ -86,8 +106,17 @@ export function cancelRecording(): void {
   }
   recorder = null;
   chunks = [];
+  if (maxTimer) {
+    clearTimeout(maxTimer);
+    maxTimer = null;
+  }
   if (blobUrl) {
     URL.revokeObjectURL(blobUrl);
     blobUrl = null;
   }
+}
+
+/** Cancel a recording without keeping anything. */
+export function cancelRecording(): void {
+  clearRecording();
 }

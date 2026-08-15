@@ -1,0 +1,21 @@
+{
+  "en": {
+    "violence": ["kill", "kills", "killing", "killed", "blood", "bomb", "bombs", "weapon", "weapons", "shoot", "shoots", "shooting", "murder", "murders", "gun", "guns"],
+    "horror": ["ghost", "demon", "devil", "scary", "toxic", "poison", "poisonous"],
+    "insults": ["hate", "hates", "hated", "stupid", "ugly", "liar", "curse", "curses"],
+    "death": ["dead", "die", "dies", "died", "dying"],
+    "selfHarm": ["suicide", "suicidal", "self-harm", "self harm"],
+    "sexualized": ["naked", "nude", "nudity", "sex", "sexy", "rape", "molest", "porn", "pornography", "genital", "genitals"],
+    "drugsAlcohol": ["drug", "drugs", "alcohol", "beer", "wine", "vodka", "whiskey", "marijuana", "cocaine", "heroin", "cigarette", "cigarettes", "smoking", "vape", "tobacco"],
+    "slurs": ["nigger", "nigga", "faggot", "slut", "whore", "bastard", "retard"]
+  },
+  "bn": {
+    "violence": ["মেরে", "রক্ত", "বোমা", "অস্ত্র", "হত্যা", "মৃত্যু", "মৃত"],
+    "horror": ["ভূত", "শয়তান", "বিষ", "বিষাক্ত"],
+    "insults": ["বোকা", "কুৎসিত", "মিথ্যাবাদী", "ঘৃণা"],
+    "death": ["মর"],
+    "selfHarm": ["আত্মহত্যা"],
+    "sexualized": ["উলঙ্গ", "যৌন", "পর্ণ"],
+    "drugsAlcohol": ["মদ", "নেশা", "সিগারেট"]
+  }
+}

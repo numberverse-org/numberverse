@@ -42,6 +42,8 @@ const AD_SDKS = [
   "fbq(", "analytics.google", "app-measurement", "telemetry.deeplink", "branch.io",
 ];
 
+// apps/kid/src is recursive — this includes the 3D island source in
+// apps/kid/src/nova3d (new #684 surface), not just the game Scene dir.
 const SHIPPED = [
   join(ROOT, "apps", "kid", "src"),
   join(ROOT, "apps", "parent", "app"),

@@ -34,7 +34,7 @@ import { emptyGarden, gardenSummary } from "./game/garden";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, retryNeuralVoice, NEURAL_VOICES } from "./game/neuralVoice";
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
-import { startRecording, stopRecording } from "./game/voiceRecorder";
+import { clearRecording, startRecording, stopRecording } from "./game/voiceRecorder";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
 import { STR, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
 import VoiceCheck from "./components/VoiceCheck";
@@ -1475,7 +1475,13 @@ export default function App() {
         recAudioRef.current.pause();
         recAudioRef.current.src = "";
       }
-      const st = await startRecording();
+      const st = await startRecording((clip) => {
+        // #904 — the hard recording ceiling auto-stops and hands the clip
+        // back for the same local review path (replay or delete) as a manual
+        // stop. Nothing leaves the device either way.
+        if (clip.url) setRecUrl(clip.url);
+        setRecState("idle");
+      });
       setRecState(st);
     }
   }, [recState]);
@@ -3487,7 +3493,16 @@ export default function App() {
                     {recUrl && (
                       <>
                         <audio ref={recAudioRef} src={recUrl} controls className="dictate-audio" preload="metadata" />
-                        <button className="ghost-btn mini" onClick={() => setRecUrl(null)}>{t.settingsDictateClear}</button>
+                        <button
+                          className="ghost-btn mini"
+                          onClick={() => {
+                            clearRecording();
+                            setRecUrl(null);
+                            setRecState("idle");
+                          }}
+                        >
+                          {t.settingsDictateClear}
+                        </button>
                       </>
                     )}
                   </div>
