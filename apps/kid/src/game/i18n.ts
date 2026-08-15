@@ -29,6 +29,10 @@ const EN: Record<string, Entry> = {
   roundTap2: "Round {n} — find and tap {count} numbers!",
   roundTap3: "Round {n} · pop {count} numbers!",
   seedCount: "🌱 {planted}/{target} seeds",
+  /* ── Growth Garden ── */
+  gardenEmptyHint: "Your garden is waiting for its first little sprout — every correct answer helps it grow!",
+  gardenTapGrowing: "Your garden is growing! 🌱",
+  gardenTapFruited: "This plant is fully fruited — wonderful care! 🌳",
   swipeRooms: "swipe to explore",
   roomFlipped: () =>
     ["Ooh, a new room! 🎉", "Whoa, cool room! ✨", "Swipe again! 😄"][
@@ -1545,6 +1549,10 @@ const BN: Record<string, Entry> = {
   roundTap2: "রাউন্ড {n} — {count}টা সংখ্যা খুঁজে ট্যাপ করো!",
   roundTap3: "রাউন্ড {n} · {count}টা সংখ্যা ফুটাও!",
   seedCount: "🌱 {planted}/{target} বীজ",
+  /* ── Growth Garden ── */
+  gardenEmptyHint: "তোমার বাগান তার প্রথম ছোট্ট চারাটির জন্য অপেক্ষা করছে — প্রতিটি সঠিক উত্তর একে বাড়িয়ে তুলবে!",
+  gardenTapGrowing: "তোমার বাগান বাড়ছে! 🌱",
+  gardenTapFruited: "এই গাছটি পুরো ফল দিয়েছে — দারুণ যত্ন! 🌳",
   swipeRooms: "সোয়াইপ করে ঘুরে দেখো",
   roomFlipped: () =>
     ["ওহ্, নতুন ঘর! 🎉", "বাহ্, চমৎকার ঘর! ✨", "আবার সোয়াইপ করো! 😄"][

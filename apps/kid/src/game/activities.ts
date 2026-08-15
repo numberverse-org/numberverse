@@ -19,7 +19,7 @@ export interface ActivityDef {
 
 export const ACTIVITIES: ActivityDef[] = [
   /* ── pet mini-games (#104): full scenes launched over NovaScene ── */
-  { id: "game-feed", scene: "PetFeed", emoji: "🍽️", name: "Feed", nameBn: "খাওয়াও" },
+  { id: "game-feed", scene: "PetFeed", emoji: "🍽️", name: "Feed Nova", nameBn: "নোভাকে খাওয়াও" },
   { id: "game-catch", scene: "CatchFruit", emoji: "🍎", name: "Catch Fruit", nameBn: "ফল ধরো" },
   { id: "game-bubble", scene: "BubblePop", emoji: "🫧", name: "Bubble Pop", nameBn: "বুদবুদ ফুটাও" },
   { id: "game-bath", scene: "BathNova", emoji: "🛁", name: "Bath Time", nameBn: "গোসল" },

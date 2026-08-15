@@ -83,8 +83,11 @@ export function waterGarden(g: GardenState, amount = 1): GardenState {
   if (water >= WATER_PER_STAGE) {
     // Stage up (or fruit) — one big, visible jump feels better than many tiny ones.
     const stage = Math.min(5, plant.stage + 1);
+    // #1429 — carry the overflow into the NEXT stage instead of silently
+    // discarding it. A hard win can never waste the extra water it earned.
+    const nextWater = stage >= 5 ? 0 : water - WATER_PER_STAGE;
     return {
-      plants: g.plants.map((p) => (p.id === plant!.id ? { ...p, stage, water: 0 } : p)),
+      plants: g.plants.map((p) => (p.id === plant!.id ? { ...p, stage, water: nextWater } : p)),
     };
   }
   return { plants: g.plants.map((p) => (p.id === plant!.id ? { ...p, water } : p)) };
@@ -99,7 +102,8 @@ export function masteryPlant(g: GardenState, skillId: string, title: string): Ga
   // One flower per skill — re-mastering the same lesson doesn't double-plant.
   if (g.plants.some((p) => p.skillId === skillId)) return g;
   if (g.plants.length >= MAX_PLANTS) {
-    const oldest = [...g.plants].sort((a, b) => (a.skillId ? 0 : 1))[0] ?? g.plants[0];
+    // Plants are only ever appended, so the FIRST slot is the true oldest plant.
+    const oldest = g.plants[0];
     return {
       plants: g.plants.map((p) =>
         p.id === oldest.id ? { ...p, stage: 5, water: 0, title: `${p.title} ✨` } : p

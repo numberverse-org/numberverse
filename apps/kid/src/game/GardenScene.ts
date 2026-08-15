@@ -4,6 +4,7 @@ import { useKidStore } from "../store";
 import { STAGE_EMOJI, STAGE_NAME_EN, STAGE_NAME_BN, type GardenState } from "./garden";
 import { gameBackground } from "./backgrounds";
 import { txt, promptTxt, NV_GOLD } from "./ui";
+import { t } from "./i18n";
 import { speak } from "./speech";
 import { confettiBurst, starBurst, floatText } from "./celebrate";
 import { getAppLang } from "./locale";
@@ -46,7 +47,7 @@ export class GardenScene extends Phaser.Scene {
       .text(0, 0, "", txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.emptyHint = this.add
-      .text(0, 0, bn ? "খেলো আর গাছ বাড়াও!" : "Play and watch your garden grow!", promptTxt(17))
+      .text(0, 0, t("gardenEmptyHint"), promptTxt(17))
       .setOrigin(0.5);
     onSceneResize(this, () => this.layout());
     this.layout(); // positions title/sub AND lays out the plants
@@ -184,7 +185,8 @@ export class GardenScene extends Phaser.Scene {
       speak(bn ? `${plant.title} — ${STAGE_NAME_BN[stage]}` : `${plant.title} — ${STAGE_NAME_EN[stage]}`);
       confettiBurst(this, c.x, c.y - 10, 12);
       starBurst(this, c.x, c.y - 20, 4);
-      floatText(this, c.x, c.y - 70, bn ? "বাগান বাড়ছে! 🌱" : "Your garden is growing! 🌱", "#9be1a6", 20);
+      // #1430 — a fully-fruited plant isn't "growing" anymore; celebrate the fruit.
+      floatText(this, c.x, c.y - 70, stage >= 5 ? t("gardenTapFruited") : t("gardenTapGrowing"), "#9be1a6", 20);
     });
     // the growing plant gently pulses — kids' eyes are drawn to it
     if (active) {
