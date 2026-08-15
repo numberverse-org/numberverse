@@ -58,12 +58,23 @@ export interface HintCtx {
    */
   keepOnWrong?: boolean;
   /**
+   * FIRST-RUN ONBOARDING (#1480): a spoken example of a correct move, shown
+   * ONCE on the first round via hintIntro(). Scenes that opt in pass a
+   * localized line (usually a scene-specific intro key). Tracked in scene.data
+   * like missLog(), so it survives scene restarts but resets each session.
+   */
+  intro?: string | (() => string);
+  /**
    * CHALLENGE MODE (#1158): older-kid scenes (band 6-7) suppress the coaching
    * ladder entirely — wrong taps still shake + retire the button and land in
    * the wrong-ledger (resolve-to-complete still blocks until solved), but there
    * is NO banner, NO half-fade of the remaining choices, and NO reveal. The
    * kid feels the miss (combo resets, time keeps running) and must solve it
-   * themselves. The scene opts in per wrong-tap.
+   * themselves.
+   *
+   * This IS wired in: App.tsx passes `challenge: true` in scene data for any
+   * `skill.challenge` (band 6-7) step or post-mastery challenge replay, and
+   * each challenge-capable scene forwards its own `this.challenge` flag here.
    */
   challenge?: boolean;
 }
@@ -84,6 +95,28 @@ function missLog(scene: Phaser.Scene): Record<string, number> {
     });
   }
   return log;
+}
+
+/**
+ * #1480 — proactive first-run instruction. Unlike hintWrong() (reactive, only
+ * after a miss), this renders + speaks ONE example of a correct move the first
+ * time a scene round starts. The flag lives in scene.data (same lifetime as
+ * missLog) so a restarted scene doesn't re-show it, but a brand-new scene
+ * session does.
+ */
+export function hintIntro(scene: Phaser.Scene, ctx: Pick<HintCtx, "intro">) {
+  const line = pick(ctx.intro ?? "");
+  if (!line) return;
+  const key = "hw:intro";
+  if (scene.data.get(key)) return;
+  scene.data.set(key, true);
+  scene.events.once("shutdown", () => {
+    scene.data.remove(key);
+  });
+  bigBanner(scene, line);
+  // Calm teaching voice — same slower rate as the hint ladder so the example
+  // lands as an instruction, not another question.
+  speak(line, { rate: 0.86 });
 }
 
 export function hintWrong(
@@ -149,10 +182,16 @@ export function hintWrong(
       }
     }
     wrongTap(scene, container, { tip: false });
-    bigBanner(scene, bn ? pick(ctx.hintBn) : pick(ctx.hint));
+    const hintLine = bn ? pick(ctx.hintBn) : pick(ctx.hint);
+    // #1482 — confident kids get the answer LATER on purpose. The banner before
+    // the reveal adds a tiny countdown cue so the delay reads as structure, not
+    // a broken game ("2 more tries to go!"). Fragile/steady tiers keep the
+    // clean coaching banner (their reveal comes sooner, so no meter needed).
+    const sub = depth === 2 ? t("triesToGo", { n: revealAt - n }) : undefined;
+    bigBanner(scene, hintLine, 1, sub);
     // The hint is the TEACHING moment — calmest voice in the app, slower than
     // the question itself (0.9), so a stuck kid can actually absorb it.
-    speak(bn ? pick(ctx.hintBn) : pick(ctx.hint), { rate: 0.86 });
+    speak(hintLine, { rate: 0.86 });
     return;
   }
 
@@ -222,8 +261,9 @@ function pick(v: string | (() => string)): string {
   return typeof v === "function" ? v() : v;
 }
 
-/** Big, kid-sized hint banner: rounded panel + bold white text, pops in, fades. */
-function bigBanner(scene: Phaser.Scene, text: string, scale = 1) {
+/** Big, kid-sized hint banner: rounded panel + bold white text, pops in, fades.
+ *  Optional `sub` renders a small gold line beneath the main text (#1482). */
+function bigBanner(scene: Phaser.Scene, text: string, scale = 1, sub?: string) {
   const w = scene.scale.width;
   const h = scene.scale.height;
   const y = Math.min(150 + SAT(), h * 0.26);
@@ -243,7 +283,28 @@ function bigBanner(scene: Phaser.Scene, text: string, scale = 1) {
     })
     .setOrigin(0.5);
 
-  const boxH = Math.max(72, tx.height + pad);
+  const subTx = sub
+    ? scene.add
+        .text(0, 0, sub, {
+          fontSize: "16px",
+          color: "#ffffff",
+          fontStyle: "bold",
+          align: "center",
+          wordWrap: { width: maxW - pad },
+          stroke: NV_NAVY,
+          strokeThickness: 4,
+          lineSpacing: 4,
+        })
+        .setOrigin(0.5)
+    : undefined;
+
+  const contentH = subTx ? tx.height + subTx.height + 12 : tx.height;
+  const boxH = Math.max(72, contentH + pad);
+  if (subTx) {
+    tx.setY(-contentH / 2 + tx.height / 2);
+    subTx.setY(contentH / 2 - subTx.height / 2);
+  }
+
   const panel = scene.add.graphics();
   panel.fillStyle(Phaser.Display.Color.HexStringToColor("#2ec4b6").color, 0.95);
   panel.fillRoundedRect(-maxW / 2, -boxH / 2, maxW, boxH, 26);
@@ -252,7 +313,7 @@ function bigBanner(scene: Phaser.Scene, text: string, scale = 1) {
   panel.lineStyle(3, Phaser.Display.Color.HexStringToColor(NV_GOLD).color, 1);
   panel.strokeRoundedRect(-maxW / 2 + 5, -boxH / 2 + 5, maxW - 10, boxH - 10, 21);
 
-  const banner = scene.add.container(w / 2, y, [panel, tx]).setDepth(6000);
+  const banner = scene.add.container(w / 2, y, subTx ? [panel, tx, subTx] : [panel, tx]).setDepth(6000);
   banner.setScale(0.6);
   banner.setAlpha(0);
 

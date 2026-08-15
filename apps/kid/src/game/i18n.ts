@@ -54,6 +54,9 @@ const EN: Record<string, Entry> = {
   tapWordsOrder: "Tap the words in order!",
   readWordTapPic: "Read the word, tap the picture!",
   tapNumbersOrder: "Tap the numbers in order 1, 2, 3…",
+  // #1480 — first-run onboarding: one spoken example of a correct Count & Pop
+  // move, shown once per session before the kid can fail the mechanic.
+  countPopIntro: "Tap the glowing bubble first, then pop 2, 3, 4… in order!",
 
   /* ── Count to 100 — place-value rods ── */
   count100Make: "Make {n}",
@@ -120,6 +123,9 @@ const EN: Record<string, Entry> = {
   answerIs: "The answer is — {label}!\nTap it 👇",
   answerIsOnly: "The answer is — {label}!",
   answerIsWord: "The answer is {label}",
+  // #1482 — confidence-gated reveal: the small cue on the banner BEFORE the
+  // reveal so a held-back sharp kid understands the answer is coming on purpose.
+  triesToGo: (n) => `${n} more ${Number(n) === 1 ? "try" : "tries"} to go…`,
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "Let's put apples in the basket, watch!",
@@ -733,6 +739,8 @@ const EN: Record<string, Entry> = {
   seLinkTaste: "A {name} — you taste it with your tongue! Tap the tongue",
   seLinkTouch: "A {name} — you touch it with your hands! Tap the hand",
   tapTry: "Try again — which one is it?",
+  // #1479 — shared tap-choice coaching banner (miss #2+ of the hint ladder).
+  tapHint: "Look at the picture — tap the matching card!",
   seRainbow: "rainbow",
   seSong: "song",
   seFlower: "flower",
@@ -1556,6 +1564,8 @@ const BN: Record<string, Entry> = {
   tapWordsOrder: "শব্দগুলো ক্রমানুসারে ট্যাপ করো!",
   readWordTapPic: "শব্দ পড়ো, ছবি ট্যাপ করো!",
   tapNumbersOrder: "১, ২, ৩… ক্রমানুসারে সংখ্যা ট্যাপ করো!",
+  // #1480 — প্রথমবারের নির্দেশনা: সঠিক একটি পদক্ষেপের কথায় বলা উদাহরণ।
+  countPopIntro: "প্রথমে জ্বলজ্বলে বুদবুদটা চাপো, তারপর ২, ৩, ৪… ক্রমে ফুটাও!",
 
   /* ── Count to 100 — place-value rods ── */
   count100Make: "{n} বানাও",
@@ -1622,6 +1632,8 @@ const BN: Record<string, Entry> = {
   answerIs: "উত্তর হলো — {label}!\nএটিতে ট্যাপ করো 👇",
   answerIsOnly: "উত্তর হলো — {label}!",
   answerIsWord: "উত্তর হলো {label}",
+  // #1482 — আত্মবিশ্বাসভেদে উত্তর আসার আগে ছোট্ট ইঙ্গিত।
+  triesToGo: (n) => `আর ${String(n).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)])} বার চেষ্টা করা যাবে…`,
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "বাস্কেটে আপেল রাখি, দেখো!",
@@ -2236,6 +2248,8 @@ const BN: Record<string, Entry> = {
   seLinkTaste: "{name} — তুমি এটা জিভে স্বাদ পাও! জিভ টিপো",
   seLinkTouch: "{name} — তুমি এটা হাতে স্পর্শ করো! হাত টিপো",
   tapTry: "আবার চেষ্টা করো — কোনটা?",
+  // #1479 — shared tap-choice coaching banner (miss #2+ of the hint ladder).
+  tapHint: "ছবিটা দেখো — মিলওয়ালা কার্ডে চাপ দাও!",
   seRainbow: "রংধনু",
   seSong: "গান",
   seFlower: "ফুল",

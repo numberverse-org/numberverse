@@ -2,11 +2,12 @@ import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
-import { pop, win, bad } from "./audio";
+import { pop, win } from "./audio";
 import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
+import { hintWrong } from "./hints";
 import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
@@ -244,12 +245,16 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     const it = this.queue[this.qIdx];
     if (ch.value !== it.value) {
       this.wrongThis = true;
-      bad();
-      this.floatMsg(t("tapTry"));
+      // #1479 — route through the SAME adaptive hint ladder every sibling scene
+      // uses. Miss #1 is a soft nudge; reveal ("the answer is X") is deferred to
+      // miss #2–#4 by Moni confidence instead of flashing green on the first tap.
       const hit = this.cards.find((c) => c.choice === ch)!;
-      this.tweens.add({ targets: hit.c, x: hit.c.x + 8, duration: 60, yoyo: true, repeat: 3, ease: "Sine.easeInOut" });
-      const right = this.cards.find((c) => c.choice.value === it.value)!;
-      this.flashCard(right, 0x4ade80, 0.45);
+      hintWrong(this, hit.c, {
+        hint: () => t("tapHint"),
+        hintBn: () => t("tapHint"),
+        correct: () => it.value,
+        options: () => this.cards.map((c) => ({ sprite: c.c, value: c.choice.value })),
+      });
       return;
     }
     this.busy = true;
