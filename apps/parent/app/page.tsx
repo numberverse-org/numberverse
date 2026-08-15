@@ -39,6 +39,10 @@ import {
   setPassword,
   updateProfile,
   validateToken,
+  listPushSubscriptions,
+  subscribePush,
+  unsubscribePush,
+  type PushSubscribeBody,
   type Profile,
   type Kid,
   type MasteryRow,
@@ -56,8 +60,11 @@ import {
   ACCOUNT_LANGS,
   A11Y_LANGS,
   AVATARS,
+  BANNER_LANGS,
   DEFAULT_SETTINGS,
   NAV_GROUPS,
+  NOTIF_LANGS,
+  REGEN_LANGS,
   SUBJECTS,
   SYNC_LANGS,
   THEME_KEY,
@@ -74,6 +81,7 @@ import {
   nvDiagErrors,
   readNarrDraft,
   relTime,
+  toBnNum,
   weekdayLimits,
   weeklyShareText,
 } from "./lib/portal";
@@ -102,6 +110,38 @@ import {
   HelpCard,
 } from "./components/AccountSections";
 
+/** #1535 — browser support for the Web Push opt-in. Guarded so SSR/older
+ *  webviews degrade to a muted "not supported" line instead of crashing. */
+function browserSupportsPush(): boolean {
+  return typeof window !== "undefined" && "Notification" in window && "PushManager" in window;
+}
+
+/** #1535 — convert a VAPID public key (URL-safe base64) to the Uint8Array
+ *  `pushManager.subscribe` expects. Mirrors the standard MDN helper. */
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+/** #1535 — read the browser's PushSubscription into the API's wire shape. */
+function pushSubToBody(sub: PushSubscription): PushSubscribeBody {
+  const toB64 = (buf: ArrayBuffer | null): string => {
+    if (!buf) return "";
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return window.btoa(binary);
+  };
+  return {
+    endpoint: sub.endpoint,
+    p256dh: toB64(sub.getKey("p256dh")),
+    auth: toB64(sub.getKey("auth")),
+  };
+}
 
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
@@ -245,6 +285,9 @@ export default function ParentDashboard() {
   const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
   const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
   const [narrCopied, setNarrCopied] = useState(false);
+  // #1558 — two-tap inline confirm before regeneration discards an edited draft.
+  const [regenConfirm, setRegenConfirm] = useState(false);
+  const [regenDiscarded, setRegenDiscarded] = useState(false);
 
   // #239 — reteach QR deep-links for flagged skills (client-side only).
   const [reteachQr, setReteachQr] = useState<Record<string, { title: string; dataUrl: string; code: string }>>({});
@@ -270,6 +313,71 @@ export default function ParentDashboard() {
   // the browser's network events; the manual button just re-runs refreshAll.
   const [online, setOnline] = useState(true);
   const [syncingNow, setSyncingNow] = useState(false);
+  // #1553 — the kid app persists a same-origin `nv_sync_signal` key
+  // ({ lastSuccessAt, pendingCount, lastError }). This is the DEVICE sync,
+  // intentionally separate from `lastSync` (which records the PORTAL's fetch).
+  const [deviceSync, setDeviceSync] = useState<{ lastSuccessAt: number | null; pendingCount: number; lastError: string | null } | null>(null);
+  // #1535 — parent-gated notifications opt-in.
+  const [notifSupported] = useState<boolean>(() => browserSupportsPush());
+  const [notifState, setNotifState] = useState<"loading" | "on" | "off">("loading");
+  const [notifEndpoint, setNotifEndpoint] = useState<string | null>(null);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [notifAskPass, setNotifAskPass] = useState(false);
+  const [notifPassword, setNotifPassword] = useState("");
+  const [notifMsg, setNotifMsg] = useState<{ kind: "ok" | "err" | "muted"; text: string } | null>(null);
+
+  // #1553 — read the kid app's same-origin `nv_sync_signal` key (OnDeviceData
+  // pattern). If it is absent, show nothing (graceful). A `storage` listener
+  // keeps the chip live when the kid app drains its outbox in another tab.
+  useEffect(() => {
+    const readDeviceSync = () => {
+      try {
+        const raw = localStorage.getItem("nv_sync_signal");
+        if (!raw) {
+          setDeviceSync(null);
+          return;
+        }
+        const parsed = JSON.parse(raw) as { lastSuccessAt?: unknown; pendingCount?: unknown; lastError?: unknown };
+        setDeviceSync({
+          lastSuccessAt: typeof parsed.lastSuccessAt === "number" ? parsed.lastSuccessAt : null,
+          pendingCount: typeof parsed.pendingCount === "number" ? parsed.pendingCount : 0,
+          lastError: typeof parsed.lastError === "string" ? parsed.lastError : null,
+        });
+      } catch {
+        setDeviceSync(null);
+      }
+    };
+    readDeviceSync();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "nv_sync_signal") readDeviceSync();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // #1535 — initial toggle state comes from the API's push subscription list.
+  // Anon/unsupported browsers never fetch; missing API routes degrade to "off".
+  useEffect(() => {
+    if (authState !== "ok" || !token || !browserSupportsPush()) return;
+    let alive = true;
+    setNotifState("loading");
+    listPushSubscriptions(token)
+      .then((subs) => {
+        if (!alive) return;
+        const current = subs[0];
+        setNotifEndpoint(current?.endpoint ?? null);
+        setNotifState(current ? "on" : "off");
+      })
+      .catch(() => {
+        if (!alive) return;
+        setNotifEndpoint(null);
+        setNotifState("off");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [authState, token]);
+
   // #18 — help card (iOS install / Bangla voice / build check), collapsible.
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -477,6 +585,13 @@ export default function ParentDashboard() {
     setNarrDraft(activeId ? readNarrDraft(activeId) : null);
     setNarrCopied(false);
   }, [activeId]);
+
+  // #1558 — briefly surface "edits discarded" after a confirmed regenerate.
+  useEffect(() => {
+    if (!regenDiscarded) return;
+    const t = window.setTimeout(() => setRegenDiscarded(false), 5000);
+    return () => window.clearTimeout(t);
+  }, [regenDiscarded]);
 
   async function handleSaveSettings() {
     if (!token || !activeId) return;
@@ -782,6 +897,99 @@ export default function ParentDashboard() {
     await doSignout(token);
   }
 
+  /** #1535 — get (or create) the browser PushSubscription in the API's wire
+   *  shape. A missing VAPID public key or unsupported browser returns null and
+   *  surfaces the "not configured"/"unsupported" state gracefully — never a
+   *  crash. */
+  async function getExistingPushSubscription(): Promise<PushSubscribeBody | null> {
+    if (!browserSupportsPush()) {
+      setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].unsupported });
+      return null;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) return pushSubToBody(existing);
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) {
+        setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].notConfigured });
+        return null;
+      }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+      return pushSubToBody(sub);
+    } catch {
+      setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].notConfigured });
+      return null;
+    }
+  }
+
+  /** #1535 — toggle OFF: POST /push/unsubscribe for the current endpoint. */
+  async function turnOffNotifications() {
+    if (!token) return;
+    setNotifBusy(true);
+    setNotifMsg(null);
+    try {
+      if (notifEndpoint) await unsubscribePush(token, notifEndpoint);
+      setNotifEndpoint(null);
+      setNotifState("off");
+      setNotifMsg({ kind: "ok", text: NOTIF_LANGS[wizLang].disabled });
+    } catch {
+      setNotifMsg({ kind: "err", text: NOTIF_LANGS[wizLang].disabledFailed });
+    } finally {
+      setNotifBusy(false);
+    }
+  }
+
+  /** #1535 — the parent-facing toggle. OFF → unsubscribe. ON → open the inline
+   *  password re-confirm first (the API has no dedicated /auth/verify yet, so
+   *  the successful POST /push/subscribe is the documented reauth gate). */
+  function handleNotifToggle() {
+    if (!token || notifBusy) return;
+    setNotifMsg(null);
+    if (notifState === "on") {
+      void turnOffNotifications();
+    } else {
+      setNotifAskPass(true);
+      setNotifPassword("");
+    }
+  }
+
+  /** #1535 — enable after the parent re-enters their password. We only perform
+   *  a soft client-side length check here; the real parent gate is the token and
+   *  the successful subscribe below (documented "token = parent-gate" fallback
+   *  until a dedicated /auth/verify endpoint ships). */
+  async function confirmEnableNotifications() {
+    if (!token || notifBusy) return;
+    if (notifPassword.trim().length < 8) {
+      setNotifMsg({ kind: "err", text: NOTIF_LANGS[wizLang].passwordRequired });
+      return;
+    }
+    setNotifBusy(true);
+    setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].verifying });
+    try {
+      const sub = await getExistingPushSubscription();
+      if (!sub) {
+        // getExistingPushSubscription already surfaced the reason.
+        setNotifAskPass(false);
+        setNotifPassword("");
+        return;
+      }
+      await subscribePush(token, sub);
+      setNotifEndpoint(sub.endpoint);
+      setNotifState("on");
+      setNotifAskPass(false);
+      setNotifPassword("");
+      setNotifMsg({ kind: "ok", text: NOTIF_LANGS[wizLang].enabled });
+    } catch {
+      setNotifMsg({ kind: "err", text: NOTIF_LANGS[wizLang].enabledFailed });
+    } finally {
+      setNotifBusy(false);
+    }
+  }
+
   const active = kids.find((k) => k.id === activeId);
   const activeMastery = activeId ? mastery[activeId] ?? [] : [];
   const masteredCount = activeMastery.filter((m) => m.mastery >= 0.8).length;
@@ -918,15 +1126,30 @@ export default function ParentDashboard() {
       /* private browsing — keep the draft in memory for this session */
     }
   }
-  function handleRegenerateNarr() {
+  /** #1558 — the actual regenerate. Only called freely for an unedited draft or
+   *  from the confirm dialog for an edited one; never silently destroys edits. */
+  function doRegenerateNarr() {
     if (!activeId) return;
+    const hadEdits = !!narrDraft?.edited;
     const next = { en: weekNarrative?.en ?? "", bn: weekNarrative?.bn ?? "", edited: false };
     setNarrDraft(next);
+    setRegenConfirm(false);
+    setRegenDiscarded(hadEdits);
     try {
       localStorage.setItem(`nv_kotha_nar_${activeId}`, JSON.stringify(next));
     } catch {
       /* ignore */
     }
+  }
+  function handleRegenerateNarr() {
+    if (!activeId) return;
+    // #1558 — a polished draft is a data-loss footgun on one tap: open a
+    // two-tap inline confirm instead of overwriting the parent's edits.
+    if (narrDraft?.edited) {
+      setRegenConfirm(true);
+      return;
+    }
+    doRegenerateNarr();
   }
   async function handleCopyNarr() {
     if (!narrText) return;
@@ -1061,6 +1284,23 @@ export default function ParentDashboard() {
     );
   }
 
+  // #1505 — the load-time error string is developer-speak; render the
+  // parent-friendly copy while keeping specific handler errors as-is.
+  const LOAD_ERROR = "Could not load progress. Is the API running?";
+  const bannerText = error === LOAD_ERROR ? BANNER_LANGS[wizLang].loadError : error;
+
+  /** #1505 — retry the load (or reload if there is no token to retry with).
+   *  Clearing `error` first means dismiss/retry can't be immediately undone by
+   *  a stale in-flight source; the banner only returns if the fresh call fails. */
+  function retryError() {
+    setError(null);
+    if (token) {
+      void refreshAll(token).catch(() => setError(LOAD_ERROR));
+    } else if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -1120,21 +1360,24 @@ export default function ParentDashboard() {
             {theme === "light" ? "☀️" : "🌙"} <span className="a11y-toggle-label">{THEME_LANGS[wizLang][theme]}</span>
           </button>
         </span>
-        {/* #85 — sync status chip + manual sync (own-API only, no analytics). */}
+        {/* #85 — sync status chip + manual sync (own-API only, no analytics).
+            #1553/#1554 — label this suffix "portal" (it is the portal's own
+            refreshAll fetch, NOT the kid device's push) and hide it when the
+            roster is empty so the chip can't claim a stale "synced X ago". */}
         <span
           className={`sync-chip${online ? " on" : " off"}`}
           title={
-            lastSync
-              ? `${SYNC_LANGS[wizLang].synced} ${relTime(lastSync, wizLang)} ${SYNC_LANGS[wizLang].ago}`
+            lastSync && kids.length > 0
+              ? `${SYNC_LANGS[wizLang].portal} ${SYNC_LANGS[wizLang].synced} ${relTime(lastSync, wizLang)} ${SYNC_LANGS[wizLang].ago}`
               : SYNC_LANGS[wizLang].justNow
           }
         >
           <span className={`sync-dot ${online ? "ok" : "bad"}`} aria-hidden />
           {online ? SYNC_LANGS[wizLang].online : SYNC_LANGS[wizLang].offline}
-          {lastSync && online && (
+          {lastSync && online && kids.length > 0 && (
             <span className="sync-when">
               {" · "}
-              {SYNC_LANGS[wizLang].synced} {relTime(lastSync, wizLang)}
+              {SYNC_LANGS[wizLang].portal} {SYNC_LANGS[wizLang].synced} {relTime(lastSync, wizLang)}
             </span>
           )}
           <button
@@ -1147,6 +1390,99 @@ export default function ParentDashboard() {
             {syncingNow ? SYNC_LANGS[wizLang].syncing : SYNC_LANGS[wizLang].syncNow}
           </button>
         </span>
+        {/* #1553 — the kid DEVICE's sync signal (persisted by the kid app at
+            `nv_sync_signal`). Shows only when the key exists; a pending outbox
+            gets a warning badge so airplane-mode backlog is visible. */}
+        {deviceSync && (deviceSync.lastSuccessAt !== null || deviceSync.pendingCount > 0) && (
+          <span
+            className="sync-chip"
+            title={
+              deviceSync.lastSuccessAt !== null
+                ? `${SYNC_LANGS[wizLang].device} · ${SYNC_LANGS[wizLang].deviceLastSynced} ⌁ ${relTime(deviceSync.lastSuccessAt, wizLang)} ${SYNC_LANGS[wizLang].ago}`
+                : SYNC_LANGS[wizLang].device
+            }
+          >
+            <span aria-hidden>⌁</span>
+            <span className="sync-when">{SYNC_LANGS[wizLang].device}</span>
+            {deviceSync.lastSuccessAt !== null && (
+              <span className="sync-when">
+                {" · "}
+                {SYNC_LANGS[wizLang].deviceLastSynced} ⌁ {relTime(deviceSync.lastSuccessAt, wizLang)} {SYNC_LANGS[wizLang].ago}
+              </span>
+            )}
+            {deviceSync.pendingCount > 0 && (
+              <span style={{ color: "#fbbf24", fontWeight: 800 }}>
+                {" · "}⚠ {SYNC_LANGS[wizLang].pending.replace(
+                  "{n}",
+                  wizLang === "bn" ? toBnNum(deviceSync.pendingCount) : String(deviceSync.pendingCount)
+                )}
+              </span>
+            )}
+          </span>
+        )}
+        {/* #1535 — parent-gated notifications opt-in. Only the authenticated
+            dashboard branch reaches this (anon returns at the login gate above).
+            ON asks for a password re-confirm; OFF unsubscribes immediately. */}
+        <span className="notif-toggle-wrap">
+          {!notifSupported ? (
+            <span className="notif-muted">{NOTIF_LANGS[wizLang].unsupported}</span>
+          ) : notifState === "loading" ? (
+            <span className="notif-muted">{NOTIF_LANGS[wizLang].loading}</span>
+          ) : (
+            <>
+              <span className={`sync-chip${notifState === "on" ? " on" : ""}`}>
+                <span aria-hidden>🔔</span>
+                <span>{NOTIF_LANGS[wizLang].label}</span>
+                <button
+                  className="sync-btn"
+                  disabled={notifBusy}
+                  aria-pressed={notifState === "on"}
+                  onClick={handleNotifToggle}
+                  title={notifState === "on" ? NOTIF_LANGS[wizLang].enabled : NOTIF_LANGS[wizLang].needParent}
+                >
+                  {notifState === "on" ? NOTIF_LANGS[wizLang].on : NOTIF_LANGS[wizLang].off}
+                </button>
+              </span>
+              {notifAskPass && (
+                <span className="notif-prompt">
+                  <span>{NOTIF_LANGS[wizLang].needParent}</span>
+                  <span>{NOTIF_LANGS[wizLang].passwordLabel}</span>
+                  <input
+                    type="password"
+                    value={notifPassword}
+                    onChange={(e) => setNotifPassword(e.target.value)}
+                    placeholder={NOTIF_LANGS[wizLang].passwordPlaceholder}
+                    aria-label={NOTIF_LANGS[wizLang].passwordLabel}
+                    autoFocus
+                  />
+                  <button
+                    className="btn btn-small"
+                    disabled={notifBusy}
+                    onClick={() => void confirmEnableNotifications()}
+                  >
+                    {notifBusy ? NOTIF_LANGS[wizLang].verifying : NOTIF_LANGS[wizLang].confirm}
+                  </button>
+                  <button
+                    className="btn btn-small ghost"
+                    disabled={notifBusy}
+                    onClick={() => {
+                      setNotifAskPass(false);
+                      setNotifPassword("");
+                      setNotifMsg(null);
+                    }}
+                  >
+                    {NOTIF_LANGS[wizLang].cancel}
+                  </button>
+                </span>
+              )}
+              {notifMsg && (
+                <span className={`notif-msg ${notifMsg.kind === "err" ? "err" : notifMsg.kind === "ok" ? "ok" : "muted"}`} role="status">
+                  {notifMsg.text}
+                </span>
+              )}
+            </>
+          )}
+        </span>
         <span className="topbar-user" title={profile?.email ?? "signed in"}>
           {profile?.display_name ?? "Parent"} 👨‍👩‍👧
         </span>
@@ -1155,7 +1491,56 @@ export default function ParentDashboard() {
         </button>
       </header>
 
-      {error && <p className="err banner">{error}</p>}
+      {error && (
+        <div
+          className="err banner"
+          role="alert"
+          aria-live="assertive"
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}
+        >
+          <span>{bannerText}</span>
+          <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+            <button className="btn btn-small" onClick={retryError}>
+              {BANNER_LANGS[wizLang].retry}
+            </button>
+            <button
+              onClick={() => setError(null)}
+              aria-label={BANNER_LANGS[wizLang].dismiss}
+              title={BANNER_LANGS[wizLang].dismiss}
+              style={{ border: "none", background: "transparent", color: "inherit", fontSize: 18, lineHeight: 1, cursor: "pointer", padding: "0 4px" }}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )}
+
+      {/* #1558 — lightweight two-tap confirm before regeneration discards an
+          edited narrative. Rendered in page.tsx so ReportsSections stays dumb;
+          window.confirm is avoided (headless-incompatible). */}
+      {regenConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={REGEN_LANGS[wizLang].confirm}
+          style={{ position: "fixed", inset: 0, background: "rgba(0, 0, 0, 0.55)", display: "grid", placeItems: "center", zIndex: 50, padding: 16 }}
+        >
+          <div className="card" style={{ maxWidth: 440, width: "100%", margin: 0 }}>
+            <p style={{ margin: "0 0 12px" }}>{REGEN_LANGS[wizLang].confirm}</p>
+            <div className="confirm-group">
+              <button className="btn ghost" onClick={() => setRegenConfirm(false)}>
+                {REGEN_LANGS[wizLang].cancel}
+              </button>
+              <button className="btn primary" onClick={doRegenerateNarr}>
+                {REGEN_LANGS[wizLang].continue}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {regenDiscarded && (
+        <p className="hint center" role="status">{REGEN_LANGS[wizLang].discarded}</p>
+      )}
 
       {/* #246 — guided multi-kid onboarding (first run with no kids) */}
       {onboarding === "open" && !error && (
