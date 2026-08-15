@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     kotha_max_stories_per_kid: int = 1000
     # #329 — how often the background batch-embed job runs (minutes).
     kotha_embed_interval_minutes: int = 15
+    # #948 — single source of truth for the embedding model name and
+    # dimensionality. Both embeddings.py and story_embedding_model.py import
+    # these values so an encoder upgrade never silently drifts.
+    kotha_embed_model: str = "thenlper/gte-small"
+    kotha_embed_dim: int = 384
 
     @property
     def origins(self) -> list[str]:

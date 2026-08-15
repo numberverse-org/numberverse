@@ -291,6 +291,7 @@ async def apply_data_backfills() -> list[str]:
     silently skipped. Future crossings are stamped exactly at the moment
     mastery first hits 80%. Runs every boot but only touches NULL rows, so it's
     idempotent."""
+    backfilled: list[str] = []
     async with engine.begin() as conn:
         await conn.execute(
             text(
@@ -299,7 +300,22 @@ async def apply_data_backfills() -> list[str]:
                 "WHERE mastered_at IS NULL AND mastery >= 0.8"
             )
         )
-    return ["skill_mastery.mastered_at"]
+    backfilled.append("skill_mastery.mastered_at")
+
+    # #942 — backfill synthetic uids for legacy NULL-uid story rows so every
+    # row is dedupable. The synthetic uid is a UUID v4 so it never collides
+    # with a client-generated uid. Only touches rows WHERE uid IS NULL, so it's
+    # idempotent.
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE learning_stories "
+                "SET uid = gen_random_uuid()::text "
+                "WHERE uid IS NULL"
+            )
+        )
+    backfilled.append("learning_stories.uid")
+    return backfilled
 
 
 async def apply_migrations() -> list[str]:

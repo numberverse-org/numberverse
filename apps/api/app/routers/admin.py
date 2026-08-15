@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -310,6 +310,21 @@ STORY_HEALTH_DAYS = 14
 async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     total = (await db.scalar(select(func.count()).select_from(LearningStory))) or 0
 
+    # #944 — embedding backlog: stories NOT yet embedded (only meaningful when
+    # pgvector is installed; otherwise report "N/A" so the operator sees the
+    # gap instead of a misleading zero).
+    if HAVE_VECTOR and StoryEmbedding is not None:
+        embedded_ids = select(StoryEmbedding.story_id)
+        backlog = (
+            await db.scalar(
+                select(func.count())
+                .select_from(LearningStory)
+                .where(LearningStory.id.not_in(embedded_ids))
+            )
+        ) or 0
+    else:
+        backlog = -1  # marker: pgvector not available
+
     # Breakdown by kid → ANONYMOUS buckets for the chart (rank only, no UUID).
     by_kid_raw = await db.execute(
         select(LearningStory.kid_id, func.count().label("n"))
@@ -387,9 +402,17 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
         warnings.append("A single kid owns the lake — check for a sync loop.")
     if high_velocity:
         warnings.append(f"{len(high_velocity)} kid(s) breached the {STORY_RATE_LIMIT_PER_HOUR}-stories/hour budget in the last hour.")
+    # #944 — surface embedding backlog so an operator sees the lag even when
+    # the embed job is silently skipping.
+    if backlog == -1:
+        warnings.append("pgvector not installed — embedding unavailable; all stories lack vectors.")
+    elif backlog > 0:
+        warnings.append(f"Embedding backlog: {backlog} stories pending (pgvector ready but unembedded).")
 
     return {
         "total": total,
+        "embedding_backlog": backlog,
+        "embedding_backlog_note": "pgvector not available" if backlog == -1 else "stories pending embedding",
         "charts": {
             "by_kid": by_kid,       # anonymous rank buckets — no kid PII
             "by_skill": by_skill,
@@ -450,6 +473,14 @@ async def search_stories(
     if not raw:
         return StorySearchOut(query=body.query, hits=[])
 
+    # #949 — define the allowlist of context keys that are safe to return in
+    # semantic search results. Everything else in the stored JSONB envelope is
+    # excluded by construction — no regex, no best-effort redaction.
+    _CONTEXT_ALLOWLIST = frozenset({
+        "question", "wrongAnswer", "correctAnswer", "reason", "message",
+        "skill", "misconception", "planAction", "gameState",
+    })
+
     story_ids = [r[0] for r in raw]
     dists = [r[1] for r in raw]
     stories = await db.scalars(select(LearningStory).where(LearningStory.id.in_(story_ids)))
@@ -459,6 +490,8 @@ async def search_stories(
         s = by_id.get(sid)
         if not s:
             continue
+        raw_context = s.context or {}
+        safe_context = {k: raw_context[k] for k in _CONTEXT_ALLOWLIST if k in raw_context}
         hits.append(
             StorySearchHit(
                 similarity=round(1.0 - float(dist), 4),
@@ -468,7 +501,7 @@ async def search_stories(
                 error_kind=s.error_kind,
                 misconception_code=s.misconception_code,
                 action=s.action,
-                context=s.context or {},
+                context=safe_context,
                 created_at=s.created_at,
             )
         )
@@ -488,6 +521,18 @@ async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = 
         `kotha_max_stories_per_kid` (default 1000) stories — the active tail
         is always the most recent, so active learning is never the overflow.
     """
+    pruned_total = await _prune_stories(db)
+    return {
+        "pruned": pruned_total,
+        "retention_days": settings.kotha_retention_days,
+        "active_skill_days": settings.kotha_active_skill_days,
+        "max_stories_per_kid": settings.kotha_max_stories_per_kid,
+    }
+
+
+async def _prune_stories(db: AsyncSession) -> int:
+    """#950 — shared prune logic used by the admin endpoint and the scheduled
+    embed-loop prune. Returns total number of stories pruned."""
     # #906 — timezone-aware UTC now, matching the timezone-aware `created_at` column.
     now = datetime.now(timezone.utc)
     retention = timedelta(days=settings.kotha_retention_days)
@@ -527,15 +572,26 @@ async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = 
     cap_result = await db.execute(delete(LearningStory).where(LearningStory.id.in_(over_cap)))
     cap_pruned = cap_result.rowcount or 0
 
+    # #943 — orphan story_embeddings sweep: when the FK cascade is absent (e.g.
+    # the story_embeddings table was migrated without the ON DELETE CASCADE
+    # declaration), pruning a story leaves orphan vector rows that waste storage
+    # and produce phantom top-K hits. This explicit sweep is idempotent — it only
+    # deletes embedding rows whose parent story no longer exists.
+    if HAVE_VECTOR and StoryEmbedding is not None:
+        orphan_result = await db.execute(
+            text(
+                "DELETE FROM story_embeddings "
+                "WHERE story_id NOT IN (SELECT id FROM learning_stories)"
+            )
+        )
+        orphan_pruned = orphan_result.rowcount or 0
+        if orphan_pruned:
+            log.warning("prune orphan sweep: removed %d stray story_embeddings rows", orphan_pruned)
+    else:
+        orphan_pruned = 0
+
     await db.commit()
-    return {
-        "pruned": age_pruned + cap_pruned,
-        "age_pruned": age_pruned,
-        "cap_pruned": cap_pruned,
-        "retention_days": settings.kotha_retention_days,
-        "active_skill_days": settings.kotha_active_skill_days,
-        "max_stories_per_kid": cap,
-    }
+    return age_pruned + cap_pruned
 
 
 # #840 — caps for the generic admin list_resource. react-admin sends
