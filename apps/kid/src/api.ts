@@ -254,15 +254,40 @@ export async function signinParent(email: string, password: string): Promise<voi
   resetIdentity();
 }
 
+/** #1463 — Google sign-in failure modes. The gate needs to tell a parent WHY
+ *  the Google path bailed: a flaky connection (network), a backend without
+ *  NV_GOOGLE_CLIENT_ID (backend-disabled), or a token the API genuinely
+ *  rejected (token-rejected). */
+export type GoogleSignInErrorKind = "network" | "backend-disabled" | "token-rejected";
+
+export class GoogleSignInError extends Error {
+  kind: GoogleSignInErrorKind;
+  constructor(kind: GoogleSignInErrorKind, message: string) {
+    super(message);
+    this.name = "GoogleSignInError";
+    this.kind = kind;
+  }
+}
+
 /** Google sign-in: send the client ID token to the API, which verifies it
  *  server-side against NV_GOOGLE_CLIENT_ID and issues our own JWT. */
 export async function signinGoogle(idToken: string): Promise<void> {
-  const res = await fetch(`${API}/auth/google`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id_token: idToken }),
-  });
-  if (!res.ok) throw new Error("google-signin-failed");
+  let res: Response;
+  try {
+    res = await fetch(`${API}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+  } catch {
+    throw new GoogleSignInError("network", "google-signin-network");
+  }
+  if (res.status === 501) {
+    throw new GoogleSignInError("backend-disabled", "google-signin-backend-disabled");
+  }
+  if (!res.ok) {
+    throw new GoogleSignInError("token-rejected", "google-signin-failed");
+  }
   const data = await res.json();
   localStorage.setItem(LS.parentToken, data.token as string);
   localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? "Parent");
@@ -429,10 +454,17 @@ export async function signoutParent(): Promise<void> {
   resetIdentity();
 }
 
+/** #1464 — restore throttle is keyed to the identity, not wall-clock. */
+let lastRestoreAt = 0;
+
 /** Drop the cached sync identity so the NEXT call picks up a new parent token
  *  (or the device account) — call after sign-in / sign-out / validation. */
 function resetIdentity(): void {
   identityPromise = null;
+  // A fresh identity (sign-in / sign-out) must perform its own first restore,
+  // even if the previous account restored moments ago. The heartbeat stays
+  // throttled because it does NOT reset this timer.
+  lastRestoreAt = 0;
 }
 
 let syncing = false;
@@ -761,8 +793,6 @@ async function fetchSnapshot(localKidId: string): Promise<{
     return null; // offline — skip quietly, retry next tick
   }
 }
-
-let lastRestoreAt = 0;
 
 /** #9 — multi-device sync, RESTORE side: on a second device after the parent
  *  signs in, merge every mapped kid's server profile into the local store

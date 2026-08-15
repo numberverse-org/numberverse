@@ -20,8 +20,8 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
-import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
+import { GoogleSignIn, googleEnabled, googleClientId } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
@@ -771,7 +771,13 @@ export default function App() {
     }
   };
   const submitGoogle = async (idToken: string) => {
-    if (gateBusy) return;
+    // #1465 — the injected Google iframe can't be disabled from the DOM, so the
+    // guard lives here too. A second credential while one is already in flight
+    // gets a transient note instead of being dropped with zero feedback.
+    if (gateBusy) {
+      setGateError(t.gateGoogleBusy);
+      return;
+    }
     setGateBusy(true);
     setGateError(null);
     try {
@@ -780,8 +786,17 @@ export default function App() {
       setPinOk(false);
       setScreen(gateReturn.current);
       void restoreServerState();
-    } catch {
-      setGateError(t.gateErrorGoogle);
+    } catch (err) {
+      // #1463 — keep the distinct Google failure modes visible to the parent:
+      // backend-disabled → the backend has no OAuth client, network → flaky
+      // connection, token-rejected → Google verified but the API said no.
+      if (err instanceof GoogleSignInError) {
+        if (err.kind === "backend-disabled") setGateError(t.gateGoogleGone);
+        else if (err.kind === "network") setGateError(t.gateGoogleNetwork);
+        else setGateError(t.gateErrorGoogle);
+      } else {
+        setGateError(t.gateErrorGoogle);
+      }
     } finally {
       setGateBusy(false);
     }
@@ -3054,14 +3069,16 @@ export default function App() {
               <h2 className="gate-title">{t.settingsSecParents}</h2>
               <p className="gate-sub">{t.settingsParentsHint}</p>
 
-              {googleEnabled() && (
+              {googleEnabled() ? (
                 <>
                   <div className="gate-google">
-                    <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} lang={lang} />
+                    <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} retryText={t.gateGoogleRetry} lang={lang} />
                   </div>
                   <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
                 </>
-              )}
+              ) : googleClientId() ? (
+                <p className="gate-google-fallback" role="status">{t.gateGoogleUnavailable}</p>
+              ) : null}
 
               <div className="gate-tabs" role="tablist">
                 <button role="tab" aria-selected={gateMode === "in"} className={`gate-tab${gateMode === "in" ? " active" : ""}`} onClick={() => { setGateMode("in"); setGateError(null); }}>
