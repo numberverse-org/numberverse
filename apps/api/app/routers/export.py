@@ -42,7 +42,7 @@ router = APIRouter(prefix="/api/v1", tags=["export"])
 
 # #838 — exports stream a family's entire history, so bound how often a
 # (possibly breached) token may pull a heavy full export. Reuses the same
-# account+IP sliding-window limiter as the write endpoints.
+# account+IP durable fixed-window limiter as the write endpoints.
 EXPORT_RATE_LIMIT = rate_limit()
 
 CSV_FIELDS = ["kid", "kid_id", "date", "skill_id", "game_id", "correct", "response_ms", "difficulty"]

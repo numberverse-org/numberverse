@@ -38,9 +38,9 @@ from ..scrub import redact_context
 
 router = APIRouter(prefix="/api/v1", tags=["import"])
 
-# Same account+IP sliding-window limiter as every write endpoint. The import
-# body is a whole family's history, so keep it on the same bounded budget as
-# export (#838).
+# Same account+IP durable fixed-window limiter as every write endpoint. The
+# import body is a whole family's history, so keep it on the same bounded budget
+# as export (#838).
 IMPORT_RATE_LIMIT = rate_limit()
 
 # Defense-in-depth on top of the app's global request-body guard (#836). The

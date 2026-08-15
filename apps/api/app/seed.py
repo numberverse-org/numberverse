@@ -300,7 +300,14 @@ async def create_tables() -> None:
 
 
 async def _ensure_profile(
-    db: AsyncSession, email: str, password: str, display_name: str, is_admin: bool, role: str = "user"
+    db: AsyncSession,
+    email: str,
+    password: str,
+    display_name: str,
+    is_admin: bool,
+    role: str = "user",
+    *,
+    rotate_password: bool = False,
 ) -> Profile:
     existing = await db.scalar(select(Profile).where(Profile.email == email))
     if existing:
@@ -309,16 +316,15 @@ async def _ensure_profile(
         # forward (legacy is_admin already grants it, but make the role real).
         if is_admin and existing.is_admin and existing.role != "super_admin":
             existing.role = "super_admin"
-        # #842 — the bootstrap admin's password is owned by the OPERATOR via
-        # NV_ADMIN_PASSWORD (non-dev boots refuse the default). A pre-rotation
-        # row (seeded with the old env value, or the old default) must re-hash
-        # to the current env value on every boot so changing NV_ADMIN_PASSWORD
-        # is the deterministic rotation path — the console account always
-        # matches the env, never a stale hash. Non-admin profiles are created
-        # once and never re-seeded.
-        if is_admin and not verify_password(password, existing.password_hash):
+        # #842/#800 — the bootstrap admin and demo passwords are owned by the
+        # OPERATOR via NV_ADMIN_PASSWORD / NV_DEMO_PASSWORD (non-dev boots
+        # refuse the built-in defaults). A pre-rotation row (seeded with the old
+        # env value, or the old default) must re-hash to the current env value
+        # on every boot so changing either env var is the deterministic rotation
+        # path — the seeded account always matches the env, never a stale hash.
+        if rotate_password and not verify_password(password, existing.password_hash):
             existing.password_hash = hash_password(password)
-            log.info("Rotated %s password to match NV_ADMIN_PASSWORD (#842)", email)
+            log.info("Rotated %s password to match the configured env value", email)
         return existing
     profile = Profile(
         email=email,
@@ -337,14 +343,29 @@ async def seed() -> None:
     async with SessionLocal() as db:
         await seed_content(db)
 
-        # #842 — dev-only default admin password. In non-dev environments the
-        # config startup guard refuses to boot unless NV_ADMIN_PASSWORD is set,
-        # so this default only ever seeds during local dev/test runs. Deliberately
-        # NOT a random per-restart password — that would lock the console out.
+        # #842/#800 — dev-only default admin/demo passwords. In non-dev
+        # environments the config startup guard refuses to boot unless
+        # NV_ADMIN_PASSWORD and NV_DEMO_PASSWORD are set, so the built-in
+        # defaults only ever seed during local dev/test runs. Deliberately NOT
+        # random per-restart passwords — that would lock the console and demo
+        # out. Both seeded accounts rotate to their env value on every boot.
         admin = await _ensure_profile(
-            db, settings.admin_email, settings.admin_password, "Numberverse Admin", True, "super_admin"
+            db,
+            settings.admin_email,
+            settings.admin_password,
+            "Numberverse Admin",
+            True,
+            "super_admin",
+            rotate_password=True,
         )
-        demo = await _ensure_profile(db, "demo@numberverse.dev", "demo1234", "Demo Parent", False)
+        demo = await _ensure_profile(
+            db,
+            settings.demo_email,
+            settings.demo_password,
+            "Demo Parent",
+            False,
+            rotate_password=True,
+        )
 
         # Demo kid for the parent portal
         kids = await db.scalars(select(Kid).where(Kid.profile_id == demo.id))
