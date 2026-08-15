@@ -951,8 +951,13 @@ export const useKidStore = create<KidState>()(
         // misconception ledger once it repeats (misconcOccurrences=2), so the
         // diagnosis turns into a SPECIFIC contrast drill instead of a generic
         // "repeated error". Only numeric answers fingerprint — never strings.
+        // #1047-audit — register with `===`, not `>=`: the generic path in
+        // profile.ts gates on `===` so ONE streak registers ONE occurrence.
+        // `>=` counted every subsequent wrong in the same streak (occurrences
+        // inflated to streak-length − 1), confirming the pattern "N times"
+        // instead of "confirmed once after N repeats".
         const fp = fingerprintAnswer(skillId, correct, wrong);
-        if (fp && wrongStreak >= DEFAULT_MONI_PARAMS.misconcOccurrences) {
+        if (fp && wrongStreak === DEFAULT_MONI_PARAMS.misconcOccurrences) {
           moniNext = moni.recordMisconception(moniNext, skillId, fp.code, fp.label, now);
           // The generic "repeated-error" is now redundant — drop it so the
           // ledger names the real pattern only.

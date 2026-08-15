@@ -78,8 +78,13 @@ export function observeRound(
       ? (p.style.avgResponseMs * 0.85 + ms * 0.15)
       : ms;
   }
-  // Normalize: <1s → 1 (very fast), >10s → 0 (very slow)
-  p.style.speedTendency = clamp01(1 - Math.max(0, Math.min(1, (p.style.avgResponseMs - 1000) / 9000)));
+  // Normalize: <1s → 1 (very fast), >10s → 0 (very slow).
+  // #1047-audit — when NO valid response time was ever recorded (avgResponseMs
+  // still 0), (0−1000)/9000 maps to 1 ("very fast") — a kid with zero data
+  // must stay NEUTRAL (0.5), not be stamped as lightning-fast.
+  if (p.style.avgResponseMs > 0) {
+    p.style.speedTendency = clamp01(1 - Math.max(0, Math.min(1, (p.style.avgResponseMs - 1000) / 9000)));
+  }
 
   // Game affinity: engagement = accuracy-weighted volume
   // Decay ALL affinities per round so stale game interest fades over time.

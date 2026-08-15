@@ -39,9 +39,12 @@ const skill = (p = 0.5, streak = 0, wrongStreak = 0) => ({
   p = moni.observeRound(p, { kidId: "k", skillId: "s", gameId: "g", correct: true, difficulty: 1, responseMs: 0, timestamp: T }, skill(), DEFAULT_MONI_PARAMS, T);
   check("#953 no NaN avgResponseMs", Number.isFinite(p.style.avgResponseMs), true);
   check("#953 speedTendency in range", p.style.speedTendency >= 0 && p.style.speedTendency <= 1, true);
+  // #1047-audit — zero valid response times must stay NEUTRAL (0.5), not 1
+  check("#1047-audit no-data speedTendency neutral", p.style.speedTendency, 0.5);
   // a real fast round then makes it sane
   p = moni.observeRound(p, { kidId: "k", skillId: "s", gameId: "g", correct: true, difficulty: 1, responseMs: 500, timestamp: T }, skill(), DEFAULT_MONI_PARAMS, T);
   check("#953 real round sets avg", p.style.avgResponseMs > 0, true);
+  check("#1047-audit real fast round → fast", p.style.speedTendency > 0.5, true);
 }
 
 /* ── #954 + #955 — fragile flag derives from recoveryRate; the rate decays ── */
@@ -109,6 +112,42 @@ const skill = (p = 0.5, streak = 0, wrongStreak = 0) => ({
   // strictness + per-skill stack (gentle −1 AND skill +1 → net 0 from tier 3)
   const stack = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, "gentle", T, { "s1": 1 });
   check("#1047 strictness + skill delta stack", stack.difficulty, base.difficulty);
+}
+
+/* ── #1047-audit — weak-branch focus respects the reachable band gate ── */
+{
+  // band-1 mastered; a weak band-4 skill (leftover from a world sweep) is the
+  // globally-weakest → Moni must NOT focus it (that's jumping 3 bands ahead).
+  const catalog = {
+    "b1a": { id: "b1a", band: 1, game: "g1" },
+    "b1b": { id: "b1b", band: 1, game: "g1" },
+    "b4weak": { id: "b4weak", band: 4, game: "g4" },
+  };
+  const mastery = { "b1a": skill(0.6, 2), "b1b": skill(0.55, 1), "b4weak": skill(0.3) };
+  const p = initialMoniProfile("k", T);
+  const pl = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, undefined, T);
+  check("#1047-audit weak focus inside childBand+1", catalog[pl.focusSkillId].band <= 2, true);
+  check("#1047-audit weak focus is NOT the high-band skill", pl.focusSkillId !== "b4weak", true);
+  // when every weak skill is out of reach, the momentum branch (solid next
+  // step) still picks something in reach
+  const mastery2 = { "b1a": skill(0.6, 2), "b1b": skill(0.55, 1), "b4weak": skill(0.3) };
+  const pl2 = plan(p, mastery2, { ...catalog, "b2reach": { id: "b2reach", band: 2, game: "g2" } }, DEFAULT_MONI_PARAMS, undefined, T);
+  check("#1047-audit fallback stays in reach", catalog[pl2.focusSkillId]?.band <= 2, true);
+}
+
+/* ── #1047-audit — one streak registers ONE misconception occurrence ── */
+{
+  let p = initialMoniProfile("k", T);
+  // a long wrong streak (wrongStreak passes misconcOccurrences twice) must
+  // still register the pattern ONCE — occurrences stays 1, not streak−1.
+  let streak = 0;
+  for (let i = 0; i < 5; i++) {
+    streak++;
+    p = moni.observeWrong(p, { kidId: "k", skillId: "s", gameId: "g", difficulty: 1, timestamp: T + i }, skill(0.5, 0, streak), DEFAULT_MONI_PARAMS, T + i);
+  }
+  const repeated = p.misconceptions.find((m) => m.code === "repeated-error");
+  check("#1047-audit generic misconception registered", !!repeated, true);
+  check("#1047-audit one streak → one occurrence", repeated?.occurrences, 1);
 }
 
 /* ── #958 — fragile child shifts review one rung shorter, solidity preserved ── */

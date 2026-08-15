@@ -107,28 +107,40 @@ export function plan(
   let focusSkillId: string;
   let focusReason: string;
   let difficultyDelta = 0;
+  // The child's current band is needed by BOTH the weak branch and the
+  // momentum branch — computed once so the two never disagree.
+  const childBand = childsCurrentBand(mastery, catalog);
 
   if (activeMis) {
     focusSkillId = activeMis.skillId;
     focusReason = `Fixing "${activeMis.label}" — a specific pattern that needs a contrast drill.`;
     difficultyDelta = 0;
-  } else if (weak.length > 0) {
-    focusSkillId = weak[0].id;
-    focusReason = `${weak[0].reason}: ${weak[0].skill.id} needs work.`;
-    difficultyDelta = -1;
   } else {
-    // Everything solid → pick the lowest-mastery skill within the child's
-    // reachable band (current band +1) so Moni never jumps ahead.
-    const childBand = childsCurrentBand(mastery, catalog);
-    const reachable = entries
-      .map(([id, skill]) => ({ id, skill, m: mastery[id] }))
-      .filter((x) => x.m && x.skill.band <= childBand + 1);
-    const lowest = reachable.length
-      ? reachable.sort((a, b) => (a.m?.pMastered ?? 1) - (b.m?.pMastered ?? 1))[0]
-      : null;
-    focusSkillId = lowest?.id ?? entries[0]?.[0] ?? "count-1-10";
-    focusReason = "Everything's solid — let's keep the momentum with the next challenge.";
-    difficultyDelta = 1;
+    // #1047-audit — band-gate weak skills the same way the momentum branch
+    // does (#957): a weak HIGH-band skill (leftover from a world sweep) must
+    // never become the focus for a child still building lower bands. Only
+    // skills within reach (current band +1) count; if none are reachable the
+    // momentum branch below picks a solid next step instead.
+    const reachableWeak = weak.filter((w) => w.skill.band <= childBand + 1);
+    if (reachableWeak.length > 0) {
+      const w = reachableWeak[0];
+      focusSkillId = w.id;
+      focusReason = `${w.reason}: ${w.skill.id} needs work.`;
+      difficultyDelta = -1;
+    } else {
+      // Everything solid (or only out-of-reach weak skills) → pick the
+      // lowest-mastery skill within the child's reachable band (current band
+      // +1) so Moni never jumps ahead.
+      const reachable = entries
+        .map(([id, skill]) => ({ id, skill, m: mastery[id] }))
+        .filter((x) => x.m && x.skill.band <= childBand + 1);
+      const lowest = reachable.length
+        ? reachable.sort((a, b) => (a.m?.pMastered ?? 1) - (b.m?.pMastered ?? 1))[0]
+        : null;
+      focusSkillId = lowest?.id ?? entries[0]?.[0] ?? "count-1-10";
+      focusReason = "Everything's solid — let's keep the momentum with the next challenge.";
+      difficultyDelta = 1;
+    }
   }
 
   const cat = catalog[focusSkillId];
