@@ -24,7 +24,9 @@ export function diagnose(
   params: MoniParams = DEFAULT_MONI_PARAMS,
 ): MoniDiagnosis {
   const fast = round.responseMs < params.fastMs;
-  const slow = round.responseMs > params.slowMs;
+  // Treat falsy/NaN responseMs (sentinel for "tap, not a round") as slow
+  // so wrong taps are never misclassified as fast guesses.
+  const slow = !(Number.isFinite(round.responseMs) && round.responseMs > 0) || round.responseMs > params.slowMs;
   const confident = (skill?.pMastered ?? 0) >= params.slipAccuracy;
 
   // 1. FATIGUE — deep into a long session AND late-session accuracy is poor.

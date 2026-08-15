@@ -890,7 +890,11 @@ export const useKidStore = create<KidState>()(
         const moniPrev = get().moni[kidId] ?? moni.initial(kidId, now);
         const wrongStreak = (get().moniWrongStreak[mk] ?? 0) + 1;
         const skill = get().skills[mk] ?? initialSkillState(kidId, skillId);
-        const round = { kidId, skillId, gameId, correct: false, difficulty, responseMs: DEFAULT_MONI_PARAMS.slowMs, timestamp: now };
+        // Use slowMs+1 so it clears the strict > slowMs check in diagnose.ts
+        // and gets classified as slow/hesitant (gap) rather than falling through
+        // to the generic fallback. A real responseMs would be better — see #958.
+        const responseMs = DEFAULT_MONI_PARAMS.slowMs + 1;
+        const round = { kidId, skillId, gameId, correct: false, difficulty, responseMs, timestamp: now };
         let moniNext = moni.observeWrong(moniPrev, round, { ...skill, wrongStreak }, DEFAULT_MONI_PARAMS, now);
         // 🖐️ FINGERPRINT — cluster the wrong VALUE into a misconception code
         // ("picks 8 when 7 is right" → overcount-1) and log it into Moni's
