@@ -1,3 +1,8 @@
+## 16 Aug 2026 — 0.81.0 (Moni adaptive cluster: verified+closed #953-#960 (NaN-guard, derived fragile, recovery decay, slowMs+1 gap, band-gated focus, rung-shift review, affinity decay, post-round state) + 18-check regression suite wired into core CI)
+
+a53c48a 🧠 Moni adaptive cluster (#953-#960): verified impl + regression test suite + CI wiring
+5189190 📚 TRACKER: 0.80.0 kotha memory-pipeline closure entry (#943-#950)
+
 ## 16 Aug 2026 — 0.80.0 (kotha-stories pipeline: verified+closed #943-#950 (orphan sweep, skip surfacing, FIFO embed, numeric-safe scrub, context budget, dim guard, search allowlist, scheduled prune) + dep-free clamp helpers + expanded scrub tests)
 
 54882a3 🧼 kotha-stories cluster (#943-#950): verified impl + dep-free clamp helpers + full test coverage
