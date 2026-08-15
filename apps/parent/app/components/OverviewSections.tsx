@@ -5,8 +5,10 @@
 
 import type { Kid, WeeklyReport } from "../../lib/api";
 import {
+  OVERVIEW_LANGS,
   STREAK_LANGS,
   TIMELINE_LANGS,
+  gameLabel,
   narrTitleBn,
   narrTitleEn,
   shortDate,
@@ -30,37 +32,41 @@ export function FamilyOverview({
   famRounds,
   famMinutes,
   famActive,
+  wizLang = "en",
 }: {
   kids: Kid[];
   famMastered: number;
   famRounds: number;
   famMinutes: number;
   famActive: number;
+  // #1497 — page.tsx passes wizLang
+  wizLang?: WizardLang;
 }) {
   if (kids.length === 0) return null;
+  const L = OVERVIEW_LANGS[wizLang];
   return (
         <section className="card overview" id="overview">
-<h2>👨‍👩‍👧 Family overview</h2>
+<h2>{L.title}</h2>
 <div className="stat-tiles">
   <div className="tile">
     <span className="tile-num">{kids.length}</span>
-    <span className="tile-label">kids</span>
+    <span className="tile-label">{L.kids}</span>
   </div>
   <div className="tile">
     <span className="tile-num">{famMastered}</span>
-    <span className="tile-label">skills mastered</span>
+    <span className="tile-label">{L.skillsMastered}</span>
   </div>
   <div className="tile">
     <span className="tile-num">{famRounds}</span>
-    <span className="tile-label">rounds this week</span>
+    <span className="tile-label">{L.roundsWeek}</span>
   </div>
   <div className="tile">
     <span className="tile-num">{famMinutes}</span>
-    <span className="tile-label">min this week</span>
+    <span className="tile-label">{L.minWeek}</span>
   </div>
   <div className="tile">
     <span className="tile-num">{famActive}</span>
-    <span className="tile-label">active this week</span>
+    <span className="tile-label">{L.activeWeek}</span>
   </div>
 </div>
         </section>
@@ -198,6 +204,12 @@ export function WeeklyCard({
           <span className="tile-label">days active</span>
         </div>
       </div>
+      {/* #1557 — surface the server-computed most-played game (already in WeeklyReport) */}
+      {activeWeekly.top_game && (
+        <p className="muted small mt-10">
+          {STREAK_LANGS[wizLang].mostPlayed}: <strong>{gameLabel(activeWeekly.top_game)}</strong>
+        </p>
+      )}
       {todayCap > 0 && (
         <div className="cap-row">
           <div className="cap-meta">
@@ -223,7 +235,12 @@ export function WeeklyCard({
       {activeWeekly.mastered_this_week.length > 0 && (
         <p className="muted small mt-10">
           🏆 Mastered this week:{" "}
-          <strong>{activeWeekly.mastered_this_week.map((s) => s.replace(/-/g, " ")).join(", ")}</strong>
+          {/* #1560 — real skill titles + Bangla variant, not dashed slugs */}
+          <strong>
+            {activeWeekly.mastered_this_week
+              .map((s) => (narrTitleBn(s) !== narrTitleEn(s) ? `${narrTitleEn(s)} · ${narrTitleBn(s)}` : narrTitleEn(s)))
+              .join(", ")}
+          </strong>
         </p>
       )}
     </>

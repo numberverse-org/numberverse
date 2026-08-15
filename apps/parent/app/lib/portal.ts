@@ -341,16 +341,25 @@ export function weekdayShort(iso: string): string {
 
 /** Privacy-safe share blurb — only aggregates, never a kid's name/device data
  *  unless the parent types the name into the share line themselves. */
-export function weeklyShareText(kidName: string, w: WeeklyReport): string {
+export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
   const n = w.mastered_this_week.length;
+  // #1560 — mastered skills use curated EN titles (with the Bangla title suffix
+  // where the catalog carries one), never raw hyphen-stripped slugs.
   const mastered = n
-    ? `🏆 Mastered ${n} skill${n > 1 ? "s" : ""}: ${n <= 4 ? w.mastered_this_week.map((s) => s.replace(/-/g, " ")).join(", ") : `${n} total`}`
+    ? `🏆 Mastered ${n} skill${n > 1 ? "s" : ""}: ${
+        n <= 4
+          ? w.mastered_this_week
+              .map((s) => (narrTitleBn(s) !== narrTitleEn(s) ? `${narrTitleEn(s)} · ${narrTitleBn(s)}` : narrTitleEn(s)))
+              .join(", ")
+          : `${n} total`
+      }`
     : "🌱 Still growing — we keep playing every day!";
   // #8 — honest coins line: the WALLET balance (a real number), never a made-up
   // "earned this week" figure — we don't keep a per-week coin ledger.
-  const coins = w.coins && w.coins > 0 ? `🪙 ${w.coins} coins in ${kidName}’s wallet` : null;
+  // #1549 — no kid's name here: the share flow is aggregate-only.
+  const coins = w.coins && w.coins > 0 ? `🪙 ${w.coins} coins in the wallet` : null;
   return [
-    `📊 ${kidName}’s learning week on Numberverse`,
+    `📊 This week's learning on Numberverse`,
     `🎮 ${w.rounds} rounds · ${w.minutes} min · ${w.active_days} day${w.active_days === 1 ? "" : "s"} active`,
     `🎯 ${w.correct_pct}% correct`,
     mastered,
@@ -415,6 +424,8 @@ export const STREAK_LANGS = {
     min: "min",
     noCap: "no cap set",
     minutesWeek: "minutes this week",
+    // #1557 — most-played game line in the weekly card
+    mostPlayed: "Most played",
   },
   bn: {
     streakTitle: "🔥 {name}-এর ধারাবাহিকতা",
@@ -427,8 +438,67 @@ export const STREAK_LANGS = {
     min: "মিনিট",
     noCap: "সীমা নির্ধারিত নেই",
     minutesWeek: "এই সপ্তাহের মিনিট",
+    // #1557 — most-played game line in the weekly card
+    mostPlayed: "সবচেয়ে বেশি খেলা",
   },
 } as const;
+
+/** #1497 — family-overview tiles + mastery-table controls (EN + BN). Same
+ *  country-pack seam as STREAK_LANGS: the page passes `wizLang`, and both the
+ *  overview tiles and the mastery card's subject filter / sort toggle follow. */
+export const OVERVIEW_LANGS: Record<WizardLang, {
+  title: string;
+  kids: string;
+  skillsMastered: string;
+  roundsWeek: string;
+  minWeek: string;
+  activeWeek: string;
+  /** #1520 — weakness-first mastery sort toggle */
+  weakestFirst: string;
+  azSort: string;
+  /** #1521 — mastery subject filter chip row */
+  allFilter: string;
+  subjects: Record<string, string>;
+}> = {
+  en: {
+    title: "👨‍👩‍👧 Family overview",
+    kids: "kids",
+    skillsMastered: "skills mastered",
+    roundsWeek: "rounds this week",
+    minWeek: "min this week",
+    activeWeek: "active this week",
+    weakestFirst: "↓ weakest first",
+    azSort: "A–Z",
+    allFilter: "All",
+    subjects: {
+      math: "Math",
+      bangla: "Bangla",
+      english: "English",
+      science: "Science",
+      bgs: "BGS",
+      ict: "ICT",
+    },
+  },
+  bn: {
+    title: "👨‍👩‍👧 পারিবারিক সারসংক্ষেপ",
+    kids: "বাচ্চা",
+    skillsMastered: "আয়ত্ত করা দক্ষতা",
+    roundsWeek: "এই সপ্তাহের রাউন্ড",
+    minWeek: "এই সপ্তাহের মিনিট",
+    activeWeek: "এই সপ্তাহে সক্রিয়",
+    weakestFirst: "↓ দুর্বল আগে",
+    azSort: "A–Z",
+    allFilter: "সব",
+    subjects: {
+      math: "গণিত",
+      bangla: "বাংলা",
+      english: "ইংরেজি",
+      science: "বিজ্ঞান",
+      bgs: "বাংলাদেশ ও বিশ্ব",
+      ict: "তথ্যপ্রযুক্তি",
+    },
+  },
+};
 
 /** #79 — 🏆 mastery timeline: when each skill first hit ≥80%. EN + BN — same
  *  country-pack seam. Purely derived from the already-loaded mastery rows
@@ -852,15 +922,20 @@ export function narrTitleBn(id: string): string {
   return s?.titleBn ?? narrTitleEn(id);
 }
 
+/** #1559 — Bengali numeral converter. The portal's BN surfaces (shortDate,
+ *  relTime, weekly narrative) all use this single ০–৯ mapping so Bangla prose
+ *  never mixes ASCII digits into natural Bangla sentences. */
+export function toBnNum(n: number): string {
+  return String(n).replace(/[0-9]/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]);
+}
+
 /** #79 — short "12 Aug" / "১২ আগস্ট" date for the mastery timeline. */
 export function shortDate(iso: string, lang: "en" | "bn"): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   if (lang === "bn") {
     const BN_M = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"];
-    const BN_N = "০১২৩৪৫৬৭৮৯";
-    const num = (n: number) => String(n).replace(/[0-9]/g, (x) => BN_N[Number(x)]);
-    return `${num(d.getDate())} ${BN_M[d.getMonth()]}`;
+    return `${toBnNum(d.getDate())} ${BN_M[d.getMonth()]}`;
   }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
@@ -869,9 +944,9 @@ export function shortDate(iso: string, lang: "en" | "bn"): string {
 export function relTime(ms: number, lang: "en" | "bn"): string {
   const mins = Math.max(0, Math.round((Date.now() - ms) / 60000));
   if (mins < 1) return lang === "bn" ? "এইমাত্র" : "just now";
-  if (mins < 60) return `${lang === "bn" ? String(mins).replace(/[0-9]/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]) : mins}${lang === "bn" ? "মি" : "m"}`;
+  if (mins < 60) return `${lang === "bn" ? toBnNum(mins) : mins}${lang === "bn" ? "মি" : "m"}`;
   const h = Math.round(mins / 60);
-  return `${lang === "bn" ? String(h).replace(/[0-9]/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]) : h}${lang === "bn" ? "ঘ" : "h"}`;
+  return `${lang === "bn" ? toBnNum(h) : h}${lang === "bn" ? "ঘ" : "h"}`;
 }
 
 /** One kid's play session, derived client-side from the activity feed. */
@@ -1041,16 +1116,18 @@ export function buildWeeklyNarrative(kidName: string, stories: LearningStoryRow[
     : " Keep the daily rhythm going — consistency makes it stick!";
 
   // ── BN (natural Bangla, not phonetic) ──
-  let bn = `এ সপ্তাহে ${kidName} করেছে ${total}টি শেখার মুহূর্ত — ${narrListBn(topSkills.map(([id]) => narrTitleBn(id)))}।`;
+  // #1559 — every numeral goes through toBnNum so the Bangla prose reads
+  // entirely in ০১২…৯, never ASCII digits.
+  let bn = `এ সপ্তাহে ${kidName} করেছে ${toBnNum(total)}টি শেখার মুহূর্ত — ${narrListBn(topSkills.map(([id]) => narrTitleBn(id)))}।`;
   if (highlight) {
     const hl = highlight[1];
-    bn += ` ${kidName} সবচেয়ে ভালো করেছে ${narrTitleBn(highlight[0])} — ${hl.correct}/${hl.total}টি সঠিক উত্তর।`;
+    bn += ` ${kidName} সবচেয়ে ভালো করেছে ${narrTitleBn(highlight[0])} — ${toBnNum(hl.correct)}/${toBnNum(hl.total)}টি সঠিক উত্তর।`;
   } else {
     bn += " প্রতিটা সঠিক উত্তরের জন্য অনেক ভালো — দারুণ পরিশ্রম করেছে!";
   }
   if (struggle) {
     const st = struggle[1];
-    bn += ` ${narrTitleBn(struggle[0])} একটু কঠিন লেগেছে — ${st.total - st.correct}টি উত্তর এখনও ঠিক করা বাকি`;
+    bn += ` ${narrTitleBn(struggle[0])} একটু কঠিন লেগেছে — ${toBnNum(st.total - st.correct)}টি উত্তর এখনও ঠিক করা বাকি`;
     if (misCode && NARR_MIS[misCode]) bn += ` — দেখা গেছে ${NARR_MIS[misCode].bn}`;
     bn += "। প্রতিদিন সামান্য অনুশীলন করলেই ঠিক হয়ে যাবে।";
   } else {
