@@ -58,6 +58,9 @@ export interface Strings {
   addKid: string;
   addKidSub: string;
   upTo4: string;
+  /** #1415 — the 4-kid family cap, shown when the add-kid action is full. */
+  kidsFull: string;
+  kidsFullSub: string;
   skillsMastered: (n: number) => string;
   worldsOpen: (n: number) => string;
   worldsOf: (name: string) => string;
@@ -486,6 +489,12 @@ export interface Strings {
   welcomeOr: string;
   welcomeSignin: string;
   welcomeSyllabus: string;
+  /** #1393 — second-tap confirmation before leaving a parent account as guest. */
+  guestConfirm: string;
+  /** #1391/#1394 — persistent guest-mode warning + upgrade CTA. */
+  guestModeWipe: string;
+  guestUpgradeTitle: string;
+  guestUpgradeCta: string;
   /* interactive syllabus (what kids learn) */
   syllabusGuestNote: string;
   syllabusTitle: string;
@@ -895,6 +904,8 @@ export const STR: Record<Lang, Strings> = {
     addKid: "Add a kid",
     addKidSub: "Worlds unlock by progress, not age",
     upTo4: "up to 4 per family",
+    kidsFull: "Family full",
+    kidsFullSub: "Up to 4 kids per family",
     skillsMastered: (n) => `${n} skills mastered`,
     worldsOpen: (n) => `${n}/5 worlds open`,
     worldsOf: (name) => `${name}'s worlds`,
@@ -1310,6 +1321,10 @@ export const STR: Record<Lang, Strings> = {
     welcomeBangla: "🇧🇩 বাংলা",
     welcomeGuest: "🎮 Continue as guest",
     welcomeGuestSub: "No account? Jump straight in — progress stays private on this device.",
+    guestConfirm: "Tap again to leave the parent account and play as guest",
+    guestModeWipe: "Guest mode — progress lives only on this device. Clearing the browser erases the journey.",
+    guestUpgradeTitle: "Keep progress everywhere",
+    guestUpgradeCta: "Sign in / create account",
     welcomeOr: "or",
     welcomeSignin: "👨‍👩‍👧 I'm a parent — sign in",
     welcomeSyllabus: "📚 What kids learn — no sign-in needed",
@@ -1703,6 +1718,8 @@ export const STR: Record<Lang, Strings> = {
     addKid: "নতুন বাচ্চা",
     addKidSub: "দক্ষতা দিয়ে জগৎ খোলে, বয়স নয়",
     upTo4: "পরিবারে সর্বোচ্চ ৪টি",
+    kidsFull: "পরিবার পূর্ণ",
+    kidsFullSub: "প্রতি পরিবারে সর্বোচ্চ ৪ জন",
     skillsMastered: (n) => `${n}টি দক্ষতা আয়ত্ত`,
     worldsOpen: (n) => `${n}/৫টি জগৎ খোলা`,
     worldsOf: (name) => `${name} এর জগৎ`,
@@ -2116,6 +2133,10 @@ export const STR: Record<Lang, Strings> = {
     welcomeBangla: "🇧🇩 বাংলা",
     welcomeGuest: "🎮 অতিথি হিসেবে খেলুন",
     welcomeGuestSub: "অ্যাকাউন্ট নেই? সোজা ঢুকে পড়ুন — শেখার খবর এই ডিভাইসেই ব্যক্তিগত থাকে।",
+    guestConfirm: "আবার চাপুন প্যারেন্ট অ্যাকাউন্ট ছেড়ে অতিথি হিসেবে খেলতে",
+    guestModeWipe: "অতিথি মোড — অগ্রগতি শুধু এই ডিভাইসে থাকে। ব্রাউজার মুছলে সব ইতিহাস হারিয়ে যায়।",
+    guestUpgradeTitle: "সব জায়গায় অগ্রগতি রাখুন",
+    guestUpgradeCta: "সাইন ইন / অ্যাকাউন্ট তৈরি করুন",
     welcomeOr: "অথবা",
     welcomeSignin: "👨‍👩‍👧 আমি মা-বাবা — সাইন ইন করুন",
     welcomeSyllabus: "📚 বাচ্চারা যা শেখে — সাইন ইন লাগবে না",

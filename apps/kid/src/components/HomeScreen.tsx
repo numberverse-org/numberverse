@@ -114,6 +114,10 @@ export interface HomeScreenProps {
   goNova: () => void;
   /** Labeled parent-portal door on the home corner — 1 tap → goParent (PIN gate). */
   onParent: () => void;
+  /** #1394 — persistent guest-mode warning (local-only progress). */
+  guestMode: boolean;
+  /** #1391 — one-tap upgrade path for a guest to sign in / create an account. */
+  onGuestUpgrade: () => void;
 }
 
 export default function HomeScreen({
@@ -125,7 +129,7 @@ export default function HomeScreen({
   setScreen, setScanCode, setScanError, setScanOpen, setGoalNotice, setTourStep, setVoiceFunVolState,
   closeChallenge, closeTour, installApp, pickChallenge, resumeSession, snapshotSession, startChallenge,
   startContrastDrill, startPlayWorld, startSingleSkill, stopScanner, goAchievements, goAvatar,
-  goBadges, goCards, goGarden, goNova, onParent,
+  goBadges, goCards, goGarden, goNova, onParent, guestMode, onGuestUpgrade,
 }: HomeScreenProps) {
   const t = STR[lang];
     // #1122 — the journey view (recommended next skill + the stop path around
@@ -312,6 +316,20 @@ export default function HomeScreen({
                 )}
               </div>
             </div>
+
+            {/* #1394 — guest mode is a persistent state, not a hidden one: a slim
+                banner names the local-only risk and offers the upgrade path. */}
+            {guestMode && (
+              <div className="syllabus-guest-banner home-guest-banner" role="status">
+                <span className="syllabus-guest-emoji" aria-hidden="true">👀</span>
+                <p className="syllabus-guest-text">
+                  {t.guestModeWipe}{" "}
+                  <button className="syllabus-banner-link" onClick={onGuestUpgrade}>
+                    {t.guestUpgradeCta}
+                  </button>
+                </p>
+              </div>
+            )}
 
             {/* 🎙️ On-device Bangla voice — first-use download banner (live %),
                 then a 5s "ready ✓" flash. Appears ONCE; after that the voice is

@@ -257,6 +257,10 @@ export interface Kid {
   avatarParts?: AvatarParts;
 }
 
+/** #1415 — the product promises "up to 4 per family"; enforce that hard cap in
+ *  the Add Kid flow (the UI hides the add action and `addKid` guards it too). */
+export const MAX_KIDS_PER_FAMILY = 4;
+
 /** Mastery state map (from the persisted store) — key `${kidId}:${skillId}`.
  *  The store's real value is the full core SkillState (lastPractice/correct/
  *  attempts/streak too) — the album reads those for card dates + flip stats. */
