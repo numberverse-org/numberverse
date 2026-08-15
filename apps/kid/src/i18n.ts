@@ -63,6 +63,12 @@ export interface Strings {
   worldsOf: (name: string) => string;
   masterSkillsSub: string;
   worldComplete: string;
+  /** #1484 — a band with no playable units after a parent subject filter. */
+  worldNoLessons: string;
+  /** #1483 — warm acknowledge + named goal when a locked land is tapped. */
+  mapLockedSpeak: (more: number, prev: string) => string;
+  /** #1486 — parent difficulty cap blocks this land regardless of progress. */
+  worldLockedCap: string;
   /* learning journey */
   journey: string;
   worldsLabel: string;
@@ -865,6 +871,12 @@ export const STR: Record<Lang, Strings> = {
     worldsOf: (name) => `${name}'s worlds`,
     masterSkillsSub: "Master skills to unlock the next world",
     worldComplete: "World complete! 🎉",
+    // #1484 — empty band (parent subject filter) must not show a phantom 0/1.
+    worldNoLessons: "No lessons in this land right now",
+    // #1483 — locked-land tap is acknowledged and the goal is named aloud.
+    mapLockedSpeak: (more, prev) => `${prev} is locked for now — master ${more} more ${more === 1 ? "skill" : "skills"} there to open it.`,
+    // #1486 — the parent's difficulty cap is the honest reason this stays locked.
+    worldLockedCap: "This land is locked by your grown-up's settings",
     journey: "Journey",
     worldsLabel: "Worlds",
     mapTab: "Map",
@@ -1616,6 +1628,12 @@ export const STR: Record<Lang, Strings> = {
     worldsOf: (name) => `${name} এর জগৎ`,
     masterSkillsSub: "পরের জগৎ খুলতে দক্ষতা আয়ত্ত করুন",
     worldComplete: "জগৎ সম্পন্ন! 🎉",
+    // #1484 — খালি জমিতে ভুয়া ০/১ দেখানো যাবে না।
+    worldNoLessons: "এই জমিতে এখন কোনো পাঠ নেই",
+    // #1483 — বন্ধ জমিতে চাপ দিলে স্বীকার করো + লক্ষ্য বলো।
+    mapLockedSpeak: (more, prev) => `${prev} এখনও বন্ধ — এটি খুলতে সেখানে আর ${bnNum(more)}টি দক্ষতা আয়ত্ত করো।`,
+    // #1486 — অভিভাবকের অসুবিধার সীমাই এই জমি বন্ধ রাখার আসল কারণ।
+    worldLockedCap: "অভিভাবকের সেটিংসে এই জমিটি বন্ধ আছে",
     journey: "যাত্রা",
     worldsLabel: "জগৎ",
     mapTab: "মানচিত্র",

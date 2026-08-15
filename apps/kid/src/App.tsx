@@ -46,7 +46,7 @@ import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, kidMasteryStats, worldProgress, worldEmoji,
-  worldUnlocked, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
+  worldUnlocked, unlockGap, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
   challengeEligible, challengeStartLevelIndex,
@@ -2325,6 +2325,27 @@ export default function App() {
     setScreen("worlddetail");
   };
 
+  /** #1483 — locked land taps are no longer silent: acknowledge the tap,
+   *  speak/announce the goal, and give the island a gentle shake. */
+  const tapLockedWorld = (
+    b: Band,
+    more: number,
+    prevTitle: string,
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    click();
+    const capped = filterMaxBand != null && b.id > filterMaxBand;
+    const line = capped ? t.worldLockedCap : t.mapLockedSpeak(more, prevTitle);
+    announce(line);
+    speak(line);
+    const el = e.currentTarget;
+    el.classList.remove("map-locked-shake");
+    // force a reflow so a second tap restarts the animation
+    void el.offsetWidth;
+    el.classList.add("map-locked-shake");
+    window.setTimeout(() => el.classList.remove("map-locked-shake"), 520);
+  };
+
   /** 🚀 #249 — skip-ahead: the kid already knows the next lesson. Marks the
    *  skill mastered locally (journey advances past it) + logs an acceleration
    *  entry with the band jump, so the parent portal's acceleration plan shows
@@ -4166,13 +4187,13 @@ export default function App() {
             {BANDS.map((band) => {
               const cards = worldCards(skillsMap, kid.id, band.id);
               const prog = worldProgress(skillsMap, kid.id, band.id);
-              const complete = prog.mastered === prog.total;
+              const complete = prog.total > 0 && prog.mastered === prog.total;
               return (
                 <section key={band.key} className="cards-world">
                   <div className="cards-world-head">
                     <span className="cards-world-emoji"><Icon name={complete ? "trophy" : band.key} size={20} /></span>
                     <span className="cards-world-name">{band.title}</span>
-                    <span className="cards-world-count">{t.skillsProg(prog.mastered, prog.total)}</span>
+                    <span className="cards-world-count">{prog.total === 0 ? t.worldNoLessons : t.skillsProg(prog.mastered, prog.total)}</span>
                     {complete && (
                       <button className="cards-cert" onClick={() => openCert(band)} aria-label={t.certBtn} title={t.certBtn}>
                         🖨️
@@ -4323,17 +4344,27 @@ export default function App() {
                 const unlocked = worldUnlocked(skillsMap, kid!.id, b.id);
                 const prev = BANDS.find((x) => x.id === b.id - 1);
                 const prevProg = prev ? worldProgress(skillsMap, kid!.id, prev.id) : null;
-                const needed = Math.ceil((prevProg ?? prog).total * UNLOCK_THRESHOLD);
-                const more = unlocked ? 0 : Math.max(1, needed - (prevProg ?? prog).mastered);
-                const complete = prog.mastered === prog.total;
+                // #1485 — the SAME unlockGap helper as land-detail: honest
+                // remaining (0 allowed) instead of map clamping to "1 more".
+                const gate = prev ? unlockGap(prevProg!, UNLOCK_THRESHOLD) : { needed: 0, more: 0, ready: true };
+                const more = unlocked ? 0 : gate.more;
+                const capped = filterMaxBand != null && b.id > filterMaxBand;
+                const complete = prog.total > 0 && prog.mastered === prog.total;
                 const isHere = curStop?.skill.band === b.id;
                 const land = WORLD_LANDS[b.id];
+                const prevTitle = prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : "";
                 return (
                   <div key={b.key} className={`map-island-wrap${isHere ? " here" : ""}`}>
                     <button
                       className={`map-island${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
-                      disabled={!unlocked}
-                      onClick={() => openWorld(b)}
+                      aria-disabled={!unlocked}
+                      onClick={(e) => {
+                        if (unlocked) {
+                          openWorld(b);
+                          return;
+                        }
+                        tapLockedWorld(b, more, prevTitle, e);
+                      }}
                       aria-label={b.title}
                       style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
                     >
@@ -4367,10 +4398,16 @@ export default function App() {
                         </div>
                         <span className="map-island-sub">
                           {unlocked
-                            ? complete
-                              ? t.worldComplete
-                              : t.mapLandProg(prog.mastered, prog.total)
-                            : t.masterMoreIn(more, prev?.title ?? "")}
+                            ? prog.total === 0
+                              ? t.worldNoLessons
+                              : complete
+                                ? t.worldComplete
+                                : t.mapLandProg(prog.mastered, prog.total)
+                            : capped
+                              ? t.worldLockedCap
+                              : gate.ready
+                                ? t.readyFor(lang === "bn" ? b.titleBn ?? b.title : b.title)
+                                : t.masterMoreIn(gate.more, prevTitle)}
                         </span>
                       </span>
                       <span className="map-island-num">{i + 1}</span>
@@ -4400,7 +4437,7 @@ export default function App() {
                 if (!bandStops.length) return null;
                 const bandProg = worldProgress(skillsMap, kid!.id, band.id);
                 const land = WORLD_LANDS[band.id];
-                const bandComplete = bandProg.mastered === bandProg.total;
+                const bandComplete = bandProg.total > 0 && bandProg.mastered === bandProg.total;
                 const nextBand = BANDS.find((x) => x.id === band.id + 1);
                 const bossBeaten = landBossBeaten(novaNow, band.id);
                 const bossReady = !bossBeaten && landBossUnlocked(skillsMap, kid!.id, band.id);
@@ -4412,7 +4449,7 @@ export default function App() {
                     >
                       <span className="journey-region-emoji">{bandComplete ? <Icon name="trophy" size={20} /> : <Icon name={band.key} size={20} />}</span>
                       <span className="journey-region-name">{band.title}</span>
-                      <span className="journey-region-count">{t.skillsProg(bandProg.mastered, bandProg.total)}</span>
+                      <span className="journey-region-count">{bandProg.total === 0 ? t.worldNoLessons : t.skillsProg(bandProg.mastered, bandProg.total)}</span>
                       {bossBeaten ? (
                         <span className="boss-beaten" title={lang === "bn" ? t.bossBeatenBn : t.bossBeaten}>
                           {lang === "bn" ? t.bossBeatenBn : t.bossBeaten}
@@ -4478,9 +4515,11 @@ export default function App() {
                   // To unlock THIS world, the kid must master skills in the PREVIOUS world.
                   // So the "more needed" count comes from prev's progress, not this world's.
                   const prevProg = prev ? worldProgress(skillsMap, kid!.id, prev.id) : null;
-                  const needed = Math.ceil((prevProg ?? prog).total * UNLOCK_THRESHOLD);
-                  const more = unlocked ? 0 : Math.max(1, needed - (prevProg ?? prog).mastered);
-                  const complete = prog.mastered === prog.total;
+                  // #1485 — one gate helper, honest remaining (0 allowed).
+                  const gate = prev ? unlockGap(prevProg!, UNLOCK_THRESHOLD) : { needed: 0, more: 0, ready: true };
+                  const more = unlocked ? 0 : gate.more;
+                  const capped = filterMaxBand != null && b.id > filterMaxBand;
+                  const complete = prog.total > 0 && prog.mastered === prog.total;
                   const land = WORLD_LANDS[b.id];
                   const bossBeaten = landBossBeaten(novaNow, b.id);
                   const bossReady = !bossBeaten && landBossUnlocked(skillsMap, kid!.id, b.id);
@@ -4497,10 +4536,16 @@ export default function App() {
                           <span className="world-name">{lang === "bn" ? b.titleBn ?? b.title : b.title}</span>
                           <span className="world-age">
                             {unlocked
-                              ? complete
-                                ? t.worldComplete
-                                : t.skillsProg(prog.mastered, prog.total)
-                              : t.masterMoreIn(more, prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : (lang === "bn" ? "আগের জগৎ" : "the last world"))}
+                              ? prog.total === 0
+                                ? t.worldNoLessons
+                                : complete
+                                  ? t.worldComplete
+                                  : t.skillsProg(prog.mastered, prog.total)
+                              : capped
+                                ? t.worldLockedCap
+                                : gate.ready
+                                  ? t.readyFor(lang === "bn" ? b.titleBn ?? b.title : b.title)
+                                  : t.masterMoreIn(gate.more, prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : (lang === "bn" ? "আগের জগৎ" : "the last world"))}
                           </span>
                           <div className="progress-bar">
                             <div className="progress-fill" style={{ width: `${prog.pct}%`, background: `linear-gradient(90deg, ${land.c2}, ${land.c3})` }} />
@@ -4610,8 +4655,11 @@ export default function App() {
     const bandSkills = filterSkills.filter((s) => s.band === world.id && s.game);
     const nextSkill = nextUnmasteredSkill(skillsMap, kid.id, world.id);
     const nextWorld = BANDS.find((b) => b.id === world.id + 1);
-    const needed = Math.ceil(prog.total * UNLOCK_THRESHOLD);
-    const moreToUnlock = Math.max(0, needed - prog.mastered);
+    // #1485 — same unlockGap helper as the map; #1486 — gate the "ready" text
+    // on worldUnlocked so a parent difficulty cap never promises a locked land.
+    const gap = unlockGap(prog, UNLOCK_THRESHOLD);
+    const nextUnlocked = nextWorld ? worldUnlocked(skillsMap, kid.id, nextWorld.id) : false;
+    const nextCapped = nextWorld != null && filterMaxBand != null && nextWorld.id > filterMaxBand;
     const land = WORLD_LANDS[world.id];
     return (
       <div className="app">
@@ -4623,7 +4671,7 @@ export default function App() {
             <button className="icon-btn" onClick={() => setScreen("worlds")} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
-              <p className="head-sub">{t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
+              <p className="head-sub">{prog.total === 0 ? t.worldNoLessons : t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
             </div>
           </header>
 
@@ -4631,13 +4679,21 @@ export default function App() {
             <div className="progress-bar big">
               <div className="progress-fill" style={{ width: `${prog.pct}%` }} />
             </div>
-            {prog.mastered === prog.total ? (
+            {prog.total === 0 ? (
+              <div className="badge">{t.worldNoLessons}</div>
+            ) : prog.mastered === prog.total ? (
               <div className="badge">{t.worldComplete}</div>
             ) : nextWorld ? (
               <p className="unlock-hint">
-                {moreToUnlock > 0
-                  ? <>{t.masterMoreToUnlock(moreToUnlock, nextWorld.title)} <Icon name={nextWorld.key} size={18} /></>
-                  : t.readyFor(nextWorld.title)}
+                {nextUnlocked ? (
+                  <>{t.readyFor(nextWorld.title)} <Icon name={nextWorld.key} size={18} /></>
+                ) : nextCapped ? (
+                  t.worldLockedCap
+                ) : gap.more > 0 ? (
+                  <>{t.masterMoreToUnlock(gap.more, nextWorld.title)} <Icon name={nextWorld.key} size={18} /></>
+                ) : (
+                  t.worldLockedCap
+                )}
               </p>
             ) : null}
           </div>

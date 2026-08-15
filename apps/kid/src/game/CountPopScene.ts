@@ -6,7 +6,7 @@ import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
-import { hintWrong } from "./hints";
+import { hintWrong, hintIntro } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { correctCelebrate } from "./celebrate";
@@ -134,6 +134,9 @@ export class CountPopScene extends Phaser.Scene {
       : `Pop the numbers in order, from one to ${this.roundTarget}`);
     this.spawnBubbles();
     this.markExpected(); // #1244 — halo the first "next" bubble (value 1)
+    // #1480 — first-run onboarding: show + speak one correct move before the
+    // kid can fail the mechanic. Once per scene session (guarded in hintIntro).
+    hintIntro(this, { intro: () => t("countPopIntro") });
   }
 
   private spawnBubbles() {

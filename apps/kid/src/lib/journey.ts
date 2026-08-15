@@ -723,8 +723,24 @@ export function worldProgress(skills: SkillMap, kidId: string, band: number): { 
       if (unitMasteredFrom(skills, kidId, u)) mastered++;
     }
   }
-  const t = total || 1;
-  return { mastered, total: t, pct: Math.round((mastered / t) * 100) };
+  // #1484 — a band with no playable units (parent subject filter removed every
+  // game-bearing member) must report an honest 0/0, NOT a fabricated 0/1. The
+  // old `total || 1` clamp made an empty band read as one unmastered lesson and
+  // leaked that phantom 1 into the next world's unlock division.
+  if (total === 0) return { mastered: 0, total: 0, pct: 0 };
+  return { mastered, total, pct: Math.round((mastered / total) * 100) };
+}
+
+/** #1485 — ONE unlock-gap helper for every map/detail renderer. `ready` is true
+ *  at exactly 0 remaining — the UI shows a distinct ready wordmark instead of
+ *  clamping "master 1 more" (map) vs "ready" (detail) for the same gate. */
+export function unlockGap(
+  prog: { mastered: number; total: number },
+  threshold: number = UNLOCK_THRESHOLD
+): { needed: number; more: number; ready: boolean } {
+  const needed = Math.ceil(prog.total * threshold);
+  const more = Math.max(0, needed - prog.mastered);
+  return { needed, more, ready: more === 0 };
 }
 
 /** Total learnable units in the whole journey — the "Y" in "X mastered / Y".
@@ -800,6 +816,9 @@ export function worldUnlocked(skills: SkillMap, kidId: string, band: number): bo
   if (filterMaxBand != null && band > filterMaxBand) return false;
   if (band <= 1) return true;
   const prev = worldProgress(skills, kidId, band - 1);
+  // #1484 — a zero-unit previous band is "nothing left to master", so it must
+  // not divide by the old clamped 1 and block the next world.
+  if (prev.total === 0) return true;
   return prev.mastered / prev.total >= UNLOCK_THRESHOLD;
 }
 
