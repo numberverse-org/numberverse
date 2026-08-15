@@ -14,6 +14,29 @@ export const en: Strings = {
     gameKeyHint: "Use the arrow keys to choose an answer, then press Enter.",
     // #1074 — a compact, kid-readable difficulty signal on every game card.
     classLabel: (n) => `Class ${n}`,
+    // #1033 — older-kid greeting register (bands 5+).
+    homeHelloMature: (name) => `Welcome, ${name}!`,
+    welcomeBackMature: (name) => `Welcome back, ${name}!`,
+    // #1037 — older-kid garden register.
+    gardenTileMature: "Growth Garden",
+    gardenTileSumMature: (plants, fruits) => `${plants} plants · ${fruits} ready`,
+    gardenTileFreshMature: "new progress",
+    gardenTileEmptyMature: "Start your first plant",
+    // #1038 — older-kid weekly summary register.
+    recapTitleMature: "Weekly Summary",
+    recapSubMature: (n) => `${n} day${n === 1 ? "" : "s"} this week`,
+    recapWinMasteredMature: (n) => `${n} skill${n === 1 ? "" : "s"} mastered this week`,
+    recapWinStreakMature: (n) => `Longest streak: ${n} days`,
+    recapHearMature: "🔊 Hear this week",
+    recapEmptyMature: "No play this week — start a session!",
+    recapSpeakMature: (name, days, title, win) => `${name}, this week you played ${days} day${days === 1 ? "" : "s"}; top skill: ${title}. ${win}`,
+    // #1039 — older-kid challenge register: a practice duel.
+    chTileMature: "🧮 Math Duel",
+    chCardMature: "A focused 5-round practice duel",
+    chQuestionMature: "Practice duel",
+    chWinMature: (name) => `Well played, ${name}!`,
+    chTieMature: "A draw!",
+    chLoseMature: (name) => `Close round, ${name} — try again.`,
     appTagline: "Your kids learn smarter — Bangla, English, Math & more.",
     agesBadge: "Ages 2–13 · no ads, ever",
     play: "▶ Play",

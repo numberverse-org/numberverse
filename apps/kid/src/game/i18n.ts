@@ -137,6 +137,8 @@ const EN: Record<string, Entry> = {
   // #1445 — combo escalation's top tier, reached at combo 9+.
   ceMastery: "MASTERY MOMENT! 🏆",
   ceMasteryHard: "MASTERY MOMENT! 🔥🏆",
+  // #1066 — spoken the moment a hard problem is solved on the first try.
+  ceHardAck: "That was hard — nice work! 💪",
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "Let's put apples in the basket, watch!",
@@ -1663,6 +1665,8 @@ const BN: Record<string, Entry> = {
   // #1445 — কম্বো ধারার শীর্ষ ধাপ, টানা ৯+ সঠিক উত্তরে।
   ceMastery: "দক্ষতার মুহূর্ত! 🏆",
   ceMasteryHard: "দক্ষতার মুহূর্ত! 🔥🏆",
+  // #1066 — কঠিন অঙ্ক প্রথম চেষ্টায় মেলালে বলা হয়।
+  ceHardAck: "কঠিন ছিল — দারুণ করেছ! 💪",
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "বাস্কেটে আপেল রাখি, দেখো!",

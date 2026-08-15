@@ -27,6 +27,31 @@ export interface Strings {
   gameKeyHint: string;
   /** #1074 — per-game difficulty/age signal (Bangladesh school class). */
   classLabel: (n: number) => string;
+  /** #1033 — older-kid greeting register (bands 5+, ages ~10+). */
+  homeHelloMature: (name: string) => string;
+  /** #1033 — older-kid re-entry greeting (bands 5+, ages ~10+). */
+  welcomeBackMature: (name: string) => string;
+  /** #1037 — older-kid garden register (bands 5+, ages ~10+). */
+  gardenTileSumMature: (plants: number, fruits: number) => string;
+  gardenTileFreshMature: string;
+  gardenTileEmptyMature: string;
+  /** #1037 — older-kid garden label (bands 5+, ages ~10+). */
+  gardenTileMature: string;
+  /* #1038 — older-kid weekly summary register (bands 5+, ages ~10+). */
+  recapTitleMature: string;
+  recapSubMature: (n: number) => string;
+  recapWinMasteredMature: (n: number) => string;
+  recapWinStreakMature: (n: number) => string;
+  recapHearMature: string;
+  recapEmptyMature: string;
+  recapSpeakMature: (name: string, days: number, title: string, win: string) => string;
+  /* #1039 — older-kid challenge register: a practice duel, not "beat the owl". */
+  chTileMature: string;
+  chCardMature: string;
+  chQuestionMature: string;
+  chWinMature: (name: string) => string;
+  chTieMature: string;
+  chLoseMature: (name: string) => string;
   appTagline: string;
   agesBadge: string;
   play: string;

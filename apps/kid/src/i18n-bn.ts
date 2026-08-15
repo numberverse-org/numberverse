@@ -15,6 +15,29 @@ export const bn: Strings = {
     gameKeyHint: "উত্তর বাছাই করতে তীরচিহ্ন ব্যবহার করো, তারপর Enter চাপো।",
     // #1074 — একটি ছোট, সহজপাঠ্য কঠিনতার সংকেত প্রতিটি খেলার কার্ডে।
     classLabel: (n) => `শ্রেণি ${bnNum(n)}`,
+    // #1033 — older-kid greeting register (bands 5+).
+    homeHelloMature: (name) => `স্বাগতম, ${name}!`,
+    welcomeBackMature: (name) => `আবার স্বাগতম, ${name}!`,
+    // #1037 — older-kid garden register.
+    gardenTileMature: "বৃদ্ধির বাগান",
+    gardenTileSumMature: (plants, fruits) => `🌱 ${bnNum(plants)}টা গাছ · ${bnNum(fruits)}টা প্রস্তুত`,
+    gardenTileFreshMature: "নতুন অগ্রগতি",
+    gardenTileEmptyMature: "প্রথম গাছ শুরু করো",
+    // #1038 — older-kid weekly summary register.
+    recapTitleMature: "সাপ্তাহিক সারসংক্ষেপ",
+    recapSubMature: (n) => `এই সপ্তাহে ${bnNum(n)} দিন`,
+    recapWinMasteredMature: (n) => `এই সপ্তাহে ${bnNum(n)}টি দক্ষতা আয়ত্ত হয়েছে`,
+    recapWinStreakMature: (n) => `দীর্ঘতম ধারাবাহিকতা: ${bnNum(n)} দিন`,
+    recapHearMature: "🔊 এই সপ্তাহ শোনো",
+    recapEmptyMature: "এই সপ্তাহে খেলা হয়নি — একটা সেশন শুরু করো!",
+    recapSpeakMature: (name, days, title, win) => `${name}, এই সপ্তাহে তুমি ${bnNum(days)} দিন খেলেছ; সেরা দক্ষতা: ${title}। ${win}`,
+    // #1039 — older-kid challenge register: a practice duel.
+    chTileMature: "🧮 গণিত দ্বৈরথ",
+    chCardMature: "৫ রাউন্ডের নিবিষ্ট অনুশীলন লড়াই",
+    chQuestionMature: "অনুশীলন দ্বৈরথ",
+    chWinMature: (name) => `চমৎকার খেলেছ, ${name}!`,
+    chTieMature: "ড্র!",
+    chLoseMature: (name) => `কাছাকাছি ছিলে, ${name} — আবার চেষ্টা করো।`,
     appTagline: "আপনার সন্তানরা স্মার্টভাবে শিখুক — বাংলা, ইংরেজি, গণিত ও আরও।",
     agesBadge: "২–১৩ বছর · কোনো বিজ্ঞাপন নেই",
     play: "▶ খেলুন",

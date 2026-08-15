@@ -1,7 +1,9 @@
 import Phaser from "phaser";
-import { comboChime } from "./audio";
+import { comboChime, hardAck } from "./audio";
 import { t as sceneT } from "./i18n";
 import { prefersReducedMotion } from "./reducedMotion";
+import { matureRender } from "./renderBand"; // #1035 — float text follows the band font
+import { speak } from "./speech"; // #1066 — say the hard-win acknowledgment aloud
 import { NV_GOLD, NV_PINK } from "./ui"; // tokenized #591
 
 /**
@@ -74,7 +76,9 @@ export function floatText(
 ): Phaser.GameObjects.Text {
   const t = scene.add
     .text(x, y, text, {
-      fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, sans-serif",
+      fontFamily: matureRender()
+        ? "'Nunito', 'Noto Sans Bengali', system-ui, sans-serif"
+        : "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, sans-serif",
       fontSize: `${size}px`,
       color,
       fontStyle: "800",
@@ -170,6 +174,11 @@ export function correctCelebrate(
     if (hard) {
       starBurst(scene, x, y, 4);
       floatText(scene, x, y - 40, "Tough one! 💪", "#9be1a6", 22);
+      // #1066 — a hard-but-correct answer gets its OWN voice + sound, distinct
+      // from the easy combo chime: the kid hears "that was hard" recognition,
+      // not just another sparkle.
+      hardAck();
+      speak(sceneT("ceHardAck"), { cancel: false });
     }
     return; // base pop + sparkle handled by the scene itself
   }
