@@ -11,7 +11,7 @@ from ..db import get_db
 from ..deps import get_current_profile
 from ..models import AccelerationLog, ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
-from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn
+from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn, StoryStatsOut
 from ..scrub import redact_context
 from ..seed import SKILLS_SEED
 
@@ -71,7 +71,9 @@ async def _adaptive_params(db: AsyncSession) -> dict:
 router = APIRouter(prefix="/api/v1", tags=["progress"])
 
 
-@router.post("/progress", status_code=status.HTTP_202_ACCEPTED)
+# #853 — this handler is fully synchronous and commits before returning, so the
+# response is the imperative result (200), not a queued acknowledgement (202).
+@router.post("/progress", status_code=status.HTTP_200_OK)
 async def record_progress(
     body: ProgressBatchIn,
     profile: Profile = Depends(WRITE_RATE_LIMIT),
@@ -201,7 +203,9 @@ async def get_kid_snapshot(
 
 # ── KOTHA (কথা) — RAG knowledge lake ──────────────────────────────────────────
 
-@router.post("/stories", status_code=status.HTTP_202_ACCEPTED)
+# #853 — same synchronous-commit contract as /progress: 200, not 202 — the body
+# is the imperative result.
+@router.post("/stories", status_code=status.HTTP_200_OK)
 async def record_stories(
     body: list[LearningStoryIn],
     profile: Profile = Depends(WRITE_RATE_LIMIT),
@@ -259,7 +263,9 @@ async def record_stories(
     return {"recorded": inserted, "duplicates_skipped": len(rows) - inserted, "band_skipped": band_skipped}
 
 
-@router.post("/acceleration", status_code=status.HTTP_202_ACCEPTED)
+# #853 — same synchronous-commit contract as /progress: 200, not 202 — the body
+# is the imperative result.
+@router.post("/acceleration", status_code=status.HTTP_200_OK)
 async def record_acceleration(
     body: list[AccelerationIn],
     profile: Profile = Depends(WRITE_RATE_LIMIT),
@@ -347,23 +353,10 @@ async def get_stories(
     return list(result)
 
 
-@router.get("/kids/{kid_id}/acceleration", response_model=list[AccelerationOut])
-async def get_acceleration(
-    kid_id: uuid.UUID,
-    profile: Profile = Depends(get_current_profile),
-    db: AsyncSession = Depends(get_db),
-):
-    """🚀 #249 — the kid's acceleration plan: every "skipped ahead" entry (newest
-    first), with the reason and the band jump. The parent portal renders this
-    card offline from the already-fetched payload."""
-    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
-    if not owned:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
-    result = await db.scalars(select(AccelerationLog).where(AccelerationLog.kid_id == kid_id).order_by(AccelerationLog.created_at.desc()))
-    return list(result)
-
-
-@router.get("/kids/{kid_id}/stories/stats")
+# #860 — sibling routes grouped: /kids/{kid_id}/stories/stats lives right after
+# /kids/{kid_id}/stories (the parent list), before /acceleration.
+# #858 — response_model keeps the counts shape stable instead of an ad-hoc dict.
+@router.get("/kids/{kid_id}/stories/stats", response_model=StoryStatsOut)
 async def story_stats(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
@@ -390,12 +383,28 @@ async def story_stats(
         .where(LearningStory.kid_id == kid_id, LearningStory.misconception_code.is_not(None))
         .group_by(LearningStory.misconception_code)
     )
-    return {
-        "total": total or 0,
-        "by_skill": {r[0]: r[1] for r in by_skill.all()},
-        "by_error_kind": {r[0]: r[1] for r in by_error.all()},
-        "by_misconception": {r[0]: r[1] for r in by_mis.all()},
-    }
+    return StoryStatsOut(
+        total=total or 0,
+        by_skill={r[0]: r[1] for r in by_skill.all()},
+        by_error_kind={r[0]: r[1] for r in by_error.all()},
+        by_misconception={r[0]: r[1] for r in by_mis.all()},
+    )
+
+
+@router.get("/kids/{kid_id}/acceleration", response_model=list[AccelerationOut])
+async def get_acceleration(
+    kid_id: uuid.UUID,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """🚀 #249 — the kid's acceleration plan: every "skipped ahead" entry (newest
+    first), with the reason and the band jump. The parent portal renders this
+    card offline from the already-fetched payload."""
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    result = await db.scalars(select(AccelerationLog).where(AccelerationLog.kid_id == kid_id).order_by(AccelerationLog.created_at.desc()))
+    return list(result)
 
 
 @router.get("/stories/aggregates")

@@ -13,6 +13,7 @@ Three routes:
 """
 import asyncio
 import secrets
+import uuid
 from collections import Counter
 from datetime import date, timedelta
 
@@ -53,8 +54,10 @@ class ShareSnapshotOut(BaseModel):
     minutes_by_day is the 7-day minute curve (just floats — no dates). #867 —
     the live wallet balance is intentionally NOT included on the public card."""
     rounds: int
+    # #859 — `minutes` is a response-time proxy (Σ response_ms / 60000), NOT a
+    # session-duration metric: quick-react milliseconds inflate it by design.
     minutes: float
-    correct_pct: int
+    correct_pct: int  # intentional rounded int: round(100 * correct / rounds)
     active_days: int
     mastered_count: int
     top_game: str | None
@@ -62,9 +65,11 @@ class ShareSnapshotOut(BaseModel):
     minutes_by_day: list[float] = []
 
 
+# #852 — `kid_id` is typed as a UUID so malformed path params 422 before the
+# ownership query, matching the other kid routes (kids.py pattern).
 @router.get("/kids/{kid_id}/share-token", response_model=ShareTokenOut)
 async def get_share_token(
-    kid_id,
+    kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
@@ -81,9 +86,11 @@ async def get_share_token(
     return ShareTokenOut(token=owned.share_token)
 
 
+# #852 — same UUID path-param typing as GET above: malformed ids 422 before the
+# ownership query, never a DB-level UUID error.
 @router.delete("/kids/{kid_id}/share-token", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_share_token(
-    kid_id,
+    kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
@@ -130,6 +137,7 @@ async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
     ).all()
     rounds = len(events)
     correct = sum(1 for e in events if e.correct)
+    # #859 — minutes is a response-time proxy (Σ response_ms), NOT session time.
     minutes = round(sum(e.response_ms or 0 for e in events) / 60000.0, 1)
     active_days = len({e.created_at.date() for e in events})
     games = Counter(e.game_id for e in events)
