@@ -30,13 +30,21 @@ const BASE = "/voice/";
 // 6 MONTHS. If we ever change a worker/model file at the same URL, old installs
 // keep serving the stale bytes until the cache expires. Bump this version to
 // force every client onto fresh bytes after a voice deploy.
+//
+// CI GUARD: this version MUST be bumped whenever the model (onnx), worker JS,
+// phonemizer WASM/data, or onnxruntime-engine files change. The build script
+// (fetch_voice_assets.sh) SHOULD compute a content hash of the assembled voice
+// payload and inject it as VITE_VOICE_V at build time. Until that pipeline is
+// wired, every human deployer MUST verify that VOICE_V is incremented when any
+// /voice/ asset changes — a stale version means a 6-month silent rollback for
+// every installed PWA (CacheFirst route, maxAgeSeconds 180d @ vite.config.ts:76).
 const VOICE_V = "v9"; // v9 = ORT engine back to 1.17 (piper-wasm's engine) — 1.20+ needs import() of an .mjs, which Safari's classic worker can't do
 const PHON_JS = BASE + "piper_phonemize.js";
 const PHON_WASM = BASE + "piper_phonemize.wasm";
 const PHON_DATA = BASE + "piper_phonemize.data";
 const WORKER_JS = BASE + "piper_worker.js?v=" + VOICE_V;
 const MODEL = BASE + "bn_BD-google-medium.onnx?v=" + VOICE_V;
-const MODEL_JSON = BASE + "bn_BD-google-medium.onnx.json";
+const MODEL_JSON = BASE + "bn_BD-google-medium.onnx.json?v=" + VOICE_V;
 const ORT_BASE = BASE + "onnx/";
 const ORT_JS = ORT_BASE + "ort.min.js?v=" + VOICE_V;
 // ORT 1.17's loader string-concats `wasmPaths + "ort-wasm-simd.wasm"` (no
@@ -75,8 +83,12 @@ let currentPlayResolve: ((outcome: NeuralOutcome) => void) | null = null;
 let queueChain: Promise<NeuralOutcome> = Promise.resolve("played");
 /** Chain so worker jobs serialize (the worker runs one init at a time). */
 let jobChain: Promise<void> = Promise.resolve();
+/** Separate low-priority chain for warm-phrase pre-synthesis — real speech
+ *  (via synth() + jobChain) always jumps ahead of warm items so pre-synthesis
+ *  never delays a kid's first real line. Items on this chain only run when
+ *  jobChain is idle (i.e. no real speech waiting). */
+let warmChain: Promise<void> = Promise.resolve();
 let preloadStarted = false;
-let gestured = false;
 
 /** #1375 — one-shot listeners invoked when the neural model transitions to
  *  ready. speech.ts uses this to flush the latest Bangla line that was held
@@ -92,12 +104,19 @@ export function onNeuralReady(cb: NeuralReadyListener): () => void {
 }
 
 /** The big files, by byte size — used for a coarse overall download progress.
- *  The model is the ~20MB int8 build (weight-only QDQ, see Dockerfile.web's
- *  `voice` stage / infra/deploy/scripts/quantize_voice.py). We preload these IN
- *  PARALLEL on the main thread (the worker would otherwise fetch them
- *  sequentially inside init), then seed the SW cache BEFORE the first synth —
- *  so ORT 1.17's own XHR of the wasm hits the SW cache instead of the network. */
-const MODEL_BYTES = 20_000_000;
+ *  The model is the int8 quantized build (~20MB; weight-only QDQ, see
+ *  Dockerfile.web's `voice` stage / infra/deploy/scripts/quantize_voice.py).
+ *  NOTE: MODEL_BYTES is a build-time estimate — the actual gzip-served wire
+ *  bytes differ. Progress reaches 100% when the LAST big file lands regardless
+ *  of byte-count precision, so the estimate is only used for the coarse
+ *  intermediate progress bar fill (not load-bearing). A future build pipeline
+ *  should inject the exact post-quantization byte count from
+ *  fetch_voice_assets.sh alongside VITE_VOICE_V.
+ *  We preload these IN PARALLEL on the main thread (the worker would otherwise
+ *  fetch them sequentially inside init), then seed the SW cache BEFORE the first
+ *  synth — so ORT 1.17's own XHR of the wasm hits the SW cache instead of the
+ *  network. */
+const MODEL_BYTES = 20_000_000; // int8 model; real byte size injected at build
 const ORT_WASM_BYTES = 10_500_000; // ort-wasm-simd.wasm (1.17, single-threaded SIMD)
 /** Files the APP downloads + owns (progress-tracked): phonemize data, model,
  *  ORT wasm. The app caches them and passes them to the worker — so a reload
@@ -109,7 +128,7 @@ const BIG: Array<[string, number]> = [
 ];
 /** Small files the worker needs — fetched quietly (no progress) + seeded, so
  *  the worker's getBlob hits `blobs` and never touches the network for them. */
-const SMALL = [PHON_JS, PHON_WASM, ORT_JS];
+const SMALL = [PHON_JS, PHON_WASM, ORT_JS, MODEL_JSON];
 const ALL_VOICE = [...BIG.map(([u]) => u), ...SMALL];
 const totalBigBytes = BIG.reduce((s, [, n]) => s + n, 0);
 let urlLoaded: Record<string, number> = {};
@@ -138,6 +157,18 @@ function getWorker(): Worker {
     worker.addEventListener("error", (e) => {
       const msg = e?.message || "voice worker crashed";
       console.error("[neuralVoice] worker error:", msg);
+      // Terminate and null the crashed worker so the next gesture creates a
+      // fresh one cleanly (no stale worker reference). Also disarm the in-flight
+      // synth watchdog and reject any pending synth promise so speech.ts falls
+      // back to Web Speech on this line instead of waiting for the 60s timeout.
+      const w = worker;
+      worker = null;
+      try { w?.terminate(); } catch { /* noop */ }
+      if (watchTimeout) {
+        const fn = watchTimeout;
+        disarmWatchdog();
+        fn(); // reject the pending synth promise
+      }
       failNeural(msg);
     });
   }
@@ -167,6 +198,13 @@ function armWatchdog(ms: number, onTimeout: () => void) {
       try { w?.terminate(); } catch { /* noop */ }
       const fn = watchTimeout;
       disarmWatchdog();
+      // Flip module state to "error" so isNeuralReady() returns false,
+      // the parent-panel voice card shows the failure reason, and the next
+      // gesture re-attempts the full download + init cycle. Previously the
+      // worker was killed silently and state stayed "ready" — dead worker
+      // masquerading as healthy, every subsequent neuralSpeak spawning a
+      // fresh worker in a loop with no recovery path.
+      failNeural("voice worker stalled (timeout)");
       fn?.();
     }
   }, 2_000);
@@ -309,6 +347,26 @@ function synth(text: string, spk: number): Promise<Blob> {
   return result;
 }
 
+/** Low-priority variant of synth() used by warmCommonPhrases(). Runs on
+ *  warmChain (separate from jobChain) so pre-synthesis never delays a real
+ *  speech line — warm items execute only when jobChain is idle. */
+function synthWarm(text: string, spk: number): Promise<Blob> {
+  const result = warmChain.then(() => synthNow(text, spk));
+  warmChain = result.then(
+    () => undefined,
+    () => undefined
+  );
+  return result;
+}
+
+/** Track consecutive synth-level stderr rejections. After a threshold of
+ *  consecutive stderr failures (rather than one-off worker crashes), we degrade
+ *  the full neural state to "error" so the parent panel surfaces the problem and
+ *  the app re-runs preload. This distinguishes a persistent model/ORT problem
+ *  from a transient one-off failure. */
+let stderrConsecutive = 0;
+const STDERR_FAIL_THRESHOLD = 3;
+
 function synthNow(text: string, spk: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const w = getWorker();
@@ -318,13 +376,24 @@ function synthNow(text: string, spk: number): Promise<Blob> {
       settled = true;
       disarmWatchdog();
       w.removeEventListener("message", onMsg);
-      reject(e instanceof Error ? e : new Error(String(e)));
+      // Track consecutive stderr rejections — if the worker keeps emitting
+      // stderr for every inference (persistent model/ORT issue), degrade the
+      // full neural state so speech.ts chooses Web Speech instead of looping
+      // on a broken neural path. One-off stderr failures (e.g. first warm-up
+      // glitch) are swallowed at synth level only.
+      const errMsg = e instanceof Error ? e.message : String(e);
+      stderrConsecutive++;
+      if (stderrConsecutive >= STDERR_FAIL_THRESHOLD && state === "ready") {
+        failNeural("persistent synth error (" + stderrConsecutive + "x): " + errMsg);
+      }
+      reject(e instanceof Error ? e : new Error(errMsg));
     };
     const onMsg = (ev: MessageEvent) => {
       const data = ev.data as WorkerMsg;
       if (data.kind === "output" && data.input === text) {
         settled = true;
         disarmWatchdog();
+        stderrConsecutive = 0; // successful synth resets the counter
         w.removeEventListener("message", onMsg);
         resolve(data.file);
       } else if (data.kind === "stderr") {
@@ -474,11 +543,22 @@ export function isNeuralReady(): boolean {
   return supported() && state === "ready";
 }
 
+/** Per-fetch deadline for a stalled stream — if the server stops sending bytes
+ *  mid-stream the promise rejects, failNeural() resets preloadStarted, and the
+ *  next gesture genuinely retries instead of hanging forever. 120s covers even
+ *  the 20MB model on a throttled 3G connection (< 200 KB/s). */
+const FETCH_DEADLINE_MS = 120_000;
+
 /** Download one big file with streaming progress, caching the blob so the
  *  worker's getBlob hits the cache instead of re-fetching. Gzip-encoded
- *  responses decompress transparently (progress counts real decoded bytes). */
+ *  responses decompress transparently (progress counts real decoded bytes).
+ *  Wraps the stream in an AbortController deadline so a stalled mid-stream
+ *  fetch never permanently blocks the retry path. */
 function fetchBlobWithProgress(url: string): Promise<Blob> {
-  return fetch(url).then(async (res) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_DEADLINE_MS);
+  return fetch(url, { signal: controller.signal }).then(async (res) => {
+    clearTimeout(timer);
     if (!res.ok) throw new Error(`voice fetch ${res.status} ${url}`);
     const reader = res.body?.getReader();
     if (!reader) {
@@ -507,6 +587,9 @@ function fetchBlobWithProgress(url: string): Promise<Blob> {
     blobs[url] = b;
     markFileDone(url);
     return b;
+  }).catch((e) => {
+    clearTimeout(timer);
+    throw e; // re-throw so preloadNeuralVoice.catch → failNeural resets preloadStarted
   });
 }
 
@@ -740,10 +823,12 @@ async function voiceCacheGet(spk: number, text: string): Promise<Blob | undefine
   const key = cacheKey(spk, text);
   return new Promise((resolve) => {
     try {
-      // #1234 — READONLY on the read path (was readwrite "so we can refresh ts"):
-      // a cache READ must never contend with concurrent writes (warmCommonPhrases
-      // pre-synthesis) on the speech path. LRU bookkeeping updates in memory;
-      // the rare on-disk ts refresh is a small deferred write.
+      // READONLY only — never a readwrite tx on the hot read path. The
+      // LRU timestamp refresh in memory is sufficient for eviction ordering;
+      // the on-disk ts is updated on the next cache put for this entry.
+      // Previously a deferred readwrite put() ran on every cache hit to
+      // refresh the ts on disk, adding write amplification and contention
+      // with the put-path's own readwrite eviction transaction.
       const tx = db.transaction(CACHE_STORE, "readonly");
       const store = tx.objectStore(CACHE_STORE);
       const req = store.get(key);
@@ -757,14 +842,6 @@ async function voiceCacheGet(spk: number, text: string): Promise<Blob | undefine
             lruMap.delete(key);
             lruMap.set(key, { bytes: prev?.bytes ?? 0, ts: rec.ts }); // move to LRU tail
           }
-          void (() => {
-            try {
-              const wtx = db.transaction(CACHE_STORE, "readwrite");
-              wtx.objectStore(CACHE_STORE).put(rec); // ≤1/min/entry — cheap
-            } catch {
-              /* best-effort */
-            }
-          })();
         }
         resolve(rec.blob);
       };
@@ -963,7 +1040,7 @@ function warmCommonPhrases() {
     void Promise.allSettled(
       batch.map((s) =>
         voiceCacheGet(spk, s).then((b) =>
-          b ? undefined : synth(s, spk).then((blob) => {
+          b ? undefined : synthWarm(s, spk).then((blob) => {
             if (s.length <= CACHE_MAX_TEXT) void voiceCachePut(spk, s, blob);
           })
         )
@@ -1062,7 +1139,6 @@ if (supported() && typeof window !== "undefined") {
   bootPreload();
   for (const evt of ["pointerdown", "touchstart", "click", "keydown"]) {
     window.addEventListener(evt, () => {
-      gestured = true;
       neuralPrime();           // audio unlock — genuinely needs the gesture
       preloadNeuralVoice();    // no-op if boot preload is running/done — retry path
     }, true);

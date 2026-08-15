@@ -147,3 +147,17 @@ curl -fsSL -o "$DEST/bn_BD-google-medium.onnx.json" "$MODEL_URL.json"
 
 echo "→ done:"
 du -h "$DEST"/* | sort -rh | head -12
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build-time version derivation: compute a content hash of the assembled voice
+# payload and print it so the Docker build can inject VITE_VOICE_V. If the hash
+# differs from the committed value in neuralVoice.ts, CI MUST fail until an
+# operator bumps VOICE_V — preventing silent 6-month rollbacks (see #974).
+#
+# The hash covers the model, worker, phonemizer, and ORT engine files — every
+# asset that rides the /voice/ CacheFirst route. The .onnx.json config is NOT
+# included in the hash because its architecture tracks the model (no hash change
+# = config hasn't drifted from what the model expects).
+HASH=$(sha256sum "$DEST/bn_BD-google-medium.onnx" "$DEST/piper_worker.js" "$DEST/piper_phonemize.js" "$DEST/piper_phonemize.wasm" "$DEST/piper_phonemize.data" "$DEST/onnx/ort.min.js" "$DEST/onnx/ort-wasm-simd.wasm" | sha256sum | cut -d' ' -f1 | head -c12)
+echo "→ voice content hash (v${HASH}) — inject as VITE_VOICE_V"
+echo "VITE_VOICE_V=v${HASH}"
