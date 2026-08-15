@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   isAllowedExternalUrl,
@@ -57,6 +57,7 @@ import {
   A11Y_LANGS,
   AVATARS,
   DEFAULT_SETTINGS,
+  LOADING_LANGS,
   NAV_GROUPS,
   SUBJECTS,
   SYNC_LANGS,
@@ -122,7 +123,9 @@ export default function ParentDashboard() {
   // 🗓️ #251 — monthly archive: the FULL activity feed per kid (lazy, up to 2000
   // rounds) + the selected month key. Summaries are derived client-side.
   const [archActivity, setArchActivity] = useState<Record<string, ActivityRow[]>>({});
-  const [archLoading, setArchLoading] = useState(false);
+  // #1506/#1518 — per-kid archive lifecycle. The card spinner/error/retry derive
+  // from this explicit status instead of a single global boolean.
+  const [archStatus, setArchStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
   const [archMonth, setArchMonth] = useState<Record<string, string>>({});
   // 🧵 #255 — per-kid session-timeline day filter ("all" = no filter).
   const [sessionDay, setSessionDay] = useState<Record<string, string>>({});
@@ -270,6 +273,11 @@ export default function ParentDashboard() {
   // the browser's network events; the manual button just re-runs refreshAll.
   const [online, setOnline] = useState(true);
   const [syncingNow, setSyncingNow] = useState(false);
+  // #1516 — first data load shows a neutral skeleton instead of the cards'
+  // zero-state defaults. initialLoadStarted keeps later refreshes (manual sync,
+  // add/edit/delete) from re-skeletonizing the already-rendered dashboard.
+  const [initialLoading, setInitialLoading] = useState(false);
+  const initialLoadStarted = useRef(false);
   // #18 — help card (iOS install / Bangla voice / build check), collapsible.
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -311,56 +319,66 @@ export default function ParentDashboard() {
 
   const refreshAll = useCallback(
     async (tok: string) => {
-      const k = await getKids(tok);
-      setKids(k);
-      setActiveId((prev) => (prev && k.some((x) => x.id === prev) ? prev : (k[0]?.id ?? null)));
-      if (k.length === 0) {
-        // #246 — first run (or all kids deleted): open the guided setup wizard,
-        // but never nag a browser that already finished/skipped onboarding.
-        if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
-        return;
+      // #1516 — the first data load gets a neutral skeleton over the overview
+      // area; later refreshes (manual sync, add/edit/delete) keep the existing
+      // cards visible and rely on the syncingNow dim instead.
+      if (!initialLoadStarted.current) setInitialLoading(true);
+      try {
+        const k = await getKids(tok);
+        initialLoadStarted.current = true;
+        setKids(k);
+        setActiveId((prev) => (prev && k.some((x) => x.id === prev) ? prev : (k[0]?.id ?? null)));
+        if (k.length === 0) {
+          // #246 — first run (or all kids deleted): open the guided setup wizard,
+          // but never nag a browser that already finished/skipped onboarding.
+          if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
+          return;
+        }
+        // Load every kid up-front so the family overview + switcher are instant.
+        // #1492/#1495 — activity is intentionally NOT part of this per-kid block
+        // anymore. The one full-history cursor is loadArchive; the Recent Activity
+        // prefix and the archive/session timelines all derive from archActivity.
+        const entries = await Promise.all(
+          k.map(async (kid) => {
+            const [m, s, w, st, sts, ac] = await Promise.all([
+              // #1504 — mastery degrades to [] like its siblings so one kid's
+              // mastery failure can no longer reject the whole Promise.all.
+              getMastery(tok, kid.id).catch(() => []),
+              getKidSettings(tok, kid.id).catch(() => DEFAULT_SETTINGS),
+              getWeekly(tok, kid.id).catch(() => null),
+              getStories(tok, kid.id).catch(() => []),
+              getStoryStats(tok, kid.id).catch(() => null),
+              getAcceleration(tok, kid.id).catch(() => []),
+            ]);
+            return [kid.id, { m, s, w, st, sts, ac }] as const;
+          })
+        );
+        const mm: Record<string, MasteryRow[]> = {};
+        const ss: Record<string, KidSettingsT> = {};
+        const ww: Record<string, WeeklyReport> = {};
+        const stt: Record<string, LearningStoryRow[]> = {};
+        const sst: Record<string, StoryStats | null> = {};
+        const acc: Record<string, AccelerationRow[]> = {};
+        for (const [id, { m, s, w, st, sts, ac }] of entries) {
+          mm[id] = m;
+          ss[id] = s;
+          if (w) ww[id] = w;
+          stt[id] = st;
+          sst[id] = sts;
+          acc[id] = ac;
+        }
+        setMastery(mm);
+        setSettings(ss);
+        setWeekly(ww);
+        setStories(stt);
+        setStoryStats(sst);
+        setAccel(acc);
+        // #7/#85 — record when the dashboard data last came from the API, so the
+        // diagnostics card + sync chip can say "synced X ago" (offline-safe).
+        setLastSync(Date.now());
+      } finally {
+        setInitialLoading(false);
       }
-      // Load every kid up-front so the family overview + switcher are instant.
-      const entries = await Promise.all(
-        k.map(async (kid) => {
-          const [m, s, a, w, st, sts, ac] = await Promise.all([
-            getMastery(tok, kid.id),
-            getKidSettings(tok, kid.id).catch(() => DEFAULT_SETTINGS),
-            getActivity(tok, kid.id).catch(() => []),
-            getWeekly(tok, kid.id).catch(() => null),
-            getStories(tok, kid.id).catch(() => []),
-            getStoryStats(tok, kid.id).catch(() => null),
-            getAcceleration(tok, kid.id).catch(() => []),
-          ]);
-          return [kid.id, { m, s, a, w, st, sts, ac }] as const;
-        })
-      );
-      const mm: Record<string, MasteryRow[]> = {};
-      const ss: Record<string, KidSettingsT> = {};
-      const aa: Record<string, ActivityRow[]> = {};
-      const ww: Record<string, WeeklyReport> = {};
-      const stt: Record<string, LearningStoryRow[]> = {};
-      const sst: Record<string, StoryStats | null> = {};
-      const acc: Record<string, AccelerationRow[]> = {};
-      for (const [id, { m, s, a, w, st, sts, ac }] of entries) {
-        mm[id] = m;
-        ss[id] = s;
-        aa[id] = a;
-        if (w) ww[id] = w;
-        stt[id] = st;
-        sst[id] = sts;
-        acc[id] = ac;
-      }
-      setMastery(mm);
-      setSettings(ss);
-      setActivity(aa);
-      setWeekly(ww);
-      setStories(stt);
-      setStoryStats(sst);
-      setAccel(acc);
-      // #7/#85 — record when the dashboard data last came from the API, so the
-      // diagnostics card + sync chip can say "synced X ago" (offline-safe).
-      setLastSync(Date.now());
     },
     []
   );
@@ -379,24 +397,31 @@ export default function ParentDashboard() {
 
   // 🗓️ #251 — lazily fetch a kid's FULL activity history (up to 2000 rounds)
   // once per kid, then derive all 12 monthly summaries client-side (offline).
-  const loadArchive = useCallback(async (kidId: string) => {
-    if (!token || archActivity[kidId]) return;
-    setArchLoading(true);
+  // #1492/#1495/#1506/#1518 — per-kid archStatus is the lifecycle source of
+  // truth. Failure sets "error" so the card can show an inline retry instead of
+  // leaving the auto-loader to spin forever or poisoning the global banner.
+  const loadArchive = useCallback(async (kidId: string, force = false) => {
+    if (!token) return;
+    if (!force && (archStatus[kidId] || archActivity[kidId])) return;
+    setArchStatus((prev) => ({ ...prev, [kidId]: "loading" }));
     try {
       const rows = await getActivity(token, kidId, 2000);
       setArchActivity((prev) => ({ ...prev, [kidId]: rows }));
+      setArchStatus((prev) => ({ ...prev, [kidId]: "loaded" }));
     } catch {
-      setError("Could not load the full history for the monthly archive.");
-    } finally {
-      setArchLoading(false);
+      // #1506 — keep the failure scoped to this kid's card; the inline
+      // "Try again" button re-runs loadArchive(kidId, true).
+      setArchStatus((prev) => ({ ...prev, [kidId]: "error" }));
     }
-  }, [token, archActivity]);
+  }, [token, archStatus, archActivity]);
 
   // Auto-load the archive once per kid (cached; the dashboard stays snappy for
   // accounts with many kids because it's the ONLY big activity fetch).
+  // #1518 — gate per activeId on archStatus, so a second kid's fetch is never
+  // blocked by another kid's in-flight request.
   useEffect(() => {
-    if (activeId && token && !archActivity[activeId] && !archLoading) void loadArchive(activeId);
-  }, [activeId, token, archActivity, archLoading, loadArchive]);
+    if (activeId && token && !archStatus[activeId]) void loadArchive(activeId);
+  }, [activeId, token, archStatus, loadArchive]);
 
   useEffect(() => {
     const tok = localStorage.getItem("nv_parent_token");
@@ -447,12 +472,21 @@ export default function ParentDashboard() {
     async (id: string) => {
       if (!token) return;
       setActiveId(id);
-      if (mastery[id]) return; // already loaded (refreshAll fetches every kid)
+      // #1495 — kids loaded by refreshAll already have mastery cached, so this
+      // early return IS the cache hit; no per-kid activity re-fetch happens on
+      // a normal switch.
+      if (mastery[id]) return;
       try {
+        // #1492/#1495 — never double-fetch activity. If this kid's full archive
+        // already exists (or is already in flight), derive the feed from it.
+        // Only fetch the 40-row fallback when no archive cursor is available.
+        const needActivityFallback = !archActivity[id] && archStatus[id] !== "loading";
         const [m, s, a, w, st, sts, ac] = await Promise.all([
           getMastery(token, id),
           getKidSettings(token, id).catch(() => DEFAULT_SETTINGS),
-          getActivity(token, id).catch(() => []),
+          needActivityFallback
+            ? getActivity(token, id).catch(() => [])
+            : Promise.resolve<ActivityRow[] | null>(null),
           getWeekly(token, id).catch(() => null),
           getStories(token, id).catch(() => []),
           getStoryStats(token, id).catch(() => null),
@@ -460,7 +494,7 @@ export default function ParentDashboard() {
         ]);
         setMastery((prev) => ({ ...prev, [id]: m }));
         setSettings((prev) => ({ ...prev, [id]: s }));
-        setActivity((prev) => ({ ...prev, [id]: a }));
+        if (needActivityFallback && a) setActivity((prev) => ({ ...prev, [id]: a }));
         if (w) setWeekly((prev) => ({ ...prev, [id]: w }));
         setStories((prev) => ({ ...prev, [id]: st }));
         setStoryStats((prev) => ({ ...prev, [id]: sts }));
@@ -469,7 +503,7 @@ export default function ParentDashboard() {
         setError("Failed to load that kid.");
       }
     },
-    [token, mastery]
+    [token, mastery, archActivity, archStatus, activity]
   );
 
   // #238 — load the kid's saved narrative draft (edit-safe: localStorage).
@@ -826,7 +860,15 @@ export default function ParentDashboard() {
   // 🗓️ #251 — the 12-month archive derived client-side from the full activity
   // feed (once loaded, fully offline). Selected month defaults to the newest.
   const activeArchive = activeId ? buildMonthlyArchive(archActivity[activeId] ?? []) : [];
-  const archiveLoaded = !!activeId && !!archActivity[activeId];
+  // #1506/#1518 — archive lifecycle is per-kid now. Derive the card flags from
+  // archStatus so switching kids never shows another kid's loading indicator.
+  const archLoading = !!activeId && archStatus[activeId] === "loading";
+  const archError = !!activeId && archStatus[activeId] === "error";
+  const archiveLoaded = !!activeId && archStatus[activeId] === "loaded";
+  // #1492 — the Recent Activity feed is a slice of the SAME full-history cursor
+  // as the archive. Fall back to the legacy 40-row per-kid fetch only while a
+  // kid has never had loadArchive run (e.g. the switchKid fallback branch).
+  const recentActivity = activeId ? (archActivity[activeId] ?? activity[activeId] ?? []) : [];
   const selMonth = activeId ? (archMonth[activeId] ?? activeArchive[0]?.key ?? null) : null;
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
   // 🧵 #255 — session timeline, derived client-side from the SAME full-history
@@ -1157,6 +1199,16 @@ export default function ParentDashboard() {
 
       {error && <p className="err banner">{error}</p>}
 
+      {/* #1516 — first data load: a neutral skeleton over the overview area
+          instead of every card flashing its misleading "nothing yet" empty
+          state. (portal-loading is a CSS-only hook — see globals owner note.) */}
+      {initialLoading && (
+        <section className="card portal-loading" role="status" aria-live="polite">
+          <span className="spinner" aria-hidden />
+          <p className="muted">{LOADING_LANGS[wizLang].familyProgress}</p>
+        </section>
+      )}
+
       {/* #246 — guided multi-kid onboarding (first run with no kids) */}
       {onboarding === "open" && !error && (
         <section className="card onboarding-card">
@@ -1275,7 +1327,7 @@ export default function ParentDashboard() {
       {/* #619 — persistent section navigation (sticky sidebar on desktop,
           horizontal tab strip on mobile). Every section carries an id anchor
           from NAV_GROUPS. */}
-      {kids.length > 0 && (
+      {!initialLoading && kids.length > 0 && (
         <div className="portal-layout">
           <aside className="portal-nav" aria-label="Portal sections">
             <p className="portal-nav-title">Jump to</p>
@@ -1292,7 +1344,14 @@ export default function ParentDashboard() {
               </div>
             ))}
           </aside>
-          <div className="portal-content">
+          <div className={`portal-content${syncingNow ? " nv-syncing" : ""}`} aria-busy={syncingNow}>
+      {/* #1519 — echo the topbar "Syncing…" chip on the data area itself. The
+          `nv-syncing` class is the CSS-only dim hook (see globals owner note). */}
+      {syncingNow && (
+        <p className="sync-inline" role="status" aria-live="polite">
+          <span className="spinner" aria-hidden /> {LOADING_LANGS[wizLang].refreshing}
+        </p>
+      )}
       {/* ── family overview ── */}
       <FamilyOverview
         kids={kids}
@@ -1434,6 +1493,8 @@ export default function ParentDashboard() {
                       setArchMonth={setArchMonth}
                       exportArchive={exportArchive}
                       narrLang={narrLang}
+                      archiveError={archError}
+                      onRetryArchive={() => activeId && loadArchive(activeId, true)}
           />
 
           {/* 🧵 #255 — session timeline: play blocks (date, rounds, accuracy,
@@ -1503,7 +1564,8 @@ export default function ParentDashboard() {
           {/* ── activity feed ── */}
 <ActivityFeed
           active={active}
-                      activity={activity[active.id] ?? []}
+                      activity={recentActivity}
+                      wizLang={wizLang}
           />
 
           {/* #89 — per-skill missed questions, derived from the already-loaded

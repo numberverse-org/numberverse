@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { SKILLS } from "@numberverse/core";
 import type { ActivityRow, MasteryRow } from "../../lib/api";
 import {
+  ACTIVITY_LANGS,
   MISSED_LANGS,
   OVERVIEW_LANGS,
   SUBJECTS,
@@ -39,33 +40,55 @@ interface ActiveKid {
 
 
 
-export function ActivityFeed({ active, activity }: {
+export function ActivityFeed({ active, activity, wizLang }: {
   active: ActiveKid;
   activity: ActivityRow[];
+  wizLang: WizardLang;
 }) {
+  // #1492 — the feed can now receive the same full-history cursor as the
+  // archive, so paginate client-side: reveal 40 more rows per click.
+  const PAGE = 40;
+  const [limit, setLimit] = useState(PAGE);
+  const visible = activity.slice(0, limit);
+  const canShowMore = activity.length > PAGE;
+  const isExpanded = limit >= activity.length;
+
   return (
 <section className="card" id="activity">
   <h2>📈 Recent activity</h2>
   {activity.length === 0 ? (
     <p className="muted">Nothing yet — have {active.name} play a round to see it here.</p>
   ) : (
-    <ul className="activity-list">
-      {activity.map((a) => (
-        <li key={a.id} className={`activity-item ${a.correct ? "ok" : "no"}`}>
-          <span className="activity-badge">{a.correct ? "✓" : "✗"}</span>
-          <span className="activity-game">
-            {gameLabel(a.game_id)}
-            {/* #1494 — surface the skill/subject context like MissedCard does */}
-            {skillLabel(a.skill_id) ? (
-              <span className="muted small">
-                {" "}· {subjectEmoji(subjectOf(a.skill_id))} {skillLabel(a.skill_id)}
-              </span>
-            ) : null}
-          </span>
-          <span className="activity-time">{fmtTime(a.created_at)}</span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="activity-list">
+        {visible.map((a) => (
+          <li key={a.id} className={`activity-item ${a.correct ? "ok" : "no"}`}>
+            <span className="activity-badge">{a.correct ? "✓" : "✗"}</span>
+            <span className="activity-game">
+              {gameLabel(a.game_id)}
+              {/* #1494 — surface the skill/subject context like MissedCard does */}
+              {skillLabel(a.skill_id) ? (
+                <span className="muted small">
+                  {" "}· {subjectEmoji(subjectOf(a.skill_id))} {skillLabel(a.skill_id)}
+                </span>
+              ) : null}
+            </span>
+            <span className="activity-time">{fmtTime(a.created_at)}</span>
+          </li>
+        ))}
+      </ul>
+      {canShowMore && (
+        <div className="activity-more">
+          <button
+            className="btn ghost-btn small"
+            onClick={() => setLimit((v) => (v >= activity.length ? PAGE : Math.min(v + PAGE, activity.length)))}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? ACTIVITY_LANGS[wizLang].showLess : ACTIVITY_LANGS[wizLang].showMore}
+          </button>
+        </div>
+      )}
+    </>
   )}
 </section>
   );
