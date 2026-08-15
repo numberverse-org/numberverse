@@ -29,7 +29,7 @@ MAX_BATCH_SIZE = 100
 # buggy client can NEVER persist progress/stories for content beyond the cap.
 # skill_id → band, from the seed (the same catalog the client ships — the audit
 # gate keeps them in sync).
-SKILL_BANDS: dict[str, int] = {sid: band for sid, band, _subject, _t, _tb in SKILLS_SEED}
+SKILL_BANDS: dict[str, int] = {row[0]: row[1] for row in SKILLS_SEED}
 
 
 async def _load_band_caps(db: AsyncSession, kid_ids: set[uuid.UUID]) -> dict[uuid.UUID, int | None]:
