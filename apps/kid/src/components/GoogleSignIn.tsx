@@ -55,6 +55,9 @@ interface Props {
    *  (script unloadable after retries, or the backend has no OAuth client).
    *  Points the parent at the email path that always works. */
   fallbackText?: string;
+  /** Localized retry label shown with fallbackText so a parent can re-run the
+   *  script-load effect after a flaky connection dropped it. */
+  retryText?: string;
   /** Current app UI language — pinned onto Google's button so it NEVER
    *  auto-localizes to a surprise language (e.g. a German-browser parent
    *  seeing "Weiter mit Google"). bn → বাংলা, en → English. */
@@ -66,18 +69,23 @@ interface Props {
 const MAX_SCRIPT_ATTEMPTS = 3;
 const RETRY_DELAYS = [1000, 3000, 9000];
 
-export function GoogleSignIn({ onToken, disabled, fallbackText, lang }: Props) {
+export function GoogleSignIn({ onToken, disabled, fallbackText, retryText, lang }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState<null | "backend" | "script">(null);
-  // Keep the latest callback without re-running the mount effect (which would
-  // re-render the Google button on every parent re-render).
+  const [retryNonce, setRetryNonce] = useState(0);
+  // Keep the latest callback/disabled flag without re-running the mount effect
+  // (which would re-render the Google button on every parent re-render).
   const onTokenRef = useRef(onToken);
+  const disabledRef = useRef(disabled);
   useEffect(() => {
     onTokenRef.current = onToken;
   }, [onToken]);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
 
   useEffect(() => {
-    setFailed(null); // fresh attempt per language — a stale fallback note shouldn't linger
+    setFailed(null); // fresh attempt per language/retry — a stale fallback note shouldn't linger
     const clientId = googleClientId();
     if (!clientId || !container.current) return;
     if (!googleEnabled()) return;
@@ -95,8 +103,11 @@ export function GoogleSignIn({ onToken, disabled, fallbackText, lang }: Props) {
       gid.initialize({
         client_id: clientId,
         callback: (resp) => {
-          if (resp?.credential) onTokenRef.current(resp.credential);
-          else setFailed("script");
+          // #1465 — the disabled prop can't reach inside Google's injected
+          // iframe, so the guard lives on this callback side: never hand a
+          // credential to an already-busy gate.
+          if (resp?.credential && !disabledRef.current) onTokenRef.current(resp.credential);
+          else if (!resp?.credential) setFailed("script");
         },
       });
       gid.renderButton(container.current, {
@@ -120,7 +131,13 @@ export function GoogleSignIn({ onToken, disabled, fallbackText, lang }: Props) {
     fetch(`${API}/auth/google/status`)
       .then((r) => (r.ok ? r.json() : { enabled: false }))
       .then((st) => {
-        if (!cancelled && st?.enabled === false) setFailed("backend");
+        if (!cancelled && st?.enabled === false) {
+          // The container stays mounted (hidden) so Retry can re-run this
+          // effect — clear any button that already rendered before the status
+          // came back "backend disabled".
+          if (container.current) container.current.innerHTML = "";
+          setFailed("backend");
+        }
       })
       .catch(() => {
         /* backend unreachable right now — stay optimistic */
@@ -162,16 +179,42 @@ export function GoogleSignIn({ onToken, disabled, fallbackText, lang }: Props) {
       cancelled = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, [lang]);
+  }, [lang, retryNonce]);
 
-  if (failed) {
-    // GIS unavailable (network or backend) → the email + guest fallbacks are
-    // right below; a clear note tells the parent what happened.
-    return fallbackText ? (
-      <p className="gate-google-fallback" role="status">
-        {fallbackText}
-      </p>
-    ) : null;
-  }
-  return <div className={`google-btn${disabled ? " busy" : ""}`} ref={container} />;
+  // Keep the button container mounted even while failed so a Retry click can
+  // re-run the effect above and find the ref again. Hidden while failed so the
+  // (empty or stale) Google button never shows next to the fallback note.
+  return (
+    <>
+      <div
+        className={`google-btn${disabled ? " busy" : ""}`}
+        ref={container}
+        aria-busy={disabled || undefined}
+        style={failed ? { display: "none" } : undefined}
+      />
+      {failed && fallbackText ? (
+        <div className="gate-google-fallback" role="status">
+          <span>{fallbackText}</span>
+          {retryText && (
+            <button
+              type="button"
+              onClick={() => setRetryNonce((n) => n + 1)}
+              style={{
+                marginTop: 10,
+                padding: "7px 16px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.22)",
+                background: "rgba(255,255,255,0.08)",
+                color: "inherit",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              {retryText}
+            </button>
+          )}
+        </div>
+      ) : null}
+    </>
+  );
 }

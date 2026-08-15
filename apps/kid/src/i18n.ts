@@ -437,6 +437,13 @@ export interface Strings {
   gateGoogleOr: string;
   gateErrorGoogle: string;
   gateGoogleGone: string;
+  /* #1463 — Google sign-in failed because the network dropped. */
+  gateGoogleNetwork: string;
+  /* #1465 — Google delivered a second credential while one was already in flight. */
+  gateGoogleBusy: string;
+  /* #1466 — retry + unavailable-here affordances for the Google button. */
+  gateGoogleRetry: string;
+  gateGoogleUnavailable: string;
   /* first-time welcome (language pick on top, then guest-vs-sign-in) */
   welcomeTitle: string;
   welcomeSub: string;
@@ -1196,6 +1203,10 @@ export const STR: Record<Lang, Strings> = {
     gateGoogleOr: "or continue with email",
     gateErrorGoogle: "Google sign-in didn't work — try email or guest instead.",
     gateGoogleGone: "Google sign-in isn't available right now — email below works too.",
+    gateGoogleNetwork: "Google sign-in couldn't reach the internet — check your connection and try again.",
+    gateGoogleBusy: "Google sign-in is already underway — one moment…",
+    gateGoogleRetry: "Retry",
+    gateGoogleUnavailable: "Google sign-in isn't available here — use email below, or open this app over HTTPS.",
     welcomeTitle: "Welcome to Numberverse",
     welcomeSub: "Pick a language — the whole app will speak it. You can change it anytime in Settings.",
     welcomeLangLabel: "Choose your language",
@@ -1936,6 +1947,10 @@ export const STR: Record<Lang, Strings> = {
     gateGoogleOr: "অথবা ইমেইল দিয়ে চালিয়ে যান",
     gateErrorGoogle: "Google সাইন ইন কাজ করেনি — বদলে ইমেইল বা অতিথি চেষ্টা করুন।",
     gateGoogleGone: "Google সাইন ইন এখন পাওয়া যাচ্ছে না — নিচের ইমেইলও ঠিক কাজ করবে।",
+    gateGoogleNetwork: "Google সাইন ইন ইন্টারনেটে পৌঁছাতে পারেনি — সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+    gateGoogleBusy: "Google সাইন ইন ইতিমধ্যে চলছে — একটু অপেক্ষা করুন…",
+    gateGoogleRetry: "আবার চেষ্টা করুন",
+    gateGoogleUnavailable: "Google সাইন ইন এখানে পাওয়া যাচ্ছে না — নিচের ইমেইল ব্যবহার করুন, বা HTTPS-এ অ্যাপ খুলুন।",
     welcomeTitle: "নম্বরভার্সে স্বাগতম",
     welcomeSub: "একটি ভাষা বেছে নিন — পুরো অ্যাপ সেই ভাষাতেই কথা বলবে। যেকোনো সময় সেটিংসে বদলাতে পারবেন।",
     welcomeLangLabel: "আপনার ভাষা চয়ন করুন",
