@@ -1,6 +1,12 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧼 0.80.0 RELEASED — KOTHA MEMORY-PIPELINE CLOSURE (#943–#950) 16 Aug 2026 ✅
+- The 8-issue `kotha-stories` cluster was implemented (shipped 0.72.0) but never closed. Verified every Done-when in the code and closed with evidence:
+  - **#943** orphan story_embeddings sweep in `_prune_stories`; **#944** consecutive-skip warning + `embedding_backlog` in stories_health; **#945** FIFO embed order + backlog>3×cap warning; **#946** narrowed `_LONG_DIGITS` (IMEI 15 / card 19) + `_DEVICE_ID_KEYS` scoping; **#947** context clamp (4 KiB/string, 16 KiB envelope, depth 10); **#948** settings-sourced model/dim + insert-time dim assertion; **#949** `_CONTEXT_ALLOWLIST` search projection; **#950** server-side per-kid cap + hourly scheduled prune.
+- Code delta: moved `clamp_context_strings`/`context_depth` from schemas.py into dependency-free `scrub.py` so the bare-`python3` CI test can exercise the exact schema helpers; `test_scrub.py` grew to 25 checks covering #946 numeric-preservation + device-key redaction and #947 clamp/truncation.
+- Gates: API compile ✓ · 25/25 scrub tests ✓ · other API tests ✓ · oracle SHIP-OK ✓ · live smoke 0.80.0 ✓.
+
 ## 🎉 0.79.0 RELEASED — CELEBRATION ENGINE: i18n WORDS + EFFORT-SCALED BURSTS (#1063–#1070) 16 Aug 2026 ✅
 - **#1064** — all inline celebration words (Nice!/WOW!/AMAZING!/SUPER STAR!/Tough one!/x{n}🔥) now route through `t()` with `ce*` keys in BOTH en+bn (ceNice/ceWow/ceWowHard/ceAmazing/ceAmazingHard/ceSuperStar/ceSuperStarHard/ceToughOne/ceStreak/ceMasteryElite). Audit stays 0 errors.
 - **#1068** — burst sizes scale with EFFORT, not just streak: `diffBoost = max(0, difficulty − 4)` feeds confetti (+2/boost, +3 on mastery) and stars (+1/boost).
