@@ -75,6 +75,23 @@ export interface AccelEvent {
 /** Live indicator of the background sync (for the home/parent screens). */
 export type SyncState = "idle" | "syncing" | "ok" | "offline" | "error";
 
+/** #1556 — durable, parent-visible sync signal. Mirrored to the `nv_sync_signal`
+ *  localStorage key (same origin) so the parent portal can read "last success /
+ *  backlog / last error" even though only the kid app writes it. */
+export interface SyncSignal {
+  /** Epoch ms of the last successful /progress drain (null = never). */
+  lastSuccessAt: number | null;
+  /** Rounds still queued in the durable `pending` outbox (derived from its length). */
+  pendingCount: number;
+  /** Why the last sync attempt failed (null = none). */
+  lastError: string | null;
+}
+
+/** #1556 — stable same-origin key the parent portal reads (OnDeviceData pattern):
+ *  `nv_sync_signal = { lastSuccessAt: epoch ms, pendingCount: int, lastError: string|null }`. */
+export const SYNC_SIGNAL_KEY = "nv_sync_signal";
+const DEFAULT_SYNC_SIGNAL: SyncSignal = { lastSuccessAt: null, pendingCount: 0, lastError: null };
+
 function genUid(): string {
   try {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -82,6 +99,24 @@ function genUid(): string {
     /* older webviews */
   }
   return `e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** #1556 — write the same-origin key contract the parent portal reads:
+ *  `nv_sync_signal = { lastSuccessAt: epoch ms, pendingCount: int, lastError: string|null }`.
+ *  `pendingCount` is ALWAYS derived from the durable `pending` outbox length
+ *  (single source of truth) — never from a possibly-stale stored counter. */
+function persistSyncSignal(state: { pending: SyncEvent[]; syncSignal?: SyncSignal | null }): void {
+  try {
+    const signal: SyncSignal = {
+      lastSuccessAt: state.syncSignal?.lastSuccessAt ?? null,
+      pendingCount: state.pending?.length ?? 0,
+      lastError: state.syncSignal?.lastError ?? null,
+    };
+    localStorage.setItem(SYNC_SIGNAL_KEY, JSON.stringify(signal));
+  } catch {
+    /* storage full / unavailable — the durable nv_store_v1 outbox stays the
+     * source of truth; the next sync/outbox write rewrites this key. */
+  }
 }
 
 /** Lifetime per-kid totals (across sessions) — feeds the Parent Panel. */
@@ -477,6 +512,8 @@ interface KidState {
   accel: AccelEvent[];
   /** Live sync indicator (transient, not persisted). */
   syncState: SyncState;
+  /** #1556 — durable sync signal (persisted + mirrored to `nv_sync_signal`). */
+  syncSignal: SyncSignal;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
   skills: Record<string, SkillState>;
   /** Wrong-answer ledger per kid+skill. Key `${kidId}:${skillId}`. */
@@ -517,6 +554,8 @@ interface KidState {
   /** Drop the acceleration entries that were just posted (by uid). */
   clearAccel: (uids: Set<string>) => void;
   setSyncState: (s: SyncState) => void;
+  /** #1556 — update + persist the parent-visible sync signal. */
+  setSyncSignal: (patch: Partial<SyncSignal>) => void;
   skillFor: (kidId: string, skillId: string) => SkillState;
   /** 🧠 MONI profile for a kid (empty profile if never seen). */
   moniFor: (kidId: string) => MoniProfile;
@@ -680,6 +719,7 @@ export const useKidStore = create<KidState>()(
       stories: [],
       accel: [],
       syncState: "idle",
+      syncSignal: DEFAULT_SYNC_SIGNAL,
       skills: {},
       mistakes: {},
       stats: {},
@@ -732,6 +772,7 @@ export const useKidStore = create<KidState>()(
             events: [...s.events, e],
             // durable outbox — survives reloads; the sync drains it online
             pending: nextPending,
+            syncSignal: { ...(s.syncSignal ?? DEFAULT_SYNC_SIGNAL), pendingCount: nextPending.length },
             // durable Kotha outbox — the story of this learning moment
             stories:
               stories.length >= STORY_HARD_CAP
@@ -770,6 +811,9 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
+        // #1556 — the pending outbox changed: mirror the fresh backlog count to
+        // the parent-readable nv_sync_signal key (never waits for the debounce).
+        persistSyncSignal(get());
       },
       recordWrong: (kidId, skillId, gameId, difficulty, correct, wrong) => {
         const now = Date.now();
@@ -872,8 +916,15 @@ export const useKidStore = create<KidState>()(
           if (!prev) return {};
           return { moni: { ...(s.moni ?? {}), [kidId]: moni.resolveMisconception(prev, skillId, code) } };
         }),
-      clearPending: (uids) =>
-        set((s) => (uids.size ? { pending: s.pending.filter((e) => !uids.has(e.uid)) } : s)),
+      clearPending: (uids) => {
+        if (!uids.size) return;
+        set((s) => {
+          const pending = s.pending.filter((e) => !uids.has(e.uid));
+          return { pending, syncSignal: { ...(s.syncSignal ?? DEFAULT_SYNC_SIGNAL), pendingCount: pending.length } };
+        });
+        // #1556 — a confirmed drain shrunk the backlog: mirror it immediately.
+        persistSyncSignal(get());
+      },
       clearStories: (uids) =>
         set((s) => (uids.size ? { stories: (s.stories ?? []).filter((st) => !uids.has(st.uid)) } : s)),
       accelSkip: (kidId, skillId, reason, bandFrom, bandTo) => {
@@ -908,6 +959,15 @@ export const useKidStore = create<KidState>()(
       clearAccel: (uids) =>
         set((s) => (uids.size ? { accel: (s.accel ?? []).filter((a) => !uids.has(a.uid)) } : s)),
       setSyncState: (syncState) => set({ syncState }),
+      setSyncSignal: (patch) => {
+        const pendingCount = get().pending?.length ?? 0;
+        set((s) => ({
+          syncSignal: { ...(s.syncSignal ?? DEFAULT_SYNC_SIGNAL), pendingCount, ...patch },
+        }));
+        // #1556 — success/failure paths call this; write the parent-readable key
+        // right away (the nv_store_v1 persist is debounced and this must not lag).
+        persistSyncSignal(get());
+      },
       skillFor: (kidId, skillId) =>
         get().skills[keyOf(kidId, skillId)] ?? initialSkillState(kidId, skillId),
       recordSession: (kidId) =>
@@ -1513,7 +1573,7 @@ export const useKidStore = create<KidState>()(
       // .rehydrate()` in a first-paint effect (and gates outbox drains on it),
       // so a power user's large nv_store_v1 blob never holds up first render.
       skipHydration: true,
-      partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness })
+      partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness, syncSignal: s.syncSignal })
     }
   )
 );

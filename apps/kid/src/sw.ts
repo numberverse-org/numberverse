@@ -57,6 +57,85 @@ declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
+/* ── Web Push (#1533, taxonomy #1536) ─────────────────────────────────────
+ * The KID PWA SW OWNS push. This is the registered vite-plugin-pwa worker, so
+ * `self.registration` here is the browser's push registration and this is the
+ * one place a server push can render. The parent portal SW
+ * (apps/parent/public/sw.js) is install/activate/fetch only and is NOT
+ * push-capable (ineligible) — never wire a push handler there.
+ *
+ * Feature flag: a push only renders for a well-formed server payload with a
+ * `kind` from the #1536 notification taxonomy AND localised title/body. A bare
+ * or unknown push (no configured sender, dev probe, legacy push) is ignored.
+ * Notification copy comes from the server payload (EN/BN), so no user-facing
+ * strings are hardcoded here beyond the language fallback.
+ */
+const PUSH_KINDS = new Set(["weekly-summary", "milestone", "reminder"]);
+
+type LocalizedText = string | { en?: string; bn?: string };
+
+function localizedText(value: LocalizedText | null | undefined, lang: "en" | "bn"): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") return value;
+  return value[lang] ?? value.en ?? value.bn;
+}
+
+self.addEventListener("push", (event) => {
+  let payload: { kind?: unknown; lang?: unknown; title?: unknown; body?: unknown; url?: unknown } | null = null;
+  try {
+    payload = event.data?.json() ?? null;
+  } catch {
+    /* Not JSON — ignore (only well-formed server payloads render). */
+  }
+  if (!payload || typeof payload !== "object") return;
+
+  const kind = typeof payload.kind === "string" ? payload.kind : "";
+  if (!PUSH_KINDS.has(kind)) return;
+
+  const lang: "en" | "bn" = payload.lang === "bn" ? "bn" : "en";
+  const title = localizedText(payload.title as LocalizedText | undefined, lang);
+  const body = localizedText(payload.body as LocalizedText | undefined, lang);
+  if (!title || !body) return;
+
+  const url = typeof payload.url === "string" && payload.url ? payload.url : "/parent/";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      tag: kind, // one notification per kind — re-sends replace, never stack
+      data: { url },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const destination =
+    typeof event.notification.data?.url === "string" && event.notification.data.url
+      ? event.notification.data.url
+      : "/parent/";
+  // The parent portal lives under /parent/ on this same origin.
+  const target = new URL(destination, self.location.origin);
+
+  event.waitUntil(
+    (async () => {
+      // Focus an already-open parent portal tab first; otherwise open one.
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of windows) {
+        if (new URL(client.url).pathname.startsWith("/parent/")) {
+          await (client as WindowClient).focus();
+          return;
+        }
+      }
+      try {
+        await self.clients.openWindow(target.href);
+      } catch {
+        /* Browsers can block openWindow outside a user gesture — the
+         * focus-existing-tab path above is the primary route. */
+      }
+    })()
+  );
+});
+
 wbClients.clientsClaim();
 wbPrecache.precacheAndRoute(self.__WB_MANIFEST);
 wbPrecache.cleanupOutdatedCaches();

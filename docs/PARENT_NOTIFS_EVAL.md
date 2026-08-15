@@ -67,7 +67,12 @@ worker in the kid app — so the client side plugs into existing infra.
 - [ ] Server subscribe/unsubscribe endpoints + auto-migrated table
 - [ ] Parent panel opt-in toggle (parent-session only, PIN-gated)
 - [ ] Weekly sender job posts a summary notification per subscription
-- [ ] SW push listener renders + routes the tap
+- [x] SW push listener renders + routes the tap — implemented in
+      `apps/kid/src/sw.ts` (the registered kid PWA SW owns push). The parent
+      portal SW (`apps/parent/public/sw.js`) is install/activate/fetch only and
+      is NOT push-capable (ineligible). The listener is feature-flagged on
+      `payload.kind ∈ {weekly-summary, milestone, reminder}` + a well-formed
+      localised title/body; copy comes from the server payload (EN/BN).
 - [ ] Operator verifies delivery on their own phone (Android Chrome + iOS
       installed-PWA 16.4+); unsupported platforms hide the toggle
 - [ ] No analytics, no voice/face, no raw answers anywhere in the payload
