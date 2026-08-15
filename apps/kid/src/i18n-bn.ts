@@ -877,4 +877,21 @@ export const bn: Strings = {
     islandWalkHint: "নোভাকে হাঁটাতে মেঝেতে টোকা দাও",
     islandCoins: "মুদ্রা",
     islandGardenGrew: "তোমার বাগান বড় হয়েছে!",
+    /* #980 — parent account deletion (right-to-erasure) */
+    deleteAccount: "অ্যাকাউন্ট মুছুন",
+    deleteAccountSub: "আপনার অ্যাকাউন্ট ও সমস্ত তথ্য চিরতরে মুছুন — বাচ্চা, অগ্রগতি, গল্প, সেশন। এটি ফেরানো যাবে না।",
+    deleteAccountCta: "আমার অ্যাকাউন্ট মুছুন",
+    deleteAccountConfirm: "নিশ্চিত করতে 'আমার অ্যাকাউন্ট মুছুন' লিখুন",
+    deleteAccountConfirmPh: "আমার অ্যাকাউন্ট মুছুন",
+    deleteAccountPasswordLabel: "আপনার পাসওয়ার্ড লিখুন",
+    deleteAccountDone: (kids) => `অ্যাকাউন্ট মুছে ফেলা হয়েছে। ${kids} জন বাচ্চা ও সকল তথ্য মুছে ফেলা হয়েছে।`,
+    /* #982 — share link revocation */
+    unshareLink: "লিংক বাতিল করুন",
+    regenerateLink: "নতুন লিংক তৈরি করুন",
+    shareLinkRevoked: "শেয়ার লিংক বাতিল হয়েছে — পুরোনো URL আর কাজ করবে না",
+    /* #985/#986 — birth_year display + age-appropriate band */
+    birthYearLabel: "জন্মসাল",
+    ageBandHint: (age, band) => `বয়স ${age} — ব্যান্ড ${band} থেকে শুরু`,
+    /* #983/#984 — privacy retention info */
+    retentionInfo: "৯০ দিনের বেশি পুরোনো প্রগতি ইভেন্ট (প্রতি বাচ্চায় সর্বোচ্চ ৫,০০০) মুছে ফেলা হয়। বাতিলকৃত সেশন ৩০ দিন পরে মুছে ফেলা হয়।",
 };

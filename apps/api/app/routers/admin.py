@@ -20,6 +20,7 @@ from ..models import (
     LearningStory,
     Profile,
     ProgressEvent,
+    Session,
     Skill,
     SkillMastery,
     Subscription,
@@ -592,6 +593,71 @@ async def _prune_stories(db: AsyncSession) -> int:
 
     await db.commit()
     return age_pruned + cap_pruned
+
+
+@router.post("/progress/prune")
+async def prune_progress_events(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """#983 — retention job for progress_events. Mirrors the prune_stories
+    policy: drop rows older than `progress_retention_days`, then trim every
+    kid to its most recent `max_progress_events_per_kid` events."""
+    now = datetime.now(timezone.utc)
+    retention = timedelta(days=settings.progress_retention_days)
+    cap = settings.max_progress_events_per_kid
+    age_cutoff = now - retention
+
+    # 1) Age prune
+    age_result = await db.execute(
+        delete(ProgressEvent).where(ProgressEvent.created_at < age_cutoff)
+    )
+    age_pruned = age_result.rowcount or 0
+
+    # 2) Volume guard per kid
+    ranked = (
+        select(
+            ProgressEvent.id,
+            func.row_number().over(
+                partition_by=ProgressEvent.kid_id,
+                order_by=ProgressEvent.id.desc(),
+            ).label("rn"),
+        ).subquery()
+    )
+    over_cap = (
+        select(ProgressEvent.id)
+        .join(ranked, ranked.c.id == ProgressEvent.id)
+        .where(ranked.c.rn > cap)
+    )
+    cap_result = await db.execute(delete(ProgressEvent).where(ProgressEvent.id.in_(over_cap)))
+    cap_pruned = cap_result.rowcount or 0
+
+    await db.commit()
+    return {
+        "pruned": age_pruned + cap_pruned,
+        "age_pruned": age_pruned,
+        "cap_pruned": cap_pruned,
+        "retention_days": settings.progress_retention_days,
+        "max_events_per_kid": cap,
+    }
+
+
+# #984 — purge revoked sessions older than N days. Session rows carry ip +
+# user_agent (the two fields PRIVACY.md flags as 'nice-to-have PII'), so they
+# must not accumulate forever once revocation removes their purpose.
+@router.post("/sessions/purge-revoked")
+async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """#984 — hard-delete Session rows that were revoked more than N days ago.
+    Default 30 days: stale IP/UA PII is gone once revocation is settled."""
+    from ..config import settings as app_settings
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=getattr(app_settings, "session_purge_days", 30))
+    result = await db.execute(
+        delete(Session).where(
+            Session.revoked_at.is_not(None),
+            Session.revoked_at < cutoff,
+        )
+    )
+    purged = result.rowcount or 0
+    await db.commit()
+    return {"purged": purged, "cutoff": cutoff.isoformat()}
 
 
 # #840 — caps for the generic admin list_resource. react-admin sends

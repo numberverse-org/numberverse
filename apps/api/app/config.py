@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     # these values so an encoder upgrade never silently drifts.
     kotha_embed_model: str = "thenlper/gte-small"
     kotha_embed_dim: int = 384
+    # #983 — progress_events retention: prune rounds older than this many days.
+    progress_retention_days: int = 90
+    # #983 — max progress_events per kid (volume guard, like kotha_max_stories_per_kid).
+    max_progress_events_per_kid: int = 5000
+    # #984 — hard-delete revoked sessions older than this many days.
+    session_purge_days: int = 30
 
     @property
     def origins(self) -> list[str]:

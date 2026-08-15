@@ -68,6 +68,10 @@ class ProfileOut(BaseModel):
     # semantics). The parent portal uses this to hide/route the change-password
     # form for Google-only accounts.
     auth_provider: str | None = None
+    # #985 — VPC consent audit trail surfaced in API responses + export
+    consent_version: str | None = None
+    consent_at: datetime | None = None
+    consent_method: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -113,6 +117,13 @@ class KidUpdateIn(BaseModel):
     birth_year: int | None = Field(default=None, ge=2010, le=2030)
 
 
+class DeleteAccountIn(BaseModel):
+    """#980 — parent must confirm by re-entering their password (or typed
+    confirmation string) before account deletion proceeds."""
+    confirmation: str = Field(min_length=1, max_length=100)
+    password: str = Field(max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+
+
 class KidOut(BaseModel):
     id: uuid.UUID
     profile_id: uuid.UUID
@@ -120,6 +131,7 @@ class KidOut(BaseModel):
     avatar: str | None = None
     birth_year: int | None = None
     created_at: datetime
+    coins: int = 0  # #987 — wallet balance surfaced in API
 
     model_config = {"from_attributes": True}
 

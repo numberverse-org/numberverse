@@ -878,4 +878,21 @@ export const en: Strings = {
     islandWalkHint: "Tap the floor to walk Nova",
     islandCoins: "Coins",
     islandGardenGrew: "Your garden grew!",
+    /* #980 — parent account deletion (right-to-erasure) */
+    deleteAccount: "Delete account",
+    deleteAccountSub: "Permanently delete your account and ALL associated data — kids, progress, stories, sessions. This cannot be undone.",
+    deleteAccountCta: "Delete my account",
+    deleteAccountConfirm: "Type 'delete my account' to confirm",
+    deleteAccountConfirmPh: "delete my account",
+    deleteAccountPasswordLabel: "Enter your password",
+    deleteAccountDone: (kids) => `Account deleted. ${kids} kid${kids === 1 ? "" : "s"} and all data removed.`,
+    /* #982 — share link revocation */
+    unshareLink: "Revoke link",
+    regenerateLink: "Regenerate link",
+    shareLinkRevoked: "Share link revoked — the old URL no longer works",
+    /* #985/#986 — birth_year display + age-appropriate band */
+    birthYearLabel: "Birth year",
+    ageBandHint: (age, band) => `Age ${age} — starts at world band ${band}`,
+    /* #983/#984 — privacy retention info */
+    retentionInfo: "Progress events older than 90 days (up to 5,000 per child) are pruned. Revoked sessions are purged after 30 days.",
 };

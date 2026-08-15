@@ -15,7 +15,10 @@ import uuid
 from datetime import datetime, timezone
 
 FORMAT = "numberverse-family-export"
-VERSION = 1
+# #987 — v2 adds acceleration_log entries and the kid's coins balance to the
+# JSON export; v2 also surfaces the #985 consent audit trail. Keep this in lockstep
+# with serialize_kid below.
+VERSION = 2
 
 
 def iso(dt: datetime | None) -> str | None:
@@ -30,20 +33,33 @@ def iso(dt: datetime | None) -> str | None:
 def profile_meta(profile) -> dict:
     """What a parent may read about their own account. NOTE: deliberately
     omits password_hash, sessions, and is_admin — the export is family data,
-    not account internals."""
+    not account internals. #985 — includes the consent audit trail."""
     return {
         "display_name": profile.display_name,
         "email": profile.email,
+        "consent": {
+            "version": getattr(profile, "consent_version", None),
+            "at": iso(getattr(profile, "consent_at", None)),
+            "method": getattr(profile, "consent_method", None),
+        },
     }
 
 
-def serialize_kid(kid, settings, mastery, events, stories) -> dict:
+def serialize_kid(kid, settings, mastery, events, stories, acceleration=None) -> dict:
     return {
         "id": str(kid.id),
         "name": kid.name,
         "avatar": kid.avatar,
         "birth_year": kid.birth_year,
+        # #986 — birth_year is surfaced so the parent can see what the app holds.
+        "coins": getattr(kid, "coins", None) or 0,  # #987 — wallet balance
         "created_at": iso(kid.created_at),
+        # #985 — per-kid consent acknowledgment
+        "consent": {
+            "version": getattr(kid, "consent_version", None),
+            "at": iso(getattr(kid, "consent_at", None)),
+            "method": getattr(kid, "consent_method", None),
+        },
         "settings": None
         if settings is None
         else {
@@ -94,6 +110,19 @@ def serialize_kid(kid, settings, mastery, events, stories) -> dict:
                 "created_at": iso(s.created_at),
             }
             for s in sorted(stories, key=lambda s: s.created_at or datetime.min)
+        ],
+        # #987 — acceleration_log entries (the acceleration plan) were missing
+        # from the export; they are now included so a parent can see every
+        # "skipped ahead" reason and band jump.
+        "acceleration": [
+            {
+                "skill_id": a.skill_id,
+                "reason": a.reason,
+                "band_from": a.band_from,
+                "band_to": a.band_to,
+                "created_at": iso(a.created_at),
+            }
+            for a in sorted(acceleration or [], key=lambda a: a.created_at or datetime.min)
         ],
     }
 

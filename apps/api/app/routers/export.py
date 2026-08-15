@@ -29,6 +29,7 @@ from ..export_format import (
     to_csv,
 )
 from ..models import (
+    AccelerationLog,
     Kid,
     KidSettings,
     LearningStory,
@@ -146,9 +147,14 @@ async def export_json(
     for s in (await db.scalars(select(LearningStory).where(LearningStory.kid_id.in_(kid_ids)))).all():
         stories_by[s.kid_id].append(s)
 
+    # #987 — include acceleration_log entries in the export (previously missing)
+    accel_by: dict = {kid_id: [] for kid_id in kid_ids}
+    for a in (await db.scalars(select(AccelerationLog).where(AccelerationLog.kid_id.in_(kid_ids)))).all():
+        accel_by[a.kid_id].append(a)
+
     kids_out = []
     for k in kids:
-        item = serialize_kid(k, settings.get(k.id), mastery_by[k.id], events_by[k.id], stories_by[k.id])
+        item = serialize_kid(k, settings.get(k.id), mastery_by[k.id], events_by[k.id], stories_by[k.id], acceleration=accel_by[k.id])
         item["settings"] = _serialize_settings(settings.get(k.id))
         item["mastery"] = _with_mastered_at(item["mastery"], mastery_by[k.id])
         item["stories"] = _serialize_stories(stories_by[k.id])

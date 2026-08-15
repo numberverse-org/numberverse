@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import Kid, KidSettings, Profile, ProgressEvent, Skill, SkillMastery
+from ..models import AccelerationLog, Kid, KidSettings, LearningStory, Profile, ProgressEvent, Skill, SkillMastery
 from ..ratelimit import rate_limit
 from ..schemas import (
     ActivityOut,
@@ -50,9 +50,35 @@ async def _get_owned_kid(kid_id: uuid.UUID, profile: Profile, db: AsyncSession) 
     return kid
 
 
+def _age_band_cap(birth_year: int | None) -> int | None:
+    """#986 — derive a sensible max_band from the kid's birth year. Younger kids
+    (age ≤6) default to band 2 (Sprout Grove), age 7-8 → band 3, age 9+ → None
+    (no cap). None birth_year returns None (parent can set manually)."""
+    if birth_year is None:
+        return None
+    current_year = date.today().year
+    age = current_year - birth_year
+    if age <= 6:
+        return 2
+    elif age <= 8:
+        return 3
+    return None
+
+
 @router.post("", response_model=KidOut, status_code=status.HTTP_201_CREATED)
 async def create_kid(body: KidIn, profile: Profile = Depends(KID_WRITE_RATE_LIMIT), db: AsyncSession = Depends(get_db)):
     kid = Kid(profile_id=profile.id, name=body.name, avatar=body.avatar, birth_year=body.birth_year)
+    # #985 — stamp per-kid consent acknowledgment at creation
+    kid.consent_version = "1.0"
+    kid.consent_at = datetime.now(timezone.utc)
+    kid.consent_method = "create_kid"
+    # #986 — wire birth_year into an age-appropriate default max_band (parent
+    # can override via settings). If birth_year suggests a very young kid, cap
+    # the band so they're not dropped into hard content.
+    cap = _age_band_cap(body.birth_year)
+    if cap is not None:
+        ks = KidSettings(kid_id=kid.id, max_band=cap)
+        db.add(ks)
     db.add(kid)
     await db.commit()
     await db.refresh(kid)
@@ -376,10 +402,14 @@ async def reset_kid_progress(
     profile: Profile = Depends(KID_WRITE_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
-    """Wipe a kid's mastery + round history — "start fresh". Does NOT delete
-    the kid or their settings."""
+    """Wipe a kid's mastery + round history + learning stories + acceleration
+    log — "start fresh". Does NOT delete the kid or their settings.
+    #981 — previously left LearningStory and AccelerationLog untouched,
+    contradicting the 'start fresh' contract."""
     await _get_owned_kid(kid_id, profile, db)
     await db.execute(delete(SkillMastery).where(SkillMastery.kid_id == kid_id))
     await db.execute(delete(ProgressEvent).where(ProgressEvent.kid_id == kid_id))
+    await db.execute(delete(LearningStory).where(LearningStory.kid_id == kid_id))
+    await db.execute(delete(AccelerationLog).where(AccelerationLog.kid_id == kid_id))
     await db.commit()
     return ResetOut(reset=True, kid_id=str(kid_id))
