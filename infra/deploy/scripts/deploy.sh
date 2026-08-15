@@ -42,6 +42,17 @@ grep -qE '^NV_ADMIN_PASSWORD=.+' "\$ENV_FILE" || { echo "✖ \$ENV_FILE: NV_ADMI
 grep -qE '^NV_CORS_ORIGINS=\*' "\$ENV_FILE" && { echo "✖ \$ENV_FILE: NV_CORS_ORIGINS must not be '*' in production." >&2; exit 1; }
 
 NV_ENV_FILE="\$ENV_FILE" NV_VERSION="$NV_VERSION" docker compose --env-file "\$ENV_FILE" -f "\$PWD/docker-compose.prod.yml" up -d --build
+
+# #auto-prune — image retention: keep the 2 newest numberverse-demo images per
+# service so rollback.sh (no-rebuild) always has the previous release available,
+# and drop older version tags + the stale floating :latest. The box once hit 97%
+# full from ~100 accumulated version tags; this keeps it from creeping back.
+for SVC in web api; do
+  docker images "numberverse-demo-\$SVC" --format '{{.Tag}}' \
+    | grep -E '^0\.' | sort -V | head -n -2 \
+    | while read -r tag; do docker rmi -f "numberverse-demo-\$SVC:\$tag" >/dev/null 2>&1 || true; done
+  docker rmi -f "numberverse-demo-\$SVC:latest" >/dev/null 2>&1 || true
+done
 REMOTE
 
 sleep 8
