@@ -1,6 +1,14 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🏢🔊 BATCH CLOSURES — MULTI-TENANCY (#961–#970) + CONFIG/VOICE (#971–#979) 16 Aug 2026 ✅ (infra-only, rides next release)
+- **Multi-tenancy (#961–#970)** — all implemented in batch-3 (shipped 0.72.0), verified + closed:
+  - #961 Kid.org_id + Organization/OrgMember/TenantConfig/OrgSyllabus/Classroom/ClassroomKid tables; #962 org_scoped() on kids/progress/admin; #963 org_scoped() at deps.py:182 + org-isolation test (11/11); #964 require_super_admin + require_org_member role hierarchy; #965 TenantConfig global-first fallback in branding.py; #966 OrgSyllabus per-org (org_id, skill_id) mapping; #967 Classroom/ClassroomKid; #968 ORG_SCOPED_MODELS auto-filtered admin CRUD; #969 Subscription.org_id (B2B); #970 ConfigEntry global + per-tenant merge.
+  - Fixed a real CI bug: the api job installed NO Python deps, so test_org_isolation.py (#963) could never run green — added a pip-install step (fastapi/sqlalchemy/psycopg/pydantic-settings/pyjwt). 11/11 unit checks pass locally.
+- **Config/voice (#971–#979)** — all implemented in batch-3, verified + closed:
+  - #971 AbortController fetch deadline; #972 MODEL_JSON ?v= + ALL_VOICE; #973 watchdog → failNeural (state flips to error); #974 payload-hash drift guard; #975 worker error → terminate/null/reject/failNeural; #976 separate low-priority warm chain; #977 stderrConsecutive → degrade neural; #978 readonly cache-hit tx; #979 dead gestured removed.
+  - **#974 hardened this session:** fetch_voice_assets.sh now compares the committed VOICE_V against the assembled payload sha256 hash and surfaces a "✗ VOICE DRIFT" block (with the exact sed to bump) at every voice build — the 6-month CacheFirst stale-voice footgun can no longer ship silently.
+
 ## 🧠 0.81.0 RELEASED — MONI ADAPTIVE CLOSURE (#953–#960) 16 Aug 2026 ✅
 - The 8-issue `moni-adaptive` cluster was implemented (shipped earlier) but never closed. Verified every Done-when in code and closed with evidence:
   - **#953** NaN/0 responseMs guard in observeRound; **#954** `fragile` derived from recoveryRate (reactive, not dead); **#955** recoveryRate now decays on correct→wrong / wrong→wrong; **#956** wrong-tap path feeds slowMs+1 → gap classification; **#957** planner fallback gated to `childBand+1`; **#958** review interval shifts by rung (not raw-conf multiply); **#959** gameAffinity decays per round; **#960** observeRound/diagnose receive post-round `updated` mastery.
