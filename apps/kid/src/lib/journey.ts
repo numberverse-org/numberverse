@@ -1084,7 +1084,11 @@ export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null 
   }
 
   // Fast path: same kid + same minute + identical store refs → reuse the plan.
-  const strictness = st.moniStrictness?.[kidId] ?? "steady";
+  // #1050 — undefined (NOT "steady") when no parent choice: planner.ts then uses
+  // Moni's OWN automatic tone (fragile→gentle / sharp→challenging / else
+  // steady). The old `?? "steady"` pinned every fresh device to steady and
+  // silently overrode the auto read.
+  const strictness = st.moniStrictness?.[kidId];
   const refs: [unknown, unknown, unknown, unknown] = [st.skills, st.moniWrongStreak, profile, strictness];
   const key = `${kidId}:${Math.floor(Date.now() / 60_000)}`;
   if (moniPlanCacheKey === key && moniPlanCacheRefs && moniPlanCacheRefs.every((r, i) => r === refs[i])) {
@@ -1115,9 +1119,10 @@ export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null 
     catalog[s.id] = { id: s.id, band: s.band, game: s.game };
   }
   try {
-    // Parent-set strictness (#333) shapes Moni's tone + difficulty deltas. It
-    // defaults to "steady" (Moni's own automatic read) when never set. `now`
-    // is passed explicitly so the review-due computation is deterministic.
+    // Parent-set strictness (#333) shapes Moni's tone + difficulty deltas.
+    // #1050 — when never set it stays undefined so the planner uses Moni's own
+    // automatic read (NOT pinned steady). `now` is passed explicitly so the
+    // review-due computation is deterministic.
     const plan = moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, strictness, Date.now());
     moniPlanCacheKey = key;
     moniPlanCacheRefs = refs;

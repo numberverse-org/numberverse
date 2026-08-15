@@ -183,15 +183,16 @@ class KidSettings(Base):
     paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # #1041/#1042/#1043 — parent-adjustable MONI STRICTNESS: the difficulty
     # knob. "gentle" | "steady" | "challenging" — how hard the adaptive tutor
-    # pushes this kid (planner.ts shifts difficulty −1/+1 + tone). "steady" is
-    # Moni's own automatic read (the neutral default). SYNCED: the parent
-    # portal sets it, the kid app pulls it on every settings fetch so the
-    # parent's choice applies on every device, and the kid app's own parent
-    # area pushes it back up (device-local was the #1043 bug). Auto-migrated
-    # (server_default "steady" → existing kids keep the neutral default).
-    moni_strictness: Mapped[str] = mapped_column(
-        String(16), default="steady", server_default="steady"
-    )
+    # pushes this kid (planner.ts shifts difficulty −1/+1 + tone). NULL = no
+    # parent choice → Moni uses its OWN automatic read (fragile→gentle /
+    # sharp→challenging / else steady). #1050: the old server_default "steady"
+    # pinned EVERY fresh kid to steady and silently overrode the auto tone, so
+    # a fragile kid was never gentled. Only an EXPLICIT parent choice pins the
+    # tone now. SYNCED: the parent portal sets it, the kid app pulls it on
+    # every settings fetch so the parent's choice applies on every device, and
+    # the kid app's own parent area pushes it back up (device-local was the
+    # #1043 bug). Legacy rows keep their stored value; new rows default NULL.
+    moni_strictness: Mapped[str | None] = mapped_column(String(16), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

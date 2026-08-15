@@ -318,8 +318,14 @@ export const LEARNING_LANGS = {
     subjectsAll: "All",
     subjectsNone: "None",
     allSubjects: "All subjects",
+    // #1049 — honest label: this control gates WORLDS (content bands), it does
+    // NOT change per-game difficulty. Keep the old difficultyHint* keys in sync
+    // for any legacy reference; the UI uses worldsTitle/worldsHint*.
     difficultyHint: "The hardest world {name} can reach (1 = easiest, {n} = hardest).",
     difficultyHintAll: "The hardest world {name} can reach (lower = easier, higher = harder).",
+    worldsTitle: "Worlds",
+    worldsHint: "The highest world {name} can reach. Worlds are content bands — a cap hides the games beyond it; it doesn't change how hard each game is.",
+    worldsHintAll: "{name} can play every world. Worlds are content bands — this doesn't change how hard each game is.",
     allWorlds: "All worlds",
     goalSavedHint: "↳ Saved as up to {goal} min — clamped to today's daily cap ({cap} min) if that's lower.",
     // #1513 — shown near the Save button while settings edits are unsaved.
@@ -330,8 +336,13 @@ export const LEARNING_LANGS = {
     subjectsAll: "সব",
     subjectsNone: "কোনোটিই নয়",
     allSubjects: "সব বিষয়",
+    // #1049 — সৎ লেবেল: এই নিয়ন্ত্রণ ওয়ার্ল্ড (কনটেন্ট-ব্যান্ড) সীমা দেয়, খেলার
+    // কঠিনতর পরিবর্তন করে না।
     difficultyHint: "{name} যে পর্যন্ত পৌঁছাতে পারে তার সবচেয়ে কঠিন ওয়ার্ল্ড (১ = সবচেয়ে সহজ, {n} = সবচেয়ে কঠিন)।",
     difficultyHintAll: "{name} যে পর্যন্ত পৌঁছাতে পারে তার সবচেয়ে কঠিন ওয়ার্ল্ড (ছোট মান = সহজ, বড় মান = কঠিন)।",
+    worldsTitle: "ওয়ার্ল্ড",
+    worldsHint: "{name} যে পর্যন্ত পৌঁছাতে পারে তার সর্বোচ্চ ওয়ার্ল্ড। ওয়ার্ল্ডগুলো কনটেন্ট-ব্যান্ড — সীমা তার বাইরের খেলাগুলো লুকিয়ে রাখে; প্রতিটি খেলা কতটা কঠিন তা এটি বদলায় না।",
+    worldsHintAll: "{name} সব ওয়ার্ল্ড খেলতে পারে। ওয়ার্ল্ডগুলো কনটেন্ট-ব্যান্ড — প্রতিটি খেলা কতটা কঠিন তা এটি বদলায় না।",
     allWorlds: "সব ওয়ার্ল্ড",
     goalSavedHint: "↳ লক্ষ্য হিসেবে সর্বোচ্চ {goal} মিনিট সংরক্ষিত — আজকের দৈনিক সীমা ({cap} মিনিট) এর চেয়ে কম হলে সেখানে আটকে যাবে।",
     // #1513 — shown near the Save button while settings edits are unsaved.
@@ -518,7 +529,7 @@ export const DEFAULT_SETTINGS: KidSettingsT = {
   voice_tone: null,
   voice_speed: null,
   paused: false,
-  moni_strictness: "steady",
+  moni_strictness: null, // #1050 — null = no parent choice → Moni auto tone
 };
 
 /** #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.

@@ -217,14 +217,17 @@ export default function LearningControls({
   </div>
 
   <div className="ctrl-block">
-    <h3>Difficulty cap</h3>
+    {/* #1049 — honest label: this gates WORLDS (content bands), it does not
+        change per-game difficulty. The old "Difficulty cap" wording conflated
+        the two and promised a lever this control doesn't have. */}
+    <h3>{LEARNING_LANGS[wizLang].worldsTitle}</h3>
     {/* #1512 — dynamic caption: with a cap set it names that ceiling, and
         with "All worlds" it stays neutral, so the text never contradicts the
         7-band focus picker. */}
     <p className="muted small">
       {maxBand === null
-        ? LEARNING_LANGS[wizLang].difficultyHintAll.replace("{name}", active.name)
-        : LEARNING_LANGS[wizLang].difficultyHint
+        ? LEARNING_LANGS[wizLang].worldsHintAll.replace("{name}", active.name)
+        : LEARNING_LANGS[wizLang].worldsHint
             .replace("{name}", active.name)
             .replace("{n}", fmtNum(maxBand))}
     </p>

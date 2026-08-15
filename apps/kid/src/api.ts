@@ -1069,10 +1069,11 @@ export interface KidSettings {
    *  (planner difficulty −1/0/+1 + tone). "steady" = Moni's own automatic
    *  read. Optional so older on-device caches (which predate the field) still
    *  pass the REQUIRED_SETTING_FIELDS shape-check; the read sites default to
-   *  "steady" and the next server fetch fills it in. Synced via KidSettings:
-   *  the parent portal sets it and the kid app pulls it on every settings
-   *  fetch (device-local was the #1043 bug). */
-  moni_strictness?: "gentle" | "steady" | "challenging";
+   *  null (auto) and the next server fetch fills it in. #1050 — null/undefined
+   *  = NO parent choice → Moni uses its own automatic tone (not pinned steady).
+   *  Synced via KidSettings: the parent portal sets it and the kid app pulls
+   *  it on every settings fetch (device-local was the #1043 bug). */
+  moni_strictness?: "gentle" | "steady" | "challenging" | null;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -1096,7 +1097,7 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   voice_tone: null,
   voice_speed: null,
   paused: false,
-  moni_strictness: "steady",
+  moni_strictness: null, // #1050 — null = no parent choice → Moni auto tone
 };
 
 /** Local YYYY-MM-DD for a date — daily counters must follow the kid's local

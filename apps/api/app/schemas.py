@@ -178,10 +178,11 @@ class KidSettingsIn(BaseModel):
     # until a parent resumes (one-tap, kid-safe message, survives reload).
     paused: bool = False
     # #1041/#1042 — parent-adjustable MONI STRICTNESS: the difficulty knob.
-    # gentle/steady/challenging = how hard Moni pushes this kid. "steady" is
-    # Moni's automatic read (default). Literal rejects anything else at the
-    # boundary so the DB constraint can never trip on a bad write.
-    moni_strictness: Literal["gentle", "steady", "challenging"] = "steady"
+    # gentle/steady/challenging = how hard Moni pushes this kid. #1050: None =
+    # no parent choice → Moni uses its own automatic read (NOT pinned steady).
+    # Literal rejects anything else at the boundary so the DB constraint can
+    # never trip on a bad write.
+    moni_strictness: Literal["gentle", "steady", "challenging"] | None = None
 
 
 class KidSettingsOut(BaseModel):
@@ -207,7 +208,8 @@ class KidSettingsOut(BaseModel):
     voice_tone: str | None = None
     voice_speed: float | None = None
     paused: bool = False
-    moni_strictness: str = "steady"
+    # #1050 — NULL = no parent choice → Moni auto tone (never pinned steady).
+    moni_strictness: str | None = None
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
