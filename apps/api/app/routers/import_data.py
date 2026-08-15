@@ -62,7 +62,10 @@ class ImportSettingsIn(BaseModel):
     sfx_volume: float = Field(default=1.0, ge=0.0, le=1.0)
     music_volume: float = Field(default=1.0, ge=0.0, le=1.0)
     quiet_enabled: bool = False
-    quiet_windows: str | None = None
+    quiet_windows: str | None = Field(
+        default=None,
+        pattern=r"^(?:-|\d{1,2}:\d{2}-\d{1,2}:\d{2})(?:,(?:-|\d{1,2}:\d{2}-\d{1,2}:\d{2})){6}$",
+    )
     quiet_dim: bool = True
     quiet_volume: float = Field(default=0.15, ge=0.05, le=1.0)
     voice_record_enabled: bool = False
@@ -166,13 +169,14 @@ _SETTINGS_FIELDS = (
 _MASTERY_FIELDS = ("mastery", "correct", "attempts", "streak", "last_practice", "last_decay")
 
 
-def _naive(dt: datetime | None) -> datetime | None:
-    """Postgres TIMESTAMP columns are naive UTC; normalize parsed ISO values."""
+def _utc(dt: datetime | None) -> datetime | None:
+    """Timestamp columns are timezone-aware; normalize parsed ISO values to
+    aware UTC so imports match what /export produced and what Postgres stores."""
     if dt is None:
         return None
-    if dt.tzinfo is not None:
-        return dt.astimezone(timezone.utc).replace(tzinfo=None)
-    return dt
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _apply_fields(obj, fields: dict) -> bool:
@@ -190,7 +194,7 @@ def _upsert_kid(db: AsyncSession, item: ImportKidIn, kid_uuid: uuid.UUID, existi
     if existing is None:
         kid = Kid(id=kid_uuid, profile_id=profile_id, name=item.name, avatar=item.avatar, birth_year=item.birth_year)
         if item.created_at is not None:
-            kid.created_at = _naive(item.created_at)
+            kid.created_at = _utc(item.created_at)
         db.add(kid)
         return 1, 0, 0
     if _apply_fields(existing, {"name": item.name, "avatar": item.avatar, "birth_year": item.birth_year}):
@@ -218,8 +222,8 @@ def _mastery_fields(item: ImportMasteryIn) -> dict:
         "correct": item.correct,
         "attempts": item.attempts,
         "streak": item.streak,
-        "last_practice": _naive(item.last_practice),
-        "last_decay": _naive(item.last_decay),
+        "last_practice": _utc(item.last_practice),
+        "last_decay": _utc(item.last_decay),
     }
 
 
@@ -346,14 +350,14 @@ async def import_family_data(
             if existing_mastery is None:
                 row = SkillMastery(kid_id=kid_uuid, skill_id=mastery.skill_id, **fields)
                 if "mastered_at" in mastery.model_fields_set:
-                    row.mastered_at = _naive(mastery.mastered_at)
+                    row.mastered_at = _utc(mastery.mastered_at)
                 db.add(row)
                 mastery_by_key[(kid_uuid, mastery.skill_id)] = row
                 created += 1
                 continue
             changed = _apply_fields(existing_mastery, fields)
             if "mastered_at" in mastery.model_fields_set:
-                mastered_at = _naive(mastery.mastered_at)
+                mastered_at = _utc(mastery.mastered_at)
                 if existing_mastery.mastered_at != mastered_at:
                     existing_mastery.mastered_at = mastered_at
                     changed = True
@@ -366,7 +370,7 @@ async def import_family_data(
             if event.created_at is None:
                 skipped += 1
                 continue
-            created_at = _naive(event.created_at)
+            created_at = _utc(event.created_at)
             key = (kid_uuid, event.skill_id, event.game_id, event.correct, event.response_ms, event.difficulty, created_at)
             if key in event_keys:
                 skipped += 1
@@ -395,7 +399,7 @@ async def import_family_data(
                 if story.created_at is None:
                     skipped += 1
                     continue
-                fallback_key = (kid_uuid, story.skill_id, story.game_id, story.outcome, _naive(story.created_at))
+                fallback_key = (kid_uuid, story.skill_id, story.game_id, story.outcome, _utc(story.created_at))
                 if fallback_key in story_fallback_keys:
                     skipped += 1
                     continue
@@ -415,7 +419,7 @@ async def import_family_data(
                 context=redact_context(story.context) or {},
             )
             if story.created_at is not None:
-                story_row.created_at = _naive(story.created_at)
+                story_row.created_at = _utc(story.created_at)
             db.add(story_row)
             if story.uid is not None:
                 story_uid_keys.add(uid_key)

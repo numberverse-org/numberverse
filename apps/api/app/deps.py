@@ -92,7 +92,7 @@ async def get_current_profile(
             # an insert-on-conflict: two concurrent requests carrying the same
             # legacy token can race here, and the unique token_hash index is the
             # tie-breaker (one insert wins, the other refetches the winner).
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            now = datetime.now(timezone.utc)
             insert_stmt = (
                 pg_insert(Session)
                 .values(
@@ -126,10 +126,10 @@ async def _touch_session(
     request: Request, session: Session, db: AsyncSession, *, force: bool = False
 ) -> None:
     """Throttled touch: a fresh last_seen for the "active logins" list without
-    a write on every request. Postgres returns naive TIMESTAMP columns, so
-    compare with a naive UTC "now" (aware would TypeError on the subtract).
+    a write on every request. Timestamp columns are timezone-aware UTC (#906),
+    so compare with an aware UTC "now" (naive would TypeError on the subtract).
     `force` also persists a just-materialized legacy-session row."""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     if force or not session.last_seen_at or (now - session.last_seen_at).total_seconds() > 300:
         session.last_seen_at = now
         await db.commit()

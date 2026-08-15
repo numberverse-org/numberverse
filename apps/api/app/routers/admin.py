@@ -350,20 +350,21 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
     by_action = [{"action": a or "none", "stories": n} for a, n in by_action_raw.all()]
 
     # 14-day ingest trend (for a line chart) — date-only buckets, no kids.
-    # #860 — DB timestamps are naive UTC; build the window bound the same way so
-    # `>= since` compares like-for-like (aware vs naive datetimes don't mix).
-    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=STORY_HEALTH_DAYS)
+    # #906 — timestamp columns are timezone-aware UTC; bucket on the UTC date so
+    # a non-UTC server session can't shift the trend's calendar day.
+    since = datetime.now(timezone.utc) - timedelta(days=STORY_HEALTH_DAYS)
+    day_expr = func.date(func.timezone("UTC", LearningStory.created_at))
     by_day_raw = await db.execute(
-        select(func.date(LearningStory.created_at).label("d"), func.count().label("n"))
+        select(day_expr.label("d"), func.count().label("n"))
         .where(LearningStory.created_at >= since)
-        .group_by(func.date(LearningStory.created_at))
-        .order_by(func.date(LearningStory.created_at))
+        .group_by(day_expr)
+        .order_by(day_expr)
     )
     by_day = [{"date": d.isoformat() if hasattr(d, "isoformat") else str(d), "stories": n} for d, n in by_day_raw.all()]
 
     # Rate-limit-aware flags: kids whose story volume in the last 60 min
     # breached the per-hour budget → likely a runaway replay, needs a look.
-    hour_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
     hot_raw = await db.execute(
         select(LearningStory.kid_id, func.count().label("n"))
         .where(LearningStory.created_at >= hour_ago)
@@ -487,8 +488,8 @@ async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = 
         `kotha_max_stories_per_kid` (default 1000) stories — the active tail
         is always the most recent, so active learning is never the overflow.
     """
-    # #860 — naive-UTC now, matching the naive-UTC `created_at` column (see above).
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    # #906 — timezone-aware UTC now, matching the timezone-aware `created_at` column.
+    now = datetime.now(timezone.utc)
     retention = timedelta(days=settings.kotha_retention_days)
     active_window = timedelta(days=settings.kotha_active_skill_days)
     cap = settings.kotha_max_stories_per_kid

@@ -263,12 +263,15 @@ async def get_kid_weekly(
     # would shift the 7-day window and "mastered today" on a non-UTC host.
     now = datetime.now(timezone.utc).date()
     start = now - timedelta(days=6)
+    # #906 — timestamp columns are timezone-aware; bind the window as an aware
+    # UTC datetime so the comparison matches the stored values.
+    start_dt = datetime.combine(start, time.min, tzinfo=timezone.utc)
 
     events = (
         await db.scalars(
             select(ProgressEvent).where(
                 ProgressEvent.kid_id == kid_id,
-                ProgressEvent.created_at >= start,
+                ProgressEvent.created_at >= start_dt,
             )
         )
     ).all()
@@ -304,7 +307,9 @@ async def get_kid_weekly(
     played_dates = set(
         (
             await db.execute(
-                select(func.date(ProgressEvent.created_at)).where(ProgressEvent.kid_id == kid_id).distinct()
+                select(func.date(func.timezone("UTC", ProgressEvent.created_at)))
+                .where(ProgressEvent.kid_id == kid_id)
+                .distinct()
             )
         ).scalars()
     )
@@ -322,7 +327,7 @@ async def get_kid_weekly(
             select(SkillMastery).where(
                 SkillMastery.kid_id == kid_id,
                 SkillMastery.mastery >= 0.8,
-                SkillMastery.last_practice >= start,
+                SkillMastery.last_practice >= start_dt,
             )
         )
     ).all()
@@ -332,7 +337,7 @@ async def get_kid_weekly(
     # Feeds the portal's daily play-summary headline without a second query
     # shape (the weekly fetch already carries it to the client). #857 — `now`
     # is the UTC calendar day, so this midnight matches the UTC-stamped events.
-    today_start = datetime.combine(now, time.min)
+    today_start = datetime.combine(now, time.min, tzinfo=timezone.utc)
     mastered_today = (
         await db.scalars(
             select(SkillMastery).where(
