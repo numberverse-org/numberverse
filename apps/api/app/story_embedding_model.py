@@ -11,7 +11,7 @@ job idempotent).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,7 +42,7 @@ if HAVE_VECTOR:
         model: Mapped[str] = mapped_column(String, default="thenlper/gte-small", server_default="thenlper/gte-small")
         dim: Mapped[int] = mapped_column(Integer, default=384, server_default="384")
         embedding: Mapped[list[float]] = mapped_column(Vector(384))
-        created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+        created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
         story: Mapped[LearningStory] = relationship()
 else:  # pragma: no cover

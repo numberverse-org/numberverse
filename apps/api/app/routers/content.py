@@ -19,7 +19,9 @@ async def list_subjects(
     _rate_limit: None = Depends(CONTENT_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.scalars(select(Subject).order_by(Subject.sort_order))
+    # #913 — the public catalog serves only global rows (tenant_id NULL);
+    # tenant-scoped rows are invisible to auth-free callers.
+    result = await db.scalars(select(Subject).where(Subject.tenant_id.is_(None)).order_by(Subject.sort_order))
     return list(result)
 
 
@@ -28,7 +30,8 @@ async def list_skills(
     _rate_limit: None = Depends(CONTENT_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.scalars(select(Skill).order_by(Skill.sort_order))
+    # #913 — public catalog: global rows only.
+    result = await db.scalars(select(Skill).where(Skill.tenant_id.is_(None)).order_by(Skill.sort_order))
     return list(result)
 
 
@@ -37,5 +40,12 @@ async def list_games(
     _rate_limit: None = Depends(CONTENT_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.scalars(select(ContentItem).where(ContentItem.kind == "game", ContentItem.enabled.is_(True)))
+    # #913 — public catalog: global rows only.
+    result = await db.scalars(
+        select(ContentItem).where(
+            ContentItem.kind == "game",
+            ContentItem.enabled.is_(True),
+            ContentItem.tenant_id.is_(None),
+        )
+    )
     return list(result)

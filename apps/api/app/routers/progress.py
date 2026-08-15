@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,14 +130,18 @@ async def record_progress(
 
     # #9 — multi-device sync: newest-wins coin wallet. The server keeps the max
     # coin balance ever reported per kid (aggregate only — no voice/face).
+    # #911 — the old read-then-write (`get`, compare, assign) could lose a
+    # concurrent update; GREATEST is evaluated atomically in Postgres.
     if body.coins:
         for kid_id in kid_ids:
             coin = body.coins.get(str(kid_id))
             if coin is None:
                 continue
-            owned = await db.get(Kid, kid_id)
-            if owned and (owned.coins or 0) < coin:
-                owned.coins = coin
+            await db.execute(
+                update(Kid)
+                .where(Kid.id == kid_id, Kid.profile_id == profile.id)
+                .values(coins=func.greatest(func.coalesce(Kid.coins, 0), coin))
+            )
 
     await db.commit()
     return {"recorded": len(events), "band_skipped": band_skipped}

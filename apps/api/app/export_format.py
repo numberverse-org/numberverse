@@ -19,7 +19,7 @@ VERSION = 1
 
 
 def iso(dt: datetime | None) -> str | None:
-    """Postgres returns naive TIMESTAMP columns — serialize as UTC ISO strings."""
+    """Serialize timestamp columns as UTC ISO strings (handles legacy naive)."""
     if dt is None:
         return None
     if dt.tzinfo is None:

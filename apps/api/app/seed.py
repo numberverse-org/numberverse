@@ -2,11 +2,12 @@
 import logging
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
 from .db import Base, engine, SessionLocal
-from .migrations import apply_column_migrations
+from .migrations import apply_migrations
 from .models import Kid, KidSettings, Profile, Skill, Subject, Subscription
 from .security import hash_password, verify_password
 
@@ -290,10 +291,11 @@ async def seed_content(db: AsyncSession) -> None:
 async def create_tables() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    # #388 — create_all never alters an existing table to add a new COLUMN, so
-    # a model change silently breaks the API on an old DB (the `aggregate_opt_in`
-    # 502 outage). Diff + ADD COLUMN IF NOT EXISTS for anything missing.
-    await apply_column_migrations()
+    # #388/#910 — create_all never alters an existing table to add a new column,
+    # index, constraint, or column type, so a model change silently breaks the
+    # API on an old DB (the `aggregate_opt_in` 502 outage). Diff the live schema
+    # and apply columns, types, constraints, indexes, and data backfills.
+    await apply_migrations()
 
 
 async def _ensure_profile(
@@ -367,10 +369,16 @@ async def seed() -> None:
             )
             log.info("Created demo kid settings (30-min daily cap)")
 
-        # Demo subscription for the demo parent
-        subs = await db.scalars(select(Subscription).where(Subscription.profile_id == demo.id))
-        if not subs.first():
-            db.add(Subscription(profile_id=demo.id, plan="plus", store="web", status="active"))
+        # Demo subscription for the demo parent. #909 — the DB has a unique
+        # profile_id constraint, so this is an idempotent conflict-no-op insert
+        # instead of the old racy Python-if (`select`, then `add`).
+        stmt = (
+            pg_insert(Subscription)
+            .values(profile_id=demo.id, plan="plus", store="web", status="active")
+            .on_conflict_do_nothing(index_elements=["profile_id"])
+        )
+        result = await db.execute(stmt)
+        if result.rowcount:
             log.info("Created demo plus subscription")
 
         await db.commit()

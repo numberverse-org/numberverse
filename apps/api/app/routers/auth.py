@@ -196,7 +196,7 @@ async def logout(
     without a session row get a no-op here — their expiry is the only limit.)"""
     session: Session | None = getattr(request.state, "session", None)
     if session is not None and session.revoked_at is None:
-        session.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        session.revoked_at = datetime.now(timezone.utc)
         await db.commit()
 
 
@@ -207,7 +207,7 @@ async def logout_all(
 ):
     """Revoke EVERY session on this account, including the caller's. Use for
     "sign out on all devices" or "I think my password leaked"."""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     sessions = (
         await db.scalars(
             select(Session).where(Session.profile_id == profile.id, Session.revoked_at.is_(None))
@@ -261,7 +261,7 @@ async def revoke_session(
     )
     if not s:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
-    s.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    s.revoked_at = datetime.now(timezone.utc)
     await db.commit()
 
 
@@ -290,7 +290,7 @@ async def set_password(body: SetPasswordIn, db: AsyncSession = Depends(get_db)):
         )
     profile.password_hash = hash_password(body.new_password)
     profile.auth_provider = "local"
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     sessions = (
         await db.scalars(
             select(Session).where(Session.profile_id == profile.id, Session.revoked_at.is_(None))
@@ -325,7 +325,7 @@ async def change_password(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current password is incorrect")
     _PASSWORD_GUARD.reset(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     profile.password_hash = hash_password(body.new_password)
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     current = getattr(request.state, "session", None)
     sessions = (
         await db.scalars(

@@ -1,7 +1,18 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -31,8 +42,10 @@ class Profile(Base):
     # aggregated into cross-kid "classroom" insights? Default OFF. Aggregates
     # are computed only from opted-in families and carry zero kid identity.
     aggregate_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     kids: Mapped[list["Kid"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
     sessions: Mapped[list["Session"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
@@ -46,7 +59,7 @@ class Kid(Base):
     name: Mapped[str] = mapped_column(String)
     avatar: Mapped[str | None] = mapped_column(String, nullable=True)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # #9 — multi-device sync: the aggregate Nova coin balance (newest-wins max),
     # carried so a kid's wallet follows them across devices. Auto-migrated on
     # boot by migrations.py (server_default → populated rows get 0).
@@ -67,6 +80,22 @@ class KidSettings(Base):
     no limit)."""
 
     __tablename__ = "kid_settings"
+    # #915 — the 7-int and 7-window strings are Pydantic-validated at the API
+    # boundary; these CHECK constraints mirror those shapes at the DB layer so
+    # a direct row write (import, admin CRUD, future code paths) can't persist
+    # a malformed value.
+    __table_args__ = (
+        CheckConstraint(
+            "weekday_limits_min IS NULL OR weekday_limits_min ~ '^([0-9]{1,3},){6}[0-9]{1,3}$'",
+            name="ck_kid_settings_weekday_limits_min",
+        ),
+        CheckConstraint(
+            "quiet_windows IS NULL OR quiet_windows ~ "
+            "'^(-|[0-9]{1,2}:[0-9]{2}-[0-9]{1,2}:[0-9]{2})"
+            "(,(-|[0-9]{1,2}:[0-9]{2}-[0-9]{1,2}:[0-9]{2})){6}$'",
+            name="ck_kid_settings_quiet_windows",
+        ),
+    )
 
     kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), primary_key=True)
     # None = all subjects enabled. A list hides every skill outside it.
@@ -122,7 +151,9 @@ class KidSettings(Base):
     # until the parent resumes. Survives reload (served with settings, cached
     # on-device). Auto-migrated (server_default "false" → existing kids run).
     paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     kid: Mapped[Kid] = relationship(back_populates="settings")
 
@@ -142,9 +173,11 @@ class Session(Base):
     token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
     ip: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    last_seen_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
-    revoked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     profile: Mapped[Profile] = relationship(back_populates="sessions")
 
@@ -153,6 +186,11 @@ class Subject(Base):
     __tablename__ = "subjects"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    # #913 — global master lib rows have tenant_id NULL; tenant-owned rows are
+    # scoped to a profile and cascade away with that profile.
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     title_en: Mapped[str] = mapped_column(String)
     title_bn: Mapped[str] = mapped_column(String)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
@@ -162,6 +200,11 @@ class Skill(Base):
     __tablename__ = "skills"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    # #913 — global master lib rows have tenant_id NULL; tenant-owned rows are
+    # scoped to a profile and cascade away with that profile.
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     band: Mapped[int] = mapped_column(Integer)
     subject: Mapped[str] = mapped_column(ForeignKey("subjects.id"))
     title: Mapped[str] = mapped_column(String)
@@ -183,11 +226,11 @@ class SkillMastery(Base):
     correct: Mapped[int] = mapped_column(Integer, default=0)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     streak: Mapped[int] = mapped_column(Integer, default=0)
-    last_practice: Mapped[datetime | None] = mapped_column(nullable=True)
-    last_decay: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_practice: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_decay: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # #79 — the moment the skill FIRST crossed ≥80% mastery (set once, never
     # cleared). Feeds the parent's "mastery timeline" — when each skill was won.
-    mastered_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    mastered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     kid: Mapped[Kid] = relationship(back_populates="mastery")
 
@@ -230,7 +273,8 @@ class LearningStory(Base):
     wrong_streak: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Free envelope: question, kid's answer, reaction, tts, moni plan diff, ...
     context: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # #908 — indexed for time-window analytics / rate-limit / retention queries.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     kid: Mapped[Kid] = relationship()
 
@@ -255,35 +299,48 @@ class AccelerationLog(Base):
     reason: Mapped[str] = mapped_column(String(32))
     band_from: Mapped[int] = mapped_column(Integer)
     band_to: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     kid: Mapped[Kid] = relationship()
 
 
 class ProgressEvent(Base):
     __tablename__ = "progress_events"
+    # #907 — the activity feed is "recent N events for one kid", ordered by
+    # (created_at desc, id desc); (kid_id, id) lets the planner satisfy the
+    # kid filter + the id tiebreaker in one scan.
+    __table_args__ = (
+        Index("ix_progress_events_kid_id_id", "kid_id", "id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), index=True)
-    skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"))
+    # #914 — joined/filtered against skills (worksheets, analytics); keep an
+    # index so those joins don't scan the whole event log.
+    skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
     game_id: Mapped[str] = mapped_column(String)
     correct: Mapped[bool] = mapped_column(Boolean)
     response_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
+    # #909 — one billing subscription per profile. The seed used a Python-if
+    # check, which two racing boots could both pass; the DB now enforces it.
+    __table_args__ = (
+        UniqueConstraint("profile_id", name="uq_subscriptions_profile_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
     plan: Mapped[str] = mapped_column(String, default="free", server_default="free")
     store: Mapped[str | None] = mapped_column(String, nullable=True)
     store_ref: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="active", server_default="active")
-    current_period_end: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PushSubscription(Base):
@@ -314,13 +371,20 @@ class ContentItem(Base):
     __tablename__ = "content_items"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    # #913 — global master lib rows have tenant_id NULL; tenant-owned rows are
+    # scoped to a profile and cascade away with that profile.
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     kind: Mapped[str] = mapped_column(String)
     title: Mapped[str] = mapped_column(String)
     config: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
     band: Mapped[int | None] = mapped_column(Integer, nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class ConfigEntry(Base):
@@ -328,7 +392,9 @@ class ConfigEntry(Base):
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict] = mapped_column(JSONB)
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class AdminAudit(Base):
@@ -347,4 +413,4 @@ class AdminAudit(Base):
     resource: Mapped[str] = mapped_column(String(64))
     item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
