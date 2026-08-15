@@ -598,21 +598,28 @@
   padding-top: calc(10px + env(safe-area-inset-top)); /* keep HUD clear of the notch when playing */
 }
 
-/* PLAY screen — voice chip (TTS check on every run) + settings gear */
+/* PLAY screen — voice/settings chip (TTS check on every run) with a visible
+   label (#1397): the glyph carries the voice state, the text says Settings. */
 .voice-chip {
   flex: none;
   position: relative;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.08);
-  font-size: 19px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
 }
+.voice-chip-glyph { font-size: 18px; line-height: 1; }
 .voice-chip.warn {
   background: rgba(255, 138, 101, 0.18);
   border-color: rgba(255, 138, 101, 0.5);
@@ -641,6 +648,27 @@
   letter-spacing: -0.02em;
   line-height: 1;
 }
+/* #1397 — scan trigger is a labeled pill too, matching the voice/settings chip
+   and the Parents door. No more icon-only camera with a tooltip-only meaning. */
+.scan-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.scan-btn-glyph { font-size: 18px; line-height: 1; }
 .settings-row { justify-content: flex-start; flex-wrap: wrap; }
 
 /* 🎙️ first-use neural voice download banner — live %, then a 5s ready flash.
@@ -3112,20 +3140,18 @@
   .hud-world { flex: 1 1 auto; min-width: 0; } /* drop the 60px floor here: skill is gone, world fills the row */
 }
 
-/* #1095 — play-top single-row guarantee on narrow phones. The right cluster is
-   a fixed 162px (voice 44 + settings 46 + scan 56 + gaps): even a SHORT name
-   wraps it to a second row below 340px, and the old 58% chip cap let long names
-   wrap it up to ~445px — the controls get stranded on their own 112px-tall
-   second row. Under 400px shrink the cluster buttons + chip and close the gaps.
-   Crucially, drop flex-wrap here: with wrap on, the browser line-breaks BEFORE
-   shrinking (the 52%-capped chip + 136px cluster exceeds 280px at 320px, so the
-   cluster still jumped to row 2). nowrap + .kid-chip's min-width:0 makes the
-   chip shrink to exactly the free space — name ellipsizes, ⇄ stays flex:none. */
+/* #1095 + #1397 — play-top narrow-phone fit. The labeled right cluster is wider
+   than the old icon-only row, so under 400px we keep the buttons on one row by
+   shrinking their padding/text while the kid-chip ellipsizes its name. If a
+   very narrow screen still can't fit the full cluster, .play-top's base
+   flex-wrap lets the controls drop to their own row instead of overflowing. */
 @media (max-width: 400px) {
-  .play-top { flex-wrap: nowrap; }
+  .play-top { flex-wrap: wrap; }
   .play-top-right { gap: 6px; flex-shrink: 0; }
-  .voice-chip { width: 40px; height: 40px; font-size: 17px; }
-  .scan-btn { width: 44px; height: 44px; font-size: 30px; }
+  .voice-chip { min-height: 40px; padding: 0 10px; font-size: 13px; gap: 4px; }
+  .voice-chip-glyph { font-size: 16px; }
+  .scan-btn { min-height: 40px; padding: 0 10px; font-size: 13px; gap: 4px; }
+  .scan-btn-glyph { font-size: 16px; }
   .parent-btn { padding: 7px 9px; font-size: 12px; gap: 4px; }
   .parent-btn-emoji { font-size: 13px; }
   .wild-tile { padding: 10px 8px; }

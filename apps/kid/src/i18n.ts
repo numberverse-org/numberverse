@@ -44,6 +44,8 @@ export interface Strings {
   coopHint: string;
   /* #139 — flashcard QR → mini-game tie-in. */
   scanCard: string;
+  /** #1397 — compact visible label for the home scan button. */
+  scanShort: string;
   scanTitle: string;
   scanHint: string;
   scanCodePlaceholder: string;
@@ -916,6 +918,7 @@ export const STR: Record<Lang, Strings> = {
     coopHint: "Two kids, one device — take turns!",
     // #139 — flashcard QR → mini-game tie-in.
     scanCard: "Scan a card",
+    scanShort: "Scan",
     scanTitle: "Scan a flashcard",
     scanHint: "Point the camera at a flashcard QR — or type its code below.",
     scanCodePlaceholder: "NV:skillId (or just skillId)",
@@ -1753,6 +1756,7 @@ export const STR: Record<Lang, Strings> = {
     coopHint: "দুই ভাই-বোন, একটি ডিভাইস — পালা করে খেলো!",
     // #139 — flashcard QR → mini-game tie-in.
     scanCard: "কার্ড স্ক্যান করো",
+    scanShort: "স্ক্যান",
     scanTitle: "ফ্ল্যাশকার্ড স্ক্যান করো",
     scanHint: "ফ্ল্যাশকার্ড QR-এর দিকে ক্যামেরা রাখো — অথবা নিচে কোডটি লিখো।",
     scanCodePlaceholder: "NV:skillId (বা শুধু skillId)",

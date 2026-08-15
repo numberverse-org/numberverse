@@ -292,18 +292,27 @@ export default function HomeScreen({
                           state-less hourglass); then ready/failed as before. */}
                       {neural.state === "loading" ? (
                         <span className="voice-chip-pct" aria-hidden="true">{Math.min(100, Math.round(neural.progress * 100))}</span>
-                      ) : neural.state === "error" ? "⚠️" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
+                      ) : (
+                        <span className="voice-chip-glyph" aria-hidden="true">{neural.state === "error" ? "⚠️" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}</span>
+                      )}
+                      {/* #1397 — the settings trigger says what it is, not just a
+                          tooltip: the voice state stays in the glyph, the label
+                          keeps it readable for pre-readers and parents alike. */}
+                      <span className="voice-chip-label">{t.settingsTitle}</span>
                     </button>
                     {/* #1395 — one settings trigger, not two: the voice-chip
                         already opens Settings and carries the voice state. */}
                     {/* #139 — flashcard QR → mini-game: scan (or type) a card. */}
                     <button
-                      className="icon-btn scan-btn"
+                      className="scan-btn"
                       onClick={() => { setScanCode(""); setScanError(null); setScanOpen(true); }}
                       aria-label={t.scanCard}
                       title={t.scanCard}
                     >
-                      📷
+                      <span className="scan-btn-glyph" aria-hidden="true">📷</span>
+                      {/* #1397 — the scan trigger says what it does (visible
+                          label), instead of relying on the camera glyph alone. */}
+                      <span className="scan-btn-label">{t.scanShort}</span>
                     </button>
                     {/* #parent-door — the grown-up corner: ONE labeled tap opens
                         the parent portal. goParent() re-arms the PIN gate, so a
