@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.70.1 (hotfix: progress.py SKILLS_SEED 8-tuple unpack after catalog seed parity (#1020))
+
+a1af11b fix(api): SKILLS_SEED now 8-tuple after #1020 seed parity — unpack by row index in progress.py band lock
+
 ## 15 Aug 2026 — 0.70.0 (older-backlog batch-1: 6 clusters × #17 #117 #762-825 #855 #865 #881-905 #989-995 #1005-1083 — cold-start & SW/perf, scene BN strings, a11y re-audit, catalog NCTB parity, age-band mature register)
 
 b839133 Merge nv-o6 (kids wave): age-band mature register + renderBand layer
