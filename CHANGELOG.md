@@ -1,3 +1,36 @@
+## 15 Aug 2026 — 0.69.0 (kids wave: 24 clusters × #1346-1486 — mastery display %, calm mode sheet, in-scene language switch, quest claim flow, celebration sequencing, adaptive hint ladder, cert/share honesty, freeze-token streak lines, language-reaction i18n, HUD mastery bar + voice-chip labels)
+
+3781564 Merge branch 'nv-k5e'
+cf3c23c Merge branch 'nv-k5d'
+628a764 Merge branch 'nv-k5c'
+40df7e3 Merge branch 'nv-k5b'
+d3519e1 Merge branch 'nv-k5a'
+6d27794 Merge branch 'nv-k4e'
+88f2b4d Merge branch 'nv-k4d'
+6b7415f Merge branch 'nv-k4c'
+354d94b Merge branch 'nv-k2a'
+b3c84d2 kids wave: nv-k5e — completed fixes
+081554f kids wave: nv-k5d — completed fixes
+5cef2fb kids wave: nv-k5c — completed fixes
+1bb8a89 kids wave: nv-k5b — completed fixes
+c24c455 kids wave: nv-k5a — completed fixes
+088350d kids wave: nv-k4e — completed fixes
+09d8eb0 kids wave: nv-k4d — completed fixes
+f5c0e50 kids wave: nv-k4c — completed fixes
+f69fceb kids wave: nv-k2a — completed fixes
+d203fab fix(kid): repair k4b merge brace imbalance + restore missing i18n keys
+e9885ec merge: kids wave — nv-k4b (transitions/fades #1447-1450)
+81f6b99 merge: kids wave — nv-k4a (celebration FX/HUD #1443-1446)
+faa82f7 merge: kids wave — nv-k3e
+339773b merge: kids wave — nv-k3d
+9ec1ff6 merge: kids wave — nv-k3c
+8cffd23 merge: kids wave — nv-k3b (session resume/pause #1423-1426)
+b5cc197 merge: kids wave — nv-k3a
+9d8440b kids wave: nv-k4b
+275dc96 kids wave: nv-k4a
+2d871af kids wave: nv-k3e
+ed476ac kids wave: nv-k3d
+
 ## 15 Aug 2026 — 0.68.0 (parent wave 3 — auth hardening + web push + import/export + notification center + per-kid sync/archive/feedback (#1487-1560))
 
 8652e01 merge: parent gap fixes — dirty-guard kid switch, mastered titles/staleness tags, focus bands, confirm-reset arming, birth-year hint (#1507/1511/1513/1523/1524)
