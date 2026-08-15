@@ -122,6 +122,16 @@ body {
   transition: background 0.12s ease, color 0.12s ease;
 }
 .portal-nav li a:hover { background: var(--nv-chip-hover); color: #fff; }
+/* #1496 — active-section highlight (desktop). Mirrors the hover treatment and
+   adds a left accent bar so the current section is obvious at a glance. The
+   mobile pill variant lives in the 760px media block below. */
+@media (min-width: 761px) {
+  .portal-nav li a.active {
+    background: var(--nv-chip-hover);
+    color: #fff;
+    box-shadow: inset 3px 0 0 var(--nv-sky);
+  }
+}
 .portal-content { flex: 1; min-width: 0; }
 section[id] { scroll-margin-top: 24px; }
 

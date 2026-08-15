@@ -65,6 +65,9 @@ export const WIZARD_LANGS = {
     notNow: "Not now",
     lang: "🌐 Language",
     noKidsDone: "No kids on this account yet — add one to get started.",
+    // #1510 — client-side duplicate-name + kid-count guard before creating.
+    dupConfirm: "A kid named {name} already exists — add anyway?",
+    manyKidsWarn: "You already have {count} kids — add another?",
   },
   bn: {
     title: "👋 নাম্বারভার্সে স্বাগতম!",
@@ -85,6 +88,9 @@ export const WIZARD_LANGS = {
     notNow: "পরে করুন",
     lang: "🌐 ভাষা",
     noKidsDone: "এই অ্যাকাউন্টে এখনো কোনো বাচ্চা নেই — শুরু করতে একজন যোগ করুন।",
+    // #1510 — client-side duplicate-name + kid-count guard before creating.
+    dupConfirm: "“{name}” নামে একটি বাচ্চা ইতিমধ্যে আছে — তবুও যোগ করবেন?",
+    manyKidsWarn: "আপনার ইতিমধ্যে {count} জন বাচ্চা আছে — আরেকজন যোগ করবেন?",
   },
 } as const;
 export type WizardLang = keyof typeof WIZARD_LANGS;
@@ -1349,59 +1355,71 @@ export function tryVoicePreview(tone: string, speed: number, lang: "en" | "bn") 
 /** #619 — persistent section navigation. Every dashboard card carries an
  *  `id` matching one of these anchors so parents can jump straight to the
  *  report, the learning controls, or account settings instead of scrolling
- *  blind through 26 sections. Grouped into six top-level areas. */
-export const NAV_GROUPS: { label: string; items: { id: string; label: string }[] }[] = [
+ *  blind through 26 sections. Grouped into six top-level areas.
+ *
+ *  #1498 — order now mirrors the real DOM render order in app/page.tsx, so
+ *  the sidebar is a truthful index of the page. (The old "Overview" group
+ *  promised Today→Week→Review→Sessions→Activity→Compare, but the reading/
+ *  report cards are interleaved between them on the page.)
+ *  #1527 — items with `needsKid` only render when a kid is selected because
+ *  their section lives inside the `active && (…)` block. */
+export const NAV_GROUPS: {
+  label: string;
+  items: { id: string; label: string; bn?: string; needsKid?: boolean }[];
+}[] = [
   {
     label: "Overview",
     items: [
       { id: "overview", label: "Family overview" },
-      { id: "today", label: "Today" },
-      { id: "week", label: "This week" },
-      { id: "review", label: "Week in review" },
-      { id: "sessions", label: "Sessions" },
-      { id: "activity", label: "Recent activity" },
-      { id: "compare", label: "Compare kids" },
+      { id: "today", label: "Today", needsKid: true },
+      { id: "week", label: "This week", needsKid: true },
+      { id: "review", label: "Week in review", needsKid: true },
     ],
   },
   {
     label: "Reading & stories",
     items: [
-      { id: "stories", label: "Reading & stories" },
-      { id: "week-words", label: "Week in words" },
-      { id: "archive", label: "Monthly archive" },
-    ],
-  },
-  {
-    label: "Learning",
-    items: [
-      { id: "controls", label: "Learning controls" },
-      { id: "games", label: "Games to try" },
-      { id: "mastery", label: "Skill mastery" },
-      { id: "accel", label: "Acceleration plan" },
-      { id: "help-needed", label: "Needs a little help" },
-      { id: "missed", label: "Missed sessions" },
+      { id: "stories", label: "Reading & stories", needsKid: true },
+      { id: "week-words", label: "Week in words", needsKid: true },
+      { id: "help-needed", label: "Needs a little help", needsKid: true },
+      { id: "accel", label: "Acceleration plan", needsKid: true },
+      { id: "archive", label: "Monthly archive", needsKid: true },
+      { id: "sessions", label: "Sessions", needsKid: true },
     ],
   },
   {
     label: "Resources",
     items: [
-      { id: "worksheet", label: "Printable worksheet" },
-      { id: "flashcards", label: "Flashcard QR cards" },
+      { id: "games", label: "Games to try", needsKid: true },
+      { id: "compare", label: "Compare kids", needsKid: true },
+      { id: "worksheet", label: "Printable worksheet", needsKid: true },
+      { id: "flashcards", label: "Flashcard QR cards", needsKid: true },
+    ],
+  },
+  {
+    label: "Learning",
+    items: [
+      { id: "controls", label: "Learning controls", needsKid: true },
+      { id: "activity", label: "Recent activity", needsKid: true },
+      { id: "missed", label: "Missed sessions", needsKid: true },
+      { id: "mastery", label: "Skill mastery", needsKid: true },
     ],
   },
   {
     label: "Family",
     items: [
       { id: "add-kid", label: "Add a new kid" },
-      { id: "edit-kid", label: "Edit child" },
+      { id: "edit-kid", label: "Edit child", needsKid: true },
     ],
   },
   {
     label: "Account",
     items: [
-      { id: "account", label: "Account & security" },
-      { id: "help", label: "Help & setup" },
-      { id: "on-device", label: "On-device data" },
+      { id: "account", label: "Account & security", needsKid: true },
+      // #1499 — make the diagnostics card reachable from the sidebar.
+      { id: "diagnostics", label: "Diagnostics", bn: "ডায়াগনস্টিকস", needsKid: true },
+      { id: "help", label: "Help & setup", needsKid: true },
+      { id: "on-device", label: "On-device data", needsKid: true },
     ],
   },
 ];

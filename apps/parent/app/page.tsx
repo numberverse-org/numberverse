@@ -102,6 +102,10 @@ import {
   HelpCard,
 } from "./components/AccountSections";
 
+// #1530/#1508 — single source of truth for the "new kid" birth-year default.
+function defaultBirthYear(): number {
+  return new Date().getFullYear() - 6;
+}
 
 export default function ParentDashboard() {
   const [token, setToken] = useState<string | null>(null);
@@ -136,9 +140,12 @@ export default function ParentDashboard() {
   const [editAvatar, setEditAvatar] = useState("🦊");
   // #1540 — a 6-year-old is a more common starter than the old hardcoded
   // age-5 cohort; parents can still change it before the kid is created.
-  const [editBirthYear, setEditBirthYear] = useState(() => new Date().getFullYear() - 6);
+  const [editBirthYear, setEditBirthYear] = useState(defaultBirthYear);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // #1496 — active-section tracking for the sticky sidebar / mobile strip.
+  const [activeNav, setActiveNav] = useState<string | null>(null);
 
   // #246 — guided multi-kid onboarding. Opens only when the account has NO kids
   // and this browser hasn't finished onboarding before (`nv_parent_onboarded`).
@@ -255,9 +262,11 @@ export default function ParentDashboard() {
   const [cmpB, setCmpB] = useState<string | null>(null);
 
   // #245 — per-kid share-card deep link (minted lazily on first share).
-  const [shareBusy, setShareBusy] = useState(false);
-  const [shareLink, setShareLink] = useState<string | null>(null);
-  const [shareCopied, setShareCopied] = useState(false);
+  // #1531 — keyed by kid id so kid A's link/copied/busy never leaks onto
+  // kid B's weekly card after a switch.
+  const [shareBusy, setShareBusy] = useState<Record<string, boolean>>({});
+  const [shareLink, setShareLink] = useState<Record<string, string | null>>({});
+  const [shareCopied, setShareCopied] = useState<Record<string, boolean>>({});
 
   // #7/#85 — local diagnostics: when the dashboard data last synced (set on
   // every successful refreshAll), whether the diagnostics card is open, and the
@@ -398,6 +407,19 @@ export default function ParentDashboard() {
     if (activeId && token && !archActivity[activeId] && !archLoading) void loadArchive(activeId);
   }, [activeId, token, archActivity, archLoading, loadArchive]);
 
+  // #1532 — restore the last selected kid on reload (client-only). refreshAll's
+  // functional activeId updater already keeps `prev` when it still exists in the
+  // freshly fetched kid list, so seeding `activeId` from the shared `nv_kid_id`
+  // key here is enough — no need to change the fetch orchestration.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("nv_kid_id");
+      if (stored) setActiveId(stored);
+    } catch {
+      /* private browsing — keep the in-memory selection only */
+    }
+  }, []);
+
   useEffect(() => {
     const tok = localStorage.getItem("nv_parent_token");
     if (!tok) {
@@ -446,6 +468,20 @@ export default function ParentDashboard() {
   const switchKid = useCallback(
     async (id: string) => {
       if (!token) return;
+      // #1529/#1530 — never carry one kid's danger-zone confirms or half-typed
+      // edit form over to the next kid. Reset before the active id flips.
+      setConfirmReset(false);
+      setConfirmDelete(false);
+      setEditName("");
+      setEditAvatar("🦊");
+      setEditBirthYear(defaultBirthYear());
+      // #1532 — remember the selected kid across reloads (same key the kid app
+      // already reads for its own launches).
+      try {
+        localStorage.setItem("nv_kid_id", id);
+      } catch {
+        /* private browsing — keep the selection in memory only */
+      }
       setActiveId(id);
       if (mastery[id]) return; // already loaded (refreshAll fetches every kid)
       try {
@@ -477,6 +513,36 @@ export default function ParentDashboard() {
     setNarrDraft(activeId ? readNarrDraft(activeId) : null);
     setNarrCopied(false);
   }, [activeId]);
+
+  // #1496 — keep the sidebar's active-section highlight in sync with the
+  // section currently in view. Sections appear/disappear as the active kid and
+  // the add-kid form change, so the observer is rebuilt on those transitions.
+  useEffect(() => {
+    if (kids.length === 0) return;
+    const ids = NAV_GROUPS.flatMap((g) => g.items.map((it) => it.id));
+    const computeActive = () => {
+      const line = 150; // pixels below the viewport top to use as the "reading" line
+      const els = ids
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => el !== null)
+        .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+      let current: string | null = null;
+      for (const el of els) {
+        if (el.getBoundingClientRect().top <= line) current = el.id;
+      }
+      // At the very top of the page (before any section has crossed the
+      // reading line), highlight the first section so the nav is never blank.
+      if (!current && window.scrollY < 10 && els.length > 0) current = els[0].id;
+      setActiveNav(current);
+    };
+    computeActive();
+    window.addEventListener("scroll", computeActive, { passive: true });
+    window.addEventListener("resize", computeActive);
+    return () => {
+      window.removeEventListener("scroll", computeActive);
+      window.removeEventListener("resize", computeActive);
+    };
+  }, [kids.length, activeId, showAdd]);
 
   async function handleSaveSettings() {
     if (!token || !activeId) return;
@@ -568,12 +634,32 @@ export default function ParentDashboard() {
 
   async function handleDelete() {
     if (!token || !activeId || !confirmDelete) return;
+    const deletedId = activeId;
     setBusy(true);
     setError(null);
     try {
-      await deleteKid(token, activeId);
+      await deleteKid(token, deletedId);
+      // #1509 — mirror doSignout's cleanup so the kid app never keeps pointing
+      // at a deleted profile id. Drop the id/map entry if it belongs to the
+      // deleted kid; refreshAll re-derives the map when it next loads.
+      try {
+        if (localStorage.getItem("nv_kid_id") === deletedId) localStorage.removeItem("nv_kid_id");
+        const raw = localStorage.getItem("nv_kid_map");
+        if (raw) {
+          const map = JSON.parse(raw) as Record<string, string>;
+          const next = Object.fromEntries(Object.entries(map).filter(([, serverId]) => serverId !== deletedId));
+          if (Object.keys(next).length > 0) localStorage.setItem("nv_kid_map", JSON.stringify(next));
+          else localStorage.removeItem("nv_kid_map");
+        }
+      } catch {
+        /* corrupted/absent storage — refreshAll will rebuild on its own */
+      }
       setConfirmDelete(false);
       setShowAdd(false);
+      // #1530 — a deleted kid's edit form must not linger for the next one.
+      setEditName("");
+      setEditAvatar("🦊");
+      setEditBirthYear(defaultBirthYear());
       await refreshAll(token);
     } catch {
       setError("Failed to delete kid.");
@@ -590,17 +676,30 @@ export default function ParentDashboard() {
       setError(WIZARD_LANGS[wizLang].birthRangeErr);
       return;
     }
+    // #1510 — client-side guard: duplicates are indistinguishable in the
+    // avatar/name/year switcher, so ask before creating a second identical kid.
+    const name = editName.trim();
+    const duplicate = kids.some((k) => k.name.trim().toLowerCase() === name.toLowerCase());
+    if (duplicate) {
+      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", name));
+      if (!ok) return;
+    } else if (kids.length >= 8) {
+      const ok = window.confirm(WIZARD_LANGS[wizLang].manyKidsWarn.replace("{count}", String(kids.length)));
+      if (!ok) return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const kid = await createKid(token, {
-        name: editName.trim(),
+      await createKid(token, {
+        name,
         avatar: editAvatar,
         birth_year: editBirthYear,
       } satisfies NewKid);
       setShowAdd(false);
       setEditName("");
       setEditAvatar("🦊");
+      // #1508 — don't let the previous kid's birth year pre-fill the next add.
+      setEditBirthYear(defaultBirthYear());
       await refreshAll(token);
       setSavedTick((t) => t + 1);
     } catch {
@@ -621,9 +720,19 @@ export default function ParentDashboard() {
       setOnboardErr(WIZARD_LANGS[wizLang].birthRangeErr);
       return;
     }
+    // #1510 — the wizard stays open for back-to-back adds, so duplicate names
+    // would be easy to create by accident. Confirm before creating another.
+    const name = editName.trim();
+    const duplicate = kids.some((k) => k.name.trim().toLowerCase() === name.toLowerCase());
+    if (duplicate) {
+      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", name));
+      if (!ok) return;
+    } else if (kids.length >= 8) {
+      const ok = window.confirm(WIZARD_LANGS[wizLang].manyKidsWarn.replace("{count}", String(kids.length)));
+      if (!ok) return;
+    }
     setOnboardBusy(true);
     setOnboardErr(null);
-    const name = editName.trim();
     try {
       await createKid(token, {
         name,
@@ -632,6 +741,9 @@ export default function ParentDashboard() {
       } satisfies NewKid);
       setEditName("");
       setEditAvatar("🦊");
+      // #1508 — clear the birth year so the next add starts fresh, not with
+      // the previous kid's year silently carried over.
+      setEditBirthYear(defaultBirthYear());
       await refreshAll(token);
       setSavedTick((t) => t + 1);
     } catch {
@@ -990,21 +1102,24 @@ export default function ParentDashboard() {
    *  link opens an ANONYMOUS snapshot page — no name, no skill data, no
    *  tracking; only the parent can mint the token. */
   async function handleShareWeekly() {
-    if (!token || !activeId || shareBusy) return;
-    setShareBusy(true);
+    if (!token || !activeId || shareBusy[activeId]) return;
+    const kidId = activeId;
+    setShareBusy((prev) => ({ ...prev, [kidId]: true }));
     setError(null);
     try {
-      const shareToken = await getShareToken(token, activeId);
+      const shareToken = await getShareToken(token, kidId);
       const base = (typeof window !== "undefined" ? window.location.origin : "") + (process.env.NEXT_PUBLIC_BASE_PATH ?? "");
       const link = `${base}/share/?t=${encodeURIComponent(shareToken)}`;
       const text = weeklyShareText(active?.name ?? "My kid", activeWeekly) + `\n🔗 See the week: ${link}`;
       const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
       if (isAllowedExternalUrl(wa)) window.open(wa, "_blank", "noopener,noreferrer");
-      setShareLink(link);
+      // #1531 — store the minted link under the kid it belongs to.
+      setShareLink((prev) => ({ ...prev, [kidId]: link }));
+      setShareCopied((prev) => ({ ...prev, [kidId]: false }));
     } catch {
       setError("Couldn't create the share link.");
     } finally {
-      setShareBusy(false);
+      setShareBusy((prev) => ({ ...prev, [kidId]: false }));
     }
   }
 
@@ -1279,18 +1394,31 @@ export default function ParentDashboard() {
         <div className="portal-layout">
           <aside className="portal-nav" aria-label="Portal sections">
             <p className="portal-nav-title">Jump to</p>
-            {NAV_GROUPS.map((g) => (
-              <div className="portal-nav-group" key={g.label}>
-                <span className="portal-nav-head">{g.label}</span>
-                <ul>
-                  {g.items.map((it) => (
-                    <li key={it.id}>
-                      <a href={`#${it.id}`}>{it.label}</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {NAV_GROUPS.map((g) => {
+              // #1527 — omit pills whose section lives inside the `active &&`
+              // block when no kid is selected; those anchors would scroll to
+              // nothing.
+              const items = g.items.filter((it) => !it.needsKid || active);
+              if (items.length === 0) return null;
+              return (
+                <div className="portal-nav-group" key={g.label}>
+                  <span className="portal-nav-head">{g.label}</span>
+                  <ul>
+                    {items.map((it) => (
+                      <li key={it.id}>
+                        <a
+                          href={`#${it.id}`}
+                          className={activeNav === it.id ? "active" : undefined}
+                          aria-current={activeNav === it.id ? "true" : undefined}
+                        >
+                          {wizLang === "bn" && it.bn ? it.bn : it.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </aside>
           <div className="portal-content">
       {/* ── family overview ── */}
@@ -1371,11 +1499,11 @@ export default function ParentDashboard() {
             todayCap={todayCap}
             todayCapPct={todayCapPct}
             todayMinutes={todayMinutes}
-            shareBusy={shareBusy}
-            shareLink={shareLink}
-            shareCopied={shareCopied}
+            shareBusy={shareBusy[active.id] ?? false}
+            shareLink={shareLink[active.id] ?? null}
+            shareCopied={shareCopied[active.id] ?? false}
             handleShareWeekly={handleShareWeekly}
-            setShareCopied={setShareCopied}
+            setShareCopied={(v) => setShareCopied((prev) => ({ ...prev, [active.id]: v }))}
             wizLang={wizLang}
           />
 
@@ -1562,16 +1690,19 @@ export default function ParentDashboard() {
                       handleDelete={handleDelete}
           />
 
-          {/* #7 — 🩺 local-only diagnostics (never leaves the device) */}
-          <DiagnosticsCard
-            debugOpen={debugOpen}
-            setDebugOpen={setDebugOpen}
-            wizLang={wizLang}
-            lastSync={lastSync}
-            swVersion={swVersion}
-            diagCopied={diagCopied}
-            exportDiagnostics={exportDiagnostics}
-          />
+          {/* #7 — 🩺 local-only diagnostics (never leaves the device).
+              #1499 — wrapped in a stable id so the sidebar can jump here. */}
+          <section id="diagnostics">
+            <DiagnosticsCard
+              debugOpen={debugOpen}
+              setDebugOpen={setDebugOpen}
+              wizLang={wizLang}
+              lastSync={lastSync}
+              swVersion={swVersion}
+              diagCopied={diagCopied}
+              exportDiagnostics={exportDiagnostics}
+            />
+          </section>
 
           {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}
 <HelpCard
