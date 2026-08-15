@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import Kid, KidSettings, Profile, ProgressEvent, Skill, SkillMastery
+from ..ratelimit import rate_limit
 from ..schemas import (
     ActivityOut,
     KidIn,
@@ -23,6 +24,11 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 
+# #837 — write/destructive kid routes carry the account+IP sliding-window
+# limiter (same as progress/stories/acceleration), so a breached token can't
+# script profile-mutating calls. Reads stay auth-only (get_current_profile).
+KID_WRITE_RATE_LIMIT = rate_limit()
+
 
 async def _get_owned_kid(kid_id: uuid.UUID, profile: Profile, db: AsyncSession) -> Kid:
     kid = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
@@ -32,7 +38,7 @@ async def _get_owned_kid(kid_id: uuid.UUID, profile: Profile, db: AsyncSession) 
 
 
 @router.post("", response_model=KidOut, status_code=status.HTTP_201_CREATED)
-async def create_kid(body: KidIn, profile: Profile = Depends(get_current_profile), db: AsyncSession = Depends(get_db)):
+async def create_kid(body: KidIn, profile: Profile = Depends(KID_WRITE_RATE_LIMIT), db: AsyncSession = Depends(get_db)):
     kid = Kid(profile_id=profile.id, name=body.name, avatar=body.avatar, birth_year=body.birth_year)
     db.add(kid)
     await db.commit()
@@ -55,7 +61,7 @@ async def get_kid(kid_id: uuid.UUID, profile: Profile = Depends(get_current_prof
 async def update_kid(
     kid_id: uuid.UUID,
     body: KidUpdateIn,
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(KID_WRITE_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
     kid = await _get_owned_kid(kid_id, profile, db)
@@ -68,7 +74,7 @@ async def update_kid(
 
 
 @router.delete("/{kid_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_kid(kid_id: uuid.UUID, profile: Profile = Depends(get_current_profile), db: AsyncSession = Depends(get_db)):
+async def delete_kid(kid_id: uuid.UUID, profile: Profile = Depends(KID_WRITE_RATE_LIMIT), db: AsyncSession = Depends(get_db)):
     kid = await _get_owned_kid(kid_id, profile, db)
     await db.delete(kid)
     await db.commit()
@@ -107,7 +113,7 @@ def _clamp_goal(goal: int | None, daily_cap: int | None, weekday_caps: str | Non
 async def put_kid_settings(
     kid_id: uuid.UUID,
     body: KidSettingsIn,
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(KID_WRITE_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
     await _get_owned_kid(kid_id, profile, db)
@@ -317,7 +323,7 @@ async def get_kid_weekly(
 @router.post("/{kid_id}/reset", status_code=status.HTTP_200_OK)
 async def reset_kid_progress(
     kid_id: uuid.UUID,
-    profile: Profile = Depends(get_current_profile),
+    profile: Profile = Depends(KID_WRITE_RATE_LIMIT),
     db: AsyncSession = Depends(get_db),
 ):
     """Wipe a kid's mastery + round history — "start fresh". Does NOT delete
