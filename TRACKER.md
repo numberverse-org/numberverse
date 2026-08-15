@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧠 0.81.0 RELEASED — MONI ADAPTIVE CLOSURE (#953–#960) 16 Aug 2026 ✅
+- The 8-issue `moni-adaptive` cluster was implemented (shipped earlier) but never closed. Verified every Done-when in code and closed with evidence:
+  - **#953** NaN/0 responseMs guard in observeRound; **#954** `fragile` derived from recoveryRate (reactive, not dead); **#955** recoveryRate now decays on correct→wrong / wrong→wrong; **#956** wrong-tap path feeds slowMs+1 → gap classification; **#957** planner fallback gated to `childBand+1`; **#958** review interval shifts by rung (not raw-conf multiply); **#959** gameAffinity decays per round; **#960** observeRound/diagnose receive post-round `updated` mastery.
+- New dependency-free regression suite `packages/core/tests/moni_adaptive.mjs` — 18 checks covering all 8 fixes — wired as a CI step (`Core unit tests (Moni adaptive #953-#960)`) right after the core build.
+- Also fixed a stale `#958`→`#956` comment in store.ts.
+- Gates: core build ✓ · moni 18/18 ✓ · kid tsc ✓ · audit 0 errors ✓ · oracle SHIP-OK ✓ · live smoke 0.81.0 ✓.
+
 ## 🧼 0.80.0 RELEASED — KOTHA MEMORY-PIPELINE CLOSURE (#943–#950) 16 Aug 2026 ✅
 - The 8-issue `kotha-stories` cluster was implemented (shipped 0.72.0) but never closed. Verified every Done-when in the code and closed with evidence:
   - **#943** orphan story_embeddings sweep in `_prune_stories`; **#944** consecutive-skip warning + `embedding_backlog` in stories_health; **#945** FIFO embed order + backlog>3×cap warning; **#946** narrowed `_LONG_DIGITS` (IMEI 15 / card 19) + `_DEVICE_ID_KEYS` scoping; **#947** context clamp (4 KiB/string, 16 KiB envelope, depth 10); **#948** settings-sourced model/dim + insert-time dim assertion; **#949** `_CONTEXT_ALLOWLIST` search projection; **#950** server-side per-kid cap + hourly scheduled prune.
