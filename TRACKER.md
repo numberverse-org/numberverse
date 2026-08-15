@@ -1,6 +1,13 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧩 SCENE-PATTERNS CLUSTER (#997–#1004) 16 Aug 2026 ✅ → 0.83.0 (fan-out via 3 waves)
+- **Wave A** (3 parallel subagents): #1002 89 scenes stop hardcoding `onRoundDone?.(true,...)` → pass derived round correctness (correct===total, target reached, questions-answered) or a `// #1002 correct-by-design` comment — the adaptive-difficulty signal is now honest; #1003 new `sceneArchetypes.ts` registry (172 keys, 23 challenge) so sweeps stop flagging challenge scenes for missing round wiring; #1004 all 14 `hintWrongLocal()` copies → shared `hints.hintWrong()` (wrongLedger + confidence-adaptive reveal everywhere).
+- **Wave B** (2 parallel): #997 verified ALREADY consolidated (batch-3 5f4542a — all 69 `private floatMsg` are thin wrappers delegating to `celebrate.floatText`, zero local tween reimpls, strict scan); #1001 ported 20 scenes' inline `T={en,bn}` tables → 126 central i18n keys (en 1618=bn 1618) — 0 local tables remain.
+- **Wave C** (#1000): dropped redundant `speak(..., {lang:'bn'})` in 19 scenes (speech autodetects Bangla glyphs) + moved 28 hardcoded Bangla strings (CoinValueScene DENOMS.bn etc.) into i18n.ts en+bn — `lang:'bn'` count → 0, i18n 1646=1646.
+- #998 (shared `digit()` at i18n.ts:3161, zero local BN_D/bnNum) and #999 (gameBackground/ringCorrect/celebrate all guard prefersReducedMotion) verified already implemented + closed.
+- All gates: kid tsc 0 errors, audit 0 errors/16 warnings. ⚠ concurrent session's nova3d tokenization left Outfit3D.tsx:95 broken mid-edit (foreign, not committed).
+
 ## 🛡️ GUARDRAILS CLUSTER (#983–#988) 16 Aug 2026 ✅ → 0.82.0
 - **#983/#984 had real gaps — FIXED this session (not just verified):**
   - `_prune_progress_events(db)` extracted from the admin endpoint and WIRED INTO THE SCHEDULED EMBED-LOOP in main.py — progress_events (one row per answered round, unbounded before) are now pruned unattended: age > `progress_retention_days` (90d) + per-kid cap `max_progress_events_per_kid` (5000) via row_number.
