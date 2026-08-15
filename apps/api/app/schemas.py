@@ -325,38 +325,9 @@ class ResetOut(BaseModel):
 # recursive-scrub abuse before the handler walks it.
 CONTEXT_MAX_BYTES = 16 * 1024
 
-
-# #947 — helpers for context size / depth validation
-def _clamp_context_strings(v: dict, max_len: int) -> dict:
-    """Recursively clamp every string leaf in a dict to `max_len` characters."""
-    out: dict = {}
-    for k, val in v.items():
-        if isinstance(val, str):
-            out[k] = val[:max_len]
-        elif isinstance(val, dict):
-            out[k] = _clamp_context_strings(val, max_len)
-        elif isinstance(val, list):
-            out[k] = [
-                item[:max_len] if isinstance(item, str)
-                else _clamp_context_strings(item, max_len) if isinstance(item, dict)
-                else item
-                for item in val
-            ]
-        else:
-            out[k] = val
-    return out
-
-
-def _depth(v: dict) -> int:
-    """Return the max nesting depth of a dict (1 = flat dict)."""
-    if not isinstance(v, dict):
-        return 0
-    if not v:
-        return 1
-    return 1 + max(
-        _depth(val) if isinstance(val, dict) else 0
-        for val in v.values()
-    )
+# #947 — the size/depth shaping helpers live in scrub.py (dependency-free) so
+# the API's self-contained CI tests exercise the same code the validator uses.
+from .scrub import clamp_context_strings, context_depth  # noqa: E402
 
 
 class LearningStoryIn(BaseModel):
@@ -388,7 +359,7 @@ class LearningStoryIn(BaseModel):
             return v
         # #947 — clamp individual string values to 4 KiB each.
         _MAX_STRING_LEN = 4096
-        clamped = _clamp_context_strings(v, _MAX_STRING_LEN)
+        clamped = clamp_context_strings(v, _MAX_STRING_LEN)
         try:
             size = len(json.dumps(clamped, separators=(",", ":"), default=str))
         except (TypeError, ValueError, RecursionError):
@@ -405,7 +376,7 @@ class LearningStoryIn(BaseModel):
         rejected at the schema boundary."""
         if not v:
             return v
-        if _depth(v) > 10:
+        if context_depth(v) > 10:
             raise ValueError("context nesting too deep (max 10 levels)")
         return v
 

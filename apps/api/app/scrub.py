@@ -109,6 +109,43 @@ def redact_context(
     return walk(ctx)
 
 
+# ── #947 — envelope size/depth shaping ────────────────────────────────────────
+# Kept HERE (not schemas.py) because this module is dependency-free: the API's
+# self-contained CI tests (test_scrub.py, bare `python3`, no Postgres) exercise
+# the exact helpers the LearningStoryIn validator uses.
+
+def clamp_context_strings(v: dict, max_len: int) -> dict:
+    """Recursively clamp every string leaf in a dict to `max_len` characters."""
+    out: dict = {}
+    for k, val in v.items():
+        if isinstance(val, str):
+            out[k] = val[:max_len]
+        elif isinstance(val, dict):
+            out[k] = clamp_context_strings(val, max_len)
+        elif isinstance(val, list):
+            out[k] = [
+                item[:max_len] if isinstance(item, str)
+                else clamp_context_strings(item, max_len) if isinstance(item, dict)
+                else item
+                for item in val
+            ]
+        else:
+            out[k] = val
+    return out
+
+
+def context_depth(v: dict) -> int:
+    """Return the max nesting depth of a dict (1 = flat dict)."""
+    if not isinstance(v, dict):
+        return 0
+    if not v:
+        return 1
+    return 1 + max(
+        context_depth(val) if isinstance(val, dict) else 0
+        for val in v.values()
+    )
+
+
 class ScrubFilter(logging.Filter):
     """Logging filter that redacts PII in every emitted record (#266)."""
 
