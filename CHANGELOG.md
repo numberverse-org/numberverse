@@ -1,3 +1,8 @@
+## 16 Aug 2026 — 0.79.0 (celebration engine: i18n celebration words (#1064) + effort-scaled bursts (#1068) + elite register (#1069) + band-rooted combo chime (#1065) + shared difficulty signal (#1070))
+
+cc40010 🎉 celebration engine: i18n words + effort-scaled bursts (#1064 #1068 #1069 #1065 #1070)
+4274602 📚 tracker: Batch-9 engine difficulty-ramp (#1056–#1060) shipped 0.78.0
+
 ## 16 Aug 2026 — 0.78.0 (shared engine difficulty-ramp: ladder past-ceiling + live success level + growing rounds + shared time + continuous daynight/compare (#1056 #1057 #1058 #1059 #1060))
 
 ef20fed 🎢 engine difficulty-ramp: shared ladders + live adaptation (#1056 #1057 #1058 #1059 #1060)
