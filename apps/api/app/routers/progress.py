@@ -161,6 +161,8 @@ async def get_mastery(
             attempts=m.attempts,
             streak=m.streak,
             mastered_at=m.mastered_at,
+            last_practice=m.last_practice,
+            last_decay=m.last_decay,
         )
         for m in result
     ]
@@ -195,6 +197,8 @@ async def get_kid_snapshot(
                 attempts=m.attempts,
                 streak=m.streak,
                 mastered_at=m.mastered_at,
+                last_practice=m.last_practice,
+                last_decay=m.last_decay,
             )
             for m in mastery
         ],

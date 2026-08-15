@@ -73,4 +73,13 @@ async def apply_column_migrations() -> list[str]:
                 "WHERE mastered_at IS NULL AND mastery >= 0.8 AND last_practice IS NOT NULL"
             )
         )
+
+    # #1550 — share-token rotation audit columns. Added here as idempotent ALTERs
+    # (not on the Kid ORM model, which a sibling change owns) so an existing
+    # `kids` table gains the timestamps without a hand-written migration file.
+    async with engine.begin() as conn:
+        for name in ("share_token_created_at", "share_token_revoked_at"):
+            await conn.execute(text(f'ALTER TABLE kids ADD COLUMN IF NOT EXISTS "{name}" TIMESTAMPTZ'))
+            added.append(f"kids.{name}")
+
     return added

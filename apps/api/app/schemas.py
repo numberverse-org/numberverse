@@ -216,6 +216,8 @@ class MasteryOut(BaseModel):
     attempts: int
     streak: int
     mastered_at: datetime | None = None  # #79 — when the skill first hit ≥80%
+    last_practice: datetime | None = None  # #1524 — last progress event for this skill
+    last_decay: datetime | None = None  # #1524 — last decay stamp (staleness signal)
 
 
 class WeakSkillOut(BaseModel):
@@ -262,6 +264,7 @@ class WeeklyOut(BaseModel):
     top_game: str | None          # most-played game this week
     streak: int = 0               # #4 — consecutive active days (ending today/yesterday)
     coins: int = 0                # #8 — current Nova wallet balance (share caption)
+    trigger: str = "weekly-summary"  # #1536 — "weekly-summary" | "milestone" | "reminder"
 
 
 class ProgressBatchIn(BaseModel):
