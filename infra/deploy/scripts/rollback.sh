@@ -37,10 +37,25 @@ for i in 1 2 3 4 5 6; do
   HTML=$(curl -sL --max-time 15 "$ORIGIN/?$BUST" || true)
   JS=$(printf '%s' "$HTML" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
   if [ -n "$JS" ]; then
+    # #879 — the boot chunk is now a small SPLIT entry (~46kB); the stamp lives
+    # in the lazy App chunk. Fetch index (floor 10k — the boot entry is ~46kB),
+    # grep it, then fall back to the App chunk it references (floor 100k — the
+    # App chunk is ~434kB). 10k still rejects truncated/error responses (#273).
     curl -sL --max-time 30 "$ORIGIN/$JS?$BUST" -o "$TMPBODY" || true
-    # The bundle is ~1.9MB minified on one line; a short file is a bad/partial
-    # response, so treat it as not-live and retry.
-    if [ "$(wc -c < "$TMPBODY" 2>/dev/null || echo 0)" -ge 100000 ] && grep -qF "${VERSION}" "$TMPBODY"; then
+    SZ=$(wc -c < "$TMPBODY" 2>/dev/null || echo 0)
+    FOUND=0
+    if [ "$SZ" -ge 10000 ] && grep -qF "${VERSION}" "$TMPBODY"; then
+      FOUND=1
+    else
+      APP=$(grep -oE 'App-[A-Za-z0-9_-]+\.js' "$TMPBODY" | head -1 || true)
+      if [ -n "$APP" ]; then
+        curl -sL --max-time 30 "$ORIGIN/assets/$APP?$BUST" -o "$TMPBODY" || true
+        if [ "$(wc -c < "$TMPBODY" 2>/dev/null || echo 0)" -ge 100000 ] && grep -qF "${VERSION}" "$TMPBODY"; then
+          FOUND=1
+        fi
+      fi
+    fi
+    if [ "$FOUND" = "1" ]; then
       echo "  ✓ origin serves ${VERSION} (${JS}) — rollback is live (edge may lag)"
       HIT=1
       break

@@ -127,7 +127,11 @@ smoke_serves() {
   js=$(curl -sL --max-time 15 "$@" "$base/?$bust" | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1 || true)
   [ -n "$js" ] || return 1
   curl -sL --max-time 30 "$@" "$base/$js?$bust" -o "$SMOKE_BODY" || return 1
-  [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 100000 ] || return 1
+  # #879 — the boot chunk is now a small SPLIT entry (~46kB), so a 100k floor
+  # would reject it and mask the real stamp (which lives in the lazy App chunk).
+  # Floor 10k still rejects truncated/error responses (#273) without blocking
+  # the split boot chunk. The App-chunk fallback below keeps the 100k floor.
+  [ "$(wc -c < "$SMOKE_BODY" 2>/dev/null || echo 0)" -ge 10000 ] || return 1
   grep -qF "$want" "$SMOKE_BODY" && return 0
   # stamp not in index.js → fetch the lazy App chunk it references and grep that.
   # index.js sits in /assets/, so its RELATIVE import "./App-*.js" resolves to
