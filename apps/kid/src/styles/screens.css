@@ -632,6 +632,13 @@
   background: #4ec879;
   box-shadow: 0 0 6px rgba(78, 200, 121, 0.9);
 }
+/* #1409 — the home voice chip shows the live download % while loading. */
+.voice-chip-pct {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
 .settings-row { justify-content: flex-start; flex-wrap: wrap; }
 
 /* 🎙️ first-use neural voice download banner — live %, then a 5s ready flash.
@@ -3269,6 +3276,26 @@
 @keyframes coop-pop {
   from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+/* #1376 — storage-full warning: same fixed toast pattern as coop-toast, but
+   amber/red so the save-progress signal reads as "needs a grown-up". */
+.storage-toast {
+  position: fixed;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 55;
+  max-width: min(90vw, 420px);
+  background: rgba(90, 30, 25, 0.94);
+  border: 1px solid rgba(255, 200, 150, 0.45);
+  color: #ffe0c2;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 16px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+  animation: coop-pop 0.22s ease-out;
+  pointer-events: none;
+  text-align: center;
 }
 
 /* #139 — flashcard QR scan sheet (camera + manual code fallback). */
@@ -6332,15 +6359,25 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   gap: 12px;
   color: #0b2545;
   font-weight: 700;
+  text-align: center;
+  padding: 20px;
+}
+.game-boot-error-hint {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.75;
+  max-width: 300px;
 }
 .game-boot-error button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+  min-width: 150px;
+  min-height: 52px;
+  border-radius: 999px;
   border: none;
   background: #ffd166;
   color: #0b2545;
-  font-size: 1.6rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 10px 22px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 

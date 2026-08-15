@@ -37,7 +37,7 @@
 
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
-import { neuralSpeak, neuralCancel, isNeuralReady, neuralStatus } from "./neuralVoice";
+import { neuralSpeak, neuralCancel, isNeuralReady, neuralStatus, onNeuralReady } from "./neuralVoice";
 
 let voices: SpeechSynthesisVoice[] = [];
 /** Monotonic token — only the newest speak() actually plays (rapid-tap safe). */
@@ -45,6 +45,31 @@ let speakToken = 0;
 /** Last time a real line was spoken or canceled (Date.now). Used to avoid the
  *  WebKit cancel→speak race — see the speak() cancel path below. */
 let lastSpeechAt = 0;
+
+/* #1375 — when a device has NO Bangla Web-Speech voice and the on-device neural
+ * model is still downloading, the old path silently dropped Bangla lines. Now
+ * the LATEST line is held and spoken the moment the neural voice becomes ready
+ * (still never a wrong-language voice). */
+let pendingBnLine: {
+  clean: string;
+  opts: SpeakOpts;
+  token: number;
+  speaker?: number;
+  volume: number;
+} | null = null;
+let neuralReadyUnsub: (() => void) | null = null;
+
+function holdBnLine(clean: string, opts: SpeakOpts, token: number, speaker: number | undefined, volume: number) {
+  pendingBnLine = { clean, opts, token, speaker, volume };
+  if (!neuralReadyUnsub) neuralReadyUnsub = onNeuralReady(flushPendingBnLine);
+}
+
+function flushPendingBnLine() {
+  const p = pendingBnLine;
+  pendingBnLine = null;
+  if (!p || p.token !== speakToken || !isNeuralReady()) return;
+  void neuralSpeak(p.clean, { queue: p.opts.cancel === false, volume: p.volume, speaker: p.speaker });
+}
 
 /* ─────────────────────────── platform detection ─────────────────────────── */
 
@@ -553,6 +578,9 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // Only the LATEST speak wins (except queue mode) — stale deferred speaks
   // from a previous question are skipped, so rapid taps never stack.
   const token = ++speakToken;
+  // A newer line supersedes any held no-bn-voice line (latest-wins across both
+  // the web and neural engines).
+  pendingBnLine = null;
 
   // Bangla → the ON-DEVICE neural voice (Piper VITS) whenever it's ready: the
   // SAME warm Bengali voice on every device, fully offline, and zero risk of a
@@ -602,12 +630,22 @@ function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: numb
       // 🗣️ #387 — NEVER read Bengali script with a non-Bangla voice. On a
       // device with NO Bangla voice (desktop Chrome, a phone without the bn
       // TTS pack), the engine reads Bengali with its DEFAULT (English) voice
-      // → exactly the "speaks like latin, not bengali" sound users report,
-      // worst during the neural download window when every Bangla line falls
-      // back to Web Speech. A wrong-language voice is worse than silence:
-      // drop the line — the on-device neural voice takes over the moment it's
-      // ready (it preloads at boot and retries on every gesture). English is
-      // unaffected (it falls through to u.lang alone, which is harmless).
+      // → exactly the "speaks like latin, not bengali" sound users report.
+      // A wrong-language voice is always worse than a short wait.
+      // #1375 — while the on-device neural voice is still downloading, HOLD
+      // the latest line and speak it the moment the model is ready instead of
+      // dropping it into silence. If neural is already ready and still failed
+      // (e.g. iOS audio locked), keep the old drop rather than loop forever.
+      if (!isNeuralReady()) {
+        const toneSpk = parentVoiceTone ? TONE_SPEAKER[parentVoiceTone] : undefined;
+        holdBnLine(
+          clean,
+          opts,
+          token,
+          toneSpk,
+          (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume * quietLevel
+        );
+      }
       return;
     }
     // Cross-engine latest-wins: if a neural Bangla line is still playing or

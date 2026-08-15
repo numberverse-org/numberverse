@@ -281,11 +281,14 @@ export default function HomeScreen({
                     <button
                       className={`voice-chip${voiceOk === false || neural.state === "error" ? " warn" : ""}${neural.ready ? " neural-ready" : ""}`}
                       onClick={() => setScreen("settings")}
-                      aria-label={t.settingsVoice}
-                      title={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100))) : neural.state === "error" ? t.voiceDlFailed : undefined}
+                      aria-label={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(100, Math.round(neural.progress * 100))) : t.settingsVoice}
+                      title={neural.state === "loading" ? t.voiceNeuralLoading(Math.min(100, Math.round(neural.progress * 100))) : neural.state === "error" ? t.voiceDlFailed : undefined}
                     >
-                      {/* ⏳ downloading → 🎙️ neural voice ready (green dot) → 🔊 device voice · ⚠️ download failed (#1318) */}
-                      {neural.state === "loading" ? "⏳" : neural.state === "error" ? "⚠️" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
+                      {/* #1409 — downloading chip carries the live % (no more
+                          state-less hourglass); then ready/failed as before. */}
+                      {neural.state === "loading" ? (
+                        <span className="voice-chip-pct" aria-hidden="true">{Math.min(100, Math.round(neural.progress * 100))}</span>
+                      ) : neural.state === "error" ? "⚠️" : voiceOk === false ? "🔇" : neural.ready ? "🎙️" : "🔊"}
                     </button>
                     {/* #1395 — one settings trigger, not two: the voice-chip
                         already opens Settings and carries the voice state. */}
@@ -324,7 +327,7 @@ export default function HomeScreen({
               </div>
             ) : neural.state === "loading" ? (
               <div className="voice-dl-banner" role="status">
-                🎙️ {t.voiceNeuralLoading(Math.min(99, Math.round(neural.progress * 100)))}
+                🎙️ {t.voiceNeuralLoading(Math.min(100, Math.round(neural.progress * 100)))}
               </div>
             ) : neuralFlash && neural.ready ? (
               <div className="voice-dl-banner ready" role="status">

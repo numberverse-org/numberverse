@@ -19,7 +19,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled, googleClientId } from "./components/GoogleSignIn";
 import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, setQuietLevel as setAudioQuiet } from "./game/audio";
@@ -794,6 +794,20 @@ export default function App() {
     });
     return () => {
       alive = false;
+    };
+  }, []);
+  // #1376 — a durable persist write failed (storage full / QuotaExceeded).
+  // Show a kid-safe warning until a later write succeeds, so progress is never
+  // lost with zero signal. The event is emitted by store.ts' debounced writer.
+  const [storageWarning, setStorageWarning] = useState(false);
+  useEffect(() => {
+    const onPersistError = () => setStorageWarning(true);
+    const onPersistOk = () => setStorageWarning(false);
+    window.addEventListener(PERSIST_ERROR_EVENT, onPersistError);
+    window.addEventListener(PERSIST_OK_EVENT, onPersistOk);
+    return () => {
+      window.removeEventListener(PERSIST_ERROR_EVENT, onPersistError);
+      window.removeEventListener(PERSIST_OK_EVENT, onPersistOk);
     };
   }, []);
   // Always-sync: drain the offline outbox on boot, then keep a heartbeat +
@@ -1904,7 +1918,10 @@ export default function App() {
      per mount (engineWarmedRef). */
   const engineWarmedRef = useRef(false);
   useEffect(() => {
-    if (screen !== "home" || engineWarmedRef.current) return;
+    // #1410 — warm the engine chunk on the pre-play gates too (welcome + parent),
+    // so a first-time kid's very first tap into play hits a warm module cache
+    // instead of paying the full chunk-load spinner.
+    if ((screen !== "home" && screen !== "welcome" && screen !== "parent") || engineWarmedRef.current) return;
     engineWarmedRef.current = true;
     const warm = () => {
       void import("./game/engine").catch(() => { /* best-effort — boot() retries */ });
@@ -1959,13 +1976,17 @@ export default function App() {
     bootGame(mountEl).then((g) => {
       if (!alive) return; // torn down mid-load
       if (!g) {
-        // #1186 — chunk load failed: visible retry, not a silent blank canvas.
+        // #1186/#1377 — chunk load failed: visible retry, not a silent blank canvas.
         setGameBoot("error");
         return;
       }
       gameRef.current = g;
       setGameBoot("ready");
       (window as unknown as Record<string, unknown>).__NV_GAME__ = g;
+    }).catch(() => {
+      // #1377 — an unexpected boot rejection must surface the same recovery
+      // path as a null boot result (never a console-only failure).
+      if (alive) setGameBoot("error");
     });
     return () => {
       alive = false;
@@ -5553,8 +5574,11 @@ export default function App() {
             and a tap-to-retry when the chunk fails (never a silent blank canvas). */}
         {gameBoot === "error" && (
           <div className="game-boot-error" role="alert">
-            <p>{lang === "bn" ? "খেলা শুরু করতে আবার চেষ্টা করো" : "Tap to retry the game"}</p>
-            <button onClick={() => setGameBootNonce((n) => n + 1)}>↻</button>
+            <p>{t.gameLoadError}</p>
+            <p className="game-boot-error-hint">{t.gameLoadErrorHint}</p>
+            <button onClick={() => setGameBootNonce((n) => n + 1)}>
+              <span aria-hidden="true">↻</span> {t.gameLoadRetry}
+            </button>
           </div>
         )}
         {gameBoot !== "ready" && gameBoot !== "error" && (
@@ -5605,6 +5629,9 @@ export default function App() {
           </div>
         )}
         {coopToast && <div className="coop-toast" role="status">👥 {coopToast}</div>}
+        {storageWarning && (
+          <div className="storage-toast" role="alert">⚠️ {t.storageFull}</div>
+        )}
       </div>
     );
   }

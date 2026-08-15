@@ -656,19 +656,42 @@ const keyOf = (kidId: string, skillId: string) => `${kidId}:${skillId}`;
  *  Flush guarantee: pagehide/beforeunload flush synchronously, so a normal tab
  *  close never loses the trailing snapshot. Worst case (aggressive OS kill) loses
  *  <150ms of state — an acceptable trade for removing per-set main-thread jank. */
+/** #1376 — notify the app when a durable persist write fails (storage full or
+ *  unavailable). The event carries no data; App.tsx listens and shows the
+ *  kid-facing storage warning until a later write succeeds. */
+export const PERSIST_ERROR_EVENT = "nv:persist-error";
+export const PERSIST_OK_EVENT = "nv:persist-ok";
+
+function emitPersistSignal(event: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new Event(event));
+  } catch {
+    /* best-effort signal — the write result still governs retries */
+  }
+}
+
 function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   const base = createJSONStorage<S>(() => localStorage);
   if (!base) return undefined;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pending: { name: string; value: { state: S; version?: number } } | null = null;
+  let writeFailed = false;
   const write = () => {
     if (!pending) return;
     const p = pending;
     pending = null;
     try {
       base.setItem(p.name, p.value);
+      if (writeFailed) {
+        writeFailed = false;
+        emitPersistSignal(PERSIST_OK_EVENT);
+      }
     } catch {
-      /* storage full / unavailable — the next set() re-queues */
+      // #1376 — storage-full / QuotaExceeded is no longer silent: surface it,
+      // and let the next set() re-queue the latest snapshot as before.
+      writeFailed = true;
+      emitPersistSignal(PERSIST_ERROR_EVENT);
     }
   };
   const flush = () => {
@@ -683,7 +706,21 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
     window.addEventListener("beforeunload", flush);
   }
   return {
-    getItem: (name) => base.getItem(name),
+    getItem: (name) => {
+      try {
+        return base.getItem(name);
+      } catch {
+        // #1374 — a corrupted/stale nv_store_v1 blob must not silently empty
+        // the store: drop the broken bytes and rehydrate the default state
+        // (the next successful persist writes a clean blob back).
+        try {
+          base.removeItem(name);
+        } catch {
+          /* storage unavailable — rehydrate defaults without a write */
+        }
+        return null;
+      }
+    },
     setItem: (name, value) => {
       pending = { name, value };
       if (timer) clearTimeout(timer);
