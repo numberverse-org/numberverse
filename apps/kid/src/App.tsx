@@ -161,6 +161,9 @@ export default function App() {
    *  completion effect routes to the gentle break screen instead of straight
    *  to the done screen. Cleared at every session start and after a break. */
   const breakPendingRef = useRef(false);
+  /** #1368 — the break screen's "keep going" destination: the done screen after
+   *  a completed session, or home when the break came from the goal nudge. */
+  const breakReturnRef = useRef<"done" | "home">("done");
   /** Bump to force the playing effect to re-run the SAME step with remediation
    *  flags (reteach > 0) after the mastery gate blocks an advance. */
   const [reteachNonce, setReteachNonce] = useState(0);
@@ -1261,11 +1264,39 @@ export default function App() {
   // check, the goal line, and the goal banner (the api-level memo already avoids
   // re-parsing localStorage, but this kills the duplicate CALLS too).
   const todayPlayed = todayMinutes();
+  // Track minutes: a session start stamps this ref; the session-end effect adds
+  // the elapsed (fractional) minutes to the daily tracker. Declared before the
+  // cap derivation so the cue can account for a session already in flight.
+  const sessionStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (screen === "playing") sessionStartRef.current = Date.now();
+    if (screen !== "playing" && sessionStartRef.current != null) {
+      // #1367 — no Math.round: a 40-second game earns 0.67 min, not zero.
+      const mins = (Date.now() - sessionStartRef.current) / 60_000;
+      sessionStartRef.current = null;
+      if (mins > 0) addTodayMinutes(mins);
+    }
+  }, [screen]);
   /** Should the PLAY button be blocked? (#6 — effective per-weekday cap reached) */
-  const playLimitReached = (() => {
-    const cap = todayLimitMin(settings);
-    return cap !== null && todayPlayed >= cap;
-  })();
+  const capNow = todayLimitMin(settings);
+  const playLimitReached = capNow !== null && todayPlayed >= capNow;
+  const capRemainingMin = capNow !== null ? capNow - todayPlayed : null;
+  // #1453 — a gentle winding-down cue in the last 5 minutes before the cap,
+  // so the limit never arrives as a surprise hard stop.
+  const capWindDown = capRemainingMin !== null && capRemainingMin > 0 && capRemainingMin <= 5;
+  const capWindDownMin = capWindDown ? Math.max(1, Math.ceil(capRemainingMin ?? 0)) : 0;
+  // #1454 — soft full-screen dim + sleep badge as the cap approaches/hits.
+  const capChrome = capWindDown ? (
+    <div className="cap-wind-chrome" role="status" aria-label={t.capWindDown(capWindDownMin)}>
+      <div className="quiet-dim cap-wind-dim" aria-hidden="true" />
+      <div className="cap-wind-badge">🌙 {t.capWindDown(capWindDownMin)}</div>
+    </div>
+  ) : playLimitReached ? (
+    <div className="cap-wind-chrome cap-wind-sleep" role="status" aria-label={t.playLimitReached}>
+      <div className="quiet-dim cap-wind-dim" aria-hidden="true" />
+      <div className="cap-wind-badge">💤 {t.playLimitReached}</div>
+    </div>
+  ) : null;
   // A gentle child-facing banner when a play attempt hits the daily cap.
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
   // 🎯 #256 — gentle daily goal (parent-set minutes). Shown as a home progress
@@ -1282,19 +1313,17 @@ export default function App() {
     }
     if (!goalReached && goalNotice) setGoalNotice(false);
   }, [goalReached, goalNotice]);
+  // #1368 — the goal-nudge "take a break" is a REAL break: dismiss the nudge,
+  // route through the break screen, and return home afterward.
+  const takeGoalBreak = () => {
+    setGoalNotice(false);
+    breakReturnRef.current = "home";
+    breakPendingRef.current = false;
+    cancelSpeech();
+    setScreen("break");
+  };
   // 🚀 #249 — skip-ahead toast on the world detail screen.
   const [skipNotice, setSkipNotice] = useState<string | null>(null);
-  // Track minutes: a session start stamps this ref; the session-end effect adds
-  // the elapsed minutes to the daily tracker.
-  const sessionStartRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (screen === "playing") sessionStartRef.current = Date.now();
-    if (screen !== "playing" && sessionStartRef.current != null) {
-      const mins = Math.round((Date.now() - sessionStartRef.current) / 60_000);
-      sessionStartRef.current = null;
-      if (mins > 0) addTodayMinutes(mins);
-    }
-  }, [screen]);
 
   // Auto-enter fullscreen once, on the first interaction — "fullscreen by default".
   const didAutoFs = useRef(false);
@@ -2296,6 +2325,7 @@ export default function App() {
       // #253 — the session finished: drop any saved snapshot so a later switch
       // back starts fresh (a completed session is nothing to resume).
       if (kid) clearSavedSession(kid.id);
+      breakReturnRef.current = "done";
       setTimeout(() => setScreen(breakPendingRef.current ? "break" : "done"), 400);
     }
   }, [roundsDone, sessionIdx, screen, kid, mistakes, recordSession, novaCompleteSession]);
@@ -2497,6 +2527,32 @@ export default function App() {
     if (r > 0 && prevReteachRef.current === 0) novaReact("reteach");
     prevReteachRef.current = r;
   }, [sessionIdx, curStep?.reteach]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // #272 — SAFETY: parent kill-switch. When the parent pauses this kid, show a
+  // kid-safe "learning break" screen INSTEAD of any play screen (home, worlds,
+  // games, everything). `settings.paused` comes from the server AND the
+  // on-device cache, so the pause holds across reloads and offline. The resume
+  // effect above drops the kid back to a fresh home when it flips off.
+  // #1452 — the gate is built BEFORE the kid-screen returns; previously the
+  // home branch returned first, so a persisted paused flag never reached it.
+  const pauseGate = settings.paused && kid ? (
+    <div className="app">
+      <main className="screen pause-screen">
+        <div className="pause-sky" aria-hidden="true">
+          {["☁️", "⭐", "🌙", "☁️", "⭐", "☁️"].map((e, i) => (
+            <span key={i} className={`pause-sky-float f${i}`}>{e}</span>
+          ))}
+        </div>
+        <div className="pause-mascot" role="img" aria-label="Nova resting">
+          <Icon name="nova" size={96} />
+        </div>
+        <h1 className="title">{t.pauseTitle}</h1>
+        <p className="pause-body">{t.pauseBody}</p>
+        <div className="pause-z" aria-hidden="true">💤</div>
+        <p className="pause-note">{t.pauseBackSoon}</p>
+      </main>
+    </div>
+  ) : null;
 
   /* ── WELCOME (first time — topmost) ──────────────────────────────────────
    *  The very first screen on a fresh device. LANGUAGE first (topmost), then
@@ -2706,6 +2762,13 @@ export default function App() {
     );
   }
 
+  // #1452 — apply the persisted pause flag to the screen gate. Parent, settings
+  // and leaderboard stay reachable (they are grown-up / non-play surfaces);
+  // every kid play screen from home onward shows the pause screen instead.
+  if (pauseGate && screen !== "settings" && screen !== "parent" && screen !== "leaderboard") {
+    return pauseGate;
+  }
+
   if (screen === "home" && kid) {
     return (
     <Suspense fallback={<ScreenFallback />}>
@@ -2747,6 +2810,8 @@ export default function App() {
       freshSkillHint={freshSkillHint}
       goalPct={goalPct}
       playLimitReached={playLimitReached}
+      capChrome={capChrome}
+      onGoalBreak={takeGoalBreak}
       launchCardCode={launchCardCode}
       voiceFunVol={voiceFunVol}
       neuralFlash={neuralFlash}
@@ -4145,32 +4210,6 @@ export default function App() {
     );
   }
 
-  // #272 — SAFETY: parent kill-switch. When the parent pauses this kid, show a
-  // kid-safe "learning break" screen INSTEAD of any play screen (home, worlds,
-  // games, everything). `settings.paused` comes from the server AND the
-  // on-device cache, so the pause holds across reloads and offline. The resume
-  // effect above drops the kid back to a fresh home when it flips off.
-  if (settings.paused && kid) {
-    return (
-      <div className="app">
-        <main className="screen pause-screen">
-          <div className="pause-sky" aria-hidden="true">
-            {["☁️", "⭐", "🌙", "☁️", "⭐", "☁️"].map((e, i) => (
-              <span key={i} className={`pause-sky-float f${i}`}>{e}</span>
-            ))}
-          </div>
-          <div className="pause-mascot" role="img" aria-label="Nova resting">
-            <Icon name="nova" size={96} />
-          </div>
-          <h1 className="title">{t.pauseTitle}</h1>
-          <p className="pause-body">{t.pauseBody}</p>
-          <div className="pause-z" aria-hidden="true">💤</div>
-          <p className="pause-note">{t.pauseBackSoon}</p>
-        </main>
-      </div>
-    );
-  }
-
   if (screen === "kidpick" || (screen === "home" && !kid)) {
     return (
       <div className="app">
@@ -4989,12 +5028,16 @@ export default function App() {
   if (screen === "break" && kid) {
     const takeBreak = () => {
       breakPendingRef.current = false;
+      breakReturnRef.current = "done";
       cancelSpeech();
       setScreen("home");
     };
     const keepGoing = () => {
       breakPendingRef.current = false;
-      setScreen("done");
+      // #1368 — a break taken from the goal nudge returns home; a post-session
+      // break returns to the done screen so the celebration is still there.
+      setScreen(breakReturnRef.current);
+      breakReturnRef.current = "done";
     };
     return (
       <div className="app">
@@ -5435,6 +5478,10 @@ export default function App() {
     const musicLocked = settings.music_enabled === false;
     return (
       <div className="app game-app">
+        {/* #248 — quiet-hours dim also belongs over the game canvas (not just home). */}
+        {quietChrome}
+        {/* #1453/#1454 — cap wind-down/sleep veil follows the kid into play. */}
+        {capChrome}
         {/* #684 — the 3D island is an OPT-IN surface on top of 2D Nova: it
             stops Phaser first (single WebGL context) and falls back if the
             device has no WebGL. The 2D Nova home stays the default. */}

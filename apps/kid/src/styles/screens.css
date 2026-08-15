@@ -5200,6 +5200,37 @@
 }
 .quiet-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quiet-badge:active { transform: scale(0.97); }
+
+/* #1453/#1454 — cap wind-down + sleep escalation: a slightly deeper dim than
+ * quiet-hours plus a gentle fixed badge. Pointer-transparent like quiet-dim. */
+.cap-wind-dim {
+  background: radial-gradient(ellipse at center, transparent 48%, rgba(4, 10, 20, 0.40) 100%);
+}
+.cap-wind-badge {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 2147483001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(82vw, 360px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 227, 255, 0.35);
+  background: rgba(7, 20, 32, 0.88);
+  color: #d9f6ff;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.cap-wind-sleep .cap-wind-badge {
+  border-color: rgba(255, 209, 102, 0.4);
+  color: #ffe9ad;
+}
 .pin-lock-card { border-color: rgba(76, 201, 240, 0.3); }
 .pin-lock-btn {
   background: rgba(76, 201, 240, 0.14);

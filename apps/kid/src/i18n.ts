@@ -681,6 +681,8 @@ export interface Strings {
   inProgress: string;
   notStarted: string;
   playLimitReached: string;
+  /* #1453 — gentle winding-down cue when the daily cap is close (not a hard stop). */
+  capWindDown: (mins: number) => string;
   /* 🎯 #256 — gentle daily goal (parent-set): progress line + at-goal nudge */
   goalLine: (cur: number, goal: number) => string;
   goalNudge: string;
@@ -1483,6 +1485,7 @@ export const STR: Record<Lang, Strings> = {
     voicePickListen: "Listen",
     mastered: "Mastered",
     playLimitReached: "🦉 Wow, you played so much today! Come back tomorrow 💤",
+    capWindDown: (mins) => `🌙 Almost time to rest — about ${mins} more minute${mins === 1 ? "" : "s"} for today.`,
     goalLine: (cur, goal) => `🎯 Daily goal: ${cur}/${goal} min`,
     goalNudge: "🎉 You reached today's goal — amazing! Nova's proud of you. Want a quick break or keep going?",
     goalNudgeTakeBreak: "Take a break",
@@ -2284,6 +2287,7 @@ export const STR: Record<Lang, Strings> = {
     voicePickListen: "শোনো",
     mastered: "আয়ত্ত",
     playLimitReached: "🦉 বাহ, আজ তুমি অনেক খেলেছ! কাল আবার এসো 💤",
+    capWindDown: (mins) => `🌙 বিশ্রামের প্রায় সময় — আজকের জন্য আর প্রায় ${bnNum(mins)} মিনিট বাকি।`,
     goalLine: (cur, goal) => `🎯 দৈনিক লক্ষ্য: ${bnNum(cur)}/${bnNum(goal)} মিনিট`,
     goalNudge: "🎉 আজকের লক্ষ্যে পৌঁছে গেছ! দারুণ! একটু বিরতি চাও নাকি খেলা চালিয়ে যাবে?",
     goalNudgeTakeBreak: "বিরতি নিই",
