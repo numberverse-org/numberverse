@@ -15,6 +15,7 @@ import {
   masteryPct,
   narrTitleBn,
   narrTitleEn,
+  relTime,
   skillLabel,
   type MissedSkill,
   type WizardLang,
@@ -131,6 +132,15 @@ export function MasteryCard({ activeMastery }: {
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const L = OVERVIEW_LANGS[wizLang];
 
+  // #1524 — a below-mastery skill goes stale after 7 days with no practice.
+  const STALE_PRACTICE_MS = 7 * 24 * 60 * 60 * 1000;
+  const lastPracticeAge = (m: MasteryRow): number | null => {
+    if (!m.last_practice) return null;
+    const t = Date.parse(m.last_practice);
+    if (Number.isNaN(t)) return null;
+    return Date.now() - t;
+  };
+
   // #1520 — weakest skills first; attempts asc breaks ties, then the slug for a
   // deterministic order. Toggling off restores the server's alphabetical order.
   const sorted = [...activeMastery].sort((a, b) =>
@@ -208,6 +218,19 @@ export function MasteryCard({ activeMastery }: {
                 {narrTitleBn(m.skill_id) !== narrTitleEn(m.skill_id) && (
                   <span className="muted small"> · {narrTitleBn(m.skill_id)}</span>
                 )}
+                {(() => {
+                  // #1524 — surface last_practice staleness for skills still
+                  // below mastery (null/validated dates render nothing).
+                  const age = lastPracticeAge(m);
+                  if (age === null || m.mastery >= 0.8) return null;
+                  return (
+                    <span className="muted small">
+                      {" · "}
+                      {L.practicedAgo.replace("{time}", relTime(Date.now() - age, wizLang))}
+                      {age > STALE_PRACTICE_MS && <span className="stale-tag"> · {L.needsReview}</span>}
+                    </span>
+                  );
+                })()}
               </td>
               <td>
                 <div className="bar">

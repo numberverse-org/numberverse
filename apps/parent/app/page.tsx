@@ -422,8 +422,22 @@ export default function ParentDashboard() {
         // forged — the kid app writes the same key) no longer grants access.
         setToken(tok);
         setAuthState("ok");
-        refreshAll(tok).catch(() => setError("Could not load progress. Is the API running?"));
-        reloadAccount(tok).catch(() => setError("Could not load account details."));
+        refreshAll(tok).catch((e) => {
+          const status = (e as { status?: unknown } | null)?.status;
+          setError(
+            status === 401 || status === 403
+              ? ACCOUNT_LANGS[wizLang].sessionEnded
+              : "Could not load progress. Is the API running?"
+          );
+        });
+        reloadAccount(tok).catch((e) => {
+          const status = (e as { status?: unknown } | null)?.status;
+          setError(
+            status === 401 || status === 403
+              ? ACCOUNT_LANGS[wizLang].sessionEnded
+              : "Could not load account details."
+          );
+        });
       } else if (verdict === "invalid") {
         localStorage.removeItem("nv_parent_token");
         localStorage.removeItem("nv_parent_name");
@@ -443,9 +457,46 @@ export default function ParentDashboard() {
     });
   }, [refreshAll, reloadAccount]);
 
+  // #1513 — last-saved settings snapshot per kid (seeded from the first load,
+  // then updated only by a successful save) so we can compare edits and warn
+  // before the parent switches away and loses them.
+  const [savedSettings, setSavedSettings] = useState<Record<string, KidSettingsT>>({});
+  // #1513 — two-tap inline confirm: the kid id the parent is trying to switch
+  // to while the active kid has unsaved settings edits.
+  const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSavedSettings((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, s] of Object.entries(settings)) {
+        if (!next[id]) {
+          next[id] = s;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [settings]);
+
+  function isDirtyKid(id: string | null): boolean {
+    if (!id) return false;
+    const cur = settings[id];
+    const saved = savedSettings[id];
+    if (!cur || !saved) return false;
+    return JSON.stringify(cur) !== JSON.stringify(saved);
+  }
+
   const switchKid = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { force?: boolean }) => {
       if (!token) return;
+      if (id === activeId) return;
+      // #1513 — don't silently discard unsaved settings edits on kid switch.
+      if (!opts?.force && isDirtyKid(activeId)) {
+        setPendingSwitchId(id);
+        return;
+      }
+      setPendingSwitchId(null);
       setActiveId(id);
       if (mastery[id]) return; // already loaded (refreshAll fetches every kid)
       try {
@@ -465,12 +516,28 @@ export default function ParentDashboard() {
         setStories((prev) => ({ ...prev, [id]: st }));
         setStoryStats((prev) => ({ ...prev, [id]: sts }));
         setAccel((prev) => ({ ...prev, [id]: ac }));
-      } catch {
-        setError("Failed to load that kid.");
+      } catch (e) {
+        const status = (e as { status?: unknown } | null)?.status;
+        setError(
+          status === 401 || status === 403
+            ? ACCOUNT_LANGS[wizLang].sessionEnded
+            : "Failed to load that kid."
+        );
       }
     },
-    [token, mastery]
+    [token, mastery, activeId, settings, savedSettings, wizLang]
   );
+
+  function confirmSwitchKid() {
+    const id = pendingSwitchId;
+    if (!id) return;
+    setPendingSwitchId(null);
+    // Discard the active kid's unsaved edits so switching back starts clean.
+    if (activeId && savedSettings[activeId]) {
+      setSettings((prev) => ({ ...prev, [activeId]: savedSettings[activeId] }));
+    }
+    void switchKid(id, { force: true });
+  }
 
   // #238 — load the kid's saved narrative draft (edit-safe: localStorage).
   useEffect(() => {
@@ -484,10 +551,19 @@ export default function ParentDashboard() {
     setError(null);
     try {
       const s = settings[activeId] ?? DEFAULT_SETTINGS;
-      await saveKidSettings(token, activeId, s);
+      const saved = await saveKidSettings(token, activeId, s);
+      // #1513 — the server response becomes the new last-saved snapshot, so the
+      // dirty badge clears exactly when the save has landed.
+      setSettings((prev) => ({ ...prev, [activeId]: saved }));
+      setSavedSettings((prev) => ({ ...prev, [activeId]: saved }));
       setSavedTick((t) => t + 1);
-    } catch {
-      setError("Failed to save settings.");
+    } catch (e) {
+      const status = (e as { status?: unknown } | null)?.status;
+      setError(
+        status === 401 || status === 403
+          ? ACCOUNT_LANGS[wizLang].sessionEnded
+          : "Failed to save settings."
+      );
     } finally {
       setBusy(false);
     }
@@ -1342,17 +1418,40 @@ export default function ParentDashboard() {
         <>
           {/* ── progress summary ── */}
           <section className="card summary">
+            {pendingSwitchId && (
+              <div className="confirm-group unsaved-confirm" role="alert">
+                <span className="muted">{ACCOUNT_LANGS[wizLang].unsavedConfirm}</span>
+                <button className="btn btn-small primary" onClick={confirmSwitchKid}>
+                  {ACCOUNT_LANGS[wizLang].unsavedContinue}
+                </button>
+                <button className="btn btn-small ghost" onClick={() => setPendingSwitchId(null)}>
+                  {ACCOUNT_LANGS[wizLang].unsavedCancel}
+                </button>
+              </div>
+            )}
             <div className="summary-head">
               <span className="big-avatar">{active.avatar ?? "🧒"}</span>
               <div className="summary-meta">
                 <h2>{active.name} <small>(born {active.birth_year ?? "—"})</small></h2>
+                {/* #1523 — in-progress = attempted-but-not-mastered, and the fill
+                    bar + coverage line use the full catalog, not attempted-only. */}
                 <p className="muted">
-                  {masteredCount} mastered · {activeMastery.length} skills in progress
+                  {ACCOUNT_LANGS[wizLang].summaryMastered.replace("{n}", String(masteredCount))} ·{" "}
+                  {ACCOUNT_LANGS[wizLang].summaryInProgress.replace(
+                    "{n}",
+                    String(activeMastery.filter((m) => m.mastery < 0.8 && m.attempts > 0).length)
+                  )}
+                </p>
+                <p className="muted small">
+                  {ACCOUNT_LANGS[wizLang].summaryCoverage
+                    .replace("{pct}", String(SKILLS.length ? Math.round((masteredCount / SKILLS.length) * 100) : 0))
+                    .replace("{mastered}", String(masteredCount))
+                    .replace("{total}", String(SKILLS.length))}
                 </p>
               </div>
             </div>
             <div className="overall-bar">
-              <div className="overall-fill" style={{ width: `${activeMastery.length ? Math.round((masteredCount / activeMastery.length) * 100) : 0}%` }} />
+              <div className="overall-fill" style={{ width: `${SKILLS.length ? Math.round((masteredCount / SKILLS.length) * 100) : 0}%` }} />
             </div>
           </section>
 

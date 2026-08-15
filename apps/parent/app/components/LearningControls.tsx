@@ -3,9 +3,10 @@
    to those maps in lib/portal and this section follows. */
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KidSettings as KidSettingsT } from "../../lib/api";
 import {
+  DEFAULT_SETTINGS,
   FOCUS_BANDS,
   LEARNING_LANGS,
   LIMIT_CHOICES,
@@ -45,6 +46,30 @@ export default function LearningControls({
   handleSaveSettings,
   savedTick,
 }: LearningControlsProps) {
+  // #1513 — track the last-saved settings snapshot per kid so the save row can
+  // show a subtle "Unsaved changes" badge while edits are still pending.
+  const [savedSnapshots, setSavedSnapshots] = useState<Record<string, KidSettingsT>>({});
+  const [lastSavedTick, setLastSavedTick] = useState(savedTick);
+
+  useEffect(() => {
+    // Don't seed the snapshot while the kid's settings are still the loading
+    // placeholder (page.tsx falls back to DEFAULT_SETTINGS before fetch lands).
+    if (activeSettings === DEFAULT_SETTINGS) return;
+    setSavedSnapshots((prev) =>
+      prev[active.id] ? prev : { ...prev, [active.id]: activeSettings }
+    );
+  }, [active.id, activeSettings]);
+
+  useEffect(() => {
+    if (savedTick !== lastSavedTick) {
+      setSavedSnapshots((prev) => ({ ...prev, [active.id]: activeSettings }));
+      setLastSavedTick(savedTick);
+    }
+  }, [savedTick, lastSavedTick, active.id, activeSettings]);
+
+  const snapshot = savedSnapshots[active.id];
+  const unsaved = snapshot ? JSON.stringify(snapshot) !== JSON.stringify(activeSettings) : false;
+
   // #1512 — the difficulty cap only offers worlds 1–5, but FOCUS_BANDS runs to
   // 7. When a cap is set, focus choices are restricted to bands ≤ the cap so a
   // parent can never pin a world above the ceiling they just chose.
@@ -554,7 +579,8 @@ export default function LearningControls({
     <button className="btn primary" disabled={busy} onClick={handleSaveSettings}>
       {busy ? "Saving…" : "Save settings"}
     </button>
-    {savedTick > 0 && <span className="saved-note">✓ Saved</span>}
+    {savedTick > 0 && !unsaved && <span className="saved-note">✓ Saved</span>}
+    {unsaved && <span className="muted small unsaved-note">{LEARNING_LANGS[wizLang].unsavedBadge}</span>}
   </div>
 </section>  );
 }
