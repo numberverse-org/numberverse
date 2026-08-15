@@ -445,3 +445,49 @@ export async function resetKidProgress(token: string, kidId: string): Promise<vo
   const res = await authFetch(token, `${API}/kids/${kidId}/reset`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to reset progress");
 }
+
+/** #1535 — Web Push subscription as stored by the API. */
+export interface PushSubscriptionRecord {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at?: string | null;
+}
+
+/** #1535 — the browser-side subscription payload POSTed to the API. */
+export interface PushSubscribeBody {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+/** #1535 — list the current account's Web Push endpoints (GET /push/subscriptions). */
+export async function listPushSubscriptions(token: string): Promise<PushSubscriptionRecord[]> {
+  const res = await authFetch(token, `${API}/push/subscriptions`);
+  if (!res.ok) throw new Error("Failed to load notification subscriptions");
+  return res.json();
+}
+
+/** #1535 — save a Web Push endpoint (POST /push/subscribe). The API requires a
+ *  valid session token; the portal treats a successful call as the parent-gate
+ *  reauth because no dedicated /auth/verify endpoint exists yet. */
+export async function subscribePush(token: string, body: PushSubscribeBody): Promise<PushSubscriptionRecord> {
+  const res = await authFetch(token, `${API}/push/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to enable notifications");
+  if (res.status === 204) return { ...body };
+  return res.json();
+}
+
+/** #1535 — remove a Web Push endpoint (POST /push/unsubscribe). */
+export async function unsubscribePush(token: string, endpoint: string): Promise<void> {
+  const res = await authFetch(token, `${API}/push/unsubscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint }),
+  });
+  if (!res.ok) throw new Error("Failed to disable notifications");
+}

@@ -665,6 +665,32 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 }
 .sync-btn:disabled { opacity: 0.6; cursor: wait; }
 
+/* #1535 — parent-gated notifications opt-in (topbar). */
+.notif-toggle-wrap { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.notif-toggle-wrap .sync-chip.on { border-color: var(--nv-sky); background: rgba(76, 201, 240, 0.12); }
+.notif-muted { color: var(--nv-muted-soft); font-size: 12px; font-weight: 600; }
+.notif-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--nv-border);
+  border-radius: 12px;
+  background: var(--nv-surface-soft);
+}
+.notif-prompt input {
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--nv-border);
+  background: var(--nv-chip);
+  color: var(--nv-text);
+  font: inherit;
+}
+.notif-msg.err { color: var(--nv-err); }
+.notif-msg.ok { color: var(--nv-ok); }
+.notif-msg.muted { color: var(--nv-muted-soft); }
+
 /* 🧏 #250 — global accessibility toggles (big text + high contrast). */
 .a11y-toggle-group {
   display: inline-flex;

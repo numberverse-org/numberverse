@@ -658,6 +658,11 @@ export const SYNC_LANGS = {
     syncing: "Syncing…",
     mins: "m",
     hr: "h",
+    // #1553 — distinguish the portal's own fetch from the kid device's push.
+    portal: "portal",
+    device: "device",
+    deviceLastSynced: "last synced",
+    pending: "{n} rounds waiting to sync",
   },
   bn: {
     online: "অনলাইন",
@@ -669,6 +674,90 @@ export const SYNC_LANGS = {
     syncing: "সিঙ্ক হচ্ছে…",
     mins: "মি",
     hr: "ঘ",
+    // #1553 — distinguish the portal's own fetch from the kid device's push.
+    portal: "পোর্টাল",
+    device: "ডিভাইস",
+    deviceLastSynced: "সর্বশেষ সিঙ্ক হয়েছে",
+    pending: "{n} রাউন্ড সিঙ্কের অপেক্ষায়",
+  },
+} as const;
+
+/** #1505 — global error banner copy. The load-time error is a developer string
+ *  in page.tsx ("Could not load progress. Is the API running?"); we render the
+ *  parent-friendly equivalent while keeping specific errors (save/delete/etc.)
+ *  exactly as the handlers set them. */
+export const BANNER_LANGS = {
+  en: {
+    loadError: "Couldn't load progress. Check your connection and try again.",
+    retry: "Retry",
+    dismiss: "Dismiss",
+  },
+  bn: {
+    loadError: "অগ্রগতি লোড করা যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+    retry: "আবার চেষ্টা করুন",
+    dismiss: "খারিজ করুন",
+  },
+} as const;
+
+/** #1558 — regenerate-narrative edit confirmation. The button silently
+ *  overwrites the parent's localStorage draft when it has been edited, so the
+ *  portal now shows a two-tap inline confirm before discarding those edits. */
+export const REGEN_LANGS = {
+  en: {
+    confirm: "Regenerate will replace your edits — continue?",
+    continue: "Continue",
+    cancel: "Cancel",
+    discarded: "Your edits were discarded.",
+  },
+  bn: {
+    confirm: "পুনরায় তৈরি করলে আপনার সম্পাদনা বাদ পড়বে — চালিয়ে যাবেন?",
+    continue: "চালিয়ে যান",
+    cancel: "বাতিল",
+    discarded: "আপনার সম্পাদনা বাদ দেওয়া হয়েছে।",
+  },
+} as const;
+
+/** #1535 — parent-gated notifications opt-in. EN + BN; keyed by `wizLang`.
+ *  Copy intentionally says "parent confirmation": enabling asks for a password
+ *  re-confirm before the browser creates/saves the Web Push subscription. */
+export const NOTIF_LANGS = {
+  en: {
+    label: "🔔 Notifications",
+    on: "On",
+    off: "Off",
+    needParent: "Notifications need parent confirmation.",
+    passwordLabel: "Confirm your password to enable notifications",
+    passwordPlaceholder: "Parent password",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    verifying: "verifying…",
+    passwordRequired: "Enter your password to continue.",
+    unsupported: "Notifications aren't supported on this device",
+    notConfigured: "Notifications aren't configured on this server yet",
+    enabled: "Notifications are on",
+    disabled: "Notifications are off",
+    enabledFailed: "Couldn't enable notifications. Try again.",
+    disabledFailed: "Couldn't turn off notifications.",
+    loading: "Checking notifications…",
+  },
+  bn: {
+    label: "🔔 নোটিফিকেশন",
+    on: "চালু",
+    off: "বন্ধ",
+    needParent: "নোটিফিকেশনের জন্য অভিভাবকের নিশ্চিতকরণ প্রয়োজন।",
+    passwordLabel: "নোটিফিকেশন চালু করতে আপনার পাসওয়ার্ড নিশ্চিত করুন",
+    passwordPlaceholder: "অভিভাবকের পাসওয়ার্ড",
+    confirm: "নিশ্চিত করুন",
+    cancel: "বাতিল",
+    verifying: "যাচাই হচ্ছে…",
+    passwordRequired: "চালিয়ে যেতে আপনার পাসওয়ার্ড লিখুন।",
+    unsupported: "এই ডিভাইসে নোটিফিকেশন সাপোর্টেড নয়",
+    notConfigured: "এই সার্ভারে নোটিফিকেশন এখনো কনফিগার করা হয়নি",
+    enabled: "নোটিফিকেশন চালু আছে",
+    disabled: "নোটিফিকেশন বন্ধ আছে",
+    enabledFailed: "নোটিফিকেশন চালু করা যায়নি। আবার চেষ্টা করুন।",
+    disabledFailed: "নোটিফিকেশন বন্ধ করা যায়নি।",
+    loading: "নোটিফিকেশন পরীক্ষা হচ্ছে…",
   },
 } as const;
 
