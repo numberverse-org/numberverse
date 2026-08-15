@@ -1218,7 +1218,9 @@ export const STR: Record<Lang, Strings> = {
     gateErrorSignup: "Couldn't create the account — maybe that email is already registered.",
     gateGuest: "Skip for now — guest mode",
     gateGuestSub: "No account? Play instantly. Progress stays on this device, private and ad-free.",
-    gatePrivacy: "🔒 No ads, no tracking, no selling your child's data. Your account just keeps their progress safe.",
+    // #1541 — name the COPPA age range, what IS stored, and the parent's
+    // export/delete rights instead of a bare "trust us" line.
+    gatePrivacy: "🔒 Ages 2-13. No ads, no tracking, no selling data. We keep only what makes it work — your child's name and progress — and you can export or delete it anytime.",
     gateWelcome: (name) => `Hi ${name} 👋 — here's what your child will learn`,
     gatePower: "You can always return here from Parent Panel → What kids learn.",
     gateContinue: "Start learning →",
@@ -1974,7 +1976,8 @@ export const STR: Record<Lang, Strings> = {
     gateErrorSignup: "অ্যাকাউন্ট তৈরি করা যায়নি — সম্ভবত ইমেইলটি ইতিমধ্যে নিবন্ধিত।",
     gateGuest: "এখনই না — অতিথি মোড",
     gateGuestSub: "অ্যাকাউন্ট নেই? সাথে সাথে খেলুন। শেখার খবর এই ডিভাইসেই থাকে, ব্যক্তিগত ও বিজ্ঞাপনমুক্ত।",
-    gatePrivacy: "🔒 কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই, বাচ্চার ডেটা বিক্রি নেই। আপনার অ্যাকাউন্ট শুধু তাদের শেখার খবর নিরাপদ রাখে।",
+    // #1541 — BN mirror of the COPPA-age + data-location + export/delete copy.
+    gatePrivacy: "🔒 বয়স ২–১৩। কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই, ডেটা বিক্রি নেই। আমরা শুধু যা কাজের জন্য দরকার তা রাখি — আপনার বাচ্চার নাম ও অগ্রগতি — আর আপনি যেকোনো সময় এক্সপোর্ট বা মুছে ফেলতে পারেন।",
     gateWelcome: (name) => `হাই ${name} 👋 — আপনার বাচ্চা যা শিখবে`,
     gatePower: "আপনি সবসময় মা-বাবার প্যানেল → বাচ্চারা যা শেখে থেকে ফিরে আসতে পারেন।",
     gateContinue: "শেখা শুরু করুন →",

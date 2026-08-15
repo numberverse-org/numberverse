@@ -28,6 +28,16 @@ type Category = {
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`);
 
+/** #1544 — same API base resolution as lib/api.ts, so the authenticated export
+ *  downloads work on the demo/tunnel build, LAN dev, and production alike. */
+const API =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== "undefined"
+    ? window.location.protocol === "https:"
+      ? "/api/v1"
+      : `http://${window.location.hostname}:8000/api/v1`
+    : "http://127.0.0.1:8000/api/v1");
+
 const CATEGORIES: Category[] = [
   {
     id: "learning",
@@ -92,6 +102,11 @@ export default function OnDeviceData() {
   const [version, setVersion] = useState(0);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deletedMsg, setDeletedMsg] = useState<string | null>(null);
+  // #1543 — one-shot clear of every category (single confirmation).
+  const [confirmingAll, setConfirmingAll] = useState(false);
+  // #1544 — authenticated family-data downloads.
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setVersion((v) => v + 1);
@@ -110,6 +125,47 @@ export default function OnDeviceData() {
     setDeletedMsg(`${cat.emoji} ${cat.title} cleared from this device.`);
     refresh();
     window.setTimeout(() => setDeletedMsg(null), 4000);
+  };
+
+  // #1543 — the union of every category's keys, removed in one confirmation.
+  const clearAll = () => {
+    const allKeys = new Set(CATEGORIES.flatMap((c) => c.keys));
+    allKeys.forEach((k) => window.localStorage.removeItem(k));
+    setDeletedMsg(`🧹 Cleared all ${allKeys.size} on-device keys from this browser.`);
+    setConfirmingAll(false);
+    refresh();
+    window.setTimeout(() => setDeletedMsg(null), 4000);
+  };
+
+  // #1544 — fetch an authenticated export with the token the portal already
+  // holds, then turn the response into a real client-side file download.
+  const downloadAuthed = async (path: string, filename: string) => {
+    const token = window.localStorage.getItem("nv_parent_token");
+    if (!token) {
+      setExportMsg("Sign in again to download your family's data.");
+      return;
+    }
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const res = await fetch(`${API}${path}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setExportMsg("Couldn't download that file — check your connection and try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const presentEntries = (entries: { key: string; bytes: number; summary: string | null }[]) =>
@@ -177,16 +233,54 @@ export default function OnDeviceData() {
       })}
 
       <hr />
-      <div className="row-buttons" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        className="row-buttons"
+        style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}
+      >
         <p className="muted small" style={{ margin: 0 }}>
-          Total on this device: <strong>{fmt(totalBytes)}</strong> · server-side data is separate and can be{" "}
-          <a href="/api/v1/export.csv" onClick={(e) => e.preventDefault()} className="muted">
-            exported
-          </a>{" "}
-          from your account.
+          Total on this device: <strong>{fmt(totalBytes)}</strong> · server-side data is separate and can be
+          downloaded from your account below.
         </p>
-        {deletedMsg && <p className="ok" style={{ margin: 0 }}>{deletedMsg}</p>}
+        <div className="row-buttons" style={{ gap: 8, flexWrap: "wrap" }}>
+          {confirmingAll ? (
+            <div className="confirm-group">
+              <button className="btn danger" onClick={clearAll}>
+                Yes, clear everything
+              </button>
+              <button className="btn" onClick={() => setConfirmingAll(false)}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button className="btn danger" disabled={totalBytes === 0} onClick={() => setConfirmingAll(true)}>
+              Clear all
+            </button>
+          )}
+          <button
+            className="btn"
+            disabled={exporting}
+            onClick={() => void downloadAuthed("/export", "numberverse-backup.json")}
+          >
+            Download full backup
+          </button>
+          <button
+            className="btn"
+            disabled={exporting}
+            onClick={() => void downloadAuthed("/export.csv", "numberverse-round-history.csv")}
+          >
+            round history (spreadsheet)
+          </button>
+        </div>
       </div>
+      {(deletedMsg || exportMsg) && (
+        <div
+          className="row-buttons"
+          style={{ justifyContent: "space-between", alignItems: "center", marginTop: 8 }}
+        >
+          {deletedMsg ? <p className="ok" style={{ margin: 0 }}>{deletedMsg}</p> : <span />}
+          {exportMsg ? <p className="err" style={{ margin: 0 }}>{exportMsg}</p> : <span />}
+        </div>
+      )}
     </section>
   );
 }

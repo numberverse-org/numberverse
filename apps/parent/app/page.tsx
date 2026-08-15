@@ -134,7 +134,9 @@ export default function ParentDashboard() {
 
   const [editName, setEditName] = useState("");
   const [editAvatar, setEditAvatar] = useState("🦊");
-  const [editBirthYear, setEditBirthYear] = useState(2021);
+  // #1540 — a 6-year-old is a more common starter than the old hardcoded
+  // age-5 cohort; parents can still change it before the kid is created.
+  const [editBirthYear, setEditBirthYear] = useState(() => new Date().getFullYear() - 6);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -406,6 +408,15 @@ export default function ParentDashboard() {
     setAuthState("checking");
     validateToken(tok).then((verdict) => {
       if (verdict === "ok") {
+        // #1538 — ?welcome=1 (from signup or first-run login) opens the #246
+        // onboarding wizard once, then cleans the URL so a reload doesn't
+        // re-trigger it. Matches the empty-kids onboarding logic in refreshAll.
+        if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("welcome") === "1") {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("welcome");
+          window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+          if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
+        }
         // Only a token the API accepts unlocks the dashboard. This is the real
         // gate: presence of ANY string in nv_parent_token (shared, stale, or
         // forged — the kid app writes the same key) no longer grants access.
@@ -573,6 +584,12 @@ export default function ParentDashboard() {
 
   async function handleCreate() {
     if (!token || !editName.trim()) return;
+    // #1539 — validate the same 2010..2030 range the API schema enforces, and
+    // show a field-specific message instead of a misleading connectivity error.
+    if (editBirthYear < 2010 || editBirthYear > 2030) {
+      setError(WIZARD_LANGS[wizLang].birthRangeErr);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -598,6 +615,12 @@ export default function ParentDashboard() {
    *  kept (offline-friendly retry — nothing typed is ever lost). */
   async function handleOnboardCreate() {
     if (!token || !editName.trim() || onboardBusy) return;
+    // #1539 — same range guard as handleCreate, but the wizard keeps its own
+    // inline error so the entered name/year stay put for a one-click retry.
+    if (editBirthYear < 2010 || editBirthYear > 2030) {
+      setOnboardErr(WIZARD_LANGS[wizLang].birthRangeErr);
+      return;
+    }
     setOnboardBusy(true);
     setOnboardErr(null);
     const name = editName.trim();
@@ -1187,8 +1210,18 @@ export default function ParentDashboard() {
                 min={2010}
                 max={2030}
                 value={editBirthYear}
-                onChange={(e) => setEditBirthYear(Number(e.target.value) || 2021)}
+                onChange={(e) => {
+                  // #1539 — ignore out-of-range / empty input rather than
+                  // silently snapping it to a wrong default.
+                  if (e.target.value === "") return;
+                  const v = Number(e.target.value);
+                  if (v >= 2010 && v <= 2030) setEditBirthYear(v);
+                }}
               />
+              {/* #1540 — keep the WHY visible right at the field. */}
+              {editBirthYear >= 2010 && editBirthYear <= 2030 && (
+                <span className="hint">{WIZARD_LANGS[wizLang].birthHint}</span>
+              )}
             </label>
           </div>
           <div className="row-buttons">

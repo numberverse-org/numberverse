@@ -76,6 +76,13 @@ spreadsheets). Rules:
 - **Your data, your hands** — nothing is shared, telemetrized, or cached; the
   export is a plain file download with a `Content-Disposition` attachment.
 
+The portal's 🛡️ **On-device data** screen (#262) surfaces both downloads
+in-browser: **Download full backup** fetches `/api/v1/export` with the stored
+parent token and saves it as `numberverse-backup.json`, and **round history
+(spreadsheet)** fetches `/api/v1/export.csv` the same authenticated way. They
+are the same two server endpoints above — no extra tracking or caching is
+added by the button.
+
 ## What the audit found
 
 - **Every field is either required for the app's function or already
