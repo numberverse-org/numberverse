@@ -1,4 +1,4 @@
-import { useKidStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncEvent } from "./store";
+import { useKidStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncChannel, type SyncEvent } from "./store";
 import { hashParentSecret, verifyParentSecret } from "./lib/pinHash";
 
 /**
@@ -512,6 +512,42 @@ function resetIdentity(): void {
 
 let syncing = false;
 
+/* ── #1031 — retry backoff for the always-sync heartbeat ────────────────
+ * A flat 30s interval hammered a failing server (or burned battery offline).
+ * On consecutive failures the gap grows exponentially to 5min with ±20%
+ * jitter; ANY confirmed server interaction resets it. Reconnect/foreground
+ * also reset (a fresh chance — no backoff). */
+const SYNC_BASE_MS = 30_000;
+const SYNC_MAX_MS = 300_000;
+let syncFailStreak = 0;
+
+function syncBackoffDelay(): number {
+  if (syncFailStreak <= 0) return SYNC_BASE_MS;
+  const exp = Math.min(SYNC_BASE_MS * 2 ** Math.min(syncFailStreak, 6), SYNC_MAX_MS);
+  return exp * (0.8 + Math.random() * 0.4); // ±20% jitter
+}
+
+/** Report one channel's sync outcome to the shared backoff. `ok` = the server
+ *  confirmed the POST (any success resets the streak — the network works). */
+function reportSyncOutcome(ok: boolean): void {
+  syncFailStreak = ok ? 0 : Math.min(syncFailStreak + 1, 8);
+}
+
+/** #1029 — the currently-active auth token (parent account takes precedence
+ *  over the anonymous device account). Re-read at SEND time so a sign-out/in
+ *  that raced the heartbeat can't post to the old account. */
+function currentAuthToken(): string | null {
+  return localStorage.getItem(LS.parentToken) ?? localStorage.getItem(LS.deviceToken);
+}
+
+/** #1029 — the captured identity predates a sign-out/in; drop this drain and
+ *  re-resolve fresh next heartbeat so the kid's progress lands on the CURRENT
+ *  account (never silently on the old parent's profile). */
+function dropStaleIdentity(channel: SyncChannel): void {
+  resetIdentity();
+  useKidStore.getState().setChannelSyncState(channel, "idle");
+}
+
 /** Drain the persisted outbox to the server (one batch per call, batching the
  *  rest). Safe to call from anywhere, any number of times — concurrent calls
  *  share the lock and never double-post. A successful batch instantly drains
@@ -519,9 +555,9 @@ let syncing = false;
  *  heartbeat is only the safety net for a failed/offline send. */
 export async function syncProgress(): Promise<void> {
   if (syncing) return;
-  const { pending, setSyncState } = useKidStore.getState();
+  const { pending, setChannelSyncState } = useKidStore.getState();
   if (pending.length === 0) {
-    setSyncState("idle");
+    setChannelSyncState("progress", "idle");
     return;
   }
   // #264 — offline-first contract: never let the sync path fire network
@@ -529,16 +565,25 @@ export async function syncProgress(): Promise<void> {
   // breaks the "no network calls" guarantee). navigator.onLine is the browser's
   // offline flag; the 30s heartbeat / online + visibility listeners re-arm us.
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    setSyncState("offline");
+    setChannelSyncState("progress", "offline");
     // #1556 — persist the parent-visible signal so the portal can see the
     // outbox is not draining (offline), not silently idle.
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
+    reportSyncOutcome(false);
     return;
   }
   const identity = await ensureIdentity();
   if (!identity) {
-    setSyncState("offline");
+    setChannelSyncState("progress", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
+    reportSyncOutcome(false);
+    return;
+  }
+  // #1029 — a sign-out/in may have raced the heartbeat: the captured identity
+  // still points at the OLD account. Never post to it; drop the drain and let
+  // the next heartbeat re-resolve against the currently-active token.
+  if (currentAuthToken() !== identity.token) {
+    dropStaleIdentity("progress");
     return;
   }
   syncing = true;
@@ -558,10 +603,10 @@ export async function syncProgress(): Promise<void> {
       // from localKids()) and drains. A genuinely-removed server kid surfaces
       // as a /progress 404 → error state, events stay queued (never silently
       // lost) — the safe failure mode.
-      setSyncState("idle");
+      setChannelSyncState("progress", "idle");
       return; // drained stays false → heartbeat retries, no hot loop
     }
-    setSyncState("syncing");
+    setChannelSyncState("progress", "syncing");
     // #9 — carry each kid's current coin wallet with the batch so the server
     // keeps the max (newest-wins) and a second device can restore it.
     const coins: Record<string, number> = {};
@@ -587,20 +632,33 @@ export async function syncProgress(): Promise<void> {
       }),
     });
     if (res.ok) {
-      const done = new Set(mapped.map((e) => e.uid));
+      // #1026 — the server band-locks stale-catalog / over-band events and
+      // reports their uids. NEVER clear what wasn't recorded: keep the skipped
+      // events queued so the parent sees a stuck outbox (and raising the band
+      // lets them drain) instead of silently losing real progress. Only clear
+      // exactly what the server persisted.
+      const body = (await res.json().catch(() => null)) as { band_skipped_uids?: string[] } | null;
+      const skipped = new Set(body?.band_skipped_uids ?? []);
+      const recorded = mapped.filter((e) => !skipped.has(e.uid));
+      const done = new Set(recorded.map((e) => e.uid));
       useKidStore.getState().clearPending(done);
-      setSyncState("ok");
+      setChannelSyncState("progress", "ok");
       // #1556 — a confirmed server drain: clear the error and stamp success.
       useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
-      drained = true;
+      reportSyncOutcome(true);
+      // Only a fully-recorded batch hot-loops; band-skipped events stay queued
+      // and wait for the next heartbeat (no spin, no silent drop).
+      drained = done.size === mapped.length;
     } else {
-      setSyncState("error");
+      setChannelSyncState("progress", "error");
       // #1556 — 401/403/429/5xx etc: the outbox is stuck; make it parent-visible.
       useKidStore.getState().setSyncSignal({ lastError: "error" });
+      reportSyncOutcome(false);
     }
   } catch {
-    setSyncState("offline");
+    setChannelSyncState("progress", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
+    reportSyncOutcome(false);
   } finally {
     syncing = false;
   }
@@ -619,15 +677,25 @@ let storySyncing = false;
  *  lets the heartbeat/online/visibility events retry what was missed. */
 export async function syncStories(): Promise<void> {
   if (storySyncing) return;
-  const { stories } = useKidStore.getState();
-  if (stories.length === 0) return;
+  const { stories, setChannelSyncState } = useKidStore.getState();
+  if (stories.length === 0) {
+    // #1027 — empty channel: nothing in flight, never leave a stale 'syncing'.
+    setChannelSyncState("stories", "idle");
+    return;
+  }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    useKidStore.getState().setSyncState("offline");
+    setChannelSyncState("stories", "offline");
+    reportSyncOutcome(false);
     return;
   }
   const identity = await ensureIdentity();
   if (!identity) {
-    useKidStore.getState().setSyncState("offline");
+    setChannelSyncState("stories", "offline");
+    reportSyncOutcome(false);
+    return;
+  }
+  if (currentAuthToken() !== identity.token) {
+    dropStaleIdentity("stories");
     return;
   }
   storySyncing = true;
@@ -635,11 +703,13 @@ export async function syncStories(): Promise<void> {
     const batch = stories.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((st) => identity.kidFor(st.kidId) !== null);
     if (mapped.length === 0) {
-      // #1025 — never destructively clear on a mapping miss (same reasoning as
-      // syncProgress). Keep the stories queued; the heartbeat re-maps + retries.
+      // #1025/#1030 — never destructively clear on a mapping miss (same
+      // reasoning as syncProgress). Keep the stories queued; the heartbeat
+      // re-maps + retries. Surface idle so the indicator isn't stuck stale.
+      setChannelSyncState("stories", "idle");
       return;
     }
-    useKidStore.getState().setSyncState("syncing");
+    setChannelSyncState("stories", "syncing");
     const res = await fetch(`${API}/stories`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
@@ -661,14 +731,20 @@ export async function syncStories(): Promise<void> {
       ),
     });
     if (res.ok) {
-      const done = new Set(mapped.map((st) => st.uid));
+      // #1026 — same rule as /progress: never clear band-skipped stories.
+      const body = (await res.json().catch(() => null)) as { band_skipped_uids?: string[] } | null;
+      const skipped = new Set(body?.band_skipped_uids ?? []);
+      const done = new Set(mapped.filter((st) => !skipped.has(st.uid)).map((st) => st.uid));
       useKidStore.getState().clearStories(done);
-      useKidStore.getState().setSyncState("ok");
+      setChannelSyncState("stories", "ok");
+      reportSyncOutcome(true);
     } else {
-      useKidStore.getState().setSyncState("error");
+      setChannelSyncState("stories", "error");
+      reportSyncOutcome(false);
     }
   } catch {
-    useKidStore.getState().setSyncState("offline");
+    setChannelSyncState("stories", "offline");
+    reportSyncOutcome(false);
   } finally {
     storySyncing = false;
   }
@@ -678,8 +754,11 @@ export async function syncStories(): Promise<void> {
  *  eagerly drain it. Best-effort: if we're offline the heartbeat keeps retrying
  *  and the queue stays intact (never dropped before a confirmed send). */
 export function drainStoriesIfFull(): void {
-  const { stories, syncState } = useKidStore.getState();
-  if (stories.length >= STORY_QUEUE_CAP && syncState !== "syncing") {
+  // #1028 — guard on THIS channel's module lock, not the shared aggregate
+  // syncState: syncProgress() setting 'syncing' must never block a stories
+  // drain (and a stories 'syncing' must never spuriously block it either).
+  const { stories } = useKidStore.getState();
+  if (stories.length >= STORY_QUEUE_CAP && !storySyncing) {
     void syncStories();
   }
 }
@@ -692,15 +771,25 @@ let accelSyncing = false;
  *  heartbeat/online/visibility events retry what was missed. */
 export async function syncAccel(): Promise<void> {
   if (accelSyncing) return;
-  const { accel } = useKidStore.getState();
-  if (accel.length === 0) return;
+  const { accel, setChannelSyncState } = useKidStore.getState();
+  if (accel.length === 0) {
+    // #1027 — empty channel: never leave a stale 'syncing'.
+    setChannelSyncState("accel", "idle");
+    return;
+  }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    useKidStore.getState().setSyncState("offline");
+    setChannelSyncState("accel", "offline");
+    reportSyncOutcome(false);
     return;
   }
   const identity = await ensureIdentity();
   if (!identity) {
-    useKidStore.getState().setSyncState("offline");
+    setChannelSyncState("accel", "offline");
+    reportSyncOutcome(false);
+    return;
+  }
+  if (currentAuthToken() !== identity.token) {
+    dropStaleIdentity("accel");
     return;
   }
   accelSyncing = true;
@@ -708,11 +797,13 @@ export async function syncAccel(): Promise<void> {
     const batch = accel.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((a) => identity.kidFor(a.kidId) !== null);
     if (mapped.length === 0) {
-      // #1025 — never destructively clear on a mapping miss (same reasoning as
-      // syncProgress). Keep the entries queued; the heartbeat re-maps + retries.
+      // #1025/#1030 — never destructively clear on a mapping miss (same
+      // reasoning as syncProgress). Keep the entries queued; the heartbeat
+      // re-maps + retries. Surface idle so the indicator isn't stuck stale.
+      setChannelSyncState("accel", "idle");
       return;
     }
-    useKidStore.getState().setSyncState("syncing");
+    setChannelSyncState("accel", "syncing");
     const res = await fetch(`${API}/acceleration`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
@@ -728,14 +819,21 @@ export async function syncAccel(): Promise<void> {
       ),
     });
     if (res.ok) {
-      const done = new Set(mapped.map((a) => a.uid));
+      // The acceleration endpoint does no band-skipping; still parse the body
+      // defensively so a future band_skipped_uids field never clears real rows.
+      const body = (await res.json().catch(() => null)) as { band_skipped_uids?: string[] } | null;
+      const skipped = new Set(body?.band_skipped_uids ?? []);
+      const done = new Set(mapped.filter((a) => !skipped.has(a.uid)).map((a) => a.uid));
       useKidStore.getState().clearAccel(done);
-      useKidStore.getState().setSyncState("ok");
+      setChannelSyncState("accel", "ok");
+      reportSyncOutcome(true);
     } else {
-      useKidStore.getState().setSyncState("error");
+      setChannelSyncState("accel", "error");
+      reportSyncOutcome(false);
     }
   } catch {
-    useKidStore.getState().setSyncState("offline");
+    setChannelSyncState("accel", "offline");
+    reportSyncOutcome(false);
   } finally {
     accelSyncing = false;
   }
@@ -744,8 +842,11 @@ export async function syncAccel(): Promise<void> {
 /** 🚀 #249 — eager drain when the acceleration queue hits its cap (same
  *  best-effort contract as drainStoriesIfFull — nothing dropped pre-confirm). */
 export function drainAccelIfFull(): void {
-  const { accel, syncState } = useKidStore.getState();
-  if (accel.length >= STORY_QUEUE_CAP && syncState !== "syncing") {
+  // #1028 — guard on THIS channel's module lock (same reasoning as
+  // drainStoriesIfFull): the shared aggregate syncState is not this channel's
+  // busy flag.
+  const { accel } = useKidStore.getState();
+  if (accel.length >= STORY_QUEUE_CAP && !accelSyncing) {
     void syncAccel();
   }
 }
@@ -871,25 +972,51 @@ export async function restoreServerState(): Promise<void> {
 }
 
 /** Kick off always-sync: immediate drain (clears offline backlog on open),
- *  a 30s heartbeat, plus instant retries on reconnect / app-foreground. */
+ *  a self-arming heartbeat with exponential backoff + jitter on repeated
+ *  failure (#1031 — a flat 30s interval hammered a failing server / burned
+ *  battery while offline; the gap now grows to 5min and resets on any success
+ *  or reconnect/foreground), plus instant retries on reconnect/foreground. */
 export function startAutoSync(): () => void {
+  let timer = 0;
+  let scheduled = false;
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    timer = window.setTimeout(() => {
+      scheduled = false;
+      tick();
+    }, syncBackoffDelay());
+  };
   const tick = () => {
     void syncProgress();
     void syncStories();
     void syncAccel(); // 🚀 #249 — acceleration outbox drains with the same heartbeat
     // #9 — second-device catch-up: throttled inside.
     void restoreServerState();
+    schedule();
+  };
+  const onOnline = () => {
+    syncFailStreak = 0; // a reconnect is a fresh chance — no backoff
+    if (scheduled) {
+      window.clearTimeout(timer);
+      scheduled = false;
+    }
+    tick();
+  };
+  const onVisible = () => {
+    if (document.visibilityState !== "visible") return;
+    syncFailStreak = 0;
+    if (scheduled) {
+      window.clearTimeout(timer);
+      scheduled = false;
+    }
+    tick();
   };
   tick();
-  const iv = window.setInterval(tick, 30_000);
-  const onOnline = () => tick();
-  const onVisible = () => {
-    if (document.visibilityState === "visible") tick();
-  };
   window.addEventListener("online", onOnline);
   document.addEventListener("visibilitychange", onVisible);
   return () => {
-    window.clearInterval(iv);
+    window.clearTimeout(timer);
     window.removeEventListener("online", onOnline);
     document.removeEventListener("visibilitychange", onVisible);
   };

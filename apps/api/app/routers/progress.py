@@ -105,8 +105,17 @@ async def record_progress(
     # #275 — band lock: drop events for skills beyond the kid's max_band (or any
     # skill we can't verify when a cap is set). Never lets a capped kid persist
     # out-of-band progress, even from a tampered client.
+    # #1026 — report the dropped uids so the client can REQUEUE (not clear) the
+    # band-skipped rounds: a stale catalog / parent-lowered-cap must surface as a
+    # stuck outbox, never silent permanent loss.
     caps = await _load_band_caps(db, kid_ids)
-    events = [e for e in body.events if skill_band_allowed(e.skill_id, SKILL_BANDS, caps.get(e.kid_id))]
+    events = []
+    band_skipped_uids: list[str] = []
+    for e in body.events:
+        if skill_band_allowed(e.skill_id, SKILL_BANDS, caps.get(e.kid_id)):
+            events.append(e)
+        elif e.uid is not None:
+            band_skipped_uids.append(e.uid)
     band_skipped = len(body.events) - len(events)
 
     duplicates_skipped = 0
@@ -184,6 +193,8 @@ async def record_progress(
         "recorded": len(events) - duplicates_skipped,
         "duplicates_skipped": duplicates_skipped,
         "band_skipped": band_skipped,
+        # #1026 — uids the client must keep queued (band-locked, never recorded).
+        "band_skipped_uids": band_skipped_uids,
     }
 
 
@@ -281,8 +292,15 @@ async def record_stories(
 
     # #275 — band lock on stories too: a capped kid must not accumulate learning
     # moments for out-of-band skills (same rule as /progress).
+    # #1026 — report the dropped uids so the client requeues (never clears).
     caps = await _load_band_caps(db, kid_ids)
-    stories = [s for s in body if skill_band_allowed(s.skill_id, SKILL_BANDS, caps.get(s.kid_id))]
+    stories = []
+    band_skipped_uids: list[str] = []
+    for s in body:
+        if skill_band_allowed(s.skill_id, SKILL_BANDS, caps.get(s.kid_id)):
+            stories.append(s)
+        elif s.uid is not None:
+            band_skipped_uids.append(s.uid)
     band_skipped = len(body) - len(stories)
 
     # #950 — server-side per-kid backlog cap. If any kid already has >=
@@ -328,7 +346,13 @@ async def record_stories(
     result = await db.execute(stmt)
     await db.commit()
     inserted = result.rowcount if result.rowcount is not None else len(rows)
-    return {"recorded": inserted, "duplicates_skipped": len(rows) - inserted, "band_skipped": band_skipped}
+    return {
+        "recorded": inserted,
+        "duplicates_skipped": len(rows) - inserted,
+        "band_skipped": band_skipped,
+        # #1026 — uids the client must keep queued (band-locked, never recorded).
+        "band_skipped_uids": band_skipped_uids,
+    }
 
 
 # #853 — same synchronous-commit contract as /progress: 200, not 202 — the body

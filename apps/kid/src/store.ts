@@ -77,6 +77,22 @@ export interface AccelEvent {
 /** Live indicator of the background sync (for the home/parent screens). */
 export type SyncState = "idle" | "syncing" | "ok" | "offline" | "error";
 
+/** #1027 — which outbox owns a sync-state write. Each channel tracks its own
+ *  terminal state so a success on one never clobbers an error on another (the
+ *  three drains share one 30s heartbeat and used to stomp the shared `syncState`). */
+export type SyncChannel = "progress" | "stories" | "accel";
+
+/** #1027 — collapse the three channel states into one UI-facing aggregate.
+ *  Worst state wins: error > offline > syncing > ok > idle. */
+export function aggregateSyncState(c: Record<SyncChannel, SyncState>): SyncState {
+  const all = [c.progress, c.stories, c.accel];
+  if (all.includes("error")) return "error";
+  if (all.includes("offline")) return "offline";
+  if (all.includes("syncing")) return "syncing";
+  if (all.includes("ok")) return "ok";
+  return "idle";
+}
+
 /** #1556 — durable, parent-visible sync signal. Mirrored to the `nv_sync_signal`
  *  localStorage key (same origin) so the parent portal can read "last success /
  *  backlog / last error" even though only the kid app writes it. */
@@ -522,6 +538,9 @@ interface KidState {
   accel: AccelEvent[];
   /** Live sync indicator (transient, not persisted). */
   syncState: SyncState;
+  /** #1027 — per-outbox channel state (progress/stories/accel). Each channel
+   *  tracks its own terminal state; the aggregate (worst-wins) → `syncState`. */
+  syncChannels: Record<SyncChannel, SyncState>;
   /** #1556 — durable sync signal (persisted + mirrored to `nv_sync_signal`). */
   syncSignal: SyncSignal;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
@@ -563,7 +582,8 @@ interface KidState {
   ) => void;
   /** Drop the acceleration entries that were just posted (by uid). */
   clearAccel: (uids: Set<string>) => void;
-  setSyncState: (s: SyncState) => void;
+  /** #1027 — write one channel's sync state; recomputes the aggregate `syncState`. */
+  setChannelSyncState: (ch: SyncChannel, s: SyncState) => void;
   /** #1556 — update + persist the parent-visible sync signal. */
   setSyncSignal: (patch: Partial<SyncSignal>) => void;
   skillFor: (kidId: string, skillId: string) => SkillState;
@@ -819,6 +839,7 @@ export const useKidStore = create<KidState>()(
       stories: [],
       accel: [],
       syncState: "idle",
+      syncChannels: { progress: "idle", stories: "idle", accel: "idle" },
       syncSignal: DEFAULT_SYNC_SIGNAL,
       skills: {},
       mistakes: {},
@@ -1030,7 +1051,13 @@ export const useKidStore = create<KidState>()(
       },
       clearAccel: (uids) =>
         set((s) => (uids.size ? { accel: (s.accel ?? []).filter((a) => !uids.has(a.uid)) } : s)),
-      setSyncState: (syncState) => set({ syncState }),
+      // #1027 — per-channel write, aggregate recomputed from all three channels.
+      setChannelSyncState: (ch, s) =>
+        set((st) => {
+          const base: Record<SyncChannel, SyncState> = st.syncChannels ?? { progress: "idle", stories: "idle", accel: "idle" };
+          const syncChannels = { ...base, [ch]: s };
+          return { syncChannels, syncState: aggregateSyncState(syncChannels) };
+        }),
       setSyncSignal: (patch) => {
         const pendingCount = get().pending?.length ?? 0;
         set((s) => ({
