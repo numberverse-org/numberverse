@@ -24,31 +24,86 @@ import Phaser from "phaser";
  * one frame. So we (a) skip the layout when width/height did not actually
  * change, and (b) coalesce same-frame events into a single rAF, so a scene
  * never lays out more than once per frame.
+ *
+ * #940 — that rAF used to be per-scene: with two scenes live at once (a fade
+ * transition, or a not-yet-shutdown scene) one resize burst scheduled TWO
+ * rAFs and ran TWO layout() passes in the same frame. The coalescer is now
+ * keyed by the game-level ScaleManager, so every active scene's layout runs
+ * in ONE shared rAF per frame, no matter how many scenes are listening.
+ *
+ * #941 — inactive/stopped scenes used to keep a stale `this`-capturing closure
+ * on the shared emitter until SHUTDOWN finally removed it. The listener is now
+ * removed on BOTH shutdown and destroy, and the shared rAF re-checks that the
+ * scene is still active before calling its layout, so a late RESIZE delivery
+ * can never lay out a hibernated scene.
  */
+
+type PendingResize = {
+  raf: number;
+  handlers: Set<ResizeHandler>;
+};
+
+type ResizeHandler = {
+  scene: Phaser.Scene;
+  layout: () => void;
+  lastW: number;
+  lastH: number;
+};
+
+/** One coalescing bucket per ScaleManager (i.e. per Game). */
+const pending = new WeakMap<Phaser.Scale.ScaleManager, PendingResize>();
+
+function schedule(scale: Phaser.Scale.ScaleManager, handler: ResizeHandler) {
+  let bucket = pending.get(scale);
+  if (!bucket) {
+    bucket = { raf: 0, handlers: new Set() };
+    pending.set(scale, bucket);
+  }
+  bucket.handlers.add(handler);
+  if (bucket.raf) return;
+  bucket.raf = window.requestAnimationFrame(() => {
+    bucket!.raf = 0;
+    const run = Array.from(bucket!.handlers);
+    bucket!.handlers.clear();
+    for (const h of run) {
+      // #941 — the scene may have been stopped between the RESIZE event and
+      // this frame; never lay out a scene that is no longer active.
+      if (h.scene.scene.isActive()) h.layout();
+    }
+  });
+}
+
 export function onSceneResize(scene: Phaser.Scene, fn: () => void, ctx?: unknown) {
   const layout = ctx === undefined ? fn : fn.bind(ctx);
-  let raf = 0;
-  let lastW = scene.scale.width;
-  let lastH = scene.scale.height;
+  const entry: ResizeHandler = {
+    scene,
+    layout,
+    lastW: scene.scale.width,
+    lastH: scene.scale.height,
+  };
   const handler = () => {
     const w = scene.scale.width;
     const h = scene.scale.height;
     // #1108 — refresh() emits RESIZE unconditionally; skip no-op frames.
-    if (w === lastW && h === lastH) return;
-    lastW = w;
-    lastH = h;
-    // #1108 — coalesce: one layout per frame even if several RESIZE events
-    // land in the same frame (ResizeObserver + visualViewport both firing).
-    if (raf) return;
-    raf = window.requestAnimationFrame(() => {
-      raf = 0;
-      layout();
-    });
+    if (w === entry.lastW && h === entry.lastH) return;
+    entry.lastW = w;
+    entry.lastH = h;
+    // #940 — one rAF per frame shared by every scene on this ScaleManager.
+    schedule(scene.scale, entry);
+  };
+  const teardown = () => {
+    scene.scale.off(Phaser.Scale.Events.RESIZE, handler);
+    const bucket = pending.get(scene.scale);
+    if (bucket) {
+      bucket.handlers.delete(entry);
+      if (bucket.handlers.size === 0 && bucket.raf) {
+        window.cancelAnimationFrame(bucket.raf);
+        bucket.raf = 0;
+      }
+    }
   };
   scene.scale.on(Phaser.Scale.Events.RESIZE, handler);
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-    scene.scale.off(Phaser.Scale.Events.RESIZE, handler);
-    if (raf) window.cancelAnimationFrame(raf);
-  });
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, teardown);
+  scene.events.once(Phaser.Scenes.Events.DESTROY, teardown);
   return layout;
 }

@@ -13,6 +13,9 @@ import { startPerfProbe, stopPerfProbe } from "./perfProbe"; // #1324 — frame-
 
 let bootPromise: Promise<Game | null> | null = null;
 let current: Game | null = null;
+/** The generation `current` was created in. Lets the fast-path in `boot()`
+ *  re-check teardowns instead of trusting `current` alone (#938). */
+let currentGeneration = -1;
 let generation = 0;
 
 /** #1448 — quick, kid-friendly scene fade. Short enough to feel snappy, long
@@ -99,7 +102,11 @@ export function getGame(): Game | null {
  *  callers share the same promise. Resolves with the game, or null if a
  *  teardown happened while the chunk was loading (the caller must no-op). */
 export function boot(parent: HTMLElement): Promise<Game | null> {
-  if (current) return Promise.resolve(current);
+  // #938 — the fast path must respect the generation counter too. `teardown()`
+  // bumps `generation`, so a game still sitting in `current` from an older
+  // generation is stale and must never be handed back to a new mount.
+  if (current && currentGeneration === generation) return Promise.resolve(current);
+  current = null;
   if (!bootPromise) {
     const gen = generation;
     bootPromise = import("./engine")
@@ -107,7 +114,12 @@ export function boot(parent: HTMLElement): Promise<Game | null> {
         if (gen !== generation) return null; // torn down mid-load → never create
         const g = m.createGame(parent);
         current = g;
+        currentGeneration = gen;
         startPerfProbe(); // #1324 — only when ?nvperf=1 (or __NV_PERF_ENABLED__)
+        // #937 — success: drop the resolved closure. `current` short-circuits
+        // every later boot(), so keeping the promise only pins a stale closure
+        // (and its captured `parent` element) in memory for the app's lifetime.
+        bootPromise = null;
         return g;
       })
       .catch((e) => {
@@ -135,6 +147,7 @@ export function teardown(): void {
   generation++;
   const g = current;
   current = null;
+  currentGeneration = -1;
   bootPromise = null;
   g?.destroy(true);
   stopPerfProbe(); // #1324 — log the session summary (no-op unless ?nvperf=1)

@@ -782,8 +782,17 @@ export function answerFlash(
       .setDepth(20);
     c.add(mark);
   }
-  scene.time.delayedCall(duration, () => {
+  const cleanup = () => {
     if (g.active) g.destroy();
     if (mark && mark.active) mark.destroy();
+  };
+  const timer = scene.time.delayedCall(duration, cleanup);
+  // #935 — don't rely on the scene clock to fire this on a rapid restart. The
+  // old scene's Clock is hibernated on stop, so a pending delayedCall would
+  // otherwise survive into the restarted scene; destroy the flash graphics
+  // (and drop the timer) explicitly the moment the scene shuts down.
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    timer.remove(false);
+    cleanup();
   });
 }
