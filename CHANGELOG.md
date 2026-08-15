@@ -1,3 +1,16 @@
+## 15 Aug 2026 — 0.67.0 (kid-first UX: Google sign-in typed errors+retry, sound controls (SFX mute+parent rule+voice volume+a11y), calendar streak fixes, swipe gestures, adaptive hint ladder+first-run intro+locked-land warmth)
+
+12c09e9 merge: #1479-#1486 hints+worlds
+ee82ed8 merge: #1475-#1478 swipe gestures
+5a00a32 merge: #1471-#1474 calendar/streak
+3f8d372 merge: #1467-#1470 sound controls
+dd5d9d2 merge: #1463-#1466 Google sign-in UX
+b8d55aa fix(hints+worlds): tap-choice uses adaptive ladder, first-run intro, hint-meter cue, locked-tap warmth, honest 0/0 + unified unlock gap (#1479-#1486)
+09d22fd fix(gestures): arrow targets picked button before fire, real horizontal dominance for room flips, nudge gated on open canvas, reduced-motion affordances (#1475-#1478)
+be60e0f fix(calendar): claimed-today flag is per-tile, freeze-token warmth, no all-lock week on return, tomorrow-reward teaser (#1471-#1474)
+0a8507f fix(sound): mute covers SFX too, HUD honors parent music-off, voice volume in Settings, accessible HUD toggle (#1467-#1470)
+16ddfab fix(auth): Google sign-in — typed errors, identity-keyed restore, busy guard, HTTPS note+retry (#1463-#1466)
+
 ## 15 Aug 2026 — 0.66.0 (kid-first wave: 10 Bengali mistranslations fixed, role guardrail (require_role), bundle split boot 1.83MB→46kB, Nova3D lazy, three-vendor split, smoke-test boot-chunk floor fix)
 
 60272bc fix(deploy): smoke/rollback 100k floor rejects split boot chunk (46k) — false-negative rollback of good 0.66.0 deploy

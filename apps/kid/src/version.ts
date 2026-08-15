@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.66.0 (kid-first wave: 10 Bengali mistranslations fixed, role guardrail (require_role), bundle split boot 1.83MB→46kB, Nova3D lazy, three-vendor split, smoke-test boot-chunk floor fix)";
-export const APP_VERSION = "0.66.0";
+export const APP_BUILD = "15 Aug 2026 · 0.67.0 (kid-first UX: Google sign-in typed errors+retry, sound controls (SFX mute+parent rule+voice volume+a11y), calendar streak fixes, swipe gestures, adaptive hint ladder+first-run intro+locked-land warmth)";
+export const APP_VERSION = "0.67.0";
