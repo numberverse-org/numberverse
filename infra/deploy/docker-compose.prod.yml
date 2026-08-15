@@ -17,35 +17,59 @@ x-logging: &default-logging
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # #919 — pinned digest (no floating `16-alpine` tag): a compose pull can
+    # never silently move the DB image under a running stack. Bump deliberately.
+    image: postgres:16-alpine@sha256:44c4ee9810eff91f7eab4d822642e01115b1a9eccce4bcbdde7604752d68eac6
+    # #922 — explicit name so pg_backup.sh (and any op script) can address the
+    # container without depending on compose's generated `project-service-1`.
+    container_name: numberverse-demo-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: numberverse
-      POSTGRES_PASSWORD: numberverse_dev
-      POSTGRES_DB: numberverse
+      POSTGRES_USER: ${NV_PG_USER:-numberverse}
+      # #916/#917 — the DB password lives in .env.production (never in this
+      # versioned file); compose refuses to start if it is unset/empty.
+      POSTGRES_PASSWORD: ${NV_PG_PASSWORD:?set NV_PG_PASSWORD in .env.production}
+      POSTGRES_DB: ${NV_PG_DB:-numberverse}
     volumes:
       - nv_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U numberverse -d numberverse"]
+      test: ["CMD-SHELL", "pg_isready -U ${NV_PG_USER:-numberverse} -d ${NV_PG_DB:-numberverse}"]
       interval: 5s
       timeout: 3s
       retries: 20
     logging: *default-logging
+    # #918 — bound the DB on the shared demo box.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   api:
     build:
       context: ../..
       dockerfile: infra/deploy/Dockerfile.api
-    image: numberverse-demo-api:${NV_VERSION:-latest}   # #125 — version-tagged for rollback
+    # #125/#919 — version-tagged for rollback. NV_VERSION is REQUIRED (deploy.sh
+    # reads it from apps/kid/src/version.ts; release.sh/rollback.sh pass it
+    # explicitly) so prod never runs a floating `:latest` image.
+    image: numberverse-demo-api:${NV_VERSION:?set NV_VERSION (e.g. 0.69.0)}
     restart: unless-stopped
-    env_file: .env.production
+    env_file: ${NV_ENV_FILE:-.env.production}
     environment:
-      NV_DATABASE_URL: postgresql+psycopg://numberverse:numberverse_dev@postgres:5432/numberverse
-      NV_CORS_ORIGINS: "*"
+      # #916 — single source of truth for the DB password is NV_PG_PASSWORD.
+      # The URL is derived here so one change updates postgres + the API. Set
+      # NV_DATABASE_URL explicitly in .env.production to override (external DB).
+      NV_DATABASE_URL: ${NV_DATABASE_URL:-postgresql+psycopg://${NV_PG_USER:-numberverse}:${NV_PG_PASSWORD}@postgres:5432/${NV_PG_DB:-numberverse}}
     depends_on:
       postgres:
         condition: service_healthy
     logging: *default-logging
+    # #918 — bound FastAPI (uvicorn + optional embedding job) on the box.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
 
   web:
     build:
@@ -55,13 +79,27 @@ services:
         # Google sign-in client id — baked into the kid PWA build. Empty
         # (default) → the "Continue with Google" button is hidden entirely.
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
-    image: numberverse-demo-web:${NV_VERSION:-latest}   # #125 — version-tagged for rollback
+    image: numberverse-demo-web:${NV_VERSION:?set NV_VERSION (e.g. 0.69.0)}
     restart: unless-stopped
     ports:
       - "8080:80"   # tunnel origin + LAN fallback: http://192.168.0.104:8080
     depends_on:
       - api
+    # #920 — nginx is the tunnel origin. If it (or the upstream it proxies)
+    # goes unhealthy the tunnel must not keep routing to an unhealthy origin;
+    # wget is built into the alpine nginx image.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
     logging: *default-logging
+    # #918 — bound nginx static serving on the box.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
 volumes:
   nv_pg:

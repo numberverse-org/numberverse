@@ -27,6 +27,12 @@ services:
       timeout: 3s
       retries: 12
     logging: *default-logging
+    # #918 — dev DB gets the same kind of bounds as prod (generous, local).
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   redis:
     image: redis:7-alpine
@@ -42,6 +48,41 @@ services:
       timeout: 3s
       retries: 12
     logging: *default-logging
+    # #918 — dev Redis gets the same kind of bounds as prod.
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # #923 — dev/prod parity: opt-in containerized API that runs the SAME
+  # Dockerfile and `postgres` service hostname as prod, so dev exercises the
+  # same DB/auth topology as the box. The default `docker compose up` still
+  # leaves the API to the host hot-reload loop (`pnpm dev:api`); bring the
+  # container up with:
+  #   docker compose --profile full -f infra/docker-compose.yml up -d
+  api:
+    profiles: ["full"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    image: numberverse-api:dev
+    restart: unless-stopped
+    environment:
+      NV_ENVIRONMENT: dev
+      NV_DATABASE_URL: postgresql+psycopg://numberverse:numberverse_dev@postgres:5432/numberverse
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+    # #918 — same bounds as the prod api service.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
 
 volumes:
   numberverse_pg:

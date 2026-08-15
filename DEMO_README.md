@@ -34,12 +34,13 @@ there, not on your laptop), then prints the tunnel URL.
 
 ### First run only
 The script copies `infra/deploy/.env.production` from the example on the box.
-Edit the secrets there if you want non-defaults:
+The example ships **empty** secrets; `deploy.sh` refuses to boot until they are
+set, so edit them first:
 ```bash
 ssh munna@192.168.0.104
 cd ~/numberverse-demo/infra/deploy
-nano .env.production        # NV_JWT_SECRET, NV_ADMIN_PASSWORD
-./deploy.sh                 # or: docker compose --env-file .env.production up -d --build
+nano .env.production        # NV_PG_PASSWORD, NV_JWT_SECRET, NV_ADMIN_PASSWORD
+./deploy.sh
 ```
 
 Secrets never leave the box (rsync excludes `.env*`, and `.env.production` is
@@ -81,12 +82,12 @@ with the network off; progress syncs when a parent logs in.
 
 ```bash
 cd ~/numberverse-demo/infra/deploy
+export NV_VERSION=$(grep -oE 'APP_VERSION = "[^"]+"' ../../apps/kid/src/version.ts | head -1 | cut -d'"' -f2)
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build   # deploy
-docker compose -f docker-compose.prod.yml logs -f cloudflared                        # tunnel URL
-docker compose -f docker-compose.prod.yml logs -f api                                # API logs
-docker compose -f docker-compose.prod.yml restart cloudflared                        # fresh URL
-docker compose -f docker-compose.prod.yml down                                       # stop (keep data)
-docker compose -f docker-compose.prod.yml down -v                                    # wipe DB too
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f api     # API logs
+docker compose --env-file .env.production -f docker-compose.prod.yml restart web     # restart nginx
+docker compose --env-file .env.production -f docker-compose.prod.yml down            # stop (keep data)
+docker compose --env-file .env.production -f docker-compose.prod.yml down -v         # wipe DB too
 ```
 
 ---

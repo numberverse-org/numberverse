@@ -7,6 +7,15 @@ DEFAULT_JWT_SECRET = "dev-secret"
 DEFAULT_ADMIN_PASSWORD = "change-me-admin"
 DEV_ENVIRONMENT = "dev"
 
+# #921 — placeholder secrets that used to ship in the example env files must
+# never be accepted on a non-dev boot (they are public and forgeable).
+_JWT_SECRET_PLACEHOLDERS = {
+    DEFAULT_JWT_SECRET,
+    "change-me",
+    "change-me-32-chars-minimum-random-secret",
+}
+_ADMIN_PASSWORD_PLACEHOLDERS = {DEFAULT_ADMIN_PASSWORD, "change-me"}
+
 
 class Settings(BaseSettings):
     # nv_ prefix avoids clashing with host env vars (e.g. DATABASE_URL from other infra)
@@ -47,22 +56,31 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# #842 — fail fast before any tables are created or routers are served. A
-# non-dev deploy with the built-in dev JWT secret (forgeable tokens) or admin
-# password (public, guessable console login) is wide open; make the operator
-# set explicit values instead of booting with a security hole.
+# #842/#921 — fail fast before any tables are created or routers are served. A
+# non-dev deploy with the built-in dev JWT secret (forgeable tokens), a public
+# admin password (guessable console login), or wildcard CORS is wide open; make
+# the operator set explicit values instead of booting with a security hole.
 if settings.environment.strip().lower() != DEV_ENVIRONMENT:
-    _defaulted = []
-    if settings.jwt_secret == DEFAULT_JWT_SECRET:
-        _defaulted.append("NV_JWT_SECRET")
-    if settings.admin_password == DEFAULT_ADMIN_PASSWORD:
-        _defaulted.append("NV_ADMIN_PASSWORD")
-    if _defaulted:
+    _problems = []
+    if (
+        not settings.jwt_secret
+        or not settings.jwt_secret.strip()
+        or settings.jwt_secret in _JWT_SECRET_PLACEHOLDERS
+    ):
+        _problems.append("NV_JWT_SECRET (set a strong, non-default value)")
+    if (
+        not settings.admin_password
+        or not settings.admin_password.strip()
+        or settings.admin_password in _ADMIN_PASSWORD_PLACEHOLDERS
+    ):
+        _problems.append("NV_ADMIN_PASSWORD (set a strong, non-default value)")
+    if "*" in settings.origins:
+        _problems.append("NV_CORS_ORIGINS (wildcard '*' is not allowed outside dev)")
+    if _problems:
         raise RuntimeError(
             f"Refusing to start: NV_ENVIRONMENT={settings.environment!r} is not a "
-            "dev environment, but the built-in dev credentials are still in "
-            "effect. Set NV_JWT_SECRET and NV_ADMIN_PASSWORD to strong, "
-            f"non-default values (currently unchanged: {', '.join(_defaulted)}). "
+            "dev environment, but these production settings are still unsafe: "
+            f"{', '.join(_problems)}. Set them to strong, non-default values. "
             "Local dev/test runs only: set NV_ENVIRONMENT=dev to keep the "
             "built-in defaults."
         )
