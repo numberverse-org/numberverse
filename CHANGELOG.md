@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.75.0 (event-sync reliability: progress dedup+BKT replay safe (#1023), timestamp preserved (#1024), no destructive outbox clears (#1025))
+
+026678c 🔄 event-sync reliability: #1023 progress dedup + #1024 timestamp + #1025 no destructive clears
+
 ## 16 Aug 2026 — 0.74.0 (batch-5: parent Moni control (#1041-1043) — strictness synced via KidSettings, portal + kid app both directions)
 
 88ed067 feat: parent-control of Moni strictness — synced via KidSettings (#1041/#1042/#1043)

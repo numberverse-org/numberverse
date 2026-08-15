@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.74.0 (batch-5: parent Moni control (#1041-1043) — strictness synced via KidSettings, portal + kid app both directions)";
-export const APP_VERSION = "0.74.0";
+export const APP_BUILD = "16 Aug 2026 · 0.75.0 (event-sync reliability: progress dedup+BKT replay safe (#1023), timestamp preserved (#1024), no destructive outbox clears (#1025))";
+export const APP_VERSION = "0.75.0";
