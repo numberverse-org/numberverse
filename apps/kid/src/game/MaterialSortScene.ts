@@ -22,6 +22,10 @@ const CFG: BinSortConfig = {
   background: "kitchen",
   grid: 4,
   rounds: 3,
+  // #1058 — the shared time ramp: each item has a shrinking countdown that
+  // tightens as difficulty rises (4-bin material fluency pays). Generous floor
+  // so the wider grid never gets an unfair window.
+  timePerItemMs: [14000, 13000, 12000, 11000, 10000, 9000],
   bins: [
     { value: "wood", key: "matBinWood", icon: "🪵", verdictKey: "matVerdictWood" },
     { value: "metal", key: "matBinMetal", icon: "🔩", verdictKey: "matVerdictMetal" },

@@ -21,6 +21,10 @@ const CFG: BinSortConfig = {
   background: "kitchen",
   grid: 2,
   rounds: 3,
+  // #1058 — the shared time ramp: each item has a shrinking countdown that
+  // tightens as difficulty rises (fluency pays — sorting "where does this
+  // come from?" fast is the skill). Generous floor so it stays fair.
+  timePerItemMs: [14000, 13000, 12000, 11000, 10000, 9000],
   bins: [
     { value: "plant", key: "fosBinPlant", icon: "🌱", verdictKey: "fosVerdictPlant" },
     { value: "animal", key: "fosBinAnimal", icon: "🐄", verdictKey: "fosVerdictAnimal" },

@@ -273,6 +273,11 @@ const EN: Record<string, Entry> = {
   dayNightMoonBlock: "The moon blocks the sun",
   dayNightStill: "The Earth stays still",
   dayNightClouds: "Clouds cover the sun",
+  // #1060 — the WHY pool ramps distractor count per level (3 → 5 options); the
+  // 4th distractor is a plausible-but-wrong "the Earth really does move" story.
+  dayNightEarthMove: "The Earth travels around the Sun",
+  dayNightSpinSlow: "The Earth spins very slowly",
+  dayNightSunBehind: "The Sun hides behind clouds",
   dayNightStateSpeak: "Look at the house. Is it day or night?",
   dayNightWhySpeak: "What makes day and night?",
   titleCatchBug: "Catch the Bugs",
@@ -1548,6 +1553,8 @@ const EN: Record<string, Entry> = {
   calendarFreshStart: "🌱 Fresh start — play today to begin a new week",
   // #1472 — home line when a held freeze token can't cover the missed days.
   freezeNotEnough: "Your 🧊 covers one missed day, but {n} days passed — fresh start 🌱",
+  // #1058 — shared per-item countdown timeout cue in the timed sort/tap scenes.
+  timeUp: "Time's up — you can do it!",
 };
 
 const BN: Record<string, Entry> = {
@@ -1803,6 +1810,11 @@ const BN: Record<string, Entry> = {
   dayNightMoonBlock: "চাঁদ সূর্যকে ঢেকে দেয়",
   dayNightStill: "পৃথিবী স্থির থাকে",
   dayNightClouds: "মেঘ সূর্যকে ঢেকে দেয়",
+  // #1060 — the WHY pool ramps distractor count per level (3 → 5 options); the
+  // 4th distractor is a plausible-but-wrong "the Earth really does move" story.
+  dayNightEarthMove: "পৃথিবী সূর্যের চারদিকে ঘোরে",
+  dayNightSpinSlow: "পৃথিবী খুব ধীরে ঘোরে",
+  dayNightSunBehind: "সূর্য মেঘের আড়ালে লুকিয়ে থাকে",
   dayNightStateSpeak: "ঘরটা দেখো। এখন দিন নাকি রাত?",
   dayNightWhySpeak: "দিন-রাত হয় কেন?",
   titleCatchBug: "পোকা ধরো",
@@ -3078,6 +3090,8 @@ const BN: Record<string, Entry> = {
   calendarFreshStart: "🌱 নতুন শুরু — আজ খেললে নতুন সপ্তাহ শুরু হবে",
   // #1472 — home line when a held freeze token can't cover the missed days.
   freezeNotEnough: "তোমার 🧊 একদিন বাঁচায়, কিন্তু {n} দিন পেরিয়ে গেছে — নতুন শুরু 🌱",
+  // #1058 — shared per-item countdown timeout cue in the timed sort/tap scenes.
+  timeUp: "সময় শেষ — তুমি পারবে!",
 };
 
 /**

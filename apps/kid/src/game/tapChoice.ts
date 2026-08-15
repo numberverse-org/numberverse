@@ -3,7 +3,7 @@ import { digit } from "./i18n";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { GAMES } from "@numberverse/core";
-import { pop, win } from "./audio";
+import { pop, win, bad } from "./audio";
 import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
@@ -11,6 +11,7 @@ import { gameBackground } from "./backgrounds";
 import { hintWrong, hintIntro } from "./hints";
 import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, answerFlash } from "./ui";
 import { SAB } from "./safeArea";
+import { ladderValue, poolTierFor, roundsForLevel, nextLevelIndex, timeForLevel } from "./difficulty";
 
 /**
  * Shared config-driven TAP-THE-RIGHT-CHOICE game engine (#71/#74 parts phase).
@@ -19,8 +20,11 @@ import { SAB } from "./safeArea";
  * asks a question. The kid taps the matching choice. Wrong taps retire the
  * tapped card, then walk the SAME adaptive hint ladder as every sibling scene
  * (soft nudge → coaching banner → reveal), so the answer is never flashed green
- * on the first miss. Tiered item pools grow with level (lvl 1–2 → famous tier 1,
- * lvl 3–4 → + tier 2, all at 5+).
+ * on the first miss. Tiered item pools grow with level DEMAND-DRIVEN: each
+ * level's queue size opens exactly the tiers needed to serve it (#1056),
+ * rounds-to-finish grows with the level (#1057), and the level itself ramps on
+ * live success — two clean rounds step up, two missed ease back (#1059). Scenes
+ * may opt into a shrinking per-item countdown (timePerItemMs) (#1058).
  *
  * Each concrete scene is a thin subclass supplying its config. Every i18n key
  * lives as a double-quoted camelCase literal in the scene file (audit scanner).
@@ -55,8 +59,13 @@ export interface TapChoiceConfig {
   choices: TapChoice[];
   items: TapItem[];
   nameKeys: Record<string, string>;
+  /** Rounds to finish at the EASIEST level — the engine grows it with the
+   *  adaptive level (#1057). */
   rounds: number;
   cols: number;
+  /** Optional shrinking-time window per level (ms). When present each item is
+   *  timed; the countdown tightens as difficulty rises (#1058). */
+  timePerItemMs?: number[];
 }
 
 export abstract class TapChoiceScene extends Phaser.Scene {
@@ -68,6 +77,14 @@ export abstract class TapChoiceScene extends Phaser.Scene {
   private correct = 0;
   private wrongThis = false;
   private busy = false;
+  // #1059 — live success-rate ramp (replaces the unconditional levelIndex++).
+  private perfectStreak = 0;
+  private imperfectStreak = 0;
+  // #1057 — the rounds-to-finish target for the CURRENT level (grows with it).
+  private roundsTarget = 3;
+  // #1058 — optional per-item countdown (timeBar + tween).
+  private timeBar!: Phaser.GameObjects.Graphics;
+  private timerTween?: Phaser.Tweens.Tween;
   private cards: { c: Phaser.GameObjects.Container; choice: TapChoice }[] = [];
   /** Soft bubble behind the item emoji so it reads as "the thing" — visually
    *  distinct from the flat rectangular choice cards below (#1238). */
@@ -114,6 +131,8 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     this.itemBubble = this.add.graphics();
     this.itemEmoji = this.add.text(0, 0, "✨", txt(84, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5);
     this.itemName = this.add.text(0, 0, "", txt(24, "#ffffff", { bold: true, outline: true, shadow: false })).setOrigin(0.5);
+    // #1058 — countdown bar sits between the item bubble and the choice grid.
+    this.timeBar = this.add.graphics().setDepth(25);
 
     onSceneResize(this, () => this.layout());
     this.layout();
@@ -170,8 +189,17 @@ export abstract class TapChoiceScene extends Phaser.Scene {
 
   private queueSize(level: number): number {
     const ladder = this.ladder();
-    const n = ladder[Math.min(level, ladder.length - 1)] ?? 4;
+    // #1056 — ladderValue keeps growing past the ladder ceiling so a level
+    // past 5-6 is never byte-identical to the one before it.
+    const n = ladderValue(ladder, level) ?? 4;
     return Math.min(n, this.cfg().items.length);
+  }
+
+  /** Tier counts [tier1, tier2, tier3] for the scene's item pool. */
+  private countByTier(): [number, number, number] {
+    const by: [number, number, number] = [0, 0, 0];
+    for (const it of this.cfg().items) by[it.tier - 1] += 1;
+    return by;
   }
 
   private startRound() {
@@ -179,15 +207,22 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     // #1061 — expose this round's difficulty to the shared celebration engine.
     this.data.set("nv:difficulty", this.levelIndex + 1);
     const cfg = this.cfg();
-    const pool = cfg.items.filter((it) => it.tier <= (this.levelIndex < 2 ? 1 : this.levelIndex < 4 ? 2 : 3));
+    // #1056 — the tier pool is DEMAND-driven: open exactly the tiers whose
+    // cumulative count serves this level's queue size (a real step each level,
+    // replacing the coarse 3-band `levelIndex < 2 ? 1 : < 4 ? 2 : 3` filter).
+    const want = this.queueSize(this.levelIndex);
+    const maxTier = poolTierFor(want, this.countByTier());
+    const pool = cfg.items.filter((it) => it.tier <= maxTier);
     Phaser.Utils.Array.Shuffle(pool);
-    this.queue = pool.slice(0, Math.min(pool.length, this.queueSize(this.levelIndex)));
+    this.queue = pool.slice(0, Math.min(pool.length, want));
     this.qIdx = 0;
     this.correct = 0;
     this.wrongThis = false;
     this.startedAt = this.time.now;
+    // #1057 — rounds-to-finish grows with the adaptive level.
+    this.roundsTarget = roundsForLevel(cfg.rounds, this.levelIndex);
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
-    this.meter.set(this.roundsDone, cfg.rounds);
+    this.meter.set(this.roundsDone, this.roundsTarget);
     this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
     this.spawnCards();
     this.showCurrent();
@@ -255,6 +290,63 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     // before the kid can miss this mechanic. hintIntro() keeps it once per scene
     // session, so later items keep the normal prompt narration.
     hintIntro(this, { intro: () => t("tapHint") });
+    // #1058 — per-item countdown when the scene opts into the shared time ramp.
+    const timeMs = timeForLevel(cfg.timePerItemMs, this.levelIndex);
+    this.drawTimeBar(timeMs ? 1 : 0);
+    if (timeMs) this.startItemTimer(timeMs);
+  }
+
+  /** #1058 — start the per-item countdown (bar already drawn full by caller). */
+  private startItemTimer(timeMs: number) {
+    if (this.timerTween) {
+      this.timerTween.stop();
+      this.timerTween = undefined;
+    }
+    const bar = { frac: 1 };
+    this.timerTween = this.tweens.add({
+      targets: bar,
+      frac: 0,
+      duration: timeMs,
+      ease: "Linear",
+      onUpdate: () => this.drawTimeBar(bar.frac),
+      onComplete: () => {
+        this.timerTween = undefined;
+        if (this.busy || this.qIdx >= this.queue.length) return;
+        this.onItemTimeout();
+      },
+    });
+  }
+
+  /** Stop + hide the countdown. `keep` lets callers redraw (showCurrent). */
+  private stopItemTimer(keep = false) {
+    if (this.timerTween) {
+      this.timerTween.stop();
+      this.timerTween = undefined;
+    }
+    if (!keep) this.drawTimeBar(0);
+  }
+
+  private drawTimeBar(frac: number) {
+    const w = Math.min(240, this.scale.width - 80);
+    const x = this.scale.width / 2 - w / 2;
+    const y = this.scale.height * 0.5;
+    this.timeBar.clear();
+    if (frac <= 0) return;
+    this.timeBar.fillStyle(0xffffff, 0.3);
+    this.timeBar.fillRoundedRect(x, y, w, 8, 4);
+    this.timeBar.fillStyle(frac > 0.3 ? 0x4ade80 : 0xffd166, 1);
+    this.timeBar.fillRoundedRect(x, y, Math.max(2, w * frac), 8, 4);
+  }
+
+  /** #1058 — the time window expired on the current item: gentle "time's up"
+   *  cue (never a correct), then move on. */
+  private onItemTimeout() {
+    this.wrongThis = true;
+    this.busy = true;
+    bad();
+    speak(t("timeUp"), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    this.floatMsg(t("timeUp"));
+    this.time.delayedCall(600, () => this.advance());
   }
 
   private tap(ch: TapChoice) {
@@ -262,6 +354,7 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     const it = this.queue[this.qIdx];
     if (ch.value !== it.value) {
       this.wrongThis = true;
+      this.stopItemTimer();
       // #1479 — route through the SAME adaptive hint ladder every sibling scene
       // uses. Miss #1 is a soft nudge; reveal ("the answer is X") is deferred to
       // miss #2–#4 by Moni confidence instead of flashing green on the first tap.
@@ -274,6 +367,7 @@ export abstract class TapChoiceScene extends Phaser.Scene {
       });
       return;
     }
+    this.stopItemTimer();
     this.busy = true;
     if (!this.wrongThis) this.correct++;
     this.tallyText.setText(`${digit(this.correct)}/${digit(this.queue.length)}`);
@@ -318,11 +412,23 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     const ms = Math.max(1, this.time.now - this.startedAt);
     this.floatMsg(`${t(cfg.doneKey)}  ${digit(this.correct)}/${digit(this.queue.length)}`);
     this.roundsDone++;
-    this.meter.set(this.roundsDone, cfg.rounds);
-    this.onRoundDone?.(this.correct === this.queue.length, ms, this.levelIndex + 1);
+    this.meter.set(this.roundsDone, this.roundsTarget);
+    // #1059 — feed this round's outcome into the live ramp: two clean rounds →
+    // step up two, two missed → ease back. onRoundDone sees the difficulty the
+    // kid actually earned, so the event stream reflects live success.
+    const clean = this.correct === this.queue.length;
+    if (clean) {
+      this.perfectStreak++;
+      this.imperfectStreak = 0;
+    } else {
+      this.imperfectStreak++;
+      this.perfectStreak = 0;
+    }
+    this.onRoundDone?.(clean, ms, this.levelIndex + 1);
+    const next = nextLevelIndex(this.levelIndex, this.perfectStreak, this.imperfectStreak);
     this.time.delayedCall(2000, () => {
-      if (this.roundsDone >= cfg.rounds) this.roundsDone = 0;
-      this.levelIndex++;
+      if (this.roundsDone >= this.roundsTarget) this.roundsDone = 0;
+      this.levelIndex = next;
       this.busy = false;
       this.startRound();
     });

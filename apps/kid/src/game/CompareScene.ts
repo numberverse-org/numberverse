@@ -156,10 +156,13 @@ export class CompareScene extends Phaser.Scene {
     if (adj.p === this.adj?.p) adj = ADJS[(ADJS.indexOf(adj) + 1) % adjCount];
     const isNewAdj = adj.p !== this.adj?.p;
     this.adj = adj;
-    // levels 1-2 teach the comparative (2 pictures); later levels alternate in
-    // the superlative (3 pictures) once the -er rule is grounded.
-    if (this.levelIndex < 2) this.superlative = false;
-    else this.superlative = !this.superlative;
+    // #1060 — the superlative (3 pictures) ramps in PROBABILISTICALLY instead
+    // of a hard level-2 gate: level 0 is only comparative, then a rising chance
+    // of the -est form (level 1 ~55%, level 2 ~70%, level 3 ~85%, level 4+ 100%).
+    // The -er rule grounds first, but a strong kid sees -est earlier than the
+    // old binary switch ever allowed, and every level is a different mix.
+    if (this.levelIndex < 1) this.superlative = false;
+    else this.superlative = Math.random() < Math.min(1, 0.4 + this.levelIndex * 0.15);
     this.item = ITEMS[Phaser.Math.Between(0, ITEMS.length - 1)];
     const counts = this.superlative ? 3 : 2;
     const scales = this.superlative ? [0.7, 1.0, 1.35] : [0.85, 1.25];
@@ -214,7 +217,10 @@ export class CompareScene extends Phaser.Scene {
       this.time.delayedCall(200, () => speak(correct, { lang: "en" }));
       this.floatMsg(t("cmGreat"));
       this.qInRound++;
-      this.time.delayedCall(950, () => (this.qInRound >= QUESTIONS_PER_ROUND ? this.finishRound() : this.askQuestion()));
+      // #1060 — round length grows a little with the level (5 → 8 questions) so
+      // a higher level is a longer chapter, not just the same 5.
+      const qTarget = QUESTIONS_PER_ROUND + Math.min(3, Math.floor(this.levelIndex / 3));
+      this.time.delayedCall(950, () => (this.qInRound >= qTarget ? this.finishRound() : this.askQuestion()));
       return;
     }
     hintWrong(this, container, {

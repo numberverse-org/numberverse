@@ -139,17 +139,28 @@ export class CompareFracScene extends Phaser.Scene {
 
   private startRound() {
     const l = this.levelIndex;
-    if (l === 0 || l === 1) { this.mode = "compare"; this.pool = UNIT_PAIRS; }
-    else if (l === 2) { this.mode = "compare"; this.pool = SAME_DEN_PAIRS; }
-    else if (l === 3) { this.mode = "order"; this.pool = ORDER_SAME_DEN; }
-    else if (l === 4) { this.mode = "compare"; this.pool = UNLIKE_PAIRS; }
-    else { this.mode = "order"; this.pool = ORDER_UNLIKE; }
+    // #1060 — a level-driven STAGE progression instead of a 6-way switch:
+    // unit compare → mixed unit+same-den (level 1 is distinct!) → same-den →
+    // order same-den → unlike compare → order unlike. The last stage then grows
+    // MORE questions per level (within-band granularity — the ladder keeps
+    // meaning something past level 5).
+    const STAGES: { mode: "compare" | "order"; pool: Frac[][] }[] = [
+      { mode: "compare", pool: UNIT_PAIRS },
+      { mode: "compare", pool: [...UNIT_PAIRS, ...SAME_DEN_PAIRS] },
+      { mode: "compare", pool: SAME_DEN_PAIRS },
+      { mode: "order", pool: ORDER_SAME_DEN },
+      { mode: "compare", pool: UNLIKE_PAIRS },
+      { mode: "order", pool: ORDER_UNLIKE },
+    ];
+    const stage = STAGES[Math.min(l, STAGES.length - 1)];
+    this.mode = stage.mode;
+    this.pool = stage.pool;
 
     this.bag = shuffle(this.pool.map((_, i) => i));
     this.pos = 0;
     this.answered = 0;
     this.correct = 0;
-    this.total = this.bag.length;
+    this.total = this.bag.length + (l >= STAGES.length - 1 ? Math.min(6, l - (STAGES.length - 1)) : 0);
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);

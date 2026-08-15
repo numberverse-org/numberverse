@@ -21,23 +21,31 @@ interface WhyQ {
   correct: string;
   wrongs: string[];
 }
-/* Why-does-it-happen questions (#233). 3 options at levels 2-3, 4 at levels
- * 4-5 (one extra cosmology distractor). In EVERY question the true answer is
- * "the Earth spins" — that is what makes day and night. */
-const WHY_3: WhyQ[] = [
-  { q: "dayNightWhy", correct: "dayNightSpin", wrongs: ["dayNightSunMove", "dayNightMoonBlock"] },
-  { q: "dayNightFar", correct: "dayNightNight", wrongs: ["dayNightDay", "dayNightSunMove"] },
-  { q: "dayNightNear", correct: "dayNightDay", wrongs: ["dayNightNight", "dayNightMoonBlock"] },
-];
-const WHY_4: WhyQ[] = [
-  { q: "dayNightWhy", correct: "dayNightSpin", wrongs: ["dayNightSunMove", "dayNightMoonBlock", "dayNightStill"] },
-  { q: "dayNightFar", correct: "dayNightNight", wrongs: ["dayNightDay", "dayNightSunMove", "dayNightClouds"] },
-  { q: "dayNightNear", correct: "dayNightDay", wrongs: ["dayNightNight", "dayNightMoonBlock", "dayNightClouds"] },
+/* Why-does-it-happen questions (#233). ONE pool — every question carries up to
+ * 4 wrongs and the level picks a growing distractor count (#1060): level 1 →
+ * 2 wrongs (3 options), 2-3 → 3 wrongs (4 options), 4+ → 4 wrongs (5 options).
+ * In EVERY question the true answer is "the Earth spins" — that is what makes
+ * day and night. The 4th wrong is a plausible-but-wrong "the Earth really does
+ * move" story (orbit / spin-speed / cloud) so the top band is genuinely harder
+ * to disambiguate, not just longer. */
+const WHY: WhyQ[] = [
+  { q: "dayNightWhy", correct: "dayNightSpin", wrongs: ["dayNightSunMove", "dayNightMoonBlock", "dayNightStill", "dayNightSpinSlow"] },
+  { q: "dayNightFar", correct: "dayNightNight", wrongs: ["dayNightDay", "dayNightSunMove", "dayNightClouds", "dayNightSunBehind"] },
+  { q: "dayNightNear", correct: "dayNightDay", wrongs: ["dayNightNight", "dayNightMoonBlock", "dayNightClouds", "dayNightEarthMove"] },
 ];
 
 interface Opt {
   key: string;
   isCorrect: boolean;
+}
+
+/** Fisher-Yates shuffle (#1060 — ramps pick a growing subset of wrongs). */
+function shuffle<T>(a: T[]): T[] {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 /**
@@ -127,7 +135,7 @@ export class DayNightScene extends Phaser.Scene {
     e.lineStyle(2, 0xffffff, 0.4);
     e.lineBetween(this.earthX, this.earthY - this.radius * 1.35, this.earthX, this.earthY + this.radius * 1.35);
     this.house.setPosition(this.earthX + this.radius * Math.cos(this.theta), this.earthY + this.radius * Math.sin(this.theta));
-    this.reflowOptions();
+    this.layoutOptions();
   }
 
   private get optY() {
@@ -140,7 +148,10 @@ export class DayNightScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.state = this.levelIndex < 2 ? 0 : 1;
+    // #1060 — continuous ramp instead of a 2-band gate: the WHY question starts
+    // at level 1 (was 2) so state-rounds are just the warm-up, and askWhy() then
+    // ramps the distractor count per level inside the why pool.
+    this.state = this.levelIndex < 1 ? 0 : 1;
     this.stopSpin();
     this.theta = Math.random() * TWO_PI;
     // state rounds: a brisk spin so the kid can SEE the rotation before we
@@ -197,10 +208,15 @@ export class DayNightScene extends Phaser.Scene {
   }
 
   private askWhy() {
-    const pool = this.levelIndex >= 4 ? WHY_4 : WHY_3;
-    const q = pool[Math.floor(Math.random() * pool.length)];
+    // #1060 — distractor count grows with the level (1 → 2 wrongs, 2-3 → 3,
+    // 4+ → 4, i.e. 3 → 5 options): a within-band granularity the old `pool =
+    // lvl >= 4 ? WHY_4 : WHY_3` 2-bucket switch never had (a kid sat on 3
+    // options for levels 2-3 and 4 for 4+, with nothing in between).
+    const distractorCount = 2 + Math.min(2, Math.floor(this.levelIndex / 2));
+    const q = WHY[Math.floor(Math.random() * WHY.length)];
+    const wrongs = shuffle(q.wrongs).slice(0, distractorCount);
     const opts: Opt[] = [
-      ...q.wrongs.map((k) => ({ key: k, isCorrect: false })),
+      ...wrongs.map((k) => ({ key: k, isCorrect: false })),
       { key: q.correct, isCorrect: true },
     ];
     for (let i = opts.length - 1; i > 0; i--) {
@@ -220,11 +236,15 @@ export class DayNightScene extends Phaser.Scene {
   private spawnOptions(opts: Opt[]) {
     this.clearOptions();
     const n = opts.length;
-    const w = Math.max(100, Math.min(170, Math.floor(this.scale.width / (n + 0.8))));
+    // #1060 — the top WHY band shows 5 options; lay that out in 2 rows so a
+    // phone width never overlaps the chips (the old 1-row math assumed ≤4).
+    const twoRows = n >= 5;
+    const cols = twoRows ? Math.ceil(n / 2) : n;
+    const w = Math.max(100, Math.min(170, Math.floor(this.scale.width / (cols + 0.8))));
     const h = 54;
-    const gap = this.scale.width / (n + 1);
+    const gap = this.scale.width / (cols + 1);
     opts.forEach((o, i) => {
-      const c = this.add.container(gap * (i + 1), this.optY);
+      const c = this.add.container(0, 0);
       const g = this.add.graphics();
       g.fillStyle(0x2f4b7c, 1);
       g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
@@ -240,13 +260,24 @@ export class DayNightScene extends Phaser.Scene {
       c.on("pointerdown", () => this.tap(c, o));
       this.options.push({ sprite: c, key: o.key, isCorrect: o.isCorrect });
     });
+    this.layoutOptions();
   }
 
-  private reflowOptions() {
+  /** #1060 — position the option chips (1 row for ≤4, 2 rows for 5). */
+  private layoutOptions() {
     const n = this.options.length;
     if (!n) return;
-    const gap = this.scale.width / (n + 1);
-    this.options.forEach((o, i) => o.sprite.setPosition(gap * (i + 1), this.optY));
+    const twoRows = n >= 5;
+    const cols = twoRows ? Math.ceil(n / 2) : n;
+    const gap = this.scale.width / (cols + 1);
+    const h = 54;
+    const rowGap = 14;
+    const baseY = this.optY - (twoRows ? (h + rowGap) / 2 : 0);
+    this.options.forEach((o, i) => {
+      const col = twoRows ? i % cols : i;
+      const row = twoRows ? Math.floor(i / cols) : 0;
+      o.sprite.setPosition(gap * (col + 1), baseY + row * (h + rowGap));
+    });
   }
 
   private tap(container: Phaser.GameObjects.Container, o: Opt) {
