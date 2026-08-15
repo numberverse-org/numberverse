@@ -166,6 +166,17 @@ export abstract class DragReorderScene extends Phaser.Scene {
     return GAMES.find((g) => g.id === this.cfg().gameId)?.difficultyLevels ?? [];
   }
 
+  /**
+   * #934 — shared cleanup hook. Phaser never calls a user `shutdown()`
+   * automatically, so the base wires its own SHUTDOWN listener. Derived scenes
+   * get one consistent teardown point (override + call super).
+   */
+  protected shutdown() {
+    // The challenge countdown is the one shared, non-Phaser-managed resource:
+    // drop the pending timer + bar tween before the scene hibernates.
+    this.disarmChallenge();
+  }
+
   /** Parse scene-specific data fields (mode/skill/…) BEFORE cfg() is read. */
   protected prepare(_data: DragReorderData) {}
 
@@ -189,6 +200,7 @@ export abstract class DragReorderScene extends Phaser.Scene {
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
     this.challenge = !!data.challenge;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
     this.prepare(data);
     const cfg = this.cfg();
     gameBackground(this, cfg.background as never);

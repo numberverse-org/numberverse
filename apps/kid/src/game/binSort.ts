@@ -105,10 +105,18 @@ export abstract class BinSortScene extends Phaser.Scene {
     return GAMES.find((g) => g.id === this.cfg().gameId)?.difficultyLevels ?? [];
   }
 
+  /**
+   * #934 — shared cleanup hook. Phaser never calls a user `shutdown()`
+   * automatically, so the base wires its own SHUTDOWN listener. Derived scenes
+   * get one consistent teardown point (override + call super).
+   */
+  protected shutdown() {}
+
   create(data: { onRoundDone: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
     const cfg = this.cfg();
     this.onRoundDone = data.onRoundDone;
     this.levelIndex = data.startLevelIndex ?? 0;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
     gameBackground(this, cfg.background as never);
     this.titleText = this.add
       .text(0, 0, t(cfg.titleKey), txt(34, "#ffffff", { bold: true }))
