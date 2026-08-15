@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.73.0 (batch-4: game-ladder integrity (#1051-1055) — scenes now read LEVELS[levelIndex])
+
+ec05729 fix: game-ladder integrity — 6 scenes now read LEVELS[levelIndex] (#1051-#1055)
+
 ## 16 Aug 2026 — 0.72.0 (batch-3: 7 clusters (#942-999) — kotha/API, Moni adaptive, multi-tenancy, config/voice, guardrails, PWA/offline, engine tech-debt)
 
 72a10fb fix: restore og-card.png to SW precache — undo nv-b14 globIgnores regression (#993)
