@@ -45,10 +45,10 @@ export function observeRoundLearning(
     responseMs: e.responseMs,
     timestamp: now,
   };
-  const moniNext = moni.observeRound(moniPrev, round, { ...prev, wrongStreak }, DEFAULT_MONI_PARAMS, now);
+  const moniNext = moni.observeRound(moniPrev, round, { ...updated, wrongStreak }, DEFAULT_MONI_PARAMS, now);
   const diag = e.correct
-    ? moni.diagnoseCorrect(moniPrev, round, { ...prev, wrongStreak }, DEFAULT_MONI_PARAMS)
-    : moni.diagnose(moniPrev, round, { ...prev, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
+    ? moni.diagnoseCorrect(moniPrev, round, { ...updated, wrongStreak }, DEFAULT_MONI_PARAMS)
+    : moni.diagnose(moniPrev, round, { ...updated, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
   const mis = moniNext.misconceptions?.find((m) => m.skillId === e.skillId);
   return { updated, moniNext, diag, mis };
 }

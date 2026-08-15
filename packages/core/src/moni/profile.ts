@@ -68,16 +68,30 @@ export function observeRound(
   p.trend = trendOf(p.recent, params);
 
   // Style: speed tendency + avg response ms
-  const ms = round.responseMs > 0 ? round.responseMs : p.style.avgResponseMs;
-  p.style.avgResponseMs = p.style.avgResponseMs
-    ? (p.style.avgResponseMs * 0.85 + ms * 0.15)
-    : ms;
+  // Guard against NaN / zero / negative — skip the style update entirely
+  // when responseMs is non-finite or ≤ 0 so speedTendency stays sane.
+  const ms = (Number.isFinite(round.responseMs) && round.responseMs > 0)
+    ? round.responseMs
+    : p.style.avgResponseMs;
+  if (Number.isFinite(ms) && ms > 0) {
+    p.style.avgResponseMs = p.style.avgResponseMs
+      ? (p.style.avgResponseMs * 0.85 + ms * 0.15)
+      : ms;
+  }
   // Normalize: <1s → 1 (very fast), >10s → 0 (very slow)
   p.style.speedTendency = clamp01(1 - Math.max(0, Math.min(1, (p.style.avgResponseMs - 1000) / 9000)));
 
   // Game affinity: engagement = accuracy-weighted volume
-  const aff = p.style.gameAffinity[round.gameId] ?? 0;
-  p.style.gameAffinity[round.gameId] = clamp01(aff + (round.correct ? 0.08 : -0.03));
+  // Decay ALL affinities per round so stale game interest fades over time.
+  // A child must keep playing a game for its affinity to stay above threshold.
+  const decayedAff: Record<string, number> = {};
+  for (const [g, a] of Object.entries(p.style.gameAffinity)) {
+    const d = a * 0.98 - 0.005; // gentle decay + slight erosion
+    if (d > 0.01) decayedAff[g] = d;
+  }
+  const aff = decayedAff[round.gameId] ?? 0;
+  decayedAff[round.gameId] = clamp01(aff + (round.correct ? 0.08 : -0.03));
+  p.style.gameAffinity = decayedAff;
   p.style.bestGame = bestGameOf(p.style.gameAffinity);
 
   // Attention: split recent rounds into early/late halves of the session.
@@ -93,11 +107,19 @@ export function observeRound(
     p.attention.earlyAccuracy = earlyAcc;
     p.attention.lateAccuracy = lateAcc;
     // Fatigue threshold: the point in the session where accuracy first dips.
+    // Decaying signal — a strong session (late === early) clears the threshold
+    // so Moni recovers after a bad-tilt stretch.
     if (lateAcc < earlyAcc - 0.15 && sessionRounds >= 6) {
       p.attention.fatigueThreshold = Math.max(6, sessionRounds - Math.floor(recentOutcomes.length * 0.5));
-    } else if (p.attention.fatigueThreshold === null && lateAcc >= earlyAcc - 0.05) {
-      // Session stayed strong this far — extend the threshold.
-      p.attention.fatigueThreshold = Math.max(p.attention.fatigueThreshold ?? 0, sessionRounds);
+    } else if (lateAcc >= earlyAcc - 0.05) {
+      // Session stayed strong — either extend threshold or RECOVER.
+      if (p.attention.fatigueThreshold === null) {
+        p.attention.fatigueThreshold = Math.max(0, sessionRounds);
+      } else {
+        // Decay the threshold back toward null on consecutive strong rounds:
+        // weaken it by 1 each time a strong session extends past it.
+        p.attention.fatigueThreshold = Math.max(6, p.attention.fatigueThreshold - 1);
+      }
     }
   }
 
@@ -106,6 +128,8 @@ export function observeRound(
   if (round.correct && p.recent.length >= 2 && !p.recent[1].correct) {
     p.confidence.recoveryRate = clamp01(p.confidence.recoveryRate + 0.1);
   }
+  // Derive fragile flag from recovery rate so the planner reads it.
+  p.confidence.fragile = p.confidence.recoveryRate < 0.4;
 
   return p;
 }
@@ -129,11 +153,21 @@ export function observeWrong(
   if (p.recent.length && p.recent[0].correct) {
     // A correct was followed by a wrong — slight fragility signal.
     p.confidence.score = clamp01(p.confidence.score - 0.02);
+    // Recovery rate decays too: failing after a win means they aren't
+    // building resilience. Multiply by 0.9 so it slides down gradually.
+    p.confidence.recoveryRate = clamp01(p.confidence.recoveryRate * 0.9);
+  } else if (p.recent.length >= 2 && !p.recent[0].correct && !p.recent[1].correct) {
+    // Consecutive wrongs — further erode recovery rate.
+    p.confidence.recoveryRate = clamp01(p.confidence.recoveryRate * 0.95);
   }
+  // Derive fragile flag from recovery rate so the planner sees it.
+  p.confidence.fragile = p.confidence.recoveryRate < 0.4;
 
   // Misconception detection — caller provides a normalized error code via
   // the skill's wrong pattern. Moni confirms a pattern after N repeats.
-  if (skill && skill.wrongStreak >= params.misconcOccurrences) {
+  // Gate on === so a single streak only registers ONE occurrence (no
+  // double-counting across consecutive wrongs in the same episode).
+  if (skill && skill.wrongStreak === params.misconcOccurrences) {
     p.misconceptions = upsertMisconception(p.misconceptions, {
       skillId: wrong.skillId,
       code: "repeated-error",

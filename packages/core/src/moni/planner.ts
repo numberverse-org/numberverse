@@ -113,11 +113,15 @@ export function plan(
     focusReason = `${weak[0].reason}: ${weak[0].skill.id} needs work.`;
     difficultyDelta = -1;
   } else {
-    // Everything solid → pick the lowest-mastery skill to keep moving forward.
-    const lowest = entries
+    // Everything solid → pick the lowest-mastery skill within the child's
+    // reachable band (current band +1) so Moni never jumps ahead.
+    const childBand = childsCurrentBand(mastery, catalog);
+    const reachable = entries
       .map(([id, skill]) => ({ id, skill, m: mastery[id] }))
-      .filter((x) => x.m)
-      .sort((a, b) => (a.m?.pMastered ?? 1) - (b.m?.pMastered ?? 1))[0];
+      .filter((x) => x.m && x.skill.band <= childBand + 1);
+    const lowest = reachable.length
+      ? reachable.sort((a, b) => (a.m?.pMastered ?? 1) - (b.m?.pMastered ?? 1))[0]
+      : null;
     focusSkillId = lowest?.id ?? entries[0]?.[0] ?? "count-1-10";
     focusReason = "Everything's solid — let's keep the momentum with the next challenge.";
     difficultyDelta = 1;
@@ -194,18 +198,35 @@ export function plan(
  *  every interval a rung shorter so skills resurface sooner. */
 function reviewIntervalDays(m: SkillMasteryLike, profile: MoniProfile, params: MoniParams): number {
   const perSkill = m.pMastered * (0.5 + 0.5 * Math.min(1, m.streak / 5));
-  const child = profile.confidence.recoveryRate;
-  const conf = child < 0.4 ? perSkill * 0.7 : child > 0.7 ? perSkill * 1.1 : perSkill;
   const ladder = params.reviewDays;
-  if (conf >= 0.95) return ladder[3] ?? 14;
-  if (conf >= 0.8) return ladder[2] ?? 7;
-  if (conf >= 0.6) return ladder[1] ?? 3;
-  return ladder[0] ?? 1;
+  // Pick rung from per-skill solidity alone.
+  const rawIdx = perSkill >= 0.95 ? 3 : perSkill >= 0.8 ? 2 : perSkill >= 0.6 ? 1 : 0;
+  // Fragile child (low recoveryRate) shifts one rung SHORTER so skills
+  // resurface sooner; sharp child (high recoveryRate) shifts one rung LONGER.
+  const shift = profile.confidence.recoveryRate < 0.4 ? -1 : profile.confidence.recoveryRate > 0.7 ? 1 : 0;
+  const idx = Math.max(0, Math.min(ladder.length - 1, rawIdx + shift));
+  return ladder[idx] ?? 1;
 }
 
 /** Derive a rough current difficulty tier from mastery. */
 function currentDifficulty(m: SkillMasteryLike): number {
   return Math.max(1, Math.round(m.pMastered * 5));
+}
+
+/** Estimate the child's current band: the highest catalog-band where at least
+ *  one skill has reached moderate mastery (>= 0.5). Defaults to band 1. */
+function childsCurrentBand(
+  mastery: MasteryMap,
+  catalog: Record<string, CatalogSkill>,
+): number {
+  let band = 1;
+  for (const [id, skill] of Object.entries(catalog)) {
+    const m = mastery[id];
+    if (m && m.pMastered >= 0.5 && skill.band > band) {
+      band = skill.band;
+    }
+  }
+  return band;
 }
 
 function summarize(
