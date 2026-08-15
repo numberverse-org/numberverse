@@ -1,6 +1,15 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🎉 0.79.0 RELEASED — CELEBRATION ENGINE: i18n WORDS + EFFORT-SCALED BURSTS (#1063–#1070) 16 Aug 2026 ✅
+- **#1064** — all inline celebration words (Nice!/WOW!/AMAZING!/SUPER STAR!/Tough one!/x{n}🔥) now route through `t()` with `ce*` keys in BOTH en+bn (ceNice/ceWow/ceWowHard/ceAmazing/ceAmazingHard/ceSuperStar/ceSuperStarHard/ceToughOne/ceStreak/ceMasteryElite). Audit stays 0 errors.
+- **#1068** — burst sizes scale with EFFORT, not just streak: `diffBoost = max(0, difficulty − 4)` feeds confetti (+2/boost, +3 on mastery) and stars (+1/boost).
+- **#1069** — new ELITE register: level-7+ mastery reads `ceMasteryElite` "LEGENDARY MOMENT! 🏆🔥" (BN: কিংবদন্তির মুহূর্ত!), above the hard + long-run registers.
+- **#1065** — `comboChime` roots in the current land's `landRoot` (`landRoot · (1 + min(combo,8)·0.08)`), so a band-5 win rings higher than band-1 at the same combo.
+- **#1070** — shared hard-problem signal formalized: `setRoundDifficulty(scene, d)`/`roundDifficulty(scene)` over the `nv:difficulty` slot; 17+ scenes already populate it, correctCelebrate reads it (opts.difficulty stays an override).
+- **#1063** — dedupe-closed: combo-1 hard nod already shipped in 0.78.0 (#1062/#1066); this batch localized its copy as `ceToughOne`.
+- Gates: kid tsc ✓ · i18n audit 0 errors ✓ · oracle SHIP-OK ✓ · live smoke 0.79.0 ✓. All 6 issues closed with evidence.
+
 ## 🎢 0.78.0 RELEASED — ENGINE DIFFICULTY-RAMP (#1056–#1060) 16 Aug 2026 ✅
 - **#1056** — binSort/tapChoice `queueSize` no longer clamps at the 6-entry ladder ceiling (`ladderValue` grows +1/level past it); the tier pool is DEMAND-driven (`poolTierFor` opens exactly the tiers that serve the queue), so levels past 5-6 are never byte-identical.
 - **#1057** — `rounds: 3` is now the easiest-level base; the shared engines grow rounds-to-finish with the adaptive level (`roundsForLevel`).
