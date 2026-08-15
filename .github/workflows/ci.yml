@@ -28,6 +28,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build @numberverse/core
         run: pnpm --filter @numberverse/core build
+      - name: Core unit tests (Moni adaptive #953-#960)
+        run: node packages/core/tests/moni_adaptive.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: core-dist

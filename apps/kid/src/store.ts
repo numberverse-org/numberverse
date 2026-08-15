@@ -913,7 +913,7 @@ export const useKidStore = create<KidState>()(
         const skill = get().skills[mk] ?? initialSkillState(kidId, skillId);
         // Use slowMs+1 so it clears the strict > slowMs check in diagnose.ts
         // and gets classified as slow/hesitant (gap) rather than falling through
-        // to the generic fallback. A real responseMs would be better — see #958.
+        // to the generic fallback. A real responseMs would be better — #956.
         const responseMs = DEFAULT_MONI_PARAMS.slowMs + 1;
         const round = { kidId, skillId, gameId, correct: false, difficulty, responseMs, timestamp: now };
         let moniNext = moni.observeWrong(moniPrev, round, { ...skill, wrongStreak }, DEFAULT_MONI_PARAMS, now);
