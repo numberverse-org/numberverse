@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { prefersReducedMotion } from "./reducedMotion";
 
 /**
  * ─────────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ import Phaser from "phaser";
 const SWIPE_THRESHOLD = 60; // px of travel before it counts as a swipe
 const SWIPE_MAX_MS = 700;   // a deliberate flick, not a long slow drag
 const SWIPE_MIN_DOT = 0.15; // how strongly a button must match the swipe direction
+const ROOM_SWIPE_MIN_DOT = 0.8; // how horizontal a swipe must be to flip a room
 
 /** Live, tappable answer buttons on the scene (tracked from the display list). */
 function liveButtons(scene: Phaser.Scene): Phaser.GameObjects.Container[] {
@@ -78,25 +80,36 @@ function bestAlignedButton(
   return best;
 }
 
-/** A bright gold swoosh-arrow that shows WHERE the swipe went. */
+/** A bright gold swoosh-arrow that shows WHERE the swipe went.
+ *  The tip stops short of the target so the arrow never covers the button it
+ *  confirms; with reduced motion it stays still instead of fading out. */
 function drawSwipeArrow(scene: Phaser.Scene, sx: number, sy: number, ex: number, ey: number) {
   const dx = ex - sx;
   const dy = ey - sy;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len;
   const uy = dy / len;
-  const tail = Math.max(90, len - 46); // shaft starts a little before the tip
   const head = 22; // arrowhead size
+  const tipDist = Math.max(1, len - 24); // keep the tip off the selected target
+  const tail = Math.max(1, tipDist - head); // shaft ends at the base of the head
+  const base = Math.max(0, tail - head * 0.55); // head base, never behind the start
   const g = scene.add.graphics().setDepth(9500);
   g.lineStyle(14, 0xffd166, 0.9);
   g.lineBetween(sx, sy, sx + ux * tail, sy + uy * tail);
   g.fillStyle(0xffd166, 1);
   g.beginPath();
-  g.moveTo(sx + ux * (tail + head), sy + uy * (tail + head));
-  g.lineTo(sx + ux * (tail - head * 0.55) - uy * head, sy + uy * (tail - head * 0.55) + ux * head);
-  g.lineTo(sx + ux * (tail - head * 0.55) + uy * head, sy + uy * (tail - head * 0.55) - ux * head);
+  g.moveTo(sx + ux * tipDist, sy + uy * tipDist);
+  g.lineTo(sx + ux * base - uy * head, sy + uy * base + ux * head);
+  g.lineTo(sx + ux * base + uy * head, sy + uy * base - ux * head);
   g.closePath();
   g.fill();
+  if (prefersReducedMotion()) {
+    // No tween — just leave the static confirmation visible for a beat.
+    scene.time.delayedCall(380, () => {
+      if (g.active) g.destroy();
+    });
+    return;
+  }
   scene.tweens.add({
     targets: g,
     alpha: 0,
@@ -150,7 +163,9 @@ export function enableSwipeToAnswer(scene: Phaser.Scene) {
     if (pressHitButton(scene, startX, startY)) return; // press began on a button → tap already fired
     const pick = bestAlignedButton(scene, startX, startY, dx, dy);
     if (!pick) return;
-    drawSwipeArrow(scene, startX, startY, p.x, p.y);
+    // Draw toward the button the scene is actually about to pick (not the raw
+    // release point), and show that confirmed direction BEFORE the answer fires.
+    drawSwipeArrow(scene, startX, startY, pick.x, pick.y);
     // Fire the button: dip animation + the scene's own answer handler.
     pick.emit("pointerdown", p);
   });
@@ -245,7 +260,9 @@ export function enableSwipeRooms(
     const dist = Math.hypot(dx, dy);
     const dt = scene.time.now - startTime;
     if (dist < SWIPE_THRESHOLD || dt > SWIPE_MAX_MS) return; // a tap, not a swipe
-    if (Math.abs(dx) < Math.abs(dy)) return; // vertical — not a room flip
+    // A room flip needs a deliberate horizontal sweep, not a diagonal toddler
+    // jab that happens to have a few more horizontal pixels than vertical ones.
+    if (Math.abs(dx) / dist < ROOM_SWIPE_MIN_DOT) return; // off-axis — keep the room put
     if (opts.ignoreStart?.(startX, startY)) return; // scene says this press is not a swipe
     // started ON a tappable object? → that's a tap, already handled by the object
     if (visibleInteractive().some((c) => scene.input.manager.pointWithinHitArea(c, startX, startY))) return;
