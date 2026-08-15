@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { SAT } from "./safeArea";
 import { txt, NV_COCOA } from "./ui";
 import { prefersReducedMotion, onReducedMotionChange } from "./reducedMotion";
+import { matureRender } from "./renderBand"; // #1036 — tone down candy/sparkle for older kids
 
 /**
  * Modern, "2026-style" animated game backgrounds — zero assets.
@@ -366,11 +367,15 @@ function buildNovaCameo(scene: Phaser.Scene): BgState["cameo"] {
   const root = scene.add.container(0, 0, [img]).setDepth(-5);
   root.setSize(90, 84);
   root.setInteractive({ useHandCursor: true });
+  // #1036 — the silly 3-tap sneeze easter egg is a nursery flourish: older kids
+  // get a calm tap response instead of confetti everywhere.
+  const mature = matureRender();
   // Silly easter egg: 3 quick taps → Nova SNEEZES confetti everywhere.
   let sneezes = 0;
   let sneezeTimer: Phaser.Time.TimerEvent | null = null;
   root.on("pointerdown", () => {
     scene.tweens.add({ targets: root, scale: 1.18, duration: 120, yoyo: true, ease: "Back.easeOut" });
+    if (mature) return; // older register: no confetti sneeze, no sparkle shower
     sneezes += 1;
     if (sneezeTimer) sneezeTimer.remove();
     sneezeTimer = scene.time.delayedCall(1500, () => {
@@ -520,9 +525,15 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
     return { img };
   });
 
-  // Glassy floating shapes — soft circles, rounded squares, rings, sparkles
-  const shapeKinds = ["nv-shape-circle", "nv-shape-round", "nv-shape-ring", "nv-shape-spark"];
-  const count = Phaser.Math.Clamp(Math.round((width * height) / 52000), 8, 16);
+  // Glassy floating shapes — soft circles, rounded squares, rings, sparkles.
+  // #1036 — the candy sparkle stays in the nursery register; older kids get a
+  // calmer field (no 4-point sparkles, fewer shapes overall).
+  const mature = matureRender();
+  const shapeKinds = mature
+    ? ["nv-shape-circle", "nv-shape-round", "nv-shape-ring"]
+    : ["nv-shape-circle", "nv-shape-round", "nv-shape-ring", "nv-shape-spark"];
+  const baseCount = Phaser.Math.Clamp(Math.round((width * height) / 52000), 8, 16);
+  const count = mature ? Math.max(6, Math.round(baseCount * 0.6)) : baseCount;
   const shapes: BgState["shapes"] = [];
   for (let i = 0; i < count; i++) {
     const img = scene.add.image(
@@ -539,7 +550,8 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
   // Twinkling stars (night / space / magic)
   const stars: Phaser.GameObjects.Image[] = [];
   if (pal.stars) {
-    for (let i = 0; i < 16; i++) {
+    const starCount = mature ? 8 : 16;
+    for (let i = 0; i < starCount; i++) {
       const img = scene.add.image(
         Phaser.Math.Between(10, Math.max(11, width - 10)),
         Phaser.Math.Between(8, Math.max(9, height - 8)),

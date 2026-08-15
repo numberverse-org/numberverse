@@ -204,7 +204,11 @@ export default function HomeScreen({
       // bands 5–7 (ages ~10–15) get a dignified mission bar instead of a
       // "feed the baby animal" ritual. Missing/zero birthYear → band 1 → pet.
       const rewardBand = kidBand(kid);
-      const showMission = rewardBand >= 5;
+      // #1032/#1033/#1037/#1038/#1039 — one mature-register switch drives the
+      // older-kid surface: a smaller Nova, a calmer greeting, garden/summary/
+      // challenge copy that stops talking like a nursery toy.
+      const mature = rewardBand >= 5;
+      const showMission = mature;
       const kidNova = useKidStore.getState().nova[kid.id];
       const badgeCount = kidNova?.badges?.length ?? 0;
       const achCount = kidNova?.achievements?.length ?? 0;
@@ -252,10 +256,24 @@ export default function HomeScreen({
             (skillsMap[`${kid.id}:${b.id}`]?.attempts ?? 0) - (skillsMap[`${kid.id}:${a.id}`]?.attempts ?? 0)
         )[0];
       const masteredWeek = weekSkills.filter((s) => skillMastered(skillsMap, kid.id, s.id)).length;
-      const recapWin =
-        masteredWeek > 0 ? t.recapWinMastered(masteredWeek) : novaDayStreak >= 3 ? t.recapWinStreak(novaDayStreak) : "";
+      const recapWin = mature
+        ? masteredWeek > 0
+          ? t.recapWinMasteredMature(masteredWeek)
+          : novaDayStreak >= 3
+            ? t.recapWinStreakMature(novaDayStreak)
+            : ""
+        : masteredWeek > 0
+          ? t.recapWinMastered(masteredWeek)
+          : novaDayStreak >= 3
+            ? t.recapWinStreak(novaDayStreak)
+            : "";
       const recapSpeakText = topSkill
-        ? t.recapSpeak(kid.name, weekPlayed.length, lang === "bn" ? topSkill.titleBn ?? topSkill.title : topSkill.title, recapWin)
+        ? (mature ? t.recapSpeakMature : t.recapSpeak)(
+            kid.name,
+            weekPlayed.length,
+            lang === "bn" ? topSkill.titleBn ?? topSkill.title : topSkill.title,
+            recapWin
+          )
         : "";
       return (
         <div className={`app play-app${projector ? " projector-mode" : ""}`}>
@@ -367,7 +385,7 @@ export default function HomeScreen({
                 carries the plan — one action, nothing duplicated. */}
             <div className="home-hero">
               <div className="home-nova" role="img" aria-label="Nova the Owl">
-                <Icon name="nova" size={72} />
+                <Icon name="nova" size={mature ? 56 : 72} />
                 {!missedDay && novaDayStreak > 0 && (
                   // #768 — the freeze-token safety net is visible right on the
                   // streak badge, so the kid KNOWS a missed day is covered.
@@ -382,8 +400,12 @@ export default function HomeScreen({
                   {birthday
                     ? t.birthdayHello(kid.name)
                     : missedDay
-                      ? t.welcomeBack(kid.name)
-                      : t.homeHello(kid.name)}
+                      ? mature
+                        ? t.welcomeBackMature(kid.name)
+                        : t.welcomeBack(kid.name)
+                      : mature
+                        ? t.homeHelloMature(kid.name)
+                        : t.homeHello(kid.name)}
                 </p>
               </div>
             </div>
@@ -456,13 +478,15 @@ export default function HomeScreen({
               </button>
               <button className="wild-tile" onClick={goGarden}>
                 <span className="wild-tile-emoji" aria-hidden="true">🌱</span>
-                <span className="wild-tile-label">{t.gardenTile}</span>
+                <span className="wild-tile-label">{mature ? t.gardenTileMature : t.gardenTile}</span>
                 {gardenTile && (gardenTile.plants === 0 && gardenTile.fruits === 0 ? (
-                  <span className="wild-tile-sum wild-tile-empty">{t.gardenTileEmpty}</span>
+                  <span className="wild-tile-sum wild-tile-empty">{mature ? t.gardenTileEmptyMature : t.gardenTileEmpty}</span>
                 ) : (
                   <span className="wild-tile-sum">
-                    {t.gardenTileSum(gardenTile.plants, gardenTile.fruits)}
-                    {gardenTile.fresh && <em className="garden-tile-fresh">{t.gardenTileFresh}</em>}
+                    {mature
+                      ? t.gardenTileSumMature(gardenTile.plants, gardenTile.fruits)
+                      : t.gardenTileSum(gardenTile.plants, gardenTile.fruits)}
+                    {gardenTile.fresh && <em className="garden-tile-fresh">{mature ? t.gardenTileFreshMature : t.gardenTileFresh}</em>}
                   </span>
                 ))}
               </button>
@@ -848,13 +872,13 @@ export default function HomeScreen({
                 for the kid — days played, top skill, biggest win, and a spoken
                 option. All offline, from local play. When the week is empty it
                 becomes a soft "come play" nudge, never a lecture. */}
-            <div className="recap-card" role="status" aria-label={t.recapTitle}>
+            <div className="recap-card" role="status" aria-label={mature ? t.recapTitleMature : t.recapTitle}>
               <span className="recap-emoji" aria-hidden="true">🌟</span>
               <div className="recap-meta">
-                <span className="recap-title">{t.recapTitle}</span>
+                <span className="recap-title">{mature ? t.recapTitleMature : t.recapTitle}</span>
                 {weekPlayed.length > 0 ? (
                   <>
-                    <span className="recap-sub">{t.recapSub(weekPlayed.length)}</span>
+                    <span className="recap-sub">{mature ? t.recapSubMature(weekPlayed.length) : t.recapSub(weekPlayed.length)}</span>
                     {topSkill && (
                       <span className="recap-line">
                         🏆 {t.recapTopSkill}: {lang === "bn" ? topSkill.titleBn ?? topSkill.title : topSkill.title}
@@ -863,12 +887,12 @@ export default function HomeScreen({
                     {recapWin && <span className="recap-win">{recapWin}</span>}
                   </>
                 ) : (
-                  <span className="recap-sub">{t.recapEmpty}</span>
+                  <span className="recap-sub">{mature ? t.recapEmptyMature : t.recapEmpty}</span>
                 )}
               </div>
               {voiceOk && weekPlayed.length > 0 && topSkill && (
                 <button className="recap-hear" onClick={() => speak(recapSpeakText)}>
-                  {t.recapHear}
+                  {mature ? t.recapHearMature : t.recapHear}
                 </button>
               )}
             </div>
@@ -876,11 +900,11 @@ export default function HomeScreen({
             {/* #280 — beat-the-owl challenge: an OPTIONAL head-to-head drill
                 vs Nova. 5 fair rounds, adaptive questions, coins stay inside
                 the daily cap. Kid-safe, offline, no ads. */}
-            <button className="challenge-card" onClick={startChallenge} aria-label={t.chCard}>
+            <button className="challenge-card" onClick={startChallenge} aria-label={mature ? t.chCardMature : t.chCard}>
               <span className="challenge-emoji" aria-hidden="true">⚔️</span>
               <span className="challenge-meta">
-                <span className="challenge-title">{t.chTile}</span>
-                <span className="challenge-sub">{t.chCard}</span>
+                <span className="challenge-title">{mature ? t.chTileMature : t.chTile}</span>
+                <span className="challenge-sub">{mature ? t.chCardMature : t.chCard}</span>
               </span>
               <span className="challenge-go">{t.chStart} →</span>
             </button>
@@ -1020,7 +1044,7 @@ export default function HomeScreen({
               zero Phaser changes. */}
           {challenge && (
             <div className="challenge-overlay" onClick={closeChallenge}>
-              <div className="challenge-sheet" role="dialog" aria-label={t.chTile} onClick={(e) => e.stopPropagation()}>
+              <div className="challenge-sheet" role="dialog" aria-label={mature ? t.chTileMature : t.chTile} onClick={(e) => e.stopPropagation()}>
                 {challenge.won ? (
                   <>
                     <div className="challenge-result" role="status">
@@ -1029,10 +1053,16 @@ export default function HomeScreen({
                       </span>
                       <span className="challenge-result-line">
                         {challenge.won === "win"
-                          ? t.chWin(kid?.name ?? "")
+                          ? mature
+                            ? t.chWinMature(kid?.name ?? "")
+                            : t.chWin(kid?.name ?? "")
                           : challenge.won === "tie"
-                            ? t.chTie
-                            : t.chLose(kid?.name ?? "")}
+                            ? mature
+                              ? t.chTieMature
+                              : t.chTie
+                            : mature
+                              ? t.chLoseMature(kid?.name ?? "")
+                              : t.chLose(kid?.name ?? "")}
                       </span>
                       <span className="challenge-scoreline">
                         {t.chYou} {bnNum(challenge.myScore)} · {t.chNova} {bnNum(challenge.novaScore)}
@@ -1057,7 +1087,7 @@ export default function HomeScreen({
                       <span className="challenge-vs">VS</span>
                       <span className="challenge-score-nova"><Icon name="nova" size={20} /> <b>{t.chNova}</b> {bnNum(challenge.novaScore)}</span>
                     </div>
-                    <div className="challenge-q" aria-label={t.chQuestion}>{challenge.q.text}</div>
+                    <div className="challenge-q" aria-label={mature ? t.chQuestionMature : t.chQuestion}>{challenge.q.text}</div>
                     <div className="challenge-options">
                       {challenge.q.options.map((opt, i) => {
                         const picked = challenge.pick === i;

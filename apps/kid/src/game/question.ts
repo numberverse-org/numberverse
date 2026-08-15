@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { pop } from "./audio";
 import { assetIcon } from "./svgAssets";
 import { prefersReducedMotion, onReducedMotionChange } from "./reducedMotion";
+import { matureRender } from "./renderBand"; // #1035 — band-aware question font
 
 /**
  * "Nova's question bubble" — the thing a kid MUST see before every round.
@@ -113,7 +114,9 @@ export function questionPanel(
   const glow = scene.add.graphics();
   const tx = scene.add
     .text(0, 0, "", {
-      fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+      fontFamily: matureRender()
+        ? "'Nunito', 'Noto Sans Bengali', system-ui, 'Segoe UI', sans-serif"
+        : "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
       fontSize: "32px",
       color: TEXT_COLOR,
       fontStyle: "800",

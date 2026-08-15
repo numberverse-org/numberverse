@@ -36,6 +36,7 @@ import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, retryNe
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
 import { startRecording, stopRecording } from "./game/voiceRecorder";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
+import { setRenderBand } from "./game/renderBand"; // #1040 — mirror age band into Phaser render helpers
 import { STR, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
 import VoiceCheck from "./components/VoiceCheck";
 import StoryInspector from "./components/StoryInspector";
@@ -48,10 +49,11 @@ import {
   worldUnlocked, unlockGap, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache, masteryDisplayPct,
+  kidBand,
   MAX_KIDS_PER_FAMILY,
   challengeEligible, challengeStartLevelIndex,
   MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
-  BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
+  BADGES, ACHIEVEMENTS, NOVA_REACTIONS, novaReactionLine, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, WORLD_LANDS, FOCUS_SUBJECT_LABELS, SEASON_EMOJI, SEASON_PARTICLES,
   DONE_CONFETTI, filterMaxBand, filterFocusSubject, filterFocusBand, SUBJECT_CARD,
   type SessionStep, type SavedSession, type Kid, type SkillMap, type SkillMapEntry, type JourneyStop, type CardSkill,
@@ -477,11 +479,11 @@ export default function App() {
     lastReactionAtRef.current = now;
     setNovaReaction({ kind, nonce: now });
     const def = NOVA_REACTIONS[kind];
-    const line = lang === "bn" ? def.lineBn() : def.lineEn();
+    const line = novaReactionLine(kind, lang === "bn" ? "bn" : "en", kidBand(kid) >= 5);
     const voiceOk = tts ? tts.available && tts.voiceCount > 0 : null;
     if (def.speak !== false && voiceOk) speak(line, { lang: lang === "bn" ? "bn" : "en" });
     window.setTimeout(() => setNovaReaction((cur) => (cur && cur.nonce === now ? null : cur)), 2600);
-  }, [lang, tts]);
+  }, [lang, tts, kid]);
   // #1443 — coin grants get an in-the-moment HUD "+N 🪙" flash + a coin chime,
   // so the wallet number changing is never the only evidence of a reward.
   const [coinFlash, setCoinFlash] = useState<{ n: number; nonce: number } | null>(null);
@@ -2058,6 +2060,15 @@ export default function App() {
     // flips the whole document so bidi text lays out correctly.
     document.documentElement.dir = getLocale().dir === "rtl" ? "rtl" : "ltr";
   }, [lang]);
+
+  /* #1040/#1035 — mirror the active kid's age band into the Phaser render layer
+   * (typography, backgrounds, garden copy) and toggle the mature DOM class so
+   * the shell swaps its babyish rounded face for the older-kid face. */
+  useEffect(() => {
+    const band = kidBand(kid);
+    setRenderBand(band);
+    document.documentElement.classList.toggle("nv-mature", band >= 5);
+  }, [kid]);
 
   /* ── PWA: capture the browser's install prompt (Chrome/Samsung/Edge) ── */
   useEffect(() => {
@@ -5615,7 +5626,7 @@ export default function App() {
       <div className="app">
         <main className="screen contrast-screen">
           <div className="contrast-mascot" role="img" aria-label="Nova helping with the pattern">
-            <Icon name="nova" size={72} />
+            <Icon name="nova" size={kidBand(kid) >= 5 ? 56 : 72} />
           </div>
           {done ? (
             <>
@@ -6160,10 +6171,10 @@ export default function App() {
             streaks / setbacks / reteach moments. Rendered as a DOM overlay so
             it works over EVERY game scene (no Phaser changes needed). */}
         {novaReaction && inGame && (
-          <div key={novaReaction.nonce} className="nova-react" role="status" aria-label={lang === "bn" ? NOVA_REACTIONS[novaReaction.kind].lineBn() : NOVA_REACTIONS[novaReaction.kind].lineEn()}>
+          <div key={novaReaction.nonce} className="nova-react" role="status" aria-label={novaReactionLine(novaReaction.kind, lang === "bn" ? "bn" : "en", kidBand(kid) >= 5)}>
             <span className="nova-react-owl" aria-hidden="true"><Icon name="nova" size={44} /></span>
             <span className="nova-react-emoji" aria-hidden="true">{NOVA_REACTIONS[novaReaction.kind].emoji}</span>
-            <span className="nova-react-line">{lang === "bn" ? NOVA_REACTIONS[novaReaction.kind].lineBn() : NOVA_REACTIONS[novaReaction.kind].lineEn()}</span>
+            <span className="nova-react-line">{novaReactionLine(novaReaction.kind, lang === "bn" ? "bn" : "en", kidBand(kid) >= 5)}</span>
           </div>
         )}
         {/* 🦋 #1442/#1456 — calm-mode sheet: an in-flow, kid-understandable

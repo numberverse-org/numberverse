@@ -539,21 +539,31 @@ export interface NovaReactionDef {
   emoji: string;
   lineEn: () => string;
   lineBn: () => string;
+  /** #1034 — older-kid register (bands 5+, ages ~10+) for the same moment. */
+  lineEnMature?: () => string;
+  lineBnMature?: () => string;
   /** Speak the line aloud? False when the round already has its own spoken moment. */
   speak?: boolean;
 }
 export const NOVA_REACTIONS: Record<NovaReaction, NovaReactionDef> = {
-  cheer: { emoji: "🎉", lineEn: () => "3 in a row — nice!", lineBn: () => "টানা ৩টা — দারুণ!", speak: true },
-  amaze: { emoji: "🌟", lineEn: () => "AMAZING!", lineBn: () => "অসাধারণ!", speak: true },
-  superstar: { emoji: "⭐", lineEn: () => "SUPER STAR!", lineBn: () => "সুপার স্টার!", speak: true },
-  streak: { emoji: "🔥", lineEn: () => "You're on fire!", lineBn: () => "তুমি জ্বলছ!", speak: true },
-  oops: { emoji: "🤔", lineEn: () => "Oops! Try again — you've got this", lineBn: () => "ওহ! আবার চেষ্টা করো — পারবে", speak: true },
-  gentle: { emoji: "💛", lineEn: () => "Take a breath — you've got this", lineBn: () => "একটা নিঃশ্বাস নাও — পারবে", speak: true },
-  setback: { emoji: "😮", lineEn: () => "So close! Keep going", lineBn: () => "খুব কাছাকাছি! চালিয়ে যাও", speak: true },
-  reteach: { emoji: "🎯", lineEn: () => "Let's learn it together!", lineBn: () => "একসাথে শিখি!", speak: true },
-  master: { emoji: "🏆", lineEn: () => "Skill mastered!", lineBn: () => "দক্ষতা আয়ত্ত হয়েছে!", speak: false },
-  quest: { emoji: "🎁", lineEn: () => "Quest complete!", lineBn: () => "মিশন শেষ!", speak: false },
+  cheer: { emoji: "🎉", lineEn: () => "3 in a row — nice!", lineBn: () => "টানা ৩টা — দারুণ!", lineEnMature: () => "3 in a row — solid.", lineBnMature: () => "টানা ৩টা — চমৎকার।", speak: true },
+  amaze: { emoji: "🌟", lineEn: () => "AMAZING!", lineBn: () => "অসাধারণ!", lineEnMature: () => "Excellent!", lineBnMature: () => "চমৎকার!", speak: true },
+  superstar: { emoji: "⭐", lineEn: () => "SUPER STAR!", lineBn: () => "সুপার স্টার!", lineEnMature: () => "Well done!", lineBnMature: () => "দারুণ করেছ!", speak: true },
+  streak: { emoji: "🔥", lineEn: () => "You're on fire!", lineBn: () => "তুমি জ্বলছ!", lineEnMature: () => "Strong streak.", lineBnMature: () => "চমৎকার ধারাবাহিকতা।", speak: true },
+  oops: { emoji: "🤔", lineEn: () => "Oops! Try again — you've got this", lineBn: () => "ওহ! আবার চেষ্টা করো — পারবে", lineEnMature: () => "Not quite — try again.", lineBnMature: () => "ঠিক হয়নি — আবার চেষ্টা করো।", speak: true },
+  gentle: { emoji: "💛", lineEn: () => "Take a breath — you've got this", lineBn: () => "একটা নিঃশ্বাস নাও — পারবে", lineEnMature: () => "Pause, then go again.", lineBnMature: () => "একটু থামো, তারপর আবার করো।", speak: true },
+  setback: { emoji: "😮", lineEn: () => "So close! Keep going", lineBn: () => "খুব কাছাকাছি! চালিয়ে যাও", lineEnMature: () => "Close — keep going.", lineBnMature: () => "কাছাকাছি — চালিয়ে যাও।", speak: true },
+  reteach: { emoji: "🎯", lineEn: () => "Let's learn it together!", lineBn: () => "একসাথে শিখি!", lineEnMature: () => "Let's go over it together.", lineBnMature: () => "আবার একসাথে দেখি।", speak: true },
+  master: { emoji: "🏆", lineEn: () => "Skill mastered!", lineBn: () => "দক্ষতা আয়ত্ত হয়েছে!", lineEnMature: () => "Skill mastered.", lineBnMature: () => "দক্ষতা আয়ত্ত হয়েছে।", speak: false },
+  quest: { emoji: "🎁", lineEn: () => "Quest complete!", lineBn: () => "মিশন শেষ!", lineEnMature: () => "Quest complete.", lineBnMature: () => "মিশন শেষ।", speak: false },
 };
+
+/** #1034 — pick the reaction line for the active kid's register (EN/BN). */
+export function novaReactionLine(kind: NovaReaction, lang: "en" | "bn", mature: boolean): string {
+  const def = NOVA_REACTIONS[kind];
+  if (lang === "bn") return mature && def.lineBnMature ? def.lineBnMature() : def.lineBn();
+  return mature && def.lineEnMature ? def.lineEnMature() : def.lineEn();
+}
 
 /** How many lands the kid has FULLY mastered (every skill past the threshold). */
 export function fullyMasteredWorlds(skillsMap: Record<string, SkillMapEntry>, kidId: string): number {

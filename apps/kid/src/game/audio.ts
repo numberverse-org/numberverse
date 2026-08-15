@@ -167,6 +167,15 @@ export function comboChime(combo: number) {
   [base, base * 1.26, base * 1.5].forEach((f, i) => tone(f, 0.2, "triangle", MIX.sfxCombo, i * 0.055));
 }
 
+/** #1066 — distinct "that was hard" acknowledgment: a warm two-note major
+ *  third, lower and calmer than the combo chime so a hard-but-correct answer
+ *  sounds like recognition, not the same sparkle as an easy combo. */
+export function hardAck() {
+  tone(659.25, 0.12, "triangle", MIX.sfxCombo); // E5 — "you did a hard thing"
+  tone(830.61, 0.18, "sine", MIX.sfxCombo, 0.08); // G#5 — a gentle lift, not a fanfare
+  haptic(14);
+}
+
 /** Coin grant — a bright two-note "cha-ching" so earning feels tangible. */
 export function coinSound() {
   tone(987.77, 0.07, "triangle", MIX.sfxCoin);

@@ -3,6 +3,7 @@ import { correctCelebrate } from "./celebrate";
 import { assetIcon } from "./svgAssets";
 import { starPop } from "./audio";
 import { enableSwipeToAnswer } from "./gestures";
+import { matureRender } from "./renderBand"; // #1040/#1035 — older-kid font stack
 
 /**
  * Modern 2026-style game UI: soft gradient buttons with glass edges,
@@ -23,10 +24,20 @@ export interface TxtOpts {
   outline?: boolean;
 }
 
+/* #1035 — typography scales with the kid's band. Younger bands keep the round,
+ * cheerful Baloo 2 display face; bands 5+ (older kids) swap to Nunito as the
+ * lead face so lessons stop looking like toddler toys. Bangla still falls
+ * through to Noto Sans Bengali in both stacks. */
+const FONT_YOUNG = "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif";
+const FONT_MATURE = "'Nunito', 'Noto Sans Bengali', system-ui, 'Segoe UI', sans-serif";
+function fontStack(): string {
+  return matureRender() ? FONT_MATURE : FONT_YOUNG;
+}
+
 /** Modern text style: rounded font stack, 1px tracking, soft drop shadow. */
 export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Types.GameObjects.Text.TextStyle {
   const st: Phaser.Types.GameObjects.Text.TextStyle = {
-    fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+    fontFamily: fontStack(),
     fontSize: `${size}px`,
     color,
     fontStyle: opts.bold ? "800" : "600",
@@ -60,7 +71,7 @@ export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Typ
  */
 export function promptTxt(size: number): Phaser.Types.GameObjects.Text.TextStyle {
   return {
-    fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+    fontFamily: fontStack(),
     fontSize: `${size}px`,
     color: "#ffffff",
     fontStyle: "800",
@@ -90,7 +101,7 @@ export function promptTxt(size: number): Phaser.Types.GameObjects.Text.TextStyle
  *  line that IS the question ("How many in all?", "Find the letter…"). */
 export function questionTxt(): Phaser.Types.GameObjects.Text.TextStyle {
   return {
-    fontFamily: "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+    fontFamily: fontStack(),
     fontSize: "34px",
     color: "#fff8e1",
     fontStyle: "800",

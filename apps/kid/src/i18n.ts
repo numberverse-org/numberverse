@@ -111,10 +111,14 @@ export interface Strings {
   treeHint: string;
   /** Journey-first home: Nova greets the kid by name on the path. */
   homeHello: (name: string) => string;
+  /** #1033 — older-kid greeting register (bands 5+, ages ~10+). */
+  homeHelloMature: (name: string) => string;
   homePath: string;
   homeViewJourney: string;
   /** Warm re-entry after a missed day (streak kindness — no guilt). */
   welcomeBack: (name: string) => string;
+  /** #1033 — older-kid re-entry greeting (bands 5+, ages ~10+). */
+  welcomeBackMature: (name: string) => string;
   /** Quest is unreachable today (parent playtime cap) → gentle rest, not frustration. */
   questRest: string;
   /* mastery card album */
@@ -261,6 +265,10 @@ export interface Strings {
   gardenTileFresh: string;
   /** #1373 — home teaser CTA before the first plant exists. */
   gardenTileEmpty: string;
+  /** #1037 — older-kid garden register (bands 5+, ages ~10+). */
+  gardenTileSumMature: (plants: number, fruits: number) => string;
+  gardenTileFreshMature: string;
+  gardenTileEmptyMature: string;
   /* #281 — 7-day login calendar */
   calendarTitle: string;
   calendarHint: string;
@@ -360,6 +368,14 @@ export interface Strings {
   recapEmpty: string;
   recapHomeLine: (days: number, title: string) => string;
   recapSpeak: (name: string, days: number, title: string, win: string) => string;
+  /* #1038 — older-kid weekly summary register (bands 5+, ages ~10+). */
+  recapTitleMature: string;
+  recapSubMature: (n: number) => string;
+  recapWinMasteredMature: (n: number) => string;
+  recapWinStreakMature: (n: number) => string;
+  recapHearMature: string;
+  recapEmptyMature: string;
+  recapSpeakMature: (name: string, days: number, title: string, win: string) => string;
   /* #100 — skill of the week (weekly challenge + Week Warrior badge) */
   weekTitle: string;
   weekSub: string;
@@ -386,6 +402,13 @@ export interface Strings {
   chSpeakWin: (name: string) => string;
   chSpeakTie: string;
   chSpeakLose: (name: string) => string;
+  /* #1039 — older-kid challenge register: a practice duel, not "beat the owl". */
+  chTileMature: string;
+  chCardMature: string;
+  chQuestionMature: string;
+  chWinMature: (name: string) => string;
+  chTieMature: string;
+  chLoseMature: (name: string) => string;
   /* #1164 — intermediate land boss (per-land duel gate) */
   bossBtn: string;
   bossBtnBn: string;
@@ -862,6 +885,8 @@ export interface Strings {
   masterySpeak: (title: string) => string;
   /* growth garden */
   gardenTile: string;
+  /** #1037 — older-kid garden label (bands 5+, ages ~10+). */
+  gardenTileMature: string;
   gardenHint: string;
   /* 🦉 3D Nova island (#684) — lazy three.js surface */
   island3dBtn: string;
@@ -984,9 +1009,11 @@ export const STR: Record<Lang, Strings> = {
     treeTitle: "🌳 Skill Tree",
     treeHint: "Tap a leaf to jump straight to that lesson",
     homeHello: (name) => `Whoo! Hi ${name}!`,
+    homeHelloMature: (name) => `Welcome, ${name}!`,
     homePath: "Your path",
     homeViewJourney: "Full journey ›",
     welcomeBack: (name) => `Welcome back, ${name}! 💛`,
+    welcomeBackMature: (name) => `Welcome back, ${name}!`,
     questRest: "🌙 All done for today — great job! Your quest restarts tomorrow.",
     cardsTile: "My Cards",
     cardsTitle: "Card Album",
@@ -1236,6 +1263,14 @@ export const STR: Record<Lang, Strings> = {
     recapEmpty: "No play this week — come play!",
     recapHomeLine: (days, title) => `${days} day${days === 1 ? "" : "s"} · ⭐ ${title}`,
     recapSpeak: (name, days, title, win) => `${name}, this week you played ${days} day${days === 1 ? "" : "s"}, your top skill is ${title}. ${win}`,
+    /* #1038 — older-kid weekly summary register */
+    recapTitleMature: "Weekly Summary",
+    recapSubMature: (n) => `${n} day${n === 1 ? "" : "s"} this week`,
+    recapWinMasteredMature: (n) => `${n} skill${n === 1 ? "" : "s"} mastered this week`,
+    recapWinStreakMature: (n) => `Longest streak: ${n} days`,
+    recapHearMature: "🔊 Hear this week",
+    recapEmptyMature: "No play this week — start a session!",
+    recapSpeakMature: (name, days, title, win) => `${name}, this week you played ${days} day${days === 1 ? "" : "s"}; top skill: ${title}. ${win}`,
     weekTitle: "Skill of the Week",
     weekSub: "Complete it to earn the Week Warrior badge 🏅",
     weekDone: "Week Warrior badge earned! 🏅",
@@ -1261,6 +1296,13 @@ export const STR: Record<Lang, Strings> = {
     chSpeakWin: (name) => `${name}, you beat Nova! Amazing!`,
     chSpeakTie: "Wow, it is a tie! So close!",
     chSpeakLose: (name) => `${name}, so close! Try again, you can beat Nova!`,
+    /* #1039 — older-kid challenge register */
+    chTileMature: "🧮 Math Duel",
+    chCardMature: "A focused 5-round practice duel",
+    chQuestionMature: "Practice duel",
+    chWinMature: (name) => `Well played, ${name}!`,
+    chTieMature: "A draw!",
+    chLoseMature: (name) => `Close round, ${name} — try again.`,
     /* #1164 — intermediate land boss (per-land duel gate) */
     bossBtn: "⚔️ Land Boss",
     bossBtnBn: "⚔️ ভূখণ্ড বস",
@@ -1707,11 +1749,16 @@ export const STR: Record<Lang, Strings> = {
     newSkill: (n) => (n === 1 ? "🌟 New skill mastered!" : `🌟 ${n} new skills mastered!`),
     masterySpeak: (title) => `Wow! You mastered ${title}! 🎉`,
     gardenTile: "My Garden",
+    gardenTileMature: "Growth Garden",
     gardenHint: "Answer right — plants grow!",
     /* #769 — home teaser: plants/fruits + a "new growth!" cue */
     gardenTileSum: (plants, fruits) => `🌱 ${plants} plants · ${fruits} fruitful`,
     gardenTileFresh: "new growth!",
     gardenTileEmpty: "Tap to grow your first plant 🌱",
+    /* #1037 — older-kid garden register */
+    gardenTileSumMature: (plants, fruits) => `${plants} plants · ${fruits} ready`,
+    gardenTileFreshMature: "new progress",
+    gardenTileEmptyMature: "Start your first plant",
     /* 🦉 3D Nova island (#684) */
     island3dBtn: "✨ 3D Island",
     islandTitle: "🦉 Nova's 3D Island",
@@ -1825,9 +1872,11 @@ export const STR: Record<Lang, Strings> = {
     treeTitle: "🌳 দক্ষতা বৃক্ষ",
     treeHint: "সোজা সেই পাঠে যেতে পাতায় চাপ দাও",
     homeHello: (name) => `হু! হাই ${name}!`,
+    homeHelloMature: (name) => `স্বাগতম, ${name}!`,
     homePath: "তোমার পথ",
     homeViewJourney: "সম্পূর্ণ যাত্রা ›",
     welcomeBack: (name) => `ফিরে এসো, ${name}! 💛`,
+    welcomeBackMature: (name) => `আবার স্বাগতম, ${name}!`,
     questRest: "🌙 আজকের খেলা শেষ — দারুণ! কাল আবার মিশন শুরু হবে।",
     cardsTile: "আমার কার্ড",
     cardsTitle: "কার্ড অ্যালবাম",
@@ -2076,6 +2125,14 @@ export const STR: Record<Lang, Strings> = {
     recapEmpty: "এই সপ্তাহে খেলা হয়নি — এসো খেলি!",
     recapHomeLine: (days, title) => `${bnNum(days)} দিন · ⭐ ${title}`,
     recapSpeak: (name, days, title, win) => `${name}, এই সপ্তাহে তুমি ${bnNum(days)} দিন খেলেছ, তোমার সেরা দক্ষতা ${title}। ${win}`,
+    /* #1038 — বড় বাচ্চাদের সাপ্তাহিক সারসংক্ষেপ নিবন্ধন */
+    recapTitleMature: "সাপ্তাহিক সারসংক্ষেপ",
+    recapSubMature: (n) => `এই সপ্তাহে ${bnNum(n)} দিন`,
+    recapWinMasteredMature: (n) => `এই সপ্তাহে ${bnNum(n)}টি দক্ষতা আয়ত্ত হয়েছে`,
+    recapWinStreakMature: (n) => `দীর্ঘতম ধারাবাহিকতা: ${bnNum(n)} দিন`,
+    recapHearMature: "🔊 এই সপ্তাহ শোনো",
+    recapEmptyMature: "এই সপ্তাহে খেলা হয়নি — একটা সেশন শুরু করো!",
+    recapSpeakMature: (name, days, title, win) => `${name}, এই সপ্তাহে তুমি ${bnNum(days)} দিন খেলেছ; সেরা দক্ষতা: ${title}। ${win}`,
     weekTitle: "সপ্তাহের দক্ষতা",
     weekSub: "শেষ করলে পাবে সপ্তাহের যোদ্ধা ব্যাজ 🏅",
     weekDone: "সপ্তাহের যোদ্ধা ব্যাজ জিতেছো! 🏅",
@@ -2101,6 +2158,13 @@ export const STR: Record<Lang, Strings> = {
     chSpeakWin: (name) => `${name}, তুমি নোভাকে হারিয়েছ! অসাধারণ!`,
     chSpeakTie: "বাহ, সমান সমান! প্রায় পেরেছিলে!",
     chSpeakLose: (name) => `${name}, প্রায় পেরেছিলে! আবার চেষ্টা করো, তুমি নোভাকে হারাতে পারবে!`,
+    /* #1039 — বড় বাচ্চাদের চ্যালেঞ্জ নিবন্ধন: অনুশীলনের দ্বৈরথ, "পেঁচাকে হারাও" নয় */
+    chTileMature: "🧮 গণিত দ্বৈরথ",
+    chCardMature: "৫ রাউন্ডের নিবিষ্ট অনুশীলন লড়াই",
+    chQuestionMature: "অনুশীলন দ্বৈরথ",
+    chWinMature: (name) => `চমৎকার খেলেছ, ${name}!`,
+    chTieMature: "ড্র!",
+    chLoseMature: (name) => `কাছাকাছি ছিলে, ${name} — আবার চেষ্টা করো।`,
     /* #1164 — intermediate land boss (per-land duel gate) */
     bossBtn: "⚔️ ভূখণ্ড বস",
     bossBtnBn: "⚔️ ভূখণ্ড বস",
@@ -2546,11 +2610,16 @@ export const STR: Record<Lang, Strings> = {
     newSkill: (n) => (n === 1 ? "🌟 নতুন দক্ষতা আয়ত্ত করেছো!" : `🌟 ${n}টি নতুন দক্ষতা আয়ত্ত করেছো!`),
     masterySpeak: (title) => `বাহ! তুমি ${title} আয়ত্ত করেছ! 🎉`,
     gardenTile: "আমার বাগান",
+    gardenTileMature: "বৃদ্ধির বাগান",
     gardenHint: "ঠিক উত্তর দাও — গাছ বাড়বে!",
     /* #769 — home teaser: plants/fruits + a "new growth!" cue */
     gardenTileSum: (plants, fruits) => `🌱 ${bnNum(plants)}টা গাছ · ${bnNum(fruits)}টা ফল`,
     gardenTileFresh: "নতুন চারা!",
     gardenTileEmpty: "প্রথম গাছটি বাড়াতে ট্যাপ করো 🌱",
+    /* #1037 — বড় বাচ্চাদের বাগান নিবন্ধন */
+    gardenTileSumMature: (plants, fruits) => `🌱 ${bnNum(plants)}টা গাছ · ${bnNum(fruits)}টা প্রস্তুত`,
+    gardenTileFreshMature: "নতুন অগ্রগতি",
+    gardenTileEmptyMature: "প্রথম গাছ শুরু করো",
     /* 🦉 3D Nova island (#684) */
     island3dBtn: "✨ ৩ডি দ্বীপ",
     islandTitle: "🦉 নোভার ৩ডি দ্বীপ",
