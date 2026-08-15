@@ -225,6 +225,9 @@ export default function App() {
   /** #1368 — the break screen's "keep going" destination: the done screen after
    *  a completed session, or home when the break came from the goal nudge. */
   const breakReturnRef = useRef<"done" | "home">("done");
+  /** #1472 — a freeze/streak explanation to speak on the done screen instead of
+   *  the usual "Amazing!" (the usual line would otherwise cancel this one). */
+  const freezeLineRef = useRef<string | null>(null);
   /** Bump to force the playing effect to re-run the SAME step with remediation
    *  flags (reteach > 0) after the mastery gate blocks an advance. */
   const [reteachNonce, setReteachNonce] = useState(0);
@@ -2618,6 +2621,7 @@ export default function App() {
       const prof = useKidStore.getState().moni?.[kid.id];
       const threshold = prof?.attention.fatigueThreshold ?? 12;
       breakPendingRef.current = !!prof && prof.sessionRounds >= threshold;
+      let freezeLine: string | null = null;
       if (kid) {
         // #294 — if this session's streak update SPENT a freeze token, cheer
         // about it: the chain survived a missed day.
@@ -2636,12 +2640,17 @@ export default function App() {
         recordSession(kid.id);
         const freezesAfter = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
         if (freezesAfter < freezesBefore) {
-          tada();
-          speak(t.freezeSpentSpeak);
+          freezeLine = t.freezeSpentSpeak;
         } else if (freezeMissGap > 0 && freezesBefore > 0) {
-          speak(t.freezeNotEnough(freezeMissGap - 1));
+          freezeLine = t.freezeNotEnough(freezeMissGap - 1);
         }
       }
+      // Cancel the in-game line FIRST so the freeze/streak explanation below is
+      // never canceled by the session-end cleanup (the old order spoke, then
+      // immediately called cancelSpeech — silently dropping #294/#1472 lines).
+      cancelSpeech();
+      tada();
+      if (freezeLine) freezeLineRef.current = freezeLine;
       // #253 — the session finished: drop any saved snapshot so a later switch
       // back starts fresh (a completed session is nothing to resume).
       if (kid) clearSavedSession(kid.id);
@@ -2657,10 +2666,26 @@ export default function App() {
     }
   }, [roundsDone, sessionIdx, screen, kid, mistakes, recordSession, novaCompleteSession]);
 
-  /* The done screen talks — a spoken celebration to seal the win. */
+  /* The done screen talks — a spoken celebration to seal the win. When a
+     freeze/streak explanation is pending, speak that instead so it is heard in
+     full (the usual "Amazing!" would cancel it mid-sentence). */
   useEffect(() => {
-    if (screen === "done") speak(t.amazing);
+    if (screen === "done") {
+      const freezeLine = freezeLineRef.current;
+      if (freezeLine) {
+        speak(freezeLine);
+        freezeLineRef.current = null;
+      } else {
+        speak(t.amazing);
+      }
+    }
   }, [screen, t.amazing]);
+
+  /* #1472 — a break→home detour can leave a pending freeze line unspoken; drop
+     it when a new session starts so it never replays on a later done screen. */
+  useEffect(() => {
+    if (screen === "playing") freezeLineRef.current = null;
+  }, [screen]);
 
   const startPlayWorld = (b: Band) => {
     if (!kid) return;
