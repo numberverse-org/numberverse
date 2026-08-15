@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.71.2 (fix: QuestionWords scene key mismatch — game engine boots (game-qwords → QuestionWords))";
-export const APP_VERSION = "0.71.2";
+export const APP_BUILD = "16 Aug 2026 · 0.72.0 (batch-3: 7 clusters (#942-999) — kotha/API, Moni adaptive, multi-tenancy, config/voice, guardrails, PWA/offline, engine tech-debt)";
+export const APP_VERSION = "0.72.0";

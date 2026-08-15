@@ -1,3 +1,22 @@
+## 16 Aug 2026 — 0.72.0 (batch-3: 7 clusters (#942-999) — kotha/API, Moni adaptive, multi-tenancy, config/voice, guardrails, PWA/offline, engine tech-debt)
+
+72a10fb fix: restore og-card.png to SW precache — undo nv-b14 globIgnores regression (#993)
+8f08ac6 fix: restore nv-b15 over-deleted consts + widen digit() to string, fix stale locale test
+1a8d3a5 merge: batch-3 nv-b15 — engine tech-debt cluster (#996-999)
+5f4542a refactor: batch-3 nv-b15 — engine tech-debt cluster (#996-999)
+f026221 merge: batch-3 nv-b11 — multi-tenancy cluster (#961-969)
+b740aa7 feat: batch-3 nv-b11 — multi-tenancy cluster (#961-969)
+a8a3518 merge: batch-3 nv-b14 — PWA/offline/bugs cluster (#988-995)
+b1aca6f fix: batch-3 nv-b14 — PWA/offline/bugs cluster (#988-995)
+faa029f merge: batch-3 nv-b13 — guardrails cluster (#980-987)
+b836396 feat: batch-3 nv-b13 — guardrails cluster (#980-987)
+da19064 merge: batch-3 nv-b9 — kotha-stories API cluster (#942-950)
+23388a0 feat: batch-3 nv-b9 — kotha-stories API cluster (#942-950)
+2563be7 merge: batch-3 nv-b12 — config/voice cluster (#970-979)
+f853d97 feat: batch-3 nv-b12 — config/voice cluster (#970-979)
+fbda9ac merge: batch-3 nv-b10 — Moni adaptive cluster (#951-960)
+3821eff feat: batch-3 nv-b10 — Moni adaptive cluster (#951-960)
+
 ## 16 Aug 2026 — 0.71.2 (fix: QuestionWords scene key mismatch — game engine boots (game-qwords → QuestionWords))
 
 067ef5e 🐛 fix: QuestionWords scene key must equal catalog value (game-qwords → QuestionWords)
