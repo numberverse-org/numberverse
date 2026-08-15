@@ -1,6 +1,7 @@
 import json
+import logging
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -26,6 +27,8 @@ from ..schemas import StorySearchIn, StorySearchOut
 from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+log = logging.getLogger("numberverse.admin")
 
 # react-admin resources → model. Keys are the REST resource names.
 WHITELIST: dict[str, type] = {
@@ -162,8 +165,13 @@ def _writable_payload(resource: str, body: dict) -> dict:
 
 
 def _pk_value(model: type, raw: str) -> Any:
+    # #854 — UUID models receive the id as a plain path str; a malformed UUID
+    # must be a 422 ("Invalid id"), not an unhandled ValueError → 500.
     if model in UUID_MODELS:
-        return uuid.UUID(raw)
+        try:
+            return uuid.UUID(raw)
+        except ValueError:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid id") from None
     return raw
 
 
@@ -243,7 +251,9 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
     by_action = [{"action": a or "none", "stories": n} for a, n in by_action_raw.all()]
 
     # 14-day ingest trend (for a line chart) — date-only buckets, no kids.
-    since = datetime.utcnow() - timedelta(days=STORY_HEALTH_DAYS)
+    # #860 — DB timestamps are naive UTC; build the window bound the same way so
+    # `>= since` compares like-for-like (aware vs naive datetimes don't mix).
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=STORY_HEALTH_DAYS)
     by_day_raw = await db.execute(
         select(func.date(LearningStory.created_at).label("d"), func.count().label("n"))
         .where(LearningStory.created_at >= since)
@@ -254,7 +264,7 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
 
     # Rate-limit-aware flags: kids whose story volume in the last 60 min
     # breached the per-hour budget → likely a runaway replay, needs a look.
-    hour_ago = datetime.utcnow() - timedelta(hours=1)
+    hour_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
     hot_raw = await db.execute(
         select(LearningStory.kid_id, func.count().label("n"))
         .where(LearningStory.created_at >= hour_ago)
@@ -378,7 +388,8 @@ async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = 
         `kotha_max_stories_per_kid` (default 1000) stories — the active tail
         is always the most recent, so active learning is never the overflow.
     """
-    now = datetime.utcnow()
+    # #860 — naive-UTC now, matching the naive-UTC `created_at` column (see above).
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     retention = timedelta(days=settings.kotha_retention_days)
     active_window = timedelta(days=settings.kotha_active_skill_days)
     cap = settings.kotha_max_stories_per_kid
@@ -427,6 +438,15 @@ async def prune_stories(_: Profile = Depends(require_admin), db: AsyncSession = 
     }
 
 
+# #840 — caps for the generic admin list_resource. react-admin sends
+# `?filter`, `?sort` and `?range` as JSON query params; without limits a
+# crafted `?range=[0,999999]` (or an arbitrarily deep filter) could force
+# unbounded work / a full-table pull.
+MAX_RANGE_ROWS = 500
+MAX_FILTER_KEYS = 10
+MAX_SORT_COLUMNS = 1
+
+
 @router.get("/{resource}")
 async def list_resource(
     resource: str,
@@ -440,54 +460,121 @@ async def list_resource(
     if not model:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
 
-    stmt = select(model)
+    # #840 / #848 — parse react-admin's JSON query params up-front so a
+    # malformed payload is a 400 (with the swallowed exception logged) instead
+    # of silently falling back to the full dataset. Absent/empty params stay
+    # "no filter / no sort / no pagination".
+    filter_dict: dict = {}
     if filter:
         try:
-            f = json.loads(filter)
-        except json.JSONDecodeError:
-            f = {}
-        for key, val in f.items():
-            col = getattr(model, key, None)
-            if col is not None:
-                if isinstance(val, str) and val.startswith("~"):
-                    stmt = stmt.where(col.ilike(f"%{val[1:]}%"))
-                elif isinstance(val, list):
-                    stmt = stmt.where(col.in_(val))
-                else:
-                    stmt = stmt.where(col == val)
+            filter_dict = json.loads(filter)
+        except json.JSONDecodeError as exc:
+            log.warning("admin list_resource invalid filter: %r", exc)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid filter") from exc
+        if not isinstance(filter_dict, dict):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid filter")
 
+    sort_pairs: list[tuple[str, str]] = []
     if sort:
         try:
-            field, direction = json.loads(sort)
-            col = getattr(model, field, None)
-            if col is not None:
-                stmt = stmt.order_by(col.asc() if direction.upper() == "ASC" else col.desc())
-        except Exception:
-            pass
+            sort_raw = json.loads(sort)
+        except json.JSONDecodeError as exc:
+            log.warning("admin list_resource invalid sort: %r", exc)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid sort") from exc
+        if not isinstance(sort_raw, list):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid sort")
+        # react-admin's single-column sort is `["field", "DIR"]`; a multi-column
+        # sort is a list of those pairs. Normalize both to a list of pairs.
+        if len(sort_raw) == 2 and isinstance(sort_raw[0], str):
+            sort_raw = [sort_raw]
+        if len(sort_raw) > MAX_SORT_COLUMNS:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Too many sort columns (max {MAX_SORT_COLUMNS})",
+            )
+        for entry in sort_raw:
+            if (
+                not isinstance(entry, list)
+                or len(entry) != 2
+                or not isinstance(entry[0], str)
+                or not isinstance(entry[1], str)
+            ):
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid sort")
+            sort_pairs.append((entry[0], entry[1]))
 
-    # Pagination (react-admin sends range=[start,end])
-    total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    start = end = None
     if range:
         try:
-            start, end = json.loads(range)
-            stmt = stmt.offset(start).limit(end - start + 1)
-        except Exception:
-            pass
+            range_raw = json.loads(range)
+        except json.JSONDecodeError as exc:
+            log.warning("admin list_resource invalid range: %r", exc)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid range") from exc
+        if (
+            not isinstance(range_raw, list)
+            or len(range_raw) != 2
+            or not isinstance(range_raw[0], int)
+            or not isinstance(range_raw[1], int)
+        ):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid range")
+        start, end = range_raw
+        if start < 0 or end < start:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid range")
+        # #840 — cap the window so `?range=[0,999999]` can't pull the whole table.
+        if end - start + 1 > MAX_RANGE_ROWS:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Range too large (max {MAX_RANGE_ROWS} rows)",
+            )
+
+    stmt = select(model)
+    table_columns = model.__table__.columns
+
+    # #840 — cap filter breadth/depth; unknown columns are a 400, not a skip.
+    if len(filter_dict) > MAX_FILTER_KEYS:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Too many filter keys (max {MAX_FILTER_KEYS})",
+        )
+    for key, val in filter_dict.items():
+        if isinstance(val, dict) or (
+            isinstance(val, list) and any(isinstance(v, (dict, list)) for v in val)
+        ):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Nested filter payloads are not allowed",
+            )
+        if key not in table_columns.keys():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown filter column: {key}")
+        col = table_columns[key]
+        if isinstance(val, str) and val.startswith("~"):
+            stmt = stmt.where(col.ilike(f"%{val[1:]}%"))
+        elif isinstance(val, list):
+            stmt = stmt.where(col.in_(val))
+        else:
+            stmt = stmt.where(col == val)
+
+    # #848 — unknown sort columns are a 400, not a skip (#840 caps the count).
+    for field, direction in sort_pairs:
+        if field not in table_columns.keys():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown sort column: {field}")
+        col = table_columns[field]
+        stmt = stmt.order_by(col.asc() if direction.upper() == "ASC" else col.desc())
+
+    # Pagination (react-admin sends range=[start,end]).
+    total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    if start is not None:
+        stmt = stmt.offset(start).limit(end - start + 1)
 
     result = await db.scalars(stmt)
     rows = [_row_to_dict(r) for r in result]
-    if range:
-        try:
-            start, _ = json.loads(range)
-            total_header = str(total)
-            content_range = f"{resource} {start}-{start + len(rows) - 1}/{total}"
-            return Response(
-                content=json.dumps(rows),
-                media_type="application/json",
-                headers={"Content-Range": content_range, "X-Total-Count": total_header},
-            )
-        except Exception:
-            pass
+    if start is not None:
+        total_header = str(total)
+        content_range = f"{resource} {start}-{start + len(rows) - 1}/{total}"
+        return Response(
+            content=json.dumps(rows),
+            media_type="application/json",
+            headers={"Content-Range": content_range, "X-Total-Count": total_header},
+        )
     return rows
 
 
