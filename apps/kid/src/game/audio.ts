@@ -161,9 +161,12 @@ export function starPop() {
   tone(1700 + Math.random() * 400, 0.07, "sine", MIX.sfxStarPop);
 }
 
-/** Combo chime — a rising three-note sparkle as the combo climbs. */
+/** Combo chime — a rising three-note sparkle as the combo climbs.
+ *  #1065 — rooted in the CURRENT LAND'S key (`landRoot`, swapped by
+ *  setMusicTheme), so a win in band 5 rings higher than the same combo in band
+ *  1: the celebration pitch already carries the difficulty, not just the streak. */
 export function comboChime(combo: number) {
-  const base = 523.25 + Math.min(combo, 8) * 55;
+  const base = landRoot * (1 + Math.min(combo, 8) * 0.08);
   [base, base * 1.26, base * 1.5].forEach((f, i) => tone(f, 0.2, "triangle", MIX.sfxCombo, i * 0.055));
 }
 

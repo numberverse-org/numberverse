@@ -21,6 +21,8 @@ import { NV_GOLD, NV_PINK, NV_SKY, NV_ORANGE } from "./ui"; // tokenized #591
  *
  * Kids chase the combo — consecutive correct answers turn into visible,
  * audible fireworks. Wrong answers quietly reset it (learning stays warm).
+ * Every word is routed through t() (#1064) so EN/BN both get the ladder, and
+ * #1068 scales the burst sizes with difficulty, not just the streak.
  *
  * #1061/#1062 — the engine also reads the ROUND'S DIFFICULTY (1-based level
  * index) so EFFORT escalates independently of streak: a hard level-4+ problem
@@ -62,6 +64,23 @@ export function resetCombo(scene: Phaser.Scene): void {
     prev.destroy();
   }
   scene.data.remove("nv:combo-fx");
+}
+
+/**
+ * #1070 — the SHARED hard-problem signal. A scene calls `setRoundDifficulty`
+ * once per round (its level+1, same number it reports to the round meter) and
+ * every shared reward path — correctCelebrate, hardAck, the burst counts —
+ * picks it up via `roundDifficulty(scene)`. Callers that prefer the explicit
+ * arg may still pass `{ difficulty }` to correctCelebrate; the slot and the
+ * arg are equivalent.
+ */
+export function setRoundDifficulty(scene: Phaser.Scene, difficulty: number): void {
+  scene.data.set("nv:difficulty", difficulty);
+}
+
+/** Current round difficulty for a scene (0 = unset → easy register). */
+export function roundDifficulty(scene: Phaser.Scene): number {
+  return (scene.data.get("nv:difficulty") as number | undefined) ?? 0;
 }
 
 /** Soft floating text — "+5", "WOW!", anything. Pops up, drifts, fades. */
@@ -172,9 +191,13 @@ export function correctCelebrate(
   y: number,
   opts?: { difficulty?: number }
 ) {
-  const difficulty =
-    opts?.difficulty ?? (scene.data.get("nv:difficulty") as number | undefined) ?? 0;
+  const difficulty = opts?.difficulty ?? roundDifficulty(scene);
   const hard = difficulty >= HARD_DIFFICULTY;
+  // #1068 — the burst scales with EFFORT, not just streak: every level past the
+  // hard threshold adds more confetti/stars, so a level-6 answer reads bigger
+  // than a level-4 one even at the same combo. Elite (level 7+) gets the most.
+  const diffBoost = Math.max(0, difficulty - HARD_DIFFICULTY);
+  const elite = difficulty >= 7; // #1069 — the top register
   const combo = bumpCombo(scene);
   if (combo < 2) {
     // #1062 — EFFORT escalates even at combo 1: a hard problem is a win on its
@@ -182,7 +205,7 @@ export function correctCelebrate(
     // pop/sparkle still fires on every correct).
     if (hard) {
       starBurst(scene, x, y, 4);
-      floatText(scene, x, y - 40, "Tough one! 💪", "#9be1a6", 22);
+      floatText(scene, x, y - 40, sceneT("ceToughOne"), "#9be1a6", 22);
       // #1066 — a hard-but-correct answer gets its OWN voice + sound, distinct
       // from the easy combo chime: the kid hears "that was hard" recognition,
       // not just another sparkle.
@@ -199,28 +222,28 @@ export function correctCelebrate(
   // it — the meter reset on every miss with almost nowhere showing the climb).
   // #1444 — keep the chip high enough that it never stacks/collides with the
   // escalation word below it (both rise from the same tap point).
-  floatText(scene, x, y - 116, `x${combo} 🔥`, "#ffe8a3", 20);
+  floatText(scene, x, y - 116, sceneT("ceStreak", { n: combo }), "#ffe8a3", 20);
 
   // #1191 — hard-band answers ESCALATE ONE TIER SOONER: a hard problem at
   // combo 3 already reads AMAZING, at combo 5 SUPER STAR. Easy work still has
   // to climb the full ladder — the fireworks stay earned.
   const tier = combo + (hard ? 1 : 0);
   if (tier === 2) {
-    floatText(scene, x, y - 40, "Nice! ✨", "#9be1a6", 24);
+    floatText(scene, x, y - 40, sceneT("ceNice"), "#9be1a6", 24);
     return;
   }
   if (tier === 3) {
     comboChime(combo);
-    confettiBurst(scene, x, y, 16);
-    const t = floatText(scene, x, y - 52, hard ? "WOW! 🔥" : "WOW! 🎉", NV_GOLD, 30);
+    confettiBurst(scene, x, y, 16 + diffBoost * 2);
+    const t = floatText(scene, x, y - 52, hard ? sceneT("ceWowHard") : sceneT("ceWow"), NV_GOLD, 30);
     scene.data.set("nv:combo-fx", t);
     return;
   }
   if (tier === 4 || tier === 5) {
     comboChime(combo);
-    confettiBurst(scene, x, y, hard ? 34 : 26);
-    starBurst(scene, x, y, hard ? 9 : 6);
-    const t = floatText(scene, x, y - 58, hard ? "AMAZING! 🔥" : "AMAZING! 🌟", NV_PINK, 32);
+    confettiBurst(scene, x, y, (hard ? 34 : 26) + diffBoost * 2);
+    starBurst(scene, x, y, (hard ? 9 : 6) + diffBoost);
+    const t = floatText(scene, x, y - 58, hard ? sceneT("ceAmazingHard") : sceneT("ceAmazing"), NV_PINK, 32);
     scene.data.set("nv:combo-fx", t);
     return;
   }
@@ -229,13 +252,15 @@ export function correctCelebrate(
   // burst. Hard-problem answers reach it one tier sooner, like every rung.
   if (tier >= 9) {
     comboChime(combo);
-    confettiBurst(scene, x, y, hard ? 72 : 54);
-    starBurst(scene, x, y, hard ? 20 : 14);
+    confettiBurst(scene, x, y, (hard ? 72 : 54) + diffBoost * 3);
+    starBurst(scene, x, y, (hard ? 20 : 14) + diffBoost);
+    // #1069 — the ELITE register: a level-7+ climb reads differently from a
+    // long easy one, so the ceiling has its own word on top of the hard tier.
     const fx = floatText(
       scene,
       x,
       y - 68,
-      hard ? sceneT("ceMasteryHard") : sceneT("ceMastery"),
+      elite ? sceneT("ceMasteryElite") : hard ? sceneT("ceMasteryHard") : sceneT("ceMastery"),
       "#ffe8a3",
       38
     );
@@ -244,8 +269,8 @@ export function correctCelebrate(
   }
   // 6+ → everything (a hard-problem SUPER STAR lands bigger)
   comboChime(combo);
-  confettiBurst(scene, x, y, hard ? 50 : 38);
-  starBurst(scene, x, y, hard ? 14 : 10);
-  const t = floatText(scene, x, y - 64, hard ? "SUPER STAR! 💫🔥" : "SUPER STAR! ⭐", "#c4b5fd", 34);
+  confettiBurst(scene, x, y, (hard ? 50 : 38) + diffBoost * 2);
+  starBurst(scene, x, y, (hard ? 14 : 10) + diffBoost);
+  const t = floatText(scene, x, y - 64, hard ? sceneT("ceSuperStarHard") : sceneT("ceSuperStar"), "#c4b5fd", 34);
   scene.data.set("nv:combo-fx", t);
 }

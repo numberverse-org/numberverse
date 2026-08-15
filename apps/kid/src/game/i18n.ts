@@ -140,6 +140,22 @@ const EN: Record<string, Entry> = {
   ceMasteryHard: "MASTERY MOMENT! 🔥🏆",
   // #1066 — spoken the moment a hard problem is solved on the first try.
   ceHardAck: "That was hard — nice work! 💪",
+  // #1064 — celebration escalation words (previously hardcoded inline in
+  // celebrate.ts; now localized so EN/BN both get the ladder).
+  ceNice: "Nice! ✨",
+  ceWow: "WOW! 🎉",
+  ceWowHard: "WOW! 🔥",
+  ceAmazing: "AMAZING! 🌟",
+  ceAmazingHard: "AMAZING! 🔥",
+  ceSuperStar: "SUPER STAR! ⭐",
+  ceSuperStarHard: "SUPER STAR! 💫🔥",
+  // #1063 — the combo-1 "hard problem solved" nod.
+  ceToughOne: "Tough one! 💪",
+  // #1199 — the streak chip floated above every escalation word.
+  ceStreak: (vars) => `x${vars?.n ?? "?"} 🔥`,
+  // #1069 — the elite register for top-band problems (level 7+): a distinct
+  // mastery word so a genuinely hard climb reads differently from a long one.
+  ceMasteryElite: "LEGENDARY MOMENT! 🏆🔥",
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "Let's put apples in the basket, watch!",
@@ -1675,6 +1691,20 @@ const BN: Record<string, Entry> = {
   ceMasteryHard: "দক্ষতার মুহূর্ত! 🔥🏆",
   // #1066 — কঠিন অঙ্ক প্রথম চেষ্টায় মেলালে বলা হয়।
   ceHardAck: "কঠিন ছিল — দারুণ করেছ! 💪",
+  // #1064 — উদযাপনের ধাপের শব্দ (আগে কোডেই লেখা ছিল; এখন বাংলা ও ইংরেজি দুটোই)।
+  ceNice: "চমৎকার! ✨",
+  ceWow: "বাহ্! 🎉",
+  ceWowHard: "বাহ্! 🔥",
+  ceAmazing: "দারুণ! 🌟",
+  ceAmazingHard: "দারুণ! 🔥",
+  ceSuperStar: "সুপার স্টার! ⭐",
+  ceSuperStarHard: "সুপার স্টার! 💫🔥",
+  // #1063 — কঠিন অঙ্ক প্রথম চেষ্টায় মেলার ছোট্ট নোট।
+  ceToughOne: "কঠিন ছিল! 💪",
+  // #1199 — ধারার চিপ, প্রতিটি বড় শব্দের উপরে ভেসে ওঠে।
+  ceStreak: (vars) => `x${String(vars?.n ?? "?").replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)])} 🔥`,
+  // #1069 — খুব কঠিন অঙ্কের (স্তর ৭+) আলাদা শীর্ষ শব্দ।
+  ceMasteryElite: "কিংবদন্তির মুহূর্ত! 🏆🔥",
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "বাস্কেটে আপেল রাখি, দেখো!",
