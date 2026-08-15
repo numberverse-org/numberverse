@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.76.0 (sync-state hardening: per-channel state + backoff + band-skip requeue + token revalidation (#1026-1031))
+
+7fa87b8 🔄 sync-state hardening: #1026-1031 backoff, per-channel state, band-skip requeue, token revalidation
+
 ## 16 Aug 2026 — 0.75.0 (event-sync reliability: progress dedup+BKT replay safe (#1023), timestamp preserved (#1024), no destructive outbox clears (#1025))
 
 026678c 🔄 event-sync reliability: #1023 progress dedup + #1024 timestamp + #1025 no destructive clears
