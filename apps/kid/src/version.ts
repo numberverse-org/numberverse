@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.70.1 (hotfix: progress.py SKILLS_SEED 8-tuple unpack after catalog seed parity (#1020))";
-export const APP_VERSION = "0.70.1";
+export const APP_BUILD = "15 Aug 2026 · 0.71.0 (batch-2: 8 clusters (#763-941) — auth/security durable PG rate-limit, content-safety i18n/BN/3D/speech scans + shared unsafeWords.json, scene auto-discovery + lifecycle, kid refactor + PBKDF2 PIN, data-integrity tz-aware + indexes, infra secrets/resource-limits, styling/a11y, e2e suite)";
+export const APP_VERSION = "0.71.0";

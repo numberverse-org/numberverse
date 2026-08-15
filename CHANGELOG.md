@@ -1,3 +1,24 @@
+## 15 Aug 2026 — 0.71.0 (batch-2: 8 clusters (#763-941) — auth/security durable PG rate-limit, content-safety i18n/BN/3D/speech scans + shared unsafeWords.json, scene auto-discovery + lifecycle, kid refactor + PBKDF2 PIN, data-integrity tz-aware + indexes, infra secrets/resource-limits, styling/a11y, e2e suite)
+
+4ad5a22 fix(audit+engine): adapt scene-integrity audit to import.meta.glob auto-discovery (#936); make catalog-coverage guard throw instead of console.warn (shipped-code audit)
+0e0d6c3 fix(infra): auto-prune old numberverse-demo image tags on deploy — keep 2 newest for rollback, drop stale version tags + floating :latest (box hit 97% disk once from accumulated tags)
+5e1d915 chore: merge batch-2 nv-b6
+d3e3a1e chore: merge batch-2 nv-b7
+f9db607 feat: batch-2 nv-b6 — content-safety cluster (#896-905): shared unsafeWords.json single source, i18n/BN/3D/speech scanning, extended UNSAFE categories, voice-recording 30s ceiling + review path
+b62f31a test: batch-2 nv-b7 — e2e cluster (#925-932): offline sync-drain, cross-app journey, parent portal specs, global-setup, WebKit/Firefox SW coverage, listener detach
+409b955 merge: batch-2 nv-b8 — scene lifecycle cluster (#933-941): import.meta.glob auto-scene-discovery, key-collision guard, shutdown cleanup, RESIZE listener .off, bootPromise reset + generation fast-path, scene registry catalog coverage
+d29f6d6 merge: batch-2 nv-b4 — data-integrity cluster (#906-915): tz-aware timestamp columns + migration ALTERs, ProgressEvent/SkillMastery/Story indexes, Subscription unique profile, migration harness indexes/constraints, coins concurrency guard, backfill fix, tenant axis, kid_settings CHECK constraints
+fb3376d merge: batch-2 nv-b2 — kid refactor cluster (#786-791 #818-819 #883 #1179): extract App screens, split addEvent into roundLearning/roundStory, engine scene registry single-source, store persist versioning, guarded localStorage parse, PBKDF2 PIN hashing + EN/BN crypto strings, journey/store entry-chunk reduction
+d1e4234 merge: batch-2 nv-b1 — styling/a11y cluster (#763-799 #882): globals.css dedupe, real Baloo2 weights, land accent/deco carryover, reduced-motion gates, NV_* token consolidation, Firefox zoom fallback, dashboard max-width fallback
+8b92ecf fix: batch-2 nv-b8 — scene lifecycle cluster (#933-941): RESIZE listener cleanup, shutdown() base, delayedCall destroy, scene registry parity, bootPromise reset, key collision guard, canvas resize coalescing
+5c4bee9 feat: batch-2 nv-b4 — data-integrity cluster (#906-915): tz-aware timestamps, indexes, sub unique constraint, migration harness indexes/constraints, coins concurrency, backfill fix
+7dd90bc feat: batch-2 nv-b1 — styling/a11y cluster (#763-799 #882): globals.css fix, Baloo2 real weights, land accent + deco, reduced-motion gates, NV_* token consolidation, Firefox zoom fallback, dashboard max-width
+c9d0a7a feat: batch-2 nv-b2 — kid refactor cluster (#786-791 #818-819 #883 #1179): extract App screens, split addEvent into roundLearning/roundStory, engine scene registry, store persist versioning, guarded localStorage parse, PBKDF2 PIN hashing, journey/store entry-chunk work
+a31622c merge: batch-2 nv-b5 — infra/security config cluster (#916-#924): PG secrets out of compose, resource limits, pinned image digests, nginx healthcheck, CORS/secret fail-fast, pinned backup container, env_file parity
+a9d3b6f merge: batch-2 nv-b3 — auth/security cluster (#771 #772 #773 #800 #801 #802 #865): durable PG rate limiter + cred-stuffing guard, session revocation fingerprint, no default-password seeding, Google aud check, restricted admin mass-assignment
+7c9fce5 feat: batch-2 b5 work (subagent)
+c941908 feat: batch-2 b3 work (subagent)
+
 ## 15 Aug 2026 — 0.70.1 (hotfix: progress.py SKILLS_SEED 8-tuple unpack after catalog seed parity (#1020))
 
 a1af11b fix(api): SKILLS_SEED now 8-tuple after #1020 seed parity — unpack by row index in progress.py band lock
