@@ -369,11 +369,17 @@ class ProgressEvent(Base):
     # #907 — the activity feed is "recent N events for one kid", ordered by
     # (created_at desc, id desc); (kid_id, id) lets the planner satisfy the
     # kid filter + the id tiebreaker in one scan.
+    # #1023 — dedup key: the client's durable-outbox uid for this round. Unique
+    # per kid so a replayed batch (lost ACK → same uid re-posted) is a no-op
+    # instead of a duplicate row + double-counted BKT mastery. NULL for
+    # pre-dedup rows — Postgres lets many NULLs coexist in a unique constraint.
     __table_args__ = (
         Index("ix_progress_events_kid_id_id", "kid_id", "id"),
+        UniqueConstraint("kid_id", "uid", name="uq_progress_events_kid_uid"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uid: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), index=True)
     # #914 — joined/filtered against skills (worksheets, analytics); keep an
     # index so those joins don't scan the whole event log.
@@ -382,6 +388,10 @@ class ProgressEvent(Base):
     correct: Mapped[bool] = mapped_column(Boolean)
     response_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # #1024 — the client's event timestamp (epoch ms). Was silently dropped
+    # server-side; preserved here so the activity feed / weekly report can use
+    # the round's real time. NULL for legacy rows (feed falls back to created_at).
+    timestamp: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

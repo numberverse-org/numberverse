@@ -546,13 +546,20 @@ export async function syncProgress(): Promise<void> {
   try {
     const batch = pending.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((e) => identity.kidFor(e.kidId) !== null);
-    const orphaned = batch.filter((e) => identity.kidFor(e.kidId) === null);
     if (mapped.length === 0) {
-      // local kids were deleted — drop their orphaned events, keep the rest
-      useKidStore.getState().clearPending(new Set([...orphaned.map((e) => e.uid), ...batch.map((e) => e.uid)]));
+      // #1025 — NEVER destructively clear the batch on a mapping miss. `kidFor()`
+      // returns null when the local roster (nv_kids) or the persisted kidMap
+      // isn't hydrated/current yet — e.g. the roster read raced a kid-add, or
+      // the parent just signed in and the map is being rebuilt. The old code
+      // cleared the ENTIRE batch here (comment said "keep the rest", the code
+      // dropped everything) — permanently losing real progress. There is NO
+      // local kid-delete flow, so a miss is always transient. Keep the events
+      // queued; the next heartbeat re-runs mapLocalKidsToServer (which re-maps
+      // from localKids()) and drains. A genuinely-removed server kid surfaces
+      // as a /progress 404 → error state, events stay queued (never silently
+      // lost) — the safe failure mode.
       setSyncState("idle");
-      drained = true;
-      return;
+      return; // drained stays false → heartbeat retries, no hot loop
     }
     setSyncState("syncing");
     // #9 — carry each kid's current coin wallet with the batch so the server
@@ -573,13 +580,14 @@ export async function syncProgress(): Promise<void> {
           correct: e.correct,
           response_ms: e.responseMs,
           difficulty: e.difficulty,
-          timestamp: e.ts,
+          uid: e.uid, // #1023 — dedup key: replayed batches are no-ops server-side
+          timestamp: e.ts, // #1024 — client round timestamp, preserved
         })),
         coins,
       }),
     });
     if (res.ok) {
-      const done = new Set([...orphaned.map((e) => e.uid), ...mapped.map((e) => e.uid)]);
+      const done = new Set(mapped.map((e) => e.uid));
       useKidStore.getState().clearPending(done);
       setSyncState("ok");
       // #1556 — a confirmed server drain: clear the error and stamp success.
@@ -626,10 +634,9 @@ export async function syncStories(): Promise<void> {
   try {
     const batch = stories.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((st) => identity.kidFor(st.kidId) !== null);
-    const orphaned = batch.filter((st) => identity.kidFor(st.kidId) === null);
     if (mapped.length === 0) {
-      // local kids were deleted — drop their orphaned stories
-      useKidStore.getState().clearStories(new Set([...orphaned.map((st) => st.uid), ...batch.map((st) => st.uid)]));
+      // #1025 — never destructively clear on a mapping miss (same reasoning as
+      // syncProgress). Keep the stories queued; the heartbeat re-maps + retries.
       return;
     }
     useKidStore.getState().setSyncState("syncing");
@@ -654,7 +661,7 @@ export async function syncStories(): Promise<void> {
       ),
     });
     if (res.ok) {
-      const done = new Set([...orphaned.map((st) => st.uid), ...mapped.map((st) => st.uid)]);
+      const done = new Set(mapped.map((st) => st.uid));
       useKidStore.getState().clearStories(done);
       useKidStore.getState().setSyncState("ok");
     } else {
@@ -700,10 +707,9 @@ export async function syncAccel(): Promise<void> {
   try {
     const batch = accel.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((a) => identity.kidFor(a.kidId) !== null);
-    const orphaned = batch.filter((a) => identity.kidFor(a.kidId) === null);
     if (mapped.length === 0) {
-      // local kids were deleted — drop their orphaned acceleration entries
-      useKidStore.getState().clearAccel(new Set([...orphaned.map((a) => a.uid), ...batch.map((a) => a.uid)]));
+      // #1025 — never destructively clear on a mapping miss (same reasoning as
+      // syncProgress). Keep the entries queued; the heartbeat re-maps + retries.
       return;
     }
     useKidStore.getState().setSyncState("syncing");
@@ -722,7 +728,7 @@ export async function syncAccel(): Promise<void> {
       ),
     });
     if (res.ok) {
-      const done = new Set([...orphaned.map((a) => a.uid), ...mapped.map((a) => a.uid)]);
+      const done = new Set(mapped.map((a) => a.uid));
       useKidStore.getState().clearAccel(done);
       useKidStore.getState().setSyncState("ok");
     } else {

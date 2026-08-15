@@ -109,40 +109,60 @@ async def record_progress(
     events = [e for e in body.events if skill_band_allowed(e.skill_id, SKILL_BANDS, caps.get(e.kid_id))]
     band_skipped = len(body.events) - len(events)
 
-    for e in events:
-        db.add(
-            ProgressEvent(
-                kid_id=e.kid_id,
-                skill_id=e.skill_id,
-                game_id=e.game_id,
-                correct=e.correct,
-                response_ms=e.response_ms,
-                difficulty=e.difficulty,
-            )
+    duplicates_skipped = 0
+    if events:
+        rows = [
+            {
+                "kid_id": e.kid_id,
+                # #1023 — the client's durable-outbox uid. A None uid defeats
+                # Postgres unique-constraint dedup (NULLs are distinct), so
+                # synthesize one server-side (#942 pattern) — dedup must hold
+                # for EVERY row.
+                "uid": e.uid if e.uid is not None else str(uuid.uuid4()),
+                "skill_id": e.skill_id,
+                "game_id": e.game_id,
+                "correct": e.correct,
+                "response_ms": e.response_ms,
+                "difficulty": e.difficulty,
+                # #1024 — preserve the client round timestamp (was dropped).
+                "timestamp": e.timestamp,
+            }
+            for e in events
+        ]
+        stmt = pg_insert(ProgressEvent).values(rows)
+        stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"]).returning(
+            ProgressEvent.kid_id, ProgressEvent.skill_id, ProgressEvent.correct
         )
-        # Upsert + BKT update mastery
-        sm = await db.get(SkillMastery, (e.kid_id, e.skill_id))
-        if sm is None:
-            sm = SkillMastery(
-                kid_id=e.kid_id,
-                skill_id=e.skill_id,
-                mastery=0.0,
-                correct=0,
-                attempts=0,
-                streak=0,
-            )
-            db.add(sm)
-        prev_mastery = sm.mastery
-        sm.mastery = _bkt_update(sm.mastery, e.correct, **params)
-        sm.correct = sm.correct + (1 if e.correct else 0)
-        sm.attempts = sm.attempts + 1
-        sm.streak = sm.streak + 1 if e.correct else 0
-        sm.last_practice = datetime.now(timezone.utc)
-        sm.last_decay = datetime.now(timezone.utc)
-        # #79 — stamp the FIRST crossing of ≥80% once (never overwritten). The
-        # parent portal's mastery timeline sorts skills by this moment.
-        if sm.mastered_at is None and prev_mastery < 0.8 and sm.mastery >= 0.8:
-            sm.mastered_at = datetime.now(timezone.utc)
+        result = await db.execute(stmt)
+        inserted = result.all()
+        duplicates_skipped = len(events) - len(inserted)
+
+        # BKT mastery update runs ONLY for genuinely-new events — a replayed
+        # batch (lost ACK → same uid re-posted) is a silent no-op here, so
+        # mastery is never double-counted.
+        for kid_id, skill_id, correct in inserted:
+            sm = await db.get(SkillMastery, (kid_id, skill_id))
+            if sm is None:
+                sm = SkillMastery(
+                    kid_id=kid_id,
+                    skill_id=skill_id,
+                    mastery=0.0,
+                    correct=0,
+                    attempts=0,
+                    streak=0,
+                )
+                db.add(sm)
+            prev_mastery = sm.mastery
+            sm.mastery = _bkt_update(sm.mastery, correct, **params)
+            sm.correct = sm.correct + (1 if correct else 0)
+            sm.attempts = sm.attempts + 1
+            sm.streak = sm.streak + 1 if correct else 0
+            sm.last_practice = datetime.now(timezone.utc)
+            sm.last_decay = datetime.now(timezone.utc)
+            # #79 — stamp the FIRST crossing of ≥80% once (never overwritten). The
+            # parent portal's mastery timeline sorts skills by this moment.
+            if sm.mastered_at is None and prev_mastery < 0.8 and sm.mastery >= 0.8:
+                sm.mastered_at = datetime.now(timezone.utc)
 
     # #9 — multi-device sync: newest-wins coin wallet. The server keeps the max
     # coin balance ever reported per kid (aggregate only — no voice/face).
@@ -160,7 +180,11 @@ async def record_progress(
             )
 
     await db.commit()
-    return {"recorded": len(events), "band_skipped": band_skipped}
+    return {
+        "recorded": len(events) - duplicates_skipped,
+        "duplicates_skipped": duplicates_skipped,
+        "band_skipped": band_skipped,
+    }
 
 
 @router.get("/kids/{kid_id}/mastery", response_model=list[MasteryOut])

@@ -261,6 +261,10 @@ class ProgressEventIn(BaseModel):
     correct: bool
     response_ms: RoundedInt = None
     difficulty: float | None = None
+    # #1023 — durable-outbox uid for dedup + BKT replay protection. Optional so
+    # pre-dedup clients still post; the server synthesizes one when absent.
+    uid: str | None = None
+    # #1024 — client round timestamp (epoch ms), preserved instead of dropped.
     timestamp: RoundedInt = None
 
 
