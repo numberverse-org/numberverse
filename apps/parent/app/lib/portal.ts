@@ -151,6 +151,68 @@ export const SESSION_LANGS = {
   },
 } as const;
 
+/** #1487/#1490/#1491/#1545-#1548 — account & security card strings (EN + BN).
+ *  Same country-pack seam as the maps above: a new locale = a new key here,
+ *  keyed by `wizLang`, and the AccountCard follows without a component rewrite. */
+export const ACCOUNT_LANGS = {
+  en: {
+    changePwTitle: "Change password",
+    changePwHint: "Changing it signs out every other device immediately — only this one stays in.",
+    currentPw: "Current password",
+    newPw: "New password",
+    confirmNewPw: "Confirm new password",
+    newPwPlaceholder: "8+ characters",
+    maxLenHint: "Maximum 72 characters.",
+    changePwButton: "Change password",
+    saving: "Saving…",
+    // #1487 — Google-created accounts set a password instead of changing one.
+    setPwTitle: "Set a password",
+    googleSetHint: "Signed in with Google — you can set a password to also sign in with email/password.",
+    setPwButton: "Set a password",
+    setPwOk: "Password set — you can now sign in with email/password too.",
+    setPwErr: "Could not set a password.",
+    pwTooLong: "Password too long — maximum 72 characters.",
+    // #1491/#1545-#1548 — active-logins block.
+    activeLoginsTitle: "Active logins",
+    activeLoginsHint: "Every device signed into this account. Revoke one you don't recognize.",
+    loading: "Loading sessions…",
+    empty: "No other active sessions",
+    signOut: "Sign out",
+    signOutHere: "Sign out here",
+    signOutAll: "Sign out of all devices",
+    confirmRevoke: "Confirm sign out {device}?",
+    cancel: "Cancel",
+    noRecentActivity: "no recent activity",
+  },
+  bn: {
+    changePwTitle: "পাসওয়ার্ড পরিবর্তন",
+    changePwHint: "পরিবর্তন করলে অন্য সব ডিভাইস সাথে সাথে সাইন আউট হয়ে যাবে — শুধু এই ডিভাইসটি থাকবে।",
+    currentPw: "বর্তমান পাসওয়ার্ড",
+    newPw: "নতুন পাসওয়ার্ড",
+    confirmNewPw: "নতুন পাসওয়ার্ড আবার লিখুন",
+    newPwPlaceholder: "৮+ অক্ষর",
+    maxLenHint: "সর্বোচ্চ ৭২ অক্ষর।",
+    changePwButton: "পাসওয়ার্ড পরিবর্তন করুন",
+    saving: "সংরক্ষণ হচ্ছে…",
+    setPwTitle: "পাসওয়ার্ড সেট করুন",
+    googleSetHint: "Google দিয়ে সাইন ইন করেছেন — ইমেইল/পাসওয়ার্ড দিয়েও সাইন ইন করতে চাইলে একটি পাসওয়ার্ড সেট করুন।",
+    setPwButton: "পাসওয়ার্ড সেট করুন",
+    setPwOk: "পাসওয়ার্ড সেট হয়েছে — এখন ইমেইল/পাসওয়ার্ড দিয়েও সাইন ইন করতে পারবেন।",
+    setPwErr: "পাসওয়ার্ড সেট করা যায়নি।",
+    pwTooLong: "পাসওয়ার্ড খুব লম্বা — সর্বোচ্চ ৭২ অক্ষর।",
+    activeLoginsTitle: "সক্রিয় লগইন",
+    activeLoginsHint: "এই অ্যাকাউন্টে সাইন ইন করা প্রতিটি ডিভাইস। চেনা নেই এমন কোনো ডিভাইস সাইন আউট করুন।",
+    loading: "সেশন লোড হচ্ছে…",
+    empty: "অন্য কোনো সক্রিয় সেশন নেই",
+    signOut: "সাইন আউট",
+    signOutHere: "এখানে সাইন আউট",
+    signOutAll: "সব ডিভাইস থেকে সাইন আউট",
+    confirmRevoke: "নিশ্চিতভাবে {device} সাইন আউট করবেন?",
+    cancel: "বাতিল",
+    noRecentActivity: "সাম্প্রতিক কোনো কার্যকলাপ নেই",
+  },
+} as const;
+
 export const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
