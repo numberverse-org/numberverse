@@ -54,7 +54,7 @@ import {
   BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, WORLD_LANDS, FOCUS_SUBJECT_LABELS, SEASON_EMOJI, SEASON_PARTICLES,
   DONE_CONFETTI, filterMaxBand, filterFocusSubject, filterFocusBand, SUBJECT_CARD,
-  type SessionStep, type Kid, type SkillMap, type SkillMapEntry, type JourneyStop, type CardSkill,
+  type SessionStep, type SavedSession, type Kid, type SkillMap, type SkillMapEntry, type JourneyStop, type CardSkill,
   type BadgeCtx, type BadgeDef, type AchCtx, type AchDef, type NovaReaction, type NovaReactionDef,
   type ChallengeQ, type ContrastTemplate, type ContrastRound, type AvatarParts, type SeasonKey,
 } from "./lib/journey";
@@ -93,6 +93,38 @@ function readLS(key: string): string | null {
     return null;
   }
 }
+
+/** #1423 — guarded localStorage write for the in-flight session snapshot. */
+function writeLS(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage full / unavailable — in-memory resume still works this session */
+  }
+}
+
+/** #1423 — localStorage key for per-kid in-flight session snapshots. */
+const SAVED_SESSIONS_KEY = "nv_saved_sessions_v1";
+
+/** #1423 — hydrate per-kid session snapshots at boot. Corrupt/missing data
+ *  falls back to an empty map (a fresh session is always a safe fallback). */
+function loadSavedSessions(): Record<string, SavedSession> {
+  const raw = readLS(SAVED_SESSIONS_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, SavedSession>;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+/** #1423 — persist the per-kid session snapshot map. */
+function persistSavedSessions(sessions: Record<string, SavedSession>): void {
+  writeLS(SAVED_SESSIONS_KEY, JSON.stringify(sessions));
+}
+
 const AVATARS = AVATAR_KEYS;
 
 /** #1178/#1186 — shared Suspense fallback while a lazy screen chunk resolves
@@ -120,23 +152,35 @@ export default function App() {
    *  the CURRENT kid's steps; this map holds abandoned mid-flight sessions keyed
    *  by the kid they were left behind for, so switching back RESUMES instead of
    *  restarting. Cleared on a completed session or an explicit new session. */
-  const savedSessionsRef = useRef<Record<string, { steps: SessionStep[]; idx: number; roundsDone: number }>>({});
-  /** #253 — snapshot the ACTIVE kid's in-flight session (mid-play) so a kid
-   *  switch can restore it later. No-op when nothing is actually mid-game. */
+  const [savedSessions] = useState<Record<string, SavedSession>>(loadSavedSessions);
+  const savedSessionsRef = useRef<Record<string, SavedSession>>(savedSessions);
+  /** #253/#1423 — snapshot the ACTIVE kid's in-flight session (mid-play) so a
+   *  kid switch, app close, or leave can restore it later. The snapshot is
+   *  mirrored to localStorage so it survives a full reload. No-op when nothing
+   *  is actually mid-game. */
   const snapshotSession = (kidId: string) => {
     if (screen !== "playing" || sessionRef.current.length === 0) return;
+    const st = useKidStore.getState();
     savedSessionsRef.current[kidId] = {
-      steps: sessionRef.current,
+      steps: sessionRef.current.map((s) => ({ ...s })),
       idx: sessionIdx,
       roundsDone,
+      score: st.score,
+      stars: st.stars,
+      events: [...st.events],
     };
+    persistSavedSessions(savedSessionsRef.current);
   };
   /** #253 — drop a kid's saved session (session finished / new session chosen). */
   const clearSavedSession = (kidId: string) => {
-    if (savedSessionsRef.current[kidId]) delete savedSessionsRef.current[kidId];
+    if (savedSessionsRef.current[kidId]) {
+      delete savedSessionsRef.current[kidId];
+      persistSavedSessions(savedSessionsRef.current);
+    }
   };
-  /** #253 — restore a saved session and jump straight back into play. */
-  const resumeSession = (saved: { steps: SessionStep[]; idx: number; roundsDone: number }) => {
+  /** #253/#1425 — restore a saved session and jump straight back into play,
+   *  including the in-session score/stars/streak events (not just the step). */
+  const resumeSession = (saved: SavedSession) => {
     if (!kid) return;
     const step = saved.steps[saved.idx];
     if (!step) return;
@@ -149,7 +193,21 @@ export default function App() {
     whooshUp();
     setSessionIdx(saved.idx);
     setRoundsDone(saved.roundsDone);
-    sessionRef.current = saved.steps;
+    sessionRef.current = saved.steps.map((s) => ({ ...s }));
+    // #1425 — the round counter is only half the story. Restore the score the
+    // kid had already earned this session and the round ledger that drives the
+    // HUD streak + the O(1) streak tail, so the resumed HUD matches the play
+    // they left behind instead of resetting to zero.
+    const events = Array.isArray(saved.events) ? saved.events.slice() : [];
+    useKidStore.setState({
+      score: saved.score ?? 0,
+      stars: saved.stars ?? 0,
+      events,
+    });
+    const streak = sessionStreak(events);
+    let wrongs = 0;
+    for (let i = events.length - 1; i >= 0 && !events[i].correct; i--) wrongs++;
+    streakTailRef.current = { streak, wrongs, eventsLen: events.length };
     breakPendingRef.current = false;
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
@@ -183,6 +241,9 @@ export default function App() {
   const challengeStreakRef = useRef<Record<string, number>>({});
   const [roundsDone, setRoundsDone] = useState(0);
   const [sessionIdx, setSessionIdx] = useState(0);
+  /** #1426 — kid-initiated pause: a child can pause the active scene from the
+   *  HUD instead of only having a parent kill-switch or a full leave button. */
+  const [kidPaused, setKidPaused] = useState(false);
   // 🎯 #325 — the active contrast drill (template + the skill it fixes) and
   // the current round index. When the drill finishes, the misconception is
   // resolved warmly in the store.
@@ -227,6 +288,33 @@ export default function App() {
     const id = readLS("nv_kid_id"); // #1219 — guarded read
     return list.some((k) => k.id === id) ? "home" : "kidpick";
   });
+  // #1426 — leaving the play canvas (leave / parent pause / kid switch) always
+  // clears the kid-pause overlay so it can never get stuck on the next visit.
+  useEffect(() => {
+    if (screen !== "playing") setKidPaused(false);
+  }, [screen]);
+  // #1423 — mirror the active in-flight session to localStorage when the tab is
+  // hidden or closed, so a kid can close the app mid-game and still resume.
+  // (leaveGame + kid-switch persist synchronously already; this covers the
+  // "closed straight from the canvas" path.)
+  useEffect(() => {
+    const persistNow = () => {
+      if (screen === "playing" && kid && sessionRef.current.length > 0) {
+        snapshotSession(kid.id);
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") persistNow();
+    };
+    window.addEventListener("pagehide", persistNow);
+    window.addEventListener("beforeunload", persistNow);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", persistNow);
+      window.removeEventListener("beforeunload", persistNow);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [screen, kid, sessionIdx, roundsDone]);
   // Worlds screen shows the single linear learning journey by default.
   const [journeyView, setJourneyView] = useState(true);
   const [mapView, setMapView] = useState(false);
@@ -1766,6 +1854,10 @@ export default function App() {
    *  Stays FULLSCREEN — the app defaults to fullscreen; parents exit via the
    *  footer toggle or the "f" key. */
   const leaveGame = () => {
+    // #1424 — leaving is not discarding: snapshot the in-flight session so the
+    // kid can come back and resume exactly where they stopped.
+    if (kid) snapshotSession(kid.id);
+    setKidPaused(false);
     cancelSpeech();
     const game = gameRef.current;
     if (game) {
@@ -1773,10 +1865,35 @@ export default function App() {
       game.scene.start("Boot");
     }
     activeSceneRef.current = null;
-    setRoundsDone(0);
-    setSessionIdx(0);
     // Back to the PLAY screen — one simple place a child always returns to.
     setScreen("home");
+  };
+
+  /** #1426 — kid-initiated pause: freeze the active lesson scene and show a
+   *  kid-safe pause card. The parent kill-switch remains the safety backstop;
+   *  this is the child's own "pause for a moment" control. */
+  const pauseGame = () => {
+    if (screen !== "playing" || kidPaused) return;
+    cancelSpeech();
+    const game = gameRef.current;
+    const key = activeSceneRef.current;
+    if (game && key) {
+      const sc = game.scene.getScene(key);
+      if (sc && sc.scene.isActive()) sc.scene.pause();
+    }
+    setKidPaused(true);
+  };
+
+  /** #1426 — resume the paused lesson scene from the pause card. */
+  const resumeGame = () => {
+    const game = gameRef.current;
+    const key = activeSceneRef.current;
+    if (game && key) {
+      const sc = game.scene.getScene(key);
+      if (sc && sc.scene.isPaused()) sc.scene.resume();
+    }
+    ensureAudio();
+    setKidPaused(false);
   };
 
   /* ── #357 — predicted next scene: the HOME screen is where the next tap is
@@ -5333,6 +5450,15 @@ export default function App() {
           {inGame && (
             <>
               <button className="hud-back" onClick={leaveGame} aria-label={t.leaveGame}>‹</button>
+              <button
+                className="hud-back hud-pause"
+                onClick={pauseGame}
+                aria-label={t.pauseGame}
+                title={t.pauseGame}
+                disabled={kidPaused}
+              >
+                ⏸
+              </button>
               <span className="hud-world">{world && <Icon name={world.key} size={18} />} {world?.title}</span>
               {curStep ? <span className="hud-skill">{curStep.title}</span> : null}
               {curReteach && <span className="hud-reteach">🎯 {t.practicePill}</span>}
@@ -5374,6 +5500,20 @@ export default function App() {
             </>
           )}
         </div>
+        {/* #1426 — kid-initiated pause: a small, kid-safe card over the paused
+            scene. Resume returns to the exact question; Exit snapshots + leaves. */}
+        {kidPaused && inGame && (
+          <div className="coop-overlay kid-pause-overlay" role="dialog" aria-modal="true" aria-label={t.kidPauseTitle}>
+            <div className="coop-sheet kid-pause-sheet">
+              <div className="coop-title">⏸ {t.kidPauseTitle}</div>
+              <p className="coop-sub">{t.kidPauseBody}</p>
+              <div className="kid-pause-actions">
+                <button className="big-btn" onClick={resumeGame}>{t.resumeGame}</button>
+                <button className="ghost-btn" onClick={leaveGame}>{t.leaveGame}</button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Garden has its own little back button — home is one tap away */}
         {inGarden && (
           <button className="hud-back garden-back" onClick={() => setScreen("home")} aria-label={t.homeBtn}>

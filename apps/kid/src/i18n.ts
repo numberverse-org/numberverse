@@ -407,6 +407,11 @@ export interface Strings {
   saveKid: (name: string) => string;
   langLabel: string;
   leaveGame: string;
+  /** #1426 — kid-initiated pause (the child's own pause button + card). */
+  pauseGame: string;
+  kidPauseTitle: string;
+  kidPauseBody: string;
+  resumeGame: string;
   parentTitle: string;
   parentSub: string;
   parentWelcome: (name: string) => string;
@@ -1186,6 +1191,10 @@ export const STR: Record<Lang, Strings> = {
     saveKid: (name) => `✨ Save ${name}`,
     langLabel: "🌐 English",
     leaveGame: "Exit game",
+    pauseGame: "Pause game",
+    kidPauseTitle: "Taking a little break",
+    kidPauseBody: "Your game is paused right here. Ready when you are!",
+    resumeGame: "▶ Keep playing",
     parentTitle: "Parent Panel",
     parentSub: "See how each kid is growing, skill by skill",
     parentWelcome: (name) => `Hi ${name} 👋`,
@@ -1944,6 +1953,10 @@ export const STR: Record<Lang, Strings> = {
     saveKid: (name) => `✨ সংরক্ষণ করুন ${name}`,
     langLabel: "🌐 বাংলা",
     leaveGame: "খেলা থেকে ফিরুন",
+    pauseGame: "খেলা থামাও",
+    kidPauseTitle: "একটু বিরতি নিচ্ছি",
+    kidPauseBody: "তোমার খেলা এখানেই থেমে আছে। প্রস্তুত হলে আবার খেলো!",
+    resumeGame: "▶ খেলা চালিয়ে যাও",
     parentTitle: "মা-বাবার প্যানেল",
     parentSub: "দেখুন প্রতিটি বাচ্চা কীভাবে শিখছে",
     parentWelcome: (name) => `হ্যালো, ${name} 👋`,

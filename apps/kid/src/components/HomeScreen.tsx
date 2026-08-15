@@ -17,7 +17,7 @@ import { currentFestival } from "../game/locale";
 import { speak, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, speechStatus } from "../game/speech";
 import { Icon, AvatarIcon, AVATAR_EMOJI } from "./Icon";
 import type { KidSettings } from "../api";
-import type { SessionStep, SkillMap, ChallengeQ, Kid } from "../lib/journey";
+import type { SavedSession, SkillMap, ChallengeQ, Kid } from "../lib/journey";
 import type { SpeechReadiness } from "../game/speech";
 import type { Screen } from "../App";
 import { KidAvatar } from "./Avatar";
@@ -80,7 +80,7 @@ export interface HomeScreenProps {
   neuralFlash: boolean;
   quietChrome: React.ReactNode;
   playRef: React.MutableRefObject<(() => void) | null>;
-  savedSessionsRef: React.MutableRefObject<Record<string, { steps: SessionStep[]; idx: number; roundsDone: number }>>;
+  savedSessionsRef: React.MutableRefObject<Record<string, SavedSession>>;
   scanCanvasRef: React.RefObject<HTMLCanvasElement>;
   scanVideoRef: React.RefObject<HTMLVideoElement>;
   srLiveRef: React.RefObject<HTMLDivElement>;
@@ -95,7 +95,7 @@ export interface HomeScreenProps {
   closeTour: (finished?: boolean) => void;
   installApp: () => void;
   pickChallenge: (i: number) => void;
-  resumeSession: (saved: { steps: SessionStep[]; idx: number; roundsDone: number }) => void;
+  resumeSession: (saved: SavedSession) => void;
   snapshotSession: (kidId: string) => void;
   startChallenge: () => void;
   startContrastDrill: (code: string, skillId: string) => void;

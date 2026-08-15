@@ -550,6 +550,8 @@
   padding: 0;
 }
 .hud-back:active { background: rgba(255, 255, 255, 0.22); }
+.hud-pause { font-size: 20px; }
+.hud-pause:disabled { opacity: 0.55; cursor: default; }
 .hud-world { color: #c7d5e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 60px; flex: 0 1 auto; }
 .round-chip { background: rgba(255, 255, 255, 0.08); border-radius: 999px; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
 .stars { color: var(--nv-gold); white-space: nowrap; }
@@ -3193,6 +3195,11 @@
   text-align: left;
 }
 .coop-card.active { opacity: 0.55; cursor: default; border-color: #43d17c; }
+/* #1426 — kid-initiated pause card */
+.kid-pause-overlay { z-index: 60; }
+.kid-pause-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.kid-pause-actions .big-btn,
+.kid-pause-actions .ghost-btn { width: 100%; max-width: 320px; margin: 0 auto; }
 .coop-card:not(.active):active { background: rgba(255, 255, 255, 0.14); }
 .coop-name { font-weight: 700; flex: 1; }
 .coop-you { color: #43d17c; font-size: 13px; font-weight: 700; }
