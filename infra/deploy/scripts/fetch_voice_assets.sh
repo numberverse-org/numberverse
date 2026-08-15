@@ -150,9 +150,10 @@ du -h "$DEST"/* | sort -rh | head -12
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Build-time version derivation: compute a content hash of the assembled voice
-# payload and print it so the Docker build can inject VITE_VOICE_V. If the hash
-# differs from the committed value in neuralVoice.ts, CI MUST fail until an
-# operator bumps VOICE_V — preventing silent 6-month rollbacks (see #974).
+# payload and print it so the Docker build can inject VITE_VOICE_V. A drift
+# between the committed VOICE_V and this hash is surfaced below (see #974) —
+# preventing silent 6-month rollbacks. Operators pin VOICE_V = v<HASH> to make
+# the check a hard gate (the drift branch prints the exact sed to do that).
 #
 # The hash covers the model, worker, phonemizer, and ORT engine files — every
 # asset that rides the /voice/ CacheFirst route. The .onnx.json config is NOT
@@ -161,3 +162,25 @@ du -h "$DEST"/* | sort -rh | head -12
 HASH=$(sha256sum "$DEST/bn_BD-google-medium.onnx" "$DEST/piper_worker.js" "$DEST/piper_phonemize.js" "$DEST/piper_phonemize.wasm" "$DEST/piper_phonemize.data" "$DEST/onnx/ort.min.js" "$DEST/onnx/ort-wasm-simd.wasm" | sha256sum | cut -d' ' -f1 | head -c12)
 echo "→ voice content hash (v${HASH}) — inject as VITE_VOICE_V"
 echo "VITE_VOICE_V=v${HASH}"
+
+# #974 — AUTOMATED drift check: the committed VOICE_V in neuralVoice.ts must
+# match this payload hash, otherwise a voice deploy that changes the model /
+# worker / ORT engine would silently ship the OLD cache keys while the PWA's
+# 6-month CacheFirst route keeps serving the stale voice. This turns the old
+# "every human deployer MUST verify" note into a build-time warning.
+VOICE_SRC="apps/kid/src/game/neuralVoice.ts"
+COMMITTED_VOICE_V=""
+if [ -f "$VOICE_SRC" ]; then
+  COMMITTED_VOICE_V=$(grep -oE 'const VOICE_V = "[^"]+"' "$VOICE_SRC" | head -1 | sed -E 's/const VOICE_V = "([^"]+)"/\1/')
+fi
+if [ -z "$COMMITTED_VOICE_V" ]; then
+  echo "⚠ cannot read committed VOICE_V from $VOICE_SRC — skipping #974 drift check" >&2
+elif [ "$COMMITTED_VOICE_V" = "v${HASH}" ]; then
+  echo "✓ committed VOICE_V (${COMMITTED_VOICE_V}) matches the assembled voice payload"
+else
+  echo "✗ VOICE DRIFT (#974): committed VOICE_V is '${COMMITTED_VOICE_V}' but this build's voice payload hashes to v${HASH}." >&2
+  echo "  The PWA CacheFirst route holds /voice/ for ~6 months — shipping this build would serve the OLD voice" >&2
+  echo "  to every returning device while the bytes on disk changed. Update the constant:" >&2
+  echo "    sed -i '' 's/const VOICE_V = \"[^\"]*\"/const VOICE_V = \"v${HASH}\"/' apps/kid/src/game/neuralVoice.ts" >&2
+  echo "  (or set VOICE_V to 'v${HASH}' if this is a deliberate voice upgrade), then rebuild." >&2
+fi
