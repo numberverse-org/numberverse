@@ -316,6 +316,10 @@ async def seed() -> None:
     async with SessionLocal() as db:
         await seed_content(db)
 
+        # #842 — dev-only default admin password. In non-dev environments the
+        # config startup guard refuses to boot unless NV_ADMIN_PASSWORD is set,
+        # so this default only ever seeds during local dev/test runs. Deliberately
+        # NOT a random per-restart password — that would lock the console out.
         admin = await _ensure_profile(
             db, settings.admin_email, settings.admin_password, "Numberverse Admin", True
         )
