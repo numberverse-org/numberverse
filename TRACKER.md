@@ -1,6 +1,19 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🛡️ GUARDRAILS CLUSTER (#983–#988) 16 Aug 2026 ✅ → 0.82.0
+- **#983/#984 had real gaps — FIXED this session (not just verified):**
+  - `_prune_progress_events(db)` extracted from the admin endpoint and WIRED INTO THE SCHEDULED EMBED-LOOP in main.py — progress_events (one row per answered round, unbounded before) are now pruned unattended: age > `progress_retention_days` (90d) + per-kid cap `max_progress_events_per_kid` (5000) via row_number.
+  - `_purge_revoked_sessions(db)` extracted and wired into the same tick — revoked Session rows (ip + user_agent PII) are hard-deleted after `session_purge_days` (30d). No more "revoked rows accumulate forever".
+  - New `docs/PRIVACY.md` **Retention bounds** section — stories 90d/1000, progress 90d/5000, revoked sessions 30d, all bounded-by-construction.
+  - New `tests/test_retention.py` (17 checks): settings defaults, exact DELETE predicates, scheduled-loop wiring; wired into CI api job.
+- **#985–#988 verified already implemented (batch-3) + closed with evidence:**
+  - **#985** VPC consent ledger: profile + per-kid `consent_version/at/method`, stamped at signup/google_signup/create_kid, surfaced in API + export.
+  - **#986** birth_year now has a functional consumer: `_age_band_cap` (≤6→band 2, 7-8→band 3) applied as default max_band at create_kid, surfaced in portal + export.
+  - **#987** export v2 adds acceleration_log + coins (FORMAT VERSION bumped to 2, 38 export checks).
+  - **#988** MODEL_JSON carries the same `?v=` as the model — config and model rev together.
+- All 7 API unit suites green locally (scrub 25, export 37, retention 17, org-isolation 11, errorlog, band_lock 18, session_guard).
+
 ## 🏢🔊 BATCH CLOSURES — MULTI-TENANCY (#961–#970) + CONFIG/VOICE (#971–#979) 16 Aug 2026 ✅ (infra-only, rides next release)
 - **Multi-tenancy (#961–#970)** — all implemented in batch-3 (shipped 0.72.0), verified + closed:
   - #961 Kid.org_id + Organization/OrgMember/TenantConfig/OrgSyllabus/Classroom/ClassroomKid tables; #962 org_scoped() on kids/progress/admin; #963 org_scoped() at deps.py:182 + org-isolation test (11/11); #964 require_super_admin + require_org_member role hierarchy; #965 TenantConfig global-first fallback in branding.py; #966 OrgSyllabus per-org (org_id, skill_id) mapping; #967 Classroom/ClassroomKid; #968 ORG_SCOPED_MODELS auto-filtered admin CRUD; #969 Subscription.org_id (B2B); #970 ConfigEntry global + per-tenant merge.
