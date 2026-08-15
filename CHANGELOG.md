@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.63.1 (🛡️ kids: rate-limit all write/destructive routes (#837))
+
+d128bf9 🛡️ kids: rate-limit write/destructive routes (#837)
+
 ## 15 Aug 2026 — 0.63.0 (fix: abuse-guard/authz — share rate-limit+revoke+paused (#832 #866 #867), batch caps (#833 #834 #835), body-size limit (#836), admin allow-lists (#862 #863 #864), export+content rate limits (#838 #839))
 
 4d66204 Merge nv-838: rate-limit exports + public content catalog

@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.63.0 (fix: abuse-guard/authz — share rate-limit+revoke+paused (#832 #866 #867), batch caps (#833 #834 #835), body-size limit (#836), admin allow-lists (#862 #863 #864), export+content rate limits (#838 #839))";
-export const APP_VERSION = "0.63.0";
+export const APP_BUILD = "15 Aug 2026 · 0.63.1 (🛡️ kids: rate-limit all write/destructive routes (#837))";
+export const APP_VERSION = "0.63.1";
