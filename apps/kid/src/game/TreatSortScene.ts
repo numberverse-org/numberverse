@@ -65,7 +65,6 @@ export class TreatSortScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private countText!: Phaser.GameObjects.Text;
@@ -77,6 +76,10 @@ export class TreatSortScene extends Phaser.Scene {
   private wrongs = 0; // #1194 — wrong-bowl drops (quality tier)
   private roundDone = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("TreatSort");
   }
@@ -85,7 +88,6 @@ export class TreatSortScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "magic");
     this.drawHeader();
     this.drawNova();

@@ -617,6 +617,12 @@ export interface Strings {
   a11yHighContrastOff: string;
   settingsSecParents: string;
   settingsReduceMotion: string;
+  settingsReduceMotionSub: string;
+  calmButton: string;
+  calmTitle: string;
+  calmBody: string;
+  calmOn: string;
+  calmOff: string;
   settingsMusicOff: string;
   settingsParentsHint: string;
   settingsParentsGo: string;

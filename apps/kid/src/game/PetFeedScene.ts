@@ -66,8 +66,11 @@ export class PetFeedScene extends Phaser.Scene {
   private fedCount = 0;
   private treats: Phaser.GameObjects.Text[] = [];
   private spawnTimer?: Phaser.Time.TimerEvent;
-  private reduced = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("PetFeed");
   }
@@ -76,7 +79,6 @@ export class PetFeedScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "candy");
     this.drawHeader();
     this.drawNova();

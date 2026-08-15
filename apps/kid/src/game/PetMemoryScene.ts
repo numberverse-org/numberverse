@@ -71,7 +71,6 @@ export class PetMemoryScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private hint!: Phaser.GameObjects.Text;
   private msg!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
@@ -82,6 +81,10 @@ export class PetMemoryScene extends Phaser.Scene {
   private matchedCount = 0;
   private busy = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("PetMemory");
   }
@@ -90,7 +93,6 @@ export class PetMemoryScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "night");
     this.drawHeader();
     this.deal();

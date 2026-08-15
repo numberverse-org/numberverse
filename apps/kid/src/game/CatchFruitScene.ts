@@ -67,7 +67,6 @@ export class CatchFruitScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private basket!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
@@ -81,6 +80,10 @@ export class CatchFruitScene extends Phaser.Scene {
   private active: Toss[] = [];
   private spawnBusy = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("CatchFruit");
   }
@@ -89,7 +92,6 @@ export class CatchFruitScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "sky");
     this.drawHeader();
     this.drawNova();

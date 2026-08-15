@@ -44,7 +44,6 @@ export class TuckInScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
@@ -57,6 +56,10 @@ export class TuckInScene extends Phaser.Scene {
   private step = 0; // 0 = dim, 1 = tuck, 2 = goodnight
   private done = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("TuckIn");
   }
@@ -65,7 +68,6 @@ export class TuckInScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "sunset");
     this.drawHeader();
     this.drawNova();
@@ -141,19 +143,22 @@ export class TuckInScene extends Phaser.Scene {
     if (this.step === 0) {
       pop();
       this.step = 1;
-      this.tweens.add({ targets: this.dim, fillAlpha: 0.55, duration: 700, ease: "Sine.easeOut" });
+      if (this.reduced) this.dim.setFillStyle(0x0a1030, 0.55);
+      else this.tweens.add({ targets: this.dim, fillAlpha: 0.55, duration: 700, ease: "Sine.easeOut" });
     } else if (this.step === 1) {
       pop();
       this.step = 2;
       this.blanket.setVisible(true);
       this.blanket.setAlpha(0).setScale(1, 0.2);
-      this.tweens.add({ targets: this.blanket, alpha: 0.95, scaleY: 1, duration: 600, ease: "Back.easeOut" });
+      if (this.reduced) this.blanket.setAlpha(0.95).setScale(1, 1);
+      else this.tweens.add({ targets: this.blanket, alpha: 0.95, scaleY: 1, duration: 600, ease: "Back.easeOut" });
     } else {
       this.done = true;
       pop();
       const T = this.t();
       speak(T.goodnight);
-      this.tweens.add({ targets: this.nightText, alpha: 1, duration: 500 });
+      if (this.reduced) this.nightText.setAlpha(1);
+      else this.tweens.add({ targets: this.nightText, alpha: 1, duration: 500 });
       this.showStars();
       win();
       this.time.delayedCall(1600, () => {
@@ -165,6 +170,7 @@ export class TuckInScene extends Phaser.Scene {
   }
 
   private showStars() {
+    if (this.reduced) return;
     const stars = ["⭐", "✨", "🌟"];
     for (let i = 0; i < 8; i++) {
       const s = this.add
@@ -181,8 +187,13 @@ export class TuckInScene extends Phaser.Scene {
     this.step = 0;
     this.resetBtn.setAlpha(0);
     this.nightText.setAlpha(0);
-    this.tweens.add({ targets: this.dim, fillAlpha: 0, duration: 500 });
-    this.tweens.add({ targets: this.blanket, alpha: 0, duration: 300, onComplete: () => this.blanket.setVisible(false) });
+    if (this.reduced) {
+      this.dim.setFillStyle(0x0a1030, 0);
+      this.blanket.setAlpha(0).setVisible(false);
+    } else {
+      this.tweens.add({ targets: this.dim, fillAlpha: 0, duration: 500 });
+      this.tweens.add({ targets: this.blanket, alpha: 0, duration: 300, onComplete: () => this.blanket.setVisible(false) });
+    }
     this.updateCta();
   }
 
