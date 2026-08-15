@@ -2995,6 +2995,33 @@
   flex: 0 1 auto;
 }
 
+/* #1434 — a compact mastery bar lives IN the HUD beside the round meter, so
+   the moment-to-moment loop (rounds/streak) and the long-term loop (skill-tree
+   mastery bars) share one visual language: same mint/gold fill, same pill. */
+.hud-mastery {
+  flex: none;
+  width: 52px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22);
+}
+.hud-mastery-fill {
+  display: block;
+  height: 6px;
+  width: 0;
+  background: linear-gradient(90deg, var(--nv-sky), #2ec4b6);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.hud-mastery-fill.done {
+  background: linear-gradient(90deg, #2ec4b6, var(--nv-gold));
+}
+
 /* Mastery-gate pill: shown while a kid is on a RE-TEACH step (they had open
    wrongs and must clear the current step before advancing). Teal like the
    hint banners, with a soft pulse so it reads as "practice mode", not a badge. */
@@ -3020,6 +3047,7 @@
 @media (max-width: 430px) {
   .hud { gap: 6px; padding: 8px 10px; font-size: 14px; }
   .hud-streak { display: none; }
+  .hud-mastery { display: none; }
   .hud-coins { font-size: 13px; }
   .round-chip { padding: 8px 8px; font-size: 14px; }
 }

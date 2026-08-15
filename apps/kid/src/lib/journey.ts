@@ -642,6 +642,20 @@ export function skillMastered(skills: SkillMap, kidId: string, skillId: string):
   return !!st && st.pMastered >= masteryThresholdFor(skillId);
 }
 
+/** #1431 — kid-facing mastery % for one skill. `pMastered` is a floating BKT
+ *  probability and can hover just under the bar (79%…) while the integer
+ *  rendering sits still. Instead, use the BKT estimate as the floor and add the
+ *  current per-skill streak on top, so every correct answer VISIBLY ticks the
+ *  bar; a wrong answer falls back to the long-term floor (never to zero). Once
+ *  the BKT estimate crosses the mastery bar, the meter reads a full 100%. */
+export function masteryDisplayPct(st: SkillMapEntry | undefined, skillId: string): number {
+  if (!st) return 0;
+  if (st.pMastered >= masteryThresholdFor(skillId)) return 100;
+  const floor = Math.round(st.pMastered * 100);
+  const streak = st.streak ?? 0;
+  return Math.min(99, floor + streak);
+}
+
 /* #1125 — per-kid mastery stats (count + pMastered sum), folded ONCE per
  * skills-map reference. startChallenge() used to scan Object.entries(st.skills)
  * (filtering the kid's prefix, up to 305 entries, then reducing) synchronously

@@ -583,12 +583,14 @@ interface KidState {
   novaCare: (kidId: string, action: "feed" | "play") => void;
   /** Every completed round advances today's Daily Quest — the mission TYPE
    *  rotates per kid per day (rounds / stars / master / new-game). Progress
-   *  counts only when the round matches today's type. Returns true the moment
-   *  the quest completes (so the caller can celebrate once). */
+   *  counts only when the round matches today's type. Returns the quest outcome
+   *  (done, type and coins actually granted) so the caller can celebrate once
+   *  WITHOUT re-reading the store — and can stay silent when the cap made the
+   *  reward $0. */
   novaQuestProgress: (
     kidId: string,
     sig: { correct?: boolean; mastered?: boolean; freshSkill?: boolean }
-  ) => boolean;
+  ) => { done: boolean; reward: number; type: QuestType };
   /** #281 — claim today's 7-day login-calendar bonus (once per day, after the
    *  day's first session, inside the daily cap). Returns coins granted (0 = none). */
   novaClaimCalendar: (kidId: string) => number;
@@ -1306,7 +1308,7 @@ export const useKidStore = create<KidState>()(
         const n = get().nova[kidId] ?? defaultNova();
         const today = todayIso();
         const fresh = n.questDay !== today;
-        if (!fresh && n.questDone) return false; // already finished today — no grind
+        if (!fresh && n.questDone) return { done: false, reward: 0, type: (n.questType as QuestType) || questTypeFor(kidId, today) }; // already finished today — no grind
         const type: QuestType = fresh
           ? questTypeFor(kidId, today)
           : (n.questType as QuestType) || questTypeFor(kidId, today);
@@ -1324,6 +1326,7 @@ export const useKidStore = create<KidState>()(
         const progress = base + (hit ? 1 : 0);
         const target = QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET;
         const reached = progress >= target;
+        let granted = 0;
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           const earnedToday = cur.earnDay === today ? cur.earnedToday : 0;
@@ -1332,6 +1335,7 @@ export const useKidStore = create<KidState>()(
           const reward = reached
             ? Math.min(QUEST_REWARDS[type], Math.max(0, NOVA_DAILY_CAP - earnedToday))
             : 0;
+          granted = reward;
           return {
             nova: {
               ...s.nova,
@@ -1350,7 +1354,7 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
-        return reached;
+        return { done: reached, reward: granted, type };
       },
 
       /* ── #281 7-day login calendar: collect today's cycle bonus (once/day,
