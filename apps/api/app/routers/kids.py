@@ -1,3 +1,15 @@
+"""Kid routes — settings, activity feed, weak skills, weekly report.
+
+#1536 notification taxonomy (the weekly payload's `trigger` field is one of
+these, and notification senders key on it to choose a message kind):
+  · weekly-summary — the default blended 7-day aggregate (rounds, accuracy,
+    minutes, mastered count, coins).
+  · milestone      — a discrete win: a new mastery today/this week, or a
+    streak crossing a 7-day boundary.
+  · reminder/alert — a nudge: zero play this week (or another low-activity
+    state a parent should see). Aggregate-only; never raw answers.
+"""
+
 import uuid
 from collections import Counter
 from datetime import date, datetime, timedelta, time, timezone
@@ -211,10 +223,29 @@ async def get_kid_activity(
     result = await db.scalars(
         select(ProgressEvent)
         .where(ProgressEvent.kid_id == kid_id)
-        .order_by(ProgressEvent.id.desc())
+        .order_by(ProgressEvent.created_at.desc(), ProgressEvent.id.desc())
         .limit(limit)
     )
     return list(result)
+
+
+def _weekly_trigger(
+    *,
+    mastered_today: list[str],
+    mastered_this_week: list[str],
+    streak: int,
+    rounds: int,
+) -> str:
+    """#1536 — pick the strongest notification signal for the weekly payload.
+
+    The value is a machine-readable hint ("weekly-summary" | "milestone" |
+    "reminder"), not a message. Senders can branch on it while the payload stays
+    aggregate-only (no raw answers)."""
+    if rounds == 0:
+        return "reminder"
+    if mastered_today or mastered_this_week or (streak > 0 and streak % 7 == 0):
+        return "milestone"
+    return "weekly-summary"
 
 
 @router.get("/{kid_id}/weekly", response_model=WeeklyOut)
@@ -324,6 +355,12 @@ async def get_kid_weekly(
         top_game=top_game,
         streak=streak,
         coins=owned.coins or 0,
+        trigger=_weekly_trigger(
+            mastered_today=mastered_today_ids,
+            mastered_this_week=mastered_ids,
+            streak=streak,
+            rounds=rounds,
+        ),
     )
 
 
