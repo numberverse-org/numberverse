@@ -1,3 +1,7 @@
+## 15 Aug 2026 — 0.71.1 (unblock deploy: Docker Hub uv base + PK-aware migration dedupe + e2e fixes)
+
+3dab0a5 fix: 0.71.0 release blockers — ghcr.io-unblocked api base (Docker Hub + uv from PyPI), PK-aware constraint migration dedupe (uq_kid_skill collision), e2e mock query-string globs + exact Sign-out selector + offline manifest contract via SW fetch
+
 ## 15 Aug 2026 — 0.71.0 (batch-2: 8 clusters (#763-941) — auth/security durable PG rate-limit, content-safety i18n/BN/3D/speech scans + shared unsafeWords.json, scene auto-discovery + lifecycle, kid refactor + PBKDF2 PIN, data-integrity tz-aware + indexes, infra secrets/resource-limits, styling/a11y, e2e suite)
 
 4ad5a22 fix(audit+engine): adapt scene-integrity audit to import.meta.glob auto-discovery (#936); make catalog-coverage guard throw instead of console.warn (shipped-code audit)
