@@ -1,3 +1,8 @@
+## 16 Aug 2026 — 0.80.0 (kotha-stories pipeline: verified+closed #943-#950 (orphan sweep, skip surfacing, FIFO embed, numeric-safe scrub, context budget, dim guard, search allowlist, scheduled prune) + dep-free clamp helpers + expanded scrub tests)
+
+54882a3 🧼 kotha-stories cluster (#943-#950): verified impl + dep-free clamp helpers + full test coverage
+b8ad42c 📚 TRACKER: 0.79.0 celebration-engine release entry (#1063-#1070)
+
 ## 16 Aug 2026 — 0.79.0 (celebration engine: i18n celebration words (#1064) + effort-scaled bursts (#1068) + elite register (#1069) + band-rooted combo chime (#1065) + shared difficulty signal (#1070))
 
 cc40010 🎉 celebration engine: i18n words + effort-scaled bursts (#1064 #1068 #1069 #1065 #1070)

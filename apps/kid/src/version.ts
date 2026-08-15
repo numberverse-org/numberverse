@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.79.0 (celebration engine: i18n celebration words (#1064) + effort-scaled bursts (#1068) + elite register (#1069) + band-rooted combo chime (#1065) + shared difficulty signal (#1070))";
-export const APP_VERSION = "0.79.0";
+export const APP_BUILD = "16 Aug 2026 · 0.80.0 (kotha-stories pipeline: verified+closed #943-#950 (orphan sweep, skip surfacing, FIFO embed, numeric-safe scrub, context budget, dim guard, search allowlist, scheduled prune) + dep-free clamp helpers + expanded scrub tests)";
+export const APP_VERSION = "0.80.0";
