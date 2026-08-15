@@ -21,7 +21,7 @@ import {
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
-import { GoogleSignIn, googleEnabled, googleClientId } from "./components/GoogleSignIn";
+import { googleEnabled, googleClientId } from "./googleAuthMeta";
 import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, coinSound, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setVoiceTone, setVoiceSpeed, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -37,7 +37,7 @@ import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, retryNe
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
 import { startRecording, stopRecording } from "./game/voiceRecorder";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
-import { STR, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
+import { STR, ensureStrings, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
 import VoiceCheck from "./components/VoiceCheck";
 import StoryInspector from "./components/StoryInspector";
 import CountUp from "./components/CountUp";
@@ -70,6 +70,13 @@ const Nova3DHome = lazy(() => import("./nova3d/Nova3DHome"));
 // (welcome, parent gate, kidpick, worlds) and defers home/avatar/addkid.
 const HomeScreen = lazy(() => import("./components/HomeScreen"));
 const AddKidForm = lazy(() => import("./components/AddKidForm"));
+// #885 — Google sign-in is a parent-gate-only feature: the GIS script-loader
+// component (and its retry/render effect) lives in its own lazy chunk instead
+// of riding the App chunk. The tiny metadata helpers above stay sync so the
+// gate can still decide whether to show the button.
+const GoogleSignIn = lazy(() =>
+  import("./components/GoogleSignIn").then((m) => ({ default: m.GoogleSignIn }))
+);
 
 // #1321 — build stamp + semantic version moved to version.ts so the BOOT
 // chunk's PWA update banner reads the same "version notes source" as the
@@ -1486,11 +1493,15 @@ export default function App() {
   // new language aloud, and mirror it to the screen-reader live region.
   const changeLang = useCallback((next: Lang) => {
     if (next === lang) return;
-    setLang(next);
-    const line = STR[next].langSwitched;
-    cancelSpeech();
-    speak(line, { lang: next === "bn" ? "bn" : "en" });
-    announce(line);
+    // #881 — the non-active dictionary is a lazy chunk; load it before the
+    // first STR[next] read so the switch never renders a raw/empty key.
+    void ensureStrings(next).then(() => {
+      setLang(next);
+      const line = STR[next].langSwitched;
+      cancelSpeech();
+      speak(line, { lang: next === "bn" ? "bn" : "en" });
+      announce(line);
+    });
   }, [announce, lang]);
   // #136 — projector keyboard nav: Enter on home plays the next lesson.
   const playRef = useRef<() => void>(() => {});
@@ -3781,13 +3792,15 @@ export default function App() {
               {googleClientId() ? (
                 <>
                   <div className="gate-google">
-                    <GoogleSignIn
-                      onToken={(tok) => void submitGoogle(tok)}
-                      disabled={gateBusy}
-                      fallbackText={googleEnabled() ? t.gateGoogleGone : t.gateGoogleUnavailable}
-                      retryText={t.gateGoogleRetry}
-                      lang={lang}
-                    />
+                    <Suspense fallback={null}>
+                      <GoogleSignIn
+                        onToken={(tok) => void submitGoogle(tok)}
+                        disabled={gateBusy}
+                        fallbackText={googleEnabled() ? t.gateGoogleGone : t.gateGoogleUnavailable}
+                        retryText={t.gateGoogleRetry}
+                        lang={lang}
+                      />
+                    </Suspense>
                   </div>
                   {googleEnabled() && <div className="gate-or"><span>{t.gateGoogleOr}</span></div>}
                 </>

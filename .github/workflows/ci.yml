@@ -154,6 +154,8 @@ jobs:
           path: packages/core/dist
       - name: Build kid app
         run: pnpm --filter kid build
+      - name: Kid wire-budget gate (#886)
+        run: node scripts/team/budget.mjs --skip-build
       - name: Bundle-size regression gate (#305)
         run: node scripts/bundle-size.mjs
 

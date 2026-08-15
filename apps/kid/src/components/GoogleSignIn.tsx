@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { API } from "../api";
+import { googleClientId, googleEnabled } from "../googleAuthMeta";
 
 /**
  * Google sign-in (Identity Services) — renders Google's own "Continue with
@@ -34,19 +35,7 @@ declare global {
   }
 }
 
-export function googleClientId(): string | undefined {
-  return import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-}
-
-/** True when the OAuth client id is configured AND we're in a secure context
- *  (HTTPS — the Cloudflare tunnel origin; the http LAN fallback never shows
- *  the Google button, because GIS refuses to run there). */
-export function googleEnabled(): boolean {
-  const id = googleClientId();
-  if (!id) return false;
-  if (typeof window === "undefined") return true;
-  return window.isSecureContext === true;
-}
+export { googleClientId, googleEnabled } from "../googleAuthMeta";
 
 interface Props {
   onToken: (idToken: string) => void;

@@ -25,7 +25,7 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-      includeAssets: ["favicon.png", "apple-touch-icon.png"],
+      includeAssets: ["favicon.png", "apple-touch-icon.png", "og-card.png"],
       manifest: {
         name: "Numberverse — Math Playground",
         short_name: "Numberverse",
@@ -56,10 +56,11 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,svg,ico,json,glb,wasm}"],
-        // og-card.png is only for social link previews (crawlers), never needed
-        // offline — keep it out of the precache so it doesn't burn install bytes.
-        globIgnores: ["**/og-card.png"],
+        // #993 — og-card.png must be precached too: og:image points at the live
+        // host, and a shared link opened offline should still show its card.
+        // png covers the shipped file; jpg/jpeg/webp keep the glob ready for
+        // any future og-card format without a config edit.
+        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,svg,ico,json,glb,wasm}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // NOTE: the /voice CacheFirst + /api never-reject handler + navigation
         // fallback (with the /parent /admin denylist) are implemented IN the SW
@@ -76,6 +77,11 @@ export default defineConfig({
   // Nova3DHome is lazy in App.tsx (#880), so three.js/fiber only ever ride the
   // lazy nova3d chunk.
   build: {
+    // #881 — the code-split i18n loader uses a deliberate top-level await so the
+    // first render always has the ACTIVE language synchronously in STR. TLA
+    // needs an ES2022 output target (the default es2020/chrome87 target rejects
+    // it at build time).
+    target: "es2022",
     // #879 — any chunk over 500 kB (pre-gzip) triggers the Vite size warning,
     // so a heavy dep sneaking back into the entry is caught at build time.
     chunkSizeWarningLimit: 500,
