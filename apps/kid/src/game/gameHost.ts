@@ -95,11 +95,36 @@ export function getGame(): Game | null {
   return current;
 }
 
+/** #821 — wait for Phaser's READY event before resolving. `createGame()` returns
+ *  as soon as the Game object exists, but the renderer/texture manager can still
+ *  be booting. Resolving on the instance made `whenReady()` race: a caller could
+ *  observe `isBooted` before READY and start a scene on a half-booted game (or
+ *  miss the event entirely and leave a blank navy canvas). */
+function waitForGame(g: Game, gen: number): Promise<Game | null> {
+  if (gen !== generation) return Promise.resolve(null);
+  // Phaser sets isBooted at the START of boot, before the renderer/texture
+  // manager has finished and before READY. isRunning is the flag flipped by
+  // Game.start() AFTER the READY event, so it is the correct "already ready"
+  // check here.
+  if (g.isRunning) return Promise.resolve(g);
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (out: Game | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(gen === generation ? out : null);
+    };
+    g.events.once("ready", () => settle(g));
+    g.events.once("destroy", () => settle(null));
+  });
+}
+
 /** Begin loading + creating the Phaser game in `parent`. Idempotent — many
- *  callers share the same promise. Resolves with the game, or null if a
- *  teardown happened while the chunk was loading (the caller must no-op). */
+ *  callers share the same promise. Resolves with the game once it is READY, or
+ *  null if a teardown happened while the chunk was loading (the caller must
+ *  no-op). */
 export function boot(parent: HTMLElement): Promise<Game | null> {
-  if (current) return Promise.resolve(current);
+  if (current) return waitForGame(current, generation);
   if (!bootPromise) {
     const gen = generation;
     bootPromise = import("./engine")
@@ -108,7 +133,7 @@ export function boot(parent: HTMLElement): Promise<Game | null> {
         const g = m.createGame(parent);
         current = g;
         startPerfProbe(); // #1324 — only when ?nvperf=1 (or __NV_PERF_ENABLED__)
-        return g;
+        return waitForGame(g, gen);
       })
       .catch((e) => {
         console.error("[game] Phaser chunk failed to load:", e);
@@ -119,14 +144,12 @@ export function boot(parent: HTMLElement): Promise<Game | null> {
   return bootPromise;
 }
 
-/** Ensure the game is booted, then run `cb` once it is (immediately if already
- *  booted). No-op if the chunk failed or was torn down mid-load. */
+/** Ensure the game is booted, then run `cb` once it is. No-op if the chunk
+ *  failed or was torn down mid-load. `boot()` now resolves on Phaser READY, so
+ *  there is no event-listener race to re-create here. */
 export function whenReady(parent: HTMLElement, cb: (game: Game) => void): void {
   void boot(parent).then((g) => {
-    if (!g) return;
-    if (g.isBooted) cb(g);
-    // Phaser.Core.Events.READY === "ready" (stable Phaser 3 API).
-    else g.events.once("ready", () => cb(g));
+    if (g) cb(g);
   });
 }
 

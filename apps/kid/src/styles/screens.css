@@ -5200,6 +5200,8 @@
 .gate-submit { width: 100%; margin-top: 2px; }
 .gate-guest { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .gate-guest-sub { margin: 0; font-size: 12px; color: var(--nv-gray); }
+/* #824 — explicit exits on the new-guest profile pick + add-kid form */
+.addkid-exit-links, .kidpick-guest-links { margin-top: 16px; }
 /* ── Parent PIN pad (#86) — 4-digit gate on the parent area ─────────────── */
 .pin-card { align-items: center; }
 /* #1421 — wrong-PIN feedback: a quick shake for kids who can't read the text. */

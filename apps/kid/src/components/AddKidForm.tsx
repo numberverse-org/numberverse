@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon, AVATAR_EMOJI, AVATAR_KEYS } from "./Icon";
 import type { Lang, Strings } from "../i18n";
 
-export default function AddKidForm({ t, lang, onSave, onCancel }: { t: Strings; lang: Lang; onSave: (name: string, avatar: string, birthYear: number, birthMonth?: number, birthDay?: number) => void; onCancel: () => void }) {
+export default function AddKidForm({ t, lang, onSave, onCancel, onSyllabus, onParent }: { t: Strings; lang: Lang; onSave: (name: string, avatar: string, birthYear: number, birthMonth?: number, birthDay?: number) => void; onCancel: () => void; onSyllabus: () => void; onParent: () => void }) {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState(AVATAR_KEYS[0]);
   // Full birthday (month + day) — feeds the yearly birthday party. Defaults to
@@ -97,6 +97,17 @@ export default function AddKidForm({ t, lang, onSave, onCancel }: { t: Strings; 
           <button className="big-btn" disabled={!canSave} onClick={doSave}>
             {t.saveKid(name.trim() || (lang === "bn" ? "বাচ্চা" : "kid"))}
           </button>
+
+          {/* #824 — a new guest on the add-kid form always has a way out to
+              the syllabus or the parent gate; the form must never be a loop. */}
+          <div className="gate-guest addkid-exit-links">
+            <button className="welcome-syllabus-link" onClick={onSyllabus}>
+              {t.welcomeSyllabus}
+            </button>
+            <button className="ghost-btn" onClick={onParent}>
+              {t.settingsSecParents}
+            </button>
+          </div>
         </div>
       </main>
     </div>
