@@ -931,4 +931,21 @@ export interface Strings {
   /* #689 — store wiring badges */
   islandCoins: string;
   islandGardenGrew: string;
+  /* #980 — parent account deletion (right-to-erasure) */
+  deleteAccount: string;
+  deleteAccountSub: string;
+  deleteAccountCta: string;
+  deleteAccountConfirm: string;
+  deleteAccountConfirmPh: string;
+  deleteAccountPasswordLabel: string;
+  deleteAccountDone: (kids: number) => string;
+  /* #982 — share link revocation */
+  unshareLink: string;
+  regenerateLink: string;
+  shareLinkRevoked: string;
+  /* #985/#986 — birth_year display + age-appropriate band */
+  birthYearLabel: string;
+  ageBandHint: (age: number, band: number) => string;
+  /* #983/#984 — privacy retention info */
+  retentionInfo: string;
 }

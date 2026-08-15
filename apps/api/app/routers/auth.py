@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -13,6 +13,7 @@ from ..models import Profile, Session
 from ..ratelimit import AuthAttemptGuard, ip_rate_limit
 from ..schemas import (
     ChangePasswordIn,
+    DeleteAccountIn,
     GoogleAuthIn,
     LoginIn,
     ProfileOut,
@@ -105,6 +106,10 @@ async def signup(
         password_hash=hash_password(body.password),
         display_name=body.display_name,
         auth_provider="local",
+        # #985 — stamp verifiable-parental-consent at signup
+        consent_version="1.0",
+        consent_at=datetime.now(timezone.utc),
+        consent_method="signup",
     )
     db.add(profile)
     await db.flush()  # assign profile.id before minting its session
@@ -161,6 +166,10 @@ async def google_auth(body: GoogleAuthIn, request: Request, db: AsyncSession = D
             password_hash=hash_password(secrets.token_urlsafe(24)),
             display_name=info.get("name") or info.get("given_name"),
             auth_provider="google",
+            # #985 — consent also stamped for Google signups
+            consent_version="1.0",
+            consent_at=datetime.now(timezone.utc),
+            consent_method="google_signup",
         )
         db.add(profile)
         await db.flush()  # assign profile.id before minting its session
@@ -356,3 +365,49 @@ async def change_password(
     # revoke_other_sessions above.
     profile.legacy_sessions_revoked_at = now
     await db.commit()
+
+
+# #980 — right-to-erasure: DELETE /api/v1/auth/me removes the parent's
+# entire account and all associated data (kids, mastery, sessions, events,
+# stories, acceleration logs, settings) through the DB's CASCADE FKs.
+@router.delete("/me", status_code=status.HTTP_200_OK)
+async def delete_account(
+    body: DeleteAccountIn,
+    request: Request,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently delete the parent account and ALL associated data. The parent
+    must confirm by sending their password. Returns a summary of what was deleted.
+    #980 — satisfies GDPR Art.17 right-to-erasure / COPPA 16 CFR 312.6 deletion."""
+    from ..models import Kid
+
+    # Google-only accounts can't provide a password they set — require the typed
+    # confirmation string as the safeguard instead.
+    if profile.auth_provider == "google":
+        if body.confirmation.strip().lower() != "delete my account":
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Type 'delete my account' to confirm",
+            )
+    else:
+        if not verify_password(body.password, profile.password_hash):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Password is incorrect")
+    # Gather summary quantities before deletion
+    kids = (await db.scalars(select(Kid).where(Kid.profile_id == profile.id))).all()
+    kid_count = len(kids)
+    session_count = (
+        await db.scalar(
+            select(func.count()).select_from(Session).where(Session.profile_id == profile.id)
+        )
+    ) or 0
+    # Delete the profile → CASCADE removes kids, sessions, and all FK-chained rows
+    await db.delete(profile)
+    await db.commit()
+    return {
+        "deleted": True,
+        "profile_id": str(profile.id),
+        "kids_removed": kid_count,
+        "sessions_removed": session_count,
+        "note": "All associated data (mastery, progress events, learning stories, acceleration logs, settings) removed via cascade.",
+    }

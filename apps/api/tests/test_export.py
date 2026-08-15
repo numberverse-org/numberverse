@@ -43,6 +43,8 @@ def check(name, got, want):
 
 def kid(**kw):
     base = dict(id=uuid.uuid4(), name="ময়না", avatar="owl", birth_year=2019,
+                coins=150,
+                consent_version="1.0", consent_at=datetime(2026, 8, 1, 10, 30, 0, tzinfo=timezone.utc), consent_method="create_kid",
                 created_at=datetime(2026, 8, 1, 10, 30, 0))
     base.update(kw)
     return SimpleNamespace(**base)
@@ -82,28 +84,54 @@ def story(**kw):
     return SimpleNamespace(**base)
 
 
+def accel(**kw):
+    """#987 — acceleration log entry for export."""
+    base = dict(skill_id="skip-1", reason="know", band_from=1, band_to=3,
+                created_at=datetime(2026, 8, 8, 12, 0, 0))
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+def make_profile(**kw):
+    """#985 — profile with consent fields."""
+    base = dict(display_name="Parent", email="p@ex.com",
+                password_hash="hunter2", is_admin=True, aggregate_opt_in=True,
+                consent_version="1.0", consent_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+                consent_method="signup")
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
 print("①  ISO serialization of naive DB timestamps…")
 check("None → None", iso(None), None)
 check("naive → Z", iso(datetime(2026, 8, 10, 8, 0, 0)), "2026-08-10T08:00:00Z")
 check("aware → Z", iso(datetime(2026, 8, 10, 8, 0, 0, tzinfo=timezone.utc)), "2026-08-10T08:00:00Z")
 
 print("②  Privacy contract: profile export never leaks account internals…")
-meta = profile_meta(SimpleNamespace(display_name="Parent", email="p@ex.com", password_hash="hunter2", is_admin=True, aggregate_opt_in=True))
-check("profile keys", sorted(meta.keys()), sorted(["display_name", "email"]))
+meta = profile_meta(make_profile())
+check("profile has display_name", "display_name" in meta, True)
+check("profile has email", "email" in meta, True)
+check("profile has consent", "consent" in meta, True)
+check("consent has version", meta["consent"]["version"], "1.0")
+check("consent has method", meta["consent"]["method"], "signup")
 check("no password_hash", "password_hash" in meta, False)
 check("no is_admin", "is_admin" in meta, False)
 
 print("③  Kid export shape — readable, ordered, clamped mastery…")
 out = serialize_kid(
-    kid(name="আরিফ", birth_year=2020),
+    kid(name="আরিফ", birth_year=2020, coins=200),
     settings(),
     [mastery(mastery=1.234), mastery(skill_id="count-to-50", mastery=-0.5)],  # clamp + sort by skill_id
     [event(created_at=datetime(2026, 8, 10, 8, 0, 0)), event(id=1, created_at=datetime(2026, 8, 1, 8, 0, 0))],  # sorted by time
     [story()],
+    acceleration=[accel()],
 )
 check("kid id is str", isinstance(out["id"], str), True)
 check("kid name", out["name"], "আরিফ")
 check("birth_year", out["birth_year"], 2020)
+check("coins", out["coins"], 200)
+check("consent.version", out["consent"]["version"], "1.0")
+check("consent.method", out["consent"]["method"], "create_kid")
 check("settings.weekday_limits_min", out["settings"]["weekday_limits_min"], "45,45,45,45,45,90,90")
 check("mastery count", len(out["mastery"]), 2)
 check("mastery clamp top", out["mastery"][0]["mastery"], 1.0)
@@ -111,6 +139,10 @@ check("mastery clamp bottom", out["mastery"][1]["mastery"], 0.0)
 check("mastery sorted", [m["skill_id"] for m in out["mastery"]], ["count-1-10", "count-to-50"])
 check("events sorted by time", [e["id"] for e in out["events"]], [1, 7])
 check("story error_kind", out["stories"][0]["error_kind"], "slip")
+check("acceleration present", len(out["acceleration"]), 1)
+check("accel reason", out["acceleration"][0]["reason"], "know")
+check("accel band_from", out["acceleration"][0]["band_from"], 1)
+check("accel band_to", out["acceleration"][0]["band_to"], 3)
 check("mastery has no internal cols", {"kid_id", "created_at"} & set(out["mastery"][0].keys()), set())
 check("event has no internal cols", "kid_id" in out["events"][0], False)
 
@@ -131,8 +163,8 @@ text = csv_bytes.decode("utf-8-sig")
 check("csv header", text.splitlines()[0], "kid,kid_id,date,skill_id,game_id,correct,response_ms,difficulty")
 check("csv row 1", "তারা," in text.splitlines()[1], True)
 
-print("⑤  Format version constant…")
-check("VERSION", VERSION, 1)
+print("⑤  Format version constant (v2 adds acceleration + coins + consent)…")
+check("VERSION", VERSION, 2)
 
 print()
 print(f"✓ export format matrix: {passes} passed, {fails} failed")

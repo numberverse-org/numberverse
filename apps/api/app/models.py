@@ -53,6 +53,13 @@ class Profile(Base):
     # cutoff instead. Any no-sid token minted on or before it is rejected on its
     # next request, even if it was never backfilled into the sessions table.
     legacy_sessions_revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # #985 — verifiable-parental-consent (VPC) audit trail: the version of the
+    # consent presented, the moment it was given, and the method (e.g. "signup"
+    # for click-through ToS at account creation, "create_kid" for child-specific
+    # acknowledgement). No new PII — just an audit trail.
+    consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consent_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     kids: Mapped[list["Kid"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
     sessions: Mapped[list["Session"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
@@ -75,6 +82,11 @@ class Kid(Base):
     # first "share" (nullable until then). The token is UNGUESSABLE and only the
     # parent can request it; the public snapshot it unlocks carries NO identity.
     share_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    # #985 — per-kid consent acknowledgment. Separate from the parent's consent
+    # so each child's record is independently auditable.
+    consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consent_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     profile: Mapped[Profile] = relationship(back_populates="kids")
     mastery: Mapped[list["SkillMastery"]] = relationship(back_populates="kid", cascade="all, delete-orphan")
