@@ -421,12 +421,14 @@ export default function HomeScreen({
               <button className="wild-tile" onClick={goGarden}>
                 <span className="wild-tile-emoji" aria-hidden="true">🌱</span>
                 <span className="wild-tile-label">{t.gardenTile}</span>
-                {gardenTile && (
+                {gardenTile && (gardenTile.plants === 0 && gardenTile.fruits === 0 ? (
+                  <span className="wild-tile-sum wild-tile-empty">{t.gardenTileEmpty}</span>
+                ) : (
                   <span className="wild-tile-sum">
                     {t.gardenTileSum(gardenTile.plants, gardenTile.fruits)}
                     {gardenTile.fresh && <em className="garden-tile-fresh">{t.gardenTileFresh}</em>}
                   </span>
-                )}
+                ))}
               </button>
             </div>
 
