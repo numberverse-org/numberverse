@@ -36,6 +36,7 @@ import {
   getSessions,
   revokeSession,
   changePassword,
+  setPassword,
   updateProfile,
   validateToken,
   type Profile,
@@ -52,6 +53,7 @@ import {
 } from "../lib/api";
 import { worksheetFor, type WorksheetProblem } from "../lib/worksheet";
 import {
+  ACCOUNT_LANGS,
   A11Y_LANGS,
   AVATARS,
   DEFAULT_SETTINGS,
@@ -286,6 +288,9 @@ export default function ParentDashboard() {
   const [pwConfirm, setPwConfirm] = useState("");
   const [acctMsg, setAcctMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [acctBusy, setAcctBusy] = useState(false);
+  // #1548 — sessions load separately from the rest of the dashboard so the
+  // active-logins list can show a real loading state before rows arrive.
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   /** End the session on this browser AND revoke it server-side, then land on
    *  the login page. Everything in localStorage with a parent-session key dies
@@ -359,10 +364,15 @@ export default function ParentDashboard() {
   );
 
   const reloadAccount = useCallback(async (tok: string) => {
-    const [p, s] = await Promise.all([getProfile(tok), getSessions(tok)]);
-    setProfile(p);
-    setDisplayName(p.display_name ?? "");
-    setSessions(s);
+    setSessionsLoading(true);
+    try {
+      const [p, s] = await Promise.all([getProfile(tok), getSessions(tok)]);
+      setProfile(p);
+      setDisplayName(p.display_name ?? "");
+      setSessions(s);
+    } finally {
+      setSessionsLoading(false);
+    }
   }, []);
 
   // 🗓️ #251 — lazily fetch a kid's FULL activity history (up to 2000 rounds)
@@ -655,6 +665,12 @@ export default function ParentDashboard() {
 
   async function handleChangePw() {
     if (!token) return;
+    // #1490 — bcrypt truncates at 72 bytes, so stop over-long passwords here
+    // (before the min-length check) with a message that actually says why.
+    if (pwNew.length > 72) {
+      setAcctMsg({ kind: "err", text: ACCOUNT_LANGS[wizLang].pwTooLong });
+      return;
+    }
     if (pwNew.length < 8) {
       setAcctMsg({ kind: "err", text: "New password must be at least 8 characters." });
       return;
@@ -674,6 +690,38 @@ export default function ParentDashboard() {
       await reloadAccount(token);
     } catch {
       setAcctMsg({ kind: "err", text: "Password change failed — check your current password." });
+    } finally {
+      setAcctBusy(false);
+    }
+  }
+
+  /** #1487 — Google accounts have no current password to verify, so they set a
+   *  fresh one through /auth/set-password (new + confirm only). */
+  async function handleSetPassword(pw: string) {
+    if (!token) return;
+    if (pw.length > 72) {
+      setAcctMsg({ kind: "err", text: ACCOUNT_LANGS[wizLang].pwTooLong });
+      return;
+    }
+    if (pw.length < 8) {
+      setAcctMsg({ kind: "err", text: "New password must be at least 8 characters." });
+      return;
+    }
+    if (pw !== pwConfirm) {
+      setAcctMsg({ kind: "err", text: "New passwords don't match." });
+      return;
+    }
+    setAcctBusy(true);
+    setAcctMsg(null);
+    try {
+      await setPassword(token, pw);
+      setPwCurrent("");
+      setPwNew("");
+      setPwConfirm("");
+      setAcctMsg({ kind: "ok", text: ACCOUNT_LANGS[wizLang].setPwOk });
+      await reloadAccount(token);
+    } catch {
+      setAcctMsg({ kind: "err", text: ACCOUNT_LANGS[wizLang].setPwErr });
     } finally {
       setAcctBusy(false);
     }
@@ -1457,6 +1505,9 @@ export default function ParentDashboard() {
                       handleRevoke={handleRevoke}
                       acctBusy={acctBusy}
                       acctMsg={acctMsg}
+                      onSetPassword={handleSetPassword}
+                      sessionsLoading={sessionsLoading}
+                      wizLang={wizLang}
           />
 
           {/* ── edit + danger zone ── */}

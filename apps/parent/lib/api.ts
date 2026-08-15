@@ -17,6 +17,10 @@ export interface Profile {
   email: string;
   display_name: string;
   is_admin: boolean;
+  /** #1487 — how this account was created. "google" accounts have no known
+   *  current password, so the portal shows a set-password flow instead of the
+   *  change-password form. null/"local" accounts use the normal flow. */
+  auth_provider?: string | null;
 }
 
 export interface LoginResponse {
@@ -152,7 +156,8 @@ export interface NewKid {
 export interface SessionRow {
   id: string;
   created_at: string;
-  last_seen_at: string;
+  /** #1547 — null until the API first touches the session after auth. */
+  last_seen_at: string | null;
   user_agent: string | null;
   ip: string | null;
   current: boolean;
@@ -206,13 +211,30 @@ export async function revokeSession(token: string, sessionId: string): Promise<v
   if (!res.ok) throw new Error("Failed to revoke session");
 }
 
+/** #1490 — bcrypt only uses the first 72 bytes, so reject over-long passwords
+ *  client-side too (the API independently returns 422 for the same input). */
+export const MAX_PASSWORD_CHARS = 72;
+
 export async function changePassword(token: string, current: string, next: string): Promise<void> {
+  if (next.length > MAX_PASSWORD_CHARS) throw new Error("Password too long");
   const res = await authFetch(token, `${API}/auth/change-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ current_password: current, new_password: next }),
   });
   if (!res.ok) throw new Error("Password change failed");
+}
+
+/** #1487 — Google-created accounts have no current password to verify, so they
+ *  set one directly. Mirrors changePassword but omits `current_password`. */
+export async function setPassword(token: string, newPassword: string): Promise<void> {
+  if (newPassword.length > MAX_PASSWORD_CHARS) throw new Error("Password too long");
+  const res = await authFetch(token, `${API}/auth/set-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+  if (!res.ok) throw new Error("Failed to set password");
 }
 
 export async function updateProfile(token: string, displayName: string): Promise<Profile> {

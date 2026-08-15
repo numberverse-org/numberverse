@@ -3,8 +3,10 @@
    those maps in lib/portal and these cards follow. */
 "use client";
 
-import type { SessionRow } from "../../lib/api";
+import { useState } from "react";
+import type { Profile, SessionRow } from "../../lib/api";
 import {
+  ACCOUNT_LANGS,
   AVATARS,
   DEBUG_LANGS,
   HELP_LANGS,
@@ -101,8 +103,11 @@ export function AccountCard({
   handleRevoke,
   acctBusy,
   acctMsg,
+  onSetPassword,
+  sessionsLoading,
+  wizLang,
 }: {
-  profile: { display_name?: string | null } | null;
+  profile: Profile | null;
   displayName: string;
   setDisplayName: Setter<string>;
   pwCurrent: string;
@@ -118,7 +123,45 @@ export function AccountCard({
   handleRevoke: (sessionId: string, isCurrent: boolean) => void;
   acctBusy: boolean;
   acctMsg: { kind: "ok" | "err"; text: string } | null;
+  /** #1487 — Google accounts call this with the new password only. */
+  onSetPassword?: (pw: string) => void;
+  /** #1548 — lets the card show a true loading state before sessions arrive. */
+  sessionsLoading: boolean;
+  wizLang: WizardLang;
 }) {
+  // #1545 — two-tap inline confirm for each session revoke (never window.confirm:
+  // headless tests can't click through it). Armed = session id awaiting confirm.
+  const [revokeArmed, setRevokeArmed] = useState<string | null>(null);
+  const t = ACCOUNT_LANGS[wizLang];
+  const pwTooLong = pwNew.length > 72;
+
+  const newPasswordFields = (
+    <>
+      <label>
+        {t.newPw}
+        <input
+          type="password"
+          value={pwNew}
+          maxLength={72}
+          onChange={(e) => setPwNew(e.target.value)}
+          autoComplete="new-password"
+          placeholder={t.newPwPlaceholder}
+        />
+        {pwTooLong && <span className="err inline">{t.maxLenHint}</span>}
+      </label>
+      <label>
+        {t.confirmNewPw}
+        <input
+          type="password"
+          value={pwConfirm}
+          maxLength={72}
+          onChange={(e) => setPwConfirm(e.target.value)}
+          autoComplete="new-password"
+        />
+      </label>
+    </>
+  );
+
   return (
 <section className="card account" id="account">
   <h2>🔐 Account & security</h2>
@@ -146,41 +189,53 @@ export function AccountCard({
     </div>
   </div>
 
-  <div className="ctrl-block">
-    <h3>Change password</h3>
-    <p className="muted small">
-      Changing it signs out every other device immediately — only this one stays in.
-    </p>
-    <div className="form-grid">
-      <label>
-        Current password
-        <input type="password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} autoComplete="current-password" />
-      </label>
-      <label>
-        New password
-        <input type="password" value={pwNew} onChange={(e) => setPwNew(e.target.value)} autoComplete="new-password" placeholder="8+ characters" />
-      </label>
-      <label>
-        Confirm new password
-        <input type="password" value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} autoComplete="new-password" />
-      </label>
+  {profile?.auth_provider === "google" ? (
+    // #1487 — a Google-created account has no known current password, so offer
+    // a set-password flow instead of a change-password form that can't succeed.
+    <div className="ctrl-block">
+      <h3>{t.setPwTitle}</h3>
+      <p className="muted small">{t.googleSetHint}</p>
+      <div className="form-grid">{newPasswordFields}</div>
+      <div className="row-buttons">
+        <button
+          className="btn primary"
+          disabled={acctBusy || pwNew.length < 8 || pwNew.length > 72 || pwNew !== pwConfirm}
+          onClick={() => onSetPassword?.(pwNew)}
+        >
+          {acctBusy ? t.saving : t.setPwButton}
+        </button>
+      </div>
     </div>
-    <div className="row-buttons">
-      <button
-        className="btn primary"
-        disabled={acctBusy || !pwCurrent || pwNew.length < 8 || pwNew !== pwConfirm}
-        onClick={handleChangePw}
-      >
-        {acctBusy ? "Saving…" : "Change password"}
-      </button>
+  ) : (
+    <div className="ctrl-block">
+      <h3>{t.changePwTitle}</h3>
+      <p className="muted small">{t.changePwHint}</p>
+      <div className="form-grid">
+        <label>
+          {t.currentPw}
+          <input type="password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} autoComplete="current-password" />
+        </label>
+        {newPasswordFields}
+      </div>
+      <div className="row-buttons">
+        <button
+          className="btn primary"
+          disabled={acctBusy || !pwCurrent || pwNew.length < 8 || pwNew.length > 72 || pwNew !== pwConfirm}
+          onClick={handleChangePw}
+        >
+          {acctBusy ? t.saving : t.changePwButton}
+        </button>
+      </div>
     </div>
-  </div>
+  )}
 
   <div className="ctrl-block">
-    <h3>Active logins</h3>
-    <p className="muted small">Every device signed into this account. Revoke one you don't recognize.</p>
-    {sessions.length === 0 ? (
-      <p className="muted">Loading sessions…</p>
+    <h3>{t.activeLoginsTitle}</h3>
+    <p className="muted small">{t.activeLoginsHint}</p>
+    {sessionsLoading ? (
+      <p className="muted">{t.loading}</p>
+    ) : sessions.length === 0 ? (
+      <p className="muted">{t.empty}</p>
     ) : (
       <ul className="session-list">
         {sessions.map((s) => (
@@ -194,16 +249,35 @@ export function AccountCard({
               <span className="muted small">
                 {s.user_agent ? friendlyDevice(s.user_agent) : "Unknown device"}
                 {s.ip ? ` · ${s.ip}` : ""} · signed in {fmtTime(s.created_at)}
-                {!s.current && ` · last seen ${fmtTime(s.last_seen_at)}`}
+                {!s.current &&
+                  (s.last_seen_at
+                    ? ` · last seen ${fmtTime(s.last_seen_at)}`
+                    : ` · ${t.noRecentActivity}`)}
               </span>
             </span>
-            {!s.current && (
+            {revokeArmed === s.id ? (
+              <span className="confirm-group">
+                <button
+                  className="btn btn-small danger"
+                  disabled={acctBusy}
+                  onClick={() => {
+                    setRevokeArmed(null);
+                    handleRevoke(s.id, s.current);
+                  }}
+                >
+                  {t.confirmRevoke.replace("{device}", friendlyDevice(s.user_agent))}
+                </button>
+                <button className="btn btn-small ghost" onClick={() => setRevokeArmed(null)}>
+                  {t.cancel}
+                </button>
+              </span>
+            ) : (
               <button
                 className="btn btn-small danger-ghost"
                 disabled={acctBusy}
-                onClick={() => handleRevoke(s.id, false)}
+                onClick={() => setRevokeArmed(s.id)}
               >
-                Sign out
+                {s.current ? t.signOutHere : t.signOut}
               </button>
             )}
           </li>
@@ -211,8 +285,12 @@ export function AccountCard({
       </ul>
     )}
     <div className="row-buttons mt-14">
-      <button className="btn danger-ghost" disabled={acctBusy || sessions.length === 0} onClick={handleSignoutAll}>
-        Sign out of all devices
+      <button
+        className="btn danger-ghost"
+        disabled={acctBusy || sessionsLoading || sessions.length === 0}
+        onClick={handleSignoutAll}
+      >
+        {t.signOutAll}
       </button>
     </div>
   </div>
