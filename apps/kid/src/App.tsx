@@ -22,7 +22,7 @@ import {
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled, googleClientId } from "./components/GoogleSignIn";
-import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, setQuietLevel as setAudioQuiet } from "./game/audio";
+import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, coinSound, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setVoiceTone, setVoiceSpeed, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -473,6 +473,32 @@ export default function App() {
     if (def.speak !== false && voiceOk) speak(line, { lang: lang === "bn" ? "bn" : "en" });
     window.setTimeout(() => setNovaReaction((cur) => (cur && cur.nonce === now ? null : cur)), 2600);
   }, [lang, tts]);
+  // #1443 — coin grants get an in-the-moment HUD "+N 🪙" flash + a coin chime,
+  // so the wallet number changing is never the only evidence of a reward.
+  const [coinFlash, setCoinFlash] = useState<{ n: number; nonce: number } | null>(null);
+  const coinFlashTimerRef = useRef<number | undefined>(undefined);
+  const flashCoin = useCallback((n: number) => {
+    if (n <= 0) return;
+    coinSound();
+    const nonce = Date.now();
+    setCoinFlash({ n, nonce });
+    window.clearTimeout(coinFlashTimerRef.current);
+    coinFlashTimerRef.current = window.setTimeout(() => {
+      setCoinFlash((cur) => (cur && cur.nonce === nonce ? null : cur));
+    }, 1000);
+  }, []);
+  // #1446 — mastery big moment showcases the pet that just grew + the coin
+  // bonus on screen, alongside the confetti burst in the Phaser scene.
+  const [masteryShowcase, setMasteryShowcase] = useState<{ coins: number; pet: string; nonce: number } | null>(null);
+  const masteryShowcaseTimerRef = useRef<number | undefined>(undefined);
+  const showMasteryShowcase = useCallback((coins: number, pet: string) => {
+    const nonce = Date.now();
+    setMasteryShowcase({ coins, pet, nonce });
+    window.clearTimeout(masteryShowcaseTimerRef.current);
+    masteryShowcaseTimerRef.current = window.setTimeout(() => {
+      setMasteryShowcase((cur) => (cur && cur.nonce === nonce ? null : cur));
+    }, 2600);
+  }, []);
   const { score, stars, events, addEvent, reset, stats, recordSession, novaAwardRound, novaCompleteSession, novaQuestProgress, gardenWater, gardenMastery } = useKidStore();
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
@@ -2335,7 +2361,14 @@ export default function App() {
             const pn = useKidStore.getState().nova[kid.id];
             return pn && pn.earnDay === todayIso() ? pn.earnedToday ?? 0 : 0;
           })();
+          // #1443 — snapshot the wallet so the HUD can flash exactly what this
+          // round just earned (the store's novaAwardRound only mutates coins).
+          const beforeCoins = useKidStore.getState().nova[kid.id]?.coins ?? 0;
           novaAwardRound(kid.id, correct, difficulty);
+          if (correct) {
+            const afterCoins = useKidStore.getState().nova[kid.id]?.coins ?? 0;
+            flashCoin(afterCoins - beforeCoins);
+          }
           // #133 — screen-reader cue for every round (matches the on-screen flash).
           announce(correct ? t.a11yRight : t.a11yWrong);
           // every completed round advances today's Daily Quest — the mission
@@ -2435,8 +2468,17 @@ export default function App() {
               useKidStore.getState().petGrowMastery(kid.id);
               // #1188 — mastery is the BIG moment: a distinct coin bonus (once
               // per skill, inside the daily cap) on top of the round payout.
-              useKidStore.getState().novaChallengeReward(kid.id, NOVA_MASTERY_REWARD);
+              const masteryCoins = useKidStore.getState().novaChallengeReward(kid.id, NOVA_MASTERY_REWARD);
+              const novaAfter = useKidStore.getState().nova[kid.id];
               masteredBeforeRef.current.add(step.skillId);
+              // #1443/#1446 — make the bonus visible + audible right now, and
+              // put the pet that just grew + the coin on screen next to the
+              // confetti burst (not just a silent store bump).
+              if (masteryCoins > 0) flashCoin(masteryCoins);
+              showMasteryShowcase(
+                masteryCoins,
+                speciesEmoji(novaAfter?.species ?? "owl", novaAfter?.petStage ?? 0)
+              );
               cancelSpeech();
               tada();
               const bn = getAppLang() === "bn";
@@ -5886,6 +5928,11 @@ export default function App() {
               <span className="hud-coins">
                 🪙 {novaCoins}
                 {coinsCapped && <em className="hud-coins-maxed" title={t.hudCoinsMaxed} aria-label={t.hudCoinsMaxed}>🎯</em>}
+                {coinFlash && (
+                  <span key={coinFlash.nonce} className="hud-coin-flash" role="status" aria-label={t.chCoins(coinFlash.n)}>
+                    {t.chCoins(coinFlash.n)}
+                  </span>
+                )}
               </span>
               <button
                 className="hud-music"
@@ -6011,7 +6058,21 @@ export default function App() {
             </div>
           </div>
         )}
-
+        {/* #1446 — mastery big moment: the pet that just grew + the coin bonus
+            are shown on screen over the confetti, not left to the wallet only. */}
+        {masteryShowcase && inGame && (
+          <div
+            key={masteryShowcase.nonce}
+            className="mastery-showcase"
+            role="status"
+            aria-label={masteryShowcase.coins > 0 ? t.chCoins(masteryShowcase.coins) : t.hudCoinsMaxed}
+          >
+            <span className="mastery-showcase-pet" aria-hidden="true">{masteryShowcase.pet}</span>
+            <span className="mastery-showcase-coin">
+              {masteryShowcase.coins > 0 ? t.chCoins(masteryShowcase.coins) : "🎯"}
+            </span>
+          </div>
+        )}
         {/* #22 — pass-the-device sheet: pick the sibling whose turn it is. */}
         {coopOpen && kids.length >= 2 && (
           <div className="coop-overlay" onClick={() => setCoopOpen(false)}>

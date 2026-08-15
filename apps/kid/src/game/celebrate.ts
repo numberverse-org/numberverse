@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { comboChime } from "./audio";
+import { t as sceneT } from "./i18n";
 import { prefersReducedMotion } from "./reducedMotion";
 import { NV_GOLD, NV_PINK } from "./ui"; // tokenized #591
 
@@ -14,6 +15,7 @@ import { NV_GOLD, NV_PINK } from "./ui"; // tokenized #591
  *   combo 3 → confetti burst + "WOW! 🎉" + rising chime
  *   combo 5 → bigger burst + "AMAZING! 🌟"
  *   combo 7+ → full celebration + "SUPER STAR! ⭐"
+ *   combo 9+ → "MASTERY MOMENT! 🏆" — the ceiling keeps climbing
  *
  * Kids chase the combo — consecutive correct answers turn into visible,
  * audible fireworks. Wrong answers quietly reset it (learning stays warm).
@@ -177,7 +179,9 @@ export function correctCelebrate(
   // escalation word, so a 5-in-a-row is visibly a 5-in-a-row everywhere (it
   // used to be tracked by celebrate.ts but only a handful of scenes displayed
   // it — the meter reset on every miss with almost nowhere showing the climb).
-  floatText(scene, x, y - 84, `x${combo} 🔥`, "#ffe8a3", 20);
+  // #1444 — keep the chip high enough that it never stacks/collides with the
+  // escalation word below it (both rise from the same tap point).
+  floatText(scene, x, y - 116, `x${combo} 🔥`, "#ffe8a3", 20);
 
   // #1191 — hard-band answers ESCALATE ONE TIER SOONER: a hard problem at
   // combo 3 already reads AMAZING, at combo 5 SUPER STAR. Easy work still has
@@ -200,6 +204,24 @@ export function correctCelebrate(
     starBurst(scene, x, y, hard ? 9 : 6);
     const t = floatText(scene, x, y - 58, hard ? "AMAZING! 🔥" : "AMAZING! 🌟", NV_PINK, 32);
     scene.data.set("nv:combo-fx", t);
+    return;
+  }
+  // #1445 — the ceiling keeps climbing: a long chain (combo 9+) breaks out of
+  // the flat "SUPER STAR" band into a distinct mastery moment with a bigger
+  // burst. Hard-problem answers reach it one tier sooner, like every rung.
+  if (tier >= 9) {
+    comboChime(combo);
+    confettiBurst(scene, x, y, hard ? 72 : 54);
+    starBurst(scene, x, y, hard ? 20 : 14);
+    const fx = floatText(
+      scene,
+      x,
+      y - 68,
+      hard ? sceneT("ceMasteryHard") : sceneT("ceMastery"),
+      "#ffe8a3",
+      38
+    );
+    scene.data.set("nv:combo-fx", fx);
     return;
   }
   // 6+ → everything (a hard-problem SUPER STAR lands bigger)
