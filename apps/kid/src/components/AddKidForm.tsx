@@ -34,9 +34,10 @@ export default function AddKidForm({ t, lang, onSave, onCancel }: { t: Strings; 
                 key={a}
                 className={`avatar-btn${a === avatar ? " selected" : ""}`}
                 onClick={() => setAvatar(a)}
-                aria-label={`avatar ${a}`}
+                aria-pressed={a === avatar}
+                aria-label={`${t.pickBuddy}: ${t.avatarFaceNames[a] ?? a}`}
               >
-                <Icon name={a} size={34} />
+                <span aria-hidden="true"><Icon name={a} size={34} /></span>
               </button>
             ))}
           </div>

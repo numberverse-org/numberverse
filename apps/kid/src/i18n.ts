@@ -279,6 +279,16 @@ export interface Strings {
   avatarNone: string;
   avatarSave: string;
   avatarSaveSpeak: (name: string) => string;
+  /** #1348 — human-readable names for avatar picker buttons (never raw keys). */
+  avatarFaceNames: Record<string, string>;
+  avatarPartNames: Record<string, string>;
+  /** #1349 — live spoken/announced line after each pick. */
+  avatarPicked: (category: string, option: string) => string;
+  /** #1347 — unsaved-change confirm on the Customize back arrow. */
+  avatarUnsavedTitle: string;
+  avatarUnsavedBody: string;
+  avatarUnsavedKeep: string;
+  avatarUnsavedDiscard: string;
   /* #282 — same-device sibling leaderboard */
   lbTile: string;
   lbTitle: string;
@@ -1061,6 +1071,44 @@ export const STR: Record<Lang, Strings> = {
     avatarNone: "none",
     avatarSave: "✅ Save my look",
     avatarSaveSpeak: (name) => `${name}, your buddy looks amazing! 🎉`,
+    avatarFaceNames: {
+      fox: "Fox",
+      panda: "Panda",
+      lion: "Lion",
+      frog: "Frog",
+      tiger: "Tiger",
+      koala: "Koala",
+      knight: "Knight",
+      mage: "Mage",
+      rogue: "Rogue",
+      barbarian: "Barbarian",
+      ranger: "Ranger",
+    },
+    avatarPartNames: {
+      "🎩": "Top hat",
+      "🧢": "Cap",
+      "👑": "Crown",
+      "🎀": "Bow",
+      "🌼": "Flower",
+      "🍄": "Mushroom",
+      "👓": "Glasses",
+      "🕶️": "Sunglasses",
+      "🥽": "Goggles",
+      "🤓": "Smarty glasses",
+      "✨": "Sparkle",
+      "🌈": "Rainbow",
+      "👕": "T-shirt",
+      "👗": "Dress",
+      "🥼": "Lab coat",
+      "🦺": "Safety vest",
+      "🎽": "Sports top",
+      "🧥": "Coat",
+    },
+    avatarPicked: (category, option) => `${category}: ${option}`,
+    avatarUnsavedTitle: "Your new look isn't saved yet",
+    avatarUnsavedBody: "If you go back, your changes will be lost.",
+    avatarUnsavedKeep: "Keep editing",
+    avatarUnsavedDiscard: "Leave without saving",
     /* #282 — same-device sibling leaderboard */
     lbTile: "Leaderboard",
     lbTitle: "🥇 Sibling Leaderboard",
@@ -1819,6 +1867,44 @@ export const STR: Record<Lang, Strings> = {
     avatarNone: "কিছু না",
     avatarSave: "✅ আমার সাজানোটা রাখো",
     avatarSaveSpeak: (name) => `${name}, তোমার বন্ধু দারুণ লাগছে! 🎉`,
+    avatarFaceNames: {
+      fox: "শিয়াল",
+      panda: "পান্ডা",
+      lion: "সিংহ",
+      frog: "ব্যাঙ",
+      tiger: "বাঘ",
+      koala: "কোয়ালা",
+      knight: "নাইট",
+      mage: "জাদুকর",
+      rogue: "দুরন্ত",
+      barbarian: "বীর",
+      ranger: "রেঞ্জার",
+    },
+    avatarPartNames: {
+      "🎩": "লম্বা টুপি",
+      "🧢": "ক্যাপ",
+      "👑": "মুকুট",
+      "🎀": "ফিতা",
+      "🌼": "ফুল",
+      "🍄": "মাশরুম",
+      "👓": "চশমা",
+      "🕶️": "রোদ চশমা",
+      "🥽": "সুরক্ষা চশমা",
+      "🤓": "পড়ার চশমা",
+      "✨": "ঝিকিমিকি",
+      "🌈": "রংধনু",
+      "👕": "টি-শার্ট",
+      "👗": "ফ্রক",
+      "🥼": "ল্যাব কোট",
+      "🦺": "নিরাপত্তা জামা",
+      "🎽": "খেলার জামা",
+      "🧥": "কোট",
+    },
+    avatarPicked: (category, option) => `${category}: ${option}`,
+    avatarUnsavedTitle: "তোমার নতুন সাজটা এখনো জমা হয়নি",
+    avatarUnsavedBody: "ফিরে গেলে তোমার বদলগুলো মুছে যাবে।",
+    avatarUnsavedKeep: "সাজানো চালিয়ে যাও",
+    avatarUnsavedDiscard: "না রেখে চলে যাও",
     /* #282 — same-device sibling leaderboard */
     lbTile: "লিডারবোর্ড",
     lbTitle: "🥇 ভাইবোন লিডারবোর্ড",

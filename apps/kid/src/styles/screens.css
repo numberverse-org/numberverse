@@ -2409,6 +2409,46 @@
   max-width: var(--content-max);
   width: 100%;
 }
+/* #1347 — unsaved-change confirm on the Customize back arrow. */
+.avatar-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(6, 10, 22, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.avatar-confirm-sheet {
+  width: 100%;
+  max-width: 380px;
+  padding: 22px 20px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(30, 41, 72, 0.98), rgba(18, 26, 50, 0.98));
+  border: 1.5px solid rgba(110, 231, 255, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: challengePop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.avatar-confirm-emoji { font-size: 44px; }
+.avatar-confirm-title {
+  margin: 8px 0 6px;
+  font-size: 21px;
+  font-weight: 900;
+  color: #ffe066;
+}
+.avatar-confirm-body {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #dff4ff;
+}
+.avatar-confirm-actions {
+  display: grid;
+  gap: 10px;
+}
 
 /* #280 — beat-the-owl challenge drill: home card + duel sheet */
 .challenge-card {

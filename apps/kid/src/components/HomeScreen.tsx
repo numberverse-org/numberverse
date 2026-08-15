@@ -15,7 +15,7 @@ import { BANDS, type Band, type Skill } from "@numberverse/core";
 import { tada } from "../game/audio";
 import { currentFestival } from "../game/locale";
 import { speak, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, speechStatus } from "../game/speech";
-import { Icon, AvatarIcon, AVATAR_EMOJI } from "./Icon";
+import { Icon } from "./Icon";
 import type { KidSettings } from "../api";
 import type { SessionStep, SkillMap, ChallengeQ, Kid } from "../lib/journey";
 import type { SpeechReadiness } from "../game/speech";
@@ -265,7 +265,7 @@ export default function HomeScreen({
                 }}
                 aria-label={t.switchKid(kid.avatar, kid.name)}
               >
-                <AvatarIcon emoji={kid.avatar} size={30} />
+                <KidAvatar kid={kid} size={30} />
                 <span className="kid-chip-name">{kid.name}</span>
                 <span className="kid-chip-swap" aria-hidden="true">⇄</span>
               </button>
