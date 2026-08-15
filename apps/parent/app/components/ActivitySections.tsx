@@ -3,16 +3,34 @@
    in lib/portal and the missed card follows. */
 "use client";
 
+import { useEffect, useState } from "react";
+import { SKILLS } from "@numberverse/core";
 import type { ActivityRow, MasteryRow } from "../../lib/api";
 import {
   MISSED_LANGS,
+  OVERVIEW_LANGS,
+  SUBJECTS,
   fmtTime,
   gameLabel,
   masteryPct,
+  narrTitleBn,
+  narrTitleEn,
   skillLabel,
   type MissedSkill,
   type WizardLang,
 } from "../lib/portal";
+
+function subjectOf(skillId: string): string {
+  return SKILLS.find((s) => s.id === skillId)?.subject ?? "other";
+}
+
+function subjectEmoji(subject: string): string {
+  return SUBJECTS.find((s) => s.id === subject)?.emoji ?? "📚";
+}
+
+function subjectLabelOf(lang: WizardLang, subject: string): string {
+  return OVERVIEW_LANGS[lang].subjects[subject] ?? subject.replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 interface ActiveKid {
   id: string;
@@ -35,7 +53,15 @@ export function ActivityFeed({ active, activity }: {
       {activity.map((a) => (
         <li key={a.id} className={`activity-item ${a.correct ? "ok" : "no"}`}>
           <span className="activity-badge">{a.correct ? "✓" : "✗"}</span>
-          <span className="activity-game">{gameLabel(a.game_id)}</span>
+          <span className="activity-game">
+            {gameLabel(a.game_id)}
+            {/* #1494 — surface the skill/subject context like MissedCard does */}
+            {skillLabel(a.skill_id) ? (
+              <span className="muted small">
+                {" "}· {subjectEmoji(subjectOf(a.skill_id))} {skillLabel(a.skill_id)}
+              </span>
+            ) : null}
+          </span>
           <span className="activity-time">{fmtTime(a.created_at)}</span>
         </li>
       ))}
@@ -93,37 +119,109 @@ export function MissedCard({ active, missedSkills, wizLang }: {
 export function MasteryCard({ activeMastery }: {
   activeMastery: MasteryRow[];
 }) {
+  // #1520/#1521 — follow the portal language (same localStorage key as page.tsx)
+  // and keep the weakness-first sort + subject filter purely in local state, so
+  // the card works offline from the already-loaded mastery rows.
+  const [wizLang, setWizLang] = useState<WizardLang>("en");
+  useEffect(() => {
+    const saved = localStorage.getItem("nv_parent_lang");
+    if (saved === "en" || saved === "bn") setWizLang(saved);
+  }, []);
+  const [weakestFirst, setWeakestFirst] = useState(true);
+  const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const L = OVERVIEW_LANGS[wizLang];
+
+  // #1520 — weakest skills first; attempts asc breaks ties, then the slug for a
+  // deterministic order. Toggling off restores the server's alphabetical order.
+  const sorted = [...activeMastery].sort((a, b) =>
+    weakestFirst
+      ? a.mastery - b.mastery || a.attempts - b.attempts || a.skill_id.localeCompare(b.skill_id)
+      : a.skill_id.localeCompare(b.skill_id)
+  );
+
+  // #1521 — present subjects in catalog order, each with a rolled-up average so
+  // the chip row doubles as the per-subject breakdown.
+  const subjectOrder = ["math", "bangla", "english", "science", "bgs", "ict"];
+  const subjectStats = activeMastery.reduce<Record<string, { count: number; sum: number }>>((acc, m) => {
+    const sub = subjectOf(m.skill_id);
+    const e = acc[sub] ?? { count: 0, sum: 0 };
+    e.count += 1;
+    e.sum += m.mastery;
+    acc[sub] = e;
+    return acc;
+  }, {});
+  const presentSubjects = Object.keys(subjectStats).sort(
+    (a, b) => (subjectOrder.indexOf(a) === -1 ? 999 : subjectOrder.indexOf(a)) - (subjectOrder.indexOf(b) === -1 ? 999 : subjectOrder.indexOf(b))
+  );
+  const filtered = subjectFilter === "all" ? sorted : sorted.filter((m) => subjectOf(m.skill_id) === subjectFilter);
+
   return (
 <section className="card" id="mastery">
   <h2>🧠 Skill mastery</h2>
   {activeMastery.length === 0 ? (
     <p className="muted">No practice yet — play the kid app to record progress.</p>
   ) : (
-    <table>
-      <thead>
-        <tr>
-          <th>Skill</th>
-          <th>Mastery</th>
-          <th>Correct / Attempts</th>
-          <th>Streak</th>
-        </tr>
-      </thead>
-      <tbody>
-        {activeMastery.map((m) => (
-          <tr key={m.skill_id}>
-            <td>{m.skill_id.replace(/-/g, " ")}</td>
-            <td>
-              <div className="bar">
-                <div className={`fill${m.mastery >= 0.8 ? " done" : ""}`} style={{ width: `${masteryPct(m)}%` }} />
-              </div>
-              {masteryPct(m)}%
-            </td>
-            <td>{m.correct}/{m.attempts}</td>
-            <td>{m.streak}</td>
+    <>
+      <div className="timeline-filter">
+        <button
+          className="timeline-chip"
+          onClick={() => setWeakestFirst((v) => !v)}
+          aria-pressed={weakestFirst}
+        >
+          {weakestFirst ? L.weakestFirst : L.azSort}
+        </button>
+        <button
+          className={`timeline-chip${subjectFilter === "all" ? " on" : ""}`}
+          onClick={() => setSubjectFilter("all")}
+        >
+          {L.allFilter}
+        </button>
+        {presentSubjects.map((sub) => {
+          const stat = subjectStats[sub];
+          const pct = stat.count ? Math.min(100, Math.round((stat.sum / stat.count) * 100)) : 0;
+          return (
+            <button
+              key={sub}
+              className={`timeline-chip${subjectFilter === sub ? " on" : ""}`}
+              onClick={() => setSubjectFilter(sub)}
+            >
+              {subjectEmoji(sub)} {subjectLabelOf(wizLang, sub)} · {pct}%
+            </button>
+          );
+        })}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>Mastery</th>
+            <th>Correct / Attempts</th>
+            <th>Streak</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {filtered.map((m) => (
+            <tr key={m.skill_id}>
+              <td>
+                {/* #1522 — curated titles + Bangla suffix, matching StoriesCard */}
+                {narrTitleEn(m.skill_id)}
+                {narrTitleBn(m.skill_id) !== narrTitleEn(m.skill_id) && (
+                  <span className="muted small"> · {narrTitleBn(m.skill_id)}</span>
+                )}
+              </td>
+              <td>
+                <div className="bar">
+                  <div className={`fill${m.mastery >= 0.8 ? " done" : ""}`} style={{ width: `${masteryPct(m)}%` }} />
+                </div>
+                {masteryPct(m)}%
+              </td>
+              <td>{m.correct}/{m.attempts}</td>
+              <td>{m.streak}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   )}
 </section>
   );
