@@ -254,6 +254,49 @@ export const ACCOUNT_LANGS = {
   },
 } as const;
 
+/** 🎛️ #1512/#1514/#1515 — learning-controls captions + shortcuts (EN + BN).
+ *  Same country-pack seam as WIZARD_LANGS: a new locale = a new key, no
+ *  component rewrites. */
+export const LEARNING_LANGS = {
+  en: {
+    subjectsHint: "Turn a subject off to hide those games from {name}.",
+    subjectsAll: "All",
+    subjectsNone: "None",
+    allSubjects: "All subjects",
+    difficultyHint: "The hardest world {name} can reach (1 = easiest, {n} = hardest).",
+    difficultyHintAll: "The hardest world {name} can reach (lower = easier, higher = harder).",
+    allWorlds: "All worlds",
+    goalSavedHint: "↳ Saved as up to {goal} min — clamped to today's daily cap ({cap} min) if that's lower.",
+  },
+  bn: {
+    subjectsHint: "কোনো বিষয় বন্ধ করলে সেই বিষয়ের খেলাগুলো {name}-এর জন্য লুকানো থাকবে।",
+    subjectsAll: "সব",
+    subjectsNone: "কোনোটিই নয়",
+    allSubjects: "সব বিষয়",
+    difficultyHint: "{name} যে পর্যন্ত পৌঁছাতে পারে তার সবচেয়ে কঠিন ওয়ার্ল্ড (১ = সবচেয়ে সহজ, {n} = সবচেয়ে কঠিন)।",
+    difficultyHintAll: "{name} যে পর্যন্ত পৌঁছাতে পারে তার সবচেয়ে কঠিন ওয়ার্ল্ড (ছোট মান = সহজ, বড় মান = কঠিন)।",
+    allWorlds: "সব ওয়ার্ল্ড",
+    goalSavedHint: "↳ লক্ষ্য হিসেবে সর্বোচ্চ {goal} মিনিট সংরক্ষিত — আজকের দৈনিক সীমা ({cap} মিনিট) এর চেয়ে কম হলে সেখানে আটকে যাবে।",
+  },
+} as const;
+
+/** 🗓️ #1517 — monthly archive load/failure strings (EN + BN). The card shows
+ *  these inline (spinner + retry) instead of poisoning the global banner. */
+export const ARCHIVE_LANGS = {
+  en: {
+    loading: "Loading full history…",
+    notLoaded: "The archive needs the full history — it loads automatically.",
+    failed: "Couldn't load the full history.",
+    retry: "Try again",
+  },
+  bn: {
+    loading: "সম্পূর্ণ ইতিহাস লোড হচ্ছে…",
+    notLoaded: "আর্কাইভের জন্য সম্পূর্ণ ইতিহাস দরকার — এটি নিজে নিজেই লোড হয়।",
+    failed: "সম্পূর্ণ ইতিহাস লোড করা যায়নি।",
+    retry: "আবার চেষ্টা করুন",
+  },
+} as const;
+
 export const SUBJECTS = [
   { id: "math", label: "Math", emoji: "🔢" },
   { id: "bangla", label: "Bangla", emoji: "অ" },
