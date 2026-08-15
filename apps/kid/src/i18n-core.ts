@@ -799,7 +799,15 @@ export interface Strings {
   moniNextMove: string;
   moniTone: string;
   moniSessionLength: string;
+  /* #1046 — surface Moni's plan difficulty + focus to the parent */
+  moniDifficulty: string;
+  moniLevel: (n: number) => string;
   moniSessionHint: (n: number) => string;
+  /* #1048 — kid's own "too easy / too hard" feedback on the done screen */
+  moniFbQ: string;
+  moniFbEasy: string;
+  moniFbHard: string;
+  moniFbOk: string;
   moniGoals: string;
   moniGoalFocus: string;
   moniGoalWeak: string;

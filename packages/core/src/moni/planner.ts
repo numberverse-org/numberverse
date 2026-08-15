@@ -31,6 +31,9 @@ export type MasteryMap = Record<string, SkillMasteryLike>;
  * @param mastery   every skill's mastery state
  * @param catalog   the skills catalogue (id → skill)
  * @param difficultyFor  how the app maps a skill to its current difficulty level
+ * @param perSkillDeltas  optional #1047 map skillId → signed difficulty-level
+ *                        offset layered on top of strictness (parent subject
+ *                        steppers, kid's too-easy/too-hard feedback)
  */
 export function plan(
   profile: MoniProfile,
@@ -39,6 +42,7 @@ export function plan(
   params: MoniParams,
   strictness?: MoniStrictness,
   now?: number,
+  perSkillDeltas?: Record<string, number>,
 ): MoniPlan {
   const entries = Object.entries(catalog);
 
@@ -134,7 +138,12 @@ export function plan(
   // Parent-set strictness (#333) pushes the difficulty one step further in the
   // chosen direction (on top of whatever the focus selection already implied).
   const strictnessDelta = strictness === "gentle" ? -1 : strictness === "challenging" ? 1 : 0;
-  const difficulty = Math.max(1, (m ? currentDifficulty(m) : 1) + difficultyDelta + strictnessDelta);
+  // #1047 — per-skill difficulty offset (#1044 parent subject steppers, #1048
+  // kid's "too easy/too hard"): a map of skillId → signed level delta layered
+  // on top of the global strictness so one area can be gentler/harder without
+  // pushing the whole kid. Absent skill → 0 (no-op).
+  const skillDelta = perSkillDeltas?.[focusSkillId] ?? 0;
+  const difficulty = Math.max(1, (m ? currentDifficulty(m) : 1) + difficultyDelta + strictnessDelta + skillDelta);
 
   // Session length hint from attention (default 12).
   const sessionLengthHint = profile.attention.fatigueThreshold ?? 12;

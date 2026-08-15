@@ -217,6 +217,10 @@ async def put_kid_settings(
     # CheckConstraint (models.py ck_kid_settings_moni_strictness).
     if body.moni_strictness in {"gentle", "steady", "challenging"}:
         s.moni_strictness = body.moni_strictness
+    # #1044 — per-subject difficulty deltas. Pydantic's validator already
+    # clamps each value to ±2; assign the (possibly empty) dict as-is. Empty
+    # or None clears the parent's per-subject choices.
+    s.moni_subject_deltas = body.moni_subject_deltas or None
     await db.commit()
     await db.refresh(s)
     return s

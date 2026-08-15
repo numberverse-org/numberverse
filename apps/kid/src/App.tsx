@@ -264,6 +264,10 @@ export default function App() {
   const challengeStreakRef = useRef<Record<string, number>>({});
   const [roundsDone, setRoundsDone] = useState(0);
   const [sessionIdx, setSessionIdx] = useState(0);
+  // #1048 — the kid's "too easy / too hard" tap on the done screen. A signed
+  // per-skill difficulty delta via bumpSkillDelta (clamped ±2), confirmed with
+  // a warm line instead of a wall of controls.
+  const [moniFb, setMoniFb] = useState<"easy" | "hard" | null>(null);
   /** #1426 — kid-initiated pause: a child can pause the active scene from the
    *  HUD instead of only having a parent kill-switch or a full leave button. */
   const [kidPaused, setKidPaused] = useState(false);
@@ -1453,6 +1457,26 @@ export default function App() {
     if (lastLocal && Date.now() - lastLocal < 2 * 60_000) return; // honor a fresh local choice
     useKidStore.getState().setMoniStrictness(kid.id, s);
   }, [kid?.id, settings.moni_strictness]);
+  // #1044 — pull the parent's PER-SUBJECT difficulty deltas DOWN from the
+  // server into the zustand store (journey.ts folds them into moni.plan()'s
+  // perSkillDeltas). The portal stepper writes subject → ±2; we expand each
+  // subject onto its skills. Parent-authoritative (same as strictness): a
+  // fresh subject choice overwrites per-skill values in that subject, while
+  // skills whose subject has no parent delta keep their own (#1048 kid
+  // feedback). Only a CHANGED subject map re-runs this, so a later #1048 tap
+  // is never clobbered by a silent poll.
+  useEffect(() => {
+    if (!kid) return;
+    const deltas = settings.moni_subject_deltas;
+    if (!deltas) return;
+    const store = useKidStore.getState();
+    for (const [subject, delta] of Object.entries(deltas)) {
+      for (const skill of SKILLS) {
+        if (skill.subject !== subject) continue;
+        store.setSkillDelta(kid.id, skill.id, delta);
+      }
+    }
+  }, [kid?.id, settings.moni_subject_deltas]);
 
   // #272 — "restart screen": when the parent RESUMES (paused flips true→false),
   // drop the kid back to a fresh home rather than resuming mid-game.
@@ -2846,6 +2870,7 @@ export default function App() {
     reset();
     setRoundsDone(0);
     setSessionIdx(0);
+    setMoniFb(null); // #1048 — fresh session, fresh done-screen feedback
     breakPendingRef.current = false;
     clearSavedSession(kid.id); // #253 — explicit new session drops any saved one
     sessionRef.current = sessionForWorld(skillsMap, kid.id, b.id);
@@ -2883,6 +2908,7 @@ export default function App() {
     reset();
     setRoundsDone(0);
     setSessionIdx(0);
+    setMoniFb(null); // #1048 — fresh session, fresh done-screen feedback
     breakPendingRef.current = false;
     clearSavedSession(kid.id); // #253 — explicit new session drops any saved one
     // #1131 — replaying a mastered EXPERT skill is a 'beat your best' challenge
@@ -2911,6 +2937,7 @@ export default function App() {
     reset();
     setRoundsDone(0);
     setSessionIdx(0);
+    setMoniFb(null); // #1048 — fresh session, fresh done-screen feedback
     breakPendingRef.current = false;
     masteredBeforeRef.current = masteredSkillIds(skillsMap, kid.id);
     petStageBeforeRef.current = useKidStore.getState().nova[kid.id]?.petStage ?? 0;
@@ -4511,6 +4538,14 @@ export default function App() {
                               </span>
                             </div>
                             <div className="moni-cell">
+                              <span className="moni-k">{t.moniDifficulty}</span>
+                              {/* #1046 — Moni's CURRENT plan difficulty (1–5),
+                                  already folded in any parent strictness or
+                                  per-subject delta, so the parent sees the
+                                  effective level, not just the knob. */}
+                              <span className="moni-v">{t.moniLevel(moniPlanFor(activeKid.id)?.difficulty ?? 3)}</span>
+                            </div>
+                            <div className="moni-cell">
                               <span className="moni-k">{t.moniConfidence}</span>
                               <span className="moni-v">{pace}</span>
                             </div>
@@ -4619,13 +4654,23 @@ export default function App() {
                           })()}
                           <p className="moni-next">
                             <strong>{t.moniNextMove}:</strong>{" "}
-                            {mp.totalRounds >= 8 ? (
-                              lang === "bn"
-                                ? `${mp.weak?.[0]?.skillId ?? "শেখা চালিয়ে যাও"} · ${styleWords(mp.trend === -1 ? "gentle" : mp.trend === 1 ? "challenging" : "steady")}`
-                                : `${mp.weak?.[0]?.skillId ?? "keep learning"} · ${styleWords(mp.trend === -1 ? "gentle" : mp.trend === 1 ? "challenging" : "steady")}`
-                            ) : (
-                              lang === "bn" ? "আরও কিছু খেলা চলুক — মনি দেখে নেবে" : "A few more games and Moni will know exactly what to do"
-                            )}
+                            {(() => {
+                              const planNext = moniPlanFor(activeKid.id);
+                              const focus = planNext?.focusSkillId ?? mp.weak?.[0]?.skillId ?? null;
+                              if (mp.totalRounds < 8) {
+                                return lang === "bn"
+                                  ? "আরও কিছু খেলা চলুক — মনি দেখে নেবে"
+                                  : "A few more games and Moni will know exactly what to do";
+                              }
+                              // #1046 — the PLAN's focus skill + effective difficulty
+                              // (1–5, with any parent strictness/delta folded in).
+                              const base = focus
+                                ? `${focus} · ${t.moniLevel(planNext?.difficulty ?? 3)}`
+                                : lang === "bn"
+                                  ? `শেখা চালিয়ে যাও · ${t.moniLevel(planNext?.difficulty ?? 3)}`
+                                  : `keep learning · ${t.moniLevel(planNext?.difficulty ?? 3)}`;
+                              return `${base} · ${styleWords(mp.trend === -1 ? "gentle" : mp.trend === 1 ? "challenging" : "steady")}`;
+                            })()}
                           </p>
                         </details>
                       );
@@ -5760,6 +5805,41 @@ export default function App() {
               <Icon name="nova" size={18} /> {t.moniSessionHint(sessionHint)}
             </div>
           )}
+          {/* #1048 — kid's own "too easy / too hard" voice. Bumps the signed
+              per-skill difficulty delta (±1, clamped ±2) that Moni's planner
+              layers on top of the parent strictness. Soft by design: one warm
+              confirmation, then the row turns into a "Got it" so it never
+              nags. */}
+          {(() => {
+            const focusSkill = moniPlanFor(kid.id)?.focusSkillId ?? sessionRef.current[sessionIdx]?.skillId;
+            if (!focusSkill) return null;
+            if (moniFb) {
+              return (
+                <div className="moni-feedback moni-feedback-ok" role="status">
+                  {moniFb === "easy" ? "😌 " : "🔥 "}{t.moniFbOk}
+                </div>
+              );
+            }
+            return (
+              <div className="moni-feedback" role="group" aria-label={t.moniFbQ}>
+                <span className="moni-feedback-q">{t.moniFbQ}</span>
+                <div className="moni-feedback-btns">
+                  <button
+                    className="ghost-btn"
+                    onClick={() => { click(); useKidStore.getState().bumpSkillDelta(kid.id, focusSkill, 1); setMoniFb("easy"); }}
+                  >
+                    😌 {t.moniFbEasy}
+                  </button>
+                  <button
+                    className="ghost-btn"
+                    onClick={() => { click(); useKidStore.getState().bumpSkillDelta(kid.id, focusSkill, -1); setMoniFb("hard"); }}
+                  >
+                    🔥 {t.moniFbHard}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
           <div className="badge">
             {complete
               ? nextWorld

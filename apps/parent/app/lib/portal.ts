@@ -530,6 +530,7 @@ export const DEFAULT_SETTINGS: KidSettingsT = {
   voice_speed: null,
   paused: false,
   moni_strictness: null, // #1050 — null = no parent choice → Moni auto tone
+  moni_subject_deltas: null, // #1044 — null = no parent per-subject choice
 };
 
 /** #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.
@@ -550,6 +551,25 @@ export const MONI_LANGS = {
     gentle: "নরম",
     steady: "স্থির",
     challenging: "চ্যালেঞ্জিং",
+  },
+} as const;
+
+/** #1044 — PER-SUBJECT difficulty deltas: one area can be gentler or harder
+ *  without pushing the whole kid. EN + BN — same country-pack seam. A signed
+ *  ±2 level offset layered on top of the global strictness; 0 = Moni's own
+ *  automatic difficulty for that subject. Synced to the kid app. */
+export const MONI_DELTA_LANGS = {
+  en: {
+    title: "📐 Per-subject difficulty",
+    help: "Tune one subject without changing the rest. 0 = Moni's automatic level; +1/+2 harder, −1/−2 easier. The kid's own feedback adjusts individual skills.",
+    reset: "Reset",
+    rangeHint: (n: number) => (n > 0 ? `+${n} harder` : n < 0 ? `${n} easier` : "automatic"),
+  },
+  bn: {
+    title: "📐 বিষয়ভিত্তিক কঠিনতা",
+    help: "একটা বিষয় ঠিক করুন, বাকিগুলো অপরিবর্তিত থাকবে। ০ = মনির স্বয়ংক্রিয় ধাপ; +১/+২ কঠিন, −১/−২ সহজ। বাচ্চার নিজের মতামত আলাদা দক্ষতা ঠিক করে।",
+    reset: "রিসেট",
+    rangeHint: (n: number) => (n > 0 ? `+${n} কঠিন` : n < 0 ? `${n} সহজ` : "স্বয়ংক্রিয়"),
   },
 } as const;
 

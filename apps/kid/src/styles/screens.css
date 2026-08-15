@@ -3832,6 +3832,13 @@
 .moni-goal-why { font-size: 12px; color: #a9c9e0; white-space: nowrap; }
 /* 🧠 soft session-length note on the done screen — always a suggestion, never a wall */
 .moni-session-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border: 1px dashed rgba(242, 204, 143, 0.35); border-radius: 20px; padding: 6px 14px; margin: 0 auto 10px; max-width: 420px; text-align: left; }
+/* #1048 — kid's own "too easy / too hard" voice on the done screen. Soft:
+   one tap tunes Moni's per-skill difficulty (clamped ±2), confirmed warmly. */
+.moni-feedback { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 auto 10px; max-width: 420px; }
+.moni-feedback-q { font-size: 12.5px; color: #a9c9e0; }
+.moni-feedback-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.moni-feedback .ghost-btn { min-height: 38px; padding: 6px 16px; font-size: 13.5px; }
+.moni-feedback-ok { font-size: 13.5px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border: 1px dashed rgba(242, 204, 143, 0.35); border-radius: 20px; padding: 6px 14px; text-align: center; }
 /* Share-progress button + feedback inside the parent-panel analytics card */
 .share-progress-btn {
   align-self: flex-start;

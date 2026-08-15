@@ -1074,6 +1074,12 @@ export interface KidSettings {
    *  Synced via KidSettings: the parent portal sets it and the kid app pulls
    *  it on every settings fetch (device-local was the #1043 bug). */
   moni_strictness?: "gentle" | "steady" | "challenging" | null;
+  /** #1044 — per-subject difficulty deltas (subject id → signed level offset,
+   *  clamped ±2) from the parent portal's per-subject stepper. Layers on top
+   *  of the global strictness: one area can be gentler/harder without pushing
+   *  the whole kid. The kid app expands each subject onto its skills and folds
+   *  them into moni.plan()'s perSkillDeltas. null = no parent choice. */
+  moni_subject_deltas?: Record<string, number> | null;
 }
 
 export const KID_SETTINGS_DEFAULT: KidSettings = {
@@ -1098,6 +1104,7 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   voice_speed: null,
   paused: false,
   moni_strictness: null, // #1050 — null = no parent choice → Moni auto tone
+  moni_subject_deltas: null, // #1044 — null = no parent per-subject choice
 };
 
 /** Local YYYY-MM-DD for a date — daily counters must follow the kid's local

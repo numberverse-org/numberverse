@@ -744,7 +744,15 @@ export const en: Strings = {
     moniNextMove: "Moni's next move",
     moniTone: "Tone",
     moniSessionLength: "Best session",
+    /* #1046 — surface Moni's plan difficulty + focus to the parent */
+    moniDifficulty: "Difficulty",
+    moniLevel: (n) => `Level ${n} of 5`,
     moniSessionHint: (n) => `Moni saw you stay sharp for ~${n} rounds — keep going or take a break, your call 💛`,
+    /* #1048 — kid's own "too easy / too hard" feedback on the done screen */
+    moniFbQ: "Was that too easy or too hard?",
+    moniFbEasy: "Too easy",
+    moniFbHard: "Too hard",
+    moniFbOk: "Got it — I'll tune the next round!",
     moniGoals: "Moni's 3 next skills",
     moniGoalFocus: "the main focus right now",
     moniGoalWeak: "still needs work",

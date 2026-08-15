@@ -193,6 +193,12 @@ class KidSettings(Base):
     # the kid app's own parent area pushes it back up (device-local was the
     # #1043 bug). Legacy rows keep their stored value; new rows default NULL.
     moni_strictness: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # #1044 — per-subject difficulty deltas (subject id → signed ±2 level
+    # offset) layered on top of Moni's global strictness. A JSON object the
+    # parent portal stepper writes; the kid app expands each subject onto its
+    # skills and folds them into moni.plan()'s perSkillDeltas. NULL = no
+    # parent per-subject choice (skills keep Moni's automatic difficulty).
+    moni_subject_deltas: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

@@ -92,6 +92,25 @@ const skill = (p = 0.5, streak = 0, wrongStreak = 0) => ({
   check("#957 never jumps to band-4", pl.focusSkillId !== "fraction-ops", true);
 }
 
+/* ── #1047 — per-skill difficulty deltas layer on top of strictness ── */
+{
+  const catalog = { "s1": { id: "s1", band: 1, game: "g1" } };
+  const mastery = { "s1": skill(0.5) }; // currentDifficulty(0.5) → tier 3
+  const p = initialMoniProfile("k", T);
+  const base = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, undefined, T);
+  // 0.5 mastery → currentDifficulty 3, +1 "everything solid → keep momentum" → 4
+  check("#1047 base difficulty tier 4", base.difficulty, 4);
+  const gentler = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, undefined, T, { "s1": -1 });
+  check("#1047 per-skill -1 lowers difficulty", gentler.difficulty, base.difficulty - 1);
+  const harder = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, undefined, T, { "s1": 2 });
+  check("#1047 per-skill +2 raises difficulty", harder.difficulty, base.difficulty + 2);
+  const other = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, undefined, T, { "s2": -1 });
+  check("#1047 non-focus-skill delta is a no-op", other.difficulty, base.difficulty);
+  // strictness + per-skill stack (gentle −1 AND skill +1 → net 0 from tier 3)
+  const stack = plan(p, mastery, catalog, DEFAULT_MONI_PARAMS, "gentle", T, { "s1": 1 });
+  check("#1047 strictness + skill delta stack", stack.difficulty, base.difficulty);
+}
+
 /* ── #958 — fragile child shifts review one rung shorter, solidity preserved ── */
 {
   const catalog = { "s1": { id: "s1", band: 1, game: "g1" } };

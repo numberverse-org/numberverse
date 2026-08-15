@@ -10,6 +10,7 @@ import {
   FOCUS_BANDS,
   LEARNING_LANGS,
   LIMIT_CHOICES,
+  MONI_DELTA_LANGS,
   MONI_LANGS,
   PAUSE_LANGS,
   SUBJECTS,
@@ -94,6 +95,16 @@ export default function LearningControls({
   const effectiveIsFull =
     Array.isArray(enabledSubjects) && enabledSubjects.length === SUBJECTS.length;
 
+  // #1044 — per-subject difficulty deltas: explicit choices only (0 = Moni's
+  // automatic difficulty for that subject, KEPT in the map so the kid app can
+  // clear an earlier +/− on the next sync). null = no parent choices at all.
+  function patchDelta(subject: string, delta: number) {
+    const clamped = Math.max(-2, Math.min(2, delta));
+    const next = { ...(activeSettings.moni_subject_deltas ?? {}) };
+    next[subject] = clamped;
+    patchSettings({ moni_subject_deltas: next });
+  }
+
   // #1514 — bound the goal input to today's effective daily cap (0 = no limit
   // falls back to 90), and show the post-clamp number, not the raw typed one.
   const todayIdx = (new Date().getDay() + 6) % 7;
@@ -155,6 +166,56 @@ export default function LearningControls({
           >
             {MONI_LANGS[wizLang][opt]}
           </button>
+        );
+      })}
+    </div>
+  </div>
+
+  {/* #1044 — PER-SUBJECT difficulty deltas: one area gentler/harder without
+      pushing the whole kid. Signed ±2 per subject layered on top of the
+      global strictness; 0 = Moni's automatic difficulty for that subject.
+      Synced to the kid app, which expands each subject onto its skills. */}
+  <div className="ctrl-block">
+    <h3>{MONI_DELTA_LANGS[wizLang].title}</h3>
+    <p className="muted small">{MONI_DELTA_LANGS[wizLang].help}</p>
+    <div className="delta-grid">
+      {SUBJECTS.map((s) => {
+        const delta = activeSettings.moni_subject_deltas?.[s.id] ?? 0;
+        return (
+          <div key={s.id} className="delta-row">
+            <span className="delta-subject">
+              <span className="toggle-emoji">{s.emoji}</span> {s.label}
+            </span>
+            <div className="delta-stepper" role="group" aria-label={s.label}>
+              <button
+                type="button"
+                className={`delta-btn${delta <= -2 ? " dim" : ""}`}
+                disabled={delta <= -2}
+                aria-label={`${s.label} easier`}
+                onClick={() => patchDelta(s.id, delta - 1)}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className={`toggle-chip delta-val${delta !== 0 ? " on" : ""}`}
+                aria-pressed={delta !== 0}
+                title={MONI_DELTA_LANGS[wizLang].rangeHint(delta)}
+                onClick={() => patchDelta(s.id, 0)}
+              >
+                {delta > 0 ? `+${delta}` : delta}
+              </button>
+              <button
+                type="button"
+                className={`delta-btn${delta >= 2 ? " dim" : ""}`}
+                disabled={delta >= 2}
+                aria-label={`${s.label} harder`}
+                onClick={() => patchDelta(s.id, delta + 1)}
+              >
+                +
+              </button>
+            </div>
+          </div>
         );
       })}
     </div>

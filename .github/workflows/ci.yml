@@ -109,6 +109,8 @@ jobs:
         run: python3 apps/api/tests/test_org_isolation.py
       - name: API unit tests (retention/prune policy #983 #984)
         run: python3 apps/api/tests/test_retention.py
+      - name: API unit tests (Moni per-subject deltas #1044)
+        run: python3 apps/api/tests/test_moni_subject_deltas.py
 
   license-audit:
     name: license-audit

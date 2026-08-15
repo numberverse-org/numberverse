@@ -1089,8 +1089,12 @@ export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null 
   // steady). The old `?? "steady"` pinned every fresh device to steady and
   // silently overrode the auto read.
   const strictness = st.moniStrictness?.[kidId];
+  // #1047 — per-skill difficulty offsets (parent subject steppers #1044, kid's
+  // too-easy/too-hard #1048). Folded into the cache key so a delta change
+  // rebuilds the plan within the same minute.
+  const skillDeltas = st.moniSkillDeltas?.[kidId];
   const refs: [unknown, unknown, unknown, unknown] = [st.skills, st.moniWrongStreak, profile, strictness];
-  const key = `${kidId}:${Math.floor(Date.now() / 60_000)}`;
+  const key = `${kidId}:${Math.floor(Date.now() / 60_000)}:${JSON.stringify(skillDeltas ?? {})}`;
   if (moniPlanCacheKey === key && moniPlanCacheRefs && moniPlanCacheRefs.every((r, i) => r === refs[i])) {
     return moniPlanCacheResult;
   }
@@ -1123,7 +1127,7 @@ export function moniPlanFor(kidId: string): ReturnType<typeof moni.plan> | null 
     // #1050 — when never set it stays undefined so the planner uses Moni's own
     // automatic read (NOT pinned steady). `now` is passed explicitly so the
     // review-due computation is deterministic.
-    const plan = moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, strictness, Date.now());
+    const plan = moni.plan(profile, mastery, catalog, DEFAULT_MONI_PARAMS, strictness, Date.now(), skillDeltas);
     moniPlanCacheKey = key;
     moniPlanCacheRefs = refs;
     moniPlanCacheResult = plan;

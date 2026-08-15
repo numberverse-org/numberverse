@@ -562,6 +562,17 @@ interface KidState {
   moniStrictness: Record<string, MoniStrictness>;
   /** Set how hard Moni pushes this kid (gentle / steady / challenging). */
   setMoniStrictness: (kidId: string, s: MoniStrictness) => void;
+  /** 🧠 #1047 — per-skill difficulty offset. Key kidId → skillId → signed
+   *  level delta (−2..+2) layered on Moni's difficulty ON TOP of the global
+   *  strictness, so one area can be gentler/harder without pushing the whole
+   *  kid. Written by the parent subject steppers (#1044) and the kid's
+   *  "too easy / too hard" buttons (#1048). Persisted offline. */
+  moniSkillDeltas: Record<string, Record<string, number>>;
+  /** Set one skill's difficulty offset (clamped to −2..+2). */
+  setSkillDelta: (kidId: string, skillId: string, delta: number) => void;
+  /** Bump one skill's offset by ±1 (clamped); used by the +/− steppers and the
+   *  kid's feedback buttons. Returns the new clamped value. */
+  bumpSkillDelta: (kidId: string, skillId: string, by: 1 | -1) => number;
   /** 🎯 #325 — clear a misconception after a successful contrast drill. Warm
    *  resolution: the pattern is beaten, so Moni stops flagging it. */
   moniResolveMisconception: (kidId: string, skillId: string, code: string) => void;
@@ -789,6 +800,7 @@ function partializeKidState(s: KidState) {
     moni: s.moni,
     moniWrongStreak: s.moniWrongStreak,
     moniStrictness: s.moniStrictness,
+    moniSkillDeltas: s.moniSkillDeltas,
     syncSignal: s.syncSignal,
   };
 }
@@ -819,6 +831,7 @@ function migrateKidState(persisted: unknown, _version: number): PersistedKidStat
     moni: (s.moni as PersistedKidState["moni"]) ?? {},
     moniWrongStreak: (s.moniWrongStreak as PersistedKidState["moniWrongStreak"]) ?? {},
     moniStrictness: (s.moniStrictness as PersistedKidState["moniStrictness"]) ?? {},
+    moniSkillDeltas: (s.moniSkillDeltas as PersistedKidState["moniSkillDeltas"]) ?? {},
     syncSignal: (s.syncSignal as PersistedKidState["syncSignal"]) ?? DEFAULT_SYNC_SIGNAL,
   };
 }
@@ -849,10 +862,26 @@ export const useKidStore = create<KidState>()(
       moni: {},
       moniWrongStreak: {},
       moniStrictness: {},
+      moniSkillDeltas: {},
       setMoniStrictness: (kidId, s) => {
         const prev = get().moniStrictness[kidId];
         if (prev === s) return {};
         return { moniStrictness: { ...(get().moniStrictness ?? {}), [kidId]: s } };
+      },
+      // #1047 — per-skill difficulty offsets (parent subject steppers #1044,
+      // kid's too-easy/too-hard #1048). Clamped to −2..+2 so a child can never
+      // be pushed outside Moni's sane range.
+      setSkillDelta: (kidId, skillId, delta) => {
+        const kidMap = get().moniSkillDeltas[kidId] ?? {};
+        const clamped = Math.max(-2, Math.min(2, delta));
+        if (kidMap[skillId] === clamped) return {};
+        return { moniSkillDeltas: { ...(get().moniSkillDeltas ?? {}), [kidId]: { ...kidMap, [skillId]: clamped } } };
+      },
+      bumpSkillDelta: (kidId, skillId, by) => {
+        const kidMap = get().moniSkillDeltas[kidId] ?? {};
+        const next = Math.max(-2, Math.min(2, (kidMap[skillId] ?? 0) + by));
+        get().setSkillDelta(kidId, skillId, next);
+        return next;
       },
       addEvent: (kidId, e) => {
         const now = Date.now();

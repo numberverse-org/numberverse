@@ -183,6 +183,18 @@ class KidSettingsIn(BaseModel):
     # Literal rejects anything else at the boundary so the DB constraint can
     # never trip on a bad write.
     moni_strictness: Literal["gentle", "steady", "challenging"] | None = None
+    # #1044 — per-subject difficulty deltas (subject id → signed level offset,
+    # clamped ±2). A parent's per-subject stepper tunes ONE area without
+    # pushing the whole kid; the kid app expands each subject onto its skills
+    # and folds them into moni.plan()'s perSkillDeltas. None = no choice.
+    moni_subject_deltas: dict[str, int] | None = None
+
+    @field_validator("moni_subject_deltas")
+    @classmethod
+    def _clamp_subject_deltas(cls, v: dict[str, int] | None) -> dict[str, int] | None:
+        if v is None:
+            return None
+        return {k: max(-2, min(2, int(x))) for k, x in v.items()}
 
 
 class KidSettingsOut(BaseModel):
@@ -210,6 +222,8 @@ class KidSettingsOut(BaseModel):
     paused: bool = False
     # #1050 — NULL = no parent choice → Moni auto tone (never pinned steady).
     moni_strictness: str | None = None
+    # #1044 — per-subject difficulty deltas (subject id → signed ±2 offset).
+    moni_subject_deltas: dict[str, int] | None = None
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}

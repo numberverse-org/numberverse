@@ -104,6 +104,10 @@ export interface KidSettings {
    *  #1050 — null/undefined = no parent choice → Moni uses its own automatic
    *  tone (NOT pinned steady). Synced to the kid app. */
   moni_strictness?: "gentle" | "steady" | "challenging" | null;
+  /** #1044 — per-subject difficulty deltas (subject id → signed level offset,
+   *  clamped ±2) from the per-subject stepper. Layers on top of the global
+   *  strictness so ONE area can be gentler/harder. Synced to the kid app. */
+  moni_subject_deltas?: Record<string, number> | null;
   updated_at?: string | null;
 }
 

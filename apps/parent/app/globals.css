@@ -1129,6 +1129,31 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   color: var(--nv-text);
 }
 .toggle-emoji { font-size: 15px; }
+/* #1044 — per-subject difficulty deltas: one subject's row of − / value / +
+   (signed ±2, value chip tap = reset to 0 / Moni's automatic level). */
+.delta-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.delta-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.delta-subject { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: var(--nv-muted-strong); }
+.delta-stepper { display: inline-flex; align-items: center; gap: 6px; }
+.delta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--nv-border);
+  background: var(--nv-chip);
+  color: var(--nv-muted-strong);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s ease, opacity 0.08s ease;
+}
+.delta-btn:active { transform: scale(0.92); }
+.delta-btn.dim { opacity: 0.35; cursor: not-allowed; }
+.delta-val { min-width: 54px; justify-content: center; font-size: 13.5px; }
 /* #1515 — subject quick chips + explicit "All subjects" badge so the default
    null (all-on) state reads differently from a partial restriction. */
 .subject-quick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
