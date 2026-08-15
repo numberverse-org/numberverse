@@ -84,7 +84,17 @@ export class GrammarScene extends Phaser.Scene {
 
   private startRound() {
     this.clearButtons();
-    this.target = WORDS[Phaser.Math.Between(0, WORDS.length - 1)];
+    // #1054 — LEVELS[levelIndex] is the active WORD-POOL size. Split it evenly
+    // across the noun and verb banks so every drill round always has BOTH a noun
+    // and a verb candidate (a pure-noun slice would make the sort trivial).
+    const poolSize = Math.min(LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)], WORDS.length);
+    const nVerbs = Math.floor(poolSize / 2);
+    const nNouns = poolSize - nVerbs;
+    const active = [
+      ...WORDS.filter((w) => w.type === "noun").slice(0, nNouns),
+      ...WORDS.filter((w) => w.type === "verb").slice(0, nVerbs),
+    ];
+    this.target = active[Phaser.Math.Between(0, active.length - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);

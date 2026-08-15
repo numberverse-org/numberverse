@@ -114,12 +114,17 @@ export class CaseMatchScene extends Phaser.Scene {
 
   private ask() {
     this.locked = false;
-    this.targetIdx = Phaser.Math.Between(0, 25);
+    // #1051 — LEVELS[levelIndex] is the ACTIVE letter-pool size: A–F first, then
+    // A–J, A–P, A–V, then the full 26. A smaller pool means visually distinct
+    // letters; the full alphabet brings confusable pairs (b/d, p/q, m/w) in as
+    // distractors, so difficulty genuinely rises with the level.
+    const pool = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    this.targetIdx = Phaser.Math.Between(0, pool - 1);
     this.upperText.setText(UPPER[this.targetIdx]);
     this.promptText.setText(t("caseWhich"));
     speak(UPPER[this.targetIdx], { lang: "en" });
 
-    const others = shuffle([...LOWER.slice(0, this.targetIdx), ...LOWER.slice(this.targetIdx + 1)]).slice(0, 3);
+    const others = shuffle([...LOWER.slice(0, this.targetIdx), ...LOWER.slice(this.targetIdx + 1, pool)]).slice(0, 3);
     this.options = shuffle([LOWER[this.targetIdx], ...others]);
     for (let i = 0; i < 4; i++) {
       const api = this.optionBtns[i].getData("nv-btn") as { setLabel: (t: string) => void } | undefined;

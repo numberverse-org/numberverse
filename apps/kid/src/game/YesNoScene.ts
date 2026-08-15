@@ -127,8 +127,13 @@ export class YesNoScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
 
-    let item = ITEMS[Phaser.Math.Between(0, ITEMS.length - 1)];
-    if (item === this.item) item = ITEMS[(ITEMS.indexOf(item) + 1) % ITEMS.length];
+    // #1055 — LEVELS[levelIndex] is the ACTIVE ITEM-POOL size: the 6 easiest
+    // statements first (sky, cats, fish, dogs, snow, sun), then the trickier
+    // false items (pigs fly, moon is a star, mouse bigger than elephant) join as
+    // the pool grows, so listening difficulty genuinely rises with the level.
+    const active = ITEMS.slice(0, LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]);
+    let item = active[Phaser.Math.Between(0, active.length - 1)];
+    if (item === this.item) item = active[(active.indexOf(item) + 1) % active.length];
     this.item = item;
     this.lineText.setText(item.s);
     this.qText.setText(item.q);

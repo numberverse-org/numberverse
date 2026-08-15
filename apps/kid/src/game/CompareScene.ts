@@ -148,8 +148,12 @@ export class CompareScene extends Phaser.Scene {
     this.pics.forEach((p) => p.destroy());
     this.pics = [];
     this.locked = false;
-    let adj = ADJS[Phaser.Math.Between(0, ADJS.length - 1)];
-    if (adj.p === this.adj?.p) adj = ADJS[(ADJS.indexOf(adj) + 1) % ADJS.length];
+    // #1052 — LEVELS[levelIndex] is the active ADJECTIVE-pool size: big/small/tall
+    // first, then +short, then +long (bigger/biggest of less-familiar words is
+    // genuinely harder). Pick from the pool so difficulty rises with the level.
+    const adjCount = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
+    let adj = ADJS[Phaser.Math.Between(0, adjCount - 1)];
+    if (adj.p === this.adj?.p) adj = ADJS[(ADJS.indexOf(adj) + 1) % adjCount];
     const isNewAdj = adj.p !== this.adj?.p;
     this.adj = adj;
     // levels 1-2 teach the comparative (2 pictures); later levels alternate in

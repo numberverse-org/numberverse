@@ -123,8 +123,13 @@ export class PrepositionsScene extends Phaser.Scene {
   private askQuestion() {
     this.destroyRound();
     this.locked = false;
-    let prep = PREPS[Phaser.Math.Between(0, PREPS.length - 1)];
-    if (prep === this.prep) prep = PREPS[(PREPS.indexOf(prep) + 1) % PREPS.length];
+    // #1055 — LEVELS[levelIndex] is the ACTIVE PREPOSITION-POOL size: in/on/under
+    // first (drop zones right at the box), then behind/in front of (peeking),
+    // then next to/above, and finally between (the two-box layout) — so spatial
+    // reasoning difficulty genuinely rises with the level.
+    const active = PREPS.slice(0, LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]);
+    let prep = active[Phaser.Math.Between(0, active.length - 1)];
+    if (prep === this.prep) prep = active[(active.indexOf(prep) + 1) % active.length];
     this.prep = prep;
     this.obj = OBJECTS[Phaser.Math.Between(0, OBJECTS.length - 1)];
     const cx = this.scale.width / 2;

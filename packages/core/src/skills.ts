@@ -557,14 +557,14 @@ export const GAMES: GameConfig[] = [
   { id: 'game-enphonics', skillId: 'en-phonics', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 },
   { id: 'game-rcontrolled', skillId: 'en-rcontrolled', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-magice', skillId: 'en-magic-e', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
-  { id: 'game-prepositions', skillId: 'en-prepositions', difficultyLevels: [0, 0, 0, 0, 0, 0], targetSuccess: 0.8 },
+  { id: 'game-prepositions', skillId: 'en-prepositions', difficultyLevels: [3, 4, 5, 6, 7, 8], targetSuccess: 0.8 }, // #1055 — active preposition pool grows in/on/under → above/between
   { id: 'game-qwords', skillId: 'en-qwords', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-story', skillId: 'en-story', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-compounds-en', skillId: 'en-compounds', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-readaloud', skillId: 'en-readaloud', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-alphabet', skillId: 'en-alphabet', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
   { id: 'game-wordfam', skillId: 'en-wordfamilies', difficultyLevels: [2, 2, 3, 3, 3, 3], targetSuccess: 0.8 },
-  { id: 'game-yesno', skillId: 'en-yesno', difficultyLevels: [0, 0, 0, 0, 0, 0], targetSuccess: 0.8 },
+  { id: 'game-yesno', skillId: 'en-yesno', difficultyLevels: [6, 10, 14, 18, 20, 22], targetSuccess: 0.8 }, // #1055 — active listening-item pool grows from the 6 easiest to all 22
   { id: 'game-balance', skillId: 'heavy-light', difficultyLevels: [5, 6, 8, 10, 12, 14], targetSuccess: 0.8 },
   { id: 'game-sinkfloat', skillId: 'science-sink-float', difficultyLevels: [8, 8, 12, 12, 16, 16], targetSuccess: 0.8 },
   { id: 'game-foodchain', skillId: 'science-food-chain', difficultyLevels: [3, 3, 4, 4, 6, 6], targetSuccess: 0.8 },
@@ -594,7 +594,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-conjunctfind', skillId: 'bn-conjunct-find', difficultyLevels: [12, 11, 10, 9, 8, 7], targetSuccess: 0.8 },
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-contracts', skillId: 'en-contractions', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
-  { id: 'game-compare', skillId: 'en-compare', difficultyLevels: [3, 3, 3, 3, 3, 3], targetSuccess: 0.8 },
+  { id: 'game-compare', skillId: 'en-compare', difficultyLevels: [3, 4, 5, 5, 5, 5], targetSuccess: 0.8 }, // #1052 — active adjective pool grows big/small/tall → +short → +long
   { id: 'game-synant', skillId: 'en-synant', difficultyLevels: [6, 6, 8, 8, 10, 10], targetSuccess: 0.8 },
   { id: 'game-irregulars', skillId: 'en-irregulars', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-past', skillId: 'en-pasttense', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
@@ -621,7 +621,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-cvcbuild', skillId: 'en-cvc-build', difficultyLevels: [0, 0, 0, 1, 1, 1], targetSuccess: 0.8 },
   { id: 'game-plurals', skillId: 'en-plurals-regular', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-pasted', skillId: 'en-past-ed', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
-  { id: 'game-casematch', skillId: 'en-case-match', difficultyLevels: [4, 4, 4, 4, 4, 4], targetSuccess: 0.8 },
+  { id: 'game-casematch', skillId: 'en-case-match', difficultyLevels: [6, 10, 16, 22, 26, 26], targetSuccess: 0.8 }, // #1051 — active letter pool grows A–F → A–Z (more similar distractors)
   // ── curriculum breadth (#756/#759/#761/#757/#760) ──
   { id: 'game-bnmatra-words', skillId: 'bn-matra-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-bgs-country', skillId: 'bgs-our-country', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },

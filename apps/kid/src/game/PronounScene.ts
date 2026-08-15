@@ -102,16 +102,22 @@ export class PronounScene extends Phaser.Scene {
   private askQuestion() {
     this.clearRound();
     this.locked = false;
-    let w = SENTENCES[Phaser.Math.Between(0, SENTENCES.length - 1)];
+    // #1053 — LEVELS[levelIndex] is the ACTIVE PRONOUN count: আমি/তুমি/সে first
+    // (singular), then আমরা/তোমরা/তারা join in (plural agreement is the harder
+    // skill). Sentences whose answer is outside the pool are skipped, so the
+    // question selection genuinely reflects the current level.
+    const active = PRONOUNS.slice(0, LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]);
+    const eligible = SENTENCES.filter((s) => active.includes(s.a));
+    let w = eligible[Phaser.Math.Between(0, eligible.length - 1)];
     if (this.target && w.s === this.target.s) {
-      w = SENTENCES[(SENTENCES.indexOf(w) + 1) % SENTENCES.length];
+      w = eligible[(eligible.indexOf(w) + 1) % eligible.length];
     }
     this.target = w;
     this.prompt.set(t("pronounPrompt"));
     this.hintText.setText(w.hint);
     this.sentenceText.setText(w.s);
 
-    const opts = [w.a, ...PRONOUNS.filter((p) => p !== w.a)].sort(() => Math.random() - 0.5).slice(0, 4);
+    const opts = [w.a, ...active.filter((p) => p !== w.a)].sort(() => Math.random() - 0.5).slice(0, 4);
     const n = opts.length;
     const gap = this.scale.width / (n + 1);
     const bw = Math.min(150, this.scale.width / (n + 0.5) - 14);
