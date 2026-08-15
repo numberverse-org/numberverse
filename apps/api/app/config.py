@@ -5,6 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # bottom of this module refuses to boot with the defaults still in effect.
 DEFAULT_JWT_SECRET = "dev-secret"
 DEFAULT_ADMIN_PASSWORD = "change-me-admin"
+# #800 — the demo parent is a real seeded account, so its password must be
+# operator-owned in non-dev environments exactly like the admin password.
+DEFAULT_DEMO_PASSWORD = "demo1234"
 DEV_ENVIRONMENT = "dev"
 
 
@@ -20,6 +23,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175"
     admin_email: str = "admin@numberverse.dev"
     admin_password: str = DEFAULT_ADMIN_PASSWORD
+    demo_email: str = "demo@numberverse.dev"
+    demo_password: str = DEFAULT_DEMO_PASSWORD
     # #842 — deployment environment flag (NV_ENVIRONMENT). "dev" permits the
     # built-in dev secret/password above; any other value is treated as a real
     # deployment and requires NV_JWT_SECRET and NV_ADMIN_PASSWORD to be set.
@@ -47,22 +52,25 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# #842 — fail fast before any tables are created or routers are served. A
-# non-dev deploy with the built-in dev JWT secret (forgeable tokens) or admin
-# password (public, guessable console login) is wide open; make the operator
-# set explicit values instead of booting with a security hole.
+# #842/#800 — fail fast before any tables are created or routers are served. A
+# non-dev deploy with the built-in dev JWT secret (forgeable tokens), admin
+# password, or demo password (public, guessable seeded logins) is wide open;
+# make the operator set explicit values instead of booting with a security hole.
 if settings.environment.strip().lower() != DEV_ENVIRONMENT:
     _defaulted = []
     if settings.jwt_secret == DEFAULT_JWT_SECRET:
         _defaulted.append("NV_JWT_SECRET")
     if settings.admin_password == DEFAULT_ADMIN_PASSWORD:
         _defaulted.append("NV_ADMIN_PASSWORD")
+    if settings.demo_password == DEFAULT_DEMO_PASSWORD:
+        _defaulted.append("NV_DEMO_PASSWORD")
     if _defaulted:
         raise RuntimeError(
             f"Refusing to start: NV_ENVIRONMENT={settings.environment!r} is not a "
             "dev environment, but the built-in dev credentials are still in "
-            "effect. Set NV_JWT_SECRET and NV_ADMIN_PASSWORD to strong, "
-            f"non-default values (currently unchanged: {', '.join(_defaulted)}). "
+            "effect. Set NV_JWT_SECRET, NV_ADMIN_PASSWORD and NV_DEMO_PASSWORD "
+            "to strong, non-default values "
+            f"(currently unchanged: {', '.join(_defaulted)}). "
             "Local dev/test runs only: set NV_ENVIRONMENT=dev to keep the "
             "built-in defaults."
         )

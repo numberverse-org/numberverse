@@ -37,7 +37,7 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 
-# #837 — write/destructive kid routes carry the account+IP sliding-window
+# #837 — write/destructive kid routes carry the account+IP durable fixed-window
 # limiter (same as progress/stories/acceleration), so a breached token can't
 # script profile-mutating calls. Reads stay auth-only (get_current_profile).
 KID_WRITE_RATE_LIMIT = rate_limit()

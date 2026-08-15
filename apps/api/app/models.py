@@ -33,6 +33,11 @@ class Profile(Base):
     aggregate_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    # #865 — kill switch for legacy pre-session ("no sid") tokens. Those tokens
+    # have no sessions row to revoke, so logout-all / password change stamp this
+    # cutoff instead. Any no-sid token minted on or before it is rejected on its
+    # next request, even if it was never backfilled into the sessions table.
+    legacy_sessions_revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     kids: Mapped[list["Kid"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
     sessions: Mapped[list["Session"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
@@ -147,6 +152,25 @@ class Session(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     profile: Mapped[Profile] = relationship(back_populates="sessions")
+
+
+class RateLimitBucket(Base):
+    """#772 — durable rate-limit state shared by every API worker.
+
+    The original limiter lived in a per-process dict, so a restart or a
+    second uvicorn worker silently reset every window and lockout. This table
+    stores each key's fixed-window count and (for credential endpoints) its
+    lockout expiry in Postgres so the limits survive restarts and are shared
+    across workers. Fixed windows are deliberate: they are simpler to make
+    atomic with an upsert and are more than strict enough for abuse control.
+    """
+
+    __tablename__ = "rate_limit_buckets"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Subject(Base):

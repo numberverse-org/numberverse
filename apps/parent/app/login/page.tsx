@@ -8,7 +8,10 @@ import { login, validateToken, type LoginResponse } from "../../lib/api";
 // (a live kid + plus subscription). Advertising its credentials on a production
 // build invites anyone to sign in as the demo parent. Only show the hint when
 // the build opts in (NEXT_PUBLIC_DEMO_MODE=1); production default is OFF.
+// #800 — the seeded demo password is operator-owned (NV_DEMO_PASSWORD), so the
+// hint reads the matching build-time value instead of a hardcoded secret.
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "demo1234";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -84,7 +87,7 @@ export default function LoginPage() {
             আপনার ইমেইল শুধু সাইন ইন করতে এবং বাচ্চার অগ্রগতি সিঙ্ক রাখতে ব্যবহৃত হয়।
             কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই — আপনি চাইলে যেকোনো সময় ডেটা এক্সপোর্ট বা মুছে ফেলতে পারেন।
           </p>
-          {DEMO_MODE && <p className="hint">Demo parent: demo@numberverse.dev / demo1234</p>}
+          {DEMO_MODE && <p className="hint">Demo parent: demo@numberverse.dev / {DEMO_PASSWORD}</p>}
         </form>
       )}
     </main>

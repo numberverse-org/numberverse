@@ -41,3 +41,4 @@ PRIMARY_SESSION.txt
 test-results/
 playwright-report/
 blob-report/
+apps/api/.venv

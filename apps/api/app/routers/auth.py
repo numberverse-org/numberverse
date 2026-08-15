@@ -10,7 +10,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import Profile, Session
-from ..ratelimit import AuthAttemptGuard
+from ..ratelimit import AuthAttemptGuard, ip_rate_limit
 from ..schemas import (
     ChangePasswordIn,
     GoogleAuthIn,
@@ -28,10 +28,14 @@ from ..session_guard import revoke_other_sessions  # #265 — password change ki
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 # #1489 — credential endpoints get their own failure-aware limiter (exponential
-# lockout) rather than the throughput-oriented sliding window used by the write
+# lockout) rather than the throughput-oriented fixed window used by the write
 # routers. Login keys on email+IP; change-password keys on profile+IP.
 _LOGIN_GUARD = AuthAttemptGuard()
 _PASSWORD_GUARD = AuthAttemptGuard()
+# #771 — signup has no secret to fail on, so it gets a hard per-IP request cap
+# (rather than the failure-aware guard above) to stop email enumeration and
+# mass account creation. Signup is a rare one-time action; 10/min is generous.
+_SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10)
 
 
 def _client_ip(request: Request) -> str:
@@ -87,7 +91,12 @@ async def _issue_session(profile: Profile, request: Request, db: AsyncSession) -
 
 
 @router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-async def signup(body: SignupIn, request: Request, db: AsyncSession = Depends(get_db)):
+async def signup(
+    body: SignupIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _signup_limit: None = Depends(_SIGNUP_RATE_LIMIT),
+):
     existing = await db.scalar(select(Profile).where(Profile.email == body.email.lower()))
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
@@ -108,13 +117,13 @@ async def signup(body: SignupIn, request: Request, db: AsyncSession = Depends(ge
 async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_db)):
     email = body.email.lower()
     ip = _client_ip(request)
-    # #1489 — fail fast on a locked account/IP BEFORE the DB lookup and bcrypt.
-    _LOGIN_GUARD.raise_if_locked(f"login:email:{email}", f"login:ip:{ip}")
+    # #1489 — fail fast on a locked account/IP BEFORE the profile lookup and bcrypt.
+    await _LOGIN_GUARD.raise_if_locked(db, f"login:email:{email}", f"login:ip:{ip}")
     profile = await db.scalar(select(Profile).where(Profile.email == email))
     if not profile or not verify_password(body.password, profile.password_hash):
-        _LOGIN_GUARD.record_failure(f"login:email:{email}", f"login:ip:{ip}")
+        await _LOGIN_GUARD.record_failure(db, f"login:email:{email}", f"login:ip:{ip}")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
-    _LOGIN_GUARD.reset(f"login:email:{email}", f"login:ip:{ip}")
+    await _LOGIN_GUARD.reset(db, f"login:email:{email}", f"login:ip:{ip}")
     token = await _issue_session(profile, request, db)
     return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
 
@@ -192,8 +201,8 @@ async def logout(
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke THIS session — the exact token that called. A stateless JWT can't
-    be killed on its own; the sessions row is the kill-switch. (Legacy tokens
-    without a session row get a no-op here — their expiry is the only limit.)"""
+    be killed on its own; the sessions row is the kill-switch. Legacy no-sid
+    tokens are materialized into a row by auth, so they are revocable here too."""
     session: Session | None = getattr(request.state, "session", None)
     if session is not None and session.revoked_at is None:
         session.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -214,6 +223,9 @@ async def logout_all(
         )
     ).all()
     revoke_other_sessions(sessions, None, now)  # #265 — sign out everywhere, caller included
+    # #865 — legacy no-sid tokens have no row to revoke; stamp the cutoff so any
+    # such token minted before this logout is rejected on its next request.
+    profile.legacy_sessions_revoked_at = now
     await db.commit()
 
 
@@ -297,6 +309,9 @@ async def set_password(body: SetPasswordIn, db: AsyncSession = Depends(get_db)):
         )
     ).all()
     revoke_other_sessions(sessions, None, now)
+    # #865 — legacy no-sid tokens are unreachable through `sessions`; kill them
+    # with the profile cutoff instead.
+    profile.legacy_sessions_revoked_at = now
     await db.commit()
 
 
@@ -319,11 +334,11 @@ async def change_password(
         )
     ip = _client_ip(request)
     # #1489 — fail fast when this profile or IP is locked, BEFORE bcrypt.
-    _PASSWORD_GUARD.raise_if_locked(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+    await _PASSWORD_GUARD.raise_if_locked(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     if not verify_password(body.current_password, profile.password_hash):
-        _PASSWORD_GUARD.record_failure(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+        await _PASSWORD_GUARD.record_failure(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current password is incorrect")
-    _PASSWORD_GUARD.reset(f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+    await _PASSWORD_GUARD.reset(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     profile.password_hash = hash_password(body.new_password)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     current = getattr(request.state, "session", None)
@@ -335,4 +350,9 @@ async def change_password(
     # #265 — the security contract: every OTHER session dies NOW; the device
     # doing the change stays signed in. A leaked token stops working immediately.
     revoke_other_sessions(sessions, current.id if current else None, now)
+    # #865 — legacy no-sid tokens have no `sessions` row; the cutoff rejects any
+    # such token minted on or before this password change. The current legacy
+    # token (if any) was materialized by get_current_profile and is kept by
+    # revoke_other_sessions above.
+    profile.legacy_sessions_revoked_at = now
     await db.commit()
