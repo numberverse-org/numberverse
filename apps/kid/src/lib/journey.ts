@@ -242,6 +242,18 @@ export interface SessionStep {
   reteach?: number;
 }
 
+/** Durable snapshot of a kid's in-flight session. Saved to localStorage so a
+ *  kid can leave mid-game (or close the app) and resume at the same step, round,
+ *  score, and streak instead of starting the block over. */
+export interface SavedSession {
+  steps: SessionStep[];
+  idx: number;
+  roundsDone: number;
+  score: number;
+  stars: number;
+  events: RoundResult[];
+}
+
 export interface Kid {
   id: string;
   name: string;
