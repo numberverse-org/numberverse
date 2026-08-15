@@ -133,6 +133,7 @@ const MIX = {
   sfxClickSecond: 0.06,
   sfxTada: 0.1, // whole-session fanfare chord
   sfxTadaSparkle: 0.12,
+  sfxCoin: 0.12, // coin-grant "cha-ching"
 } as const;
 
 /** Play one pitched note at `delay` seconds from now (Counting Song xylophone).
@@ -164,6 +165,13 @@ export function starPop() {
 export function comboChime(combo: number) {
   const base = 523.25 + Math.min(combo, 8) * 55;
   [base, base * 1.26, base * 1.5].forEach((f, i) => tone(f, 0.2, "triangle", MIX.sfxCombo, i * 0.055));
+}
+
+/** Coin grant — a bright two-note "cha-ching" so earning feels tangible. */
+export function coinSound() {
+  tone(987.77, 0.07, "triangle", MIX.sfxCoin);
+  tone(1318.5, 0.14, "triangle", MIX.sfxCoin, 0.06);
+  haptic(10);
 }
 
 /** Wrong tap — a gentle, warm "oops" nudge. Wrong answers are learning moments:

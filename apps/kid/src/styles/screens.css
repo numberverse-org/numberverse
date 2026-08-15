@@ -3636,9 +3636,29 @@
 
 
 /* game HUD coin counter */
-.hud-coins { color: var(--nv-gold); white-space: nowrap; font-weight: 800; }
+.hud-coins { color: var(--nv-gold); white-space: nowrap; font-weight: 800; position: relative; }
 /* #1196 — small "coins maxed" 🎯 chip beside the HUD coin count */
 .hud-coins-maxed { margin-left: 4px; font-style: normal; cursor: help; font-size: 12px; }
+/* #1443 — the "+N 🪙" flash that floats up from the coin counter at the moment
+   a round pays out, so the HUD number change is visible + audible. */
+.hud-coin-flash {
+  position: absolute;
+  right: -2px;
+  top: -30px;
+  z-index: 1001;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--nv-gold);
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  animation: coinFlashFloat 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes coinFlashFloat {
+  0% { opacity: 0; transform: translateY(8px) scale(0.7); }
+  22% { opacity: 1; transform: translateY(0) scale(1.12); }
+  100% { opacity: 0; transform: translateY(-18px) scale(1); }
+}
 
 /* ══════════════════════════ FEEL PASS — juice & celebrations ══════════════════════════ */
 
@@ -4116,6 +4136,42 @@
 @keyframes novaReactBob {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-4px) rotate(3deg); }
+}
+
+/* #1446 — mastery big moment: pet + coin showcase over the confetti burst. */
+.mastery-showcase {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  animation: masteryShowcasePop 0.42s cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
+}
+.mastery-showcase-pet {
+  font-size: 76px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5));
+  animation: novaReactBob 1s ease-in-out infinite;
+}
+.mastery-showcase-coin {
+  background: rgba(6, 18, 40, 0.92);
+  border: 1.5px solid rgba(255, 215, 130, 0.55);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--nv-gold);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+@keyframes masteryShowcasePop {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(0.6); }
+  60% { opacity: 1; transform: translate(-50%, -52%) scale(1.06); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* #282 — sibling leaderboard (same device, no cloud) */

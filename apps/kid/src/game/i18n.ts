@@ -126,6 +126,9 @@ const EN: Record<string, Entry> = {
   // #1482 — confidence-gated reveal: the small cue on the banner BEFORE the
   // reveal so a held-back sharp kid understands the answer is coming on purpose.
   triesToGo: (n) => `${n} more ${Number(n) === 1 ? "try" : "tries"} to go…`,
+  // #1445 — combo escalation's top tier, reached at combo 9+.
+  ceMastery: "MASTERY MOMENT! 🏆",
+  ceMasteryHard: "MASTERY MOMENT! 🔥🏆",
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "Let's put apples in the basket, watch!",
@@ -1640,6 +1643,9 @@ const BN: Record<string, Entry> = {
   answerIsWord: "উত্তর হলো {label}",
   // #1482 — আত্মবিশ্বাসভেদে উত্তর আসার আগে ছোট্ট ইঙ্গিত।
   triesToGo: (n) => `আর ${String(n).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)])} বার চেষ্টা করা যাবে…`,
+  // #1445 — কম্বো ধারার শীর্ষ ধাপ, টানা ৯+ সঠিক উত্তরে।
+  ceMastery: "দক্ষতার মুহূর্ত! 🏆",
+  ceMasteryHard: "দক্ষতার মুহূর্ত! 🔥🏆",
 
   /* ── Fruit basket teach narration ── */
   putInBasket: "বাস্কেটে আপেল রাখি, দেখো!",
