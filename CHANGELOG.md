@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.78.0 (shared engine difficulty-ramp: ladder past-ceiling + live success level + growing rounds + shared time + continuous daynight/compare (#1056 #1057 #1058 #1059 #1060))
+
+ef20fed 🎢 engine difficulty-ramp: shared ladders + live adaptation (#1056 #1057 #1058 #1059 #1060)
+
 ## 16 Aug 2026 — 0.77.0 (strictness=auto for unset kids + honest worlds label (#1049 #1050))
 
 b7c161b 🧠 strictness=auto fix + honest worlds label (#1049, #1050)

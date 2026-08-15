@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.77.0 (strictness=auto for unset kids + honest worlds label (#1049 #1050))";
-export const APP_VERSION = "0.77.0";
+export const APP_BUILD = "16 Aug 2026 · 0.78.0 (shared engine difficulty-ramp: ladder past-ceiling + live success level + growing rounds + shared time + continuous daynight/compare (#1056 #1057 #1058 #1059 #1060))";
+export const APP_VERSION = "0.78.0";
