@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.65.0 (admin console: role boundary + audit log, story-health ops surface, typed-confirm deletes, typed config form, real logout, 401-vs-403 (#843 #844 #845 #846 #847 #849 #850 #851))";
-export const APP_VERSION = "0.65.0";
+export const APP_BUILD = "15 Aug 2026 · 0.65.1 (🔐 seed: bootstrap admin password re-hashes to NV_ADMIN_PASSWORD on boot — env change now rotates the live console login (#842))";
+export const APP_VERSION = "0.65.1";
