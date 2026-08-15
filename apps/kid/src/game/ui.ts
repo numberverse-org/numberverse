@@ -374,6 +374,7 @@ export function modernAnswerButton(
     },
   };
   c.setData("nv-btn", api);
+  c.setData("nv-label", label); // #785/#1005 — keyboard/SR answer label
 
   // satisfying press dip
   c.on("pointerdown", () => {
@@ -428,6 +429,7 @@ export function modernCardButton(
     },
   };
   c.setData("nv-btn", api);
+  c.setData("nv-label", label); // #785/#1005 — keyboard/SR answer label
   c.on("pointerdown", () => {
     scene.tweens.add({ targets: c, scale: 0.95, duration: 90, yoyo: true, ease: "Sine.easeInOut" });
   });

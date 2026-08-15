@@ -11,6 +11,7 @@ import {
   DEBUG_LANGS,
   HELP_LANGS,
   NV_DIAG_MAX,
+  avatarName,
   fmtTime,
   friendlyDevice,
   nvDiagErrors,
@@ -32,6 +33,7 @@ export function AddKidCard({
   editName,
   editAvatar,
   editBirthYear,
+  wizLang,
   handleCreate,
   setEditName,
   setEditAvatar,
@@ -43,6 +45,7 @@ export function AddKidCard({
   editName: string;
   editAvatar: string;
   editBirthYear: number;
+  wizLang: WizardLang;
   handleCreate: () => void;
   setEditName: Setter<string>;
   setEditAvatar: Setter<string>;
@@ -57,8 +60,8 @@ export function AddKidCard({
 <h2>Add a new kid</h2>
 <div className="avatar-row">
   {AVATARS.map((a) => (
-    <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)}>
-      {a}
+    <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)} aria-label={avatarName(a, wizLang)}>
+      <span aria-hidden="true">{a}</span>
     </button>
   ))}
 </div>
@@ -327,6 +330,7 @@ export function EditKidCard({
   setEditAvatar,
   editBirthYear,
   setEditBirthYear,
+  wizLang,
   confirmReset,
   setConfirmReset,
   confirmDelete,
@@ -343,6 +347,7 @@ export function EditKidCard({
   setEditAvatar: Setter<string>;
   editBirthYear: number;
   setEditBirthYear: Setter<number>;
+  wizLang: WizardLang;
   confirmReset: boolean;
   setConfirmReset: Setter<boolean>;
   confirmDelete: boolean;
@@ -358,8 +363,8 @@ export function EditKidCard({
   <h2>⚙️ Edit {active.name}</h2>
   <div className="avatar-row">
     {AVATARS.map((a) => (
-      <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)}>
-        {a}
+      <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)} aria-label={avatarName(a, wizLang)}>
+        <span aria-hidden="true">{a}</span>
       </button>
     ))}
   </div>

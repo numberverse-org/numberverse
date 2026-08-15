@@ -643,7 +643,7 @@
 }
 /* #1409 — the home voice chip shows the live download % while loading. */
 .voice-chip-pct {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -1209,7 +1209,7 @@
   transform: scale(0.96);
 }
 .week-card-line {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(183, 233, 208, 0.7);
 }
@@ -1240,7 +1240,7 @@
 .home-contrast-owl { font-size: 26px; flex: 0 0 auto; }
 .home-contrast-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .home-contrast-line { font-size: 13px; font-weight: 800; color: #c8f7dd; line-height: 1.25; }
-.home-contrast-sub { font-size: 11px; font-weight: 600; color: rgba(200, 247, 221, 0.7); }
+.home-contrast-sub { font-size: 12px; font-weight: 600; color: rgba(200, 247, 221, 0.7); }
 .home-contrast-cta { margin-left: auto; font-size: 16px; color: #c8f7dd; }
 .home-path {
   display: flex;
@@ -1664,7 +1664,7 @@
   transition: width 0.5s ease;
 }
 .pet-grow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.72);
 }
@@ -1724,7 +1724,7 @@
   letter-spacing: 0.02em;
 }
 .mission-sub {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.65);
 }
@@ -2025,7 +2025,7 @@
   color: var(--nv-gold);
 }
 .cal-hint {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.55);
   text-align: right;
@@ -2051,7 +2051,7 @@
   border-radius: 999px;
   background: rgba(23, 96, 168, 0.9);
   color: #cfe8ff;
-  font-size: 10px;
+  font-size: 12px;
   border: 1.5px solid #fff;
 }
 /* #1474 — the streak badge also names tomorrow's calendar reward */
@@ -2059,7 +2059,7 @@
   display: block;
   font-style: normal;
   margin-top: 2px;
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 900;
   color: #5c2105;
   white-space: nowrap;
@@ -2098,13 +2098,13 @@
 .fresh-skill-none { cursor: default; opacity: 0.92; }
 .fresh-skill-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
 .fresh-skill-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.fresh-skill-title { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #9bd8ff; }
+.fresh-skill-title { font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #9bd8ff; }
 .fresh-skill-name { font-size: 15px; font-weight: 900; color: #fff; }
 .fresh-skill-go { margin-left: auto; font-size: 13px; font-weight: 900; color: var(--nv-gold); white-space: nowrap; }
 /* #769 — garden teaser: summary line + "new growth!" cue on the More button */
 .garden-tile-name { display: block; }
-.garden-tile-sum { display: block; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65); margin-top: 2px; }
-.garden-tile-fresh { display: block; font-style: normal; margin-top: 2px; font-size: 11px; font-weight: 900; color: var(--nv-mint); }
+.garden-tile-sum { display: block; font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.65); margin-top: 2px; }
+.garden-tile-fresh { display: block; font-style: normal; margin-top: 2px; font-size: 12px; font-weight: 900; color: var(--nv-mint); }
 /* #1396 — the "living world" strip: Nova + the Garden stay VISIBLE on home
    (not folded into More). Two compact tiles under the week card. */
 .home-wilds {
@@ -2133,7 +2133,7 @@
 .wild-tile:active { transform: scale(0.97); }
 .wild-tile-emoji { font-size: 26px; line-height: 1; }
 .wild-tile-label { font-size: 14px; font-weight: 800; color: #eafff4; }
-.wild-tile-sum { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.65); text-align: center; }
+.wild-tile-sum { font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.65); text-align: center; }
 .wild-tile-sum.wild-tile-empty { color: var(--nv-mint); font-weight: 900; }
 .cal-strip {
   display: grid;
@@ -2718,8 +2718,8 @@
   top: 50%;
   right: 8px;
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
@@ -2762,7 +2762,7 @@
 .bday-row { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
 .bday-field { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .bday-field .year-row { gap: 10px; }
-.bday-field .year-btn { width: 42px; height: 42px; font-size: 22px; }
+.bday-field .year-btn { width: 44px; height: 44px; font-size: 22px; }
 .bday-field .year-val { min-width: 52px; }
 .bday-field .year-num { font-size: 24px; }
 .bday-label { font-size: 13px; font-weight: 800; color: var(--nv-gray); }
@@ -2895,7 +2895,7 @@
   right: 10px;
   background: var(--nv-gold);
   color: var(--nv-navy);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
   border-radius: 999px;
@@ -3029,7 +3029,7 @@
   line-height: 1.2;
 }
 .tree-node-bn {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--nv-gray);
   font-weight: 500;
   line-height: 1.15;
@@ -3148,9 +3148,9 @@
 @media (max-width: 400px) {
   .play-top { flex-wrap: wrap; }
   .play-top-right { gap: 6px; flex-shrink: 0; }
-  .voice-chip { min-height: 40px; padding: 0 10px; font-size: 13px; gap: 4px; }
+  .voice-chip { min-height: 44px; padding: 0 10px; font-size: 13px; gap: 4px; }
   .voice-chip-glyph { font-size: 16px; }
-  .scan-btn { min-height: 40px; padding: 0 10px; font-size: 13px; gap: 4px; }
+  .scan-btn { min-height: 44px; padding: 0 10px; font-size: 13px; gap: 4px; }
   .scan-btn-glyph { font-size: 16px; }
   .parent-btn { padding: 7px 9px; font-size: 12px; gap: 4px; }
   .parent-btn-emoji { font-size: 13px; }
@@ -3244,13 +3244,13 @@
 /* ---- music toggle button inside the game HUD ---- */
 .hud-music {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  font-size: 17px;
+  font-size: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3528,7 +3528,7 @@
   gap: 2px;
 }
 .fam-num { font-size: 18px; font-weight: 800; color: var(--nv-gold); line-height: 1.1; }
-.fam-label { font-size: 11px; color: #a7c4e2; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.fam-label { font-size: 12px; color: #a7c4e2; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
 /* portal deep-link card — an <a>, so the whole card is tappable */
 .parent-portal-card {
   text-decoration: none;
@@ -3552,8 +3552,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  height: 38px;
+  min-width: 44px;
+  height: 44px;
   border-radius: 12px;
   border: 1px solid rgba(125, 227, 255, 0.4);
   background: rgba(76, 201, 240, 0.14);
@@ -3626,7 +3626,7 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.35);
   font-weight: 700;
   text-align: center;
@@ -3696,24 +3696,24 @@
 .kotha-dot.bad { color: #ff8a8a; }
 .kotha-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .kotha-name { font-size: 12.5px; font-weight: 800; color: #f4f9ff; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.kotha-line { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.6); line-height: 1.35; }
-.kotha-reason { font-size: 11px; font-weight: 500; color: rgba(255, 255, 255, 0.5); font-style: italic; line-height: 1.3; }
-.kotha-ago { margin-left: auto; flex: 0 0 auto; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.4); white-space: nowrap; padding-top: 2px; }
+.kotha-line { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.6); line-height: 1.35; }
+.kotha-reason { font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.5); font-style: italic; line-height: 1.3; }
+.kotha-ago { margin-left: auto; flex: 0 0 auto; font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.4); white-space: nowrap; padding-top: 2px; }
 /* 🧠 MONI — the tiny tutor's insight card */
 .moni-card { border-top: 1px dashed rgba(124, 232, 210, 0.25); margin-top: 10px; padding-top: 8px; }
 .moni-card summary { color: #f2cc8f; }
 .moni-tag { font-size: 14px; color: #a9c9e0; margin: 2px 0 8px; }
 /* 🎚️ #333 parent-adjustable strictness selector */
 .moni-strictness { margin: 2px 0 10px; }
-.moni-strictness-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #f2cc8f; margin: 0 0 4px; font-weight: 800; display: block; }
+.moni-strictness-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #f2cc8f; margin: 0 0 4px; font-weight: 800; display: block; }
 .moni-strictness-options { display: flex; gap: 6px; }
 .moni-strictness-opt { flex: 1; font-size: 12px; font-weight: 700; padding: 6px 4px; border-radius: 8px; border: 1px solid rgba(124, 232, 210, 0.25); background: rgba(76, 201, 240, 0.06); color: #a9c9e0; cursor: pointer; transition: background 120ms, color 120ms, border-color 120ms; }
 .moni-strictness-opt:hover { background: rgba(124, 232, 210, 0.12); }
 .moni-strictness-opt.active { background: rgba(124, 232, 210, 0.2); border-color: #7ce8d2; color: #e6fffa; }
-.moni-strictness-help { font-size: 11px; color: #a9c9e0; margin: 5px 0 0; line-height: 1.35; }
+.moni-strictness-help { font-size: 12px; color: #a9c9e0; margin: 5px 0 0; line-height: 1.35; }
 .moni-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-bottom: 8px; }
 .moni-cell { display: flex; flex-direction: column; background: rgba(76, 201, 240, 0.06); border-radius: 8px; padding: 6px 8px; }
-.moni-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fb8d6; }
+.moni-k { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #7fb8d6; }
 .moni-v { font-size: 13px; font-weight: 700; color: #f4f9ff; }
 .moni-next { font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border-radius: 8px; padding: 8px 10px; margin: 0; }
 /* 🎯 MONI top-3 practice goals — plain-language "next skills" for parents */
@@ -3722,11 +3722,11 @@
 .moni-week summary { cursor: pointer; font-size: 12.5px; font-weight: 800; color: #b8e4ff; letter-spacing: 0.3px; user-select: none; }
 .moni-week-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 8px; }
 .moni-goals { margin: 8px 0; }
-.moni-goals-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #f2cc8f; margin: 0 0 4px; font-weight: 800; }
+.moni-goals-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #f2cc8f; margin: 0 0 4px; font-weight: 800; }
 .moni-goals ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
 .moni-goals li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; background: rgba(242, 204, 143, 0.07); border-left: 3px solid #f2cc8f; border-radius: 6px; padding: 5px 8px; font-size: 12.5px; }
 .moni-goal-skill { font-weight: 700; color: #f4f9ff; display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
-.moni-goal-why { font-size: 11px; color: #a9c9e0; white-space: nowrap; }
+.moni-goal-why { font-size: 12px; color: #a9c9e0; white-space: nowrap; }
 /* 🧠 soft session-length note on the done screen — always a suggestion, never a wall */
 .moni-session-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border: 1px dashed rgba(242, 204, 143, 0.35); border-radius: 20px; padding: 6px 14px; margin: 0 auto 10px; max-width: 420px; text-align: left; }
 /* Share-progress button + feedback inside the parent-panel analytics card */
@@ -3917,7 +3917,7 @@
 .contrast-opt:hover { transform: translateY(-3px) scale(1.04); border-color: rgba(255, 230, 120, 0.8); background: linear-gradient(145deg, rgba(255, 210, 90, 0.4), rgba(76, 201, 240, 0.18)); }
 .contrast-opt:active { transform: scale(0.95); }
 .contrast-tip { max-width: 300px; margin: 0; font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, 0.75); line-height: 1.4; }
-.contrast-progress { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.6px; }
+.contrast-progress { font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.6px; }
 .contrast-done-body { max-width: 340px; margin: 0 auto; font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.88); line-height: 1.5; }
 .contrast-done-btn { margin-top: 8px; }
 .confetti {
@@ -3970,7 +3970,7 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 .rank-badge-label {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: #a8b2c7;
@@ -4157,9 +4157,9 @@
 .badge-emoji { font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)); }
 .badge-card.earned .badge-emoji { animation: calPulse 2.4s ease-in-out infinite; }
 .badge-name { font-size: 14px; font-weight: 800; color: #fff; line-height: 1.2; }
-.badge-hint { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.55); line-height: 1.25; }
+.badge-hint { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.55); line-height: 1.25; }
 .badge-state {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.03em;
@@ -4180,7 +4180,7 @@
 .badge-first-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
 .badge-first-title { font-size: 14px; font-weight: 900; color: #fff; line-height: 1.25; }
 .badge-first-name { font-size: 13px; font-weight: 800; color: var(--nv-gold); }
-.badge-first-hint { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.7); line-height: 1.3; }
+.badge-first-hint { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.7); line-height: 1.3; }
 .badge-first-progress { font-size: 12px; font-weight: 900; color: #fff; }
 
 /* #289 — long-term achievements book (milestones across weeks, offline) */
@@ -4226,9 +4226,9 @@
 .ach-emoji { font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)); }
 .ach-card.earned .ach-emoji { animation: calPulse 2.4s ease-in-out infinite; }
 .ach-name { font-size: 14px; font-weight: 800; color: #fff; line-height: 1.2; }
-.ach-hint { font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.55); line-height: 1.25; }
+.ach-hint { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.55); line-height: 1.25; }
 .ach-state {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.03em;
@@ -4363,7 +4363,7 @@
   color: #fff;
 }
 .lb-you {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4443,9 +4443,9 @@
 .tr-trophy { font-size: 34px; line-height: 1; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)); }
 .tr-slot.earned .tr-trophy { animation: calPulse 2.6s ease-in-out infinite; }
 .tr-band-name { font-size: 13px; font-weight: 800; color: #fff; line-height: 1.2; }
-.tr-band-prog { font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.6); }
+.tr-band-prog { font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.6); }
 .tr-state {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.03em;
@@ -4574,14 +4574,14 @@
 }
 .card-star { font-size: 15px; line-height: 1; }
 .card-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.95);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .card-lock { font-size: 16px; line-height: 1; }
 .card-date {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.02em;
@@ -4596,25 +4596,25 @@
 
 /* flip back — the kid's proof of work */
 .card-back-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   color: #ffe9ad;
   text-align: center;
   line-height: 1.15;
 }
 .card-back-row {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: #e6ecf5;
   text-align: center;
 }
 .card-back-foot {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--nv-gray);
   text-align: center;
 }
-.card-back-date { font-size: 11px; font-weight: 700; color: var(--nv-gold); text-align: center; }
+.card-back-date { font-size: 12px; font-weight: 700; color: var(--nv-gold); text-align: center; }
 .card-back-emoji { line-height: 1; }
 
 /* the golden world-champion card — foil + moving shine */
@@ -4660,7 +4660,7 @@
 .gold-card-title { font-size: 12px; font-weight: 900; line-height: 1.15; }
 .gold-card-sub { font-size: 12px; font-weight: 800; color: rgba(74, 44, 0, 0.85); }
 .gold-card-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   background: rgba(255, 255, 255, 0.45);
   border-radius: 999px;
@@ -4834,7 +4834,7 @@
   gap: 4px;
 }
 .cert-foot-label {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #9c8a60;
@@ -4990,19 +4990,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
 }
 .castle-tower:not(.built) .castle-window {
   background: #c3ccd6;
   box-shadow: none;
-  font-size: 11px;
+  font-size: 12px;
 }
 .castle-tower:nth-child(3) .castle-body { min-height: 96px; }
 .castle-tower:nth-child(2) .castle-body,
 .castle-tower:nth-child(4) .castle-body { min-height: 84px; }
 .castle-label {
   margin-top: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.02em;
   color: #26402a;
@@ -5010,7 +5010,7 @@
   line-height: 1.1;
 }
 .castle-sub {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(38, 64, 42, 0.72);
   margin-top: 2px;
@@ -5282,7 +5282,7 @@
   border-radius: 12px;
   padding: 10px 12px;
 }
-.sec-q-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--nv-gray); }
+.sec-q-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--nv-gray); }
 .sec-q-text { font-size: 15px; color: #ffe9ad; }
 .sec-input {
   width: 100%;
@@ -5395,7 +5395,7 @@
 .pin-lock-btn:active { background: rgba(76, 201, 240, 0.28); }
 .gate-privacy {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: #6b7a8c;
   line-height: 1.4;
   text-align: center;
@@ -5795,7 +5795,7 @@
   line-height: 1.25;
 }
 .syllabus-tile-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: #a7c4e2;
   line-height: 1.35;
   display: -webkit-box;
@@ -5842,7 +5842,7 @@
 .switch {
   position: relative;
   width: 50px;
-  height: 30px;
+  height: 44px;
   flex: none;
   padding: 0;
   border-radius: 999px;
@@ -5853,7 +5853,7 @@
 }
 .switch-thumb {
   position: absolute;
-  top: 3px;
+  top: 10px;
   left: 3px;
   width: 22px;
   height: 22px;
@@ -5932,7 +5932,7 @@
 .settings-footer {
   margin: 16px 0 10px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: #6c86a5;
   line-height: 1.5;
 }
@@ -6001,7 +6001,7 @@
 /* #136 — settings toggle with a sub-line (projector). Keeps flex:1 from the
    base rule so the switch still right-aligns. */
 .settings-row-label { flex: 1; font-size: 15px; font-weight: 700; color: #e8eef7; display: flex; flex-direction: column; gap: 2px; }
-.settings-row-sub { font-size: 11px; font-weight: 500; color: #8fa9c9; line-height: 1.3; }
+.settings-row-sub { font-size: 12px; font-weight: 500; color: #8fa9c9; line-height: 1.3; }
 
 /* 🧏 #250 — GLOBAL accessibility classes (on <html>, shared with the parent
    portal via the nv_a11y localStorage key). `zoom` scales the whole UI — the
@@ -6011,6 +6011,28 @@ html.nv-big-text { zoom: 1.2; }
 
 html.nv-high-contrast .app { background: #00131f; }
 html.nv-high-contrast .screen { background: #00131f; }
+/* #17 — visible keyboard focus everywhere. Buttons keep their shape; the ring
+   only shows for keyboard users so mouse/tap flow stays clean. */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.game-wrap:focus-visible {
+  outline: 3px solid var(--nv-sky, #4cc9f0);
+  outline-offset: 2px;
+}
+html.nv-high-contrast button:focus-visible,
+html.nv-high-contrast a:focus-visible,
+html.nv-high-contrast [role="button"]:focus-visible,
+html.nv-high-contrast input:focus-visible,
+html.nv-high-contrast select:focus-visible,
+html.nv-high-contrast textarea:focus-visible,
+html.nv-high-contrast .game-wrap:focus-visible {
+  outline: 4px solid #ffd60a;
+  outline-offset: 2px;
+}
 html.nv-high-contrast :focus { outline: 3px solid #ffd60a; outline-offset: 2px; }
 html.nv-high-contrast .parent-card,
 html.nv-high-contrast .world-progress-card,
@@ -6087,7 +6109,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   border-radius: 999px;
   background: #ffd166;
   color: #23203f;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   vertical-align: middle;
 }
@@ -6096,8 +6118,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   background: rgba(8, 14, 34, 0.55);
   color: #fff;
   border-radius: 999px;
-  min-width: 42px;
-  height: 42px;
+  min-width: 44px;
+  height: 44px;
   padding: 0 14px;
   font: 800 20px/1 var(--nv-font, system-ui, sans-serif);
   cursor: pointer;
@@ -6193,8 +6215,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 .island-roombtn {
   border: 0;
   border-radius: 50%;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
   font: 800 20px/1 var(--nv-font, system-ui, sans-serif);
@@ -6335,8 +6357,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 .island-dressbtn {
   border: 0;
   border-radius: 50%;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   background: rgba(10, 22, 48, 0.62);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -6359,8 +6381,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 .island-swatch {
   border: 2px solid rgba(255, 255, 255, 0.75);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
 }
 .island-swatch.is-on { outline: 3px solid var(--nv-gold); outline-offset: 2px; }
@@ -6388,8 +6410,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   flex: 0 0 auto;
   border: 0;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: rgba(10, 22, 48, 0.62);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -6595,7 +6617,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 }
 .ws-pick.on { border-color: var(--nv-gold, #ffb703); background: rgba(255, 183, 3, 0.14); transform: translateY(-1px); }
 .ws-pick-title { font-size: 14px; font-weight: 700; line-height: 1.25; }
-.ws-pick-tag { font-size: 11px; opacity: 0.75; }
+.ws-pick-tag { font-size: 12px; opacity: 0.75; }
 .ws-go { margin: 20px auto 0; display: block; }
 .ws-print-hint { text-align: center; color: #fff; opacity: 0.7; font-size: 12px; margin-top: 10px; }
 /* flashcard deck */
@@ -6609,9 +6631,9 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 }
 .fc-qr { width: 100%; display: flex; justify-content: center; }
 .fc-qr img { max-width: 100%; height: auto; }
-.fc-qr-text { font-size: 11px; color: #1d3557; word-break: break-all; text-align: center; }
+.fc-qr-text { font-size: 12px; color: #1d3557; word-break: break-all; text-align: center; }
 .fc-card-title { font-size: 13px; font-weight: 800; color: #2a4a7a; text-align: center; line-height: 1.2; }
-.fc-card-code { font-size: 10px; color: #8a6a1f; font-family: ui-monospace, Menlo, monospace; }
+.fc-card-code { font-size: 12px; color: #8a6a1f; font-family: ui-monospace, Menlo, monospace; }
 .fc-drawing { text-align: center; color: #6a5430; padding: 60px 0; }
 /* parent panel cards (the two new doors) */
 .ws-card { }

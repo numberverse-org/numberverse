@@ -73,6 +73,7 @@ import {
   WIZARD_LANGS,
   WizardLang,
   archiveToCsv,
+  avatarName,
   buildFlaggedSkills,
   buildMissedQuestions,
   buildMonthlyArchive,
@@ -1814,7 +1815,7 @@ export default function ParentDashboard() {
                 key={a}
                 className={`avatar-pick${editAvatar === a ? " on" : ""}`}
                 onClick={() => setEditAvatar(a)}
-                aria-label={a}
+                aria-label={avatarName(a, wizLang)}
               >
                 {a}
               </button>
@@ -1981,6 +1982,7 @@ export default function ParentDashboard() {
         editName={editName}
         editAvatar={editAvatar}
         editBirthYear={editBirthYear}
+        wizLang={wizLang}
         handleCreate={handleCreate}
         setEditName={setEditName}
         setEditAvatar={setEditAvatar}
@@ -2229,6 +2231,7 @@ export default function ParentDashboard() {
                       setEditAvatar={setEditAvatar}
                       editBirthYear={editBirthYear}
                       setEditBirthYear={setEditBirthYear}
+                      wizLang={wizLang}
                       confirmReset={confirmReset}
                       setConfirmReset={setConfirmReset}
                       confirmDelete={confirmDelete}

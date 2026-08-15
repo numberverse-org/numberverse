@@ -1,6 +1,6 @@
 /* HomeScreen — the journey-first home for the active kid (extracted from App.tsx, #589).
  * Renders null when no kid is active (App falls through to the picker). */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
   recommendedSkill, journeyState, journeyCurrentIndex, currentSeason, isBirthday, skillMastered,
@@ -21,6 +21,7 @@ import type { SavedSession, SkillMap, ChallengeQ, Kid } from "../lib/journey";
 import type { SpeechReadiness } from "../game/speech";
 import type { Screen } from "../App";
 import { KidAvatar } from "./Avatar";
+import { useDialogFocus } from "../lib/dialogFocus";
 
 export interface HomeScreenProps {
   kid: Kid | null;
@@ -132,6 +133,14 @@ export default function HomeScreen({
   goBadges, goCards, goGarden, goNova, onParent, guestMode, onGuestUpgrade,
 }: HomeScreenProps) {
   const t = STR[lang];
+    // #1010 — the QR-scan sheet is a modal dialog: focus moves inside on open,
+    // Tab stays trapped, Escape closes it, and focus is restored on close.
+    const scanSheetRef = useRef<HTMLDivElement>(null);
+    const closeScan = useCallback(() => {
+      stopScanner();
+      setScanOpen(false);
+    }, [stopScanner, setScanOpen]);
+    useDialogFocus(scanOpen, closeScan, scanSheetRef);
     // #1122 — the journey view (recommended next skill + the stop path around
     // "you are here") is one memoized unit keyed on [skillsMap, kid.id], so an
     // unrelated store tick re-renders Home without re-sweeping the 135-stop
@@ -990,7 +999,7 @@ export default function HomeScreen({
               entry is the offline/no-camera fallback (both launch the game). */}
           {scanOpen && (
             <div className="scan-overlay" onClick={() => { stopScanner(); setScanOpen(false); }}>
-              <div className="scan-sheet" role="dialog" aria-label={t.scanTitle} onClick={(e) => e.stopPropagation()}>
+              <div className="scan-sheet" role="dialog" aria-modal="true" aria-label={t.scanTitle} onClick={(e) => e.stopPropagation()} ref={scanSheetRef}>
                 <h3 className="scan-title">📷 {t.scanTitle}</h3>
                 <p className="scan-hint">{t.scanHint}</p>
                 <div className="scan-stage">

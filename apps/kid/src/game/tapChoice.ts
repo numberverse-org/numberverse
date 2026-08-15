@@ -220,6 +220,13 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     const c = this.add.container(x, y, [bg, icon, label]);
     c.setSize(cardW, cardH);
     c.setInteractive({ useHandCursor: true });
+    // #785/#1005 — make these cards visible to the keyboard/SR bridge too.
+    c.setData("nv-btn", {
+      setLabel: (s: string) => label.setText(s),
+      setCorrect() {},
+      setDisabled() {},
+    });
+    c.setData("nv-label", t(ch.key));
     c.on("pointerdown", () => {
       if (this.busy) return;
       this.tap(ch);

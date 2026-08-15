@@ -77,6 +77,8 @@ export interface Strings {
   /* learning journey */
   journey: string;
   worldsLabel: string;
+  /** Accessible name for the map/journey/worlds view switcher (#1007). */
+  viewTabs: string;
   /* visual map (worlds as islands on a winding road) */
   mapTab: string;
   mapSub: string;
@@ -179,6 +181,10 @@ export interface Strings {
   /** Generic back-button label (aria) used on every `icon-btn` back arrow —
    *  localized so a Bangla screen reader never announces English "Back". */
   back: string;
+  /** Destination-aware back label for icon-only back arrows (#1012). */
+  backTo: (dest: string) => string;
+  /** Done-screen star summary announced as one image (#1011). */
+  doneStars: (n: number) => string;
   /* birthday party */
   birthMonth: string;
   birthDay: string;
@@ -869,6 +875,10 @@ export interface Strings {
   islandLoading: string;
   /* #346 — friendly loading copy for the engine/lazy-screen spinners */
   loadingGame: string;
+  /** Accessible name for the Phaser play area (#1009). */
+  gameAreaA11y: string;
+  /** Keyboard hint for the Phaser play area (#1005). */
+  gameKeyHint: string;
   /* #1377/#1408 — kid-facing game-chunk load failure + recovery */
   gameLoadError: string;
   gameLoadErrorHint: string;
@@ -954,6 +964,7 @@ export const STR: Record<Lang, Strings> = {
     worldLockedCap: "This land is locked by your grown-up's settings",
     journey: "Journey",
     worldsLabel: "Worlds",
+    viewTabs: "Choose a view",
     mapTab: "Map",
     mapSub: "A living map — tap a land to play there",
     mapHere: "You're here!",
@@ -1044,6 +1055,8 @@ export const STR: Record<Lang, Strings> = {
     fcNoSkills: "Pick skills to make cards",
     fcBack: "‹ Back",
     back: "Back",
+    backTo: (dest) => `Back to ${dest}`,
+    doneStars: (n) => `${n} ${n === 1 ? "star" : "stars"}`,
     birthMonth: "Month",
     birthDay: "Day",
     birthdayHello: (name) => `Happy Birthday, ${name}! 🎂`,
@@ -1717,6 +1730,8 @@ export const STR: Record<Lang, Strings> = {
     islandTitle: "🦉 Nova's 3D Island",
     islandLoading: "Building the island…",
     loadingGame: "Loading game…",
+    gameAreaA11y: "Numberverse game",
+    gameKeyHint: "Use the arrow keys to choose an answer, then press Enter.",
     gameLoadError: "The game couldn't load this time.",
     gameLoadErrorHint: "Check your connection, then tap to try again.",
     gameLoadRetry: "Try again",
@@ -1795,6 +1810,7 @@ export const STR: Record<Lang, Strings> = {
     worldLockedCap: "অভিভাবকের সেটিংসে এই জমিটি বন্ধ আছে",
     journey: "যাত্রা",
     worldsLabel: "জগৎ",
+    viewTabs: "একটি দৃশ্য বাছাই করো",
     mapTab: "মানচিত্র",
     mapSub: "একটি জীবন্ত মানচিত্র — যে জমিতে খেলতে চাও, সেটিতে চাপ দাও",
     mapHere: "তুমি এখানে!",
@@ -1885,6 +1901,8 @@ export const STR: Record<Lang, Strings> = {
     fcNoSkills: "কার্ড বানাতে দক্ষতা বাছাই করো",
     fcBack: "‹ ফিরে যাও",
     back: "ফিরে যাও",
+    backTo: (dest) => `${dest}-এ ফিরে যাও`,
+    doneStars: (n) => `${bnNum(n)}টা তারা`,
     birthMonth: "মাস",
     birthDay: "দিন",
     birthdayHello: (name) => `জন্মদিনের শুভেচ্ছা, ${name}! 🎂`,
@@ -2556,6 +2574,8 @@ export const STR: Record<Lang, Strings> = {
     islandTitle: "🦉 নোভার ৩ডি দ্বীপ",
     islandLoading: "দ্বীপ তৈরি হচ্ছে…",
     loadingGame: "খেলা লোড হচ্ছে…",
+    gameAreaA11y: "নাম্বারভার্স খেলা",
+    gameKeyHint: "উত্তর বাছাই করতে তীরচিহ্ন ব্যবহার করো, তারপর Enter চাপো।",
     gameLoadError: "এবার খেলাটি লোড করা যায়নি।",
     gameLoadErrorHint: "ইন্টারনেট দেখে আবার চেষ্টা করতে ট্যাপ করো।",
     gameLoadRetry: "আবার চেষ্টা করো",
