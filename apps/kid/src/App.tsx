@@ -451,11 +451,12 @@ export default function App() {
       if (!n) return null;
       const today = todayOnce;
       const playedToday = n.lastDay === today;
+      // #1473 — a missed day must NOT flash a wall of locks. Keep the strip on
+      // the old cycle's next tile (the warm "you were here" position) instead of
+      // hard-resetting to 1; HomeScreen pairs it with a gentle fresh-start cue.
       const pos = playedToday
         ? calendarCycleDay(n.streak)
-        : n.lastDay === dayIsoAgo(1)
-          ? calendarCycleDay(n.streak + 1) // today would extend the streak → next tile
-          : 1; // missed a day → fresh restart at day 1
+        : calendarCycleDay(n.streak + 1);
       return { pos, claimable: playedToday && n.calendarDay !== today, claimedToday: n.calendarDay === today };
     })
   );
@@ -2179,12 +2180,25 @@ export default function App() {
       if (kid) {
         // #294 — if this session's streak update SPENT a freeze token, cheer
         // about it: the chain survived a missed day.
-        const freezesBefore = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
+        const novaBefore = useKidStore.getState().nova[kid.id];
+        const freezesBefore = novaBefore?.freezes ?? 0;
+        // #1472 — a freeze covers ONE missed day (gap === 2 in store.ts). If the
+        // kid held a token but missed 2+ days (a normal weekend), the token can't
+        // save the streak — say it warmly instead of silently burning the chain.
+        const todayNow = todayIso();
+        const lastDayBefore = novaBefore?.lastDay ?? "";
+        const gapBefore = lastDayBefore
+          ? Math.max(0, Math.round((new Date(todayNow).getTime() - new Date(lastDayBefore).getTime()) / 86400000))
+          : 0;
+        const freezeMissGap = lastDayBefore !== todayNow && gapBefore > 2 ? gapBefore : 0;
         novaCompleteSession(kid.id);
         recordSession(kid.id);
-        if ((useKidStore.getState().nova[kid.id]?.freezes ?? 0) < freezesBefore) {
+        const freezesAfter = useKidStore.getState().nova[kid.id]?.freezes ?? 0;
+        if (freezesAfter < freezesBefore) {
           tada();
           speak(t.freezeSpentSpeak);
+        } else if (freezeMissGap > 0 && freezesBefore > 0) {
+          speak(t.freezeNotEnough(freezeMissGap - 1));
         }
       }
       tada();

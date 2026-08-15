@@ -247,6 +247,8 @@ export interface Strings {
   calendarClaimed: string;
   calendarLocked: string;
   calendarClaimSpeak: (name: string, n: number) => string;
+  /** #1473 — gentle cue when a missed day restarts the calendar week. */
+  calendarFreshStart: string;
   /* #283 — goal badges */
   badgeTile: string;
   badgeTitle: string;
@@ -301,6 +303,8 @@ export interface Strings {
   freezePill: (n: number) => string;
   freezeEarnedSpeak: string;
   freezeSpentSpeak: string;
+  /** #1472 — warm line when a held freeze token can't cover N missed days. */
+  freezeNotEnough: (n: number) => string;
   /* #288 — kid-friendly voice settings */
   voiceFunTitle: string;
   voiceFunSoft: string;
@@ -764,6 +768,8 @@ export interface Strings {
   novaTapHint: string;
   novaCoins: (n: number) => string;
   novaStreak: (n: number) => string;
+  /** #1474 — streak badge teaser: what tomorrow's calendar tile pays. */
+  streakTomorrow: (n: number) => string;
   novaCareFed: string;
   novaCarePlay: string;
   novaShop: string;
@@ -1017,6 +1023,8 @@ export const STR: Record<Lang, Strings> = {
     calendarClaimed: "✓ Collected",
     calendarLocked: "🔒",
     calendarClaimSpeak: (name, n) => `${name}, daily reward collected — ${n} coins! 🎉`,
+    // #1473 — warm fresh-start cue after a missed day (no guilt).
+    calendarFreshStart: "🌱 Fresh start — play today to begin a new week",
     /* #283 — goal badges */
     badgeTile: "Badges",
     badgeTitle: "🏅 Badge Book",
@@ -1075,6 +1083,8 @@ export const STR: Record<Lang, Strings> = {
     freezePill: (n) => `🧊 ${n}`,
     freezeEarnedSpeak: "You earned a freeze token — your streak is safe!",
     freezeSpentSpeak: "A freeze token saved your streak — keep going!",
+    // #1472 — a held token can't cover 2+ missed days: say it gently.
+    freezeNotEnough: (n) => `Your 🧊 covers one missed day, but ${n} days passed — fresh start 🌱`,
     /* #288 — kid-friendly voice settings */
     voiceFunTitle: "🗣️ Nova's Voice",
     voiceFunSoft: "🔉 Soft",
@@ -1514,6 +1524,8 @@ export const STR: Record<Lang, Strings> = {
     novaTapHint: "🦉 Tap Nova!",
     novaCoins: (n) => `${n} coins`,
     novaStreak: (n) => `${n}-day streak`,
+    // #1474 — streak badge teaser: names tomorrow's calendar reward.
+    streakTomorrow: (n) => `tomorrow +${n} 🪙`,
     novaCareFed: "Feed",
     novaCarePlay: "Play",
     novaShop: "Outfit shop",
@@ -1761,6 +1773,8 @@ export const STR: Record<Lang, Strings> = {
     calendarClaimed: "✓ পাওয়া গেছে",
     calendarLocked: "🔒",
     calendarClaimSpeak: (name, n) => `${name}, দৈনিক পুরস্কার পেয়েছো — ${n} কয়েন! 🎉`,
+    // #1473 — warm fresh-start cue after a missed day (no guilt).
+    calendarFreshStart: "🌱 নতুন শুরু — আজ খেললে নতুন সপ্তাহ শুরু হবে",
     /* #283 — goal badges */
     badgeTile: "ব্যাজ",
     badgeTitle: "🏅 ব্যাজ বই",
@@ -1819,6 +1833,8 @@ export const STR: Record<Lang, Strings> = {
     freezePill: (n) => `🧊 ${bnNum(n)}`,
     freezeEarnedSpeak: "তুমি ফ্রিজ টোকেন পেয়েছো — তোমার ধারা নিরাপদ!",
     freezeSpentSpeak: "একটা ফ্রিজ টোকেন তোমার ধারা বাঁচিয়েছে — চালিয়ে যাও!",
+    // #1472 — a held token can't cover 2+ missed days: say it gently.
+    freezeNotEnough: (n) => `তোমার 🧊 একদিন বাঁচায়, কিন্তু ${bnNum(n)} দিন পেরিয়ে গেছে — নতুন শুরু 🌱`,
     /* #288 — kid-friendly voice settings */
     voiceFunTitle: "🗣️ নোভার কণ্ঠ",
     voiceFunSoft: "🔉 নরম",
@@ -2258,6 +2274,8 @@ export const STR: Record<Lang, Strings> = {
     novaTapHint: "🦉 নোভা চাপো!",
     novaCoins: (n) => `${n} কয়েন`,
     novaStreak: (n) => `${n} দিনের ধারা`,
+    // #1474 — streak badge teaser: names tomorrow's calendar reward.
+    streakTomorrow: (n) => `আগামীকাল +${bnNum(n)} 🪙`,
     novaCareFed: "খাওয়াও",
     novaCarePlay: "খেলাও",
     novaShop: "পোশাকের দোকান",
