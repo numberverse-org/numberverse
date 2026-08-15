@@ -1880,7 +1880,7 @@ export class NovaScene extends Phaser.Scene {
   }
 
   private actButton(act: ActivityDef) {
-    const K = makeTex(this, "nv-act-card", 74, 78, (ctx, w, h) => {
+    const K = makeTex(this, "nv-act-card", 74, 84, (ctx, w, h) => {
       ctx.shadowColor = "rgba(0,0,0,0.3)";
       ctx.shadowBlur = 10;
       ctx.shadowOffsetY = 3;
@@ -1898,8 +1898,8 @@ export class NovaScene extends Phaser.Scene {
     const c = this.add.container(0, 0, [
       this.add.image(0, 0, K),
       this.add.text(0, -11, act.emoji, txt(26, "#ffffff", { bold: true, shadow: false })).setOrigin(0.5),
-      this.add.text(0, 29, this.lang === "bn" ? act.nameBn : act.name, txt(10, "#23203f", { bold: true, shadow: false, wrap: 68 })).setOrigin(0.5),
-    ]).setSize(74, 78).setDepth(301);
+      this.add.text(0, 27, this.lang === "bn" ? act.nameBn : act.name, txt(14, "#23203f", { bold: true, shadow: false, wrap: 68 })).setOrigin(0.5),
+    ]).setSize(74, 84).setDepth(301);
     c.setInteractive({ useHandCursor: true });
     c.on("pointerdown", () => {
       pop();
@@ -2145,10 +2145,19 @@ export class NovaScene extends Phaser.Scene {
       this.actDizzyEgg();
       return;
     }
-    // mini-game cards launch whole scenes — keep the surprise pat to animations
-    const plain = ACTIVITIES.filter((a) => !a.scene);
-    const act = plain[Phaser.Math.Between(0, plain.length - 1)];
-    this.runActivity(act.id);
+    // Tap me to play picks from every activity: quick care reactions AND the
+    // full mini-game scenes — the fun panel should never be the only way in.
+    const act = ACTIVITIES[Phaser.Math.Between(0, ACTIVITIES.length - 1)];
+    if (act.scene) {
+      this.scene.launch(act.scene, {
+        kidId: this.kidId,
+        kidName: this.kidName,
+        onBack: () => this.returnFromMiniGame(act.scene!),
+      });
+      this.scene.pause("Nova");
+    } else {
+      this.runActivity(act.id);
+    }
   }
 
   /** The secret rapid-pat reaction — full spin, cross-eyes, star-rush. */
@@ -2892,7 +2901,7 @@ export class NovaScene extends Phaser.Scene {
     this.wingTimer = this.time.delayedCall(Phaser.Math.Between(3800, 7200), () => {
       const side = Math.random() > 0.5 ? this.wingL : this.wingR;
       const flip = side === this.wingL ? 1 : -1;
-      this.tweens.add({ targets: side, angle: -6 * flip + -10 * flip, duration: 180, yoyo: true, ease: "Sine.easeInOut" });
+      this.tweens.add({ targets: side, angle: -16 * flip, duration: 180, yoyo: true, ease: "Sine.easeInOut" });
       this.scheduleWing();
     });
   }
