@@ -4,10 +4,13 @@ import { pop } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
 import { useKidStore, defaultNova, speciesEmoji } from "../store";
+
+const PET_STROKE_HAPPY = ["petStrokeHappy0", "petStrokeHappy1", "petStrokeHappy2", "petStrokeHappy3"] as const;
 
 /**
  * 💛 PET STROKE — pet mini-game #599 (docs/plans/104-pet-minigames.md).
@@ -18,22 +21,7 @@ import { useKidStore, defaultNova, speciesEmoji } from "../store";
  * keeps the scene smooth.
  */
 
-const T = {
-  en: {
-    title: "💛 Pet Nova",
-    hint: "Stroke Nova to fill her with love!",
-    happy: ["Mmm… 😊", "I love that! 💛", "So cozy… 💫", "Again, please! 🥰"],
-    full: "Nova is full of love! 💛💛💛",
-    close: "✕",
-  },
-  bn: {
-    title: "💛 নোভাকে আদর করো",
-    hint: "নোভাকে আদর করো, ভালোবাসা জমাও!",
-    happy: ["আহ… 😊", "ওটা ভালো লাগে! 💛", "কী আরাম… 💫", "আবার! 🥰"],
-    full: "নোভা ভালোবাসায় ভরা! 💛💛💛",
-    close: "✕",
-  },
-} as const;
+
 
 const MAX_HEARTS = 40; // particle cap (avoid perf hit)
 const LOVE_TARGET = 18; // strokes to fill the love meter
@@ -72,23 +60,21 @@ export class PetStrokeScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("petStrokeTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("petStrokeHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.loveText = this.add
       .text(this.scale.width / 2, 108 + SAT(), "💛 0", txt(24, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -118,13 +104,13 @@ export class PetStrokeScene extends Phaser.Scene {
     this.loveText.setText(`💛 ${this.love}`);
     this.wiggle();
     if (this.love % LOVE_MSG_EVERY === 0) {
-      speak(this.t().happy[Phaser.Math.Between(0, this.t().happy.length - 1)]);
+      speak(tr(PET_STROKE_HAPPY[Phaser.Math.Between(0, PET_STROKE_HAPPY.length - 1)]));
     }
     if (this.love >= LOVE_TARGET) {
       this.full = true;
       pop();
       this.bigBurst();
-      speak(this.t().full);
+      speak(tr("petStrokeFull"));
       this.time.delayedCall(2500, () => {
         this.full = false;
         this.love = 0;
@@ -187,7 +173,7 @@ export class PetStrokeScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn || !this.loveText) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.loveText.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

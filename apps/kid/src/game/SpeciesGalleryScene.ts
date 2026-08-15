@@ -4,6 +4,7 @@ import { pop } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import {
@@ -22,24 +23,7 @@ import {
  * adopted pets) → friendly empty state. Feeds the Zookeeper badge. No coin.
  */
 
-const T = {
-  en: {
-    title: "🐣 Species Gallery",
-    hint: "Tap a stage to see your pet evolve!",
-    adopted: "Adopted",
-    locked: "Grows to unlock",
-    empty: "Adopt a pet to see its evolution here!",
-    close: "✕",
-  },
-  bn: {
-    title: "🐣 প্রজাতির গ্যালারি",
-    hint: "স্তরে ছুঁয়ে তোমার পোষা প্রাণীর বিবর্তন দেখো!",
-    adopted: "অবলম্বিত",
-    locked: "বড় করে আনলক করো",
-    empty: "এখানে বিবর্তন দেখতে একটি পোষা প্রাণী নাও!",
-    close: "✕",
-  },
-} as const;
+
 
 export class SpeciesGalleryScene extends Phaser.Scene {
   private kidId = "";
@@ -63,24 +47,22 @@ export class SpeciesGalleryScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("speciesGalleryTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("speciesGalleryHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.status = this.add
       .text(this.scale.width / 2, this.scale.height * 0.4, "", txt(20, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -91,7 +73,7 @@ export class SpeciesGalleryScene extends Phaser.Scene {
     const adopted = nova.adoptedPets ?? [];
     const owned = adopted.length > 0 || nova.species !== "owl" ? new Set([nova.species, ...adopted]) : new Set([nova.species]);
     if (owned.size === 0) {
-      this.status.setText(this.t().empty);
+      this.status.setText(tr("speciesGalleryEmpty"));
       return;
     }
     const species = NOVA_SPECIES.filter((sp) => owned.has(sp.id));
@@ -121,7 +103,7 @@ export class SpeciesGalleryScene extends Phaser.Scene {
         .text(0, 40, label, txt(18, "#ffffff", { bold: true }))
         .setOrigin(0.5);
       const tag = this.add
-        .text(0, 64, sp.cost === 0 ? this.t().adopted : this.t().locked, txt(13, NV_GOLD, { bold: true }))
+        .text(0, 64, sp.cost === 0 ? tr("speciesGalleryAdopted") : tr("speciesGalleryLocked"), txt(13, NV_GOLD, { bold: true }))
         .setOrigin(0.5);
       card.add([name, tag]);
     });
@@ -129,7 +111,7 @@ export class SpeciesGalleryScene extends Phaser.Scene {
 
   private layout() {
     if (!this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());
     if (this.status) this.status.setPosition(this.scale.width / 2, this.scale.height * 0.4);

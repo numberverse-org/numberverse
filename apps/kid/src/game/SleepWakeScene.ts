@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -18,24 +19,7 @@ import { useKidStore, defaultNova, todayIso, speciesEmoji } from "../store";
  * at night is never blocked, just sees the sleepy state. No coin.
  */
 
-const T = {
-  en: {
-    title: "🌙 Sleep & Wake",
-    hint: "At night Nova sleeps… in the morning she wakes!",
-    zzz: "Zzz… 💤",
-    wake: (name: string) => `Good morning, ${name}! Nova's awake! ☀️`,
-    tapped: "Huh? Whoo? ☀️",
-    close: "✕",
-  },
-  bn: {
-    title: "🌙 ঘুম ও জাগরণ",
-    hint: "রাতে নোভা ঘুমায়… সকালে জেগে ওঠে!",
-    zzz: "ঘুম… 💤",
-    wake: (name: string) => `শুভ সকাল, ${name}! নোভা জেগেছে! ☀️`,
-    tapped: "হুঁ? হু? ☀️",
-    close: "✕",
-  },
-} as const;
+
 
 export class SleepWakeScene extends Phaser.Scene {
   private kidId = "";
@@ -70,24 +54,22 @@ export class SleepWakeScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("sleepWakeTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("sleepWakeHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.status = this.add
       .text(this.scale.width / 2, this.scale.height * 0.4, "", txt(20, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -116,7 +98,7 @@ export class SleepWakeScene extends Phaser.Scene {
     if (this.asleep) {
       this.nova.setAlpha(0.55);
       this.zzz = this.add
-        .text(this.scale.width / 2 + 70, this.scale.height - 170 - SAB(), this.t().zzz, txt(34, "#ffffff", { bold: true }))
+        .text(this.scale.width / 2 + 70, this.scale.height - 170 - SAB(), tr("sleepWakeZzz"), txt(34, "#ffffff", { bold: true }))
         .setOrigin(0.5)
         .setDepth(200);
       if (!this.reduced) {
@@ -137,8 +119,8 @@ export class SleepWakeScene extends Phaser.Scene {
       const st = useKidStore.getState();
       const nova = this.kidId ? st.nova[this.kidId] ?? defaultNova() : defaultNova();
       const today = todayIso();
-      const T = this.t();
-      const msg = this.name ? T.wake(this.name) : T.tapped;
+      const T = tr;
+      const msg = this.name ? tr("sleepWakeGreeting", { name: this.name }) : tr("sleepWakeTapped");
       if (nova.lastGreeted !== today) speak(msg);
       this.status.setText(msg);
       this.burst("☀️", 10);
@@ -167,7 +149,7 @@ export class SleepWakeScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.status.setPosition(this.scale.width / 2, this.scale.height * 0.4);
     this.closeBtn.setPosition(26, 30 + SAT());

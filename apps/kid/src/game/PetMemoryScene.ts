@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -24,26 +25,7 @@ import {
  * no timer, pressure-free. 1 coin on a clean board via novaChallengeReward.
  */
 
-const T = {
-  en: {
-    title: "🃏 Pet Memory",
-    hint: "Flip the cards & match the pets!",
-    match: "Match!",
-    done: "All matched! +1 🪙 🎉",
-    perfect: "Perfect memory! +2 🪙 ⭐",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🃏 পোষা প্রাণী মনে রাখো",
-    hint: "কার্ড উল্টাও আর মিল খুঁজে বের করো!",
-    match: "মিলেছে!",
-    done: "সব মিলেছে! +1 🪙 🎉",
-    perfect: "নিখুঁত স্মৃতি! +2 🪙 ⭐",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 // 6 distinct pet faces → 12 cards (two of each)
 const FACES = [
@@ -99,17 +81,15 @@ export class PetMemoryScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("petMemoryTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("petMemoryHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.msg = this.add
       .text(this.scale.width / 2, this.scale.height * 0.4, "", txt(18, "#ffffff", { bold: true }))
@@ -117,7 +97,7 @@ export class PetMemoryScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -189,7 +169,7 @@ export class PetMemoryScene extends Phaser.Scene {
         this.matchedCount += 1;
         a.matched = true;
         b.matched = true;
-        speak(this.t().match);
+        speak(tr("petMemoryMatch"));
         this.matchGlow(a);
         this.matchGlow(b);
         this.open = [];
@@ -251,8 +231,8 @@ export class PetMemoryScene extends Phaser.Scene {
     const perfect = this.attempts <= FACES.length;
     const coins = challengeQualityCoins(perfect ? 1 : 0.5);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
-    const T = this.t();
-    const msgText = granted > 0 ? (perfect ? T.perfect : T.done) : T.cap;
+    const T = tr;
+    const msgText = granted > 0 ? (perfect ? T("petMemoryPerfect") : T("petMemoryDone")) : T("petCap");
     speak(msgText);
     this.showMsg(msgText, 1700);
     this.time.delayedCall(2100, () => {
@@ -269,7 +249,7 @@ export class PetMemoryScene extends Phaser.Scene {
 
   private layout() {
     if (!this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());
     this.msg.setPosition(this.scale.width / 2, this.scale.height * 0.4);

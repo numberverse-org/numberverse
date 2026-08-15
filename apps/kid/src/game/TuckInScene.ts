@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -17,28 +18,7 @@ import { useKidStore, defaultNova, speciesEmoji } from "../store";
  * calm > grind. Muted device → the scene completes visually.
  */
 
-const T = {
-  en: {
-    title: "🌙 Tuck-in",
-    hint: "Get Nova ready for bed!",
-    dim: "Tap to dim the lights",
-    tuck: "Tap to tuck Nova in",
-    night: "Tap to say goodnight",
-    goodnight: "Goodnight, Nova… sweet dreams! 🌙💤",
-    newNight: "🌞 New night",
-    close: "✕",
-  },
-  bn: {
-    title: "🌙 রাতে ঘুম",
-    hint: "নোভাকে ঘুমের জন্য তৈরি করো!",
-    dim: "আলো কমানোর জন্য ছোঁও",
-    tuck: "নোভাকে কম্বল দিতে ছোঁও",
-    night: "শুভরাত্রি বলতে ছোঁও",
-    goodnight: "শুভরাত্রি, নোভা… মিষ্টি স্বপ্ন! 🌙💤",
-    newNight: "🌞 নতুন রাত",
-    close: "✕",
-  },
-} as const;
+
 
 export class TuckInScene extends Phaser.Scene {
   private kidId = "";
@@ -76,20 +56,18 @@ export class TuckInScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("tuckInTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("tuckInHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -132,10 +110,10 @@ export class TuckInScene extends Phaser.Scene {
   }
 
   private updateCta() {
-    const T = this.t();
-    if (this.step === 0) this.hint.setText(T.dim);
-    else if (this.step === 1) this.hint.setText(T.tuck);
-    else this.hint.setText(T.night);
+    const T = tr;
+    if (this.step === 0) this.hint.setText(T("tuckInDim"));
+    else if (this.step === 1) this.hint.setText(T("tuckInTuck"));
+    else this.hint.setText(T("tuckInNight"));
   }
 
   private advance() {
@@ -155,14 +133,14 @@ export class TuckInScene extends Phaser.Scene {
     } else {
       this.done = true;
       pop();
-      const T = this.t();
-      speak(T.goodnight);
+      const T = tr;
+      speak(T("tuckInGoodnight"));
       if (this.reduced) this.nightText.setAlpha(1);
       else this.tweens.add({ targets: this.nightText, alpha: 1, duration: 500 });
       this.showStars();
       win();
       this.time.delayedCall(1600, () => {
-        this.resetBtn.setText(T.newNight).setAlpha(1);
+        this.resetBtn.setText(T("tuckInNewNight")).setAlpha(1);
         this.resetBtn.once("pointerdown", () => this.resetNight());
       });
     }
@@ -199,7 +177,7 @@ export class TuckInScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.tapZone.setSize(this.scale.width, this.scale.height);
     this.dim.setSize(this.scale.width, this.scale.height);
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());

@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,32 +26,7 @@ import { renderShareCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData 
  * PNG metadata stays zero (respects test-png-metadata.mjs).
  */
 
-const T = {
-  en: {
-    title: "📸 Photo Booth",
-    hint: "Tap to change Nova's pose, then snap!",
-    pose: "Pose",
-    snap: "📸 Snap!",
-    sharing: "Making your card…",
-    share: "📲 Share",
-    again: "🔄 Snap again",
-    shareReward: "Shared Nova's photo! +5 🪙 🎉",
-    cap: "You earned ALL your share reward today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "📸 ফটো বুথ",
-    hint: "নোভার ভঙ্গি বদলাতে ছোঁও, তারপর ছবি তোলো!",
-    pose: "ভঙ্গি",
-    snap: "📸 ছবি!",
-    sharing: "কার্ড তৈরি হচ্ছে…",
-    share: "📲 শেয়ার",
-    again: "🔄 আবার ছবি",
-    shareReward: "নোভার ছবি শেয়ার করেছ! +5 🪙 🎉",
-    cap: "আজ শেয়ার রিওয়ার্ড সব পেয়েছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const POSES = ["🙂", "😄", "🥳", "😉", "🤩", "😜"] as const;
 
@@ -87,23 +63,21 @@ export class PhotoBoothScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("photoBoothTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("photoBoothHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.status = this.add
       .text(this.scale.width / 2, 108 + SAT(), "", txt(16, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -138,14 +112,14 @@ export class PhotoBoothScene extends Phaser.Scene {
   }
 
   private drawButtons() {
-    const T = this.t();
+    const T = tr;
     this.poseBtn = this.add
-      .text(0, 0, `🎭 ${T.pose}`, txt(20, "#ffffff", { bold: true }))
+      .text(0, 0, `🎭 ${T("photoBoothPose")}`, txt(20, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.changePose());
     this.snapBtn = this.add
-      .text(0, 0, T.snap, txt(22, "#ffffff", { bold: true }))
+      .text(0, 0, T("photoBoothSnap"), txt(22, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.snap());
@@ -170,8 +144,8 @@ export class PhotoBoothScene extends Phaser.Scene {
     this.status.setData("busy", true);
     pop();
     win();
-    this.status.setText(this.t().sharing);
-    const T = this.t();
+    this.status.setText(tr("photoBoothSharing"));
+    const T = tr;
     try {
       // build a pet share card (reuses the exact share-card PNG path)
       const st = useKidStore.getState();
@@ -179,7 +153,7 @@ export class PhotoBoothScene extends Phaser.Scene {
       const species = speciesById(nova.species);
       const name = this.lang === "bn" ? species.nameBn : species.name;
       const data: ShareCardData = {
-        title: T.title,
+        title: T("photoBoothTitle"),
         name,
         avatar: `${speciesEmoji(nova.species, nova.petStage)} ${POSES[this.poseIdx]}`,
         stars: nova.petStage,
@@ -200,8 +174,8 @@ export class PhotoBoothScene extends Phaser.Scene {
       }
       // once-per-day share reward (same loop as parent panel)
       const granted = useKidStore.getState().novaShareReward(this.kidId);
-      if (granted) speak(T.shareReward);
-      this.status.setText(res === "shared" ? T.share : T.again);
+      if (granted) speak(T("photoBoothShareReward"));
+      this.status.setText(res === "shared" ? T("photoBoothShare") : T("photoBoothAgain"));
     } finally {
       this.time.delayedCall(1600, () => this.status.setData("busy", false));
     }
@@ -209,7 +183,7 @@ export class PhotoBoothScene extends Phaser.Scene {
 
   private layout() {
     if (!this.hint || !this.closeBtn || !this.nova) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.status.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

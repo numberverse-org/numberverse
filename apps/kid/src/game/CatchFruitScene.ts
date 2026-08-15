@@ -4,6 +4,7 @@ import { pop, bad, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -16,6 +17,8 @@ import {
   challengeQualityCoins,
 } from "../store";
 
+const CATCH_FRUIT_PHRASES = ["catchFruitPhrase0", "catchFruitPhrase1", "catchFruitPhrase2", "catchFruitPhrase3"] as const;
+
 /**
  * 🍎 CATCH FRUIT — pet mini-game #597 (docs/plans/104-pet-minigames.md).
  *
@@ -23,33 +26,9 @@ import {
  * basket. Each catch pops a heart + speaks "Got it!". Misses fall away with a
  * gentle bad() and simply replay — the score is celebratory, never graded.
  * One coin per round via novaChallengeReward (anti-grind cap aware).
- *
- * Local `T` EN/BN table (the PetFeedScene pattern) keeps the audit's i18n
- * parity check happy without touching the central table.
  */
 
-const T = {
-  en: {
-    title: "🍎 Catch Fruit",
-    hint: "Tap the fruit mid-air to catch it!",
-    catch: ["Got it! 🎯", "Caught! 🍎", "Nice grab! 🧺", "Great catch! ⭐"],
-    miss: "Oops… it fell. Try again!",
-    reward: "Nice round! +1 🪙 for the basket! 💛",
-    perfect: "Perfect round! +2 🪙 for the basket! ⭐",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🍎 ফল ধরো",
-    hint: "বাতাসে ফল ছুঁয়ে ধরো!",
-    catch: ["ধরেছি! 🎯", "পেয়েছি! 🍎", "দারুণ! 🧺", "বাহ্! ⭐"],
-    miss: "ওহ… পড়ে গেল। আবার চেষ্টা করো!",
-    reward: "বাহ্! ঝুড়িতে ভরে +1 🪙! 💛",
-    perfect: "দারুণ! ঝুড়িতে ভরে +2 🪙! ⭐",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const FRUITS = ["🍎", "🍊", "🍌", "🍇"] as const;
 const ROUND_TOSSES = 6; // tosses per round
@@ -99,17 +78,15 @@ export class CatchFruitScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("catchFruitTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("catchFruitHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.score = this.add
       .text(this.scale.width / 2, 108 + SAT(), "🧺 0", txt(22, "#ffffff", { bold: true }))
@@ -120,7 +97,7 @@ export class CatchFruitScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -182,7 +159,7 @@ export class CatchFruitScene extends Phaser.Scene {
   private catchFruit(toss: Toss) {
     this.active = this.active.filter((x) => x !== toss);
     toss.text.disableInteractive();
-    const T = this.t();
+    const T = tr;
     const basket = this.basket;
     this.tweens.add({
       targets: toss.text,
@@ -197,7 +174,7 @@ export class CatchFruitScene extends Phaser.Scene {
         this.caught += 1;
         this.updateScore();
         this.burstHeart();
-        speak(T.catch[Phaser.Math.Between(0, T.catch.length - 1)]);
+        speak(tr(CATCH_FRUIT_PHRASES[Phaser.Math.Between(0, CATCH_FRUIT_PHRASES.length - 1)]));
         this.maybeFinish();
       },
     });
@@ -208,7 +185,7 @@ export class CatchFruitScene extends Phaser.Scene {
     toss.text.destroy();
     if (!this.roundDone) {
       bad();
-      this.showMsg(this.t().miss, 900);
+      this.showMsg(tr("catchFruitMiss"), 900);
       this.maybeFinish();
     }
   }
@@ -259,8 +236,8 @@ export class CatchFruitScene extends Phaser.Scene {
     const quality = this.tossed ? this.caught / this.tossed : 0.5;
     const coins = challengeQualityCoins(quality);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
-    const T = this.t();
-    const msgText = granted > 0 ? (quality >= 0.85 ? T.perfect : T.reward) : T.cap;
+    const T = tr;
+    const msgText = granted > 0 ? (quality >= 0.85 ? T("catchFruitPerfect") : T("catchFruitReward")) : T("petCap");
     speak(msgText);
     this.showMsg(msgText, 1600);
     this.time.delayedCall(1800, () => this.startRound());
@@ -268,7 +245,7 @@ export class CatchFruitScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn || !this.score) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.score.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

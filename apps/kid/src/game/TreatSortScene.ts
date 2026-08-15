@@ -4,6 +4,7 @@ import { pop, bad, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,28 +26,7 @@ import {
  * treats), pressure-free.
  */
 
-const T = {
-  en: {
-    title: "🧺 Sort the Treats",
-    hint: "Drag each treat into its bowl!",
-    nice: "Nice! 🎉",
-    wrong: "That one goes in the other bowl! 🤗",
-    reward: "All sorted! Nova is full! +1 🪙 💛",
-    perfect: "Perfect sort! Nova is delighted! +2 🪙 ⭐",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🧺 খাবার সাজাও",
-    hint: "প্রতিটা খাবার নিজের বাটিতে দাও!",
-    nice: "বাহ্! 🎉",
-    wrong: "ওটা অন্য বাটিতে যাবে! 🤗",
-    reward: "সব সাজানো! নোভার পেট ভরা! +1 🪙 💛",
-    perfect: "নিখুঁত সাজানো! নোভা খুব খুশি! +2 🪙 ⭐",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const TYPES = [
   { key: "fruit", label: "🍎", name: "Fruit", nameBn: "ফল", items: ["🍎", "🍌", "🍇"] },
@@ -97,17 +77,15 @@ export class TreatSortScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("treatSortTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("treatSortHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.countText = this.add
       .text(this.scale.width / 2, 108 + SAT(), "🧺 0/9", txt(22, "#ffffff", { bold: true }))
@@ -118,7 +96,7 @@ export class TreatSortScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -234,7 +212,7 @@ export class TreatSortScene extends Phaser.Scene {
       });
       this.placed += 1;
       this.countText.setText(`🧺 ${this.placed}/9`);
-      speak(this.t().nice);
+      speak(tr("treatSortNice"));
       this.bowlPop(best);
       if (this.placed >= 9) {
         this.roundDone = true;
@@ -245,7 +223,7 @@ export class TreatSortScene extends Phaser.Scene {
       bad();
       this.wrongs += 1;
       if (best) this.wiggleBowl(best);
-      speak(this.t().wrong);
+      speak(tr("treatSortWrong"));
       this.tweens.killTweensOf(go);
       this.tweens.add({
         targets: go,
@@ -274,8 +252,8 @@ export class TreatSortScene extends Phaser.Scene {
     const perfect = this.wrongs === 0;
     const coins = challengeQualityCoins(perfect ? 1 : 0.5);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
-    const T = this.t();
-    const msgText = granted > 0 ? (perfect ? T.perfect : T.reward) : T.cap;
+    const T = tr;
+    const msgText = granted > 0 ? (perfect ? T("treatSortPerfect") : T("treatSortReward")) : T("petCap");
     speak(msgText);
     this.showMsg(msgText, 1700);
     this.time.delayedCall(2000, () => this.scene.restart({ kidId: this.kidId, onBack: this.onBack }));
@@ -289,7 +267,7 @@ export class TreatSortScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn || !this.countText) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.countText.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -15,6 +16,8 @@ import {
   speciesEmoji,
 } from "../store";
 
+const PET_DANCE_MOVES = ["petDanceMove0", "petDanceMove1", "petDanceMove2", "petDanceMove3"] as const;
+
 /**
  * 🪩 DANCE PARTY — pet mini-game #598 (docs/plans/104-pet-minigames.md).
  *
@@ -24,24 +27,7 @@ import {
  * novaChallengeReward (anti-grind cap aware).
  */
 
-const T = {
-  en: {
-    title: "🪩 Dance Party",
-    hint: "Tap to the beat — make Nova dance!",
-    moves: ["Let's dance! 🕺", "Woohoo! 🎉", "Keep it going! 🔥", "You've got the beat! ⭐"],
-    party: "Party time! Nova danced it all out! +1 🪙 🎉",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🪩 ডান্স পার্টি",
-    hint: "তালে তালে ছোঁও — নোভাকে নাচাও!",
-    moves: ["চল নাচি! 🕺", "উহু! 🎉", "চালিয়ে যাও! 🔥", "তাল পেয়েছ! ⭐"],
-    party: "পার্টি টাইম! নোভা নেচে উঠল! +1 🪙 🎉",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const PARTY_TAPS = 12; // taps to fill the party meter
 const MOVES = ["🕺", "🌀", "🦘", "✨", "💃", "🪩"] as const;
@@ -78,23 +64,21 @@ export class PetDanceScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("petDanceTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("petDanceHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meterText = this.add
       .text(this.scale.width / 2, 108 + SAT(), "🎵 0", txt(24, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -130,11 +114,11 @@ export class PetDanceScene extends Phaser.Scene {
     this.taps += 1;
     this.meterText.setText(`🎵 ${Math.min(this.taps, PARTY_TAPS)}`);
     this.danceMove();
-    if (this.taps % 3 === 0) speak(this.t().moves[Phaser.Math.Between(0, this.t().moves.length - 1)]);
+    if (this.taps % 3 === 0) speak(tr(PET_DANCE_MOVES[Phaser.Math.Between(0, PET_DANCE_MOVES.length - 1)]));
     if (this.taps >= PARTY_TAPS) {
       win();
       const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
-      speak(granted > 0 ? this.t().party : this.t().cap);
+      speak(granted > 0 ? tr("petDanceParty") : tr("petCap"));
       this.burstEmoji("🎉", 10, 34);
       this.time.delayedCall(2400, () => {
         this.taps = 0;
@@ -175,7 +159,7 @@ export class PetDanceScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn || !this.meterText) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.meterText.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

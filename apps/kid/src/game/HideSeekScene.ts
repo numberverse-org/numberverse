@@ -4,6 +4,7 @@ import { pop, bad, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,28 +26,7 @@ import {
  * find via novaChallengeReward (cap-aware). Positions are safe-area aware.
  */
 
-const T = {
-  en: {
-    title: "🙈 Hide & Seek",
-    hint: "Find Nova behind the things!",
-    found: "You found me! 🎉",
-    hint2: "Look there — I'm right behind it! 👀",
-    reward: "Peek-a-boo! +1 🪙 💛",
-    perfect: "Peek-a-boo! Found me first try! +2 🪙 ⭐",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🙈 লুকোচুরি",
-    hint: "জিনিসের আড়ালে নোভাকে খুঁজে বের করো!",
-    found: "পেয়ে গেছ! 🎉",
-    hint2: "ওদিকে দেখো — আমি তার পেছনে! 👀",
-    reward: "কু-কু! +1 🪙 💛",
-    perfect: "কু-কু! প্রথম চেষ্টাতেই পেয়ে গেছ! +2 🪙 ⭐",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const OBJECTS = ["🌳", "🪨", "🌻", "🌸", "🏠"] as const;
 
@@ -90,17 +70,15 @@ export class HideSeekScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("hideSeekTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("hideSeekHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.msg = this.add
       .text(this.scale.width / 2, this.scale.height * 0.36, "", txt(18, "#ffffff", { bold: true }))
@@ -108,7 +86,7 @@ export class HideSeekScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -156,8 +134,8 @@ export class HideSeekScene extends Phaser.Scene {
       this.nova.setPosition(x, y);
       this.tweens.add({ targets: this.nova, y: y - 46, duration: 420, ease: "Back.easeOut" });
       this.tweens.add({ targets: t, alpha: 0.25, duration: 300, yoyo: true, repeat: 1 });
-      const T = this.t();
-      speak(T.found);
+      const T = tr;
+      speak(T("hideSeekFound"));
       this.time.delayedCall(600, () => this.finishRound());
     } else {
       bad();
@@ -171,7 +149,7 @@ export class HideSeekScene extends Phaser.Scene {
           if (hid && !this.reduced) {
             this.tweens.add({ targets: hid.text, scale: 1.14, duration: 500, yoyo: true, repeat: 3 });
           }
-          speak(this.t().hint2);
+          speak(tr("hideSeekHint2"));
         }
       });
     }
@@ -189,8 +167,8 @@ export class HideSeekScene extends Phaser.Scene {
     const perfect = this.misses === 0;
     const coins = challengeQualityCoins(perfect ? 1 : 0.5);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
-    const T = this.t();
-    const msgText = granted > 0 ? (perfect ? T.perfect : T.reward) : T.cap;
+    const T = tr;
+    const msgText = granted > 0 ? (perfect ? T("hideSeekPerfect") : T("hideSeekReward")) : T("petCap");
     speak(msgText);
     this.showMsg(msgText, 1500);
     this.time.delayedCall(1900, () => {
@@ -209,7 +187,7 @@ export class HideSeekScene extends Phaser.Scene {
 
   private layout() {
     if (!this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());
     this.msg.setPosition(this.scale.width / 2, this.scale.height * 0.36);

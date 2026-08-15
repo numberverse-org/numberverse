@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak, bnNumber, enNumber, cancelSpeech } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -14,6 +15,8 @@ import {
   NOVA_DAILY_CAP,
   speciesEmoji,
 } from "../store";
+
+const BUBBLE_POP_PHRASES = ["bubblePopPhrase0", "bubblePopPhrase1", "bubblePopPhrase2", "bubblePopPhrase3"] as const;
 
 /**
  * 🫧 BUBBLE POP — pet mini-game #605 (docs/plans/104-pet-minigames.md).
@@ -26,24 +29,7 @@ import {
  * Bubbles are DRAWN circles (no emoji-render risk), rise with a gentle wobble.
  */
 
-const T = {
-  en: {
-    title: "🫧 Bubble Pop",
-    hint: "Pop the bubbles & count with Nova!",
-    pop: ["Pop! 💥", "Bubble! 🫧", "Pop-pop! ✨", "Got one! 🎈"],
-    reward: "You counted to TEN! +1 🪙 💛",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🫧 বুদবুদ ফুটাও",
-    hint: "বুদবুদ ফুটাও আর নোভার সাথে গুনো!",
-    pop: ["ফুট! 💥", "বুদবুদ! 🫧", "ফুটফুট! ✨", "পেয়েছি! 🎈"],
-    reward: "দশ পর্যন্ত গুনলে! +1 🪙 💛",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const ROUND_POPS = 10; // pop this many to finish a round (counts to ten)
 const RISE_SPEED = 150; // px/second (reduced-motion slows it)
@@ -90,17 +76,15 @@ export class BubblePopScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("bubblePopTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("bubblePopHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.countText = this.add
       .text(this.scale.width / 2, 108 + SAT(), "💥 0", txt(24, "#ffffff", { bold: true }))
@@ -111,7 +95,7 @@ export class BubblePopScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -167,14 +151,14 @@ export class BubblePopScene extends Phaser.Scene {
     if (this.roundDone) return;
     this.bubble = null;
     b.c.destroy();
-    const T = this.t();
+    const T = tr;
     pop();
     this.count += 1;
     this.updateCount();
     // count aloud — the point of the game
     cancelSpeech();
     speak(this.lang === "bn" ? bnNumber(this.count) : enNumber(this.count));
-    speak(T.pop[Phaser.Math.Between(0, T.pop.length - 1)], { cancel: false });
+    speak(tr(BUBBLE_POP_PHRASES[Phaser.Math.Between(0, BUBBLE_POP_PHRASES.length - 1)]), { cancel: false });
     this.burstRing(b.c.x, b.c.y);
     if (this.count >= ROUND_POPS) {
       this.roundDone = true;
@@ -224,20 +208,20 @@ export class BubblePopScene extends Phaser.Scene {
   private finishRound() {
     win();
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
-    const T = this.t();
+    const T = tr;
     if (granted > 0) {
-      speak(T.reward);
-      this.showMsg(T.reward, 1600);
+      speak(T("bubblePopReward"));
+      this.showMsg(T("bubblePopReward"), 1600);
     } else {
-      speak(T.cap);
-      this.showMsg(T.cap, 1600);
+      speak(T("petCap"));
+      this.showMsg(T("petCap"), 1600);
     }
     this.time.delayedCall(1800, () => this.startRound());
   }
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn || !this.countText) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.countText.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

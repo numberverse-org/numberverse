@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,26 +26,7 @@ import {
  * still hatched.
  */
 
-const T = {
-  en: {
-    title: "🥚 Hatch Time!",
-    hint: "Tap the egg to hatch your pet!",
-    tap: "Tap the egg!",
-    hatching: "Crack crack…!",
-    hatched: "It hatched! Say hi to your new pet! 🎉",
-    done: "New friend! 🐣✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🥚 ডিম ফোটার সময়!",
-    hint: "ডিম ছুঁয়ে তোমার পোষা প্রাণী বের করো!",
-    tap: "ডিম ছোঁও!",
-    hatching: "টক টক…!",
-    hatched: "ডিম ফুটেছে! তোমার নতুন পোষা প্রাণী! 🎉",
-    done: "নতুন বন্ধু! 🐣✨",
-    close: "✕",
-  },
-} as const;
+
 
 export class EggHatchScene extends Phaser.Scene {
   private kidId = "";
@@ -78,20 +60,18 @@ export class EggHatchScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("eggHatchTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("eggHatchHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -124,13 +104,13 @@ export class EggHatchScene extends Phaser.Scene {
       this.egg.destroy();
       this.baby.setAlpha(1);
       if (!this.reduced) this.tweens.add({ targets: this.baby, y: this.baby.y - 30, duration: 420, ease: "Back.easeOut" });
-      speak(this.t().hatched);
+      speak(tr("eggHatchHatched"));
       this.burstEmoji("🎉", 16, 36);
-      this.time.delayedCall(600, () => speak(this.t().done));
+      this.time.delayedCall(600, () => speak(tr("eggHatchDone")));
     } else {
       // egg wobbles — nearly there (kept still under reduced motion)
       if (!this.reduced) this.tweens.add({ targets: this.egg, angle: Phaser.Math.Between(-6, 6), duration: 90, yoyo: true, repeat: 1 });
-      if (this.taps === 1) speak(this.t().hatching);
+      if (this.taps === 1) speak(tr("eggHatchHatching"));
     }
   }
 
@@ -157,7 +137,7 @@ export class EggHatchScene extends Phaser.Scene {
 
   private layout() {
     if (!this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());
     const y = this.scale.height - 70 - SAB();

@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,24 +26,7 @@ import {
  * slows the arc + run.
  */
 
-const T = {
-  en: {
-    title: "🎾 Fetch",
-    hint: "Tap to throw the ball for Nova!",
-    good: "What a throw! +2 🪙 ⭐",
-    normal: "Good fetch! +1 🪙 💛",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🎾 বল আনো",
-    hint: "নোভার জন্য বল ছুঁড়ে দাও!",
-    good: "কী ছোঁড়া! +2 🪙 ⭐",
-    normal: "ভালো এনেছে! +1 🪙 💛",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const GRAVITY = 0.34; // ball arc px/frame² @60fps
 const FLIGHT_FRAMES = 44;
@@ -100,21 +84,19 @@ export class FetchScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private groundY() {
     return this.scale.height - 80 - SAB();
   }
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("fetchTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("fetchHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.msg = this.add
       .text(this.scale.width / 2, this.scale.height * 0.42, "", txt(18, "#ffffff", { bold: true }))
@@ -122,7 +104,7 @@ export class FetchScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -214,8 +196,8 @@ export class FetchScene extends Phaser.Scene {
     // 2-coin perfect tier, any normal throw is the 1-coin base tier.
     const coins = challengeQualityCoins(good ? 1 : 0.5);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
-    const T = this.t();
-    const msgText = granted <= 0 ? T.cap : good ? T.good : T.normal;
+    const T = tr;
+    const msgText = granted <= 0 ? T("petCap") : good ? T("fetchGood") : T("fetchNormal");
     speak(msgText);
     this.showMsg(msgText, 1600);
   }
@@ -228,7 +210,7 @@ export class FetchScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.tapZone.setSize(this.scale.width, this.scale.height);
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

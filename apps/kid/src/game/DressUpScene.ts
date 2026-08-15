@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -24,24 +25,7 @@ import {
  * patterns' principle. No coin.
  */
 
-const T = {
-  en: {
-    title: "🎩 Dress-up Nova",
-    hint: "Tap an outfit to dress Nova up!",
-    wearing: "Wearing",
-    none: "Tap an outfit!",
-    equipped: "Looking good! ✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🎩 নোভাকে সাজাও",
-    hint: "পোশাক ছুঁয়ে নোভাকে সাজাও!",
-    wearing: "পরছে",
-    none: "একটি পোশাক ছোঁও!",
-    equipped: "দারুণ দেখাচ্ছে! ✨",
-    close: "✕",
-  },
-} as const;
+
 
 export class DressUpScene extends Phaser.Scene {
   private kidId = "";
@@ -74,23 +58,21 @@ export class DressUpScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("dressUpTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("dressUpHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.status = this.add
-      .text(this.scale.width / 2, 108 + SAT(), T.none, txt(18, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 108 + SAT(), T("dressUpNone"), txt(18, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -150,7 +132,7 @@ export class DressUpScene extends Phaser.Scene {
     }
     pop();
     win();
-    speak(this.t().equipped);
+    speak(tr("dressUpEquipped"));
     this.updateBadge();
     if (!this.reduced) this.tweens.add({ targets: btn, scale: 0.92, duration: 90, yoyo: true });
   }
@@ -161,16 +143,16 @@ export class DressUpScene extends Phaser.Scene {
     const wearing = NOVA_OUTFITS.find((o) => o.id === nova.equipped);
     if (wearing) {
       this.wearBadge.setText(wearing.emoji);
-      this.status.setText(`${this.t().wearing}: ${this.lang === "bn" ? wearing.nameBn : wearing.name}`);
+      this.status.setText(`${tr("dressUpWearing")}: ${this.lang === "bn" ? wearing.nameBn : wearing.name}`);
     } else {
       this.wearBadge.setText("");
-      this.status.setText(this.t().none);
+      this.status.setText(tr("dressUpNone"));
     }
   }
 
   private layout() {
     if (!this.hint || !this.closeBtn || !this.nova) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.status.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

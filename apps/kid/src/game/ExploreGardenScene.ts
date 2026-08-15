@@ -4,7 +4,9 @@ import { gameBackground } from "./backgrounds";
 import { pop, click } from "./audio";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { txt, promptTxt, NV_GOLD } from "./ui";
+const EXPLORE_PROMPTS = ["exploreGardenPrompt0", "exploreGardenPrompt1", "exploreGardenPrompt2", "exploreGardenPrompt3", "exploreGardenPrompt4", "exploreGardenPrompt5"];
 import { SAT, SAB } from "./safeArea";
 
 /**
@@ -20,32 +22,7 @@ import { SAT, SAB } from "./safeArea";
 
 const PALETTE = ["🌸", "🐝", "🦋", "🪨", "🌱", "☀️", "🍄"] as const;
 
-const T = {
-  en: {
-    title: "🌱 Explore garden",
-    subtitle: "Plant anything you like — there is no wrong answer!",
-    prompts: [
-      "How many flowers did you plant?",
-      "Make a row of 5!",
-      "Can you plant three bees?",
-      "Plant a butterfly next to a flower!",
-      "Where will you put the sun?",
-      "Try a garden with more flowers than bees!",
-    ],
-  },
-  bn: {
-    title: "🌱 বাগান সাজাই",
-    subtitle: "যা খুশি লাগাও — কোনো ভুল নেই!",
-    prompts: [
-      "কতগুলো ফুল লাগিয়েছ?",
-      "পাঁচটার একটা সারি বানাও!",
-      "তিনটা মৌমাছি বসাতে পারো?",
-      "ফুলের পাশে একটা প্রজাপতি বসাও!",
-      "সূর্যকে কোথায় রাখবে?",
-      "মৌমাছির চেয়ে বেশি ফুলের বাগান বানাও!",
-    ],
-  },
-} as const;
+
 
 export class ExploreGardenScene extends Phaser.Scene {
   private lang: "en" | "bn" = "en";
@@ -80,18 +57,16 @@ export class ExploreGardenScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const copy = this.t();
+    const copy = tr;
     this.title = this.add
-      .text(this.scale.width / 2, 30 + SAT(), copy.title, txt(28, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), copy("exploreGardenTitle"), txt(28, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setDepth(70);
     this.subtitle = this.add
-      .text(this.scale.width / 2, 72 + SAT(), copy.subtitle, promptTxt(15))
+      .text(this.scale.width / 2, 72 + SAT(), copy("exploreGardenSubtitle"), promptTxt(15))
       .setOrigin(0.5)
       .setDepth(70);
     this.counter = this.add
@@ -263,11 +238,10 @@ export class ExploreGardenScene extends Phaser.Scene {
   }
 
   private speakPrompt() {
-    const prompts = [...this.t().prompts];
-    speak(Phaser.Math.RND.pick(prompts));
+    speak(tr(Phaser.Math.RND.pick(EXPLORE_PROMPTS)));
   }
 
   private counterText(): string {
-    return this.lang === "bn" ? `লাগানো: ${this.placedCount}` : `plants placed: ${this.placedCount}`;
+    return tr("exploreGardenCounter", { n: this.placedCount });
   }
 }

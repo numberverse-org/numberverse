@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -24,26 +25,7 @@ import {
  * confetti, no screen shake.
  */
 
-const T = {
-  en: {
-    title: "🎂 Pet Birthday!",
-    hint: "Tap the cake to celebrate Nova's big day!",
-    cake: "Tap the cake!",
-    party: "Happy birthday, Nova! 🎉🎂",
-    coins: `Party gift: +${"$"} coins! 🎁`,
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🎂 পোষা প্রাণীর জন্মদিন!",
-    hint: "নোভার বড় দিন উদযাপন করতে কেক ছোঁও!",
-    cake: "কেক ছোঁও!",
-    party: "শুভ জন্মদিন, নোভা! 🎉🎂",
-    coins: `পার্টির উপহার: +${"$"} কয়েন! 🎁`,
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 export class PetBirthdayScene extends Phaser.Scene {
   private kidId = "";
@@ -76,24 +58,22 @@ export class PetBirthdayScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("petBirthdayTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("petBirthdayHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.msg = this.add
       .text(this.scale.width / 2, this.scale.height * 0.4, "", txt(20, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -122,17 +102,17 @@ export class PetBirthdayScene extends Phaser.Scene {
     this.celebrated = true;
     pop();
     win();
-    speak(this.t().party);
+    speak(tr("petBirthdayParty"));
     this.burstEmoji("🎉", 18, 36);
     this.burstEmoji("🎂", 6, 30);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, NOVA_BIRTHDAY_COINS);
     if (granted > 0) {
-      const msgText = (this.lang === "bn" ? T.bn.coins : T.en.coins).replace("$", String(granted));
+      const msgText = tr("petBirthdayCoins", { n: granted });
       speak(msgText);
       this.msg.setText(msgText);
     } else {
-      speak(this.t().cap);
-      this.msg.setText(this.t().cap);
+      speak(tr("petCap"));
+      this.msg.setText(tr("petCap"));
     }
     this.time.delayedCall(2500, () => this.msg.setText(""));
   }
@@ -159,7 +139,7 @@ export class PetBirthdayScene extends Phaser.Scene {
 
   private layout() {
     if (!this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.msg.setPosition(this.scale.width / 2, this.scale.height * 0.4);
     this.closeBtn.setPosition(26, 30 + SAT());

@@ -4,6 +4,7 @@ import { pop, bad, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,30 +26,7 @@ import {
  * on a completed round via challengeQualityCoins (anti-grind cap aware).
  */
 
-const T = {
-  en: {
-    title: "🗣️ Nova Says",
-    hint: "Watch, then tap the same moves!",
-    watch: "Watch Nova… 👀",
-    yourTurn: "Your turn — tap the same moves! 👇",
-    again: "Almost! Watch again… 👀",
-    reward: "You remembered it! +1 🪙 💛",
-    perfect: "Perfect memory! +2 🪙 ⭐",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🗣️ নোভা বলে",
-    hint: "দেখো, তারপর একই মুভ টিপো!",
-    watch: "নোভাকে দেখো… 👀",
-    yourTurn: "তোমার পালা — একই মুভ টিপো! 👇",
-    again: "প্রায়! আবার দেখো… 👀",
-    reward: "মনে রেখেছ! +1 🪙 💛",
-    perfect: "নিখুঁত স্মৃতি! +2 🪙 ⭐",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const MOVES = ["🕺", "🌀", "🦘", "✨", "💃", "👋"] as const;
 const MAX_SEQ = 6;
@@ -91,27 +69,25 @@ export class NovaSaysScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("novaSaysTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("novaSaysHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.status = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.4, T.watch, txt(20, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, this.scale.height * 0.4, T("novaSaysWatch"), txt(20, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setDepth(900);
     this.roundText = this.add
       .text(this.scale.width / 2, 108 + SAT(), "", txt(18, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -137,12 +113,12 @@ export class NovaSaysScene extends Phaser.Scene {
 
   private playSequence() {
     this.playing = true;
-    this.status.setText(this.t().watch);
+    this.status.setText(tr("novaSaysWatch"));
     let i = 0;
     const step = () => {
       if (i >= this.seq.length) {
         this.playing = false;
-        this.status.setText(this.t().yourTurn);
+        this.status.setText(tr("novaSaysYourTurn"));
         return;
       }
       const move = this.seq[i];
@@ -190,7 +166,7 @@ export class NovaSaysScene extends Phaser.Scene {
       bad();
       this.wrongs += 1;
       this.perfect = false;
-      speak(this.t().again);
+      speak(tr("novaSaysAgain"));
       this.time.delayedCall(1200, () => this.playSequence());
     }
   }
@@ -199,7 +175,7 @@ export class NovaSaysScene extends Phaser.Scene {
     this.playing = true;
     win();
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, challengeQualityCoins(this.perfect ? 1 : 0.5));
-    speak(granted > 0 ? (this.perfect ? this.t().perfect : this.t().reward) : this.t().cap);
+    speak(granted > 0 ? (this.perfect ? tr("novaSaysPerfect") : tr("novaSaysReward")) : tr("petCap"));
     this.time.delayedCall(1800, () => {
       if (this.rounds >= ROUNDS_TARGET) {
         this.rounds = 0;
@@ -214,7 +190,7 @@ export class NovaSaysScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn || !this.status) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.roundText.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

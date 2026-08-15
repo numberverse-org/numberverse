@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -14,6 +15,8 @@ import {
   NOVA_DAILY_CAP,
   speciesEmoji,
 } from "../store";
+
+const PET_FEED_YUMS = ["petFeedYum0", "petFeedYum1", "petFeedYum2", "petFeedYum3"] as const;
 
 /**
  * 🍎 PET FEED — a #104 mini-game (the reference the other 19 copy).
@@ -27,31 +30,6 @@ import {
  * docs/plans/104-pet-minigames.md for the shared pattern. Copy it, rename the
  * scene key/class, swap the mechanics, and register in engine.ts.
  */
-
-/* ─────────────────────────── PetFeed i18n ───────────────────────────
- * Static literal keys in a local `T` table (the NovaScene NOVA_T pattern), so
- * the audit scanner (`scripts/audit.mjs`) sees every string and i18n parity
- * holds. `getAppLang() === "bn"` picks the table. */
-const T = {
-  en: {
-    title: "Feed Nova",
-    hint: "Tap the treats to feed Nova!",
-    yum: ["Yum! 🍎", "Delicious! 🍓", "Nom nom! 🥕", "So tasty! 🍇"],
-    reward: "Yummy! +1 🪙 for a tasty meal! 💛",
-    already: "I'm full now — see you tomorrow! 🍎💛",
-    cap: "You earned ALL your coins today! 🪙✨ See you tomorrow!",
-    close: "✕",
-  },
-  bn: {
-    title: "নোভাকে খাওয়াও",
-    hint: "খাবার ছুঁয়ে নোভাকে খাওয়াও!",
-    yum: ["মমম! 🍎", "সুস্বাদু! 🍓", "নম নম! 🥕", "খুব মজা! 🍇"],
-    reward: "মমম! ভালো খাবারে +1 🪙! 💛",
-    already: "আমি এখন পেট ভরা — কাল আবার আসবে! 🍎💛",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨ কাল আবার দেখা হবে!",
-    close: "✕",
-  },
-} as const;
 
 const TREAT_EMOJI = ["🍎", "🍓", "🥕", "🍇"] as const;
 const ROUND_TREATS = 6; // treats per feed round
@@ -86,21 +64,19 @@ export class PetFeedScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("petFeedTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("petFeedHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     // close / back — returns to Nova (the launcher passes onBack)
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -142,7 +118,7 @@ export class PetFeedScene extends Phaser.Scene {
   private catchTreat(treat: Phaser.GameObjects.Text) {
     this.tweens.killTweensOf(treat);
     this.treats = this.treats.filter((x) => x !== treat);
-    const T = this.t();
+    const T = tr;
     // fly to Nova's mouth, then chew
     const mouth = this.nova;
     const t = this.tweens.add({
@@ -155,7 +131,7 @@ export class PetFeedScene extends Phaser.Scene {
       onComplete: () => {
         pop();
         treat.destroy();
-        speak(T.yum[Phaser.Math.Between(0, T.yum.length - 1)]);
+        speak(tr(PET_FEED_YUMS[Phaser.Math.Between(0, PET_FEED_YUMS.length - 1)]));
         this.fedCount += 1;
         if (this.fedCount >= ROUND_TREATS) this.finishRound();
       },
@@ -180,18 +156,18 @@ export class PetFeedScene extends Phaser.Scene {
     const after = useKidStore.getState().nova[this.kidId] ?? defaultNova();
     const coinAdded = after.coins - before.coins;
     const earnedToday = after.earnDay === today ? after.earnedToday : 0;
-    const T = this.t();
-    if (alreadyToday) speak(T.already);
-    else if (coinAdded > 0 && earnedToday >= NOVA_DAILY_CAP) speak(T.cap);
-    else if (coinAdded > 0) speak(T.reward);
-    else speak(T.already);
+    const T = tr;
+    if (alreadyToday) speak(T("petFeedAlready"));
+    else if (coinAdded > 0 && earnedToday >= NOVA_DAILY_CAP) speak(T("petFeedCap"));
+    else if (coinAdded > 0) speak(T("petFeedReward"));
+    else speak(T("petFeedAlready"));
     // a light "play again" resets the round
     this.time.delayedCall(1600, () => this.startRound());
   }
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());
     this.nova.setPosition(this.scale.width / 2, this.scale.height - 90 - SAB());

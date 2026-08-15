@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,26 +26,7 @@ import {
  * the end; the coins are 'extra', never required.
  */
 
-const T = {
-  en: {
-    title: "🚶 Pet Walk",
-    hint: "Tap to walk Nova along the path!",
-    coin: "+1 🪙",
-    reward: "What a walk! +1 🪙 for the stroll! 💛",
-    perfect: "All the coins! +2 🪙 ⭐",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🚶 পোষা ভ্রমণ",
-    hint: "নোভাকে পথ ধরে হাঁটাতে ছোঁও!",
-    coin: "+1 🪙",
-    reward: "কী হাঁটা! +1 🪙 💛",
-    perfect: "সব কয়েন! +2 🪙 ⭐",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const STEP_DX = 46; // px per tap along the path
 const COIN_EVERY = 3; // a coin every Nth step
@@ -90,23 +72,21 @@ export class PetWalkScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("petWalkTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("petWalkHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.coinText = this.add
       .text(this.scale.width / 2, 108 + SAT(), "🪙 0", txt(24, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
@@ -170,7 +150,7 @@ export class PetWalkScene extends Phaser.Scene {
           this.coinsGot += 1;
           this.coinText.setText(`🪙 ${this.coinsGot}`);
           this.tweens.add({ targets: got, y: got.y - 40, alpha: 0, duration: 300, onComplete: () => got.destroy() });
-          speak(this.t().coin);
+          speak(tr("petWalkCoin"));
         }
         if (this.nova.x >= this.endX - 4) this.finishWalk();
       },
@@ -182,7 +162,7 @@ export class PetWalkScene extends Phaser.Scene {
     win();
     const perfect = this.coinsGot === this.coinSpots.length && this.coinSpots.length > 0;
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, challengeQualityCoins(perfect ? 1 : 0.5));
-    speak(granted > 0 ? (perfect ? this.t().perfect : this.t().reward) : this.t().cap);
+    speak(granted > 0 ? (perfect ? tr("petWalkPerfect") : tr("petWalkReward")) : tr("petCap"));
     this.time.delayedCall(2000, () => this.resetWalk());
   }
 
@@ -198,7 +178,7 @@ export class PetWalkScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.coinText.setPosition(this.scale.width / 2, 108 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());

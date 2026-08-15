@@ -4,6 +4,7 @@ import { pop, win } from "./audio";
 import { speak } from "./speech";
 import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
+import { t as tr } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
 import { prefersReducedMotion } from "./reducedMotion";
@@ -25,24 +26,7 @@ import {
  * Distinct from the ACTIVITIES["bath"] animation: this is a goal-based scene.
  */
 
-const T = {
-  en: {
-    title: "🛁 Bath Time",
-    hint: "Pop the bubbles to wash Nova clean!",
-    clean: "Clean! ✨",
-    sparkle: "So fresh & sparkly! +2 🪙 🧼",
-    cap: "You earned ALL your coins today! 🪙✨",
-    close: "✕",
-  },
-  bn: {
-    title: "🛁 গোসলের সময়",
-    hint: "বুদবুদ ফুটিয়ে নোভাকে ধুইয়ে দাও!",
-    clean: "পরিষ্কার! ✨",
-    sparkle: "কী ঝকঝকে! +2 🪙 🧼",
-    cap: "আজ সব কয়েন জিতেছ! 🪙✨",
-    close: "✕",
-  },
-} as const;
+
 
 const CLEAN_NEEDED = 12; // pops to get Nova fully clean
 const MAX_BUBBLES = 8; // concurrent bubbles on screen
@@ -89,17 +73,15 @@ export class BathNovaScene extends Phaser.Scene {
     onSceneResize(this, () => this.layout());
   }
 
-  private t() {
-    return this.lang === "bn" ? T.bn : T.en;
-  }
+
 
   private drawHeader() {
-    const T = this.t();
+    const T = tr;
     this.add
-      .text(this.scale.width / 2, 30 + SAT(), T.title, txt(30, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("bathTitle"), txt(30, "#ffffff", { bold: true }))
       .setOrigin(0.5);
     this.hint = this.add
-      .text(this.scale.width / 2, 74 + SAT(), T.hint, txt(16, NV_GOLD, { bold: true }))
+      .text(this.scale.width / 2, 74 + SAT(), T("bathHint"), txt(16, NV_GOLD, { bold: true }))
       .setOrigin(0.5);
     this.meter = this.add.graphics().setDepth(50);
     this.drawMeter();
@@ -109,13 +91,13 @@ export class BathNovaScene extends Phaser.Scene {
       .setAlpha(0)
       .setDepth(900);
     this.closeBtn = this.add
-      .text(26, 30 + SAT(), T.close, txt(24, "#ffffff", { bold: true }))
+      .text(26, 30 + SAT(), T("petClose"), txt(24, "#ffffff", { bold: true }))
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.onBack?.());
   }
 
   private drawMeter() {
-    const T = this.t();
+    const T = tr;
     const x = this.scale.width / 2;
     const y = 134 + SAT();
     const w = Math.min(220, this.scale.width - 120);
@@ -212,7 +194,7 @@ export class BathNovaScene extends Phaser.Scene {
       this.roundDone = true;
       this.time.delayedCall(300, () => this.finishRound());
     } else if (this.clean % 4 === 0) {
-      speak(this.t().clean);
+      speak(tr("bathClean"));
     }
   }
 
@@ -231,13 +213,13 @@ export class BathNovaScene extends Phaser.Scene {
     // (clean == CLEAN_NEEDED) is the perfect tier → 2 coins.
     const coins = challengeQualityCoins(this.clean / CLEAN_NEEDED);
     const granted = useKidStore.getState().novaChallengeReward(this.kidId, coins);
-    const T = this.t();
+    const T = tr;
     if (granted > 0) {
-      speak(T.sparkle);
-      this.showMsg(T.sparkle, 1600);
+      speak(T("bathSparkle"));
+      this.showMsg(T("bathSparkle"), 1600);
     } else {
-      speak(T.cap);
-      this.showMsg(T.cap, 1600);
+      speak(T("petCap"));
+      this.showMsg(T("petCap"), 1600);
     }
     this.time.delayedCall(1900, () => {
       this.soap.setVisible(true);
@@ -274,7 +256,7 @@ export class BathNovaScene extends Phaser.Scene {
 
   private layout() {
     if (!this.nova || !this.hint || !this.closeBtn) return;
-    const T = this.t();
+    const T = tr;
     this.hint.setPosition(this.scale.width / 2, 74 + SAT());
     this.closeBtn.setPosition(26, 30 + SAT());
     this.nova.setPosition(this.scale.width / 2, this.scale.height - 60 - SAB());
