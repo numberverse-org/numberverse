@@ -536,17 +536,22 @@ export default function App() {
   const quest = useKidStore(
     useShallow((s) => {
       const n = s.nova[kid?.id ?? ""];
-      if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false, reward: NOVA_QUEST_REWARD };
+      if (!n) return { type: "rounds" as QuestType, progress: 0, target: NOVA_QUEST_TARGET, done: false, today: false, reward: NOVA_QUEST_REWARD, claimed: false, claimable: false, paid: 0 };
       const today = todayOnce;
       const todayFresh = n.questDay === today;
       const type: QuestType = todayFresh && n.questType ? (n.questType as QuestType) : questTypeFor(kid?.id ?? "", today);
+      const done = todayFresh ? !!n.questDone : false;
+      const claimed = todayFresh ? !!n.questClaimed : false;
       return {
         type,
         progress: todayFresh ? n.questProgress ?? (type === "rounds" ? n.questRounds ?? 0 : 0) : 0,
         target: QUEST_TARGETS[type] ?? NOVA_QUEST_TARGET,
-        done: todayFresh ? !!n.questDone : false,
+        done,
         today: todayFresh,
         reward: QUEST_REWARDS[type] ?? NOVA_QUEST_REWARD,
+        claimed,
+        claimable: done && !claimed,
+        paid: todayFresh ? n.questPaid ?? 0 : 0,
       };
     })
   );
@@ -2340,12 +2345,13 @@ export default function App() {
           const questDone = novaQuestProgress(kid.id, { correct, mastered, freshSkill });
           if (questDone) {
             // THE moment the quest finishes — cheer once, aloud, in the app's
-            // language, with that day's TYPE-SPECIFIC reward (#1189).
+            // language. #1435/#1436 — the reward is no longer auto-granted or
+            // announced here: completion arms the claim step on Home, and the
+            // claim itself speaks the coins ACTUALLY paid.
             cancelSpeech();
             tada();
             const bn = getAppLang() === "bn";
-            const qtype = useKidStore.getState().nova[kid.id]?.questType as QuestType | undefined;
-            speak(t.questCompleteSpeak(QUEST_REWARDS[qtype ?? "rounds"] ?? NOVA_QUEST_REWARD), { lang: bn ? "bn" : "en" });
+            speak(t.questReadySpeak, { lang: bn ? "bn" : "en" });
           }
           // #1196 — the moment the daily coin cap is reached, reward feedback
           // must NOT drop to nothing: learning keeps paying (stars, combo,
@@ -2574,6 +2580,19 @@ export default function App() {
     if (!kid) return;
     if (playLimitReached) {
       setLimitNotice(t.playLimitReached);
+      return;
+    }
+    // #1402 — a locked journey stop is NOT a play target. Journey order and the
+    // parent's difficulty cap are the same rules the map enforces; starting the
+    // scene anyway made this function dead code with no feedback. Acknowledge
+    // the tap, name the reason, and stop.
+    const stop = journeyState(skillsMap, kid.id).find((s) => s.skill.id === skill.id);
+    const capped = filterMaxBand != null && skill.band > filterMaxBand;
+    if (capped || (stop && !stop.unlocked)) {
+      click();
+      const line = capped ? t.worldLockedCap : t.journeyLocked;
+      announce(line);
+      speak(line);
       return;
     }
     setLimitNotice(null);
@@ -4771,9 +4790,18 @@ export default function App() {
               {t.playNext(lang === "bn" ? curStop.skill.titleBn ?? curStop.skill.title : curStop.skill.title)}
             </button>
           ) : journeyDone ? (
-            <button className="big-btn play-now" onClick={() => startPlayWorld(BANDS[0])}>
-              {t.practiceAgain}
-            </button>
+            (() => {
+              const rec = recommendedSkill(skillsMap, kid!.id);
+              return rec ? (
+                <button className="big-btn play-now" onClick={() => startSingleSkill(rec)}>
+                  {t.beatYourBest ?? t.playNext(lang === "bn" ? rec.titleBn ?? rec.title : rec.title)}
+                </button>
+              ) : (
+                <button className="big-btn play-now" onClick={() => startPlayWorld(BANDS[0])}>
+                  {t.practiceAgain}
+                </button>
+              );
+            })()
           ) : null}
 
           <div className="view-toggle" role="tablist" aria-label="View">
@@ -5123,6 +5151,11 @@ export default function App() {
     const prog = worldProgress(skillsMap, kid.id, world.id);
     const bandSkills = filterSkills.filter((s) => s.band === world.id && s.game);
     const nextSkill = nextUnmasteredSkill(skillsMap, kid.id, world.id);
+    const complete = prog.total > 0 && prog.mastered === prog.total;
+    // #1400 — a completed world offers 'beat your best' when it has any EXPERT
+    // skill (pMastered ≥ 0.92). sessionForWorld turns that into a pure
+    // challenge-replay session instead of re-sweeping the whole land.
+    const hasChallengeReplay = complete && bandSkills.some((s) => challengeEligible(skillsMap, kid.id, s.id));
     const nextWorld = BANDS.find((b) => b.id === world.id + 1);
     // #1485 — same unlockGap helper as the map; #1486 — gate the "ready" text
     // on worldUnlocked so a parent difficulty cap never promises a locked land.
@@ -5168,7 +5201,7 @@ export default function App() {
           </div>
 
           <button className="big-btn" onClick={() => startPlayWorld(world)}>
-            {nextSkill ? t.playNext(nextSkill.title) : t.practiceAgain}
+            {nextSkill ? t.playNext(nextSkill.title) : hasChallengeReplay ? t.beatYourBest : t.practiceAgain}
           </button>
 
           {/* 🚀 #249 — skip-ahead: "I already know this". Logs an acceleration

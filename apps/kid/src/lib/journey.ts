@@ -882,12 +882,14 @@ export function journeyStops(): Skill[] {
 
 export function journeyState(skills: SkillMap, kidId: string): JourneyStop[] {
   let prevDone = true;
-  return journeyStops().map((skill) => {
-    const done = skillMastered(skills, kidId, skill.id);
-    const unlocked = prevDone;
-    prevDone = done;
-    return { skill, done, unlocked, current: unlocked && !done };
-  });
+  return journeyStops()
+    .filter((skill) => filterMaxBand == null || skill.band <= filterMaxBand)
+    .map((skill) => {
+      const done = skillMastered(skills, kidId, skill.id);
+      const unlocked = prevDone;
+      prevDone = done;
+      return { skill, done, unlocked, current: unlocked && !done };
+    });
 }
 
 export function journeyCurrentIndex(stops: JourneyStop[]): number {
@@ -1130,6 +1132,13 @@ export function sessionForWorld(skills: SkillMap, kidId: string, band: number): 
   const expertSteps = ordered
     .filter((st) => challengeEligible(skills, kidId, st.skillId))
     .map((st) => stepForSkill(getSkill(st.skillId)!, true));
+  // #1400 — a fully-mastered world is a 'beat your best' replay, not a flat
+  // re-sweep: fill the session with the mastered EXPERT challenge steps. When
+  // a world has no experts yet, keep the old all-skills sweep so the button
+  // still has a safe practice path.
+  if (unmastered.length === 0) {
+    return expertSteps.length ? expertSteps.slice(0, SESSION_LEN) : ordered.slice(0, SESSION_LEN);
+  }
   const finish = (arr: SessionStep[]): SessionStep[] => {
     if (!expertSteps.length) return arr.slice(0, SESSION_LEN);
     const others = arr.filter((st) => !st.challenge);

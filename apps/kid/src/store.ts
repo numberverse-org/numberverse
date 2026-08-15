@@ -343,6 +343,12 @@ export interface NovaState {
   questDay: string;
   questRounds: number;
   questDone: boolean;
+  /** #1436 — quest completion now stops at "ready to claim"; the reward is
+   *  paid only when the kid taps the claim button. */
+  questClaimed: boolean;
+  /** #1435/#1436 — the coins ACTUALLY paid for today's quest claim (0 when the
+   *  daily cap was already full), so the UI never announces a fantasy number. */
+  questPaid: number;
   /** #287/#293 — the day's quest TYPE (rotates per kid per day). */
   questType: string;
   /** #287/#293 — progress toward today's quest target (type-specific). */
@@ -413,6 +419,8 @@ export function defaultNova(): NovaState {
     questDay: "",
     questRounds: 0,
     questDone: false,
+    questClaimed: false,
+    questPaid: 0,
     questType: "",
     questProgress: 0,
     bdayYear: "",
@@ -589,6 +597,10 @@ interface KidState {
     kidId: string,
     sig: { correct?: boolean; mastered?: boolean; freshSkill?: boolean }
   ) => boolean;
+  /** #1436 — claim today's completed quest reward. Coins stay inside the daily
+   *  anti-grind cap (cap-full → 0), and the actual granted amount is returned
+   *  so the UI can announce it honestly. */
+  novaClaimQuest: (kidId: string) => number;
   /** #281 — claim today's 7-day login-calendar bonus (once per day, after the
    *  day's first session, inside the daily cap). Returns coins granted (0 = none). */
   novaClaimCalendar: (kidId: string) => number;
@@ -1363,12 +1375,6 @@ export const useKidStore = create<KidState>()(
         const reached = progress >= target;
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
-          const earnedToday = cur.earnDay === today ? cur.earnedToday : 0;
-          // #1189 — the harder quest types pay more (master 10, newgame 7,
-          // rounds/stars 5). Still bounded by the daily anti-grind cap.
-          const reward = reached
-            ? Math.min(QUEST_REWARDS[type], Math.max(0, NOVA_DAILY_CAP - earnedToday))
-            : 0;
           return {
             nova: {
               ...s.nova,
@@ -1379,15 +1385,48 @@ export const useKidStore = create<KidState>()(
                 questType: type,
                 questProgress: progress,
                 questDone: reached,
-                coins: cur.coins + reward,
-                totalEarned: cur.totalEarned + reward,
-                earnedToday: earnedToday + reward,
-                earnDay: today,
+                // #1436 — completing the mission arms the CLAIM step; no coins
+                // are granted until the kid taps the claim button on Home.
+                questClaimed: reached ? false : cur.questClaimed ?? false,
+                questPaid: reached ? 0 : cur.questPaid ?? 0,
               },
             },
           };
         });
         return reached;
+      },
+
+      /* ── #1436 claim the completed quest reward (once/day, inside the cap).
+           Returns the coins ACTUALLY granted — 0 when the cap is already full
+           or the quest isn't claimable right now. ── */
+
+      novaClaimQuest: (kidId) => {
+        const n = get().nova[kidId] ?? defaultNova();
+        const today = todayIso();
+        if (n.questDay !== today || !n.questDone || n.questClaimed) return 0;
+        const type: QuestType = (n.questType as QuestType) || questTypeFor(kidId, today);
+        const earnedToday = n.earnDay === today ? n.earnedToday : 0;
+        const grant = Math.max(0, Math.min(QUEST_REWARDS[type] ?? NOVA_QUEST_REWARD, NOVA_DAILY_CAP - earnedToday));
+        set((s) => {
+          const cur = s.nova[kidId] ?? defaultNova();
+          const todayEarned = cur.earnDay === today ? cur.earnedToday : 0;
+          const actual = Math.max(0, Math.min(QUEST_REWARDS[type] ?? NOVA_QUEST_REWARD, NOVA_DAILY_CAP - todayEarned));
+          return {
+            nova: {
+              ...s.nova,
+              [kidId]: {
+                ...cur,
+                questClaimed: true,
+                questPaid: actual,
+                coins: cur.coins + actual,
+                totalEarned: cur.totalEarned + actual,
+                earnedToday: todayEarned + actual,
+                earnDay: today,
+              },
+            },
+          };
+        });
+        return grant;
       },
 
       /* ── #281 7-day login calendar: collect today's cycle bonus (once/day,
