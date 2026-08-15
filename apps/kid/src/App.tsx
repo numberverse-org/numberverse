@@ -2147,7 +2147,6 @@ export default function App() {
     ensureAudio();
     setKidPaused(false);
   };
-  };
 
   /* ── #357/#1450 — predicted next scene: HOME (and the kid-pick screen that
      feeds it) is where the next tap is most likely "PLAY", so warm the engine

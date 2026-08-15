@@ -97,6 +97,8 @@ export interface Strings {
   /** Home PLAY screen's "what will we play next" line. */
   nextLesson: (title: string) => string;
   practiceAgain: string;
+  /** #1420 — beat-your-best CTA for the recommended next skill / replay. */
+  beatYourBest: string;
   /** 🚀 #249 — skip-ahead: the kid already knows the next lesson. */
   skipAhead: string;
   skipAheadHint: (title: string) => string;
@@ -239,6 +241,8 @@ export interface Strings {
   questTypeNewgame: (n: number) => string;
   questProgress: (n: number, target: number) => string;
   questDoneText: string;
+  /** #1435 — spoken the moment a quest finishes (before the claim tap). */
+  questReadySpeak: string;
   questReward: (n: number) => string;
   questCompleteSpeak: (n: number) => string;
   /* #770 — a 'newgame' quest day names one un-attempted game to try */
@@ -960,6 +964,8 @@ export const STR: Record<Lang, Strings> = {
     playNext: (title) => `▶ Play next: ${title}`,
     nextLesson: (title) => `Next up: ${title}`,
     practiceAgain: "▶ Practice again",
+    // #1420 — beat-your-best CTA for the recommended next skill / replay.
+    beatYourBest: "▶ Beat your best!",
     // 🚀 #249 — skip-ahead (logged so the parent sees the acceleration plan).
     skipAhead: "⏭ I already know this",
     skipAheadHint: (title) => `Already know "${title}"? Skip it — we'll note it on your progress.`,
@@ -1089,6 +1095,7 @@ export const STR: Record<Lang, Strings> = {
     questFreshNone: "No new games left — play anything! 🎉",
     questProgress: (n, target) => `${n}/${target}`,
     questDoneText: "✅ Quest complete!",
+    questReadySpeak: "Quest complete! Come claim your reward!",
     questReward: (n) => `+${n} 🪙 bonus`,
     questCompleteSpeak: (n) => `Quest complete! You won ${n} bonus coins! 🎉`,
     /* #281 — 7-day login calendar */
@@ -1465,6 +1472,13 @@ export const STR: Record<Lang, Strings> = {
     a11yHighContrastOn: "High contrast is on",
     a11yHighContrastOff: "High contrast is off",
     settingsReduceMotion: "Reduce motion",
+    settingsReduceMotionSub: "Fewer moving parts — calmer play",
+    // 🦋 #1442 — in-flow calm mode (kid-understandable reduced-motion toggle).
+    calmButton: "Calm mode",
+    calmTitle: "Calm mode",
+    calmBody: "Turn on calm mode to slow the moving parts. You can turn it off anytime.",
+    calmOn: "Calm mode on",
+    calmOff: "Calm mode off",
     settingsSecLanguage: "🌐 Language",
     settingsSecLearning: "📚 My learning",
     settingsSecParents: "👨‍👩‍👧 For parents",
@@ -1786,6 +1800,8 @@ export const STR: Record<Lang, Strings> = {
     playNext: (title) => `▶ পরবর্তী: ${title}`,
     nextLesson: (title) => `পরের পাঠ: ${title}`,
     practiceAgain: "▶ আবার অনুশীলন",
+    // #1420 — beat-your-best CTA for the recommended next skill / replay.
+    beatYourBest: "▶ তোমার সেরাটা ছাড়িয়ে যাও!",
     // 🚀 #249 — skip-ahead (লগ হয়, অভিভাবক অ্যাকসেলারেশন প্ল্যানে দেখতে পাবেন)।
     skipAhead: "⏭ আমি এটা জানি",
     skipAheadHint: (title) => `"${title}" কি জানা আছে? বাদ দাও — আমরা তোমার অগ্রগতিতে লিখে দেব।`,
@@ -1914,6 +1930,7 @@ export const STR: Record<Lang, Strings> = {
     questFreshNone: "আর নতুন খেলা নেই — যা খুশি খেলো! 🎉",
     questProgress: (n, target) => `${bnNum(n)}/${bnNum(target)}`,
     questDoneText: "✅ মিশন শেষ!",
+    questReadySpeak: "মিশন শেষ! তোমার পুরস্কার নিতে এসো!",
     questReward: (n) => `+${n} 🪙 বোনাস`,
     questCompleteSpeak: (n) => `মিশন শেষ! তুমি ${n}টা বোনাস কয়েন জিতেছ! 🎉`,
     /* #281 — 7-day login calendar */
@@ -2289,6 +2306,13 @@ export const STR: Record<Lang, Strings> = {
     a11yHighContrastOn: "উচ্চ কনট্রাস্ট চালু",
     a11yHighContrastOff: "উচ্চ কনট্রাস্ট বন্ধ",
     settingsReduceMotion: "কম গতি",
+    settingsReduceMotionSub: "কম নড়াচড়া — শান্ত খেলা",
+    // 🦋 #1442 — in-flow calm mode (kid-understandable reduced-motion toggle).
+    calmButton: "শান্ত মোড",
+    calmTitle: "শান্ত মোড",
+    calmBody: "শান্ত মোড চালু করলে চলমান অংশগুলো ধীর হয়ে যায়। যে কোনো সময় বন্ধ করতে পারো।",
+    calmOn: "শান্ত মোড চালু",
+    calmOff: "শান্ত মোড বন্ধ",
     settingsSecLanguage: "🌐 ভাষা",
     settingsSecLearning: "📚 আমার শেখা",
     settingsSecParents: "👨‍👩‍👧 মা-বাবার জন্য",
