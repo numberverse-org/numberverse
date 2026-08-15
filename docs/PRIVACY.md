@@ -111,3 +111,19 @@ python3 scripts/team/oracle_team.py --ci --no-page
 ```
 
 (reported alongside the dedicated `tracker-scan` CI gate).
+
+## Retention bounds (bounded by design, enforced by the scheduled prune)
+
+Every high-volume / PII-carrying table has an explicit, configurable retention
+policy enforced by the embed-loop's hourly prune tick (`main.py`, sharing the
+logic with the admin-only manual endpoints in `admin.py`):
+
+| Table | Policy | Default | Where |
+|---|---|---|---|
+| `learning_stories` | drop rows older than `kotha_retention_days` (active skills protected), then keep the most recent `kotha_max_stories_per_kid` per kid | 90d / 1000 per kid (#331) | `admin.py::_prune_stories` |
+| `progress_events` | drop rows older than `progress_retention_days`, then keep the most recent `max_progress_events_per_kid` per kid | 90d / 5000 per kid (#983) | `admin.py::_prune_progress_events` |
+| `sessions` | hard-delete rows revoked more than `session_purge_days` ago (drops the ip + user_agent PII once revocation is settled) | 30d (#984) | `admin.py::_purge_revoked_sessions` |
+
+Bounded by construction, not by hope: `skill_mastery` is one row per
+kid×skill (#168), and revoked credentials cannot be replayed because
+`token_hash` is one-way SHA-256 (#132).

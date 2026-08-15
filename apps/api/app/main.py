@@ -152,19 +152,31 @@ async def _embed_loop():
 
             # #950 — scheduled prune every ~1 hour so the story volume never
             # silently exceeds the configured cap (the admin-only manual prune
-            # is insufficient for unattended operation).
+            # is insufficient for unattended operation). #983 + #984 ride the
+            # same tick so progress_events stay bounded and revoked-session
+            # PII (ip + user_agent) is purged without a human remembering to.
             _tick_count += 1
             if _tick_count >= _prune_every:
                 _tick_count = 0
                 try:
                     async with SessionLocal() as db:
-                        from .routers.admin import _prune_stories
+                        from .routers.admin import (
+                            _prune_progress_events,
+                            _prune_stories,
+                            _purge_revoked_sessions,
+                        )
 
-                        pruned = await _prune_stories(db)
-                    if pruned:
-                        log.info("Kotha scheduled prune: removed %d stories", pruned)
+                        stories = await _prune_stories(db)
+                        progress = await _prune_progress_events(db)
+                        sessions = await _purge_revoked_sessions(db)
+                    if stories:
+                        log.info("Kotha scheduled prune: removed %d stories", stories)
+                    if progress:
+                        log.info("Progress-event scheduled prune: removed %d rows", progress)
+                    if sessions:
+                        log.info("Revoked-session scheduled purge: removed %d rows", sessions)
                 except Exception as exc:  # noqa: BLE001
-                    log.warning("Kotha scheduled prune failed: %s", exc)
+                    log.warning("Scheduled prune/purge failed: %s", exc)
         except Exception as exc:  # noqa: BLE001 — a scheduler must never die
             log.warning("Kotha embed tick failed: %s", exc)
         await asyncio.sleep(interval)

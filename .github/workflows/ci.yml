@@ -107,6 +107,8 @@ jobs:
         run: python3 apps/api/tests/test_session_guard.py
       - name: API unit tests (multi-tenant org isolation #963)
         run: python3 apps/api/tests/test_org_isolation.py
+      - name: API unit tests (retention/prune policy #983 #984)
+        run: python3 apps/api/tests/test_retention.py
 
   license-audit:
     name: license-audit

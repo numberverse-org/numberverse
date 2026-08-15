@@ -653,11 +653,11 @@ async def _prune_stories(db: AsyncSession) -> int:
     return age_pruned + cap_pruned
 
 
-@router.post("/progress/prune")
-async def prune_progress_events(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    """#983 — retention job for progress_events. Mirrors the prune_stories
-    policy: drop rows older than `progress_retention_days`, then trim every
-    kid to its most recent `max_progress_events_per_kid` events."""
+async def _prune_progress_events(db: AsyncSession) -> int:
+    """#983 — shared prune logic used by the admin endpoint and the scheduled
+    embed-loop prune. Mirrors the prune_stories policy: drop rows older than
+    `progress_retention_days`, then trim every kid to its most recent
+    `max_progress_events_per_kid` events. Commits; returns total pruned."""
     now = datetime.now(timezone.utc)
     retention = timedelta(days=settings.progress_retention_days)
     cap = settings.max_progress_events_per_kid
@@ -688,25 +688,30 @@ async def prune_progress_events(_: Profile = Depends(require_admin), db: AsyncSe
     cap_pruned = cap_result.rowcount or 0
 
     await db.commit()
+    return age_pruned + cap_pruned
+
+
+@router.post("/progress/prune")
+async def prune_progress_events(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """#983 — retention job for progress_events (shared logic in
+    `_prune_progress_events`)."""
+    pruned = await _prune_progress_events(db)
     return {
-        "pruned": age_pruned + cap_pruned,
-        "age_pruned": age_pruned,
-        "cap_pruned": cap_pruned,
+        "pruned": pruned,
         "retention_days": settings.progress_retention_days,
-        "max_events_per_kid": cap,
+        "max_events_per_kid": settings.max_progress_events_per_kid,
     }
 
 
 # #984 — purge revoked sessions older than N days. Session rows carry ip +
 # user_agent (the two fields PRIVACY.md flags as 'nice-to-have PII'), so they
 # must not accumulate forever once revocation removes their purpose.
-@router.post("/sessions/purge-revoked")
-async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    """#984 — hard-delete Session rows that were revoked more than N days ago.
-    Default 30 days: stale IP/UA PII is gone once revocation is settled."""
-    from ..config import settings as app_settings
-
-    cutoff = datetime.now(timezone.utc) - timedelta(days=getattr(app_settings, "session_purge_days", 30))
+async def _purge_revoked_sessions(db: AsyncSession) -> int:
+    """#984 — shared purge logic used by the admin endpoint and the scheduled
+    embed-loop prune. Hard-deletes Session rows revoked more than
+    `session_purge_days` ago (default 30d) so stale IP/UA PII is gone once
+    revocation is settled. Commits; returns rows purged."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.session_purge_days)
     result = await db.execute(
         delete(Session).where(
             Session.revoked_at.is_not(None),
@@ -715,6 +720,15 @@ async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncS
     )
     purged = result.rowcount or 0
     await db.commit()
+    return purged
+
+
+@router.post("/sessions/purge-revoked")
+async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """#984 — hard-delete Session rows that were revoked more than N days ago.
+    Default 30 days: stale IP/UA PII is gone once revocation is settled."""
+    purged = await _purge_revoked_sessions(db)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.session_purge_days)
     return {"purged": purged, "cutoff": cutoff.isoformat()}
 
 
