@@ -1519,6 +1519,12 @@ const EN: Record<string, Entry> = {
   moneyMake: "Which makes this much?",
   moneyChange: "You paid ৳{paid} for a ৳{price} thing. What is your change?",
   priceLabel: "Price",
+  // #1474 — home streak badge teaser (mirrors the HomeScreen STR copy).
+  streakTomorrow: "tomorrow +{n} 🪙",
+  // #1473 — home calendar fresh-start cue after a missed day.
+  calendarFreshStart: "🌱 Fresh start — play today to begin a new week",
+  // #1472 — home line when a held freeze token can't cover the missed days.
+  freezeNotEnough: "Your 🧊 covers one missed day, but {n} days passed — fresh start 🌱",
 };
 
 const BN: Record<string, Entry> = {
@@ -3023,6 +3029,12 @@ const BN: Record<string, Entry> = {
   moneyMake: "কোনগুলো মিলে এই টাকা হয়?",
   moneyChange: "তুমি ৳{paid} দিয়ে ৳{price} এর জিনিস কিনলে। ফেরত কত টাকা?",
   priceLabel: "দাম",
+  // #1474 — home streak badge teaser (mirrors the HomeScreen STR copy).
+  streakTomorrow: "আগামীকাল +{n} 🪙",
+  // #1473 — home calendar fresh-start cue after a missed day.
+  calendarFreshStart: "🌱 নতুন শুরু — আজ খেললে নতুন সপ্তাহ শুরু হবে",
+  // #1472 — home line when a held freeze token can't cover the missed days.
+  freezeNotEnough: "তোমার 🧊 একদিন বাঁচায়, কিন্তু {n} দিন পেরিয়ে গেছে — নতুন শুরু 🌱",
 };
 
 /**

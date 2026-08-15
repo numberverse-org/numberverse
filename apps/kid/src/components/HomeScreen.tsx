@@ -169,6 +169,9 @@ export default function HomeScreen({
       // When the kid returns after a miss, hide the badge and greet warmly —
       // the streak restarts on their first session, no guilt, no lecture.
       const missedDay = !!novaLastDay && novaLastDay !== todayIso() && novaLastDay !== dayIsoAgo(1);
+      // #1474 — the streak badge names what TOMORROW pays (the next calendar
+      // tile), so the come-back hook is visible at the top, not buried below.
+      const nextCalendarCoins = calendar ? NOVA_CALENDAR_REWARDS[calendar.pos % NOVA_CALENDAR_REWARDS.length] : 0;
       // Quest honesty: if the parent's playtime cap already blocks play, a
       // "Play 0/3 rounds" bar is an unreachable goal → gentle rest message instead.
       const questBlocked = playLimitReached && !quest.done;
@@ -334,6 +337,7 @@ export default function HomeScreen({
                   // streak badge, so the kid KNOWS a missed day is covered.
                   <span className="home-streak" role="status" title={freezeCount > 0 ? t.freezePill(freezeCount) : undefined}>
                     🔥 {novaDayStreak}{freezeCount > 0 ? <em className="home-freeze">{t.freezePill(freezeCount)}</em> : null}
+                    {calendar && nextCalendarCoins > 0 ? <em className="home-streak-tomorrow">{t.streakTomorrow(nextCalendarCoins)}</em> : null}
                   </span>
                 )}
               </div>
@@ -570,7 +574,10 @@ export default function HomeScreen({
                     const day = i + 1;
                     const isToday = day === calendar.pos;
                     const past = day < calendar.pos;
-                    const state = isToday && calendar.claimable ? "claim" : past || calendar.claimedToday ? "done" : isToday ? "wait" : "future";
+                    // #1471 — `calendar.claimedToday` is a whole-day flag (n.calendarDay === today),
+                    // NOT a per-tile flag: guard it with `isToday` so claiming today's tile never
+                    // flips future un-earned tiles to '✓ done'.
+                    const state = isToday && calendar.claimable ? "claim" : past || (isToday && calendar.claimedToday) ? "done" : isToday ? "wait" : "future";
                     return (
                       <button
                         key={day}
@@ -588,12 +595,17 @@ export default function HomeScreen({
                         }}
                         aria-label={isToday ? (calendar.claimable ? t.calendarClaim(coins) : calendar.claimedToday ? t.calendarClaimed : t.calendarHint) : t.calendarLocked}
                       >
-                        <span className="cal-tile-top">{past || calendar.claimedToday ? "✓" : isToday ? day : "🔒"}</span>
+                        <span className="cal-tile-top">{past || (isToday && calendar.claimedToday) ? "✓" : isToday ? day : "🔒"}</span>
                         <span className="cal-tile-coin">🪙{coins}</span>
                       </button>
                     );
                   })}
                 </div>
+                {missedDay && (
+                  // #1473 — the strip above keeps the old cycle's checkmarks for a
+                  // warm re-entry; this cue explains the streak restarts with today.
+                  <span className="cal-fresh">{t.calendarFreshStart}</span>
+                )}
                 <span className="cal-dayof">{t.calendarDayOf(calendar.pos)}</span>
               </div>
             ) : null}
