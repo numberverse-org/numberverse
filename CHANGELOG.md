@@ -1,3 +1,12 @@
+## 16 Aug 2026 — 0.82.0 (🛡️ Guardrails closure: scheduled progress_events prune + revoked-session purge (#983/#984), VPC consent + birth_year band cap + export v2 (accel/coins) verified (#985-#987), MODEL_JSON versioning (#988))
+
+73cf854 📚 TRACKER: guardrails cluster (#983-#988) closure → 0.82.0
+33a747e 🛡️ #983/#984: scheduled progress_events prune + revoked-session purge (unattended retention)
+5692748 📚 TRACKER: multi-tenancy (#961-#970) + config/voice (#971-#979) closures
+ea7e819 🔊 voice drift guard (#974): automated VOICE_V vs payload-hash check at voice build
+9e9d91e 🔧 CI: api job installs its base deps so test_org_isolation (#963) can actually run
+e1ff3c2 📚 TRACKER: 0.81.0 moni adaptive closure entry (#953-#960)
+
 ## 16 Aug 2026 — 0.81.0 (Moni adaptive cluster: verified+closed #953-#960 (NaN-guard, derived fragile, recovery decay, slowMs+1 gap, band-gated focus, rung-shift review, affinity decay, post-round state) + 18-check regression suite wired into core CI)
 
 a53c48a 🧠 Moni adaptive cluster (#953-#960): verified impl + regression test suite + CI wiring

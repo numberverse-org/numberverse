@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.81.0 (Moni adaptive cluster: verified+closed #953-#960 (NaN-guard, derived fragile, recovery decay, slowMs+1 gap, band-gated focus, rung-shift review, affinity decay, post-round state) + 18-check regression suite wired into core CI)";
-export const APP_VERSION = "0.81.0";
+export const APP_BUILD = "16 Aug 2026 · 0.82.0 (🛡️ Guardrails closure: scheduled progress_events prune + revoked-session purge (#983/#984), VPC consent + birth_year band cap + export v2 (accel/coins) verified (#985-#987), MODEL_JSON versioning (#988))";
+export const APP_VERSION = "0.82.0";
