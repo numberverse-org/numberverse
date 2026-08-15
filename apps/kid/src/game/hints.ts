@@ -153,17 +153,18 @@ export function hintWrong(
     releaseOption(scene, container);
   }
 
-  // miss #1: keep it warm and small
-  if (n === 1) {
-    wrongTap(scene, container);
+  // #1158 — challenge mode: the coaching ladder is OFF from the FIRST miss.
+  // Wrong buttons are still retired above and the miss is in the ledger, but
+  // no soft "almost" bubble, no banner, no fade, no reveal — the older kid
+  // solves it themselves under pressure.
+  if (ctx.challenge) {
+    wrongTap(scene, container, { tip: false });
     return;
   }
 
-  // #1158 — challenge mode: the coaching ladder is OFF. Wrong buttons are still
-  // retired above and the miss is in the ledger, but no banner, no fade, no
-  // reveal — the older kid solves it themselves under pressure.
-  if (ctx.challenge) {
-    wrongTap(scene, container, { tip: false });
+  // miss #1: keep it warm and small
+  if (n === 1) {
+    wrongTap(scene, container);
     return;
   }
 
