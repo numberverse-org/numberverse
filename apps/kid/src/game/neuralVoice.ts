@@ -31,12 +31,16 @@ const BASE = "/voice/";
 // keep serving the stale bytes until the cache expires. Bump this version to
 // force every client onto fresh bytes after a voice deploy.
 const VOICE_V = "v9"; // v9 = ORT engine back to 1.17 (piper-wasm's engine) — 1.20+ needs import() of an .mjs, which Safari's classic worker can't do
+// NOTE: MODEL_JSON MUST carry the SAME ?v= bump (line 39) so the config and
+// model rev together — a voice deploy that only renames the .onnx file would
+// otherwise leave the .onnx.json config frozen in the 6-month CacheFirst cache,
+// creating a mismatched model+config pair for installed clients.
 const PHON_JS = BASE + "piper_phonemize.js";
 const PHON_WASM = BASE + "piper_phonemize.wasm";
 const PHON_DATA = BASE + "piper_phonemize.data";
 const WORKER_JS = BASE + "piper_worker.js?v=" + VOICE_V;
 const MODEL = BASE + "bn_BD-google-medium.onnx?v=" + VOICE_V;
-const MODEL_JSON = BASE + "bn_BD-google-medium.onnx.json";
+const MODEL_JSON = BASE + "bn_BD-google-medium.onnx.json?v=" + VOICE_V;
 const ORT_BASE = BASE + "onnx/";
 const ORT_JS = ORT_BASE + "ort.min.js?v=" + VOICE_V;
 // ORT 1.17's loader string-concats `wasmPaths + "ort-wasm-simd.wasm"` (no
