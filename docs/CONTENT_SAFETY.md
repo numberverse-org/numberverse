@@ -5,12 +5,22 @@ every PR, **fail-closed** (a hit → the PR cannot merge).
 
 ## ① Content safety (`scripts/content-safety.mjs` → CI job `content-safety`)
 
-Every skill title (`packages/core/src/skills.ts`) and every quoted display
-string in `apps/kid/src/game/*Scene.ts` is scanned for words a child should
-never see in an educational app: violence, horror, insults (`kill`, `blood`,
-`bomb`, `weapon`, `ghost`, `demon`, `dead`, `stupid`, `liar`, `die`, `gun`,
-…). Word boundaries make it safe: `skills` never trips `kill`, `diet` never
-trips `die`.
+Every child-facing display surface is scanned for words a child should never
+see in an educational app: violence, horror, insults, self-harm, sexualized
+terms, drugs/alcohol, and strong slurs. The scanned surfaces are:
+
+- every skill `title` / `titleBn` / `description` / `descriptionBn` in
+  `packages/core/src/skills.ts`;
+- every quoted display string in `apps/kid/src/game/*Scene.ts`;
+- the 3D island source in `apps/kid/src/nova3d/`;
+- both i18n dictionaries — `apps/kid/src/i18n.ts` and
+  `apps/kid/src/game/i18n.ts` (the largest source of display text).
+
+The word lists live in `apps/kid/src/game/unsafeWords.json`, the single source
+of truth shared by this gate, `scripts/team/oracle_team.py`, and the runtime
+TTS guard in `apps/kid/src/game/speech.ts` — so the English and Bangla lists
+cannot drift out of sync. Word boundaries make it safe: `skills` never trips
+`kill`, `diet` never trips `die`.
 
 This mirrors the Oracle's `l1_safety()` standup check but as a fast,
 self-contained gate **with an allowlist** the Oracle lacks.
