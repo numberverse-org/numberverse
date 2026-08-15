@@ -722,7 +722,7 @@ export class NovaScene extends Phaser.Scene {
   /** True mid-room-fade so rapid swipes can't skip rooms erratically. */
   private roomSwitching = false;
   /** First room flip ever → hides the one-time swipe nudge for good. */
-  private swipedRooms = false;
+  private static swipedRooms = false;
 
   // one-time "swipe to explore" nudge under Nova
   private swipeHint!: Phaser.GameObjects.Container;
@@ -731,7 +731,7 @@ export class NovaScene extends Phaser.Scene {
   private swipeHintChevR!: Phaser.GameObjects.Text;
   private swipeHintLabel!: Phaser.GameObjects.Text;
   private swipeHintTimer?: Phaser.Time.TimerEvent;
-  private swipeHintDismissed = false;
+  private static swipeHintDismissed = false;
 
   // shop sheet
   private shopPanel!: Phaser.GameObjects.Container;
@@ -836,8 +836,8 @@ export class NovaScene extends Phaser.Scene {
       if (this.shopPanel.visible || this.speciesPanel.visible || this.actPanel.visible) return; // a sheet is open — that press was its close
       this.poke();
       this.setRoom(dir);
-      if (!this.swipedRooms) {
-        this.swipedRooms = true;
+      if (!NovaScene.swipedRooms) {
+        NovaScene.swipedRooms = true;
         this.hideSwipeHint();
       }
       this.say(t("roomFlipped"), 1600);
@@ -921,12 +921,8 @@ export class NovaScene extends Phaser.Scene {
       });
     }
     // after the hello, tease the one-time "swipe to explore" nudge — only if
-    // no sheet is already open and the kid hasn't started tapping yet.
-    this.time.delayedCall(5000, () => {
-      if (this.shopPanel.visible || this.speciesPanel.visible || this.actPanel.visible) return;
-      if (this.touched) return;
-      this.showSwipeHint();
-    });
+    // no sheet is already open, Nova is awake, and the kid hasn't tapped yet.
+    this.time.delayedCall(5000, () => this.showSwipeHint());
   }
 
   /* ────────────────────────── vignette + rooms ────────────────────────── */
@@ -1063,16 +1059,32 @@ export class NovaScene extends Phaser.Scene {
     }
   }
 
+  /** The nudge only belongs on an actually-swipeable, awake open canvas. */
+  private swipeHintBlocked(): boolean {
+    return (
+      this.dozing ||
+      this.touched ||
+      this.shopPanel.visible ||
+      this.speciesPanel.visible ||
+      this.actPanel.visible
+    );
+  }
+
   private showSwipeHint() {
-    if (this.swipedRooms || this.swipeHintDismissed) return;
+    if (NovaScene.swipedRooms || NovaScene.swipeHintDismissed) return;
+    if (this.swipeHintBlocked()) return;
     this.swipeHint.setVisible(true);
     this.swipeHint.setAlpha(0);
     this.tweens.add({ targets: this.swipeHint, alpha: 0.95, duration: 400 });
     this.swipeHintTimer = this.time.delayedCall(9000, () => this.hideSwipeHint());
   }
 
+  private hideSwipeHintIfVisible() {
+    if (this.swipeHint?.visible) this.hideSwipeHint();
+  }
+
   private hideSwipeHint() {
-    this.swipeHintDismissed = true;
+    NovaScene.swipeHintDismissed = true;
     this.swipeHintTimer?.remove();
     this.swipeHintTimer = undefined;
     this.tweens.killTweensOf(this.swipeHint);
@@ -1651,6 +1663,7 @@ export class NovaScene extends Phaser.Scene {
   private showShop() {
     this.poke();
     if (this.shopPanel.visible) return;
+    this.hideSwipeHintIfVisible();
     this.hideAct(true);
     this.shopPanel.setVisible(true);
     this.shopPanel.setAlpha(1).setPosition(this.shopPanel.x, this.shopTargetY + 90);
@@ -1677,6 +1690,7 @@ export class NovaScene extends Phaser.Scene {
   private showAct() {
     this.poke();
     if (this.actPanel.visible) return;
+    this.hideSwipeHintIfVisible();
     this.hideShop(true);
     this.actPanel.setVisible(true);
     this.actPanel.setAlpha(1).setPosition(this.actPanel.x, this.actTargetY + 90);
@@ -1853,6 +1867,7 @@ export class NovaScene extends Phaser.Scene {
   private showSpecies() {
     this.poke();
     if (this.speciesPanel.visible) return;
+    this.hideSwipeHintIfVisible();
     this.hideShop(true);
     this.hideAct(true);
     this.speciesPanel.setVisible(true);
@@ -2803,6 +2818,7 @@ export class NovaScene extends Phaser.Scene {
 
   private doze() {
     this.dozing = true;
+    this.hideSwipeHintIfVisible();
     this.tweens.add({ targets: this.eyeL, scaleY: 0.08, duration: 500, ease: "Sine.easeInOut" });
     this.tweens.add({ targets: this.eyeR, scaleY: 0.08, duration: 500, ease: "Sine.easeInOut" });
     this.tweens.add({ targets: this.root, angle: 3, duration: 500, ease: "Sine.easeInOut" });
