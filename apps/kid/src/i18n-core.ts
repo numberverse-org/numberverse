@@ -25,6 +25,8 @@ export interface Strings {
   gameAreaA11y: string;
   /** #785/#1005 — keyboard hint for the game canvas. */
   gameKeyHint: string;
+  /** #1074 — per-game difficulty/age signal (Bangladesh school class). */
+  classLabel: (n: number) => string;
   appTagline: string;
   agesBadge: string;
   play: string;

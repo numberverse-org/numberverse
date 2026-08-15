@@ -7,7 +7,7 @@ import {
   worldProgress, worldEmoji, worldUnlocked, totalMastered, subjectForSkill, journeyStops, cardDate,
   rankFor, challengeQ, challengeNovaChance, RANKS, TOUR_STEPS, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
   CHALLENGE_MAX_LEVEL, FOCUS_SUBJECT_LABELS, SUBJECT_CARD, worldCards, CONTRAST_TEMPLATES,
-  filterSkills, moniPlanFor, SEASON_EMOJI, SEASON_PARTICLES, kidBand,
+  filterSkills, moniPlanFor, SEASON_EMOJI, SEASON_PARTICLES, kidBand, skillTitle, skillDesc,
 } from "../lib/journey";
 import { STR, bnNum, type Lang, type Strings } from "../i18n";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_SPECIES, speciesById, speciesEmoji, questTypeFor, QUEST_TARGETS, type QuestType } from "../store";
@@ -432,8 +432,13 @@ export default function HomeScreen({
                   {(() => {
                     const band = BANDS.find((b) => b.id === recSkill!.band);
                     const prog = worldProgress(skillsMap, kid.id, recSkill!.band);
-                    return `${recSkill!.title} · ${band?.title ?? ""} · ${t.skillsProg(prog.mastered, prog.total)}`;
+                    return `${skillTitle(recSkill, lang)} · ${band?.title ?? ""} · ${t.skillsProg(prog.mastered, prog.total)}`;
                   })()}
+                </span>
+              )}
+              {recSkill && (
+                <span className="play-btn-desc">
+                  {skillDesc(recSkill, lang)} · {t.classLabel(recSkill.classNumber ?? recSkill.band)}
                 </span>
               )}
             </button>
@@ -446,10 +451,13 @@ export default function HomeScreen({
                 <span className="week-card-icon" aria-hidden="true">{weekDone ? "🏅" : "🗓️"}</span>
                 <div className="week-card-body">
                   <span className="week-card-title">{t.weekTitle}</span>
-                  <button className="week-card-skill" onClick={() => startSingleSkill(weekSkill)} aria-label={t.playWith(weekSkill.title)}>
-                    {weekDone ? `✓ ${weekSkill.title}` : `▶ ${weekSkill.title}`}
+                  <button className="week-card-skill" onClick={() => startSingleSkill(weekSkill)} aria-label={t.playWith(skillTitle(weekSkill, lang))}>
+                    {weekDone ? `✓ ${skillTitle(weekSkill, lang)}` : `▶ ${skillTitle(weekSkill, lang)}`}
                   </button>
-                  <span className="week-card-line">{weekDone ? t.weekDone : t.weekSub}</span>
+                  <span className="week-card-desc">{skillDesc(weekSkill, lang)}</span>
+                  <span className="week-card-line">
+                    {weekDone ? t.weekDone : t.weekSub} · {t.classLabel(weekSkill.classNumber ?? weekSkill.band)}
+                  </span>
                 </div>
               </div>
             )}

@@ -66,6 +66,9 @@ export default function StoryInspector({ stories, skills, t, lang }: { stories: 
                     {gs?.title ?? st.skillId}
                     {gs?.titleBn ? <span className="skill-bn">{gs.titleBn}</span> : null}
                   </span>
+                  {gs && (bn ? gs.descriptionBn ?? gs.description : gs.description) ? (
+                    <span className="kotha-desc">{bn ? gs.descriptionBn ?? gs.description : gs.description}</span>
+                  ) : null}
                   <span className="kotha-line">
                     {st.outcome ? t.kothaCorrect : t.kothaWrong}
                     {st.errorKind ? ` · ${kindLabel(st.errorKind)}` : ""}

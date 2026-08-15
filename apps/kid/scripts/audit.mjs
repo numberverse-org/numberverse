@@ -115,6 +115,25 @@ if (skills.length) {
   for (const s of skills) {
     if (s.game && !gameIds.has(s.game)) fail(`skill "${s.id}" → game "${s.game}" not in GAMES`);
   }
+  // #1019 — NCTB code guard: every nctbCode must be unique and its `cN-`
+  // prefix must agree with classNumber (no collisions, no class-prefix drift).
+  const seenNctb = new Map();
+  for (const s of skills) {
+    if (!s.nctbCode && s.classNumber == null) continue;
+    if (!s.nctbCode || s.classNumber == null) {
+      fail(`NCTB: skill "${s.id}" must carry both nctbCode and classNumber (or neither)`);
+      continue;
+    }
+    const m = /^c(\d+)-[a-z]+-\d+$/.exec(s.nctbCode);
+    if (!m) {
+      fail(`NCTB: skill "${s.id}" nctbCode "${s.nctbCode}" is not c<class>-<subject>-<unit>`);
+    } else if (Number(m[1]) !== s.classNumber) {
+      fail(`NCTB: skill "${s.id}" nctbCode prefix c${m[1]} disagrees with classNumber ${s.classNumber}`);
+    }
+    const prev = seenNctb.get(s.nctbCode);
+    if (prev) fail(`NCTB: skills "${prev}" and "${s.id}" share nctbCode "${s.nctbCode}"`);
+    else seenNctb.set(s.nctbCode, s.id);
+  }
   for (const g of games) {
     if (!skillIds.has(g.skillId)) fail(`game "${g.id}" → skill "${g.skillId}" not in SKILLS`);
     if (!scenes[g.id]) fail(`game "${g.id}" has no GAME_SCENES entry`);
@@ -190,13 +209,27 @@ if (skills.length) {
 }
 
 /* ── 3. seed parity ── */
-console.log("③  seed.py parity (every core skill in SKILLS_SEED)…");
+console.log("③  seed.py parity (every core skill + its catalog fields in SKILLS_SEED)…");
 const seedSrc = readFileSync(join(ROOT, "apps", "api", "app", "seed.py"), "utf8");
 const seedIds = new Set([...seedSrc.matchAll(/^\s*\(("([^"]+)")\s*,\s*\d+\s*,/gm)].map((m) => m[2]));
 for (const s of skills) {
   if (!seedIds.has(s.id)) fail(`skill "${s.id}" missing from seed.py SKILLS_SEED`);
 }
-if (skills.length) console.log(`  ✓ ${[...seedIds].length} skills in seed.py checked`);
+// #1020 — SKILLS_SEED carries the same catalog metadata as core: nctb_code,
+// class_number and description must not drift between the two sources.
+const seedRows = new Map(
+  [...seedSrc.matchAll(/^\s*\("([^"]+)"\s*,\s*\d+\s*,\s*"[^"]+"\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*,\s*"([^"]*)"\s*,\s*(\d+)\s*,\s*"([^"]*)"\),?\s*$/gm)].map(
+    (m) => [m[1], { nctbCode: m[2], classNumber: Number(m[3]), description: m[4] }]
+  )
+);
+for (const s of skills) {
+  const row = seedRows.get(s.id);
+  if (!row) continue;
+  if (row.nctbCode !== (s.nctbCode ?? "")) fail(`seed parity: skill "${s.id}" nctb_code "${row.nctbCode}" ≠ core "${s.nctbCode ?? ""}"`);
+  if (row.classNumber !== (s.classNumber ?? null)) fail(`seed parity: skill "${s.id}" class_number ${row.classNumber} ≠ core ${s.classNumber ?? null}`);
+  if (row.description !== (s.description ?? "")) fail(`seed parity: skill "${s.id}" description differs from core`);
+}
+if (skills.length) console.log(`  ✓ ${[...seedIds].length} skills in seed.py checked (ids + nctb/class/description)`);
 
 /* ── 4. hardcoded English header titles ── */
 console.log("④  hardcoded (untranslated) scene header titles…");

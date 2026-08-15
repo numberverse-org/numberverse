@@ -12,6 +12,8 @@ export const en: Strings = {
     gameAreaA11y: "Numberverse game",
     // #785/#1005 — keyboard hint for the game canvas.
     gameKeyHint: "Use the arrow keys to choose an answer, then press Enter.",
+    // #1074 — a compact, kid-readable difficulty signal on every game card.
+    classLabel: (n) => `Class ${n}`,
     appTagline: "Your kids learn smarter — Bangla, English, Math & more.",
     agesBadge: "Ages 2–13 · no ads, ever",
     play: "▶ Play",

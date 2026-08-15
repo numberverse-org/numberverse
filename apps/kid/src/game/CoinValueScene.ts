@@ -19,17 +19,17 @@ const DENOMS = [
   { v: 1, bn: "এক টাকা", g: "৳১", r: 34 },
   { v: 2, bn: "দুই টাকা", g: "৳২", r: 40 },
   { v: 5, bn: "পাঁচ টাকা", g: "৳৫", r: 46 },
-  { v: 10, bn: "দশ টাকা", g: "৳১০", r: 0 }, // 10 = note (rect)
 ];
 const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
 const bnNum = (n: number) => String(n).split("").map((c) => BN_DIGITS[Number(c)]).join("");
 
 /**
- * Coin values — টাকার চেনা (#170).
- * Band 2: ৳1/৳2/৳5/৳10. Two alternating games —
- * 1) VALUE RECOGNITION: a coin (Bangla numeral printed, ৳৫) or the ৳10 note is
- *    shown; the kid taps its Western value (৳5). Bangla name spoken.
- * 2) COUNT-TO-TOTAL: a ৳ total is shown; the kid taps coins/notes that add up —
+ * Coin values — পয়সা চিনি (#170).
+ * Band 2: ৳1/৳2/৳5 coins (the note/change lesson lives in BdMoney). Two
+ * alternating games —
+ * 1) VALUE RECOGNITION: a coin (Bangla numeral printed, ৳৫) is shown; the kid
+ *    taps its Western value (৳5). Bangla name spoken.
+ * 2) COUNT-TO-TOTAL: a ৳ total is shown; the kid taps coins that add up —
  *    under the total keep tapping, equal wins (speaks "আট টাকা"), over clears
  *    the tray gently. Always solvable (any total is reachable with ৳1s).
  */
