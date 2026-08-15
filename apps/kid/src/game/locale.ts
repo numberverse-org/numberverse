@@ -42,9 +42,10 @@ export function setAppLang(code: string) {
   appCode = LOCALES[code] ? code : DEFAULT_CODE;
 }
 
-/** The active locale pack (dir, digits, voice, curriculum…) — the app reads this. */
-export function getLocale(): LocalePack {
-  return resolveLocale(ensureCode());
+/** The active locale pack (dir, digits, voice, curriculum…) — the app reads this.
+ *  Pass a code to read a SPECIFIC shipped locale (e.g. the language pills). */
+export function getLocale(code?: string): LocalePack {
+  return resolveLocale(code ?? ensureCode());
 }
 
 /** Compatibility: the active locale code ("en" | "bn" today, "ar"|"hi" later). */

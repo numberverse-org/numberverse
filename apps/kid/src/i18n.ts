@@ -460,6 +460,8 @@ export interface Strings {
   welcomeLangLabel: string;
   welcomeEnglish: string;
   welcomeBangla: string;
+  /** #1403 — spoken confirmation when the language changes (read in the NEW lang). */
+  langSwitched: string;
   welcomeGuest: string;
   welcomeGuestSub: string;
   welcomeOr: string;
@@ -581,6 +583,8 @@ export interface Strings {
   quietBadgeOn: string;
   settingsSecSound: string;
   settingsSecLanguage: string;
+  /** #1404 — in-game HUD language toggle (aria/title). */
+  langSwitch: string;
   settingsSecLearning: string;
   settingsMusicRow: string;
   /* #355 — haptic tap pulses */
@@ -1236,6 +1240,7 @@ export const STR: Record<Lang, Strings> = {
     welcomeLangLabel: "Choose your language",
     welcomeEnglish: "🇬🇧 English",
     welcomeBangla: "🇧🇩 বাংলা",
+    langSwitched: "English! Hello!",
     welcomeGuest: "🎮 Continue as guest",
     welcomeGuestSub: "No account? Jump straight in — progress stays private on this device.",
     welcomeOr: "or",
@@ -1346,6 +1351,7 @@ export const STR: Record<Lang, Strings> = {
     a11yHighContrastOff: "High contrast is off",
     settingsReduceMotion: "Reduce motion",
     settingsSecLanguage: "🌐 Language",
+    langSwitch: "Switch language",
     settingsSecLearning: "📚 My learning",
     settingsSecParents: "👨‍👩‍👧 For parents",
     settingsMusicOff: "A parent turned music off for this profile.",
@@ -1993,6 +1999,7 @@ export const STR: Record<Lang, Strings> = {
     welcomeLangLabel: "আপনার ভাষা চয়ন করুন",
     welcomeEnglish: "🇬🇧 English",
     welcomeBangla: "🇧🇩 বাংলা",
+    langSwitched: "বাংলা! হ্যালো!",
     welcomeGuest: "🎮 অতিথি হিসেবে খেলুন",
     welcomeGuestSub: "অ্যাকাউন্ট নেই? সোজা ঢুকে পড়ুন — শেখার খবর এই ডিভাইসেই ব্যক্তিগত থাকে।",
     welcomeOr: "অথবা",
@@ -2103,6 +2110,7 @@ export const STR: Record<Lang, Strings> = {
     a11yHighContrastOff: "উচ্চ কনট্রাস্ট বন্ধ",
     settingsReduceMotion: "কম গতি",
     settingsSecLanguage: "🌐 ভাষা",
+    langSwitch: "ভাষা বদলাও",
     settingsSecLearning: "📚 আমার শেখা",
     settingsSecParents: "👨‍👩‍👧 মা-বাবার জন্য",
     settingsMusicOff: "মা-বাবা এই প্রোফাইলের জন্য মিউজিক বন্ধ করে দিয়েছেন।",
