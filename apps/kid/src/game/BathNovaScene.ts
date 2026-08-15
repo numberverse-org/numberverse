@@ -58,7 +58,6 @@ export class BathNovaScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private meter!: Phaser.GameObjects.Graphics;
@@ -71,6 +70,10 @@ export class BathNovaScene extends Phaser.Scene {
   private spawnTimer?: Phaser.Time.TimerEvent;
   private soap!: Phaser.GameObjects.Text;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("BathNova");
   }
@@ -79,7 +82,6 @@ export class BathNovaScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "kitchen");
     this.drawHeader();
     this.drawNova();

@@ -50,7 +50,6 @@ export class PetDanceScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private meterText!: Phaser.GameObjects.Text;
@@ -59,6 +58,10 @@ export class PetDanceScene extends Phaser.Scene {
   private taps = 0;
   private beatTimer?: Phaser.Time.TimerEvent;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("PetDance");
   }
@@ -67,7 +70,6 @@ export class PetDanceScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "sunset");
     this.drawHeader();
     this.drawNova();

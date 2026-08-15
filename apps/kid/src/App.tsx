@@ -204,6 +204,7 @@ export default function App() {
   // #22 — sibling co-op: "pass the device" overlay + "now playing" toast.
   const [coopOpen, setCoopOpen] = useState(false);
   const [coopToast, setCoopToast] = useState<string | null>(null);
+  const [calmOpen, setCalmOpen] = useState(false);
   const coopTimerRef = useRef<number | undefined>(undefined);
   // #139 — flashcard QR scan overlay (camera + manual code fallback).
   const [scanOpen, setScanOpen] = useState(false);
@@ -2971,7 +2972,10 @@ export default function App() {
             {/* 🎬 Reduced motion — off for kids who find motion overwhelming. */}
             <div className="settings-row-line">
               <span className="settings-row-icon">🦋</span>
-              <span className="settings-row-label">{t.settingsReduceMotion}</span>
+              <span className="settings-row-label">
+                <span>{t.settingsReduceMotion}</span>
+                <span className="settings-row-sub">{t.settingsReduceMotionSub}</span>
+              </span>
               <button
                 className={`switch${reduceMotion ? " on" : ""}`}
                 role="switch"
@@ -2981,6 +2985,7 @@ export default function App() {
                   const next = !reduceMotion;
                   setReduceMotion(next);
                   setReducedMotion(next);
+                  announce(next ? t.calmOn : t.calmOff);
                 }}
               >
                 <span className="switch-thumb" />
@@ -5358,6 +5363,17 @@ export default function App() {
               >
                 {muted ? "🔇" : "🔊"}
               </button>
+              {/* 🦋 #1442 — in-flow calm toggle: a kid mid-meltdown can reach
+                  reduced motion without hunting through the Settings screen. */}
+              <button
+                className="hud-music calm-btn"
+                onClick={() => setCalmOpen(true)}
+                aria-label={t.calmButton}
+                title={t.calmButton}
+                aria-haspopup="dialog"
+              >
+                🦋
+              </button>
               {/* #22 — sibling co-op: only when a second profile exists on this
                   device. Tap → pass the device to a sibling mid-session. */}
               {kids.length >= 2 && (
@@ -5405,6 +5421,40 @@ export default function App() {
             <span className="nova-react-line">{lang === "bn" ? NOVA_REACTIONS[novaReaction.kind].lineBn() : NOVA_REACTIONS[novaReaction.kind].lineEn()}</span>
           </div>
         )}
+        {/* 🦋 #1442/#1456 — calm-mode sheet: an in-flow, kid-understandable
+            explanation + toggle for reduced motion (mid-meltdown reachable). */}
+        {calmOpen && (
+          <div className="coop-overlay" onClick={() => setCalmOpen(false)}>
+            <div className="coop-sheet" role="dialog" aria-label={t.calmTitle} onClick={(e) => e.stopPropagation()}>
+              <h3 className="coop-title">🦋 {t.calmTitle}</h3>
+              <p className="coop-sub">{t.calmBody}</p>
+              <div className="settings-row-line">
+                <span className="settings-row-label">
+                  <span>{t.settingsReduceMotion}</span>
+                  <span className="settings-row-sub">{t.settingsReduceMotionSub}</span>
+                </span>
+                <button
+                  className={`switch${reduceMotion ? " on" : ""}`}
+                  role="switch"
+                  aria-checked={reduceMotion}
+                  aria-label={t.settingsReduceMotion}
+                  onClick={() => {
+                    const next = !reduceMotion;
+                    setReduceMotion(next);
+                    setReducedMotion(next);
+                    announce(next ? t.calmOn : t.calmOff);
+                  }}
+                >
+                  <span className="switch-thumb" />
+                </button>
+              </div>
+              <button className="coop-close" onClick={() => setCalmOpen(false)} aria-label={t.back}>
+                {t.back}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* #22 — pass-the-device sheet: pick the sibling whose turn it is. */}
         {coopOpen && kids.length >= 2 && (
           <div className="coop-overlay" onClick={() => setCoopOpen(false)}>

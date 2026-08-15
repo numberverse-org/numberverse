@@ -58,7 +58,6 @@ export class PhotoBoothScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private hint!: Phaser.GameObjects.Text;
   private poseBtn!: Phaser.GameObjects.Text;
   private snapBtn!: Phaser.GameObjects.Text;
@@ -68,6 +67,10 @@ export class PhotoBoothScene extends Phaser.Scene {
   private nova!: Phaser.GameObjects.Text;
   private poseIdx = 0;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("PhotoBooth");
   }
@@ -76,7 +79,6 @@ export class PhotoBoothScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "candy");
     this.drawHeader();
     this.drawFrame();
@@ -153,7 +155,7 @@ export class PhotoBoothScene extends Phaser.Scene {
     pop();
     this.poseIdx = (this.poseIdx + 1) % POSES.length;
     this.updateNovaText();
-    this.tweens.add({ targets: this.nova, scale: 1.12, duration: 120, yoyo: true });
+    if (!this.reduced) this.tweens.add({ targets: this.nova, scale: 1.12, duration: 120, yoyo: true });
   }
 
   private updateNovaText() {

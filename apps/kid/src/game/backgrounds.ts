@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { SAT } from "./safeArea";
 import { txt, NV_COCOA } from "./ui";
+import { prefersReducedMotion, onReducedMotionChange } from "./reducedMotion";
 
 /**
  * Modern, "2026-style" animated game backgrounds — zero assets.
@@ -193,7 +194,8 @@ interface BgState {
   shapes: { img: Phaser.GameObjects.Image }[];
   stars: Phaser.GameObjects.Image[];
   /** Nova cameo — peeks from the top-right corner, waves on tap. */
-  cameo: { root: Phaser.GameObjects.Container; img: Phaser.GameObjects.Image } | null;
+  cameo: { root: Phaser.GameObjects.Container; img: Phaser.GameObjects.Image; boopTimer?: Phaser.Time.TimerEvent } | null;
+  offReducedMotion?: () => void;
 }
 
 const bgState = new WeakMap<Phaser.Scene, BgState>();
@@ -201,6 +203,7 @@ const resizeFns = new WeakMap<Phaser.Scene, () => void>();
 
 function startShapeTweens(scene: Phaser.Scene, img: Phaser.GameObjects.Image) {
   scene.tweens.killTweensOf(img);
+  if (prefersReducedMotion()) return;
   const bob = Phaser.Math.Between(-22, 22);
   scene.tweens.add({
     targets: img,
@@ -395,25 +398,41 @@ function buildNovaCameo(scene: Phaser.Scene): BgState["cameo"] {
       scene.tweens.add({ targets: s, alpha: 0, scale: 0.9, y: s.y - 18, duration: 500, onComplete: () => s.destroy() });
     }
   });
-  // slow idle float
-  scene.tweens.add({ targets: img, y: img.y + 6, duration: 2600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  // Ambient cameo motion (idle float + periodic peek-a-boo) is started by
+  // startBgMotion() so it can be killed/restarted live when the reduced-motion
+  // toggle flips mid-scene (#1440).
+  return { root, img };
+}
+
+/** Start or stop the cameo's ambient motion. Safe to call repeatedly — it
+ *  kills any existing float/boop first, then re-creates when motion is on. */
+function startCameoMotion(scene: Phaser.Scene, cameo: NonNullable<BgState["cameo"]>) {
+  scene.tweens.killTweensOf(cameo.img);
+  scene.tweens.killTweensOf(cameo.root);
+  cameo.boopTimer?.remove();
+  cameo.boopTimer = undefined;
+  if (prefersReducedMotion()) return;
+
+  scene.tweens.add({ targets: cameo.img, y: cameo.img.y + 6, duration: 2600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   // periodic peek-a-boo: rise, wiggle, sink (guarded so a stale timer never
   // tweens a destroyed cameo after the scene shut down)
   const boop = () => {
     if (!scene.scene.isActive()) return;
+    if (prefersReducedMotion()) return;
     scene.tweens.add({
-      targets: root,
-      y: root.y - 10,
+      targets: cameo.root,
+      y: cameo.root.y - 10,
       angle: 4,
       duration: 400,
       yoyo: true,
       repeat: 2,
       ease: "Sine.easeInOut",
-      onComplete: () => scene.time.delayedCall(Phaser.Math.Between(11000, 17000), boop),
+      onComplete: () => {
+        cameo.boopTimer = scene.time.delayedCall(Phaser.Math.Between(11000, 17000), boop);
+      },
     });
   };
-  scene.time.delayedCall(Phaser.Math.Between(6000, 10000), boop);
-  return { root, img };
+  cameo.boopTimer = scene.time.delayedCall(Phaser.Math.Between(6000, 10000), boop);
 }
 
 /** Top-right corner placement — below the notch, and clear of the garden grid
@@ -429,26 +448,18 @@ function positionNovaCameo(scene: Phaser.Scene, cameo: NonNullable<BgState["came
   cameo.root.setPosition(width - hw - 8, 118 + SAT() - hh / 2);
 }
 
-function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
-  ensureShapeTex(scene);
-  const pal = PALETTES[theme];
-  const { width, height } = scene.scale;
+/** (Re)start every ambient background motion for a scene. Kills first so a
+ *  reduced-motion toggle mid-scene takes effect immediately (#1440). */
+function startBgMotion(scene: Phaser.Scene, state: BgState) {
+  scene.tweens.killTweensOf(state.blobs.map((b) => b.img));
+  scene.tweens.killTweensOf(state.shapes.map((s) => s.img));
+  scene.tweens.killTweensOf(state.stars);
+  if (state.cameo) startCameoMotion(scene, state.cameo);
 
-  const root = scene.add.container(0, 0).setDepth(-10); // backdrop — scenes layer decor/content above
+  if (prefersReducedMotion()) return;
 
-  const gradKey = `nv-grad-${scene.scene.key}`;
-  const gradTex = makeGradient(scene, gradKey, width, height, pal.top, pal.bottom);
-  const grad = scene.add.image(0, 0, gradTex).setOrigin(0, 0).setDisplaySize(width, height);
-
-  // Aurora blobs — big soft glows drifting slowly (parallax depth)
-  const blobs: BgState["blobs"] = pal.blobs.map((color, i) => {
-    const img = scene.add.image(
-      Phaser.Math.Between(width * 0.08, width * 0.92),
-      Phaser.Math.Between(height * 0.12, height * 0.85),
-      getBlobTex(scene, color)
-    );
-    img.setAlpha(0.55);
-    img.setScale(Phaser.Math.FloatBetween(0.9, 1.7) * Phaser.Math.Clamp(width / 520, 0.65, 1.8));
+  state.blobs.forEach((b, i) => {
+    const img = b.img;
     scene.tweens.add({
       targets: img,
       x: (img.x as number) + Phaser.Math.Between(-70, 70),
@@ -468,6 +479,44 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
       ease: "Sine.easeInOut",
       delay: i * 700,
     });
+  });
+
+  state.shapes.forEach((s) => startShapeTweens(scene, s.img));
+
+  state.stars.forEach((img) => {
+    scene.tweens.add({
+      targets: img,
+      alpha: Phaser.Math.FloatBetween(0.02, 0.08),
+      scale: img.scale * Phaser.Math.FloatBetween(0.7, 1.4),
+      duration: Phaser.Math.Between(800, 1800),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      delay: Phaser.Math.Between(0, 1500),
+    });
+  });
+}
+
+function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
+  ensureShapeTex(scene);
+  const pal = PALETTES[theme];
+  const { width, height } = scene.scale;
+
+  const root = scene.add.container(0, 0).setDepth(-10); // backdrop — scenes layer decor/content above
+
+  const gradKey = `nv-grad-${scene.scene.key}`;
+  const gradTex = makeGradient(scene, gradKey, width, height, pal.top, pal.bottom);
+  const grad = scene.add.image(0, 0, gradTex).setOrigin(0, 0).setDisplaySize(width, height);
+
+  // Aurora blobs — big soft glows drifting slowly (parallax depth)
+  const blobs: BgState["blobs"] = pal.blobs.map((color) => {
+    const img = scene.add.image(
+      Phaser.Math.Between(width * 0.08, width * 0.92),
+      Phaser.Math.Between(height * 0.12, height * 0.85),
+      getBlobTex(scene, color)
+    );
+    img.setAlpha(0.55);
+    img.setScale(Phaser.Math.FloatBetween(0.9, 1.7) * Phaser.Math.Clamp(width / 520, 0.65, 1.8));
     return { img };
   });
 
@@ -484,7 +533,6 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
     img.setTint(pal.shape);
     img.setAlpha(Phaser.Math.FloatBetween(0.12, 0.42));
     img.setScale(Phaser.Math.FloatBetween(0.5, 1.6));
-    startShapeTweens(scene, img);
     shapes.push({ img });
   }
 
@@ -500,16 +548,6 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
       img.setTint(0xffffff);
       img.setAlpha(Phaser.Math.FloatBetween(0.1, 0.35));
       img.setScale(Phaser.Math.FloatBetween(0.3, 0.85));
-      scene.tweens.add({
-        targets: img,
-        alpha: Phaser.Math.FloatBetween(0.02, 0.08),
-        scale: img.scale * Phaser.Math.FloatBetween(0.7, 1.4),
-        duration: Phaser.Math.Between(800, 1800),
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-        delay: Phaser.Math.Between(0, 1500),
-      });
       stars.push(img);
     }
   }
@@ -521,6 +559,10 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
   if (cameo) positionNovaCameo(scene, cameo);
 
   const state: BgState = { theme, gradKey, root, grad, blobs, shapes, stars, cameo };
+  startBgMotion(scene, state);
+  // Live effect: a kid can flip "calm mode" from the in-game HUD without
+  // restarting the scene — kill/restart ambient motion immediately.
+  state.offReducedMotion = onReducedMotionChange(() => startBgMotion(scene, state));
 
   const onResize = () => {
     const { width: w, height: h } = scene.scale;
@@ -533,24 +575,26 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
     state.shapes.forEach((s) => {
       s.img.x = Phaser.Math.Clamp(s.img.x, 10, Math.max(11, w - 10));
       s.img.y = Phaser.Math.Clamp(s.img.y, 10, Math.max(11, h - 10));
-      startShapeTweens(scene, s.img);
     });
     state.stars.forEach((st) => {
       st.x = Phaser.Math.Clamp(st.x, 10, Math.max(11, w - 10));
       st.y = Phaser.Math.Clamp(st.y, 8, Math.max(9, h - 8));
     });
     if (state.cameo) positionNovaCameo(scene, state.cameo);
+    startBgMotion(scene, state);
   };
   scene.scale.on(Phaser.Scale.Events.RESIZE, onResize);
   resizeFns.set(scene, onResize);
 
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    state.offReducedMotion?.();
     const rf = resizeFns.get(scene);
     if (rf) scene.scale.off(Phaser.Scale.Events.RESIZE, rf);
     scene.tweens.killTweensOf(state.blobs.map((b) => b.img));
     scene.tweens.killTweensOf(state.shapes.map((s) => s.img));
     scene.tweens.killTweensOf(state.stars);
     if (state.cameo) {
+      state.cameo.boopTimer?.remove();
       scene.tweens.killTweensOf(state.cameo.root);
       scene.tweens.killTweensOf(state.cameo.img);
       state.cameo.root.destroy();
@@ -571,10 +615,12 @@ export function gameBackground(scene: Phaser.Scene, theme: BgTheme) {
     if (prev.theme === theme) return;
     const rf = resizeFns.get(scene);
     if (rf) scene.scale.off(Phaser.Scale.Events.RESIZE, rf);
+    prev.offReducedMotion?.();
     scene.tweens.killTweensOf(prev.blobs.map((b) => b.img));
     scene.tweens.killTweensOf(prev.shapes.map((s) => s.img));
     scene.tweens.killTweensOf(prev.stars);
     if (prev.cameo) {
+      prev.cameo.boopTimer?.remove();
       scene.tweens.killTweensOf(prev.cameo.root);
       scene.tweens.killTweensOf(prev.cameo.img);
       prev.cameo.root.destroy();

@@ -50,7 +50,6 @@ export class EggHatchScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private hint!: Phaser.GameObjects.Text;
   private egg!: Phaser.GameObjects.Text;
   private baby!: Phaser.GameObjects.Text;
@@ -60,6 +59,10 @@ export class EggHatchScene extends Phaser.Scene {
   private hatched = false;
   private taps = 0;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("EggHatch");
   }
@@ -68,7 +71,6 @@ export class EggHatchScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "candy");
     this.drawHeader();
     this.drawEgg();
@@ -121,18 +123,19 @@ export class EggHatchScene extends Phaser.Scene {
       win();
       this.egg.destroy();
       this.baby.setAlpha(1);
-      this.tweens.add({ targets: this.baby, y: this.baby.y - 30, duration: 420, ease: "Back.easeOut" });
+      if (!this.reduced) this.tweens.add({ targets: this.baby, y: this.baby.y - 30, duration: 420, ease: "Back.easeOut" });
       speak(this.t().hatched);
       this.burstEmoji("🎉", 16, 36);
       this.time.delayedCall(600, () => speak(this.t().done));
     } else {
-      // egg wobbles — nearly there
-      this.tweens.add({ targets: this.egg, angle: Phaser.Math.Between(-6, 6), duration: 90, yoyo: true, repeat: 1 });
+      // egg wobbles — nearly there (kept still under reduced motion)
+      if (!this.reduced) this.tweens.add({ targets: this.egg, angle: Phaser.Math.Between(-6, 6), duration: 90, yoyo: true, repeat: 1 });
       if (this.taps === 1) speak(this.t().hatching);
     }
   }
 
   private burstEmoji(emoji: string, n: number, size: number) {
+    if (this.reduced) return;
     for (let i = 0; i < n; i++) {
       const x = Phaser.Math.Between(40, this.scale.width - 40);
       const y = Phaser.Math.Between(this.scale.height * 0.3, this.scale.height * 0.7);

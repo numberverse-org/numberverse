@@ -6,7 +6,6 @@ import { txt, NV_GOLD } from "./ui";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { SAT, SAB } from "./safeArea";
-import { prefersReducedMotion } from "./reducedMotion";
 import {
   useKidStore,
   defaultNova,
@@ -46,7 +45,6 @@ export class SpeciesGalleryScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private hint!: Phaser.GameObjects.Text;
   private status!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
@@ -59,7 +57,6 @@ export class SpeciesGalleryScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "floral");
     this.drawHeader();
     this.drawGallery();

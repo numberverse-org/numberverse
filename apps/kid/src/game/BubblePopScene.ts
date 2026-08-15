@@ -59,7 +59,6 @@ export class BubblePopScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private countText!: Phaser.GameObjects.Text;
@@ -71,6 +70,10 @@ export class BubblePopScene extends Phaser.Scene {
   private bubble: Bubble | null = null;
   private spawnBusy = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("BubblePop");
   }
@@ -79,7 +82,6 @@ export class BubblePopScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "candy");
     this.drawHeader();
     this.drawNova();

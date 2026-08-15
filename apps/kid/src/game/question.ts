@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { pop } from "./audio";
 import { assetIcon } from "./svgAssets";
+import { prefersReducedMotion, onReducedMotionChange } from "./reducedMotion";
 
 /**
  * "Nova's question bubble" — the thing a kid MUST see before every round.
@@ -68,6 +69,7 @@ function fillBubble(g: Phaser.GameObjects.Graphics, w: number, h: number, tail: 
 
 /** Tiny sparkle stars that burst out when a new question pops in. */
 function sparkles(scene: Phaser.Scene, x: number, y: number) {
+  if (prefersReducedMotion()) return;
   const COLORS = [0xffd166, 0x4ade80, 0x60a5fa, 0xf472b6];
   for (let i = 0; i < 5; i++) {
     const s = scene.add
@@ -143,7 +145,8 @@ export function questionPanel(
   const popIn = () => {
     pop();
     scene.tweens.killTweensOf(inner);
-    inner.setScale(0.5);
+    inner.setScale(prefersReducedMotion() ? 1.0 : 0.5);
+    if (prefersReducedMotion()) return;
     scene.tweens.add({
       targets: inner,
       scale: 1.0,
@@ -168,10 +171,28 @@ export function questionPanel(
   };
 
   // ── idle attention-motion (never killed — it lives on the OUTER) ──
-  glow.setAlpha(0.28);
-  scene.tweens.add({ targets: glow, alpha: 0.5, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-  scene.tweens.add({ targets: nova, y: -4, duration: 760, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-  scene.tweens.add({ targets: outer, angle: 2, duration: 2600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  // Reduced motion skips it entirely, and a live toggle kills/restarts it
+  // without waiting for the next round (#1440).
+  const stopIdleMotion = () => {
+    scene.tweens.killTweensOf([glow, nova, outer]);
+  };
+  const startIdleMotion = () => {
+    stopIdleMotion();
+    glow.setAlpha(0.28);
+    if (prefersReducedMotion()) return;
+    scene.tweens.add({ targets: glow, alpha: 0.5, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    scene.tweens.add({ targets: nova, y: -4, duration: 760, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    scene.tweens.add({ targets: outer, angle: 2, duration: 2600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  };
+  startIdleMotion();
+  const offReducedMotion = onReducedMotionChange((reduced) => {
+    if (reduced) stopIdleMotion();
+    else startIdleMotion();
+  });
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    offReducedMotion();
+    stopIdleMotion();
+  });
 
   layout();
 

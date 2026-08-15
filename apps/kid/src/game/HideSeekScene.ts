@@ -61,7 +61,6 @@ export class HideSeekScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private msg!: Phaser.GameObjects.Text;
@@ -72,6 +71,10 @@ export class HideSeekScene extends Phaser.Scene {
   private busy = false;
   private found = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("HideSeek");
   }
@@ -80,7 +83,6 @@ export class HideSeekScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "forest");
     this.drawHeader();
     this.drawNova();

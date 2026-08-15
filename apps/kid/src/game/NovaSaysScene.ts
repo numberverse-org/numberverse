@@ -58,7 +58,6 @@ export class NovaSaysScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private status!: Phaser.GameObjects.Text;
@@ -73,6 +72,10 @@ export class NovaSaysScene extends Phaser.Scene {
   private wrongs = 0;
   private stepIdx = 0;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("NovaSays");
   }
@@ -81,7 +84,6 @@ export class NovaSaysScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "night");
     this.drawHeader();
     this.drawNova();

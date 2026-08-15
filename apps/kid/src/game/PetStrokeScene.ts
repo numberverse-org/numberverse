@@ -43,7 +43,6 @@ export class PetStrokeScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private loveText!: Phaser.GameObjects.Text;
@@ -54,6 +53,10 @@ export class PetStrokeScene extends Phaser.Scene {
   private lastBurst = 0; // time of last heart spawn (throttle)
   private full = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("PetStroke");
   }
@@ -62,7 +65,6 @@ export class PetStrokeScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "floral");
     this.drawHeader();
     this.drawNova();
@@ -142,6 +144,14 @@ export class PetStrokeScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(300);
     this.hearts.push(h);
+    if (this.reduced) {
+      // No flying hearts under reduced motion — just a short, still heart.
+      this.time.delayedCall(600, () => {
+        this.hearts = this.hearts.filter((x) => x !== h);
+        h.destroy();
+      });
+      return;
+    }
     this.tweens.add({
       targets: h,
       y: h.y - Phaser.Math.Between(36, 80),
@@ -158,11 +168,13 @@ export class PetStrokeScene extends Phaser.Scene {
   }
 
   private wiggle() {
+    if (this.reduced) return;
     this.tweens.add({ targets: this.nova, x: this.nova.x + Phaser.Math.Between(-3, 3), duration: 40, yoyo: true });
     this.tweens.add({ targets: this.nova, scale: 1.03, duration: 60, yoyo: true });
   }
 
   private bigBurst() {
+    if (this.reduced) return;
     for (let i = 0; i < 18; i++) {
       this.time.delayedCall(i * 40, () => {
         const x = this.nova.x + Phaser.Math.Between(-90, 90);

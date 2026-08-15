@@ -41,7 +41,6 @@ export class SleepWakeScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private hint!: Phaser.GameObjects.Text;
   private status!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
@@ -51,6 +50,10 @@ export class SleepWakeScene extends Phaser.Scene {
   private asleep = false;
   private name = "";
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("SleepWake");
   }
@@ -59,7 +62,6 @@ export class SleepWakeScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "night");
     this.name = data?.kidName ?? "";
     this.drawHeader();

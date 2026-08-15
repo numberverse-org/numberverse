@@ -47,7 +47,6 @@ export class DressUpScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private hint!: Phaser.GameObjects.Text;
   private status!: Phaser.GameObjects.Text;
   private closeBtn!: Phaser.GameObjects.Text;
@@ -56,6 +55,10 @@ export class DressUpScene extends Phaser.Scene {
 
   private outfits: NovaOutfit[] = [];
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("DressUp");
   }
@@ -64,7 +67,6 @@ export class DressUpScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "candy");
     this.drawHeader();
     this.drawNova();
@@ -150,7 +152,7 @@ export class DressUpScene extends Phaser.Scene {
     win();
     speak(this.t().equipped);
     this.updateBadge();
-    this.tweens.add({ targets: btn, scale: 0.92, duration: 90, yoyo: true });
+    if (!this.reduced) this.tweens.add({ targets: btn, scale: 0.92, duration: 90, yoyo: true });
   }
 
   private updateBadge() {

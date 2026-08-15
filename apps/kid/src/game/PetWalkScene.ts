@@ -55,7 +55,6 @@ export class PetWalkScene extends Phaser.Scene {
   private kidId = "";
   private onBack?: () => void;
   private lang: "en" | "bn" = "en";
-  private reduced = false;
   private nova!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private coinText!: Phaser.GameObjects.Text;
@@ -70,6 +69,10 @@ export class PetWalkScene extends Phaser.Scene {
   private walking = false;
   private arrived = false;
 
+
+  private get reduced(): boolean {
+    return prefersReducedMotion();
+  }
   constructor() {
     super("PetWalk");
   }
@@ -78,7 +81,6 @@ export class PetWalkScene extends Phaser.Scene {
     this.kidId = data?.kidId ?? "";
     this.onBack = data?.onBack;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
-    this.reduced = prefersReducedMotion();
     gameBackground(this, "forest");
     this.drawHeader();
     this.setupPath();
