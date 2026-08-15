@@ -14,6 +14,8 @@ import {
   fingerprintAnswer,
 } from "@numberverse/core";
 import { waterGarden, masteryPlant, emptyGarden, gardenSummary, type GardenState } from "./game/garden";
+import { observeRoundLearning } from "./lib/roundLearning";
+import { buildRoundMistake, buildRoundStory, buildRoundPending } from "./lib/roundStory";
 
 export interface RoundResult {
   gameId: string;
@@ -754,6 +756,53 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   };
 }
 
+function partializeKidState(s: KidState) {
+  return {
+    skills: s.skills,
+    mistakes: s.mistakes,
+    stats: s.stats,
+    nova: s.nova,
+    garden: s.garden,
+    pending: s.pending,
+    stories: s.stories,
+    accel: s.accel,
+    moni: s.moni,
+    moniWrongStreak: s.moniWrongStreak,
+    moniStrictness: s.moniStrictness,
+    syncSignal: s.syncSignal,
+  };
+}
+type PersistedKidState = ReturnType<typeof partializeKidState>;
+
+/** #789 — nv_store_v1 now carries an explicit persist version. The original
+ * blob had no version, so zustand sees it as v0 and routes it through this
+ * migration on rehydrate. Future breaking shape changes bump `version` and
+ * add their own branch here — the seam is now real instead of implicit. */
+function migrateKidState(persisted: unknown, _version: number): PersistedKidState {
+  if (!persisted || typeof persisted !== "object" || Array.isArray(persisted)) {
+    // zustand's shallow merge backfills every missing key with the defaults
+    // declared in the store initializer above.
+    return {} as PersistedKidState;
+  }
+  const s = persisted as Record<string, unknown>;
+  // v0 → v1: legacy blobs predate syncSignal (#1556) and moniStrictness (#333).
+  // Default the new top-level maps so a later read never hits undefined.
+  return {
+    skills: (s.skills as PersistedKidState["skills"]) ?? {},
+    mistakes: (s.mistakes as PersistedKidState["mistakes"]) ?? {},
+    stats: (s.stats as PersistedKidState["stats"]) ?? {},
+    nova: (s.nova as PersistedKidState["nova"]) ?? {},
+    garden: (s.garden as PersistedKidState["garden"]) ?? {},
+    pending: (s.pending as PersistedKidState["pending"]) ?? [],
+    stories: (s.stories as PersistedKidState["stories"]) ?? [],
+    accel: (s.accel as PersistedKidState["accel"]) ?? [],
+    moni: (s.moni as PersistedKidState["moni"]) ?? {},
+    moniWrongStreak: (s.moniWrongStreak as PersistedKidState["moniWrongStreak"]) ?? {},
+    moniStrictness: (s.moniStrictness as PersistedKidState["moniStrictness"]) ?? {},
+    syncSignal: (s.syncSignal as PersistedKidState["syncSignal"]) ?? DEFAULT_SYNC_SIGNAL,
+  };
+}
+
 /**
  * Local-first adaptive store (P2):
  * - Each answer runs the BKT-lite observe() from core (with spaced-repetition decay).
@@ -787,18 +836,14 @@ export const useKidStore = create<KidState>()(
       addEvent: (kidId, e) => {
         const now = Date.now();
         const prev = get().skills[keyOf(kidId, e.skillId)] ?? initialSkillState(kidId, e.skillId);
-        const updated = observe(decay(prev, now), e.correct, DEFAULT_PARAMS, now);
         const prior = get().stats[kidId] ?? { stars: 0, score: 0, sessions: 0 };
         // 🧠 MONI — observe this round + update the kid's wrong streak.
         const moniPrev = get().moni[kidId] ?? moni.initial(kidId, now);
         const wrongStreak = e.correct ? 0 : (get().moniWrongStreak[keyOf(kidId, e.skillId)] ?? 0) + 1;
-        const round = { kidId, skillId: e.skillId, gameId: e.gameId, correct: e.correct, difficulty: e.difficulty, responseMs: e.responseMs, timestamp: now };
-        const moniNext = moni.observeRound(moniPrev, round, { ...prev, wrongStreak }, DEFAULT_MONI_PARAMS, now);
-        // 📚 KOTHA — Moni's diagnosis of this round becomes a learning story.
-        const diag = e.correct
-          ? moni.diagnoseCorrect(moniPrev, round, { ...prev, wrongStreak }, DEFAULT_MONI_PARAMS)
-          : moni.diagnose(moniPrev, round, { ...prev, wrongStreak }, wrongStreak, DEFAULT_MONI_PARAMS);
-        const mis = moniNext.misconceptions?.find((m) => m.skillId === e.skillId);
+        // #787 — the BKT/Moni observation + Kotha story/ledger builders live in
+        // lib/roundLearning.ts and lib/roundStory.ts. This action only wires
+        // their results into the store (single responsibility per module).
+        const { updated, moniNext, diag, mis } = observeRoundLearning(kidId, e, prev, moniPrev, wrongStreak, now);
         set((s) => {
           const mk = keyOf(kidId, e.skillId);
           // Resolve-to-complete: a CORRECT round clears the skill's open wrongs
@@ -806,46 +851,18 @@ export const useKidStore = create<KidState>()(
           // completes) would add to them. The ledger keeps "open" so the
           // session refuses to advance until the kid has actually solved.
           const m0 = s.mistakes[mk] ?? initialMistake(now, e.difficulty);
-          // #78 — normalize so every ledger entry carries byDay (pre-#78
-          // persisted entries have no field; wrong taps land via recordWrong
-          // which buckets them, but keep the shape honest here too).
-          const mNorm: MistakeState = { ...m0, byDay: m0.byDay ?? {} };
-          const mNext: MistakeState = e.correct
-            ? { ...mNorm, open: 0 }
-            : { ...mNorm, wrong: mNorm.wrong + 1, open: mNorm.open + 1, lastAt: now, lastDifficulty: e.difficulty };
-          // #1229 — offline ceiling: past STORY_HARD_CAP we stop queueing NEW
-          // entries (already-queued ones drain first-in-first-out when online).
+          const mNext = buildRoundMistake(m0, e, now);
           const pending = s.pending ?? [];
           const stories = s.stories ?? [];
-          const nextPending =
-            pending.length >= STORY_HARD_CAP ? pending : [...pending, { uid: genUid(), kidId, ...e, ts: now }];
+          const nextPending = buildRoundPending(pending, { uid: genUid(), kidId, ...e, ts: now }, STORY_HARD_CAP);
+          const nextStories = buildRoundStory(genUid(), kidId, e, now, diag, mis, wrongStreak, stories, STORY_HARD_CAP);
           return {
             events: [...s.events, e],
             // durable outbox — survives reloads; the sync drains it online
             pending: nextPending,
             syncSignal: { ...(s.syncSignal ?? DEFAULT_SYNC_SIGNAL), pendingCount: nextPending.length },
             // durable Kotha outbox — the story of this learning moment
-            stories:
-              stories.length >= STORY_HARD_CAP
-                ? stories
-                : [
-                    ...stories,
-                    {
-                      uid: genUid(),
-                      kidId,
-                      skillId: e.skillId,
-                      gameId: e.gameId,
-                      outcome: e.correct,
-                      errorKind: e.correct ? null : diag.kind,
-                      misconceptionCode: mis?.code ?? null,
-                      action: diag.action.type,
-                      difficulty: e.difficulty,
-                      responseMs: e.responseMs,
-                      wrongStreak,
-                      context: { reason: diag.reason, message: diag.action.message },
-                      ts: now,
-                    },
-                  ],
+            stories: nextStories,
             score: s.score + (e.correct ? e.difficulty : 0),
             stars: s.stars + (e.correct ? 1 : 0),
             skills: { ...s.skills, [mk]: updated },
@@ -1645,13 +1662,15 @@ export const useKidStore = create<KidState>()(
     }),
     {
       name: "nv_store_v1",
+      version: 1,
+      migrate: migrateKidState,
       storage: debouncedPersistStorage(),
       // #1226 — DON'T parse the persisted blob at store creation (which fires
       // during the lazy App-chunk eval). App.tsx calls `useKidStore.persist
       // .rehydrate()` in a first-paint effect (and gates outbox drains on it),
       // so a power user's large nv_store_v1 blob never holds up first render.
       skipHydration: true,
-      partialize: (s) => ({ skills: s.skills, mistakes: s.mistakes, stats: s.stats, nova: s.nova, garden: s.garden, pending: s.pending, stories: s.stories, accel: s.accel, moni: s.moni, moniWrongStreak: s.moniWrongStreak, moniStrictness: s.moniStrictness, syncSignal: s.syncSignal })
+      partialize: partializeKidState,
     }
   )
 );

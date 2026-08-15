@@ -28,11 +28,23 @@ export function isAllowedExternalUrl(url: string): boolean {
   return ALLOWED_EXTERNAL_SCHEMES.has(scheme);
 }
 
-/** Open an external URL ONLY if it passes the allowlist; otherwise no-op. */
-export function openExternal(url: string, target: string | undefined = "_blank"): boolean {
+/**
+ * #790 — the pure core package never touches `window` directly. Callers pass
+ * in the one browser primitive they need (a window opener); this function is
+ * a pure allowlist gate around it. Apps keep their own tiny `openExternal`
+ * adapter (see apps/kid/src/game/shareImage.ts).
+ */
+export type WindowOpener = (url: string, target: string, features: string) => void;
+
+/** Allowlist-checked open through a caller-supplied opener (pure, testable). */
+export function openExternalWith(
+  url: string,
+  opener: WindowOpener,
+  target: string | undefined = "_blank",
+): boolean {
   if (!isAllowedExternalUrl(url)) return false;
   try {
-    window.open(url, target, "noopener,noreferrer");
+    opener(url, target, "noopener,noreferrer");
     return true;
   } catch {
     return false;

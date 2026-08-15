@@ -561,6 +561,8 @@ export interface Strings {
   pinResetCta: string;
   pinMismatch: string;
   pinCurrentWrong: string;
+  /* #819 — WebCrypto PBKDF2 unavailable (non-secure context). */
+  pinCryptoError: string;
   pinKeep: string;
   pinLockCardTitle: string;
   pinLockCardSub: string;
@@ -595,6 +597,8 @@ export interface Strings {
   secEmpty: string;
   secRecovered: string;
   secMismatch: string;
+  /* #819 — WebCrypto PBKDF2 unavailable (non-secure context). */
+  secCryptoError: string;
   /* about / version */
   settingsAboutSub: string;
   settingsVoice: string;
@@ -1419,6 +1423,7 @@ export const STR: Record<Lang, Strings> = {
     pinResetCta: "Reset & sign out",
     pinMismatch: "PINs don't match — start over",
     pinCurrentWrong: "That's not your current PIN",
+    pinCryptoError: "This device can't secure a PIN right now — try again in a supported browser.",
     pinKeep: "Never share your PIN with your child",
     pinLockCardTitle: "🔐 PIN lock",
     pinLockCardSub: "The parent area opens with a 4-digit PIN",
@@ -1452,6 +1457,7 @@ export const STR: Record<Lang, Strings> = {
     secEmpty: "Type an answer first.",
     secRecovered: "PIN reset — now set a new 4-digit PIN below.",
     secMismatch: "Answers don't match — start over.",
+    secCryptoError: "This device can't secure the security answer right now — try again in a supported browser.",
     settingsAboutSub: "Numberverse · built for curious kids, offline & ad-free",
     settingsVoice: "🔊 Voice & reading",
     settingsVoiceOk: (v) => `Voice ready: ${v}`,
@@ -2258,6 +2264,7 @@ export const STR: Record<Lang, Strings> = {
     pinResetCta: "রিসেট ও সাইন আউট",
     pinMismatch: "পিন মেলেনি — আবার শুরু করুন",
     pinCurrentWrong: "এটা আপনার বর্তমান পিন নয়",
+    pinCryptoError: "এই ডিভাইসে এখন পিন সুরক্ষিত করা যাচ্ছে না — একটি সমর্থিত ব্রাউজারে আবার চেষ্টা করুন।",
     pinKeep: "আপনার সন্তানকে পিন কখনো বলবেন না",
     pinLockCardTitle: "🔐 পিন লক",
     pinLockCardSub: "মা-বাবার অংশ ৪ অঙ্কের পিন দিয়ে খোলে",
@@ -2291,6 +2298,7 @@ export const STR: Record<Lang, Strings> = {
     secEmpty: "আগে উত্তর লিখুন।",
     secRecovered: "পিন রিসেট হয়েছে — নিচে নতুন ৪ অঙ্কের পিন সেট করুন।",
     secMismatch: "উত্তর দুটি মেলেনি — আবার শুরু করুন।",
+    secCryptoError: "এই ডিভাইসে এখন নিরাপত্তা উত্তর সুরক্ষিত করা যাচ্ছে না — একটি সমর্থিত ব্রাউজারে আবার চেষ্টা করুন।",
     settingsAboutSub: "নম্বরভার্স · কৌতূহলী বাচ্চাদের জন্য, অফলাইনে ও বিজ্ঞাপনমুক্ত",
     settingsVoice: "🔊 ভয়েস ও পড়া",
     settingsVoiceOk: (v) => `ভয়েস প্রস্তুত: ${v}`,

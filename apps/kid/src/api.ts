@@ -1,4 +1,5 @@
 import { useKidStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncEvent } from "./store";
+import { hashParentSecret, verifyParentSecret } from "./lib/pinHash";
 
 /**
  * API base. Resolution order:
@@ -65,22 +66,65 @@ function genSecret(): string {
   return `nv-${genId().replace(/-/g, "")}${Math.random().toString(36).slice(2, 12)}`;
 }
 
-function localKids(): Array<{ id: string; name: string; avatar?: string; birthYear: number }> {
+/** #818 — guarded localStorage reads: private-browsing / storage-denied
+ *  contexts make a bare getItem throw, so every JSON.parse site goes through
+ *  one safe read + a shape check (no unchecked `as` casts). */
+function readLS(key: string): string | null {
   try {
-    const raw = localStorage.getItem("nv_kids");
-    if (raw) return JSON.parse(raw) as Array<{ id: string; name: string; avatar?: string; birthYear: number }>;
+    return localStorage.getItem(key);
   } catch {
-    /* ignore */
+    return null;
   }
-  return [];
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function parseJsonArray(raw: string | null): unknown[] | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseJsonRecord(raw: string | null): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function localKids(): Array<{ id: string; name: string; avatar?: string; birthYear: number }> {
+  const parsed = parseJsonArray(readLS("nv_kids"));
+  if (!parsed) return [];
+  const out: Array<{ id: string; name: string; avatar?: string; birthYear: number }> = [];
+  for (const item of parsed) {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.name !== "string") continue;
+    out.push({
+      id: item.id,
+      name: item.name,
+      avatar: typeof item.avatar === "string" ? item.avatar : undefined,
+      birthYear: typeof item.birthYear === "number" && item.birthYear > 0 ? item.birthYear : new Date().getFullYear(),
+    });
+  }
+  return out;
 }
 
 function readKidMap(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(LS.kidMap) ?? "{}") as Record<string, string>;
-  } catch {
-    return {};
+  const parsed = parseJsonRecord(readLS(LS.kidMap));
+  const out: Record<string, string> = {};
+  if (!parsed) return out;
+  for (const [k, v] of Object.entries(parsed)) {
+    if (typeof v === "string") out[k] = v;
   }
+  return out;
 }
 function writeKidMap(map: Record<string, string>) {
   try {
@@ -316,31 +360,25 @@ export function clearParentSession(): void {
 
 /* ── #86 Parent-area PIN lock ────────────────────────────────────────────
  * A 4-digit gate on the signed-in parent panel, so a kid who's handed a
- * signed-in device can't open parent territory. Only a salted FNV-1a hash is
- * stored — never the raw PIN — which is proportionate for a curious-kid threat
- * model (a determined child with DevTools could equally just clear
- * localStorage, which wipes the gate anyway). The PIN is per-device and never
- * leaves the device.
+ * signed-in device can't open parent territory. Only a PBKDF2-SHA-256 hash is
+ * stored — never the raw PIN — which is brute-force resistant even if a kid
+ * copies the localStorage blob. The PIN is per-device and never leaves the
+ * device. (#819)
  */
-const PIN_SALT = "numberverse-parent-pin-v1"; // fixed per-app salt (obfuscation, not a secret)
-function pinHash(pin: string): string {
-  let h = 0x811c9dc5; // FNV-1a 32-bit offset basis
-  const s = `${PIN_SALT}:${pin}`;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return `fnv1a$${(h >>> 0).toString(16).padStart(8, "0")}`;
-}
 export function hasParentPin(): boolean {
-  return !!localStorage.getItem(LS.parentPin);
+  return !!readLS(LS.parentPin);
 }
-export function setParentPin(pin: string): void {
-  localStorage.setItem(LS.parentPin, pinHash(pin));
+export async function setParentPin(pin: string): Promise<void> {
+  localStorage.setItem(LS.parentPin, await hashParentSecret(pin));
 }
-export function verifyParentPin(pin: string): boolean {
-  const stored = localStorage.getItem(LS.parentPin);
-  return !!stored && stored === pinHash(pin);
+export async function verifyParentPin(pin: string): Promise<boolean> {
+  const stored = readLS(LS.parentPin);
+  if (!stored) return false;
+  try {
+    return await verifyParentSecret(pin, stored);
+  } catch {
+    return false;
+  }
 }
 export function clearParentPin(): void {
   localStorage.removeItem(LS.parentPin);
@@ -349,28 +387,33 @@ export function clearParentPin(): void {
 /* ── #247 PIN recovery Q&A ────────────────────────────────────────────────
  * A per-device security question + answer so a parent who forgot the PIN (or
  * hit the 3-try pad lock) can reset it IN PLACE — offline, no sign-out, no
- * account lockout. Same trust model as the PIN itself: only the salted hash of
+ * account lockout. Same trust model as the PIN itself: only the PBKDF2 hash of
  * the answer is stored; the question id is an index into the i18n list so a
  * locale change never corrupts the pairing. The answer is normalized (trim,
- * lower-case, collapse spaces) so "Blue " and "blue" both verify.
+ * lower-case, collapse spaces) so "Blue " and "blue" both verify. (#819)
  */
 function normalizeRecoveryAnswer(a: string): string {
   return a.trim().toLowerCase().replace(/\s+/g, " ");
 }
 export function hasSecurityQA(): boolean {
-  return !!localStorage.getItem(LS.parentSecQ) && !!localStorage.getItem(LS.parentSecA);
+  return !!readLS(LS.parentSecQ) && !!readLS(LS.parentSecA);
 }
 /** The stored question id (index into SECURITY_QUESTIONS), or null if unset. */
 export function securityQuestionId(): string | null {
-  return localStorage.getItem(LS.parentSecQ);
+  return readLS(LS.parentSecQ);
 }
-export function setSecurityQA(qid: string, answer: string): void {
+export async function setSecurityQA(qid: string, answer: string): Promise<void> {
   localStorage.setItem(LS.parentSecQ, qid);
-  localStorage.setItem(LS.parentSecA, pinHash(normalizeRecoveryAnswer(answer)));
+  localStorage.setItem(LS.parentSecA, await hashParentSecret(normalizeRecoveryAnswer(answer)));
 }
-export function verifySecurityQA(answer: string): boolean {
-  const stored = localStorage.getItem(LS.parentSecA);
-  return !!stored && stored === pinHash(normalizeRecoveryAnswer(answer));
+export async function verifySecurityQA(answer: string): Promise<boolean> {
+  const stored = readLS(LS.parentSecA);
+  if (!stored) return false;
+  try {
+    return await verifyParentSecret(normalizeRecoveryAnswer(answer), stored);
+  } catch {
+    return false;
+  }
 }
 export function clearSecurityQA(): void {
   localStorage.removeItem(LS.parentSecQ);
@@ -988,12 +1031,37 @@ const LS_SETTINGS = "nv_kid_settings"; // { localKidId: KidSettings }
 // write path. (A multi-tab write won't be seen until reload — fine for a kid app.)
 let settingsCache: Record<string, KidSettings> | null = null;
 
+/** #818 — required boolean/string/number switches a parsed setting must
+ *  actually have before we trust it as a `KidSettings`; anything else is
+ *  dropped so a corrupt entry can't ride into the runtime as a fresh object
+ *  (the merge path fills missing optional fields with `KID_SETTINGS_DEFAULT`). */
+const REQUIRED_SETTING_FIELDS = [
+  "enabled_subjects",
+  "max_band",
+  "daily_limit_min",
+  "weekday_limits_min",
+  "tts_enabled",
+  "music_enabled",
+  "voice_record_enabled",
+  "paused",
+] as const;
+
 function readSettingsCache(): Record<string, KidSettings> {
   if (settingsCache) return settingsCache;
-  try {
-    settingsCache = JSON.parse(localStorage.getItem(LS_SETTINGS) ?? "{}") as Record<string, KidSettings>;
-  } catch {
-    settingsCache = {};
+  // #818 — parse once, shape-check the top level, and drop non-object entries
+  // instead of trusting `JSON.parse(...) as Record<string, KidSettings>`.
+  const parsed = parseJsonRecord(readLS(LS_SETTINGS));
+  settingsCache = {};
+  if (parsed) {
+    for (const [k, v] of Object.entries(parsed)) {
+      // Shape-check instead of an unsafe `as` cast: a record that isn't a
+      // per-kid settings object (or is an older/corrupt one missing required
+      // keys) is skipped so the default merge below fills the gaps.
+      if (!isRecord(v)) continue;
+      const missing = REQUIRED_SETTING_FIELDS.some((f) => !(f in v));
+      if (missing) continue;
+      settingsCache[k] = v as unknown as KidSettings;
+    }
   }
   return settingsCache;
 }
@@ -1048,10 +1116,13 @@ let playtimeCache: Record<string, number> | null = null;
 
 function readPlaytimeCache(): Record<string, number> {
   if (playtimeCache) return playtimeCache;
-  try {
-    playtimeCache = JSON.parse(localStorage.getItem(LS_PLAYTIME) ?? "{}") as Record<string, number>;
-  } catch {
-    playtimeCache = {};
+  // #818 — only finite numbers survive; anything else falls back to zero.
+  const parsed = parseJsonRecord(readLS(LS_PLAYTIME));
+  playtimeCache = {};
+  if (parsed) {
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "number" && Number.isFinite(v)) playtimeCache[k] = v;
+    }
   }
   return playtimeCache;
 }
