@@ -7,7 +7,7 @@ import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { hintWrong } from "./hints";
+import { hintWrong, hintIntro } from "./hints";
 import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, answerFlash } from "./ui";
 import { SAB } from "./safeArea";
 
@@ -15,9 +15,11 @@ import { SAB } from "./safeArea";
  * Shared config-driven TAP-THE-RIGHT-CHOICE game engine (#71/#74 parts phase).
  *
  * Shows one item emoji + name in the centre, a grid of choice cards below, and
- * asks a question. The kid taps the matching choice. Wrong taps flash the RIGHT
- * choice green as a gentle hint and the same item is retried. Tiered item pools
- * grow with level (lvl 1–2 → famous tier 1, lvl 3–4 → + tier 2, all at 5+).
+ * asks a question. The kid taps the matching choice. Wrong taps retire the
+ * tapped card, then walk the SAME adaptive hint ladder as every sibling scene
+ * (soft nudge → coaching banner → reveal), so the answer is never flashed green
+ * on the first miss. Tiered item pools grow with level (lvl 1–2 → famous tier 1,
+ * lvl 3–4 → + tier 2, all at 5+).
  *
  * Each concrete scene is a thin subclass supplying its config. Every i18n key
  * lives as a double-quoted camelCase literal in the scene file (audit scanner).
@@ -238,6 +240,10 @@ export abstract class TapChoiceScene extends Phaser.Scene {
     // Scenes without linkKeys fall back to the generic prompt speech.
     const linkKey = cfg.linkKeys?.[it.value] ?? cfg.promptKey;
     speak(t(linkKey, { name }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    // #1480 — first-run onboarding: show + speak ONE example of a correct move
+    // before the kid can miss this mechanic. hintIntro() keeps it once per scene
+    // session, so later items keep the normal prompt narration.
+    hintIntro(this, { intro: () => t("tapHint") });
   }
 
   private tap(ch: TapChoice) {
