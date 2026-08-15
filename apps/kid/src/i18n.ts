@@ -121,6 +121,11 @@ export interface Strings {
   cardsAttempts: (n: number) => string;
   cardsStreak: (n: number) => string;
   cardsMasteredBy: (name: string) => string;
+  /* #1372 — zero-mastery card album gets a first-lesson path instead of
+     just a wall of gray locks. */
+  cardsEmptyTitle: string;
+  cardsEmptyHint: string;
+  cardsEmptyCta: string;
   worldChampDone: (title: string) => string;
   /* printable certificate */
   certBtn: string;
@@ -245,6 +250,8 @@ export interface Strings {
   /* #769 — garden teaser on home */
   gardenTileSum: (plants: number, fruits: number) => string;
   gardenTileFresh: string;
+  /** #1373 — home teaser CTA before the first plant exists. */
+  gardenTileEmpty: string;
   /* #281 — 7-day login calendar */
   calendarTitle: string;
   calendarHint: string;
@@ -262,6 +269,10 @@ export interface Strings {
   badgeEarned: string;
   badgeLocked: string;
   badgeNewSpeak: (name: string, title: string) => string;
+  /** #1356 — current/target readout for a locked badge (e.g. "3/10"). */
+  badgeProgress: (current: number, target: number) => string;
+  /** #1371 — first-badge guidance when the book is still all padlocks. */
+  badgeFirstTitle: string;
   /* #289 — long-term achievements book */
   achTile: string;
   achTitle: string;
@@ -921,6 +932,9 @@ export const STR: Record<Lang, Strings> = {
     cardsAttempts: (n) => `🔁 ${n} rounds`,
     cardsStreak: (n) => `🔥 best streak ${n}`,
     cardsMasteredBy: (name) => `Mastered by ${name}`,
+    cardsEmptyTitle: "No cards yet",
+    cardsEmptyHint: "Master your first lesson and it becomes a collectible card.",
+    cardsEmptyCta: "Find my first lesson",
     worldChampDone: (title) => `🏆 ${title} complete — a golden card is yours!`,
     certBtn: "🖨️ Certificate",
     certTitle: "Certificate of Achievement",
@@ -1044,6 +1058,8 @@ export const STR: Record<Lang, Strings> = {
     badgeEarned: "Earned!",
     badgeLocked: "Keep playing to unlock",
     badgeNewSpeak: (name, title) => `${name}, new badge — ${title}! 🎖️`,
+    badgeProgress: (current, target) => `${current}/${target}`,
+    badgeFirstTitle: "Start here — your first badge is close!",
     /* #289 — long-term achievements book */
     achTile: "Achievements",
     achTitle: "📚 Achievements",
@@ -1562,6 +1578,7 @@ export const STR: Record<Lang, Strings> = {
     /* #769 — home teaser: plants/fruits + a "new growth!" cue */
     gardenTileSum: (plants, fruits) => `🌱 ${plants} plants · ${fruits} fruitful`,
     gardenTileFresh: "new growth!",
+    gardenTileEmpty: "Tap to grow your first plant 🌱",
     /* 🦉 3D Nova island (#684) */
     island3dBtn: "✨ 3D Island",
     islandTitle: "🦉 Nova's 3D Island",
@@ -1680,6 +1697,9 @@ export const STR: Record<Lang, Strings> = {
     cardsAttempts: (n) => `🔁 ${bnNum(n)}টা রাউন্ড`,
     cardsStreak: (n) => `🔥 সর্বোচ্চ ধারা ${bnNum(n)}`,
     cardsMasteredBy: (name) => `${name} আয়ত্ত করেছে`,
+    cardsEmptyTitle: "এখনো কোনো কার্ড নেই",
+    cardsEmptyHint: "প্রথম পাঠটি আয়ত্ত করো, সেটি সংগ্রহযোগ্য কার্ড হয়ে যাবে।",
+    cardsEmptyCta: "আমার প্রথম পাঠ খুঁজি",
     worldChampDone: (title) => `🏆 ${title} শেষ — তোমার সোনালি কার্ড!`,
     certBtn: "🖨️ সনদ",
     certTitle: "অর্জনের সনদ",
@@ -1802,6 +1822,8 @@ export const STR: Record<Lang, Strings> = {
     badgeEarned: "জিতেছো!",
     badgeLocked: "আনলক করতে খেলতে থাকো",
     badgeNewSpeak: (name, title) => `${name}, নতুন ব্যাজ — ${title}! 🎖️`,
+    badgeProgress: (current, target) => `${bnNum(current)}/${bnNum(target)}`,
+    badgeFirstTitle: "এখান থেকে শুরু করো — তোমার প্রথম ব্যাজ খুব কাছেই!",
     /* #289 — long-term achievements book */
     achTile: "কৃতিত্ব",
     achTitle: "📚 কৃতিত্বের বই",
@@ -2319,6 +2341,7 @@ export const STR: Record<Lang, Strings> = {
     /* #769 — home teaser: plants/fruits + a "new growth!" cue */
     gardenTileSum: (plants, fruits) => `🌱 ${bnNum(plants)}টা গাছ · ${bnNum(fruits)}টা ফল`,
     gardenTileFresh: "নতুন চারা!",
+    gardenTileEmpty: "প্রথম গাছটি বাড়াতে ট্যাপ করো 🌱",
     /* 🦉 3D Nova island (#684) */
     island3dBtn: "✨ ৩ডি দ্বীপ",
     islandTitle: "🦉 নোভার ৩ডি দ্বীপ",

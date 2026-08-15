@@ -227,6 +227,11 @@ export default function App() {
     const id = readLS("nv_kid_id"); // #1219 — guarded read
     return list.some((k) => k.id === id) ? "home" : "kidpick";
   });
+  // #1354 — achievement album pop is pinned to ids the store JUST returned as
+  // new; cleared on kid switch and when the kid leaves the album.
+  const [achPopupIds, setAchPopupIds] = useState<string[]>([]);
+  const prevAchScreenRef = useRef<Screen>(screen);
+  const lastAchKidRef = useRef<string | undefined>(kid?.id);
   // Worlds screen shows the single linear learning journey by default.
   const [journeyView, setJourneyView] = useState(true);
   const [mapView, setMapView] = useState(false);
@@ -538,11 +543,20 @@ export default function App() {
         : "",
     [kid?.id, achStats.sessions, achStats.stars, kidMasteredCount, achStreak, achCoins, kidWorlds, achPets, achPetStage]
   );
+  // #1354 — when the active kid changes, drop any previous kid's pop ids
+  // BEFORE the sync effect below can add the new kid's newly-synced ones.
+  useEffect(() => {
+    if (lastAchKidRef.current !== kid?.id) {
+      lastAchKidRef.current = kid?.id;
+      setAchPopupIds([]);
+    }
+  }, [kid?.id]);
   useEffect(() => {
     if (!kid || !earnedAchKey) return;
     const earned = earnedAchKey.split(",").filter(Boolean);
     const newly = useKidStore.getState().novaSyncAchievements(kid.id, earned);
     if (newly.length) {
+      setAchPopupIds((prev) => Array.from(new Set([...prev, ...newly])));
       newly.forEach((id) => {
         const a = ACHIEVEMENTS.find((x) => x.id === id);
         if (!a) return;
@@ -551,6 +565,14 @@ export default function App() {
       });
     }
   }, [kid?.id, earnedAchKey, storedAchs.join(",")]);
+  // #1354 — the glow is a one-time reveal: clear it once the kid leaves the
+  // achievement album so revisiting later doesn't replay the unlock animation.
+  useEffect(() => {
+    if (prevAchScreenRef.current === "achievements" && screen !== "achievements") {
+      setAchPopupIds([]);
+    }
+    prevAchScreenRef.current = screen;
+  }, [screen]);
   // #277 — land trophies: celebrating a NEWLY fully-mastered land exactly once.
   const earnedTrophyKey = useMemo(
     () =>
@@ -4184,6 +4206,16 @@ export default function App() {
           </header>
 
           <div className="cards-scroll">
+            {collected === 0 && (
+              <div className="cards-empty" role="status">
+                <span className="cards-empty-emoji" aria-hidden="true">🃏</span>
+                <div className="cards-empty-body">
+                  <span className="cards-empty-title">{t.cardsEmptyTitle}</span>
+                  <span className="cards-empty-hint">{t.cardsEmptyHint}</span>
+                  <button className="ghost-btn cards-empty-cta" onClick={() => setScreen("worlds")}>{t.cardsEmptyCta}</button>
+                </div>
+              </div>
+            )}
             {BANDS.map((band) => {
               const cards = worldCards(skillsMap, kid.id, band.id);
               const prog = worldProgress(skillsMap, kid.id, band.id);
@@ -4989,8 +5021,17 @@ export default function App() {
      streak, full-land mastery). Conditions read only local state — offline. */
   if (screen === "badges" && kid) {
     const wk = weekSkill; // #1122 — reuse the shared memoized week skill
-    const ctx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone: !!wk && skillMastered(skillsMap, kid.id, wk.id) };
-    const earnedCount = BADGES.filter((b) => b.earned(ctx)).length;
+    const ctx: BadgeCtx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone: !!wk && skillMastered(skillsMap, kid.id, wk.id) };
+    const rows = BADGES.map((b) => ({ b, earned: b.earned(ctx), prog: b.progress(ctx) }));
+    const earnedCount = rows.filter((r) => r.earned).length;
+    // #1371 — when nothing is earned yet, pick the closest locked badge so the
+    // book opens with one concrete next step instead of a wall of padlocks.
+    const nextBadge = rows.reduce<{ b: BadgeDef; prog: { current: number; target: number }; ratio: number } | null>((best, r) => {
+      if (r.earned) return best;
+      const ratio = r.prog.target > 0 ? r.prog.current / r.prog.target : (r.prog.current > 0 ? 1 : 0);
+      if (!best || ratio > best.ratio) return { b: r.b, prog: r.prog, ratio };
+      return best;
+    }, null);
     return (
       <div className="app">
         <main className="screen badges-screen">
@@ -5003,20 +5044,31 @@ export default function App() {
             <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
           </header>
 
+          {earnedCount === 0 && nextBadge && (
+            <div className="badge-first" role="status">
+              <span className="badge-first-emoji" aria-hidden="true">{nextBadge.b.emoji}</span>
+              <div className="badge-first-body">
+                <span className="badge-first-title">{t.badgeFirstTitle}</span>
+                <span className="badge-first-name">{lang === "bn" ? nextBadge.b.nameBn : nextBadge.b.name}</span>
+                <span className="badge-first-hint">{lang === "bn" ? nextBadge.b.hintBn : nextBadge.b.hint}</span>
+                <span className="badge-first-progress">{t.badgeProgress(nextBadge.prog.current, nextBadge.prog.target)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="badge-grid">
-            {BADGES.map((b) => {
-              const earned = b.earned(ctx);
+            {rows.map(({ b, earned, prog }) => {
               return (
                 <button
                   key={b.id}
                   className={`badge-card${earned ? " earned" : " locked"}`}
-                  onClick={() => speak(lang === "bn" ? t.badgeNewSpeak(kid.name, b.nameBn) : t.badgeNewSpeak(kid.name, b.name))}
-                  aria-label={earned ? t.badgeEarned : t.badgeLocked}
+                  onClick={() => speak(earned ? (lang === "bn" ? t.badgeNewSpeak(kid.name, b.nameBn) : t.badgeNewSpeak(kid.name, b.name)) : t.badgeLocked)}
+                  aria-label={earned ? t.badgeEarned : `${t.badgeLocked} · ${t.badgeProgress(prog.current, prog.target)}`}
                 >
                   <span className="badge-emoji" aria-hidden="true">{earned ? b.emoji : "🔒"}</span>
                   <span className="badge-name">{lang === "bn" ? b.nameBn : b.name}</span>
                   <span className="badge-hint">{lang === "bn" ? b.hintBn : b.hint}</span>
-                  <span className={`badge-state${earned ? " earned" : ""}`}>{earned ? t.badgeEarned : t.badgeLocked}</span>
+                  <span className={`badge-state${earned ? " earned" : ""}`}>{earned ? t.badgeEarned : t.badgeProgress(prog.current, prog.target)}</span>
                 </button>
               );
             })}
@@ -5088,7 +5140,7 @@ export default function App() {
       petStage: achPetStage,
     };
     const unlocked = storedAchs;
-    const justNew = earnedAchKey ? earnedAchKey.split(",").filter(Boolean) : [];
+    const justNew = achPopupIds;
     const unlockedCount = ACHIEVEMENTS.filter((a) => a.earned(ctx)).length;
     return (
       <div className="app">
@@ -5110,8 +5162,8 @@ export default function App() {
                 <button
                   key={a.id}
                   className={`ach-card${earned ? " earned" : " locked"}${isNew ? " pop" : ""}`}
-                  onClick={() => speak(lang === "bn" ? t.achNewSpeak(kid.name, a.nameBn) : t.achNewSpeak(kid.name, a.name))}
-                  aria-label={earned ? t.badgeEarned : t.badgeLocked}
+                  onClick={() => speak(earned ? (lang === "bn" ? t.achNewSpeak(kid.name, a.nameBn) : t.achNewSpeak(kid.name, a.name)) : t.achLocked)}
+                  aria-label={earned ? t.achUnlocked : t.achLocked}
                 >
                   <span className="ach-emoji" aria-hidden="true">{earned ? a.emoji : "🔒"}</span>
                   <span className="ach-name">{lang === "bn" ? a.nameBn : a.name}</span>

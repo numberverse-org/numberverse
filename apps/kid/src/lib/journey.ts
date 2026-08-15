@@ -456,13 +456,16 @@ export interface BadgeDef {
   hint: string;
   hintBn: string;
   earned: (c: BadgeCtx) => boolean;
+  /** #1356 — concrete progress toward the badge (current/target) so the book
+   *  never reads as a wall of locks. */
+  progress: (c: BadgeCtx) => { current: number; target: number };
 }
 export const BADGES: BadgeDef[] = [
-  { id: "rounds10", emoji: "🎮", name: "10 Rounds Hero", nameBn: "১০ রাউন্ড হিরো", hint: "Finish 10 sessions", hintBn: "১০টা খেলা শেষ করো", earned: (c) => c.sessions >= 10 },
-  { id: "stars50", emoji: "⭐", name: "Star Collector", nameBn: "তারকা সংগ্রহকারী", hint: "Earn 50 stars", hintBn: "৫০টা তারা জিতো", earned: (c) => c.stars >= 50 },
-  { id: "streak7", emoji: "🔥", name: "7-Day Streak", nameBn: "৭ দিনের ধারা", hint: "Play 7 days in a row", hintBn: "টানা ৭ দিন খেলো", earned: (c) => c.streak >= 7 },
-  { id: "worldChamp", emoji: "👑", name: "Land Champion", nameBn: "ভূখণ্ড চ্যাম্পিয়ন", hint: "Master every skill in a land", hintBn: "একটি ভূখণ্ডের সব দক্ষতা আয়ত্ত করো", earned: (c) => c.worlds >= 1 },
-  { id: "weekWarrior", emoji: "🏅", name: "Week Warrior", nameBn: "সপ্তাহের যোদ্ধা", hint: "Finish this week's challenge", hintBn: "এই সপ্তাহের চ্যালেঞ্জ শেষ করো", earned: (c) => c.weekDone },
+  { id: "rounds10", emoji: "🎮", name: "10 Rounds Hero", nameBn: "১০ রাউন্ড হিরো", hint: "Finish 10 sessions", hintBn: "১০টা খেলা শেষ করো", earned: (c) => c.sessions >= 10, progress: (c) => ({ current: Math.min(c.sessions, 10), target: 10 }) },
+  { id: "stars50", emoji: "⭐", name: "Star Collector", nameBn: "তারকা সংগ্রহকারী", hint: "Earn 50 stars", hintBn: "৫০টা তারা জিতো", earned: (c) => c.stars >= 50, progress: (c) => ({ current: Math.min(c.stars, 50), target: 50 }) },
+  { id: "streak7", emoji: "🔥", name: "7-Day Streak", nameBn: "৭ দিনের ধারা", hint: "Play 7 days in a row", hintBn: "টানা ৭ দিন খেলো", earned: (c) => c.streak >= 7, progress: (c) => ({ current: Math.min(c.streak, 7), target: 7 }) },
+  { id: "worldChamp", emoji: "👑", name: "Land Champion", nameBn: "ভূখণ্ড চ্যাম্পিয়ন", hint: "Master every skill in a land", hintBn: "একটি ভূখণ্ডের সব দক্ষতা আয়ত্ত করো", earned: (c) => c.worlds >= 1, progress: (c) => ({ current: Math.min(c.worlds, 1), target: 1 }) },
+  { id: "weekWarrior", emoji: "🏅", name: "Week Warrior", nameBn: "সপ্তাহের যোদ্ধা", hint: "Finish this week's challenge", hintBn: "এই সপ্তাহের চ্যালেঞ্জ শেষ করো", earned: (c) => c.weekDone, progress: (c) => ({ current: c.weekDone ? 1 : 0, target: 1 }) },
 ];
 
 /* #289 — long-term achievements album: milestones ACROSS weeks, derived from
