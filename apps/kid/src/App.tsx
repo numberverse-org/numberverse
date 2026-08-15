@@ -49,6 +49,7 @@ import {
   worldUnlocked, unlockGap, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
   worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache,
+  MAX_KIDS_PER_FAMILY,
   challengeEligible, challengeStartLevelIndex,
   MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
   BADGES, ACHIEVEMENTS, NOVA_REACTIONS, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
@@ -295,6 +296,12 @@ export default function App() {
   // syllabus links → the syllabus; upgrading a guest from Settings → back home
   // (their kids are already there). Never conditionally set — defaults sane.
   const gateReturn = useRef<Screen>("syllabus");
+  // #1393 — a signed-in parent dropping to guest mode must confirm (two taps),
+  // so a stray tap never wipes the parent session.
+  const [guestArmed, setGuestArmed] = useState(false);
+  // #1418 — AddKidForm's Cancel returns here instead of always dumping to
+  // kidpick. Entry points set it before opening the form.
+  const addKidReturnRef = useRef<Screen>("kidpick");
   // PWA install affordance — set when the browser offers beforeinstallprompt.
   const [installEvt, setInstallEvt] = useState<Event | null>(null);
   // 🔊 TTS check on EVERY run: voices load async on iOS/Android (and iOS only
@@ -803,8 +810,18 @@ export default function App() {
     }
   };
   const enterAsGuest = () => {
-    clearParentSession();
-    setPinOk(false);
+    // #1393 — never clear a signed-in parent's session without an explicit
+    // second tap. Signed-out guests (the normal path) skip straight through.
+    if (hasParentSession() && !guestArmed) {
+      setGuestArmed(true);
+      window.setTimeout(() => setGuestArmed(false), 4000);
+      return;
+    }
+    if (hasParentSession()) {
+      clearParentSession();
+      setPinOk(false);
+    }
+    setGuestArmed(false);
     const list = loadKids();
     setScreen(list.length ? "kidpick" : "addkid");
   };
@@ -822,6 +839,14 @@ export default function App() {
     gateReturn.current = "parent";
     setPinOk(false); // re-arm the PIN gate every time the parent area opens
     pinNewFlow("unlock"); // fresh pad + no stale lock/change mode
+    setScreen("parent");
+  };
+  // #1391/#1392 — a guest upgrading from Settings/Home should land BACK HOME
+  // after sign-in (their local kids are already there), not on the parent panel.
+  const goGuestUpgrade = () => {
+    gateReturn.current = "home";
+    setPinOk(false); // re-arm the PIN gate for the fresh sign-in
+    pinNewFlow("unlock");
     setScreen("parent");
   };
   // Sign out of the parent account — revokes the session server-side, clears
@@ -2366,6 +2391,12 @@ export default function App() {
   };
 
   const addKid = (name: string, avatar: string, birthYear: number, birthMonth?: number, birthDay?: number) => {
+    // #1415 — hard cap: the promise is "up to 4 per family". Guard here too,
+    // not just in the UI, so a stale/tampered form can't create a 5th kid.
+    if (kids.length >= MAX_KIDS_PER_FAMILY) {
+      announce(t.kidsFull);
+      return;
+    }
     const newKid: Kid = { id: genId(), name, avatar, birthYear, ...(birthMonth ? { birthMonth } : {}), ...(birthDay ? { birthDay } : {}) };
     const next = [...kids, newKid];
     setKids(next);
@@ -2379,6 +2410,20 @@ export default function App() {
     // one tap and a brand-new kid is already playing.
     selectKid(newKid);
     setScreen("home");
+  };
+  /** #1418 — open Add Kid and remember where Cancel should return. */
+  const goAddKid = (returnTo?: Screen) => {
+    addKidReturnRef.current = returnTo ?? (kids.length > 0 ? "kidpick" : "parent");
+    setScreen("addkid");
+  };
+  /** #1417/#1418 — Cancel never strands an empty kidpick. No kids → back to
+   *  the parent gate; otherwise return to the screen that opened the form. */
+  const cancelAddKid = () => {
+    if (kids.length === 0) {
+      setScreen("parent");
+      return;
+    }
+    setScreen(addKidReturnRef.current === "addkid" ? "kidpick" : addKidReturnRef.current);
   };
 
   // #285 — save a kid's mix-and-match avatar look (persisted per kid, offline).
@@ -2445,7 +2490,7 @@ export default function App() {
             {/* BINARY SCENE: Guest mode | Sign in */}
             <div className="welcome-binary">
               <button className="big-btn welcome-guest" onClick={enterAsGuest}>
-                {t.welcomeGuest}
+                {guestArmed ? t.guestConfirm : t.welcomeGuest}
               </button>
               <p className="gate-guest-sub">{t.welcomeGuestSub}</p>
               <div className="gate-or"><span>{t.welcomeOr}</span></div>
@@ -2480,7 +2525,11 @@ export default function App() {
     const totalCount = progressUnitCount();
     const goStart = () => {
       const list = loadKids();
-      setScreen(list.length ? (kid ? "home" : "kidpick") : "addkid");
+      if (list.length === 0) {
+        goAddKid("syllabus");
+        return;
+      }
+      setScreen(kid ? "home" : "kidpick");
     };
     // No English/Bengali mixing — every label picks the CURRENT language:
     //   en → English title + description · bn → Bangla title + description.
@@ -2691,6 +2740,8 @@ export default function App() {
       goGarden={goGarden}
       goNova={goNova}
       onParent={goParent}
+      guestMode={!hasParentSession()}
+      onGuestUpgrade={goGuestUpgrade}
     />
     </Suspense>
     );
@@ -3081,6 +3132,14 @@ export default function App() {
               line about where progress is kept. */}
           <h3 className="settings-sec">{t.settingsSecLearning}</h3>
           <div className="parent-card settings-card">
+            {kids.length < MAX_KIDS_PER_FAMILY && (
+              <button
+                className="ghost-btn full-syllabus-btn"
+                onClick={() => goAddKid("settings")}
+              >
+                {t.addKid}
+              </button>
+            )}
             <button
               className="ghost-btn full-syllabus-btn"
               onClick={() => {
@@ -3106,10 +3165,24 @@ export default function App() {
               A kid tapping this gets the gate, never the analytics. */}
           <h3 className="settings-sec settings-sec-parents">{t.settingsSecParents}</h3>
           <div className="parent-card settings-card settings-parents-card">
-            <p className="settings-voice-note">{t.settingsParentsHint}</p>
-            <button className="big-btn settings-parents-btn" onClick={goParent}>
-              {hasParentSession() ? t.settingsParentsGo : t.settingsParentsSignin}
-            </button>
+            {hasParentSession() ? (
+              <>
+                <p className="settings-voice-note">{t.settingsParentsHint}</p>
+                <button className="big-btn settings-parents-btn" onClick={goParent}>
+                  {t.settingsParentsGo}
+                </button>
+              </>
+            ) : (
+              <>
+                {/* #1391/#1394 — a signed-out player gets a real upgrade path
+                    AND a persistent warning that guest progress is local-only. */}
+                <p className="settings-voice-note">{t.guestUpgradeTitle}</p>
+                <p className="settings-voice-note">{t.guestModeWipe}</p>
+                <button className="big-btn settings-parents-btn" onClick={goGuestUpgrade}>
+                  {t.guestUpgradeCta}
+                </button>
+              </>
+            )}
           </div>
 
           <p className="settings-footer">
@@ -3196,7 +3269,7 @@ export default function App() {
               </div>
 
               <div className="gate-guest">
-                <button className="ghost-btn" onClick={enterAsGuest}>{t.gateGuest}</button>
+                <button className="ghost-btn" onClick={enterAsGuest}>{guestArmed ? t.guestConfirm : t.gateGuest}</button>
                 <p className="gate-guest-sub">{t.gateGuestSub}</p>
               </div>
 
@@ -4017,7 +4090,7 @@ export default function App() {
             <div className="lb-empty">
               <span className="lb-empty-emoji" aria-hidden="true">🥇</span>
               <span className="lb-empty-text">{t.lbEmpty}</span>
-              <button className="big-btn" onClick={() => setScreen("addkid")}>{t.lbAddSibling}</button>
+              <button className="big-btn" onClick={() => goAddKid("leaderboard")}>{t.lbAddSibling}</button>
             </div>
           ) : (
             <div className="lb-list">
@@ -4101,6 +4174,19 @@ export default function App() {
               🥇
             </button>
           </header>
+          {/* #1394 — guests always see why their progress is local-only, plus a
+              one-tap upgrade path so guest mode never dead-ends. */}
+          {!hasParentSession() && (
+            <div className="syllabus-guest-banner" role="status">
+              <span className="syllabus-guest-emoji" aria-hidden="true">👀</span>
+              <p className="syllabus-guest-text">
+                {t.guestModeWipe}{" "}
+                <button className="syllabus-banner-link" onClick={goGuestUpgrade}>
+                  {t.guestUpgradeCta}
+                </button>
+              </p>
+            </div>
+          )}
           <div className="world-list">
             {kids.map((k) => {
               const mastered = totalMastered(skillsMap, k.id);
@@ -4120,14 +4206,25 @@ export default function App() {
                 </button>
               );
             })}
-            <button className="world-card kidpick-card" onClick={() => setScreen("addkid")}>
-              <span className="world-emoji">➕</span>
-              <span className="world-meta">
-                <span className="world-name">{t.addKid}</span>
-                <span className="world-age">{t.upTo4}</span>
-              </span>
-              <span className="world-state">+</span>
-            </button>
+            {kids.length >= MAX_KIDS_PER_FAMILY ? (
+              <div className="world-card kidpick-card full" aria-disabled="true">
+                <span className="world-emoji">👨‍👩‍👧‍👦</span>
+                <span className="world-meta">
+                  <span className="world-name">{t.kidsFull}</span>
+                  <span className="world-age">{t.kidsFullSub}</span>
+                </span>
+                <span className="world-state">✓</span>
+              </div>
+            ) : (
+              <button className="world-card kidpick-card" onClick={() => goAddKid("kidpick")}>
+                <span className="world-emoji">➕</span>
+                <span className="world-meta">
+                  <span className="world-name">{t.addKid}</span>
+                  <span className="world-age">{t.upTo4}</span>
+                </span>
+                <span className="world-state">+</span>
+              </button>
+            )}
           </div>
         </main>
       </div>
@@ -4137,7 +4234,7 @@ export default function App() {
   if (screen === "addkid") {
     return (
       <Suspense fallback={<ScreenFallback />}>
-        <AddKidForm t={t} lang={lang} onSave={addKid} onCancel={() => setScreen("kidpick")} />
+        <AddKidForm t={t} lang={lang} onSave={addKid} onCancel={cancelAddKid} />
       </Suspense>
     );
   }

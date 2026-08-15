@@ -5,13 +5,18 @@ import type { Lang, Strings } from "../i18n";
 export default function AddKidForm({ t, lang, onSave, onCancel }: { t: Strings; lang: Lang; onSave: (name: string, avatar: string, birthYear: number, birthMonth?: number, birthDay?: number) => void; onCancel: () => void }) {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState(AVATAR_KEYS[0]);
-  const [birthYear, setBirthYear] = useState(2021);
   // Full birthday (month + day) — feeds the yearly birthday party. Defaults to
   // today so a parent can just press "+" a few times or leave it as-is.
   const today = new Date();
+  const thisYear = today.getFullYear();
+  // #1416 — the birth-year bounds must stay relative to TODAY, not a pair of
+  // hard-coded years that silently goes stale every January.
+  const MIN_BIRTH_YEAR = thisYear - 10;
+  const MAX_BIRTH_YEAR = thisYear;
+  const [birthYear, setBirthYear] = useState(thisYear - 5);
   const [birthMonth, setBirthMonth] = useState(today.getMonth() + 1);
   const [birthDay, setBirthDay] = useState(today.getDate());
-  const maxDay = new Date(today.getFullYear(), birthMonth, 0).getDate();
+  const maxDay = new Date(thisYear, birthMonth, 0).getDate();
   const canSave = name.trim().length > 0;
   const doSave = () => onSave(name.trim(), AVATAR_EMOJI[avatar] ?? avatar, birthYear, birthMonth, birthDay);
 
@@ -59,12 +64,12 @@ export default function AddKidForm({ t, lang, onSave, onCancel }: { t: Strings; 
 
           <label className="form-label">{t.birthYear}</label>
           <div className="year-row">
-            <button className="year-btn" onClick={() => setBirthYear((y) => Math.max(2015, y - 1))} aria-label="year down">−</button>
+            <button className="year-btn" onClick={() => setBirthYear((y) => Math.max(MIN_BIRTH_YEAR, y - 1))} aria-label="year down">−</button>
             <div className="year-val">
               <span className="year-num">{birthYear}</span>
-              <span className="year-age">{t.ageAt(Math.max(0, new Date().getFullYear() - birthYear))}</span>
+              <span className="year-age">{t.ageAt(Math.max(0, thisYear - birthYear))}</span>
             </div>
-            <button className="year-btn" onClick={() => setBirthYear((y) => Math.min(2025, y + 1))} aria-label="year up">+</button>
+            <button className="year-btn" onClick={() => setBirthYear((y) => Math.min(MAX_BIRTH_YEAR, y + 1))} aria-label="year up">+</button>
           </div>
 
           {/* full birthday (month + day) — Nova celebrates every year */}
