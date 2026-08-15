@@ -59,12 +59,13 @@ function assertUniqueSceneKeys(scenes: SceneClass[]): void {
 
 /** #788 — every catalog gameId / pet activity scene must actually be reachable
  *  by the auto-discovered registry (a scene file that vanished or was renamed
- *  would otherwise silently fail at boot). Warn loudly before the game starts. */
+ *  would otherwise silently fail at boot). Fail loudly before the game starts —
+ *  same guarantee as #939, and keeps shipped code free of console.* noise. */
 function assertCatalogCovered(scenes: SceneClass[]): void {
   const keys = new Set(scenes.map((s) => new s().sys.settings.key));
   for (const key of [...Object.values(GAME_SCENES), ...ACTIVITIES.filter((a) => a.scene).map((a) => a.scene as string)]) {
     if (!keys.has(key)) {
-      console.warn(`[engine] catalog scene "${key}" is not reachable from *Scene.ts`);
+      throw new Error(`[engine] catalog scene "${key}" is not reachable from *Scene.ts`);
     }
   }
 }

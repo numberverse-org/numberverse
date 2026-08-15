@@ -189,21 +189,23 @@ if (skills.length) {
     if (ai === undefined || bi === undefined) continue;
     if (ai > bi) fail(`SEQUENCE: "${a}" (#${ai + 1}) must come BEFORE "${b}" (#${bi + 1}) (game-first, then the abstract drill)`);
   }
-  // every scene key has a class file + an engine.ts import + an engine.ts array
-  // entry. Since issue #15 the scenes live in the lazy Phaser chunk (engine.ts),
-  // NOT App.tsx — App.tsx only has `import type { Game } from "phaser"`.
+  // every scene key has a class file + is auto-discovered by the engine.
+  // Since #15 the scenes live in the lazy Phaser chunk (engine.ts); since #936
+  // the engine uses `import.meta.glob("./*Scene.ts")` for discovery, so any
+  // `*Scene.ts` file with an `export class XScene` is automatically reachable
+  // and there is no hand-maintained import/array to drift. The audit therefore
+  // checks the DISCOVERY contract instead of static imports: the file exists,
+  // exports the class, matches the `./*Scene.ts` glob, and — the part globbing
+  // cannot guarantee — the class key inside it matches the catalog key.
   const engineSrc = readFileSync(join(GAME, "engine.ts"), "utf8");
-  const arrayBlock = engineSrc.split("scene: [")[1]?.split("]")[0] ?? "";
+  if (!/import\.meta\.glob<Record<string, unknown>>\("\.\/\*Scene\.ts", \{ eager: true \}\)/.test(engineSrc))
+    fail(`engine.ts no longer uses import.meta.glob("./*Scene.ts") — update the audit to match the discovery mechanism`);
   for (const [gid, sceneKey] of Object.entries(scenes)) {
     const sceneFile = join(GAME, `${sceneKey}Scene.ts`);
     if (!existsSync(sceneFile))
-      fail(`GAME_SCENES "${gid}" → "${sceneKey}" but no ${sceneKey}Scene.ts file`);
+      fail(`GAME_SCENES "${gid}" → "${sceneKey}" but no ${sceneKey}Scene.ts file (discovery globs *Scene.ts)`);
     else if (!new RegExp(`export class ${sceneKey}Scene`).test(readFileSync(sceneFile, "utf8")))
       fail(`${sceneKey}Scene.ts exists but has no \`export class ${sceneKey}Scene\``);
-    if (!new RegExp(`import \\{ ${sceneKey}Scene \\}`).test(engineSrc))
-      fail(`GAME_SCENES "${gid}" → "${sceneKey}" but engine.ts doesn't import ${sceneKey}Scene`);
-    if (!new RegExp(`${sceneKey}Scene`).test(arrayBlock))
-      fail(`GAME_SCENES "${gid}" → "${sceneKey}" not listed in engine.ts scene array`);
   }
   console.log(`  ✓ ${skills.length} skills, ${games.length} games, ${Object.keys(scenes).length} scenes checked`);
 }
