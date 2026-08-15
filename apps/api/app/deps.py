@@ -10,6 +10,13 @@ from .db import get_db
 from .models import Profile, Session
 from .security import decode_token
 
+# #868 — authorization-model guardrail. Kid-app devices are parent-credentialed
+# TODAY: they authenticate with the parent's token, so they currently inherit
+# full parent privileges (settings, reset, export, coins). A future direct-kid-
+# auth MUST mint a role="kid" token, and every route must declare its allowed
+# roles via `require_role` explicitly. The kid role must NEVER pass
+# `require_parent` / `require_admin` / `require_super_admin`.
+
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -57,17 +64,38 @@ async def get_current_profile(
     return profile
 
 
-async def require_admin(profile: Profile = Depends(get_current_profile)) -> Profile:
-    # #846 — role boundary. "admin" and "super_admin" are the real roles now;
-    # legacy is_admin=True rows (pre-role) still pass until the console moves.
-    if profile.role not in {"admin", "super_admin"} and not profile.is_admin:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin privileges required")
-    return profile
+def require_role(*roles: str):
+    """#868 — single role-checking path for every protected route.
+
+    Resolves `get_current_profile`, then allows the request only when
+    `profile.role` is one of `roles`. Legacy pre-role rows (`is_admin=True`)
+    still pass ANY role check, so existing admin accounts never get locked out
+    while the console migrates (#846).
+
+    Today the kid app is parent-credentialed: it reuses the parent's token, so
+    its traffic carries the parent's role and currently passes parent routes.
+    This factory is the scaffold for direct kid auth — once kids get their own
+    tokens, a kid token will carry `role="kid"`, and any route that does not
+    explicitly allow "kid" rejects it.
+    """
+    allowed = set(roles)
+
+    async def _require_role(profile: Profile = Depends(get_current_profile)) -> Profile:
+        if profile.role not in allowed and not profile.is_admin:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient privileges")
+        return profile
+
+    return _require_role
 
 
-async def require_super_admin(profile: Profile = Depends(get_current_profile)) -> Profile:
-    # #846 — destructive / tenant-wide operations need the top role. The legacy
-    # is_admin flag is accepted as super_admin-equivalent for backward compat.
-    if profile.role != "super_admin" and not profile.is_admin:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Super admin privileges required")
-    return profile
+# #868 — parent routes are role-gated at the "user" boundary. This explicit
+# alias documents that kid-role tokens are NOT allowed on parent routes; a
+# future role="kid" credential can never silently inherit settings/reset/
+# export/coins access.
+require_parent = require_role("user", "admin", "super_admin")
+
+# #846 — "admin" and "super_admin" are the real roles; require_admin accepts both.
+require_admin = require_role("admin", "super_admin")
+
+# #846 — destructive / tenant-wide operations need the top role.
+require_super_admin = require_role("super_admin")

@@ -26,11 +26,16 @@ def sha256_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_access_token(subject: str, is_admin: bool = False, session_id: str | None = None) -> str:
+def create_access_token(subject: str, role: str = "user", session_id: str | None = None) -> str:
     now = datetime.now(timezone.utc)
     payload: dict[str, Any] = {
         "sub": str(subject),
-        "is_admin": is_admin,
+        # #868 — role claim (informational/forward-compatible). `require_role`
+        # always re-checks the DB via `get_current_profile`, so this claim is
+        # never trusted alone; it just lets a future stateless consumer see the
+        # subject's role without a DB hit. `role` supersedes the legacy
+        # `is_admin` flag, which is intentionally NOT minted anymore.
+        "role": role,
         "iat": now,
         "exp": now + timedelta(minutes=settings.jwt_expires_minutes),
     }

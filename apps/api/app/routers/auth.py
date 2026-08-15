@@ -27,10 +27,14 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 async def _issue_session(profile: Profile, request: Request, db: AsyncSession) -> str:
-    """Mint a signed token + its revocable sessions row. The JWT carries `sid`;
-    logout/revocation kill the row, which kills the token server-side."""
+    """Mint a signed token + its revocable sessions row. The JWT carries `sid`
+    and `role`; logout/revocation kill the row, which kills the token
+    server-side."""
     sid = uuid.uuid4()
-    token = create_access_token(str(profile.id), profile.is_admin, session_id=str(sid))
+    # #868 — mint the role claim (not the legacy is_admin flag). `require_role`
+    # still re-checks the DB via `get_current_profile`, so the claim is
+    # informational/forward-compatible only.
+    token = create_access_token(str(profile.id), profile.role, session_id=str(sid))
     db.add(
         Session(
             id=sid,
