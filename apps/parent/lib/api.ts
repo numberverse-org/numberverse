@@ -178,6 +178,18 @@ export async function login(email: string, password: string): Promise<LoginRespo
   return res.json();
 }
 
+/** #1537 — create a parent account. Mirrors login() but POSTs the signup
+ *  shape (email + password min 8 + display_name) to /auth/signup. */
+export async function signup(email: string, password: string, displayName: string): Promise<LoginResponse> {
+  const res = await fetch(`${API}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, display_name: displayName }),
+  });
+  if (!res.ok) throw new Error("Signup failed");
+  return res.json();
+}
+
 /** Revoke the current session server-side (real logout — the token dies on
  *  the API, not just in this browser). Best-effort: fine if the network fails,
  *  the local clear below still ends the session here. */

@@ -51,7 +51,11 @@ export const WIZARD_LANGS = {
     step0: "Let's set up your kids so their progress has a home.",
     stepN: "Add one at a time — you can add or edit more anytime.",
     nameLabel: "Name",
-    birthLabel: "Birth year",
+    // #1540 — explain WHY the wizard asks for birth year.
+    birthLabel: "Birth year (used to start them at the right level)",
+    // #1539/#1540 — field-level validation + tiny in-wizard hint.
+    birthRangeErr: "Birth year must be between 2010 and 2030.",
+    birthHint: "Will start them at the right level.",
     add: "Add kid",
     adding: "Adding…",
     err: "Couldn't add {name} right now — check your connection and try again.",
@@ -67,7 +71,11 @@ export const WIZARD_LANGS = {
     step0: "আপনার বাচ্চাদের সেটআপ করা যাক — শেখার অগ্রগতির একটা জায়গা তৈরি হবে।",
     stepN: "একজন করে যোগ করুন — পরে আরও যোগ বা সম্পাদনা করতে পারবেন।",
     nameLabel: "নাম",
-    birthLabel: "জন্মসাল",
+    // #1540 — explain WHY the wizard asks for birth year.
+    birthLabel: "জন্মসাল (সঠিক স্তর থেকে শুরু করতে ব্যবহৃত)",
+    // #1539/#1540 — field-level validation + tiny in-wizard hint.
+    birthRangeErr: "জন্মসাল ২০১০ থেকে ২০৩০-এর মধ্যে হতে হবে।",
+    birthHint: "সঠিক স্তর থেকে শুরু করবে।",
     add: "বাচ্চা যোগ করুন",
     adding: "যোগ হচ্ছে…",
     err: "এখন {name} যোগ করা যায়নি — ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।",
@@ -80,6 +88,39 @@ export const WIZARD_LANGS = {
   },
 } as const;
 export type WizardLang = keyof typeof WIZARD_LANGS;
+
+/** #1537 — parent account creation route strings. EN + BN shipped together;
+ *  the page reads the same `nv_parent_lang` preference the wizard uses (default
+ *  "en"), so a parent who chose Bangla keeps that language at sign-up. */
+export const SIGNUP_LANGS = {
+  en: {
+    title: "Create your parent account",
+    namePlaceholder: "Your name",
+    emailPlaceholder: "Parent email",
+    passwordPlaceholder: "Password (at least 8 characters)",
+    submit: "Create account",
+    success: "Account created — signed in as",
+    openDashboard: "Open dashboard →",
+    signInLink: "Already have an account? Sign in",
+    err: "Couldn't create your account — check your details and try again.",
+    pwTooShort: "Password must be at least 8 characters.",
+    nameRequired: "Please enter your name.",
+  },
+  bn: {
+    title: "আপনার অভিভাবক অ্যাকাউন্ট তৈরি করুন",
+    namePlaceholder: "আপনার নাম",
+    emailPlaceholder: "অভিভাবকের ইমেইল",
+    passwordPlaceholder: "পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)",
+    submit: "অ্যাকাউন্ট তৈরি করুন",
+    success: "অ্যাকাউন্ট তৈরি হয়েছে — সাইন ইন করেছেন",
+    openDashboard: "ড্যাশবোর্ড খুলুন →",
+    signInLink: "ইতিমধ্যে অ্যাকাউন্ট আছে? সাইন ইন করুন",
+    err: "অ্যাকাউন্ট তৈরি করা যায়নি — তথ্য পরীক্ষা করে আবার চেষ্টা করুন।",
+    pwTooShort: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।",
+    nameRequired: "আপনার নাম লিখুন।",
+  },
+} as const;
+export type SignupLang = keyof typeof SIGNUP_LANGS;
 
 /** 🧏 #250 — global accessibility toggle strings (EN + BN). Same country-pack
  *  seam as WIZARD_LANGS: a new locale = a new key, no component rewrites. */
