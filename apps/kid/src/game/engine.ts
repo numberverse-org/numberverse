@@ -183,6 +183,7 @@ import { ArcadeCatchScene } from "./ArcadeCatchScene";
 import { MemoryScene } from "./MemoryScene";
 import { ensureAssets } from "./svgAssets";
 import { NV_NAVY } from "./ui";  // tokenized #591
+import { installGameKeyboardAccess } from "./keyboardPlay"; // #785/#1005
 
 /**
  * No-op boot scene. Phaser auto-starts the FIRST scene in the `scene:` array on
@@ -204,7 +205,7 @@ class BootScene extends Phaser.Scene {
 
 /** Create + boot the Phaser game. Mirrors the config previously in App.tsx. */
 export function createGame(parent: HTMLElement): Phaser.Game {
-  return new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
     backgroundColor: NV_NAVY,
@@ -271,4 +272,6 @@ export function createGame(parent: HTMLElement): Phaser.Game {
     scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
     input: { activePointers: 3 },
   });
+  installGameKeyboardAccess(game); // #785/#1005 — keyboard + SR answer bridge
+  return game;
 }

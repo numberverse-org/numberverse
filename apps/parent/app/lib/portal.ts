@@ -41,6 +41,31 @@ if (typeof window !== "undefined") {
 
 export const AVATARS = ["🛡️", "🔮", "🗡️", "🪓", "🏹", "🦊", "🐱", "🐼", "🐸", "🦄", "🐯", "🐰", "🐨", "🐹", "🦁"];
 
+/** #1008 — human-readable names for the avatar picker. Screen readers read the
+ *  name, never a raw emoji (which VoiceOver/TalkBack read as punctuation). */
+export const AVATAR_NAMES: Record<string, { en: string; bn: string }> = {
+  "🛡️": { en: "Shield", bn: "ঢাল" },
+  "🔮": { en: "Crystal ball", bn: "জাদুর বল" },
+  "🗡️": { en: "Dagger", bn: "ছোরা" },
+  "🪓": { en: "Axe", bn: "কুঠার" },
+  "🏹": { en: "Bow and arrow", bn: "তীর-ধনুক" },
+  "🦊": { en: "Fox", bn: "শিয়াল" },
+  "🐱": { en: "Cat", bn: "বিড়াল" },
+  "🐼": { en: "Panda", bn: "পান্ডা" },
+  "🐸": { en: "Frog", bn: "ব্যাঙ" },
+  "🦄": { en: "Unicorn", bn: "ইউনিকর্ন" },
+  "🐯": { en: "Tiger", bn: "বাঘ" },
+  "🐰": { en: "Rabbit", bn: "খরগোশ" },
+  "🐨": { en: "Koala", bn: "কোয়ালা" },
+  "🐹": { en: "Hamster", bn: "হ্যামস্টার" },
+  "🦁": { en: "Lion", bn: "সিংহ" },
+};
+
+/** #1008 — readable name for one avatar choice, localized via `wizLang`. */
+export function avatarName(emoji: string, lang: "en" | "bn"): string {
+  return AVATAR_NAMES[emoji]?.[lang] ?? emoji;
+}
+
 /** #246 — first-run onboarding wizard strings. EN + BN shipped today; the map
  *  IS the country-pack seam: add a new key (e.g. "hi", "ar") with the same
  *  shape and the wizard follows — no component rewrites. Selected via

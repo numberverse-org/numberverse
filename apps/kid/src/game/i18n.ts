@@ -22,6 +22,9 @@ type Entry = string | ((vars?: TVars) => string);
 const EN: Record<string, Entry> = {
   /* ── round / shared ── */
   round: "Round {n}",
+  // #785/#1005 — keyboard + screen-reader answer bridge
+  a11yOptions: "Choose an answer — {count} options: {list}.",
+  a11yOption: "Option {n} of {total}: {label}",
   letsLearn: "Let's learn!",
   total: "total {n}",
   roundTap: "Round {n} · tap {count} numbers",
@@ -1545,6 +1548,9 @@ const EN: Record<string, Entry> = {
 const BN: Record<string, Entry> = {
   /* ── round / shared ── */
   round: "রাউন্ড {n}",
+  // #785/#1005 — keyboard + screen-reader answer bridge
+  a11yOptions: "উত্তর বাছাই করো — {count}টি বিকল্প: {list}।",
+  a11yOption: "বিকল্প {n}/{total}: {label}",
   letsLearn: "চলো শিখি!",
   total: "মোট {n}",
   roundTap: "রাউন্ড {n} · {count}টা সংখ্যা ট্যাপ করো",

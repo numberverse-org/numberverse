@@ -30,6 +30,7 @@ import { prefersReducedMotion, setReducedMotion } from "./game/reducedMotion";
 import { readA11y, writeA11y, initA11y, type A11yPrefs } from "./game/a11y";
 import { boot as bootGame, teardown as teardownGame, whenReady as whenGameReady, startSceneWithFade, fadeOutScene } from "./game/gameHost";
 import { wrongLedger } from "./game/wrongLedger";
+import { useDialogFocus } from "./lib/dialogFocus";
 import { emptyGarden, gardenSummary } from "./game/garden";
 import { Icon, AvatarIcon, AVATAR_EMOJI, AVATAR_KEYS } from "./components/Icon";
 import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, retryNeuralVoice, NEURAL_VOICES } from "./game/neuralVoice";
@@ -396,6 +397,8 @@ export default function App() {
   // #351 — kid-switcher chips are a real ARIA tablist: only the selected chip
   // sits in tab order (roving tabindex) and arrow keys move focus + selection.
   const parentChipRefs = useRef(new Map<string, HTMLButtonElement>());
+  // #1007 — world-map view switcher gets the same roving-tabindex treatment.
+  const viewTabRefs = useRef(new Map<string, HTMLButtonElement>());
   // ── Parent gate form state (stable hooks — never conditionally declared) ──
   const [gateMode, setGateMode] = useState<"in" | "up">("in");
   const [gateName, setGateName] = useState("");
@@ -1442,6 +1445,11 @@ export default function App() {
   const announce = useCallback((text: string) => {
     if (srLiveRef.current) srLiveRef.current.textContent = text;
   }, []);
+  // #1010 — the pass-the-device sheet is a real modal dialog: focus moves to
+  // the first control on open, Tab is trapped inside, and Escape closes it.
+  const coopSheetRef = useRef<HTMLDivElement>(null);
+  const closeCoop = useCallback(() => setCoopOpen(false), []);
+  useDialogFocus(coopOpen && kids.length >= 2, closeCoop, coopSheetRef);
   // #1403/#1455 — one language-switch path for the welcome buttons, Settings
   // pills AND the in-game HUD toggle: persist via the locale layer, speak the
   // new language aloud, and mirror it to the screen-reader live region.
@@ -2206,6 +2214,9 @@ export default function App() {
   useEffect(() => {
     if ((screen !== "playing" && screen !== "nova" && screen !== "garden") || !mountRef.current || gameRef.current) return;
     const mountEl = mountRef.current;
+    // #1005 — start keyboard users inside the game region so the arrow-key
+    // answer bridge below is reachable without hunting with the mouse.
+    if (screen === "playing") mountEl.focus({ preventScroll: true });
     /* iOS root-cause fix #2: Safari's toolbar collapse fires `visualViewport.resize`
        (NOT window.resize), and the canvas element can outgrow/under-grow its
        flex parent after HUD show/hide. Re-measure the canvas the moment the
@@ -3030,7 +3041,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.welcomeTitle)}>‹</button>
             <div className="head-title">
               <h2>{t.syllabusTitle}</h2>
               <p className="head-sub">{t.syllabusSub}</p>
@@ -3290,7 +3301,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>⚙️ {t.settingsTitle}</h2>
               <p className="head-sub">{t.settingsSub}</p>
@@ -3719,7 +3730,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen gate-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+              <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>‹</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -3827,7 +3838,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+              <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>‹</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -4032,7 +4043,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>‹</button>
             <div className="head-title">
               <h2>{t.parentTitle}</h2>
               <p className="head-sub">{t.parentSub}</p>
@@ -4642,7 +4653,7 @@ export default function App() {
       <div className="app">
         <main className="screen lb-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.whoPlaying)}>‹</button>
             <div className="head-title">
               <h2>{t.lbTitle}</h2>
               <p className="head-sub">{t.lbSub}</p>
@@ -4699,7 +4710,7 @@ export default function App() {
             <button
               className="icon-btn"
               onClick={goBack}
-              aria-label={t.back}
+              aria-label={t.backTo(t.welcomeTitle)}
             >
               ‹
             </button>
@@ -4808,7 +4819,7 @@ export default function App() {
           {/* #248 — quiet-hours dim + 🌙 badge */}
           {quietChrome}
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>🏆 {t.cardsTitle}</h2>
               <p className="head-sub">{t.cardsSub(collected, totalCards)}</p>
@@ -4929,7 +4940,7 @@ export default function App() {
           {/* #248 — quiet-hours dim + 🌙 badge */}
           {quietChrome}
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>{kid ? <AvatarIcon emoji={kid.avatar} size={26} /> : null} {kid?.name ? t.worldsOf(kid.name) : t.worldsOf("")}</h2>
               <p className="head-sub">{mapView ? t.mapSub : journeyView ? t.journeySub : t.masterSkillsSub}</p>
@@ -4960,20 +4971,77 @@ export default function App() {
             })()
           ) : null}
 
-          <div className="view-toggle" role="tablist" aria-label="View">
+          <div
+            className="view-toggle"
+            role="tablist"
+            aria-label={t.viewTabs}
+            onKeyDown={(e) => {
+              const order = ["map", "journey", "worlds"];
+              const idx = mapView ? 0 : journeyView ? 1 : 2;
+              const move = (nextIdx: number) => {
+                const key = order[(nextIdx + order.length) % order.length];
+                viewTabRefs.current.get(key)?.click();
+                viewTabRefs.current.get(key)?.focus();
+              };
+              switch (e.key) {
+                case "ArrowRight":
+                case "ArrowDown":
+                  e.preventDefault();
+                  move(idx + 1);
+                  break;
+                case "ArrowLeft":
+                case "ArrowUp":
+                  e.preventDefault();
+                  move(idx - 1);
+                  break;
+                case "Home":
+                  e.preventDefault();
+                  move(0);
+                  break;
+                case "End":
+                  e.preventDefault();
+                  move(order.length - 1);
+                  break;
+              }
+            }}
+          >
             <button
+              role="tab"
+              aria-selected={mapView}
+              aria-controls="view-panel-map"
+              tabIndex={mapView ? 0 : -1}
+              ref={(el) => {
+                if (el) viewTabRefs.current.set("map", el);
+                else viewTabRefs.current.delete("map");
+              }}
               className={`view-toggle-btn${mapView ? " on" : ""}`}
               onClick={() => { setMapView(true); setJourneyView(false); }}
             >
               🗺️ {t.mapTab}
             </button>
             <button
+              role="tab"
+              aria-selected={!mapView && journeyView}
+              aria-controls="view-panel-journey"
+              tabIndex={!mapView && journeyView ? 0 : -1}
+              ref={(el) => {
+                if (el) viewTabRefs.current.set("journey", el);
+                else viewTabRefs.current.delete("journey");
+              }}
               className={`view-toggle-btn${!mapView && journeyView ? " on" : ""}`}
               onClick={() => { setJourneyView(true); setMapView(false); }}
             >
               🛣️ {t.journey}
             </button>
             <button
+              role="tab"
+              aria-selected={!mapView && !journeyView}
+              aria-controls="view-panel-worlds"
+              tabIndex={!mapView && !journeyView ? 0 : -1}
+              ref={(el) => {
+                if (el) viewTabRefs.current.set("worlds", el);
+                else viewTabRefs.current.delete("worlds");
+              }}
               className={`view-toggle-btn${!mapView && !journeyView ? " on" : ""}`}
               onClick={() => { setJourneyView(false); setMapView(false); }}
             >
@@ -4982,7 +5050,7 @@ export default function App() {
           </div>
 
           {mapView ? (
-            <div className="world-map">
+            <div id="view-panel-map" role="tabpanel" aria-label={t.mapTab} className="world-map">
               {/* A winding road through all five lands — the kid's avatar sits
                   on the current land, mastered lands glow, locked ones await. */}
               <div className="map-road" aria-hidden="true">
@@ -5072,7 +5140,7 @@ export default function App() {
               {allComplete && <div className="badge">{t.champion}</div>}
             </div>
           ) : journeyView ? (
-            <div className="journey-scroll">
+            <div id="view-panel-journey" role="tabpanel" aria-label={t.journey} className="journey-scroll">
               {/* Nova's position on the road */}
               <div className="journey-progress">
                 <span className="journey-nova">{journeyDone ? <Icon name="trophy" size={26} /> : <Icon name="nova" size={26} />}</span>
@@ -5160,7 +5228,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              <div className="world-list">
+              <div id="view-panel-worlds" role="tabpanel" aria-label={t.worldsLabel} className="world-list">
                 {BANDS.map((b) => {
                   const prog = worldProgress(skillsMap, kid!.id, b.id);
                   const unlocked = worldUnlocked(skillsMap, kid!.id, b.id);
@@ -5326,7 +5394,7 @@ export default function App() {
             className="screen-head worlddetail-head"
             style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
           >
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.worldsLabel)}>‹</button>
             <div className="head-title">
               <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
               <p className="head-sub">{prog.total === 0 ? t.worldNoLessons : t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
@@ -5472,7 +5540,7 @@ export default function App() {
             <Icon name="nova" size={88} />
           </div>
           <h1 className="title">{t.amazing}</h1>
-          <div className="done-stars" aria-label={`${stars} stars`}>
+          <div className="done-stars" role="img" aria-label={t.doneStars(stars)}>
             <CountUp value={stars} />
             <span className="gold"> ⭐</span>
           </div>
@@ -5666,7 +5734,7 @@ export default function App() {
       <div className="app">
         <main className="screen badges-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>{t.badgeTitle}</h2>
               <p className="head-sub">{t.badgeSub(earnedCount, BADGES.length)}</p>
@@ -5721,7 +5789,7 @@ export default function App() {
       <div className="app">
         <main className="screen tr-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>{t.trTitle}</h2>
               <p className="head-sub">{t.trSub(trophyCount, rows.length)}</p>
@@ -5776,7 +5844,7 @@ export default function App() {
       <div className="app">
         <main className="screen ach-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>{t.achTitle}</h2>
               <p className="head-sub">{t.achSub(unlockedCount, ACHIEVEMENTS.length)}</p>
@@ -5822,7 +5890,7 @@ export default function App() {
       <div className="app">
         <main className="screen castle-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
             <div className="head-title">
               <h2>🏰 {t.castleTitle}</h2>
               <p className="head-sub">{t.castleBuilt(builtCount, towers.length)}</p>
@@ -6008,7 +6076,7 @@ export default function App() {
         {/* #1470 — the HUD mute toggle announces its state through this live
             region. Home renders its own; the game screen is a separate React
             tree, so the ref must be attached here too for in-game toggles. */}
-        <div id="sr-live-hud" aria-live="polite" className="sr-only" ref={srLiveRef} />
+        <div id="sr-live" aria-live="polite" className="sr-only" ref={srLiveRef} />
         {/* #684 — the 3D island is an OPT-IN surface on top of 2D Nova: it
             stops Phaser first (single WebGL context) and falls back if the
             device has no WebGL. The 2D Nova home stays the default. */}
@@ -6138,7 +6206,20 @@ export default function App() {
             ‹
           </button>
         )}
-        <div ref={mountRef} className="game-wrap" />
+        <div
+          id="game-key-hint"
+          className="sr-only"
+        >
+          {t.gameKeyHint}
+        </div>
+        <div
+          ref={mountRef}
+          className="game-wrap"
+          role="region"
+          aria-label={t.gameAreaA11y}
+          aria-describedby="game-key-hint"
+          tabIndex={0}
+        />
         {/* #1186 — visible engine state: a spinner during the async chunk load,
             and a tap-to-retry when the chunk fails (never a silent blank canvas). */}
         {gameBoot === "error" && (
@@ -6217,7 +6298,7 @@ export default function App() {
         {/* #22 — pass-the-device sheet: pick the sibling whose turn it is. */}
         {coopOpen && kids.length >= 2 && (
           <div className="coop-overlay" onClick={() => setCoopOpen(false)}>
-            <div className="coop-sheet" role="dialog" aria-label={t.passDevice} onClick={(e) => e.stopPropagation()}>
+            <div className="coop-sheet" role="dialog" aria-modal="true" aria-label={t.passDevice} onClick={(e) => e.stopPropagation()} ref={coopSheetRef}>
               <h3 className="coop-title">👥 {t.passDevice}</h3>
               <p className="coop-sub">{t.coopHint}</p>
               <div className="coop-list">
