@@ -71,24 +71,25 @@ const RETRY_DELAYS = [1000, 3000, 9000];
 
 export function GoogleSignIn({ onToken, disabled, fallbackText, retryText, lang }: Props) {
   const container = useRef<HTMLDivElement>(null);
-  const [failed, setFailed] = useState<null | "backend" | "script">(null);
+  const [failed, setFailed] = useState<null | "backend" | "script" | "unavailable">(null);
   const [retryNonce, setRetryNonce] = useState(0);
-  // Keep the latest callback/disabled flag without re-running the mount effect
-  // (which would re-render the Google button on every parent re-render).
+  // Keep the latest callback without re-running the mount effect (which would
+  // re-render the Google button on every parent re-render).
   const onTokenRef = useRef(onToken);
-  const disabledRef = useRef(disabled);
   useEffect(() => {
     onTokenRef.current = onToken;
   }, [onToken]);
-  useEffect(() => {
-    disabledRef.current = disabled;
-  }, [disabled]);
 
   useEffect(() => {
     setFailed(null); // fresh attempt per language/retry — a stale fallback note shouldn't linger
     const clientId = googleClientId();
     if (!clientId || !container.current) return;
-    if (!googleEnabled()) return;
+    if (!googleEnabled()) {
+      // #1466 — not a secure context (http LAN), so Google's GIS cannot run.
+      // Show the same retry-able fallback instead of a dead-end note.
+      setFailed("unavailable");
+      return;
+    }
     let cancelled = false;
     let retryTimer: number | undefined;
     let attempts = 0;
@@ -103,11 +104,11 @@ export function GoogleSignIn({ onToken, disabled, fallbackText, retryText, lang 
       gid.initialize({
         client_id: clientId,
         callback: (resp) => {
-          // #1465 — the disabled prop can't reach inside Google's injected
-          // iframe, so the guard lives on this callback side: never hand a
-          // credential to an already-busy gate.
-          if (resp?.credential && !disabledRef.current) onTokenRef.current(resp.credential);
-          else if (!resp?.credential) setFailed("script");
+          // #1465 — always forward the credential; the caller's busy guard
+          // surfaces a visible note. Dropping it here would swallow the re-tap
+          // with zero feedback.
+          if (resp?.credential) onTokenRef.current(resp.credential);
+          else setFailed("script");
         },
       });
       gid.renderButton(container.current, {
@@ -190,6 +191,7 @@ export function GoogleSignIn({ onToken, disabled, fallbackText, retryText, lang 
         className={`google-btn${disabled ? " busy" : ""}`}
         ref={container}
         aria-busy={disabled || undefined}
+        aria-disabled={disabled || undefined}
         style={failed ? { display: "none" } : undefined}
       />
       {failed && fallbackText ? (
