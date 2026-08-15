@@ -22,7 +22,7 @@ import {
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { GoogleSignIn, googleEnabled } from "./components/GoogleSignIn";
-import { ensureAudio, startMusic, toggleMusicMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, setQuietLevel as setAudioQuiet } from "./game/audio";
+import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { confettiBurst } from "./game/celebrate";
 import { setCurrentKidName } from "./game/kidName";
 import { speak, cancelSpeech, primeSpeech, speechStatus, speechReadiness, setSpeechEnabled, getVoiceFunVolume, setVoiceFunVolume, resetVoiceFunVolume, setVoiceBalance, setVoiceTone, setVoiceSpeed, setQuietLevel as setSpeechQuiet, type SpeechPlatform, type SpeechReadiness } from "./game/speech";
@@ -2713,7 +2713,7 @@ export default function App() {
                 aria-label={t.settingsMusicRow}
                 disabled={musicLocked}
                 onClick={() => {
-                  const next = toggleMusicMute();
+                  const next = toggleSoundMute(); // #1468 — combined sound+song mute
                   setMuted(next);
                   announce(next ? t.a11yMusicOff : t.a11yMusicOn); // #133
                 }}
@@ -2778,6 +2778,43 @@ export default function App() {
                   >
                     🔊 {t.settingsVoiceTest}
                   </button>
+                  {/* #1469 — Nova's loudness lives here too, not only in the
+                      Home screen's collapsed 'More' panel. Same Soft/Normal/Loud
+                      preference, same instant voice preview. */}
+                  <div className="voice-fun" role="group" aria-label={t.voiceFunTitle}>
+                    <span className="voice-fun-title">{t.voiceFunTitle}</span>
+                    <div className="voice-fun-btns">
+                      {([0.55, 0.9, 1.0] as const).map((v, i) => {
+                        const label = i === 0 ? t.voiceFunSoft : i === 1 ? t.voiceFunNormal : t.voiceFunLoud;
+                        return (
+                          <button
+                            key={v}
+                            className={`voice-fun-btn${voiceFunVol === v ? " active" : ""}`}
+                            aria-pressed={voiceFunVol === v}
+                            onClick={() => {
+                              setVoiceFunVolume(v);
+                              setVoiceFunVolState(v);
+                              speak(lang === "bn" ? "এক দুই তিন!" : "One two three!");
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                      <button
+                        className="voice-fun-btn reset"
+                        onClick={() => {
+                          resetVoiceFunVolume();
+                          setVoiceFunVolState(getVoiceFunVolume());
+                          speak(lang === "bn" ? "হাই!" : "Hi!");
+                        }}
+                        aria-label={t.voiceFunReset}
+                        title={t.voiceFunReset}
+                      >
+                        {t.voiceFunReset}
+                      </button>
+                    </div>
+                  </div>
                   {neuralOn && (
                     <div className="voice-picker">
                       <div className="voice-picker-head">
@@ -5186,6 +5223,9 @@ export default function App() {
     const inGame = screen === "playing";
     const inGarden = screen === "garden";
     const inNova = screen === "nova";
+    // #1467 — a parent who turned music off for this profile keeps that rule
+    // mid-game: the HUD mute mirrors the Settings switch's musicLocked guard.
+    const musicLocked = settings.music_enabled === false;
     return (
       <div className="app game-app">
         {/* #684 — the 3D island is an OPT-IN surface on top of 2D Nova: it
@@ -5218,8 +5258,16 @@ export default function App() {
               </span>
               <button
                 className="hud-music"
-                onClick={() => setMuted(toggleMusicMute())}
-                aria-label="Toggle music"
+                role="switch"
+                aria-pressed={!muted}
+                aria-label={t.settingsMusicRow}
+                disabled={musicLocked}
+                title={musicLocked ? t.settingsMusicOff : undefined}
+                onClick={() => {
+                  const next = toggleSoundMute(); // #1468 — combined sound+song mute
+                  setMuted(next);
+                  announce(next ? t.a11yMusicOff : t.a11yMusicOn); // #133
+                }}
               >
                 {muted ? "🔇" : "🔊"}
               </button>
