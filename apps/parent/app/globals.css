@@ -128,7 +128,9 @@ section[id] { scroll-margin-top: 24px; }
 @media (max-width: 760px) {
   .portal-layout { display: block; }
   .portal-nav {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 30;
     width: 100%;
     max-height: none;
     display: flex;
@@ -139,15 +141,36 @@ section[id] { scroll-margin-top: 24px; }
     margin-bottom: 14px;
     border-radius: 14px;
     -webkit-overflow-scrolling: touch;
+    /* #1526 — cue the horizontal strip: snap each group into view instead of
+       presenting all 24 pills as one undifferentiated scroll train. */
+    scroll-snap-type: x proximity;
   }
   .portal-nav-title { display: none; }
-  .portal-nav-group { margin: 0; flex: none; display: flex; align-items: center; gap: 6px; }
+  .portal-nav-group {
+    margin: 0;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    scroll-snap-align: start;
+  }
   .portal-nav-head { margin: 0; }
   .portal-nav ul { display: flex; flex-wrap: nowrap; gap: 6px; }
   .portal-nav li a {
     display: inline-block; padding: 8px 10px; margin: 0; white-space: nowrap;
     border: 1px solid var(--nv-border); border-radius: 999px;
   }
+  /* #1526 — active-section highlight. page.tsx adds `.active` to the pill for
+     the section currently in view; CSS keeps it unmistakable on mobile. */
+  .portal-nav li a.active {
+    background: rgba(76, 201, 240, 0.22);
+    border-color: var(--nv-sky);
+    color: var(--nv-text);
+  }
+  /* #1525 — anchored headings must clear the sticky mobile nav strip; the
+     desktop 24px scroll margin was calibrated for the left sidebar, not for
+     this full-width strip. */
+  section[id] { scroll-margin-top: 120px; }
 }
 
 .logo { font-size: 56px; text-align: center; }
@@ -577,6 +600,21 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 10px;
+}
+/* #1528 — compact single-row topbar on phones. The whole bar stays on one
+   line (overflow scrolls instead of wrapping tall), and the sync timestamp
+   collapses so the sticky section nav below stays near the first viewport. */
+@media (max-width: 760px) {
+  .topbar {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .topbar > * { flex: none; }
+  .sync-when { display: none; }
 }
 .brand b { color: var(--nv-brand); }
 .brand .muted { font-weight: 600; }
@@ -1060,6 +1098,20 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   color: var(--nv-text);
 }
 .toggle-emoji { font-size: 15px; }
+/* #1515 — subject quick chips + explicit "All subjects" badge so the default
+   null (all-on) state reads differently from a partial restriction. */
+.subject-quick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.subject-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--nv-ok);
+  background: rgba(46, 196, 182, 0.12);
+  border: 1px solid rgba(46, 196, 182, 0.32);
+}
 /* #6 — per-weekday playtime editor */
 .weekday-limits { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
 .weekday-row {

@@ -6,6 +6,7 @@
 import type { AccelerationRow, MasteryRow } from "../../lib/api";
 import {
   ACCEL_REASONS,
+  ARCHIVE_LANGS,
   MISSED_LANGS,
   SESSION_LANGS,
   fmtTime,
@@ -272,6 +273,9 @@ export function ArchiveCard({
   setArchMonth,
   exportArchive,
   narrLang,
+  // #1517 — page.tsx wires onRetryArchive
+  onRetryArchive,
+  archiveError,
 }: {
   active: ActiveKid;
   activeArchive: MonthSummary[];
@@ -282,6 +286,11 @@ export function ArchiveCard({
   setArchMonth: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
   exportArchive: () => void;
   narrLang: "en" | "bn";
+  /** #1517 — inline archive retry; optional so this compiles before page.tsx
+   *  passes it. When set and the archive fetch failed, a Try again button
+   *  appears inside the card instead of leaning on the global error banner. */
+  onRetryArchive?: () => void;
+  archiveError?: boolean;
 }) {
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
   return (
@@ -302,9 +311,23 @@ export function ArchiveCard({
     history we load once, so it works offline after that.
   </p>
   {!archiveLoaded ? (
-    <p className="muted">
-      {archLoading ? "Loading full history…" : "The archive needs the full history — it loads automatically."}
-    </p>
+    <div className="muted archive-load">
+      {archLoading && <span className="spinner" aria-hidden />}
+      <span>
+        {archLoading
+          ? ARCHIVE_LANGS[narrLang].loading
+          : archiveError
+            ? ARCHIVE_LANGS[narrLang].failed
+            : ARCHIVE_LANGS[narrLang].notLoaded}
+      </span>
+      {/* #1517 — inline retry keeps one kid's failed archive from becoming a
+          page-level error; the optional prop leaves the card page.tsx-free. */}
+      {!archLoading && archiveError && onRetryArchive && (
+        <button className="btn ghost-btn small" onClick={onRetryArchive}>
+          {ARCHIVE_LANGS[narrLang].retry}
+        </button>
+      )}
+    </div>
   ) : (
     <>
       <div className="archive-grid" role="tablist" aria-label="Select a month">
@@ -388,6 +411,7 @@ export function SessionsCard({
   <p className="muted small">{SESSION_LANGS[wizLang].hint}</p>
   {!archiveLoaded ? (
     <p className="muted">
+      {archLoading && <span className="spinner" aria-hidden />}
       {archLoading ? SESSION_LANGS[wizLang].loading : SESSION_LANGS[wizLang].notLoaded}
     </p>
   ) : activeSessions.length === 0 ? (
