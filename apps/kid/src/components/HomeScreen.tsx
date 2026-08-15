@@ -75,6 +75,10 @@ export interface HomeScreenProps {
   freshSkillHint: Skill | null;
   goalPct: number;
   playLimitReached: boolean;
+  /** #1453/#1454 — the cap wind-down/sleep veil, rendered over home like quietChrome. */
+  capChrome: React.ReactNode;
+  /** #1368 — the goal nudge's "take a break" routes to the real break screen. */
+  onGoalBreak: () => void;
   launchCardCode: (raw: string) => void;
   voiceFunVol: number;
   neuralFlash: boolean;
@@ -116,7 +120,7 @@ export default function HomeScreen({
   kid, lang, skillsMap, settings, challenge, quest, tourStep, projector, neural, onRetryNeural, tts, installEvt,
   swActive, scanOpen, scanCode, scanError, goalMin, goalNotice, limitNotice, todayPlayed, weekSkill,
   weekDone, bdayClaimed, petFedToday, petProgress, petSpecies, petStage, novaDayStreak, novaLastDay,
-  unclaimedBoxes, freezeCount, calendar, capWaiting, gardenTile, freshSkillHint, goalPct, playLimitReached, launchCardCode, voiceFunVol,
+  unclaimedBoxes, freezeCount, calendar, capWaiting, gardenTile, freshSkillHint, goalPct, playLimitReached, capChrome, onGoalBreak, launchCardCode, voiceFunVol,
   neuralFlash, quietChrome, playRef, savedSessionsRef, scanCanvasRef, scanVideoRef, srLiveRef,
   setScreen, setScanCode, setScanError, setScanOpen, setGoalNotice, setTourStep, setVoiceFunVolState,
   closeChallenge, closeTour, installApp, pickChallenge, resumeSession, snapshotSession, startChallenge,
@@ -255,6 +259,8 @@ export default function HomeScreen({
           <div id="sr-live" aria-live="polite" className="sr-only" ref={srLiveRef} />
           {/* #248 — quiet-hours dim + 🌙 badge (home + game share this root) */}
           {quietChrome}
+          {/* #1453/#1454 — cap wind-down + sleep veil (soft, never blocks) */}
+          {capChrome}
           <main className="screen play-screen">
             <div className="play-top">
               <button
@@ -681,7 +687,9 @@ export default function HomeScreen({
                 the goal is reached. Never blocks — both stay fully dismissible. */}
             {goalMin > 0 && (
               <div className="goal-progress" role="status">
-                <span className="goal-progress-line">{t.goalLine(Math.min(todayPlayed, goalMin), goalMin)}</span>
+                {/* #1369 — show the REAL played minutes, including overshoot past the
+                    goal, so more is always visible instead of being clamped to goal/goal. */}
+                <span className="goal-progress-line">{t.goalLine(Math.round(todayPlayed * 10) / 10, goalMin)}</span>
                 <span className="goal-progress-bar">
                   <span className="goal-progress-fill" style={{ width: `${goalPct}%` }} />
                 </span>
@@ -704,7 +712,7 @@ export default function HomeScreen({
                 <div className="goal-nudge-actions">
                   <button
                     className="goal-nudge-btn ghost"
-                    onClick={() => setGoalNotice(false)}
+                    onClick={onGoalBreak}
                   >
                     {t.goalNudgeTakeBreak}
                   </button>

@@ -913,13 +913,23 @@ export const KID_SETTINGS_DEFAULT: KidSettings = {
   paused: false,
 };
 
+/** Local YYYY-MM-DD for a date — daily counters must follow the kid's local
+ *  midnight, never UTC midnight (#1366/#1451). toISOString().slice(0,10) is a
+ *  UTC day and shifts a full day for kids playing in Bangla evening hours. */
+function localDayKey(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 /** #256 — "did we already celebrate today's goal?" flag (once per day, so the
- *  nudge stays gentle). Resets automatically when the date rolls over. */
+ *  nudge stays gentle). Resets automatically when the local date rolls over. */
 const LS_GOAL_NUDGE = "nv_goal_nudge_day";
 
 export function goalNudgedToday(): boolean {
   try {
-    return localStorage.getItem(LS_GOAL_NUDGE) === new Date().toISOString().slice(0, 10);
+    return localStorage.getItem(LS_GOAL_NUDGE) === localDayKey();
   } catch {
     return false;
   }
@@ -927,7 +937,7 @@ export function goalNudgedToday(): boolean {
 
 export function markGoalNudgedToday(): void {
   try {
-    localStorage.setItem(LS_GOAL_NUDGE, new Date().toISOString().slice(0, 10));
+    localStorage.setItem(LS_GOAL_NUDGE, localDayKey());
   } catch {
     /* ignore */
   }
@@ -1047,16 +1057,20 @@ function readPlaytimeCache(): Record<string, number> {
 }
 
 export function todayMinutes(): number {
-  return readPlaytimeCache()[new Date().toISOString().slice(0, 10)] ?? 0;
+  return readPlaytimeCache()[localDayKey()] ?? 0;
 }
 
 export function addTodayMinutes(mins: number): number {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDayKey();
+  // #1367 — partial credit: accept fractional minutes (e.g. a 40-second game is
+  // 0.67 min). Round to 3 decimals so JSON doesn't fill with float noise.
+  const safe = Number.isFinite(mins) ? Math.max(0, Math.round(mins * 1000) / 1000) : 0;
   try {
     const raw = readPlaytimeCache();
-    raw[today] = (raw[today] ?? 0) + mins;
-    // prune anything older than a week
-    const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    const cur = typeof raw[today] === "number" ? raw[today] : 0;
+    raw[today] = Math.round((cur + safe) * 1000) / 1000;
+    // prune anything older than a week (local day key, same clock as `today`)
+    const cutoff = localDayKey(new Date(Date.now() - 7 * 86_400_000));
     for (const d of Object.keys(raw)) if (d < cutoff) delete raw[d];
     localStorage.setItem(LS_PLAYTIME, JSON.stringify(raw));
     return raw[today];
