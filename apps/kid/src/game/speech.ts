@@ -618,7 +618,21 @@ export function speak(text: string, opts: SpeakOpts = {}) {
  *  English + pre-neural Bangla, and as the FALLBACK when neural can't play. */
 function webSpeak(clean: string, lang: "en" | "bn", opts: SpeakOpts, token: number) {
   const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
-  if (!synth) return;
+  if (!synth) {
+    // #797 — with no Web Speech engine at all, a Bangla line must still wait
+    // for the on-device neural voice to finish preloading, not vanish.
+    if (lang === "bn" && !isNeuralReady()) {
+      const toneSpk = parentVoiceTone ? TONE_SPEAKER[parentVoiceTone] : undefined;
+      holdBnLine(
+        clean,
+        opts,
+        token,
+        toneSpk,
+        (opts.volume ?? getVoiceFunVolume()) * parentVoiceVolume * quietLevel
+      );
+    }
+    return;
+  }
   const doSpeak = () => {
     if (token !== speakToken) return;
     const platform = detectPlatform();

@@ -84,7 +84,6 @@ export class BnLettersScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.meter = roundMeter(this);
         this.prompt = questionPanel(this, 0, 0, { tail: "none" });
-    this.prompt.set(t("findLetter"));
     onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
@@ -119,7 +118,7 @@ export class BnLettersScene extends Phaser.Scene {
   private showTarget() {
     // The owl + big target letter at the top
     this.prompt.set(t("findLetter", { ch: this.target.bn, hint: this.target.en }));
-    speak(`Find the letter ${this.target.bn}. ${this.target.en}`);
+    speak(t("findLetter", { ch: this.target.bn, hint: this.target.en }));
   }
 
   private spawnCards(n: number) {

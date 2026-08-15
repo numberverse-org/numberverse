@@ -49,6 +49,7 @@ const EN: Record<string, Entry> = {
   tapAnswer: "Tap the answer!",
   tapColor: "Tap the color!",
   findLetter: "Find  {ch}  ({hint})",
+  enLettersHint: "Find the letter {ch} — say its sound",
   listenNumber: "Listen — which number?",
   tapMatra: "Tap the letter with the matra!",
   // #759 — matra WORDS mode: join two syllables into a whole word.
@@ -1439,6 +1440,7 @@ const EN: Record<string, Entry> = {
   saDone: "Word star!",
   titleIp: "Make it plural!",
   ipPrompt: "two ___?",
+  ipOneTwo: "one {one}, two {many}",
   ipGreat: "Perfect!",
   ipGentle: "Not quite — try again",
   ipDone: "Plural star!",
@@ -1572,6 +1574,7 @@ const BN: Record<string, Entry> = {
   tapAnswer: "সঠিক উত্তর ট্যাপ করো!",
   tapColor: "সঠিক রং ট্যাপ করো!",
   findLetter: "খুঁজে বের করো  {ch}  ({hint})",
+  enLettersHint: "{ch} অক্ষরটি খুঁজো — শব্দটা বলো",
   listenNumber: "শোনো — কোন সংখ্যাটা?",
   tapMatra: "মাত্রা দেওয়া অক্ষর ট্যাপ করো!",
   // #759 — matra WORDS mode: join two syllables into a whole word.
@@ -2961,6 +2964,7 @@ const BN: Record<string, Entry> = {
   saDone: "শব্দের তারকা!",
   titleIp: "বহুবচন বানাও!",
   ipPrompt: "দুটো ___?",
+  ipOneTwo: "একটা {one}, দুটো {many}",
   ipGreat: "চমৎকার!",
   ipGentle: "ঠিক নয় — আবার চেষ্টা করো",
   ipDone: "বহুবচনের তারকা!",

@@ -83,7 +83,7 @@ export class EnLettersScene extends Phaser.Scene {
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.prompt.set(t("findLetter", { ch: this.target.ch, hint: this.target.hint }));
-    speak(`Find the letter ${this.target.ch}. ${this.target.hint}`, { lang: "en" });
+    speak(t("findLetter", { ch: this.target.ch, hint: this.target.hint }));
     this.hintIcon.removeAll(true);
     this.hintIcon.add(assetIcon(this, this.target.icon, 76));
     this.spawnCards(n);
@@ -116,8 +116,8 @@ export class EnLettersScene extends Phaser.Scene {
   private tap(container: Phaser.GameObjects.Container, ch: string) {
     if (ch !== this.target.ch) {
       hintWrong(this, container, {
-        hint: () => `Find the letter ${this.target.ch} — say its sound`,
-        hintBn: () => `${this.target.ch} অক্ষরটি খুঁজো — শব্দটা বলো`,
+        hint: () => t("enLettersHint", { ch: this.target.ch }),
+        hintBn: () => t("enLettersHint", { ch: this.target.ch }),
         correct: () => this.target.ch,
         options: () => this.cards.map((s) => ({ sprite: s, value: s.getData("val") })),
       });

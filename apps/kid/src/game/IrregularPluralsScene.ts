@@ -187,7 +187,7 @@ export class IrregularPluralsScene extends Phaser.Scene {
       const api = this.optionBtns[i].getData("nv-btn") as { setLabel: (s: string) => void } | undefined;
       api?.setLabel(this.options[i]);
     }
-    speak(`${this.current.one}`, { lang: "en" });
+    speak(t("plurOne", { w: this.current.one }), { lang: getAppLang() === "bn" ? "bn" : "en" });
   }
 
   private tap(i: number) {
@@ -199,7 +199,7 @@ export class IrregularPluralsScene extends Phaser.Scene {
       win();
       correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3)); // #1197 — a correct answer deserves the full reward, not an audio blip
       this.floatMsg(`${t("ipGreat")} ${this.current.one} → ${picked}`, 0x4ade80);
-      speak(`one ${this.current.one}, two ${picked}`, { lang: "en" });
+      speak(t("ipOneTwo", { one: this.current.one, many: picked }), { lang: getAppLang() === "bn" ? "bn" : "en" });
       (this.optionBtns[i].getData("nv-btn") as { setCorrect: () => void } | undefined)?.setCorrect();
       this.time.delayedCall(950, () => {
         this.qIdx++;
