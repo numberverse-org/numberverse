@@ -3319,8 +3319,12 @@ export default function App() {
               <div className="settings-row-line">
                 <span className="settings-row-icon">🗣️</span>
                 <span className="settings-row-label">{t.settingsVoice}</span>
-                {neuralOn && (
-                  <span className="settings-voice-badge" title={t.settingsVoiceNeural(spkLabel)}>🧠</span>
+                {readingOff ? (
+                  <span className="settings-voice-badge off">{t.settingsVoiceOff}</span>
+                ) : (
+                  neuralOn && (
+                    <span className="settings-voice-badge" title={t.settingsVoiceNeural(spkLabel)}>🧠</span>
+                  )
                 )}
               </div>
               {readingOff ? (
@@ -5976,6 +5980,10 @@ export default function App() {
         {quietChrome}
         {/* #1453/#1454 — cap wind-down/sleep veil follows the kid into play. */}
         {capChrome}
+        {/* #1470 — the HUD mute toggle announces its state through this live
+            region. Home renders its own; the game screen is a separate React
+            tree, so the ref must be attached here too for in-game toggles. */}
+        <div id="sr-live-hud" aria-live="polite" className="sr-only" ref={srLiveRef} />
         {/* #684 — the 3D island is an OPT-IN surface on top of 2D Nova: it
             stops Phaser first (single WebGL context) and falls back if the
             device has no WebGL. The 2D Nova home stays the default. */}

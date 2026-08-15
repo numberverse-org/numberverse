@@ -5876,6 +5876,11 @@
   padding: 2px 8px;
   font-weight: 800;
 }
+.settings-voice-badge.off {
+  background: rgba(255, 209, 102, 0.14);
+  border-color: rgba(255, 209, 102, 0.45);
+  color: var(--nv-gold);
+}
 .settings-voice-status { margin: 0; font-size: 13px; color: #a7c4e2; line-height: 1.45; }
 .settings-voice-note { margin: 0; font-size: 12px; color: #8fa9c9; line-height: 1.4; }
 .settings-voice-note.warn { color: var(--nv-orange); }
