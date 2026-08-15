@@ -175,9 +175,15 @@ async def apply_constraint_migrations() -> list[str]:
         insp = inspect(sync_conn)
         out: dict[str, dict[str, set[tuple]]] = {}
         for t in insp.get_table_names():
+            pk = insp.get_pk_constraint(t)
             out[t] = {
                 "unique": {c["name"] for c in insp.get_unique_constraints(t)},
                 "unique_cols": {tuple(c["column_names"]) for c in insp.get_unique_constraints(t)},
+                # #— the PRIMARY KEY is also a unique constraint, but the inspector's
+                # get_unique_constraints() does NOT report it. A model-declared
+                # UniqueConstraint whose columns are already covered by the PK must
+                # not be re-added (name collides → every boot crashes).
+                "pk_cols": tuple(pk["constrained_columns"] or []),
                 "check": {c["name"] for c in insp.get_check_constraints(t)},
                 "foreign": {
                     (
@@ -200,7 +206,11 @@ async def apply_constraint_migrations() -> list[str]:
             for constraint in table.constraints:
                 if isinstance(constraint, UniqueConstraint):
                     cols = tuple(c.name for c in constraint.columns)
-                    if cols in have["unique_cols"]:
+                    # #— the PK already enforces uniqueness on these columns (a
+                    # PK is a unique constraint; get_unique_constraints() just
+                    # doesn't report it as one). Re-adding would collide on the
+                    # PK's name → DuplicateTable on every boot.
+                    if cols in have["unique_cols"] or set(cols) <= set(have["pk_cols"]):
                         continue
                     name = constraint.name or f"uq_{table.name}_{'_'.join(cols)}"
                     col_sql = ", ".join(f'"{c}"' for c in cols)

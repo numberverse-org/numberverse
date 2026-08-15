@@ -52,7 +52,8 @@ test.describe("kid ↔ parent journey", () => {
     await expect(page.locator(".kid-name").filter({ hasText: "Aria" })).toBeVisible();
 
     // 4. LOGOUT — the portal revokes the session and returns to the login gate.
-    await page.getByRole("button", { name: "Sign out" }).click();
+    // exact:true — "Sign out" would also substring-match "Sign out of all devices".
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page.getByText(/Sign in to manage/)).toBeVisible();
     expect(api.logoutCalls).toBeGreaterThan(0);
   });

@@ -148,15 +148,25 @@ function pathOf(url: string): string {
 
 /** #928 — the positive half of the contract: the launch-critical shell must be
  *  SERVED from the SW precache, not merely "not failed". */
-function assertLaunchShellSucceeded(finished: string[]): void {
+async function assertLaunchShellSucceeded(page: Page, finished: string[]): Promise<void> {
   expect(finished.some((url) => pathOf(url) === "/"), "document served from SW precache").toBe(true);
   expect(finished.some((url) => url.includes("/assets/")), "app assets served from SW precache").toBe(true);
   expect(finished.some((url) => url.includes("/fonts/")), "fonts served from SW precache").toBe(true);
-  expect(finished.some((url) => url.includes("manifest.webmanifest")), "manifest served from SW precache").toBe(true);
   expect(
     finished.some((url) => /favicon\.png|apple-touch-icon\.png|\/icon-\d+\.png/.test(url)),
     "icons/favicon served from SW precache"
   ).toBe(true);
+  // The manifest is NOT observable via requestfinished: Chromium fetches
+  // <link rel="manifest"> once per origin/session for installability and
+  // serves it from its own HTTP cache on reload, so no network event fires.
+  // Verify the real contract directly — a runtime fetch while offline must
+  // be answered by the SW precache (fetch would fail if it escaped to network).
+  const manifest = await page.evaluate(async () => {
+    const res = await fetch("/manifest.webmanifest");
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, status: res.status, text: (await res.text()).slice(0, 20) };
+  });
+  expect(manifest).toEqual(expect.objectContaining({ ok: true, status: 200 }));
 }
 
 test("cold: install online once → offline reload renders, only runtime features touch the network", async ({ page }) => {
@@ -166,7 +176,7 @@ test("cold: install online once → offline reload renders, only runtime feature
 
   await assertRendered(page);
   assertOnlyAllowedFailures(failed);
-  assertLaunchShellSucceeded(finished);
+  await assertLaunchShellSucceeded(page, finished);
 });
 
 test("warm: revisit offline (SW already controlling) → renders, only runtime features touch the network", async ({ page }) => {
@@ -177,5 +187,5 @@ test("warm: revisit offline (SW already controlling) → renders, only runtime f
 
   await assertRendered(page);
   assertOnlyAllowedFailures(failed);
-  assertLaunchShellSucceeded(finished);
+  await assertLaunchShellSucceeded(page, finished);
 });

@@ -142,13 +142,13 @@ export async function mockNumberverseApi(page: Page, state: MockApiState): Promi
       body: JSON.stringify({ total: 0, by_skill: {}, by_error_kind: {}, by_misconception: {} }),
     })
   );
-  await page.route("**/api/v1/kids/*/stories", (route) =>
+  await page.route("**/api/v1/kids/*/stories?limit=*", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
   );
   await page.route("**/api/v1/kids/*/acceleration", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
   );
-  await page.route("**/api/v1/kids/*/activity", (route) =>
+  await page.route("**/api/v1/kids/*/activity?limit=*", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
   );
 
