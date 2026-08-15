@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useGetIdentity } from "react-admin";
 import { API } from "./apiBase";
+// #849 — the dashboard goes through the shared token-injecting client instead
+// of hand-rolling `fetch` + an Authorization header.
+import { httpClient } from "./httpClient";
+import StoryHealth from "./StoryHealth";
 
 interface Stats {
   profiles: number;
@@ -44,14 +48,10 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("nv_admin_token");
-        const res = await fetch(`${API}/admin/stats`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setStats((await res.json()) as Stats);
-      } catch {
-        setErr("Could not load stats.");
+        // #849 — token injection + error detail handling now live in httpClient.
+        setStats(await httpClient<Stats>(`${API}/admin/stats`));
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Could not load stats.");
       }
     })();
   }, []);
@@ -116,6 +116,9 @@ export default function Dashboard() {
           )}
         </>
       )}
+
+      {/* #844 — rich story-lake surface (health, runaway-sync flags, embed/prune jobs). */}
+      <StoryHealth />
     </div>
   );
 }
