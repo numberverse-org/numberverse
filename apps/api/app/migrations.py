@@ -82,4 +82,32 @@ async def apply_column_migrations() -> list[str]:
             await conn.execute(text(f'ALTER TABLE kids ADD COLUMN IF NOT EXISTS "{name}" TIMESTAMPTZ'))
             added.append(f"kids.{name}")
 
+    # #1534 — Web Push subscription storage. `create_all` already creates this
+    # table from the PushSubscription model on a fresh DB (and on an existing DB
+    # that lacks the table), but issue the same DDL here explicitly so the table
+    # and its profile_id index are idempotently present even if create_all ever
+    # changes behavior. The billing `subscriptions` table is intentionally left
+    # untouched; Web Push lives in this separate `push_subscriptions` table.
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS push_subscriptions ("
+                "id UUID PRIMARY KEY, "
+                "profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, "
+                "endpoint TEXT NOT NULL UNIQUE, "
+                "p256dh TEXT NOT NULL, "
+                "auth TEXT NOT NULL, "
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT now()"
+                ")"
+            )
+        )
+        await conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_profile_id "
+                "ON push_subscriptions (profile_id)"
+            )
+        )
+        added.append("push_subscriptions")
+        added.append("push_subscriptions.profile_id")
+
     return added

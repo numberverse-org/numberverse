@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -284,6 +284,30 @@ class Subscription(Base):
     status: Mapped[str] = mapped_column(String, default="active", server_default="active")
     current_period_end: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class PushSubscription(Base):
+    """#1534 — Web Push subscriptions (the browser Push API endpoint + keys).
+
+    Deliberately a SEPARATE table from the billing `Subscription` model above
+    (`subscriptions`): that table is plan/store billing rows enumerated by the
+    admin console, and a naive reuse would stuff browser endpoints into a plan
+    count. `endpoint` is unique globally — each browser/device subscription can
+    only belong to one parent profile; re-subscribing with the same endpoint
+    updates its keys, while a different profile claiming it gets a 409.
+    `p256dh`/`auth` are secret client keys and are never returned by list routes.
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(Text)
+    auth: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    profile: Mapped[Profile] = relationship()
 
 
 class ContentItem(Base):
