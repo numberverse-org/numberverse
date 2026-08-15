@@ -29,6 +29,7 @@ import {
 import { ROOMS } from "./rooms";
 import { ACTIVITIES, type ActivityDef } from "./activities";
 import { enableSwipeRooms } from "./gestures";
+import { prefersReducedMotion } from "./reducedMotion";
 import { deriveLearningStyle, type LearningStyle } from "@numberverse/core";
 
 /* ─────────────────────────── Nova scene i18n ─────────────────────────── */
@@ -919,8 +920,13 @@ export class NovaScene extends Phaser.Scene {
         if (!this.dozing && !this.touched) this.say(this.t().missedYou, 2600);
       });
     }
-    // after the hello, tease the one-time "swipe to explore" nudge
-    this.time.delayedCall(5000, () => this.showSwipeHint());
+    // after the hello, tease the one-time "swipe to explore" nudge — only if
+    // no sheet is already open and the kid hasn't started tapping yet.
+    this.time.delayedCall(5000, () => {
+      if (this.shopPanel.visible || this.speciesPanel.visible || this.actPanel.visible) return;
+      if (this.touched) return;
+      this.showSwipeHint();
+    });
   }
 
   /* ────────────────────────── vignette + rooms ────────────────────────── */
@@ -1049,9 +1055,12 @@ export class NovaScene extends Phaser.Scene {
     this.swipeHintChevL.setPosition(L, 0);
     this.swipeHintChevR.setPosition(R, 0);
     this.swipeHint.setVisible(false).setAlpha(0);
-    // the chevrons gently reach toward each other — "swipe here"
-    this.tweens.add({ targets: this.swipeHintChevL, x: L + 6, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-    this.tweens.add({ targets: this.swipeHintChevR, x: R - 6, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    // the chevrons gently reach toward each other — "swipe here" (kept still
+    // when reduced motion is on: the static hint still points both ways).
+    if (!prefersReducedMotion()) {
+      this.tweens.add({ targets: this.swipeHintChevL, x: L + 6, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      this.tweens.add({ targets: this.swipeHintChevR, x: R - 6, duration: 620, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
   }
 
   private showSwipeHint() {
