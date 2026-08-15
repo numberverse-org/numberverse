@@ -508,6 +508,10 @@ export interface Strings {
   pinLockedSub: string;
   pinForgot: string;
   pinForgotSub: string;
+  /* #1420 — no Q&A set: recover by verifying the account password, no sign-out. */
+  pinForgotNoQaSub: string;
+  pinRecoverCta: string;
+  pinRecoverWithPassword: string;
   pinResetArmed: string;
   pinResetCta: string;
   pinMismatch: string;
@@ -537,6 +541,12 @@ export interface Strings {
   secQuestion: string;
   secAnswerPlaceholder: string;
   secWrong: string;
+  /* #1419 — limited security-answer attempts (3 tries, then password fallback). */
+  secWrongTries: (n: number) => string;
+  secLocked: string;
+  secLockedSub: string;
+  secPasswordTitle: string;
+  secPasswordSub: string;
   secEmpty: string;
   secRecovered: string;
   secMismatch: string;
@@ -1281,6 +1291,9 @@ export const STR: Record<Lang, Strings> = {
     pinLockedSub: "Too many wrong tries. Answer your security question to reset the PIN here.",
     pinForgot: "Forgot PIN?",
     pinForgotSub: "Answer your security question to reset it here — no sign-out needed.",
+    pinForgotNoQaSub: "Verify your parent account to reset the PIN here — no sign-out needed.",
+    pinRecoverCta: "Verify & reset PIN",
+    pinRecoverWithPassword: "Use parent password instead",
     pinResetArmed: "Reset PIN & sign out?",
     pinResetCta: "Reset & sign out",
     pinMismatch: "PINs don't match — start over",
@@ -1310,6 +1323,11 @@ export const STR: Record<Lang, Strings> = {
     secQuestion: "Your question",
     secAnswerPlaceholder: "Type your answer",
     secWrong: "That doesn't match — try again.",
+    secWrongTries: (n) => (n === 1 ? "That doesn't match — 1 try left." : `That doesn't match — ${n} tries left.`),
+    secLocked: "Too many wrong answers.",
+    secLockedSub: "Use your parent password to reset the PIN instead.",
+    secPasswordTitle: "Verify your parent account",
+    secPasswordSub: "Enter the email and password for this parent account to reset the PIN here — no sign-out needed.",
     secEmpty: "Type an answer first.",
     secRecovered: "PIN reset — now set a new 4-digit PIN below.",
     secMismatch: "Answers don't match — start over.",
@@ -2038,6 +2056,9 @@ export const STR: Record<Lang, Strings> = {
     pinLockedSub: "অনেকবার ভুল পিন। নিরাপত্তা প্রশ্নের উত্তর দিয়ে এখানে পিন রিসেট করুন।",
     pinForgot: "পিন ভুলে গেছেন?",
     pinForgotSub: "নিরাপত্তা প্রশ্নের উত্তর দিয়ে এখানেই রিসেট করুন — সাইন আউট লাগবে না।",
+    pinForgotNoQaSub: "মা-বাবার অ্যাকাউন্ট যাচাই করে এখানেই পিন রিসেট করুন — সাইন আউট লাগবে না।",
+    pinRecoverCta: "যাচাই করে পিন রিসেট করুন",
+    pinRecoverWithPassword: "বদলে মা-বাবার পাসওয়ার্ড ব্যবহার করুন",
     pinResetArmed: "পিন রিসেট করে সাইন আউট করবেন?",
     pinResetCta: "রিসেট ও সাইন আউট",
     pinMismatch: "পিন মেলেনি — আবার শুরু করুন",
@@ -2067,6 +2088,11 @@ export const STR: Record<Lang, Strings> = {
     secQuestion: "আপনার প্রশ্ন",
     secAnswerPlaceholder: "আপনার উত্তর লিখুন",
     secWrong: "উত্তর মেলেনি — আবার চেষ্টা করুন।",
+    secWrongTries: (n) => (n === 1 ? "উত্তর মেলেনি — ১ বার চেষ্টা বাকি।" : `উত্তর মেলেনি — ${n} বার চেষ্টা বাকি।`),
+    secLocked: "অনেকবার ভুল উত্তর দেওয়া হয়েছে।",
+    secLockedSub: "বদলে মা-বাবার পাসওয়ার্ড দিয়ে পিন রিসেট করুন।",
+    secPasswordTitle: "মা-বাবার অ্যাকাউন্ট যাচাই করুন",
+    secPasswordSub: "এই মা-বাবার অ্যাকাউন্টের ইমেইল ও পাসওয়ার্ড দিয়ে এখানেই পিন রিসেট করুন — সাইন আউট লাগবে না।",
     secEmpty: "আগে উত্তর লিখুন।",
     secRecovered: "পিন রিসেট হয়েছে — নিচে নতুন ৪ অঙ্কের পিন সেট করুন।",
     secMismatch: "উত্তর দুটি মেলেনি — আবার শুরু করুন।",

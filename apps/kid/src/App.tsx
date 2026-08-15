@@ -860,7 +860,21 @@ export default function App() {
   const [pinNotice, setPinNotice] = useState<string | null>(null);
   const [pinTries, setPinTries] = useState(0);
   const [pinLocked, setPinLocked] = useState(false);
-  const [pinForgotArmed, setPinForgotArmed] = useState(false);
+  const [pinShaking, setPinShaking] = useState(false);
+  const pinShakeTimer = useRef<number | undefined>(undefined);
+  /** #1421 — wrong PIN feedback for a pre-literate kid: shake the pad and pulse
+   *  the device (when haptics are on). The remaining-tries text stays for the
+   *  parent, but the tap itself now feels wrong too. */
+  const shakePinPad = () => {
+    setPinShaking(true);
+    if (pinShakeTimer.current !== undefined) window.clearTimeout(pinShakeTimer.current);
+    pinShakeTimer.current = window.setTimeout(() => setPinShaking(false), 520);
+    try {
+      if (hapticsOn && "vibrate" in navigator) navigator.vibrate([0, 30, 20, 30]);
+    } catch {
+      /* haptics unavailable */
+    }
+  };
   const pinResetPad = () => { setPinDigits(""); setPinError(null); };
   const pinNewFlow = (mode: "unlock" | "setup" | "change") => {
     setPinMode(mode);
@@ -874,13 +888,22 @@ export default function App() {
   // #247 — PIN recovery Q&A. Set at first PIN use (or from the panel card),
   // asked on the unlock/locked pad to reset the PIN IN PLACE — fully offline,
   // no sign-out, no account lockout. Stored as a salted hash in api.ts.
-  const [secView, setSecView] = useState<"none" | "set" | "ask">("none");
+  const [secView, setSecView] = useState<"none" | "set" | "ask" | "password">("none");
   const [secStep, setSecStep] = useState<"pick" | "answer" | "confirm">("pick");
   const [secQid, setSecQid] = useState(0);
   const [secAnswer, setSecAnswer] = useState("");
   const [secConfirm, setSecConfirm] = useState("");
   const [secError, setSecError] = useState<string | null>(null);
+  const [secTries, setSecTries] = useState(0);
+  const [secLocked, setSecLocked] = useState(false);
+  const [recoverEmail, setRecoverEmail] = useState("");
+  const [recoverPass, setRecoverPass] = useState("");
+  const [recoverBusy, setRecoverBusy] = useState(false);
+  const [recoverError, setRecoverError] = useState<string | null>(null);
   const resetSec = () => { setSecStep("pick"); setSecQid(0); setSecAnswer(""); setSecConfirm(""); setSecError(null); };
+  const resetSecTries = () => { setSecTries(0); setSecLocked(false); };
+  /** #247 — open the ask view WITHOUT resetting the brute-force attempt count,
+   *  so closing/reopening the question can't bypass the limit (#1419). */
   const openSecAsk = () => { resetSec(); setSecView("ask"); };
   /** #247 — leave the Q&A view (skip first-use setup, or cancel an edit). */
   const secSkip = () => { setSecView("none"); resetSec(); };
@@ -897,19 +920,59 @@ export default function App() {
     setSecView("none");
     resetSec();
   };
+  /** #247/#1420 — verify the account password and reset the PIN in place,
+   *  WITHOUT signing the parent out. Used when Q&A is unset or locked. */
+  const recoverPinWithPassword = async () => {
+    if (recoverBusy) return;
+    if (!recoverEmail.trim() || !recoverPass) {
+      setRecoverError(t.gateErrorInvalid);
+      return;
+    }
+    setRecoverBusy(true);
+    setRecoverError(null);
+    try {
+      await signinParent(recoverEmail.trim(), recoverPass);
+      clearParentPin();
+      resetSec();
+      resetSecTries();
+      setSecView("none");
+      setRecoverEmail("");
+      setRecoverPass("");
+      setPinNotice(t.secRecovered);
+      pinNewFlow("unlock");
+      setPinOk(false);
+    } catch {
+      setRecoverError(t.gateErrorInvalid);
+    } finally {
+      setRecoverBusy(false);
+    }
+  };
   /** #247 — answer the recovery question → reset the PIN here, in place. */
   const secRecover = () => {
+    if (secLocked) return;
     if (!secAnswer.trim()) { setSecError(t.secEmpty); return; }
     if (verifySecurityQA(secAnswer.trim())) {
       clearParentPin(); // QA stays — reuse it for the next reset.
       setSecView("none");
       resetSec();
+      resetSecTries();
       setPinNotice(t.secRecovered);
       pinNewFlow("unlock");
       setPinOk(false);
-      setPinForgotArmed(false);
     } else {
-      setSecError(t.secWrong);
+      // #1419 — three wrong security answers lock the Q&A path; the parent can
+      // still recover via the account-password view, so this is a brake on
+      // unlimited guessing, not a dead end.
+      const tries = secTries + 1;
+      setSecTries(tries);
+      setSecAnswer("");
+      shakePinPad();
+      if (tries >= 3) {
+        setSecLocked(true);
+        setSecError(t.secLocked);
+      } else {
+        setSecError(t.secWrongTries(3 - tries));
+      }
     }
   };
 
@@ -940,10 +1003,12 @@ export default function App() {
       if (pinMode === "change") {
         pinResetPad();
         setPinError(t.pinCurrentWrong);
+        shakePinPad();
       } else {
         const t2 = pinTries + 1;
         setPinTries(t2);
         pinResetPad();
+        shakePinPad();
         if (t2 >= 3) { setPinLocked(true); setPinError(null); }
         else { setPinError(t.pinWrong(3 - t2)); }
       }
@@ -980,27 +1045,8 @@ export default function App() {
       setPinPending("");
       setPinStep("new");
       setPinError(t.pinMismatch);
+      shakePinPad();
     }
-  };
-  /** Recovery fallback (#247): when NO security question is set, a parent who
-   *  forgot the PIN (or hit the locked pad) resets the lock and signs out —
-   *  signing back in lands on the parent page, which (with no PIN set) prompts
-   *  for a fresh PIN. Two taps (arm → confirm). With Q&A set, "Forgot PIN?"
-   *  instead opens `secRecover` and never leaves the screen. */
-  const pinForgot = () => {
-    if (!pinForgotArmed) {
-      setPinForgotArmed(true);
-      window.setTimeout(() => setPinForgotArmed(false), 4000);
-      return;
-    }
-    clearParentPin();
-    setPinForgotArmed(false);
-    pinNewFlow("unlock");
-    setPinOk(false);
-    void signoutParent().then(() => {
-      gateReturn.current = "parent";
-      setScreen("parent"); // inline sign-in form → after sign-in, setup a new PIN
-    });
   };
 
   // ── Parent controls ─────────────────────────────────────────────────────
@@ -1746,7 +1792,7 @@ export default function App() {
         requestFullscreen(); // fullscreen by default — first tap anywhere
       }
       const t = e.target as HTMLElement | null;
-      if (!t || typeof t.closest !== "function" || t.closest(".game-wrap")) return;
+      if (!t || typeof t.closest !== "function" || t.closest(".game-wrap, .parent-screen")) return;
       if (t.closest("button")) {
         ensureAudio();
         startMusic(); // idempotent — music begins on the first tap anywhere
@@ -3141,15 +3187,19 @@ export default function App() {
               <h2 className="gate-title">{t.settingsSecParents}</h2>
               <p className="gate-sub">{t.settingsParentsHint}</p>
 
-              {googleEnabled() ? (
+              {googleClientId() ? (
                 <>
                   <div className="gate-google">
-                    <GoogleSignIn onToken={(tok) => void submitGoogle(tok)} disabled={gateBusy} fallbackText={t.gateGoogleGone} retryText={t.gateGoogleRetry} lang={lang} />
+                    <GoogleSignIn
+                      onToken={(tok) => void submitGoogle(tok)}
+                      disabled={gateBusy}
+                      fallbackText={googleEnabled() ? t.gateGoogleGone : t.gateGoogleUnavailable}
+                      retryText={t.gateGoogleRetry}
+                      lang={lang}
+                    />
                   </div>
-                  <div className="gate-or"><span>{t.gateGoogleOr}</span></div>
+                  {googleEnabled() && <div className="gate-or"><span>{t.gateGoogleOr}</span></div>}
                 </>
-              ) : googleClientId() ? (
-                <p className="gate-google-fallback" role="status">{t.gateGoogleUnavailable}</p>
               ) : null}
 
               <div className="gate-tabs" role="tablist">
@@ -3240,11 +3290,48 @@ export default function App() {
                 <p className="head-sub">{t.parentSub}</p>
               </div>
             </header>
-            <div className="gate-card pin-card">
+            <div className={`gate-card pin-card${pinShaking ? " shake" : ""}`}>
               <div className="gate-logo" aria-hidden>🔒</div>
 
-              {/* #247 — ASK view: recover a forgotten PIN via the security question */}
-              {secView === "ask" ? (
+              {/* #1420 — PASSWORD view: verify the parent account, then reset the
+                  PIN without signing out. Used when Q&A is unset or locked. */}
+              {secView === "password" ? (
+                <div className="sec-view">
+                  <h2 className="gate-title">{t.secPasswordTitle}</h2>
+                  <p className="gate-sub">{t.secPasswordSub}</p>
+                  <label className="form-label">{t.gateEmailLabel}
+                    <input
+                      className="input-field"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={recoverEmail}
+                      placeholder={t.gateEmailPh}
+                      autoFocus
+                      onChange={(e) => { setRecoverEmail(e.target.value); setRecoverError(null); }}
+                    />
+                  </label>
+                  <label className="form-label">{t.gatePassLabel}
+                    <input
+                      className="input-field pass-input"
+                      type="password"
+                      autoComplete="current-password"
+                      value={recoverPass}
+                      placeholder={t.gatePassPh}
+                      enterKeyHint="go"
+                      onChange={(e) => { setRecoverPass(e.target.value); setRecoverError(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !recoverBusy) void recoverPinWithPassword(); }}
+                    />
+                  </label>
+                  {recoverError && <p className="gate-error" role="alert">{recoverError}</p>}
+                  <div className="pin-row">
+                    <button className="pin-btn" onClick={() => { setSecView("none"); resetSec(); setRecoverError(null); }}>{t.secCancel}</button>
+                    <button className="pin-btn pin-btn-primary" disabled={recoverBusy} onClick={() => void recoverPinWithPassword()}>
+                      {recoverBusy ? t.gateBusy : t.pinRecoverCta}
+                    </button>
+                  </div>
+                </div>
+              ) : secView === "ask" ? (
                 <div className="sec-view">
                   <h2 className="gate-title">{t.secAskTitle}</h2>
                   <p className="gate-sub">{t.secAskSub}</p>
@@ -3252,19 +3339,27 @@ export default function App() {
                     <span className="sec-q-label">{t.secQuestion}</span>
                     <span className="sec-q-text">{secQ ? (lang === "bn" ? secQ.bn : secQ.en) : "—"}</span>
                   </div>
-                  <input
-                    className="sec-input"
-                    type="text"
-                    value={secAnswer}
-                    placeholder={t.secAnswerPlaceholder}
-                    autoFocus
-                    onChange={(e) => { setSecAnswer(e.target.value); setSecError(null); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") secRecover(); }}
-                  />
+                  {secLocked ? (
+                    <p className="gate-notice" role="status">{t.secLockedSub}</p>
+                  ) : (
+                    <input
+                      className="sec-input"
+                      type="text"
+                      value={secAnswer}
+                      placeholder={t.secAnswerPlaceholder}
+                      autoFocus
+                      onChange={(e) => { setSecAnswer(e.target.value); setSecError(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") secRecover(); }}
+                    />
+                  )}
                   {secError && <p className="gate-error" role="alert">{secError}</p>}
                   <div className="pin-row">
                     <button className="pin-btn" onClick={() => { setSecView("none"); resetSec(); }}>{t.secCancel}</button>
-                    <button className="pin-btn pin-btn-primary" onClick={secRecover}>{t.secSave}</button>
+                    {secLocked ? (
+                      <button className="pin-btn pin-btn-primary" onClick={() => { setSecView("password"); resetSec(); setRecoverError(null); }}>{t.pinRecoverWithPassword}</button>
+                    ) : (
+                      <button className="pin-btn pin-btn-primary" onClick={secRecover}>{t.secSave}</button>
+                    )}
                   </div>
                 </div>
               ) : secView === "set" ? (
@@ -3358,18 +3453,16 @@ export default function App() {
 
                   {/* recovery: forgot PIN / locked pad. With a security question
                       set, "Forgot PIN?" opens the Q&A and resets IN PLACE — no
-                      sign-out. Without one, the two-tap sign-out reset remains.
-                      Only on the unlock pad (setup has no PIN to forget yet). */}
+                      sign-out. Without one, the parent verifies their account
+                      password instead (still no sign-out). */}
                   {hasParentPin() && pinMode === "unlock" && (
                     <div className="pin-recovery">
                       {hasSecurityQA() ? (
                         <button className="syllabus-banner-link" onClick={openSecAsk}>{t.pinForgot}</button>
                       ) : (
-                        <button className="syllabus-banner-link" onClick={pinForgot}>
-                          {pinForgotArmed ? t.pinResetArmed : t.pinForgot}
-                        </button>
+                        <button className="syllabus-banner-link" onClick={() => { setSecView("password"); resetSec(); setRecoverError(null); }}>{t.pinForgot}</button>
                       )}
-                      <p className="gate-guest-sub">{t.pinForgotSub}</p>
+                      <p className="gate-guest-sub">{hasSecurityQA() ? t.pinForgotSub : t.pinForgotNoQaSub}</p>
                     </div>
                   )}
 
