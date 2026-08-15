@@ -29,8 +29,14 @@ _IPV6 = re.compile(r"\b(?=[0-9a-fA-F:]*:[0-9a-fA-F:]*:)[0-9a-fA-F:]{2,}\b")
 # exact grouping varies (01712-345678, 02-9887654, +8801712345678) so we match
 # the prefix + a 6-14 char run of digits/separators, bounded by word edges.
 _PHONE = re.compile(r"\b(?:\+?880|0)[\d\s\-]{5,13}\d\b|\b\d{16,19}\b")
-# Long runs of digits (device ids, IMEI-ish) — redact anything ≥ 12 digits
-_LONG_DIGITS = re.compile(r"\b\d{12,}\b")
+# Long runs of digits that look like IMEI / device-ids but are NOT legitimate
+# numeric learning content. #946 — the old `\b\d{12,}\b` was too broad: it
+# redacted 12+ digit numeric answers in place-value drills and concatenated
+# codes that kids legitimately produce. Narrow to the exact IMEI shape
+# (15 digits) or a 19-digit card-like run that no kid answer would produce.
+# Also apply to specific context keys named "device", "imei", "fingerprint"
+# rather than globally on every string leaf.
+_LONG_DIGITS = re.compile(r"\b\d{15}\b|\b\d{19}\b")
 # MAC addresses
 _MAC = re.compile(r"\b(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\b")
 
@@ -40,6 +46,12 @@ REDACTION = "[REDACTED]"
 # Stop recursing past this depth so redact_context can't be used as a CPU sink.
 MAX_CONTEXT_DEPTH = 20
 CONTEXT_TRUNCATED = "[CONTEXT_TRUNCATED]"
+
+# #946 — context keys whose string values may contain device identifiers and
+# should get the narrower _LONG_DIGITS treatment. All other string values
+# bypass _LONG_DIGITS so legitimate numeric learning content (12+ digit
+# answers, concatenated codes) is never falsely redacted.
+_DEVICE_ID_KEYS = frozenset({"device", "imei", "fingerprint", "deviceId", "device_id"})
 
 
 def redact_text(s: str) -> str:
@@ -51,8 +63,13 @@ def redact_text(s: str) -> str:
     out = _IPV6.sub(REDACTION, out)
     out = _IPV4.sub(REDACTION, out)
     out = _PHONE.sub(REDACTION, out)
-    out = _LONG_DIGITS.sub(REDACTION, out)
     return out
+
+
+def _redact_text_with_long_digits(s: str) -> str:
+    """Like redact_text but also applies _LONG_DIGITS (used only on known
+    device-id context keys)."""
+    return _LONG_DIGITS.sub(REDACTION, redact_text(s))
 
 
 def redact_context(
@@ -66,17 +83,23 @@ def redact_context(
 
     #835 — recursion is capped at `max_depth`; any deeper subtree is replaced
     with a truncation marker so an adversarially nested envelope can't burn CPU.
+
+    #946 — long-digit redaction (_LONG_DIGITS) is applied ONLY to values whose
+    key is in _DEVICE_ID_KEYS, so legitimate numeric learning content (12+ digit
+    answers, concatenated codes in place-value drills) is never falsely redacted.
     """
     if ctx is None:
         return None
 
-    def walk(v: Any, depth: int = 0) -> Any:
+    def walk(v: Any, depth: int = 0, key: str | None = None) -> Any:
         if isinstance(v, str):
+            if key and key in _DEVICE_ID_KEYS:
+                return _redact_text_with_long_digits(v)
             return redact_text(v)
         if depth >= max_depth:
             return CONTEXT_TRUNCATED
         if isinstance(v, dict):
-            return {k: walk(x, depth + 1) for k, x in v.items()}
+            return {k: walk(x, depth + 1, k) for k, x in v.items()}
         if isinstance(v, list):
             return [walk(x, depth + 1) for x in v]
         if isinstance(v, tuple):

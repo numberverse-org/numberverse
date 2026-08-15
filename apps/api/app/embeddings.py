@@ -17,17 +17,21 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .config import settings
 from .models import LearningStory
 from .story_embedding_model import HAVE_VECTOR, StoryEmbedding
 
 log = logging.getLogger("numberverse.embed")
 
-EMBED_MODEL = "thenlper/gte-small"
-EMBED_DIM = 384
+# #948 — EMBED_MODEL and EMBED_DIM are sourced from settings so the encoder
+# can be changed in one place (config.py / NV_KOTHA_EMBED_MODEL env var)
+# without silent drift between the embed job and the DB column.
+EMBED_MODEL = settings.kotha_embed_model
+EMBED_DIM = settings.kotha_embed_dim
 EMBED_BATCH = 32
 # How many unembedded stories a single job run may process (keeps the loop
 # short and the DB happy; the scheduler just runs again).
@@ -99,16 +103,35 @@ async def embed_stories(db: AsyncSession, limit: int = EMBED_MAX_PER_RUN) -> dic
         return {"status": "skipped", "reason": "pgvector extension unavailable in database"}
 
     embedded_ids = select(StoryEmbedding.story_id)
-    pending = (
-        await db.scalars(
-            select(LearningStory)
-            .where(LearningStory.id.not_in(embedded_ids))
-            .order_by(LearningStory.created_at.desc())
-            .limit(limit)
-        )
-    ).all()
+    pending_q = (
+        select(LearningStory)
+        .where(LearningStory.id.not_in(embedded_ids))
+        # #945 — FIFO: oldest stories first so no story is stuck behind a
+        # never-ending stream of new ones (DESC let new stories jump the
+        # queue and old stories could be pruned before they were ever embedded).
+        .order_by(LearningStory.created_at.asc())
+        .limit(limit)
+    )
+    pending = (await db.scalars(pending_q)).all()
     if not pending:
         return {"status": "ok", "embedded": 0, "pending": 0}
+
+    # #945 — warn when the total backlog exceeds a significant multiple of
+    # the per-run cap so an operator sees the gap growing.
+    total_pending = (
+        await db.scalar(
+            select(func.count())
+            .select_from(LearningStory)
+            .where(LearningStory.id.not_in(embedded_ids))
+        )
+    ) or 0
+    if total_pending > limit * 3:
+        log.warning(
+            "Kotha embed backlog: %d stories pending (per-run cap %d). "
+            "The corpus may never catch up — consider increasing EMBED_MAX_PER_RUN "
+            "or shortening the embed interval.",
+            total_pending, limit,
+        )
 
     vectors = encoder.encode(  # type: ignore[union-attr]  # encoder is not None here
         [_story_text(s) for s in pending],
@@ -116,6 +139,19 @@ async def embed_stories(db: AsyncSession, limit: int = EMBED_MAX_PER_RUN) -> dic
         normalize_embeddings=True,
         show_progress_bar=False,
     )
+    # #948 — assert every returned vector matches the declared dimension so
+    # an encoder upgrade that changes dimensionality is caught at insert time
+    # (PG would throw a type mismatch anyway, but earlier = better).
+    for v in vectors:
+        if len(v) != EMBED_DIM:
+            log.error(
+                "Encoder output dim %d != expected EMBED_DIM %d. "
+                "The embedding model (%s) produces vectors that don't match "
+                "the Vector(%d) column. Aborting this tick "
+                "to avoid silent data corruption.",
+                len(v), EMBED_DIM, EMBED_MODEL, EMBED_DIM,
+            )
+            return {"status": "skipped", "reason": f"encoder dim mismatch: got {len(v)}, expected {EMBED_DIM}"}
     rows = [
         {"story_id": s.id, "model": EMBED_MODEL, "dim": EMBED_DIM, "embedding": v.tolist()}
         for s, v in zip(pending, vectors)

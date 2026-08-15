@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..bandlock import skill_band_allowed
+from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import AccelerationLog, ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
@@ -245,10 +246,30 @@ async def record_stories(
     stories = [s for s in body if skill_band_allowed(s.skill_id, SKILL_BANDS, caps.get(s.kid_id))]
     band_skipped = len(body) - len(stories)
 
+    # #950 — server-side per-kid backlog cap. If any kid already has >=
+    # kotha_max_stories_per_kid stories, reject the entire batch (the client
+    # must wait for a prune run before storing more). This prevents an
+    # adversarial or buggy client from flooding the table past the configured
+    # cap even when the per-hour rate limit hasn't tripped.
+    cap = settings.kotha_max_stories_per_kid
+    for kid_id in kid_ids:
+        current_count = await db.scalar(
+            select(func.count()).select_from(LearningStory).where(LearningStory.kid_id == kid_id)
+        )
+        if current_count is not None and current_count >= cap:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Kid {kid_id} already has {current_count} stories "
+                f"(max {cap}). Prune before adding more.",
+            )
+
     rows = [
         {
             "kid_id": s.kid_id,
-            "uid": s.uid,
+            # #942 — a None uid defeats Postgres unique-constraint dedup
+            # (NULLs are treated as distinct). Server-generate a synthetic uid
+            # for every story that arrives without one so dedup works for all rows.
+            "uid": s.uid if s.uid is not None else str(uuid.uuid4()),
             "skill_id": s.skill_id,
             "game_id": s.game_id,
             "error_kind": s.error_kind,

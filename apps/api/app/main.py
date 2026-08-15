@@ -117,12 +117,54 @@ async def _embed_loop():
     If the model/pgvector is missing it reports `skipped` and waits for the
     next tick; once the stack is present it quietly catches up on new stories."""
     interval = settings.kotha_embed_interval_minutes * 60
+    # #944 — track consecutive skipped ticks with the same reason so a
+    # deployment that forgot `pip install numberverse-api[embeddings]` or
+    # lacks the pgvector extension surfaces a clear signal instead of silence.
+    _skip_reason: str | None = None
+    _skip_count: int = 0
+    # #950 — run the prune job once per hour (every N ticks at 15-min interval)
+    _tick_count = 0
+    _prune_every = max(1, 3600 // interval)  # ≈1 hour
     while True:
         try:
             async with SessionLocal() as db:
                 result = await embed_stories(db)
-            if result.get("status") == "ok" and result.get("embedded", 0) > 0:
+            status = result.get("status")
+            if status == "ok" and result.get("embedded", 0) > 0:
                 log.info("Kotha embed tick: embedded %s", result["embedded"])
+                _skip_reason = None
+                _skip_count = 0
+            elif status == "skipped":
+                reason = result.get("reason", "unknown")
+                if reason == _skip_reason:
+                    _skip_count += 1
+                else:
+                    _skip_reason = reason
+                    _skip_count = 1
+                if _skip_count >= 3:
+                    log.warning(
+                        "Kotha embed tick skipped %d consecutive times: %s",
+                        _skip_count, reason,
+                    )
+            else:
+                _skip_reason = None
+                _skip_count = 0
+
+            # #950 — scheduled prune every ~1 hour so the story volume never
+            # silently exceeds the configured cap (the admin-only manual prune
+            # is insufficient for unattended operation).
+            _tick_count += 1
+            if _tick_count >= _prune_every:
+                _tick_count = 0
+                try:
+                    async with SessionLocal() as db:
+                        from .routers.admin import _prune_stories
+
+                        pruned = await _prune_stories(db)
+                    if pruned:
+                        log.info("Kotha scheduled prune: removed %d stories", pruned)
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Kotha scheduled prune failed: %s", exc)
         except Exception as exc:  # noqa: BLE001 — a scheduler must never die
             log.warning("Kotha embed tick failed: %s", exc)
         await asyncio.sleep(interval)

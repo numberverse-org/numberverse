@@ -27,7 +27,13 @@ except ImportError:  # pragma: no cover — exercised only on minimal installs
 
 
 if HAVE_VECTOR:
+    from .config import settings  # noqa: E402 — lazy, only when pgvector exists
     from .models import LearningStory  # noqa: E402  (lazy, only when pgvector exists)
+
+    # #948 — these defaults match the centralized values in config.py so an
+    # encoder upgrade never silently drifts from the DB column definition.
+    _MODEL_DEFAULT = settings.kotha_embed_model
+    _DIM_DEFAULT = settings.kotha_embed_dim
 
     class StoryEmbedding(Base):
         """A gte-small vector for one story — derived data, rebuildable.
@@ -39,9 +45,9 @@ if HAVE_VECTOR:
         story_id: Mapped[uuid.UUID] = mapped_column(
             ForeignKey("learning_stories.id", ondelete="CASCADE"), unique=True, index=True
         )
-        model: Mapped[str] = mapped_column(String, default="thenlper/gte-small", server_default="thenlper/gte-small")
-        dim: Mapped[int] = mapped_column(Integer, default=384, server_default="384")
-        embedding: Mapped[list[float]] = mapped_column(Vector(384))
+        model: Mapped[str] = mapped_column(String, default=_MODEL_DEFAULT, server_default=_MODEL_DEFAULT)
+        dim: Mapped[int] = mapped_column(Integer, default=_DIM_DEFAULT, server_default=str(_DIM_DEFAULT))
+        embedding: Mapped[list[float]] = mapped_column(Vector(_DIM_DEFAULT))
         created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
         story: Mapped[LearningStory] = relationship()
