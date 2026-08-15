@@ -487,11 +487,15 @@ export async function syncProgress(): Promise<void> {
   // offline flag; the 30s heartbeat / online + visibility listeners re-arm us.
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     setSyncState("offline");
+    // #1556 — persist the parent-visible signal so the portal can see the
+    // outbox is not draining (offline), not silently idle.
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     return;
   }
   const identity = await ensureIdentity();
   if (!identity) {
     setSyncState("offline");
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     return;
   }
   syncing = true;
@@ -535,12 +539,17 @@ export async function syncProgress(): Promise<void> {
       const done = new Set([...orphaned.map((e) => e.uid), ...mapped.map((e) => e.uid)]);
       useKidStore.getState().clearPending(done);
       setSyncState("ok");
+      // #1556 — a confirmed server drain: clear the error and stamp success.
+      useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       drained = true;
     } else {
       setSyncState("error");
+      // #1556 — 401/403/429/5xx etc: the outbox is stuck; make it parent-visible.
+      useKidStore.getState().setSyncSignal({ lastError: "error" });
     }
   } catch {
     setSyncState("offline");
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
   } finally {
     syncing = false;
   }
