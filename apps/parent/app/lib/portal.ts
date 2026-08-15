@@ -230,6 +230,18 @@ export const ACCOUNT_LANGS = {
     confirmRevoke: "Confirm sign out {device}?",
     cancel: "Cancel",
     noRecentActivity: "no recent activity",
+    // #1507 — session-expiry message for data-loading catch sites.
+    sessionEnded: "Your session ended — sign in again.",
+    // #1511 — birth-year range hint (mirrors WIZARD_LANGS.birthRangeErr).
+    birthRangeErr: "Birth year must be between 2010 and 2030.",
+    // #1513 — unsaved-settings guard.
+    unsavedConfirm: "Unsaved changes will be lost — continue?",
+    unsavedContinue: "Continue",
+    unsavedCancel: "Cancel",
+    // #1523 — catalog-coverage summary line.
+    summaryMastered: "{n} mastered",
+    summaryInProgress: "{n} in progress",
+    summaryCoverage: "{pct}% of the catalog mastered ({mastered}/{total} skills)",
   },
   bn: {
     changePwTitle: "পাসওয়ার্ড পরিবর্তন",
@@ -257,6 +269,18 @@ export const ACCOUNT_LANGS = {
     confirmRevoke: "নিশ্চিতভাবে {device} সাইন আউট করবেন?",
     cancel: "বাতিল",
     noRecentActivity: "সাম্প্রতিক কোনো কার্যকলাপ নেই",
+    // #1507 — session-expiry message for data-loading catch sites.
+    sessionEnded: "আপনার সেশন শেষ হয়েছে — আবার সাইন ইন করুন।",
+    // #1511 — birth-year range hint (mirrors WIZARD_LANGS.birthRangeErr).
+    birthRangeErr: "জন্মসাল ২০১০ থেকে ২০৩০-এর মধ্যে হতে হবে।",
+    // #1513 — unsaved-settings guard.
+    unsavedConfirm: "সংরক্ষণ না করা পরিবর্তন হারিয়ে যাবে — চালিয়ে যাবেন?",
+    unsavedContinue: "চালিয়ে যান",
+    unsavedCancel: "বাতিল",
+    // #1523 — catalog-coverage summary line.
+    summaryMastered: "{n} আয়ত্ত",
+    summaryInProgress: "{n} চলছে",
+    summaryCoverage: "ক্যাটালগের {pct}% আয়ত্ত ({mastered}/{total} দক্ষতা)",
   },
 } as const;
 
@@ -273,6 +297,8 @@ export const LEARNING_LANGS = {
     difficultyHintAll: "The hardest world {name} can reach (lower = easier, higher = harder).",
     allWorlds: "All worlds",
     goalSavedHint: "↳ Saved as up to {goal} min — clamped to today's daily cap ({cap} min) if that's lower.",
+    // #1513 — shown near the Save button while settings edits are unsaved.
+    unsavedBadge: "Unsaved changes",
   },
   bn: {
     subjectsHint: "কোনো বিষয় বন্ধ করলে সেই বিষয়ের খেলাগুলো {name}-এর জন্য লুকানো থাকবে।",
@@ -283,6 +309,8 @@ export const LEARNING_LANGS = {
     difficultyHintAll: "{name} যে পর্যন্ত পৌঁছাতে পারে তার সবচেয়ে কঠিন ওয়ার্ল্ড (ছোট মান = সহজ, বড় মান = কঠিন)।",
     allWorlds: "সব ওয়ার্ল্ড",
     goalSavedHint: "↳ লক্ষ্য হিসেবে সর্বোচ্চ {goal} মিনিট সংরক্ষিত — আজকের দৈনিক সীমা ({cap} মিনিট) এর চেয়ে কম হলে সেখানে আটকে যাবে।",
+    // #1513 — shown near the Save button while settings edits are unsaved.
+    unsavedBadge: "সংরক্ষণ করা হয়নি",
   },
 } as const;
 
@@ -536,6 +564,9 @@ export const OVERVIEW_LANGS: Record<WizardLang, {
   /** #1521 — mastery subject filter chip row */
   allFilter: string;
   subjects: Record<string, string>;
+  /** #1524 — stale-practice tags in the mastery table. */
+  needsReview: string;
+  practicedAgo: string;
 }> = {
   en: {
     title: "👨‍👩‍👧 Family overview",
@@ -555,6 +586,8 @@ export const OVERVIEW_LANGS: Record<WizardLang, {
       bgs: "BGS",
       ict: "ICT",
     },
+    needsReview: "Needs review",
+    practicedAgo: "Practiced {time} ago",
   },
   bn: {
     title: "👨‍👩‍👧 পারিবারিক সারসংক্ষেপ",
@@ -574,6 +607,8 @@ export const OVERVIEW_LANGS: Record<WizardLang, {
       bgs: "বাংলাদেশ ও বিশ্ব",
       ict: "তথ্যপ্রযুক্তি",
     },
+    needsReview: "রিভিউ দরকার",
+    practicedAgo: "{time} আগে অনুশীলন",
   },
 };
 

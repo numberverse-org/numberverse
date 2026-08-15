@@ -43,6 +43,10 @@ export interface MasteryRow {
   streak: number;
   /** #79 — when the skill FIRST crossed ≥80% (null for pre-#79 mastery). */
   mastered_at?: string | null;
+  /** #1524 — last-practice / last-decay timestamps from the API MasteryOut,
+   *  surfaced in the parent mastery table so regression can be flagged. */
+  last_practice?: string | null;
+  last_decay?: string | null;
 }
 
 /** #132 — a skill below mastery, with catalog titles for the worksheet. */
@@ -173,6 +177,22 @@ async function authFetch(token: string, url: string, init?: RequestInit): Promis
   });
 }
 
+/** #1507 — throw a status-tagged error from a non-OK response. Reads the JSON
+ *  body's `detail`/`message` when present (falling back to a caller-supplied
+ *  message) and attaches `status` so catch sites can tell an expired session
+ *  (401/403) apart from a transient server/network failure. */
+export async function throwApiError(res: Response, fallback: string): Promise<never> {
+  let msg = fallback;
+  try {
+    const data = (await res.json().catch(() => null)) as { detail?: unknown; message?: unknown } | null;
+    if (typeof data?.detail === "string" && data.detail) msg = data.detail;
+    else if (typeof data?.message === "string" && data.message) msg = data.message;
+  } catch {
+    /* no JSON body — keep the fallback */
+  }
+  throw Object.assign(new Error(msg), { status: res.status });
+}
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API}/auth/login`, {
     method: "POST",
@@ -209,12 +229,12 @@ export async function signout(token: string): Promise<void> {
 /** Sign out on every device — revokes ALL sessions on the account. */
 export async function signoutAll(token: string): Promise<void> {
   const res = await authFetch(token, `${API}/auth/logout-all`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to sign out all devices");
+  if (!res.ok) await throwApiError(res, "Failed to sign out all devices");
 }
 
 export async function getSessions(token: string): Promise<SessionRow[]> {
   const res = await authFetch(token, `${API}/auth/sessions`);
-  if (!res.ok) throw new Error("Failed to load sessions");
+  if (!res.ok) await throwApiError(res, "Failed to load sessions");
   return res.json();
 }
 
@@ -261,7 +281,7 @@ export async function updateProfile(token: string, displayName: string): Promise
 
 export async function getProfile(token: string): Promise<Profile> {
   const res = await authFetch(token, `${API}/auth/me`);
-  if (!res.ok) throw new Error("Failed to load profile");
+  if (!res.ok) await throwApiError(res, "Failed to load profile");
   return res.json();
 }
 
@@ -284,20 +304,20 @@ export async function validateToken(token: string): Promise<"ok" | "invalid" | "
 
 export async function getKids(token: string): Promise<Kid[]> {
   const res = await fetch(`${API}/kids`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error("Failed to load kids");
+  if (!res.ok) await throwApiError(res, "Failed to load kids");
   return res.json();
 }
 
 export async function getMastery(token: string, kidId: string): Promise<MasteryRow[]> {
   const res = await authFetch(token, `${API}/kids/${kidId}/mastery`);
-  if (!res.ok) throw new Error("Failed to load mastery");
+  if (!res.ok) await throwApiError(res, "Failed to load mastery");
   return res.json();
 }
 
 /** #132 — skills below mastery, with catalog titles, weakest first. */
 export async function getWeakSkills(token: string, kidId: string): Promise<WeakSkillRow[]> {
   const res = await authFetch(token, `${API}/kids/${kidId}/weak-skills`);
-  if (!res.ok) throw new Error("Failed to load weak skills");
+  if (!res.ok) await throwApiError(res, "Failed to load weak skills");
   return res.json();
 }
 
@@ -328,7 +348,7 @@ export async function deleteKid(token: string, kidId: string): Promise<void> {
 
 export async function getKidSettings(token: string, kidId: string): Promise<KidSettings> {
   const res = await authFetch(token, `${API}/kids/${kidId}/settings`);
-  if (!res.ok) throw new Error("Failed to load settings");
+  if (!res.ok) await throwApiError(res, "Failed to load settings");
   return res.json();
 }
 
@@ -344,7 +364,7 @@ export async function saveKidSettings(token: string, kidId: string, body: KidSet
 
 export async function getActivity(token: string, kidId: string, limit = 40): Promise<ActivityRow[]> {
   const res = await authFetch(token, `${API}/kids/${kidId}/activity?limit=${limit}`);
-  if (!res.ok) throw new Error("Failed to load activity");
+  if (!res.ok) await throwApiError(res, "Failed to load activity");
   return res.json();
 }
 
@@ -372,7 +392,7 @@ export interface WeeklyReport {
 
 export async function getWeekly(token: string, kidId: string): Promise<WeeklyReport> {
   const res = await authFetch(token, `${API}/kids/${kidId}/weekly`);
-  if (!res.ok) throw new Error("Failed to load weekly report");
+  if (!res.ok) await throwApiError(res, "Failed to load weekly report");
   return res.json();
 }
 
@@ -421,14 +441,14 @@ export async function fetchShareSnapshot(shareToken: string): Promise<ShareSnaps
  *  anywhere (edit-safe: the parent's edits never leave the browser). */
 export async function getStories(token: string, kidId: string, limit = 500): Promise<LearningStoryRow[]> {
   const res = await authFetch(token, `${API}/kids/${kidId}/stories?limit=${limit}`);
-  if (!res.ok) throw new Error("Failed to load learning stories");
+  if (!res.ok) await throwApiError(res, "Failed to load learning stories");
   return res.json();
 }
 
 /** #238 — Kotha story counts grouped by skill / error kind / misconception. */
 export async function getStoryStats(token: string, kidId: string): Promise<StoryStats | null> {
   const res = await authFetch(token, `${API}/kids/${kidId}/stories/stats`);
-  if (!res.ok) return null;
+  if (!res.ok) await throwApiError(res, "Failed to load story stats");
   return res.json();
 }
 
@@ -437,7 +457,7 @@ export async function getStoryStats(token: string, kidId: string): Promise<Story
  *  jumped and why — nothing extra is sent anywhere beyond this read. */
 export async function getAcceleration(token: string, kidId: string): Promise<AccelerationRow[]> {
   const res = await authFetch(token, `${API}/kids/${kidId}/acceleration`);
-  if (!res.ok) throw new Error("Failed to load acceleration plan");
+  if (!res.ok) await throwApiError(res, "Failed to load acceleration plan");
   return res.json();
 }
 

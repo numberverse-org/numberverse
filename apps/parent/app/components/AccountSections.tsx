@@ -49,6 +49,8 @@ export function AddKidCard({
   setEditBirthYear: Setter<number>;
   setShowAdd: Setter<boolean>;
 }) {
+  // #1511 — inline range hint for the birth-year field (no magic default).
+  const [birthHint, setBirthHint] = useState<string | null>(null);
   if (!showAdd) return null;
   return (
         <section className="card add-kid" id="add-kid">
@@ -72,8 +74,26 @@ export function AddKidCard({
       min={2010}
       max={2030}
       value={editBirthYear}
-      onChange={(e) => setEditBirthYear(Number(e.target.value) || 2021)}
+      onChange={(e) => {
+        // #1511 — keep the last valid value; empty/non-numeric input never
+        // snaps to a magic default, and out-of-range shows an inline hint.
+        const raw = e.target.value;
+        if (raw === "") {
+          setBirthHint(null);
+          return;
+        }
+        const v = Number(raw);
+        if (!Number.isFinite(v)) return;
+        if (v < 2010 || v > 2030) {
+          const bn = typeof window !== "undefined" && localStorage.getItem("nv_parent_lang") === "bn";
+          setBirthHint(bn ? ACCOUNT_LANGS.bn.birthRangeErr : ACCOUNT_LANGS.en.birthRangeErr);
+          return;
+        }
+        setBirthHint(null);
+        setEditBirthYear(v);
+      }}
     />
+    {birthHint && <span className="err inline">{birthHint}</span>}
   </label>
 </div>
 <div className="row-buttons">
@@ -331,6 +351,8 @@ export function EditKidCard({
   handleReset: () => void;
   handleDelete: () => void;
 }) {
+  // #1511 — inline range hint for the birth-year field (no magic default).
+  const [birthHint, setBirthHint] = useState<string | null>(null);
   return (
 <section className="card danger" id="edit-kid">
   <h2>⚙️ Edit {active.name}</h2>
@@ -353,8 +375,26 @@ export function EditKidCard({
         min={2010}
         max={2030}
         value={editBirthYear}
-        onChange={(e) => setEditBirthYear(Number(e.target.value) || 2021)}
+        onChange={(e) => {
+          // #1511 — keep the last valid value; empty/non-numeric input never
+          // snaps to a magic default, and out-of-range shows an inline hint.
+          const raw = e.target.value;
+          if (raw === "") {
+            setBirthHint(null);
+            return;
+          }
+          const v = Number(raw);
+          if (!Number.isFinite(v)) return;
+          if (v < 2010 || v > 2030) {
+            const bn = typeof window !== "undefined" && localStorage.getItem("nv_parent_lang") === "bn";
+            setBirthHint(bn ? ACCOUNT_LANGS.bn.birthRangeErr : ACCOUNT_LANGS.en.birthRangeErr);
+            return;
+          }
+          setBirthHint(null);
+          setEditBirthYear(v);
+        }}
       />
+      {birthHint && <span className="err inline">{birthHint}</span>}
     </label>
   </div>
   <div className="row-buttons">
