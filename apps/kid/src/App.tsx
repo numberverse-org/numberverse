@@ -1786,7 +1786,7 @@ export default function App() {
         cancelSpeech();
         speak(t.shareRewardSpeak(k.name), { lang: lang === "bn" ? "bn" : "en" });
       }
-      flashShare(t.shareDone);
+      flashShare(res === "downloaded" ? t.shareDownloaded : t.shareDone);
     } catch {
       flashShare(t.shareFail);
     }
@@ -1856,14 +1856,14 @@ export default function App() {
         signed: t.certSigned,
         dateLabel: t.certDate,
         date: cardDate(Date.now(), lang),
-        skills: cSkills.slice(0, 5).map((sk) => ({ title: sk.title, titleBn: sk.titleBn })),
+        skills: cSkills.slice(0, 6).map((sk) => ({ title: sk.title, titleBn: sk.titleBn })),
         footer: t.certShareFooter,
       };
       const canvas = renderCertCard(document.createElement("canvas"), data);
       const blob = await canvasToBlob(canvas);
       const caption = t.certShareCaption(kid.name, lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title);
       const res = await sharePng(blob, `numberverse-${kid.name.replace(/\s+/g, "-")}-certificate.png`, caption, waTextUrl(caption));
-      flashShare(res === "unsupported" ? t.shareFail : t.shareDone);
+      flashShare(res === "unsupported" ? t.shareFail : res === "downloaded" ? t.shareDownloaded : t.shareDone);
     } catch {
       flashShare(t.shareFail);
     }
@@ -3218,10 +3218,11 @@ export default function App() {
   }
 
   if (screen === "settings") {
-    // 🔐 Kid-facing Settings = KID controls ONLY (sound, screen, language,
-    // learning). Parent territory — portal, per-kid analytics, sign-out,
-    // aggregate insights — lives in the PARENT AREA behind goParent() (→ the
-    // parent gate when signed out). No kid should see a parent thing here.
+    // 🔐 Kid-facing Settings = KID controls first (sound, screen, language,
+    // learning). Parent territory — portal, per-kid analytics, aggregate
+    // insights — still lives in the PARENT AREA behind goParent() (→ the
+    // parent gate when signed out), but the signed-in parent can also sign
+    // out right here (#1458).
     const neuralOn = isNeuralReady();
     const curSpk = getNeuralSpeaker();
     const spkVoice = NEURAL_VOICES.find((v) => v.id === curSpk);
@@ -3645,11 +3646,23 @@ export default function App() {
                 <button className="big-btn settings-parents-btn" onClick={goParent}>
                   {t.settingsParentsGo}
                 </button>
+                {/* #1458 — sign-out for the signed-in parent (two-tap confirm). */}
+                <p className="settings-voice-note">{t.parentSignoutSub}</p>
+                <button
+                  className={`big-btn settings-signout-btn${signoutArmed ? " armed" : ""}`}
+                  onClick={signOut}
+                >
+                  {signoutArmed ? t.parentSignoutConfirm : t.parentSignoutCta}
+                </button>
               </>
             ) : (
               <>
                 {/* #1391/#1394 — a signed-out player gets a real upgrade path
                     AND a persistent warning that guest progress is local-only. */}
+                <p className="settings-voice-note">{t.settingsParentsHint}</p>
+                <button className="big-btn settings-parents-btn" onClick={goParent}>
+                  {t.settingsParentsSignin}
+                </button>
                 <p className="settings-voice-note">{t.guestUpgradeTitle}</p>
                 <p className="settings-voice-note">{t.guestModeWipe}</p>
                 <button className="big-btn settings-parents-btn" onClick={goGuestUpgrade}>

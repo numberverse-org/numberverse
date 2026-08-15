@@ -533,7 +533,7 @@ export interface Strings {
   settingsTitle: string;
   settingsSub: string;
   settingsSyllabus: string;
-  /* parent sign-out (Parent panel — parent-only, never kid-facing) */
+  /* parent sign-out (Parent panel + kid Settings when a parent is signed in) */
   parentSignoutTitle: string;
   parentSignoutSub: string;
   parentSignoutCta: string;
@@ -674,6 +674,7 @@ export interface Strings {
   shareRewardToast: string;
   shareWhatsApp: string;
   shareDone: string;
+  shareDownloaded: string;
   shareFail: string;
   shareProgressCaption: (name: string) => string;
   /* 📄 KOTHA weekly digest export */
@@ -1528,6 +1529,7 @@ export const STR: Record<Lang, Strings> = {
     shareRewardToast: "🎉 Shared! +5 coins for your kid",
     shareWhatsApp: "WhatsApp",
     shareDone: "✓ Shared",
+    shareDownloaded: "✓ Downloaded — attach it in WhatsApp",
     shareFail: "Couldn't share on this device",
     shareProgressCaption: (name) => `${name} has been playing Numberverse — math & Bangla, offline, no ads! kids.munna-khan.xyz`,
     digestBtn: "📄 Weekly digest",
@@ -2366,6 +2368,7 @@ export const STR: Record<Lang, Strings> = {
     shareRewardToast: "🎉 শেয়ার হয়েছে! আপনার সন্তানের জন্য +৫ কয়েন",
     shareWhatsApp: "WhatsApp",
     shareDone: "✓ শেয়ার হয়েছে",
+    shareDownloaded: "✓ ডাউনলোড হয়েছে — WhatsApp-এ যোগ করো",
     shareFail: "এই ডিভাইসে শেয়ার করা যায়নি",
     shareProgressCaption: (name) => `${name} Numberverse-এ খেলছে — গণিত ও বাংলা, অফলাইনেও, কোনো বিজ্ঞাপন নেই! kids.munna-khan.xyz`,
     digestBtn: "📄 সাপ্তাহিক ডাইজেস্ট",

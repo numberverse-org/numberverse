@@ -237,28 +237,31 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
   ctx.fillStyle = "#b84538";
   ctx.fillText(d.worldTitle, cx, 680);
 
-  // skill count + list (cap at 4 so the card never overflows)
+  // skill count + list — show every mastered skill the on-screen cert shows
+  // (up to six), with a tighter line height so the block still clears the
+  // signature and footer below.
   ctx.font = "600 38px ui-serif, Georgia, serif";
   ctx.fillStyle = "#8a6a1f";
-  ctx.fillText(d.skillCount, cx, 770);
-  const listY = 845;
-  const shown = d.skills.slice(0, 4);
-  shown.forEach((s, i) => {
+  ctx.fillText(d.skillCount, cx, 760);
+  const listY = 800;
+  const skillLineH = 40;
+  const shownSkills = d.skills.slice(0, 6);
+  shownSkills.forEach((s, i) => {
     const label = (s.titleBn && s.titleBn !== s.title) ? `${s.title} (${s.titleBn})` : s.title;
     ctx.font = "500 33px system-ui, sans-serif";
     ctx.fillStyle = "#5a4a28";
-    wrapText(ctx, `•  ${label}`, cx, listY + i * 48, W - 280, 40);
+    wrapText(ctx, `•  ${label}`, cx, listY + i * skillLineH, W - 280, skillLineH);
   });
 
-  // withNova — sits just below the last list line, never past 1080
-  const linesEnd = listY + shown.length * 48 + 70;
-  const withY = Math.max(960, Math.min(linesEnd, 1080));
+  // withNova — sits just below the last list line, never past 1050
+  const linesEnd = listY + shownSkills.length * skillLineH + 55;
+  const withY = Math.max(960, Math.min(linesEnd, 1050));
   ctx.font = "500 35px ui-serif, Georgia, serif";
   ctx.fillStyle = "#6a5430";
   ctx.fillText(d.withNova, cx, withY);
 
   // footer: date on the left, Nova's signature on the right (like a real cert)
-  const footY = 1170;
+  const footY = 1120;
   ctx.font = "600 34px ui-serif, Georgia, serif";
   ctx.fillStyle = "#8a6a1f";
   ctx.textAlign = "left";
@@ -271,9 +274,14 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
   ctx.fillText(d.signed, W - 150, footY + 44);
   ctx.textAlign = "center";
 
+  // tagline — anchored so the last wrapped line lands at H-72, keeping the
+  // whole Bangla 3-line footer on-canvas instead of clipping past 1350.
   ctx.font = "500 30px system-ui, sans-serif";
   ctx.fillStyle = "rgba(90,74,40,0.7)";
-  wrapText(ctx, d.footer, cx, H - 58, W - 200, 38);
+  const footerLineH = 38;
+  const footerLines = wrapLines(ctx, d.footer, W - 200);
+  const footerStartY = H - 72 - (footerLines.length - 1) * footerLineH;
+  wrapText(ctx, d.footer, cx, footerStartY, W - 200, footerLineH);
 
   return canvas;
 }
@@ -295,22 +303,48 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.closePath();
 }
 
-/** Center-wrap text on multiple lines (for the taglines). */
-function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, startY: number, maxW: number, lineH: number) {
-  const words = text.split(" ");
+/** Break `text` into lines that each fit `maxW`. Words that are themselves
+ *  wider than `maxW` (common with long Bangla compounds) are split character
+ *  by character so every returned line is drawable at full width. */
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
   let line = "";
-  let y = startY;
-  for (const w of words) {
-    const test = line ? line + " " + w : w;
+  for (const word of words) {
+    if (ctx.measureText(word).width > maxW) {
+      if (line) { lines.push(line); line = ""; }
+      let piece = "";
+      for (const ch of Array.from(word)) {
+        const test = piece + ch;
+        if (ctx.measureText(test).width > maxW && piece) {
+          lines.push(piece);
+          piece = ch;
+        } else {
+          piece = test;
+        }
+      }
+      if (piece) line = piece;
+      continue;
+    }
+    const test = line ? `${line} ${word}` : word;
     if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, cx, y);
-      line = w;
-      y += lineH;
+      lines.push(line);
+      line = word;
     } else {
       line = test;
     }
   }
-  if (line) ctx.fillText(line, cx, y);
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** Center-wrap text on multiple lines (for the taglines). Every line is drawn
+ *  centered on `cx`, including character-split fragments of a single long word. */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, startY: number, maxW: number, lineH: number): string[] {
+  ctx.textAlign = "center";
+  const lines = wrapLines(ctx, text, maxW);
+  lines.forEach((line, i) => ctx.fillText(line, cx, startY + i * lineH));
+  return lines;
 }
 
 /** Turn a canvas into a PNG blob — with zero identifying metadata (#93).
