@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "15 Aug 2026 · 0.69.0 (kids wave: 24 clusters × #1346-1486 — mastery display %, calm mode sheet, in-scene language switch, quest claim flow, celebration sequencing, adaptive hint ladder, cert/share honesty, freeze-token streak lines, language-reaction i18n, HUD mastery bar + voice-chip labels)";
-export const APP_VERSION = "0.69.0";
+export const APP_BUILD = "15 Aug 2026 · 0.70.0 (older-backlog batch-1: 6 clusters × #17 #117 #762-825 #855 #865 #881-905 #989-995 #1005-1083 — cold-start & SW/perf, scene BN strings, a11y re-audit, catalog NCTB parity, age-band mature register)";
+export const APP_VERSION = "0.70.0";

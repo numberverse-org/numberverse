@@ -1,3 +1,18 @@
+## 15 Aug 2026 — 0.70.0 (older-backlog batch-1: 6 clusters × #17 #117 #762-825 #855 #865 #881-905 #989-995 #1005-1083 — cold-start & SW/perf, scene BN strings, a11y re-audit, catalog NCTB parity, age-band mature register)
+
+b839133 Merge nv-o6 (kids wave): age-band mature register + renderBand layer
+93de122 Merge nv-o5 (kids wave): catalog NCTB parity + card descriptions/class labels
+093c231 Merge nv-o4 (kids wave): i18n code-split + SW/perf + budget gate
+0521d82 Merge nv-o3 (kids wave)
+aaadfc8 Merge nv-o2 (kids wave)
+6ebacc7 Merge nv-o1 (kids wave)
+e015bd0 kids wave: nv-o6 — age-band theming: mature register i18n, band-aware mascot/greeting/reactions/typography/garden/recap/challenge, renderBand layer
+ff11137 kids wave: nv-o5 — catalog: NCTB code/class parity + audit guard, seed sync, game card descriptions/class labels, duplicate-title disambiguation
+2801cca kids wave: nv-o4 — perf/SW: i18n dict split + lazy load, lazy GoogleSignIn, voice-size cache guard, og-card/splash precache, wire-budget CI gate
+985873e kids wave: nv-o3 — a11y: tap targets, focus states, canvas keyboard/SR access, dialog focus trap, tablist semantics, dest-aware back labels
+9df26f3 kids wave: nv-o2 — scene BN string fixes: localized prompts, hint ladder, neural voice fallback hold
+2c85232 kids wave: nv-o1 — cold-start perf, gameHost boot race, session resume on back, guest exit loops, Nova home back button
+
 ## 15 Aug 2026 — 0.69.0 (kids wave: 24 clusters × #1346-1486 — mastery display %, calm mode sheet, in-scene language switch, quest claim flow, celebration sequencing, adaptive hint ladder, cert/share honesty, freeze-token streak lines, language-reaction i18n, HUD mastery bar + voice-chip labels)
 
 3781564 Merge branch 'nv-k5e'
