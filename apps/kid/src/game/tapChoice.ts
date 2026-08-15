@@ -8,7 +8,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { hintWrong } from "./hints";
-import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
+import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, answerFlash } from "./ui";
 import { SAB } from "./safeArea";
 
 /**
@@ -273,12 +273,17 @@ export abstract class TapChoiceScene extends Phaser.Scene {
   }
 
   private flashCard(card: { c: Phaser.GameObjects.Container }, color: number, alpha = 0.9) {
-    const g = this.add.graphics();
     const { cardW, cardH } = this.geom;
-    g.lineStyle(5, color, alpha);
-    g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
-    card.c.addAt(g, 0);
-    this.time.delayedCall(800, () => g.destroy());
+    // #1385 — the right card's flash now has a thick stroke + ✓ badge, not a
+    // thin green outline alone.
+    answerFlash(this, card.c, color, {
+      w: cardW,
+      h: cardH,
+      alpha,
+      duration: 800,
+      radius: 16,
+      glyph: color === 0x4ade80 ? "check" : "cross",
+    });
   }
 
   private advance() {

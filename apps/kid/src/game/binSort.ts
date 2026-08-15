@@ -7,7 +7,7 @@ import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
-import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
+import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, answerFlash } from "./ui";
 import { SAB } from "./safeArea";
 import { makeDraggableTo } from "./gestures";
 
@@ -335,12 +335,16 @@ export abstract class BinSortScene extends Phaser.Scene {
   }
 
   private flashBin(bin: { c: Phaser.GameObjects.Container; bin: SortBin }, color: number, alpha = 0.9) {
-    const g = this.add.graphics();
     const { cardW, cardH } = this.binGeom;
-    g.lineStyle(5, color, alpha);
-    g.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 18);
-    bin.c.addAt(g, 0);
-    this.time.delayedCall(900, () => g.destroy());
+    // #1364 — pair the green/red rectangle with a ✓/✕ badge so right-vs-wrong
+    // is not communicated by color alone.
+    answerFlash(this, bin.c, color, {
+      w: cardW,
+      h: cardH,
+      alpha,
+      radius: 18,
+      glyph: color === 0x4ade80 ? "check" : "cross",
+    });
   }
 
   private advance() {

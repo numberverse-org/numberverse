@@ -2540,7 +2540,7 @@ export default function App() {
             {BANDS.map((b) => {
               const skills = SKILLS.filter((s) => s.band === b.id);
               const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: progressUnitsInBand(b.id), pct: 0 };
-              const palette = WORLD_LANDS[b.id] ?? { c1: "#0f3d33", c2: "#2ec4b6", c3: "#a7f3d0", c2_22: "rgba(46,196,182,0.16)", deco: ["🌱"] };
+              const palette = WORLD_LANDS[b.id] ?? { c1: "#0b3d2e", c2: "#2f9e6e", c3: "#c8f2c9", c2_22: "rgba(47,158,110,0.16)", deco: ["🌱"] };
               return (
                 <section
                   key={b.key}

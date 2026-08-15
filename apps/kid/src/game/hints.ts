@@ -345,23 +345,30 @@ function bigBanner(scene: Phaser.Scene, text: string, scale = 1, sub?: string) {
   });
 }
 
-/** Pulsing teal ring around the correct answer. */
+/** Bright green pulse + ✓ badge around the correct answer. The check keeps the
+ *  reveal readable when green alone is too subtle (#1385). */
 function glowCorrect(scene: Phaser.Scene, sprite: Phaser.GameObjects.Container) {
-  const r = Math.max(sprite.displayWidth, sprite.displayHeight) * 0.7;
+  const r = Math.max(sprite.displayWidth, sprite.displayHeight) * 0.72;
   const ring = scene.add.graphics().setDepth(5900);
-  ring.fillStyle(Phaser.Display.Color.HexStringToColor("#2ec4b6").color, 0.3);
+  ring.fillStyle(0x4ade80, 0.32);
   ring.fillCircle(sprite.x, sprite.y, r);
-  ring.lineStyle(5, Phaser.Display.Color.HexStringToColor(NV_GOLD).color, 1);
+  ring.lineStyle(6, 0x16a34a, 1);
   ring.strokeCircle(sprite.x, sprite.y, r);
+  const badge = scene.add.container(sprite.x + r * 0.74, sprite.y - r * 0.74).setDepth(5901);
+  badge.add(scene.add.circle(0, 0, 14, 0xffffff, 1).setStrokeStyle(2, 0x0b2545, 1));
+  badge.add(scene.add.text(0, 0, "✓", { fontSize: "18px", color: "#0b2545", fontStyle: "bold" }).setOrigin(0.5));
   scene.tweens.add({
-    targets: ring,
+    targets: [ring, badge],
     alpha: 0,
     scale: 1.35,
     duration: 600,
     yoyo: true,
     repeat: 4,
     ease: "Sine.easeInOut",
-    onComplete: () => ring.destroy(),
+    onComplete: () => {
+      ring.destroy();
+      badge.destroy();
+    },
   });
 }
 
