@@ -5008,6 +5008,11 @@ export default function App() {
                 const prevTitle = prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : "";
                 return (
                   <div key={b.key} className={`map-island-wrap${isHere ? " here" : ""}`}>
+                    <span className="map-island-deco" aria-hidden="true">
+                      {land.deco.map((d, di) => (
+                        <span key={di} className={`map-deco d${di}`} style={{ animationDelay: `${di * 0.6}s` }}>{d}</span>
+                      ))}
+                    </span>
                     <button
                       className={`map-island${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
                       aria-disabled={!unlocked}
@@ -5019,13 +5024,8 @@ export default function App() {
                         tapLockedWorld(b, more, prevTitle, e);
                       }}
                       aria-label={b.title}
-                      style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
+                      style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3 }}
                     >
-                      <span className="map-island-deco" aria-hidden="true">
-                        {land.deco.map((d, di) => (
-                          <span key={di} className={`map-deco d${di}`} style={{ animationDelay: `${di * 0.6}s` }}>{d}</span>
-                        ))}
-                      </span>
                       <span className="map-island-badge">
                         {complete ? <Icon name="trophy" size={30} /> : unlocked ? <Icon name={b.key} size={30} /> : "🔒"}
                       </span>
@@ -5182,7 +5182,7 @@ export default function App() {
                         className={`world-card${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
                         disabled={!unlocked}
                         onClick={() => openWorld(b)}
-                        style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3 }}
+                        style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2 }}
                       >
                         <span className="world-emoji">{complete ? <Icon name="trophy" size={40} /> : <Icon name={b.key} size={40} />}</span>
                         <span className="world-meta">
@@ -5326,6 +5326,11 @@ export default function App() {
             className="screen-head worlddetail-head"
             style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
           >
+            <span className="worlddetail-deco" aria-hidden="true">
+              {land.deco.map((d, di) => (
+                <span key={di} className={`worlddetail-deco-item d${di}`} style={{ animationDelay: `${di * 0.6}s` }}>{d}</span>
+              ))}
+            </span>
             <button className="icon-btn" onClick={goBack} aria-label={t.back}>‹</button>
             <div className="head-title">
               <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>

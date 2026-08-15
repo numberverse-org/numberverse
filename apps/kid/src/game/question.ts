@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { pop } from "./audio";
 import { assetIcon } from "./svgAssets";
 import { prefersReducedMotion, onReducedMotionChange } from "./reducedMotion";
+import { NV_GOLD, NV_GREEN } from "./ui"; // tokenized #591
 
 /**
  * "Nova's question bubble" — the thing a kid MUST see before every round.
@@ -70,7 +71,13 @@ function fillBubble(g: Phaser.GameObjects.Graphics, w: number, h: number, tail: 
 /** Tiny sparkle stars that burst out when a new question pops in. */
 function sparkles(scene: Phaser.Scene, x: number, y: number) {
   if (prefersReducedMotion()) return;
-  const COLORS = [0xffd166, 0x4ade80, 0x60a5fa, 0xf472b6];
+  // #784 — tokenize the NV_* star colors; the blue/pink extras stay raw.
+  const COLORS = [
+    Phaser.Display.Color.HexStringToColor(NV_GOLD).color,
+    Phaser.Display.Color.HexStringToColor(NV_GREEN).color,
+    0x60a5fa,
+    0xf472b6,
+  ];
   for (let i = 0; i < 5; i++) {
     const s = scene.add
       .text(
