@@ -25,7 +25,7 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-      includeAssets: ["favicon.png", "apple-touch-icon.png", "og-card.png"],
+      includeAssets: ["favicon.png", "apple-touch-icon.png"],
       manifest: {
         name: "Numberverse — Math Playground",
         short_name: "Numberverse",
@@ -56,11 +56,21 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        // #993 — og-card.png must be precached too: og:image points at the live
-        // host, and a shared link opened offline should still show its card.
-        // png covers the shipped file; jpg/jpeg/webp keep the glob ready for
-        // any future og-card format without a config edit.
+        // #993 — og-card.png is intentionally excluded from the precache glob
+        // (globIgnores) because og:image points at the live host
+        // (https://kids.munna-khan.xyz/og-card.png) by design — it is crawl-only
+        // for crawlers (Facebook, WhatsApp, Twitter) and does NOT participate in
+        // the offline contract. A shared PWA link opened offline may show a
+        // broken social card, which is a known, accepted limitation.
         globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,svg,ico,json,glb,wasm}"],
+        globIgnores: ["**/og-card.png"],
+        // #991 — the 5 MiB cap applies ONLY to the precache glob above (the
+        // ~2.2 MB index chunk, app shell, fonts, icons, etc.). The ~110 MB
+        // neural voice model and other /voice/ runtime assets deliberately
+        // BYPASS this cap via the explicit CacheFirst route in src/sw.ts
+        // (VOICE_MAX_CACHE_BYTES = 150 MiB). A future 'size cleanup' must NOT
+        // collapse these two paths — the voice model is the dominant byte cost
+        // and needs its own guard.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // NOTE: the /voice CacheFirst + /api never-reject handler + navigation
         // fallback (with the /parent /admin denylist) are implemented IN the SW

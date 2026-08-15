@@ -56,6 +56,15 @@ const NV_PINK = "#ff8fa3";
  * updateBanner bridge); tapping "Update" calls the returned updateSW(), which
  * sends SKIP_WAITING → the waiting worker activates → clientsClaim() takes
  * control → the page reloads onto the fresh bundle. No banner → no reload.
+ *
+ * #994 — the OLD autoUpdate flow used a sessionStorage flag (nv:sw-swap) to
+ * prevent infinite reload loops, but that flag was cleared on PWA storage
+ * eviction, causing one spurious reload. With prompt mode (#1321), the reload
+ * only fires when the user explicitly taps "Update" — there is NO automatic
+ * controllerchange reload, so the eviction double-load bug is categorically
+ * impossible. The update banner's own per-session dismiss
+ * (nv:update-dismiss in sessionStorage) is separate and survives eviction
+ * gracefully (just shows the banner again, which is the correct behavior).
  */
 async function deferSWRegistration() {
   try {

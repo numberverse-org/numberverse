@@ -39,6 +39,10 @@ const BASE = "/voice/";
 // /voice/ asset changes — a stale version means a 6-month silent rollback for
 // every installed PWA (CacheFirst route, maxAgeSeconds 180d @ vite.config.ts:76).
 const VOICE_V = "v9"; // v9 = ORT engine back to 1.17 (piper-wasm's engine) — 1.20+ needs import() of an .mjs, which Safari's classic worker can't do
+// NOTE: MODEL_JSON MUST carry the SAME ?v= bump (line 39) so the config and
+// model rev together — a voice deploy that only renames the .onnx file would
+// otherwise leave the .onnx.json config frozen in the 6-month CacheFirst cache,
+// creating a mismatched model+config pair for installed clients.
 const PHON_JS = BASE + "piper_phonemize.js";
 const PHON_WASM = BASE + "piper_phonemize.wasm";
 const PHON_DATA = BASE + "piper_phonemize.data";

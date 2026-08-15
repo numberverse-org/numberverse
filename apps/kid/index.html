@@ -24,10 +24,12 @@
     <!-- iOS PWA splash startup images (#347, #995) — one per device size, portrait
          (the app is portrait-locked). Solid #0b2545 + centered owl. #995 added
          the missing common iPhone/iPad DPRs (SE/5, 12/13 mini, XS Max/11 Pro Max,
-         iPad Air 4/5 + 10, iPad mini 6, iPad Pro 10.5). Older iOS ignores these
-         and auto-generates a splash from the apple-touch-icon + theme color, so
-         nothing breaks on unsupported devices. -->
+         iPad Air 4/5 + 10, iPad mini 6, iPad Pro 10.5, iPhone 16 Pro Max).
+         Older iOS ignores these and auto-generates a splash from the
+         apple-touch-icon + theme color, so nothing breaks on unsupported devices. -->
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
+	    <!-- #995 — iPhone 16 Pro Max (440x956 @3x) -->
+	    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" />
@@ -59,7 +61,11 @@
     <meta property="og:url" content="https://kids.munna-khan.xyz/" />
     <meta property="og:title" content="Numberverse — kids learn math &amp; Bangla, offline &amp; no ads" />
     <meta property="og:description" content="The fun offline learning world for ages 2–13 — math & Bangla, adaptive, private. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
-    <meta property="og:image" content="https://kids.munna-khan.xyz/og-card.png" />
+    <!-- #993 — host-absolute URL by design (crawlers only). og-card.png is
+	         excluded from the SW precache (globIgnores) so this card is NOT
+	         available offline — it is crawl-only for Facebook/WhatsApp/Twitter
+	         link previews and does NOT participate in the offline contract. -->
+	    <meta property="og:image" content="https://kids.munna-khan.xyz/og-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
