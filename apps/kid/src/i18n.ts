@@ -93,6 +93,8 @@ export interface Strings {
   skillsProg: (m: number, t: number) => string;
   champion: string;
   worldAges: (range: string, m: number, t: number) => string;
+  /** #1074 — per-game difficulty/age signal (Bangladesh school class). */
+  classLabel: (n: number) => string;
   masterMoreToUnlock: (n: number, name: string) => string;
   readyFor: (name: string) => string;
   playNext: (title: string) => string;
@@ -969,6 +971,8 @@ export const STR: Record<Lang, Strings> = {
     skillsProg: (m, t) => `${m}/${t} skills mastered`,
     champion: "🏆 Every world mastered — you're a Numberverse champion!",
     worldAges: (range, m, t) => `Ages ${range} · ${m}/${t} skills mastered`,
+    // #1074 — a compact, kid-readable difficulty signal on every game card.
+    classLabel: (n) => `Class ${n}`,
     masterMoreToUnlock: (n, name) => `Master ${n} more skill${n > 1 ? "s" : ""} to unlock ${name}`,
     readyFor: (name) => `You're ready for ${name}!`,
     playNext: (title) => `▶ Play next: ${title}`,
@@ -1810,6 +1814,8 @@ export const STR: Record<Lang, Strings> = {
     skillsProg: (m, t) => `${m}/${t} দক্ষতা আয়ত্ত`,
     champion: "🏆 সব জগৎ আয়ত্ত — তুমি Numberverse চ্যাম্পিয়ন!",
     worldAges: (range, m, t) => `${range} বছর · ${m}/${t} দক্ষতা আয়ত্ত`,
+    // #1074 — একটি ছোট, সহজপাঠ্য কঠিনতার সংকেত প্রতিটি খেলার কার্ডে।
+    classLabel: (n) => `শ্রেণি ${bnNum(n)}`,
     masterMoreToUnlock: (n, name) => `${name} খুলতে আর ${n}টি আয়ত্ত করুন`,
     readyFor: (name) => `${name} এর জন্য তুমি প্রস্তুত!`,
     playNext: (title) => `▶ পরবর্তী: ${title}`,

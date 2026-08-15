@@ -46,7 +46,7 @@ import {
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, kidMasteryStats, worldProgress, worldEmoji,
   worldUnlocked, unlockGap, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
-  worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor,
+  worldCards, recommendedSkill, weekNumber, skillOfWeek, stepForSkill, moniPlanFor, skillTitle, skillDesc,
   moniLevelIndex, sessionForWorld, nextUnmasteredSkill, adaptiveLevelIndex, loadKids, invalidateKidsCache, masteryDisplayPct,
   MAX_KIDS_PER_FAMILY,
   challengeEligible, challengeStartLevelIndex,
@@ -3121,6 +3121,7 @@ export default function App() {
                             </span>
                           </span>
                           <span className="syllabus-tile-name">{title}</span>
+                          <span className="syllabus-tile-class">{t.classLabel(s.classNumber ?? s.band)}</span>
                           {desc && <span className="syllabus-tile-desc">{desc}</span>}
                         </button>
                       );
@@ -4598,6 +4599,7 @@ export default function App() {
                                   {skill.title}
                                   {skill.titleBn ? <span className="skill-bn">{skill.titleBn}</span> : null}
                                 </span>
+                                <span className="skill-desc">{skillDesc(skill, lang)}</span>
                                 <div className="skill-bar">
                                   <div className={`skill-fill${mastered ? " done" : ""}`} style={{ width: `${pct}%` }} />
                                 </div>
@@ -5128,7 +5130,7 @@ export default function App() {
                             className={`j-stop ${cls}`}
                             disabled={!st.unlocked}
                             onClick={() => startSingleSkill(st.skill)}
-                            aria-label={st.skill.title}
+                            aria-label={skillTitle(st.skill, lang)}
                           >
                             <span className="j-node">
                               {st.done ? "✓" : st.current ? <Icon name="nova" size={18} /> : st.unlocked ? "▶" : "🔒"}
@@ -5136,14 +5138,15 @@ export default function App() {
                             <span className="j-card">
                               <span className="j-emoji"><Icon name={st.skill.subject} size={26} /></span>
                               <span className="j-meta">
-                                <span className="j-title">{st.skill.title}</span>
+                                <span className="j-title">{skillTitle(st.skill, lang)}</span>
+                                <span className="j-desc">{skillDesc(st.skill, lang)}</span>
                                 <span className="j-sub">
                                   {st.done
                                     ? t.mastered
                                     : st.current
                                       ? t.journeyTapHint
                                       : st.unlocked
-                                        ? "…"
+                                        ? t.classLabel(st.skill.classNumber ?? st.skill.band)
                                         : t.journeyLocked}
                                 </span>
                               </span>
@@ -5392,18 +5395,20 @@ export default function App() {
                 const mastered = !!st && st.pMastered >= masteryThresholdFor(skill.id);
                 const isNext = nextSkill?.id === skill.id;
                 const side = i % 2 === 0 ? "left" : "right";
-                const title = lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
+                const title = skillTitle(skill, lang);
                 return (
                   <div key={skill.id} className={`tree-row ${side}`}>
                     <button
                       className={`tree-node${mastered ? " done" : isNext ? " next" : " open"}${isNext ? " is-next" : ""}`}
                       onClick={() => startSingleSkill(skill)}
-                      aria-label={`${title} · ${mastered ? pct + "%" : isNext ? t.nextBadge : pct + "%"}`}
+                      aria-label={`${title} · ${t.classLabel(skill.classNumber ?? skill.band)} · ${mastered ? pct + "%" : isNext ? t.nextBadge : pct + "%"}`}
                     >
                       <span className="tree-node-emoji"><Icon name={skill.subject} size={26} /></span>
                       <span className="tree-node-meta">
                         <span className="tree-node-title">{title}</span>
                         {skill.titleBn ? <span className="tree-node-bn">{skill.titleBn}</span> : null}
+                        <span className="tree-node-desc">{skillDesc(skill, lang)}</span>
+                        <span className="tree-node-class">{t.classLabel(skill.classNumber ?? skill.band)}</span>
                         <span className="tree-node-bar"><span className={`tree-node-fill${mastered ? " done" : ""}`} style={{ width: `${pct}%` }} /></span>
                       </span>
                       <span className="tree-node-state">

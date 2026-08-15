@@ -812,6 +812,19 @@ export function familyTitle(skill: Skill, lang: Lang): string {
   return lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
 }
 
+/** #1071/#1072 — one EN/BN title helper for every catalog card (the card
+ *  layers used to repeat `lang === "bn" ? titleBn ?? title : title` inline,
+ *  so a Bengali card could silently fall back to an English title). */
+export function skillTitle(skill: Skill, lang: Lang): string {
+  return lang === "bn" ? skill.titleBn ?? skill.title : skill.title;
+}
+
+/** #1071/#1072 — one EN/BN description helper for every catalog card, so
+ *  journey stops, skill trees and mastery rows all say WHAT the game teaches. */
+export function skillDesc(skill: Skill, lang: Lang): string {
+  return lang === "bn" ? skill.descriptionBn ?? skill.description ?? "" : skill.description ?? "";
+}
+
 /** World emblem emoji — matches the game's SVG assets (see svgs.ts WORLDS). */
 export function worldEmoji(key: string): string {
   switch (key) {
