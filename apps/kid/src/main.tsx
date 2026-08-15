@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Icon } from "./components/Icon";
 import UpdateBanner from "./components/UpdateBanner";
+import { NOVA_SPLASH } from "./assets/novaSplash";
 import { swUpdateAvailable } from "./updateBanner";
 import "./styles/boot.css"; // #1177 — splash + base tokens only; screens.css rides the lazy App chunk
 
@@ -242,7 +242,15 @@ function SplashScreen({ ready }: { ready: boolean }) {
       <div className="splash-mascot">
         <span className="splash-ring" />
         <span className="splash-ring splash-ring-2" />
-        <Icon name="nova" size={118} />
+        {/* #117/#1323 — inline Nova SVG from a 6 KB isolated module instead of
+            <Icon/> (which imports the full sticker library into the boot
+            chunk). Keeps first paint lean on mid-range Android. */}
+        <img
+          src={`data:image/svg+xml;utf8,${encodeURIComponent(NOVA_SPLASH)}`}
+          alt=""
+          aria-hidden="true"
+          style={{ width: 118, height: 154, objectFit: "contain", display: "block" }}
+        />
       </div>
       <h1 className="splash-title">Numberverse</h1>
       <p className="splash-tag">{bn ? "খেলতে খেলতে শেখা" : "learn by playing"}</p>

@@ -310,6 +310,17 @@ export default function App() {
   const screenStackRef = useRef<Screen[]>([]);
   const prevScreenRef = useRef(screen);
   const poppingRef = useRef(false);
+  // #823 — keep the latest screen/kid/snapshot in refs so the stable popstate
+  // listener can persist a mid-lesson session before a system back changes
+  // the screen (never silently discard the session).
+  const currentScreenRef = useRef<Screen>(screen);
+  const currentKidRef = useRef<Kid | null>(kid);
+  const snapshotSessionRef = useRef(snapshotSession);
+  useEffect(() => {
+    currentScreenRef.current = screen;
+    currentKidRef.current = kid;
+    snapshotSessionRef.current = snapshotSession;
+  });
   // #1354 — achievement album pop is pinned to ids the store JUST returned as
   // new; cleared on kid switch and when the kid leaves the album.
   const [achPopupIds, setAchPopupIds] = useState<string[]>([]);
@@ -813,6 +824,16 @@ export default function App() {
   // prefer `history.back()` so the browser history and our screen stack stay
   // in sync, then the `popstate` listener below performs the actual pop.
   const goBack = useCallback(() => {
+    // #823 — a back gesture from the drill canvas must preserve the in-flight
+    // session (the HUD back button does this too; this covers direct goBack
+    // callers such as a root-level system back with no history entry).
+    if (
+      currentScreenRef.current === "playing" &&
+      currentKidRef.current &&
+      sessionRef.current.length > 0
+    ) {
+      snapshotSessionRef.current(currentKidRef.current.id);
+    }
     if (screenStackRef.current.length === 0) {
       // No in-app history yet (fresh load / already at the root). Keep the
       // kid inside the app instead of letting a stray back gesture close it.
@@ -855,6 +876,16 @@ export default function App() {
   // leave the app (there is nothing in-app to go back to).
   useEffect(() => {
     const onPop = () => {
+      // #823 — a PWA/system back gesture mid-lesson lands here (not in goBack),
+      // so snapshot the active session BEFORE popping away. The HUD back button
+      // snapshots too; this second call is idempotent for that path.
+      if (
+        currentScreenRef.current === "playing" &&
+        currentKidRef.current &&
+        sessionRef.current.length > 0
+      ) {
+        snapshotSessionRef.current(currentKidRef.current.id);
+      }
       const prev = screenStackRef.current.pop();
       if (!prev) return;
       poppingRef.current = true;
@@ -2258,6 +2289,10 @@ export default function App() {
     });
     return () => {
       alive = false;
+      // #822 — when the canvas unmounts, put the boot state back to loading
+      // so the NEXT first tap shows the spinner immediately instead of a
+      // stale "ready" over a not-yet-created game.
+      setGameBoot("loading");
       gameRef.current = null;
       activeSceneRef.current = null;
       (window as unknown as Record<string, unknown>).__NV_GAME__ = null;
@@ -2876,11 +2911,13 @@ export default function App() {
     addKidReturnRef.current = returnTo ?? (kids.length > 0 ? "kidpick" : "parent");
     setScreen("addkid");
   };
-  /** #1417/#1418 — Cancel never strands an empty kidpick. No kids → back to
-   *  the parent gate; otherwise return to the screen that opened the form. */
+  /** #1417/#1418/#824 — Cancel never strands an empty guest flow. No kids →
+   *  go BACK to the screen that opened the form (welcome/parent/syllabus)
+   *  instead of pushing another parent entry that would loop parent↔addkid;
+   *  otherwise return to the screen that opened the form. */
   const cancelAddKid = () => {
     if (kids.length === 0) {
-      setScreen("parent");
+      goBack();
       return;
     }
     setScreen(addKidReturnRef.current === "addkid" ? "kidpick" : addKidReturnRef.current);
@@ -4763,6 +4800,18 @@ export default function App() {
               </button>
             )}
           </div>
+
+          {/* #824 — the kid-pick screen is never a dead end: a new guest can
+              browse the syllabus or open the parent gate without relying on
+              the history-stack back button. */}
+          <div className="gate-guest kidpick-guest-links">
+            <button className="welcome-syllabus-link" onClick={goSyllabus}>
+              {t.welcomeSyllabus}
+            </button>
+            <button className="ghost-btn" onClick={goParent}>
+              {t.settingsSecParents}
+            </button>
+          </div>
         </main>
       </div>
     );
@@ -4771,7 +4820,14 @@ export default function App() {
   if (screen === "addkid") {
     return (
       <Suspense fallback={<ScreenFallback />}>
-        <AddKidForm t={t} lang={lang} onSave={addKid} onCancel={cancelAddKid} />
+        <AddKidForm
+          t={t}
+          lang={lang}
+          onSave={addKid}
+          onCancel={cancelAddKid}
+          onSyllabus={goSyllabus}
+          onParent={goParent}
+        />
       </Suspense>
     );
   }
@@ -6132,6 +6188,14 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+        {/* #825 — Nova has a persistent DOM back button too (Garden and
+            Playing already do), so the companion home is never a no-exit
+            navy canvas during engine load/error. */}
+        {inNova && (
+          <button className="hud-back garden-back" onClick={goBack} aria-label={t.back}>
+            ‹
+          </button>
         )}
         {inGarden && (
           <button className="hud-back garden-back" onClick={goBack} aria-label={t.homeBtn}>
