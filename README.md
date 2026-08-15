@@ -46,6 +46,9 @@ pnpm install
 pnpm dev:kid          # kid app (Vite, :5173)
 pnpm dev:api          # FastAPI (:8000)
 pnpm build            # build all
+
+# prod-parity API (containerized, same Dockerfile + DB topology as the box):
+docker compose --profile full -f infra/docker-compose.yml up -d
 ```
 
 ## Deploy

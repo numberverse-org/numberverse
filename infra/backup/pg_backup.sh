@@ -2,7 +2,7 @@
 # Numberverse Postgres backup (#122/#310) — nightly pg_dump, AES-256 at rest,
 # with retention + a restore-proof drill.
 #
-# Dumps the numberverse-demo-postgres-1 container's `numberverse` database,
+# Dumps the numberverse-demo-postgres container's `numberverse` database,
 # gzips it, then ENCRYPTS it at rest with openssl AES-256-CBC (pbkdf2) using a
 # 600-perm key file that lives OUTSIDE the dumps dir (never on-disk in plaintext,
 # never in git). Keeps the 14 newest dumps. Restorability is proven by the
@@ -23,7 +23,10 @@
 #   CRON=1 bash infra/backup/pg_backup.sh           # quiet mode (crontab)
 set -euo pipefail
 
-PG_CONTAINER="numberverse-demo-postgres-1"
+# #922 — prod compose pins `container_name: numberverse-demo-postgres`, so the
+# backup never depends on compose's generated `project-service-1` name (which
+# changes if the service is renamed or scaled). Override for a non-standard box.
+PG_CONTAINER="${PG_CONTAINER:-numberverse-demo-postgres}"
 PG_USER="numberverse"
 PG_DB="numberverse"
 DEST_DIR="${PG_BACKUP_DIR:-/home/munna/backups/numberverse/pg}"

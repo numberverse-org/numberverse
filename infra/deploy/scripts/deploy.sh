@@ -7,9 +7,12 @@ set -euo pipefail
 HOST="${HOST:-munna@192.168.0.104}"
 REMOTE_DIR="${REMOTE_DIR:-numberverse-demo}"
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-# #125 — release.sh passes NV_VERSION=<semver> so the box builds version-tagged
-# images (`numberverse-demo-{web,api}:<version>`) that a failed smoke can roll
-# back to. Standalone deploy (no NV_VERSION) keeps building `:latest`.
+# #125/#919 — release.sh passes NV_VERSION=<semver> so the box builds version-
+# tagged images (`numberverse-demo-{web,api}:<version>`) that a failed smoke can
+# roll back to. Standalone deploy (no NV_VERSION) reads the version release.sh
+# already stamped into apps/kid/src/version.ts — prod never builds a floating
+# `:latest` image.
+NV_VERSION="${NV_VERSION:-$(grep -oE 'APP_VERSION = "[^"]+"' "$ROOT/apps/kid/src/version.ts" | head -1 | cut -d'"' -f2 || true)}"
 NV_VERSION="${NV_VERSION:-latest}"
 
 echo "◆ rsync repo → $HOST:$REMOTE_DIR"
@@ -28,7 +31,17 @@ ssh "$HOST" bash -s <<REMOTE
 set -euo pipefail
 cd "$REMOTE_DIR/infra/deploy"
 cp -n .env.production.example .env.production || true
-NV_VERSION="$NV_VERSION" docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+
+# #921/#924 — runtime secret guard: never boot production with empty/placeholder
+# secrets or wildcard CORS. compose itself also requires NV_PG_PASSWORD/NV_VERSION.
+ENV_FILE="\$PWD/.env.production"
+[ -f "\$ENV_FILE" ] || { echo "✖ missing \$ENV_FILE (cp -n should have created it)" >&2; exit 1; }
+grep -qE '^NV_PG_PASSWORD=.+' "\$ENV_FILE" || { echo "✖ \$ENV_FILE: NV_PG_PASSWORD is empty — set it (openssl rand -hex 16). See .env.production.example." >&2; exit 1; }
+grep -qE '^NV_JWT_SECRET=.+' "\$ENV_FILE" || { echo "✖ \$ENV_FILE: NV_JWT_SECRET is empty — set it (openssl rand -hex 32). See .env.production.example." >&2; exit 1; }
+grep -qE '^NV_ADMIN_PASSWORD=.+' "\$ENV_FILE" || { echo "✖ \$ENV_FILE: NV_ADMIN_PASSWORD is empty — set it. See .env.production.example." >&2; exit 1; }
+grep -qE '^NV_CORS_ORIGINS=\*' "\$ENV_FILE" && { echo "✖ \$ENV_FILE: NV_CORS_ORIGINS must not be '*' in production." >&2; exit 1; }
+
+NV_ENV_FILE="\$ENV_FILE" NV_VERSION="$NV_VERSION" docker compose --env-file "\$ENV_FILE" -f "\$PWD/docker-compose.prod.yml" up -d --build
 REMOTE
 
 sleep 8
@@ -36,7 +49,7 @@ echo "◆ container status:"
 ssh "$HOST" bash -s <<REMOTE
 set -euo pipefail
 cd "$REMOTE_DIR/infra/deploy"
-docker compose -f docker-compose.prod.yml ps --format 'table {{.Service}}\t{{.Status}}'
+NV_VERSION="$NV_VERSION" docker compose --env-file "\$PWD/.env.production" -f "\$PWD/docker-compose.prod.yml" ps --format 'table {{.Service}}\t{{.Status}}'
 REMOTE
 
 echo "◆ demo served via the box's EXISTING Cloudflare named tunnel"
