@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..deps import get_current_profile
+from ..deps import get_current_profile, org_scoped, resolve_org_id
 from ..models import Kid, KidSettings, Profile, ProgressEvent, Skill, SkillMastery
 from ..ratelimit import rate_limit
 from ..schemas import (
@@ -43,8 +43,26 @@ router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 KID_WRITE_RATE_LIMIT = rate_limit()
 
 
-async def _get_owned_kid(kid_id: uuid.UUID, profile: Profile, db: AsyncSession) -> Kid:
-    kid = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+async def _get_owned_kid(
+    kid_id: uuid.UUID,
+    profile: Profile,
+    db: AsyncSession,
+    org_id: uuid.UUID | None = None,
+) -> Kid:
+    """Resolve a kid the caller owns.
+
+    For the consumer (parent) path, scopes to ``Kid.profile_id == profile.id``.
+    For the org path (teacher/org-admin), scopes to ``Kid.org_id == org_id``
+    via the ``org_scoped`` helper.  When both profile and org are provided,
+    the kid must satisfy BOTH scopes (a parent who is also an org member sees
+    only their own kids within that org).
+    """
+    stmt = select(Kid).where(Kid.id == kid_id)
+    # Parent scope: consumer owns the kid via profile_id.
+    stmt = stmt.where(Kid.profile_id == profile.id)
+    # Additional org scope when the request carries an org context (#962).
+    stmt = org_scoped(stmt, org_id)
+    kid = await db.scalar(stmt)
     if not kid:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     return kid

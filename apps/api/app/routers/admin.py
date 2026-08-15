@@ -4,25 +4,30 @@ import uuid
 from datetime import datetime, date, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
-from ..deps import require_admin, require_super_admin
+from ..deps import org_scoped, require_admin, require_super_admin, resolve_org_id
 from ..models import (
     AdminAudit,
+    Classroom,
     ConfigEntry,
     ContentItem,
     Kid,
     KidSettings,
     LearningStory,
+    Organization,
+    OrgMember,
+    OrgSyllabus,
     Profile,
     ProgressEvent,
     Skill,
     SkillMastery,
     Subscription,
+    TenantConfig,
 )
 from ..schemas import StorySearchIn, StorySearchOut
 from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
@@ -40,9 +45,18 @@ WHITELIST: dict[str, type] = {
     "content_items": ContentItem,
     "config": ConfigEntry,
     "subscriptions": Subscription,
-}
+    # Multi-tenancy models (#961-#969)
+    "organizations": Organization,
+    "org_members": OrgMember,
+    "tenant_config": TenantConfig,
+    "org_syllabus": OrgSyllabus,
+    "classrooms": Classroom,
+    }
 
-UUID_MODELS = {Profile, Kid, Subscription, KidSettings}
+UUID_MODELS = {
+    Profile, Kid, Subscription, KidSettings,
+    Organization, OrgMember, TenantConfig, Classroom,
+}
 
 # #846 — deletions that are tenant-wide / product-wide and therefore need the
 # super_admin role (or a legacy is_admin profile). Catalog rows (skills,
@@ -119,6 +133,44 @@ WRITABLE_FIELDS: dict[str, set[str]] = {
         "store_ref",
         "status",
         "current_period_end",
+        "org_id",
+        "seats",
+    },
+    "organizations": {
+        "name",
+        "display_name",
+        "slug",
+        "is_active",
+    },
+    "org_members": {
+        "org_id",
+        "profile_id",
+        "role",
+    },
+    "tenant_config": {
+        "org_id",
+        "brand_name",
+        "logo_url",
+        "primary_color",
+        "accent_color",
+        "domains",
+        "default_locale",
+        "feature_flags",
+    },
+    "org_syllabus": {
+        "org_id",
+        "skill_id",
+        "subject_label",
+        "grade_label",
+        "sort_order",
+        "enabled",
+        "difficulty",
+    },
+    "classrooms": {
+        "org_id",
+        "name",
+        "teacher_id",
+        "is_active",
     },
 }
 
@@ -127,6 +179,12 @@ WRITABLE_FIELDS: dict[str, set[str]] = {
 # (#846) are authz flags; `password_hash` is credential material. Those may
 # only change through the auth flows.
 DENIED_WRITE_FIELDS = {"id", "is_admin", "role", "password_hash"}
+
+# Models that carry an org_id column — these are automatically scoped to the
+# caller's org context in generic CRUD operations (#968).  ClassroomKid is a
+# composite-PK join table and is intentionally NOT in the admin WHITELIST
+# (it is managed through the Classroom resource), so it is absent here too.
+ORG_SCOPED_MODELS = {Organization, OrgMember, TenantConfig, OrgSyllabus, Classroom, Kid, Subscription}
 
 
 # #847 — the config resource is a JSONB key/value store; the only key the
@@ -550,6 +608,7 @@ MAX_SORT_COLUMNS = 1
 @router.get("/{resource}")
 async def list_resource(
     resource: str,
+    request: Request,
     sort: str = None,
     range: str = None,
     filter: str = None,
@@ -627,6 +686,31 @@ async def list_resource(
             )
 
     stmt = select(model)
+    # #968 — auto-scope org-tenant models: if the model has an org_id column,
+    # apply the current request's org context (from X-Org-ID header or resolved
+    # org membership).  Global admins (profile.is_admin) with NO X-Org-ID see
+    # all rows across all orgs; otherwise the filter is applied automatically.
+    org_id = getattr(request.state, "org_id", None)
+    if org_id is None and model in ORG_SCOPED_MODELS:
+        header_org = request.headers.get("X-Org-ID")
+        if header_org:
+            try:
+                org_id = uuid.UUID(header_org)
+            except (ValueError, AttributeError):
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+    if org_id is not None:
+        if model is Organization:
+            # Organization has no org_id column — its PK *is* the tenant id.
+            # An org-scoped caller only ever sees their own org row.
+            stmt = stmt.where(Organization.id == org_id)
+        else:
+            stmt = org_scoped(stmt, org_id)
+        # Harden: reject filters that try to set a different org_id.
+        if "org_id" in filter_dict and filter_dict["org_id"] != str(org_id):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Cannot filter by a different org_id")
+        # Remove org_id from filter_dict so it doesn't double-apply.
+        filter_dict.pop("org_id", None)
+
     table_columns = model.__table__.columns
 
     # #840 — cap filter breadth/depth; unknown columns are a 400, not a skip.
@@ -688,7 +772,26 @@ async def get_resource(
     model = WHITELIST.get(resource)
     if not model:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
-    obj = await db.get(model, _pk_value(model, item_id))
+    # #968 — org-scoped fetch: if the model carries org_id, scope the PK lookup.
+    if model in ORG_SCOPED_MODELS:
+        pk = _pk_value(model, item_id)
+        stmt = select(model).where(model.__table__.primary_key.columns.keys()[0] == pk)
+        org_id = getattr(request.state, "org_id", None)
+        if org_id is None:
+            header_org = request.headers.get("X-Org-ID")
+            if header_org:
+                try:
+                    org_id = uuid.UUID(header_org)
+                except (ValueError, AttributeError):
+                    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+        if org_id is not None:
+            if model is Organization:
+                stmt = stmt.where(Organization.id == org_id)
+            else:
+                stmt = org_scoped(stmt, org_id)
+        obj = await db.scalar(stmt)
+    else:
+        obj = await db.get(model, _pk_value(model, item_id))
     if not obj:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return _row_to_dict(obj)
@@ -722,6 +825,35 @@ async def create_resource(
         return _row_to_dict(obj)
 
     payload = _writable_payload(resource, body)
+    # #968 — org-scoped create: for ORG_SCOPED_MODELS, force-bind org_id from
+    # the request context and reject a caller-supplied org_id that differs.
+    if model in ORG_SCOPED_MODELS:
+        if model is Organization:
+            # Organizations are created by global admins, never "within" an org.
+            # If an org context is present, reject the create outright.
+            org_ctx = getattr(request.state, "org_id", None) or request.headers.get("X-Org-ID")
+            if org_ctx:
+                raise HTTPException(
+                    status.HTTP_403_FORBIDDEN,
+                    "Organizations can only be created by a global admin",
+                )
+        else:
+            org_id = getattr(request.state, "org_id", None)
+            if org_id is None:
+                header_org = request.headers.get("X-Org-ID")
+                if header_org:
+                    try:
+                        org_id = uuid.UUID(header_org)
+                    except (ValueError, AttributeError):
+                        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+            if org_id is not None:
+                if "org_id" in payload and payload["org_id"] is not None:
+                    if uuid.UUID(str(payload["org_id"])) != org_id:
+                        raise HTTPException(
+                            status.HTTP_403_FORBIDDEN,
+                            "Cannot create resource for a different organization",
+                        )
+                payload["org_id"] = org_id
     obj = model(**payload)
     db.add(obj)
     await db.flush()  # populate server-assigned PKs (UUID) before auditing
@@ -731,18 +863,59 @@ async def create_resource(
     return _row_to_dict(obj)
 
 
+async def _org_scoped_get(
+    model: type,
+    item_id: str,
+    request: Request,
+    db: AsyncSession,
+) -> Any:
+    """#968 — fetch an org-scoped row with automatic tenant filter.
+
+    Used by update_resource and delete_resource to ensure cross-org access
+    is prevented.  For single-column PK models, the org filter is applied
+    via ``org_scoped``.  For composite PK models (e.g. ClassroomKid), falls
+    back to ``db.get()`` since the item_id in the URL is a single value.
+    """
+    pk_cols = list(model.__table__.primary_key.columns)
+    if len(pk_cols) == 1:
+        pk = _pk_value(model, item_id)
+        stmt = select(model).where(pk_cols[0] == pk)
+        org_id = getattr(request.state, "org_id", None)
+        if org_id is None:
+            header_org = request.headers.get("X-Org-ID")
+            if header_org:
+                try:
+                    org_id = uuid.UUID(header_org)
+                except (ValueError, AttributeError):
+                    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+        if org_id is not None:
+            if model is Organization:
+                stmt = stmt.where(Organization.id == org_id)
+            else:
+                stmt = org_scoped(stmt, org_id)
+        return await db.scalar(stmt)
+    # Composite PK: fall back to plain db.get (no org scoping on the PK
+    # lookup, but the model's org_id column will be validated by the caller).
+    return await db.get(model, _pk_value(model, item_id))
+
+
 @router.put("/{resource}/{item_id}")
 async def update_resource(
     resource: str,
     item_id: str,
     body: dict,
+    request: Request,
     profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     model = WHITELIST.get(resource)
     if not model:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
-    obj = await db.get(model, _pk_value(model, item_id))
+    # #968 — org-scoped fetch for tenant models.
+    if model in ORG_SCOPED_MODELS:
+        obj = await _org_scoped_get(model, item_id, request, db)
+    else:
+        obj = await db.get(model, _pk_value(model, item_id))
     if not obj:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
 
@@ -772,6 +945,17 @@ async def update_resource(
         return _row_to_dict(obj)
 
     payload = _writable_payload(resource, body)
+    # #968 — org-scoped update: prevent overwriting org_id to a different value.
+    if model in ORG_SCOPED_MODELS and "org_id" in payload:
+        org_id = getattr(request.state, "org_id", None) or request.headers.get("X-Org-ID")
+        if org_id and payload["org_id"] is not None:
+            payload_org = uuid.UUID(str(payload["org_id"])) if not isinstance(payload["org_id"], uuid.UUID) else payload["org_id"]
+            request_org = uuid.UUID(str(org_id)) if not isinstance(org_id, uuid.UUID) else org_id
+            if payload_org != request_org:
+                raise HTTPException(
+                    status.HTTP_403_FORBIDDEN,
+                    "Cannot move resource to a different organization",
+                )
     for key, val in payload.items():
         setattr(obj, key, val)
     _write_audit(db, profile, "update", resource, item_id, {"fields": sorted(payload)})
@@ -784,6 +968,7 @@ async def update_resource(
 async def delete_resource(
     resource: str,
     item_id: str,
+    request: Request,
     profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -794,7 +979,11 @@ async def delete_resource(
     # rows and per-kid settings stay at the normal admin boundary.
     if resource in SUPER_ADMIN_DELETES:
         await require_super_admin(profile)
-    obj = await db.get(model, _pk_value(model, item_id))
+    # #968 — org-scoped fetch for tenant models.
+    if model in ORG_SCOPED_MODELS:
+        obj = await _org_scoped_get(model, item_id, request, db)
+    else:
+        obj = await db.get(model, _pk_value(model, item_id))
     if not obj:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     await db.delete(obj)
