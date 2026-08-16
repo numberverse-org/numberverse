@@ -92,7 +92,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install API base deps (org-isolation test needs the stack)
-        run: python3 -m pip install --quiet "fastapi>=0.115" "sqlalchemy[asyncio]>=2.0" "psycopg[binary]>=3.2" "pydantic-settings>=2.4" "pyjwt>=2.9"
+        run: python3 -m pip install --quiet "fastapi>=0.115" "sqlalchemy[asyncio]>=2.0" "psycopg[binary]>=3.2" "pydantic-settings>=2.4" "pyjwt>=2.9" "bcrypt>=4.1" "email-validator>=2.0"
       - name: API app compiles
         run: python3 -m compileall -q apps/api/app
       - name: API unit tests (PII scrubber)
@@ -111,6 +111,16 @@ jobs:
         run: python3 apps/api/tests/test_retention.py
       - name: API unit tests (Moni per-subject deltas #1044)
         run: python3 apps/api/tests/test_moni_subject_deltas.py
+      - name: API unit tests (auth/session coverage 66 #773 #865 #868)
+        run: python3 apps/api/tests/test_auth.py
+      - name: API unit tests (admin generic CRUD coverage 89 #2 #5 #6 #967 #968)
+        run: python3 apps/api/tests/test_admin.py
+      - name: API unit tests (progress/BKT coverage 62 #7 #8 #1026)
+        run: python3 apps/api/tests/test_progress.py
+      - name: API unit tests (kids/age-band coverage 50 #9 #10)
+        run: python3 apps/api/tests/test_kids.py
+      - name: API unit tests (backup import round-trip 65 #11 #12)
+        run: python3 apps/api/tests/test_import.py
 
   license-audit:
     name: license-audit
