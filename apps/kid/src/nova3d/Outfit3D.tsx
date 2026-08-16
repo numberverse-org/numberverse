@@ -14,13 +14,14 @@
  */
 import type { ReactElement } from "react";
 import { NOVA_OUTFITS } from "../store";
+import { NV_COCOA, NV_GOLD, NV_SKY } from "../game/ui";  // tokenized #591
 
 /** accessory body color per outfit id (matches the 2D card look) */
 const OUTFIT_COLOR: Record<string, string> = {
-  scarf: "#d62828", panjabi: "#f4a261", cape: "#9d4edd", hat: "#ffd166",
-  glasses: "#2a9d8f", bow: "#ff8fb0", boots: "#7a4e2a", backpack: "#4cc9f0",
+  scarf: "#d62828", panjabi: "#f4a261", cape: "#9d4edd", hat: NV_GOLD,
+  glasses: "#2a9d8f", bow: "#ff8fb0", boots: NV_COCOA, backpack: NV_SKY,
   "eid-panjabi": "#2a9d8f", "eid-topi": "#6a040f",
-  "boishakh-sharee": "#e63946", "boishakh-fan": "#ffd166",
+  "boishakh-sharee": "#e63946", "boishakh-fan": NV_GOLD,
 };
 
 function Kind({ kind, color }: { kind: string; color: string }): ReactElement {
@@ -91,7 +92,7 @@ function Kind({ kind, color }: { kind: string; color: string }): ReactElement {
           </mesh>
           <mesh position={[0, 0.02, 0]}>
             <sphereGeometry args={[0.06, 10, 10]} />
-            <meshStandardMaterial color="#ffd166" roughness={0.5} />
+            <meshStandardMaterial color={NV_GOLD} roughness={0.5} />
           </mesh>
         </group>
       );

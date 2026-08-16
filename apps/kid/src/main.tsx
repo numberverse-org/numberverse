@@ -38,6 +38,7 @@ try {
 
 // Splash-only tokens inlined — importing NV_GOLD/NV_SKY/NV_PINK from ./game/ui
 // would drag Phaser + the whole UI toolkit into the boot chunk. (#1217)
+// Values MUST mirror ./game/ui (NV_GOLD #ffd166, NV_SKY #4cc9f0, NV_PINK #ff8fa3).
 const NV_GOLD = "#ffd166";
 const NV_SKY = "#4cc9f0";
 const NV_PINK = "#ff8fa3";
