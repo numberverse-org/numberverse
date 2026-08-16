@@ -55,6 +55,8 @@ export class TreatSortScene extends Phaser.Scene {
   private placed = 0;
   private wrongs = 0; // #1194 — wrong-bowl drops (quality tier)
   private roundDone = false;
+  private finishDelay?: Phaser.Time.TimerEvent;
+  private restartCall?: Phaser.Time.TimerEvent;
 
 
   private get reduced(): boolean {
@@ -74,7 +76,23 @@ export class TreatSortScene extends Phaser.Scene {
     this.buildBowls();
     this.dealTreats();
     this.wireDrag();
+    // #1743 — a stopped scene must never let pending finish/restart
+    // delayedCalls re-launch the scene after the kid closed it.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
     onSceneResize(this, () => this.layout());
+  }
+
+  /** #1743 — cancel every pending delayedCall this scene owns. Idempotent. */
+  private shutdown() {
+    if (this.finishDelay) {
+      this.time.removeEvent(this.finishDelay);
+      this.finishDelay = undefined;
+    }
+    if (this.restartCall) {
+      this.time.removeEvent(this.restartCall);
+      this.restartCall = undefined;
+    }
   }
 
 
@@ -216,7 +234,13 @@ export class TreatSortScene extends Phaser.Scene {
       this.bowlPop(best);
       if (this.placed >= 9) {
         this.roundDone = true;
-        this.time.delayedCall(500, () => this.finishRound());
+        // #1743 — capture + guard so a stopped scene can't call finishRound.
+        if (this.finishDelay) this.time.removeEvent(this.finishDelay);
+        this.finishDelay = this.time.delayedCall(500, () => {
+          this.finishDelay = undefined;
+          if (!this.scene.isActive()) return;
+          this.finishRound();
+        });
       }
     } else {
       // wrong bowl (or dropped elsewhere) — gentle return, no shame
@@ -256,7 +280,14 @@ export class TreatSortScene extends Phaser.Scene {
     const msgText = granted > 0 ? (perfect ? T("treatSortPerfect") : T("treatSortReward")) : T("petCap");
     speak(msgText);
     this.showMsg(msgText, 1700);
-    this.time.delayedCall(2000, () => this.scene.restart({ kidId: this.kidId, onBack: this.onBack }));
+    // #1743 — the scene.restart must be blocked if the scene was shut down:
+    // remove the handle on shutdown AND guard the callback.
+    if (this.restartCall) this.time.removeEvent(this.restartCall);
+    this.restartCall = this.time.delayedCall(2000, () => {
+      this.restartCall = undefined;
+      if (!this.scene.isActive()) return;
+      this.scene.restart({ kidId: this.kidId, onBack: this.onBack });
+    });
   }
 
   private showMsg(text: string, ms: number) {

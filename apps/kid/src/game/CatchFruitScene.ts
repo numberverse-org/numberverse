@@ -58,6 +58,7 @@ export class CatchFruitScene extends Phaser.Scene {
   private roundDone = false;
   private active: Toss[] = [];
   private spawnBusy = false;
+  private nextRoundCall?: Phaser.Time.TimerEvent;
 
 
   private get reduced(): boolean {
@@ -75,7 +76,18 @@ export class CatchFruitScene extends Phaser.Scene {
     this.drawHeader();
     this.drawNova();
     this.startRound();
+    // #1742 — a stopped scene must never let the round-restart delayedCall fire.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
     onSceneResize(this, () => this.layout());
+  }
+
+  /** #1742 — cancel the pending round-restart delayedCall. Idempotent. */
+  private shutdown() {
+    if (this.nextRoundCall) {
+      this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = undefined;
+    }
   }
 
 
@@ -240,7 +252,13 @@ export class CatchFruitScene extends Phaser.Scene {
     const msgText = granted > 0 ? (quality >= 0.85 ? T("catchFruitPerfect") : T("catchFruitReward")) : T("petCap");
     speak(msgText);
     this.showMsg(msgText, 1600);
-    this.time.delayedCall(1800, () => this.startRound());
+    // #1742 — capture + guard so a stopped scene can't re-launch the round.
+    if (this.nextRoundCall) this.time.removeEvent(this.nextRoundCall);
+    this.nextRoundCall = this.time.delayedCall(1800, () => {
+      this.nextRoundCall = undefined;
+      if (!this.scene.isActive()) return;
+      this.startRound();
+    });
   }
 
   private layout() {

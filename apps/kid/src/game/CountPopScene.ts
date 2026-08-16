@@ -49,6 +49,7 @@ export class CountPopScene extends Phaser.Scene {
   private instruction!: QuestionPanelApi;
   private meter!: RoundMeterApi;
   private background!: Phaser.GameObjects.Graphics;
+  private nextRoundCall?: Phaser.Time.TimerEvent;
 
   constructor() {
     super("CountPop");
@@ -75,6 +76,9 @@ export class CountPopScene extends Phaser.Scene {
     });
     this.layout();
     this.startRound();
+    // #1742 — a stopped scene must never let the round-restart delayedCall fire.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
 
     // KID GESTURE — sweep-to-pop: a toddler drags their finger across the
     // bubbles and the NEXT-EXPECTED one bursts (wrong bubbles never punish a
@@ -91,6 +95,14 @@ export class CountPopScene extends Phaser.Scene {
         }
       }
     });
+  }
+
+  /** #1742 — cancel the pending round-restart delayedCall. Idempotent. */
+  private shutdown() {
+    if (this.nextRoundCall) {
+      this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = undefined;
+    }
   }
 
   private drawBackground() {
@@ -295,7 +307,13 @@ export class CountPopScene extends Phaser.Scene {
       win();
       this.onRoundDone?.(this.roundCount >= this.roundTarget, ms, this.levelIndex + 1);
       this.levelIndex++;
-      this.time.delayedCall(700, () => this.startRound());
+      // #1742 — capture + guard so a stopped scene can't re-launch the round.
+      if (this.nextRoundCall) this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = this.time.delayedCall(700, () => {
+        this.nextRoundCall = undefined;
+        if (!this.scene.isActive()) return;
+        this.startRound();
+      });
     }
   }
 

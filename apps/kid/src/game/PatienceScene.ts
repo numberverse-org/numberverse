@@ -54,7 +54,10 @@ export class PatienceScene extends Phaser.Scene {
   private barX = 0;
   private barY = 0;
   private barW = 0;
-  private progressTimer!: Phaser.Time.TimerEvent;
+  private progressTimer?: Phaser.Time.TimerEvent;
+  private distractionCallA?: Phaser.Time.TimerEvent;
+  private distractionCallB?: Phaser.Time.TimerEvent;
+  private nextRoundCall?: Phaser.Time.TimerEvent;
   private track!: Phaser.GameObjects.Graphics;
   private fill!: Phaser.GameObjects.Graphics;
   private bigEmoji!: Phaser.GameObjects.Text;
@@ -90,8 +93,32 @@ export class PatienceScene extends Phaser.Scene {
     this.bigEmoji = this.add.text(0, 0, "", txt(96, "#ffffff")).setOrigin(0.5).setDepth(2);
     this.rewardText = this.add.text(0, 0, "", txt(22, NV_GOLD, { bold: true })).setOrigin(0.5).setDepth(2);
     onSceneResize(this, () => this.layout());
+    // #1739 — a mid-wait scene stop must not leak the looping progress timer or
+    // any pending round/distraction delayedCalls into a hibernated scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
     this.layout();
     this.startRound();
+  }
+
+  /** #1739 — kill every timer/delayedCall this scene owns. Idempotent. */
+  private shutdown() {
+    if (this.progressTimer) {
+      this.time.removeEvent(this.progressTimer);
+      this.progressTimer = undefined;
+    }
+    if (this.distractionCallA) {
+      this.time.removeEvent(this.distractionCallA);
+      this.distractionCallA = undefined;
+    }
+    if (this.distractionCallB) {
+      this.time.removeEvent(this.distractionCallB);
+      this.distractionCallB = undefined;
+    }
+    if (this.nextRoundCall) {
+      this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = undefined;
+    }
   }
 
   private layout() {
@@ -148,10 +175,14 @@ export class PatienceScene extends Phaser.Scene {
       this.fill.fillStyle(0xffd166, 1);
       this.fill.fillRoundedRect(this.barX - this.barW / 2, this.barY - BAR_H / 2, Math.max(3, this.barW * p), BAR_H, BAR_H / 2);
       if (p >= 1) {
-        this.progressTimer.remove();
+        this.progressTimer?.remove(false);
+        this.progressTimer = undefined;
         this.onReady();
       }
     };
+    // #1739 — re-arm safely: a re-entered startRound must not stack a second
+    // looping progress timer on top of a hibernated one.
+    if (this.progressTimer) this.time.removeEvent(this.progressTimer);
     this.progressTimer = this.time.addEvent({ delay: 33, loop: true, callback: update });
   }
 
@@ -159,15 +190,24 @@ export class PatienceScene extends Phaser.Scene {
   private scheduleDistractions() {
     const dur = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)] * 1000;
     if (this.levelIndex >= 2) {
-      this.time.delayedCall(dur * 0.4, () => this.showDistraction());
+      // #1739 — capture the handle so a mid-wait shutdown can cancel it.
+      if (this.distractionCallA) this.time.removeEvent(this.distractionCallA);
+      this.distractionCallA = this.time.delayedCall(dur * 0.4, () => {
+        this.distractionCallA = undefined;
+        this.showDistraction();
+      });
     }
     if (this.levelIndex >= 4) {
-      this.time.delayedCall(dur * 0.65, () => this.showDistraction());
+      if (this.distractionCallB) this.time.removeEvent(this.distractionCallB);
+      this.distractionCallB = this.time.delayedCall(dur * 0.65, () => {
+        this.distractionCallB = undefined;
+        this.showDistraction();
+      });
     }
   }
 
   private showDistraction() {
-    if (this.roundDone) return;
+    if (this.roundDone || !this.scene.isActive()) return;
     const { width, height } = this.scale;
     const x = width * (0.15 + Math.random() * 0.7);
     const y = height * (0.28 + Math.random() * 0.3);
@@ -225,7 +265,11 @@ export class PatienceScene extends Phaser.Scene {
     // #1002 — patience is correct-by-design: the success signal is that the
     // wait finished (roundDone), not a tapped answer.
     this.onRoundDone?.(this.roundDone, ms, this.levelIndex + 1);
-    this.time.delayedCall(1100, () => {
+    // #1739 — capture + guard: a stopped scene must never start the next round.
+    if (this.nextRoundCall) this.time.removeEvent(this.nextRoundCall);
+    this.nextRoundCall = this.time.delayedCall(1100, () => {
+      this.nextRoundCall = undefined;
+      if (!this.scene.isActive()) return;
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
       this.startRound();

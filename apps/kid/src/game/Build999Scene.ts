@@ -48,6 +48,8 @@ export class Build999Scene extends Phaser.Scene {
   private plus1!: Phaser.GameObjects.Container;
   private plus10!: Phaser.GameObjects.Container;
   private plus100!: Phaser.GameObjects.Container;
+  private bundleToastCall?: Phaser.Time.TimerEvent;
+  private nextRoundCall?: Phaser.Time.TimerEvent;
 
   constructor() {
     super("Build999");
@@ -83,6 +85,21 @@ export class Build999Scene extends Phaser.Scene {
     this.data.set("nv:noSwipe", true); // no swipe-to-answer target here
     this.layout();
     this.startRound();
+    // #1742 — a stopped scene must never let pending delayedCalls fire.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
+  }
+
+  /** #1742 — cancel every pending delayedCall this scene owns. Idempotent. */
+  private shutdown() {
+    if (this.bundleToastCall) {
+      this.time.removeEvent(this.bundleToastCall);
+      this.bundleToastCall = undefined;
+    }
+    if (this.nextRoundCall) {
+      this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = undefined;
+    }
   }
 
   private layout() {
@@ -186,8 +203,11 @@ export class Build999Scene extends Phaser.Scene {
       duration: 300,
       ease: "Back.easeOut",
     });
-    this.time.delayedCall(1400, () => {
-      if (!this.bundleToast.active) return;
+    // #1742 — capture + guard so a stopped scene can't fade a dead toast.
+    if (this.bundleToastCall) this.time.removeEvent(this.bundleToastCall);
+    this.bundleToastCall = this.time.delayedCall(1400, () => {
+      this.bundleToastCall = undefined;
+      if (!this.scene.isActive() || !this.bundleToast.active) return;
       this.tweens.add({ targets: this.bundleToast, alpha: 0, duration: 350 });
     });
   }
@@ -206,7 +226,13 @@ export class Build999Scene extends Phaser.Scene {
     correctCelebrate(this, width / 2, Math.round(height * 0.32));
     this.onRoundDone?.(this.total >= target, ms, this.levelIndex + 1);
     this.levelIndex++;
-    this.time.delayedCall(800, () => this.startRound());
+    // #1742 — capture + guard so a stopped scene can't re-launch the round.
+    if (this.nextRoundCall) this.time.removeEvent(this.nextRoundCall);
+    this.nextRoundCall = this.time.delayedCall(800, () => {
+      this.nextRoundCall = undefined;
+      if (!this.scene.isActive()) return;
+      this.startRound();
+    });
   }
 
   private updateButtons() {

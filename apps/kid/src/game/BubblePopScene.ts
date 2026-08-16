@@ -55,6 +55,9 @@ export class BubblePopScene extends Phaser.Scene {
   private roundDone = false;
   private bubble: Bubble | null = null;
   private spawnBusy = false;
+  private spawnDelay?: Phaser.Time.TimerEvent;
+  private finishDelay?: Phaser.Time.TimerEvent;
+  private nextRoundCall?: Phaser.Time.TimerEvent;
 
 
   private get reduced(): boolean {
@@ -73,7 +76,38 @@ export class BubblePopScene extends Phaser.Scene {
     this.drawHeader();
     this.drawNova();
     this.startRound();
+    // #1742 — a stopped scene must never let pending spawn/finish/restart
+    // delayedCalls fire into a hibernated scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
     onSceneResize(this, () => this.layout());
+  }
+
+  /** #1742 — cancel every pending delayedCall this scene owns. Idempotent. */
+  private shutdown() {
+    if (this.spawnDelay) {
+      this.time.removeEvent(this.spawnDelay);
+      this.spawnDelay = undefined;
+    }
+    if (this.finishDelay) {
+      this.time.removeEvent(this.finishDelay);
+      this.finishDelay = undefined;
+    }
+    if (this.nextRoundCall) {
+      this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = undefined;
+    }
+  }
+
+  /** Re-arm a 300ms spawn/respawn delayedCall safely (#1742). */
+  private scheduleSpawn() {
+    if (this.spawnDelay) this.time.removeEvent(this.spawnDelay);
+    this.spawnDelay = this.time.delayedCall(300, () => {
+      this.spawnDelay = undefined;
+      if (!this.scene.isActive()) return;
+      this.spawnBusy = false;
+      this.spawnBubble();
+    });
   }
 
 
@@ -162,13 +196,16 @@ export class BubblePopScene extends Phaser.Scene {
     this.burstRing(b.c.x, b.c.y);
     if (this.count >= ROUND_POPS) {
       this.roundDone = true;
-      this.time.delayedCall(350, () => this.finishRound());
+      // #1742 — capture + guard so a stopped scene can't call finishRound.
+      if (this.finishDelay) this.time.removeEvent(this.finishDelay);
+      this.finishDelay = this.time.delayedCall(350, () => {
+        this.finishDelay = undefined;
+        if (!this.scene.isActive()) return;
+        this.finishRound();
+      });
     } else {
       this.spawnBusy = true;
-      this.time.delayedCall(300, () => {
-        this.spawnBusy = false;
-        this.spawnBubble();
-      });
+      this.scheduleSpawn();
     }
   }
 
@@ -178,10 +215,7 @@ export class BubblePopScene extends Phaser.Scene {
     this.bubble.c.destroy();
     this.bubble = null;
     this.spawnBusy = true;
-    this.time.delayedCall(300, () => {
-      this.spawnBusy = false;
-      this.spawnBubble();
-    });
+    this.scheduleSpawn();
   }
 
   private burstRing(x: number, y: number) {
@@ -216,7 +250,13 @@ export class BubblePopScene extends Phaser.Scene {
       speak(T("petCap"));
       this.showMsg(T("petCap"), 1600);
     }
-    this.time.delayedCall(1800, () => this.startRound());
+    // #1742 — capture + guard so a stopped scene can't re-launch the round.
+    if (this.nextRoundCall) this.time.removeEvent(this.nextRoundCall);
+    this.nextRoundCall = this.time.delayedCall(1800, () => {
+      this.nextRoundCall = undefined;
+      if (!this.scene.isActive()) return;
+      this.startRound();
+    });
   }
 
   private layout() {

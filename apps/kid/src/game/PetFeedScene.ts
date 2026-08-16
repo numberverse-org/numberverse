@@ -44,6 +44,7 @@ export class PetFeedScene extends Phaser.Scene {
   private fedCount = 0;
   private treats: Phaser.GameObjects.Text[] = [];
   private spawnTimer?: Phaser.Time.TimerEvent;
+  private nextRoundCall?: Phaser.Time.TimerEvent;
 
 
   private get reduced(): boolean {
@@ -61,7 +62,23 @@ export class PetFeedScene extends Phaser.Scene {
     this.drawHeader();
     this.drawNova();
     this.startRound();
+    // #1740 #1742 — a stopped feed scene must not leak the spawn timer or
+    // the pending round-restart delayedCall into a hibernated scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
     onSceneResize(this, () => this.layout());
+  }
+
+  /** #1740 #1742 — kill every timer/delayedCall this scene owns. Idempotent. */
+  private shutdown() {
+    if (this.spawnTimer) {
+      this.time.removeEvent(this.spawnTimer);
+      this.spawnTimer = undefined;
+    }
+    if (this.nextRoundCall) {
+      this.time.removeEvent(this.nextRoundCall);
+      this.nextRoundCall = undefined;
+    }
   }
 
 
@@ -92,6 +109,9 @@ export class PetFeedScene extends Phaser.Scene {
 
   private startRound() {
     this.fedCount = 0;
+    // #1740 — re-arm safely: a re-entered startRound must not stack a second
+    // spawn timer over a live/hibernated one.
+    if (this.spawnTimer) this.time.removeEvent(this.spawnTimer);
     // spawn a treat every ~900ms until the round is filled
     this.spawnTimer = this.time.addEvent({
       delay: 900,
@@ -161,8 +181,13 @@ export class PetFeedScene extends Phaser.Scene {
     else if (coinAdded > 0 && earnedToday >= NOVA_DAILY_CAP) speak(T("petFeedCap"));
     else if (coinAdded > 0) speak(T("petFeedReward"));
     else speak(T("petFeedAlready"));
-    // a light "play again" resets the round
-    this.time.delayedCall(1600, () => this.startRound());
+    // a light "play again" resets the round (#1742 — capture + guard)
+    if (this.nextRoundCall) this.time.removeEvent(this.nextRoundCall);
+    this.nextRoundCall = this.time.delayedCall(1600, () => {
+      this.nextRoundCall = undefined;
+      if (!this.scene.isActive()) return;
+      this.startRound();
+    });
   }
 
   private layout() {

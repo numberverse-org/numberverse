@@ -43,6 +43,7 @@ export class PetDanceScene extends Phaser.Scene {
 
   private taps = 0;
   private beatTimer?: Phaser.Time.TimerEvent;
+  private resetCall?: Phaser.Time.TimerEvent;
 
 
   private get reduced(): boolean {
@@ -61,7 +62,23 @@ export class PetDanceScene extends Phaser.Scene {
     this.drawNova();
     this.startBeat();
     this.input.on("pointerdown", () => this.tapDance());
+    // #1740 — a repeat:-1 beat timer (and the party-reset delayedCall) must die
+    // with the scene; otherwise a stopped dance floor keeps ticking + popping.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.shutdown());
     onSceneResize(this, () => this.layout());
+  }
+
+  /** #1740 — remove every timer/delayedCall this scene owns. Idempotent. */
+  private shutdown() {
+    if (this.beatTimer) {
+      this.time.removeEvent(this.beatTimer);
+      this.beatTimer = undefined;
+    }
+    if (this.resetCall) {
+      this.time.removeEvent(this.resetCall);
+      this.resetCall = undefined;
+    }
   }
 
 
@@ -99,6 +116,8 @@ export class PetDanceScene extends Phaser.Scene {
       this.tweens.add({ targets: this.nova, scale: 1.03, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       return;
     }
+    // #1740 — re-arm safely: never stack a second beat loop over a live one.
+    if (this.beatTimer) this.time.removeEvent(this.beatTimer);
     this.beatTimer = this.time.addEvent({
       delay: 520,
       repeat: -1,
@@ -120,7 +139,11 @@ export class PetDanceScene extends Phaser.Scene {
       const granted = useKidStore.getState().novaChallengeReward(this.kidId, 1);
       speak(granted > 0 ? tr("petDanceParty") : tr("petCap"));
       this.burstEmoji("🎉", 10, 34);
-      this.time.delayedCall(2400, () => {
+      // #1740 — capture + guard so a stopped scene can't reset a dead meter.
+      if (this.resetCall) this.time.removeEvent(this.resetCall);
+      this.resetCall = this.time.delayedCall(2400, () => {
+        this.resetCall = undefined;
+        if (!this.scene.isActive()) return;
         this.taps = 0;
         this.meterText.setText("🎵 0");
       });
