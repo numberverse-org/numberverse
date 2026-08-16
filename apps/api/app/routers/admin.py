@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, date, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, func, select, text
@@ -30,6 +30,7 @@ from ..models import (
     Subscription,
     TenantConfig,
 )
+from ..ratelimit import rate_limit
 from ..schemas import StorySearchIn, StorySearchOut
 from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
 
@@ -372,6 +373,12 @@ async def stats(_: Profile = Depends(require_admin), db: AsyncSession = Depends(
 STORY_RATE_LIMIT_PER_HOUR = 200
 STORY_HEALTH_DAYS = 14
 
+# #1765 — semantic search runs an embedding model + pgvector scan per call,
+# and /stories/embed runs the full batch encoder: both get a strict admin
+# budget far below the 120/min parent write tier.
+ADMIN_SEARCH_RATE_LIMIT = rate_limit(limit=20)   # 20/min — each call embeds + scans
+ADMIN_EMBED_RATE_LIMIT = rate_limit(limit=10)    # 10/min — batch encode, heavy
+
 
 @router.get("/stories/health")
 async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
@@ -494,7 +501,11 @@ async def stories_health(_: Profile = Depends(require_admin), db: AsyncSession =
 
 
 @router.post("/stories/embed")
-async def embed_stories_now(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def embed_stories_now(
+    _: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    _limiter: Annotated[Profile, Depends(ADMIN_EMBED_RATE_LIMIT)] = None,
+):
     """📚 KOTHA embed job (#329) — manual trigger of the scheduled batch-embed.
     Idempotent (only unembedded stories are picked; ON CONFLICT no-op). Reports
     `skipped` instead of failing when the model/pgvector stack is absent."""
@@ -508,6 +519,7 @@ async def search_stories(
     body: StorySearchIn,
     _: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _limiter: Annotated[Profile, Depends(ADMIN_SEARCH_RATE_LIMIT)] = None,
 ):
     """📚 KOTHA semantic retrieval (#323) — 'find learning moments like this one'.
 

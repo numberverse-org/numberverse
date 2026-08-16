@@ -25,6 +25,12 @@ Covers the test-coverage-api feed:
         · the chunked / unknown-length path is ALSO rejected once it streams
           past the budget.
 
+  #1765 admin semantic-search / embed rate budget:
+        · POST /admin/stories/search and /admin/stories/embed declare a keyword
+          `_limiter` param defaulting to None (FastAPI injects the limiter);
+        · ADMIN_SEARCH_RATE_LIMIT (20/min) and ADMIN_EMBED_RATE_LIMIT (10/min)
+          are both stricter than the 120/min parent write tier.
+
 KNOWN REAL BUGS (reported, asserted as correct behavior — these checks fail on
 the current source and are listed in the SUMMARY):
   · create_resource / get_resource reference `request` without declaring it, so
@@ -36,6 +42,7 @@ the current source and are listed in the SUMMARY):
     (a real Postgres NOT NULL violation on flush).
 """
 import asyncio
+import inspect
 import json
 import sys
 import uuid
@@ -61,6 +68,7 @@ from app.models import (  # noqa: E402
     Subscription,
 )
 from app.ratelimit import (  # noqa: E402
+    _REQUESTS_PER_MIN,
     AuthAttemptGuard,
     _allow_fixed_window,
     ip_rate_limit,
@@ -906,6 +914,59 @@ async def _run_middleware():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# ⑪  #1765 — admin semantic-search / embed endpoints get a strict rate budget
+# ══════════════════════════════════════════════════════════════════════════
+
+def test_search_embed_rate_limits():
+    print("⑪  #1765 — search/embed rate-limit params and budgets…")
+
+    # (a) both handlers declare a KEYWORD `_limiter` param defaulting to None.
+    #     FastAPI injects the limiter dependency at request time; the None
+    #     default keeps direct positional calls working in these unit tests.
+    for name in ("search_stories", "embed_stories_now"):
+        sig = inspect.signature(getattr(admin_router, name))
+        param = sig.parameters.get("_limiter")
+        check(f"{name} declares _limiter", param is not None, True)
+        check(
+            f"{name} _limiter is a keyword param",
+            param is not None and param.kind
+            in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY),
+            True,
+        )
+        check(
+            f"{name} _limiter defaults to None",
+            None if param is None else param.default,
+            None,
+        )
+
+    # (b) the strict admin budgets sit far below the 120/min parent write tier.
+    search_limit = inspect.getclosurevars(admin_router.ADMIN_SEARCH_RATE_LIMIT).nonlocals["limit"]
+    embed_limit = inspect.getclosurevars(admin_router.ADMIN_EMBED_RATE_LIMIT).nonlocals["limit"]
+    check("ADMIN_SEARCH_RATE_LIMIT < _REQUESTS_PER_MIN", search_limit < _REQUESTS_PER_MIN, True)
+    check("ADMIN_EMBED_RATE_LIMIT < _REQUESTS_PER_MIN", embed_limit < _REQUESTS_PER_MIN, True)
+
+
+async def _run_search_embed_direct_calls():
+    print("⑫  #1765 — search/embed direct positional calls still work…")
+
+    db = _FakeDB()
+    prof = _profile()
+
+    # embed: positional (profile, db). The ML stack is absent in this test
+    # environment, so the job reports `skipped` — the point is the call itself
+    # still resolves with the new `_limiter` param defaulting to None.
+    result = await admin_router.embed_stories_now(prof, db)
+    check("embed_stories_now direct call runs", isinstance(result, dict), True)
+    check("embed direct call reports skipped (no ML stack)", result.get("status"), "skipped")
+
+    # search: positional (body, profile, db). The embedding model is missing, so
+    # the route reports a clean 503 exactly as before the limiter was added.
+    body = SimpleNamespace(query="a fraction with fifths", top_k=3)
+    st, _ = await aexc_status(admin_router.search_stories(body, prof, db))
+    check("search_stories direct call runs (503, no ML stack)", st, 503)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 
 def _run():
     test_mass_assignment_guard()
@@ -918,6 +979,8 @@ def _run():
     asyncio.run(_run_rate_limit_deps())
     asyncio.run(_run_auth_attempt_guard())
     asyncio.run(_run_middleware())
+    test_search_embed_rate_limits()
+    asyncio.run(_run_search_embed_direct_calls())
 
     print()
     if fails:
