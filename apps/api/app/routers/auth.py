@@ -50,11 +50,11 @@ _PASSWORD_GUARD = AuthAttemptGuard()
 # #771 — signup has no secret to fail on, so it gets a hard per-IP request cap
 # (rather than the failure-aware guard above) to stop email enumeration and
 # mass account creation. Signup is a rare one-time action; 10/min is generous.
-_SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10)
+_SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10, tag="signup")
 # #1773 — refresh-rotation is an unauthenticated endpoint (the cookie is the
 # credential), so it gets a throughput cap per IP to stop cookie-replay brute
 # force and endpoint abuse. 60/min is far above a real browser's refresh cadence.
-_REFRESH_RATE_LIMIT = ip_rate_limit(limit=60)
+_REFRESH_RATE_LIMIT = ip_rate_limit(limit=60, tag="refresh")
 
 
 def _verify_google_token(id_token: str) -> dict:

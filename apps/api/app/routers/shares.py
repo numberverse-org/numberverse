@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api/v1", tags=["share"])
 # #832 — /share/{token} is auth-free, so rate-limit by client IP only (there is
 # no account to key on). 30 req/min is far more than a shared link gets opened
 # while still blunting token-guessing hammering.
-SHARE_SNAPSHOT_RATE_LIMIT = ip_rate_limit(limit=30)
+SHARE_SNAPSHOT_RATE_LIMIT = ip_rate_limit(limit=30, tag="share")
 
 # #1764 — the authenticated share-token GET joins the read tier: minting/reading
 # the opaque token is a read (no DB write), so it shares the higher read budget

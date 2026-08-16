@@ -733,6 +733,25 @@ async def _run_rate_limit_deps():
     except HTTPException as exc:
         check("ip_rate_limit blocks over threshold", exc.status_code, 429)
 
+    # #1763 — tagged ip_rate_limit buckets are independent per surface: burning
+    # tag "a" to its limit must NOT affect tag "b" on the SAME IP.
+    db4 = _FakeDB()
+    dep_tag_a = ip_rate_limit(limit=1, tag="a")
+    dep_tag_b = ip_rate_limit(limit=1, tag="b")
+    req_tag = SimpleNamespace(client=SimpleNamespace(host="10.0.0.9"))
+    await dep_tag_a(request=req_tag, db=db4)  # burn bucket "a" to its limit
+    try:
+        await dep_tag_a(request=req_tag, db=db4)
+        check("tagged ip_rate_limit bucket a blocks over threshold", "no-429", "429")
+    except HTTPException as exc:
+        check("tagged ip_rate_limit bucket a blocks over threshold", exc.status_code, 429)
+    # Bucket "b" is a separate key — the same IP still passes through it.
+    try:
+        await dep_tag_b(request=req_tag, db=db4)
+        check("ip_rate_limit tag b is independent of tag a", True, True)
+    except HTTPException:
+        check("ip_rate_limit tag b is independent of tag a", False, True)
+
 
 async def _rate_dep_allowed(dep, request, profile, db):
     try:

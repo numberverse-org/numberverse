@@ -8,7 +8,9 @@ workers and survive restarts.
 `rate_limit` keys on the authenticated account + client IP (write endpoints);
 `ip_rate_limit` keys only on client IP for auth-free public reads. Both use a
 fixed window — simpler to make atomic with an upsert than the old in-memory
-sliding deque, and still strict enough for abuse control.
+sliding deque, and still strict enough for abuse control. `ip_rate_limit`
+accepts an optional `tag` (#1763) so each public surface can hold its own
+independent per-IP bucket.
 """
 
 import hashlib
@@ -275,7 +277,7 @@ def read_rate_limit(limit: int = READ_REQUESTS_PER_MIN) -> Callable:
     return dep
 
 
-def ip_rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
+def ip_rate_limit(limit: int = _REQUESTS_PER_MIN, *, tag: str | None = None) -> Callable:
     """FastAPI dependency enforcing `limit` requests/minute per client IP.
 
     Variant for PUBLIC endpoints with no account to key on (e.g. a share link,
@@ -284,6 +286,12 @@ def ip_rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
     from `rate_limit`. Unlike `rate_limit`, it does not depend on
     `get_current_profile` — it protects surfaces reachable without a token.
     Returns None; the route only needs the dependency to run before it.
+
+    #1763 — when `tag` is set, the key becomes ``f"ip:{tag}:{ip}"`` so each
+    public surface (signup, refresh, share-snapshot) gets its own per-IP bucket
+    and the configured limits apply independently. When `tag` is None, the
+    legacy key ``f"ip:{ip}"`` is used so existing callers that do not opt in
+    are unaffected.
 
     #1769 — when there is no client socket, `_request_ip` yields "unknown";
     this dep then falls back to the RIGHTMOST X-Forwarded-For hop (the value
@@ -307,7 +315,11 @@ def ip_rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
                 candidate = xff.rsplit(",", 1)[-1].strip()
                 if candidate:
                     ip = candidate
-        key = f"ip:{ip}"
+        # #1763 — optional tag gives each public surface its own bucket.
+        if tag is not None:
+            key = f"ip:{tag}:{ip}"
+        else:
+            key = f"ip:{ip}"
         if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
             _log_429("ip", key, limit, _WINDOW_SECONDS)
             raise HTTPException(
