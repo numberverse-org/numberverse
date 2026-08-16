@@ -1,6 +1,19 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧠 V50 DIFFICULTY-MODEL FEED (13 findings) 16 Aug 2026 ✅ → 0.85.0
+- **#0 server mastery decay:** `progress.py` `_decay()` applies the device's `(1−decayPerDay)^days` idle decay (was never decaying — the parent portal drifted UP from the kid's local bar). `test_adaptive_model.py` proves 0.9 after 30 idle days ≈ 0.9·0.98³⁰.
+- **#1 BKT params divergence:** server no longer reads the `adaptive` config row — `_adaptive_params` returns COMPILED-IN `DEFAULT_PARAMS` mirroring `adaptive.ts` (offline-first kid hardcodes them, so divergence is now impossible by construction). Schema still accepts the row (archival).
+- **#2 config schema:** `CONFIG_SCHEMAS["adaptive"]` expanded to all 5 params (`decayPerDay`, `masteryThreshold` added, 0..1 bounded) so an admin tuning the full model isn't blocked.
+- **#3/#12 band placement:** `bandForAge(14+) → 8` (Summit Peaks reachable by age), `kidBand` uses FULL-DATE age (Dec-31 kid not a year older on Jan 1), year-only fallback.
+- **#4 server cap vs client:** `kids._age_band_cap` mirrors `bandForAge` exactly (age 6→3, 8→4, 14+→8) — a 6-year-old's band-3 round is no longer band_skipped server-side.
+- **#5 birth-year edit refresh:** PATCH `birth_year` recomputes/raises `KidSettings.max_band` (never clobbers a parent's manual widening).
+- **#10 mastered_at clear:** `_next_mastered_at` state machine clears the stamp when decay pulls mastery below 0.8 — the portal's "currently mastered" list no longer carries stale entries.
+- **#6/#7/#8 ladders:** game-measure `[10,20,50,100,3,5]` → `[10,20,50,100,300,500]` (ascending); 4 deliberate descenders documented; `nextDifficulty` empty-ladder contract → neutral 1; `catalog_monotone.mjs` 10-checks wired.
+- **#9 family unit:** unit counts mastered only when the HARDEST tier is mastered (was `.some()` — inflated world progress + early unlocks).
+- **#11 difficulty metric:** all 154 `onRoundDone` calls now report the 1-based LEVEL INDEX (`levelIndex + 1`) — 35 outlier sites (CountPop/ClockTime + 23 more scenes passing ladder VALUES: target/answer/divisor/fact.b/percent/den/shown/levels[...]) fixed via 3-wave fan-out; `on_round_done_difficulty.test.mjs` asserts 154/154. Ladder values stay game content.
+- Gates: api `test_adaptive_model.py` 30/30, api compileall ✓, moni/catalog/journey tests green, kid tsc 0 (only foreign nova3d/Outfit3D error). Commits cef6a5e, 3699eb2, a27df2e, 8c86381.
+
 ## 🧠 MONI DIFFICULTY CLUSTER (#1044/#1046/#1047/#1048) 16 Aug 2026 ✅ → 0.84.0
 - **#1047 foundation (single-threaded, core+store+journey):** `planner.plan()` gains a 7th `perSkillDeltas` param (skillId → signed level offset, clamped ±2) layered on top of global strictness; kid store gains `moniSkillDeltas` (kidId→skillId→delta) + `setSkillDelta`/`bumpSkillDelta` (partialized + v0→v1 migration); `journey.moniPlanFor` folds deltas into the cache key + plan call. 5 new regression checks (#1047 base/−1/+2/non-focus no-op/strictness+skill stack) → 23 total, all green.
 - **#1044 parent per-subject stepper:** new `moni_subject_deltas` on `kid_settings` (JSONB column, Pydantic-clamped ±2 via `field_validator`, router PUT `or None` clears); synced parent→API→kid store (App.tsx effect expands each subject onto its skills, parent-authoritative, never clobbers a later #1048 tap). `LearningControls` gains a −/0/+ stepper per subject (EN+BN `MONI_DELTA_LANGS`). New `test_moni_subject_deltas.py` (9 checks, clamped/None/default/out) wired into CI.
