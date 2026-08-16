@@ -1,4 +1,6 @@
 import json
+import re
+import unicodedata
 import uuid
 from datetime import datetime
 from typing import Annotated, Literal
@@ -28,10 +30,93 @@ RoundedIntRequired = Annotated[int, BeforeValidator(_round_int)]
 BCRYPT_MAX_PASSWORD_LENGTH = 72
 
 
+# ── Name/avatar charset (#1824/#1828) ─────────────────────────────────────
+# Kid names + parent display_names flow into NON-HTML sinks — the share-card
+# canvas (apps/kid/src/game/shareImage.ts), TTS, download filenames, CSV
+# export — so they must reject characters that corrupt or exploit those sinks:
+# control chars (incl. \n \r \t), bidi overrides/embeddings, and angle
+# brackets. Avatars get a length cap (a multi-char / very long avatar breaks
+# the circular badge) + control-char STRIPPING (not rejection) so legacy
+# emoji/short-label payloads survive, + an HTML-ish rejection.
+PARENT_NAME_MAX_LENGTH = 80
+KID_NAME_MAX_LENGTH = 40
+AVATAR_MAX_LENGTH = 32
+
+# ASCII C0 controls + DEL + C1 controls, plus Unicode bidi/format controls
+# (U+200E LRM, U+200F RLM, U+202A-U+202E bidi embedding/override/pop,
+# U+2066-U+2069 bidi isolates).
+_CONTROL_OR_BIDI = re.compile(r"[\x00-\x1f\x7f-\x9f\u200e\u200f\u202a-\u202e\u2066-\u2069]")
+# Angle brackets — the only HTML-ish signal that matters for canvas/TTS/CSV.
+_ANGLE_BRACKETS = re.compile(r"[<>]")
+
+# Defense-in-depth charset for REQUIRED name Fields (KidIn.name): any char
+# EXCEPT the forbidden set passes the pattern; the field_validator below then
+# enforces the strict Unicode-letter/digit/mark charset (a regex pattern alone
+# can't express Unicode marks like Bengali vowel signs — `\w` misses them).
+NAME_PATTERN = r"^[^\x00-\x1f\x7f-\x9f\u200e\u200f\u202a-\u202e\u2066-\u2069<>]+$"
+# Optional name/display_name fields use `*` so the validator can normalize an
+# empty/whitespace string to None (matches the routers' `.strip()` no-op
+# semantics) instead of 422-ing a `+`-empty pattern.
+OPTIONAL_NAME_PATTERN = r"^[^\x00-\x1f\x7f-\x9f\u200e\u200f\u202a-\u202e\u2066-\u2069<>]*$"
+
+
+def _name_charset_ok(value: str) -> bool:
+    """True when every char is a Unicode letter, digit, combining mark, or the
+    small safe punctuation set (space, hyphen, apostrophe, period)."""
+    for ch in value:
+        if ch in " .'-":
+            continue
+        if unicodedata.category(ch)[0] not in "LNM":
+            return False
+    return True
+
+
+def _validate_name(value: str) -> str:
+    """Strip + strictly validate a kid/parent name (raises on bad charset)."""
+    v = value.strip()
+    if not v:
+        raise ValueError("name must not be empty")
+    if _CONTROL_OR_BIDI.search(v) or _ANGLE_BRACKETS.search(v):
+        raise ValueError("name contains unsupported characters")
+    if not _name_charset_ok(v):
+        raise ValueError("name contains unsupported characters")
+    if not any(unicodedata.category(ch)[0] in "LN" for ch in v):
+        raise ValueError("name must contain at least one letter or digit")
+    return v
+
+
+def _clean_optional_name(value: str | None) -> str | None:
+    """For optional name/display_name fields. Empty/whitespace → None (matches
+    the routers' `if ... .strip()` no-op semantics); otherwise strict-validate."""
+    if value is None:
+        return None
+    v = value.strip()
+    if not v:
+        return None
+    return _validate_name(v)
+
+
+def _validate_avatar(value: str | None) -> str | None:
+    """Strip control chars + validate an avatar (max length, no HTML-ish)."""
+    if value is None:
+        return None
+    v = _CONTROL_OR_BIDI.sub("", value).strip()
+    if _ANGLE_BRACKETS.search(v):
+        raise ValueError("avatar must not contain HTML")
+    if len(v) > AVATAR_MAX_LENGTH:
+        raise ValueError(f"avatar must be at most {AVATAR_MAX_LENGTH} characters")
+    return v
+
+
 class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
-    display_name: str | None = None
+    display_name: str | None = Field(default=None, max_length=PARENT_NAME_MAX_LENGTH, pattern=OPTIONAL_NAME_PATTERN)
+
+    @field_validator("display_name")
+    @classmethod
+    def _signup_display_name(cls, v: str | None) -> str | None:
+        return _clean_optional_name(v)
 
 
 class LoginIn(BaseModel):
@@ -75,6 +160,11 @@ class ProfileOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("display_name")
+    @classmethod
+    def _profile_out_display_name(cls, v: str | None) -> str | None:
+        return _clean_optional_name(v)
+
 
 class TokenOut(BaseModel):
     token: str
@@ -87,8 +177,13 @@ class ChangePasswordIn(BaseModel):
 
 
 class ProfileUpdateIn(BaseModel):
-    display_name: str | None = Field(default=None, max_length=80)
+    display_name: str | None = Field(default=None, max_length=PARENT_NAME_MAX_LENGTH, pattern=OPTIONAL_NAME_PATTERN)
     aggregate_opt_in: bool | None = None  # #330 parent privacy opt-in
+
+    @field_validator("display_name")
+    @classmethod
+    def _profile_update_display_name(cls, v: str | None) -> str | None:
+        return _clean_optional_name(v)
 
 
 class SessionOut(BaseModel):
@@ -106,15 +201,35 @@ class SessionOut(BaseModel):
 
 # ── Kids ──
 class KidIn(BaseModel):
-    name: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=KID_NAME_MAX_LENGTH, pattern=NAME_PATTERN)
     avatar: str | None = None
     birth_year: int | None = Field(default=None, ge=2010, le=2030)
+
+    @field_validator("name")
+    @classmethod
+    def _kid_name(cls, v: str) -> str:
+        return _validate_name(v)
+
+    @field_validator("avatar")
+    @classmethod
+    def _kid_avatar(cls, v: str | None) -> str | None:
+        return _validate_avatar(v)
 
 
 class KidUpdateIn(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=40)
+    name: str | None = Field(default=None, min_length=1, max_length=KID_NAME_MAX_LENGTH, pattern=OPTIONAL_NAME_PATTERN)
     avatar: str | None = None
     birth_year: int | None = Field(default=None, ge=2010, le=2030)
+
+    @field_validator("name")
+    @classmethod
+    def _kid_update_name(cls, v: str | None) -> str | None:
+        return _clean_optional_name(v)
+
+    @field_validator("avatar")
+    @classmethod
+    def _kid_update_avatar(cls, v: str | None) -> str | None:
+        return _validate_avatar(v)
 
 
 class DeleteAccountIn(BaseModel):
@@ -134,6 +249,16 @@ class KidOut(BaseModel):
     coins: int = 0  # #987 — wallet balance surfaced in API
 
     model_config = {"from_attributes": True}
+
+    @field_validator("name")
+    @classmethod
+    def _kid_out_name(cls, v: str) -> str:
+        return _validate_name(v)
+
+    @field_validator("avatar")
+    @classmethod
+    def _kid_out_avatar(cls, v: str | None) -> str | None:
+        return _validate_avatar(v)
 
 
 # ── Per-kid parent controls ──
@@ -324,6 +449,16 @@ class KidSnapshotOut(BaseModel):
     avatar: str | None = None
     coins: int = 0
     mastery: list[MasteryOut]
+
+    @field_validator("name")
+    @classmethod
+    def _snapshot_name(cls, v: str) -> str:
+        return _validate_name(v)
+
+    @field_validator("avatar")
+    @classmethod
+    def _snapshot_avatar(cls, v: str | None) -> str | None:
+        return _validate_avatar(v)
 
 
 # #858 — explicit response shape for POST /kids/{kid_id}/reset (was an ad-hoc
