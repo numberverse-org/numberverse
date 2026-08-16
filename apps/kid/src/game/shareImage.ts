@@ -33,8 +33,15 @@ export interface ShareCardData {
 }
 
 /** Draw the parent-panel "Share progress" card onto `canvas`. Portrait 4:5
- *  (1080×1350) — the shape WhatsApp previews best. Returns the canvas. */
-export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HTMLCanvasElement {
+ *  (1080×1350) — the shape WhatsApp previews best.
+ *
+ *  #1817/#1818 — the card is big (1080×1350) and the Bangla text needs
+ *  per-glyph shaping, so we ASYNC it: the paint is chunked across frames by
+ *  yielding between draw phases. On a low-end device this stops the full-card
+ *  paint from stalling the main thread (esp. while PhotoBoothScene / the game
+ *  loop is running). Resolves the canvas when the last phase is painted; the
+ *  pixels are byte-for-byte identical to the old synchronous draw. */
+export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): Promise<HTMLCanvasElement> {
   const W = 1080;
   const H = 1350;
   canvas.width = W;
@@ -59,6 +66,8 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
   blob(120, 180, 320, "rgba(255,94,178,0.28)");
   blob(W - 120, H - 260, 380, "rgba(76,201,240,0.30)");
   blob(W * 0.5, H * 0.35, 260, "rgba(46,196,182,0.18)");
+  // phase 1/4 done — let the browser breathe before the text-heavy pass
+  await nextFrame();
 
   // ── header wordmark ──
   ctx.textAlign = "center";
@@ -84,11 +93,13 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
   ctx.fill();
   ctx.font = "148px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
   ctx.fillText(d.avatar, cx, cy + 6);
+  // phase 2/4 done — avatar badge painted, yield before the name + stats
+  await nextFrame();
 
-  // ── name ──
+  // ── name (#1827: cap long names so they never overflow the ring) ──
   ctx.font = "800 76px system-ui, -apple-system, 'Segoe UI', sans-serif";
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(d.name, cx, cy + R + 90);
+  ctx.fillText(capName(d.name), cx, cy + R + 90);
 
   // ── stat tiles ──
   const tileW = 300;
@@ -116,6 +127,8 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.fillText(d.statsLabels[i], x + tileW / 2, tilesY + 176);
   });
+  // phase 3/4 done — stat tiles painted, yield before the worlds column
+  await nextFrame();
 
   // ── worlds progress ──
   const wTitleY = tilesY + tileH + 92;
@@ -153,6 +166,8 @@ export function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardData): HT
     ctx.fillText(`${w.mastered}/${w.total}`, barMax, y + rowH / 2);
     ctx.textAlign = "center";
   });
+  // phase 4/4 done — worlds column painted, final yield before the footer
+  await nextFrame();
 
   // ── footer tagline ──
   ctx.font = "500 36px system-ui, sans-serif";
@@ -178,8 +193,12 @@ export interface ShareCertData {
 }
 
 /** Draw the certificate share card. Portrait 4:5 (1080×1350) — keeps the
- *  printable look (cream sheet, gold double border) but phone-sized. */
-export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTMLCanvasElement {
+ *  printable look (cream sheet, gold double border) but phone-sized.
+ *
+ *  #1817/#1818 — async + chunked across frames just like renderShareCard so the
+ *  big paint never blocks the main thread on a share tap. Resolves the canvas
+ *  with byte-identical pixels to the old synchronous draw. */
+export async function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): Promise<HTMLCanvasElement> {
   const W = 1080;
   const H = 1350;
   canvas.width = W;
@@ -208,6 +227,8 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
   ctx.lineWidth = 2;
   rr(ctx, 90, 90, W - 180, H - 180, 14);
   ctx.stroke();
+  // phase 1/4 done — sheet + gold border, yield before the lettering
+  await nextFrame();
 
   const cx = W / 2;
   ctx.textAlign = "center";
@@ -220,6 +241,8 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
   ctx.font = "900 52px ui-serif, Georgia, serif";
   ctx.fillStyle = "#8a6a1f";
   ctx.fillText(d.title, cx, 290);
+  // phase 2/4 done — owls + title, yield before the name block
+  await nextFrame();
 
   // certifies / name / mastered
   ctx.font = "500 40px ui-serif, Georgia, serif";
@@ -227,7 +250,7 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
   ctx.fillText(d.certifies, cx, 400);
   ctx.font = "900 96px ui-serif, Georgia, serif";
   ctx.fillStyle = "#3a2a17";
-  ctx.fillText(d.name, cx, 500);
+  ctx.fillText(capName(d.name), cx, 500); // #1827: cap long names
   ctx.font = "500 40px ui-serif, Georgia, serif";
   ctx.fillStyle = "#6a5430";
   ctx.fillText(d.mastered, cx, 590);
@@ -236,6 +259,8 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
   ctx.font = "800 60px ui-serif, Georgia, serif";
   ctx.fillStyle = "#b84538";
   ctx.fillText(d.worldTitle, cx, 680);
+  // phase 3/4 done — name + world, yield before the skill list
+  await nextFrame();
 
   // skill count + list — show every mastered skill the on-screen cert shows
   // (up to six), with a tighter line height so the block still clears the
@@ -252,6 +277,8 @@ export function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData): HTM
     ctx.fillStyle = "#5a4a28";
     wrapText(ctx, `•  ${label}`, cx, listY + i * skillLineH, W - 280, skillLineH);
   });
+  // phase 4/4 done — skill list painted, yield before signature/footer
+  await nextFrame();
 
   // withNova — sits just below the last list line, never past 1050
   const linesEnd = listY + shownSkills.length * skillLineH + 55;
@@ -303,6 +330,30 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.closePath();
 }
 
+/** #1827 — a very long kid name overflows the card. Cap it to a readable
+ *  ~24 chars (plus an ellipsis) before drawing, so the layout at both draw
+ *  sites stays intact. Uses Array.from so emoji/surrogate pairs count as one
+ *  "character". Never mutates stored data — it only shapes the drawn string. */
+function capName(name: string): string {
+  const MAX = 24;
+  const chars = Array.from(name);
+  if (chars.length <= MAX) return name; // short names draw byte-identical
+  return chars.slice(0, MAX - 1).join("") + "…";
+}
+
+/** #1817/#1818 — yield to the browser between card draw phases so a 1080×1350
+ *  paint never blocks a whole frame on the main (game) thread. Degrades to a
+ *  ~16ms setTimeout outside a browser/animation frame. */
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 16);
+    }
+  });
+}
+
 /** Break `text` into lines that each fit `maxW`. Words that are themselves
  *  wider than `maxW` (common with long Bangla compounds) are split character
  *  by character so every returned line is drawable at full width. */
@@ -350,10 +401,17 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, start
 /** Turn a canvas into a PNG blob — with zero identifying metadata (#93).
  *  `stripPngMetadata` (from @numberverse/core) drops every tEXt/zTXt/iTXt/
  *  eXIf chunk, so a share card never carries a kid's name, a path, or EXIF
- *  into WhatsApp. */
-export function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+ *  into WhatsApp.
+ *
+ *  #1817 — renderShareCard/renderCertCard are now async; this accepts either
+ *  an already-resolved canvas or the promise itself, so both old (sync) and
+ *  new (await) call sites stay valid. The metadata strip is unchanged (#1819). */
+export async function canvasToBlob(
+  canvas: HTMLCanvasElement | Promise<HTMLCanvasElement>
+): Promise<Blob> {
+  const cv = await canvas;
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => {
+    cv.toBlob((b) => {
       if (!b) { reject(new Error("canvas toBlob failed")); return; }
       b.arrayBuffer()
         .then((ab) => resolve(new Blob([stripPngMetadata(ab)], { type: "image/png" })))

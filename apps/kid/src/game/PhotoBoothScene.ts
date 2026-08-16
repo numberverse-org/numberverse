@@ -164,7 +164,11 @@ export class PhotoBoothScene extends Phaser.Scene {
         worldsTitle: "",
         footer: "Numberverse 💛",
       };
-      const canvas = renderShareCard(document.createElement("canvas"), data);
+      // #1818 — renderShareCard is now async (chunked across frames) so the
+      // 1080×1350 paint yields off the Phaser tick; the status line above
+      // ("photoBoothSharing") stays up while the card builds so the tap feels
+      // like a busy state instead of a frozen frame.
+      const canvas = await renderShareCard(document.createElement("canvas"), data);
       const blob = await canvasToBlob(canvas);
       const caption = this.lang === "bn" ? "নোভার ছবি 📸" : "Nova's photo 📸";
       const res = await sharePng(blob, "numberverse-nova-photo.png", caption, waTextUrl(caption));
