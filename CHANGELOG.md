@@ -1,3 +1,10 @@
+## 17 Aug 2026 — 0.93.0 (secret-mgmt/ip-bucket wave: #1778 dev-defaults reachability gate, #1780 dev DB password out of git + guard rejection, #1779 secret-scan working-tree + history sweep, #1763 per-surface IP rate-limit buckets)
+
+8df01a0 docs: TRACKER wave entry — secret-mgmt/ip-bucket wave → 0.93.0
+8149ba0 #1779 secret-scan covers working tree (untracked + edits) + opt-in history sweep + env-var-adjacent high-entropy rule
+b7e1039 #1763 ip_rate_limit endpoint tags: signup/refresh/share independent per-surface IP buckets
+9a6252f #1778 dev defaults refuse non-loopback CORS boot + #1780 dev DB password moved to gitignored env file (guard rejects it in non-dev)
+
 ## 17 Aug 2026 — 0.92.0 (ratelimit/keymgmt wave: #1765 admin search+embed budgets, #1766 push rate limit, #1767/#1769/#1770 bucket eviction + no-IP keys + burn isolation, #1768 export/import 10/min, #1774 JWT key rotation, #1775 device credential derivation, #1777 share-token sha256 fingerprint)
 
 f6672e5 docs: TRACKER wave entry — ratelimit/keymgmt wave → 0.92.0

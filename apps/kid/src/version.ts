@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "17 Aug 2026 · 0.92.0 (ratelimit/keymgmt wave: #1765 admin search+embed budgets, #1766 push rate limit, #1767/#1769/#1770 bucket eviction + no-IP keys + burn isolation, #1768 export/import 10/min, #1774 JWT key rotation, #1775 device credential derivation, #1777 share-token sha256 fingerprint)";
-export const APP_VERSION = "0.92.0";
+export const APP_BUILD = "17 Aug 2026 · 0.93.0 (secret-mgmt/ip-bucket wave: #1778 dev-defaults reachability gate, #1780 dev DB password out of git + guard rejection, #1779 secret-scan working-tree + history sweep, #1763 per-surface IP rate-limit buckets)";
+export const APP_VERSION = "0.93.0";
