@@ -1,6 +1,25 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 17 Aug 2026
 
+## 🖥️ PARENT UX + A11Y WAVE (#1586–#1610) 17 Aug 2026 ✅ → 0.96.0 (1 fan-out subagent, 24-issue pass)
+- **All work verified on the merged tree:** parent tsc, kid tsc, admin tsc, vitest 280/280, locale parity ✓, png-metadata ✓, audit 0 errors, secret-scan clean, `apps/api/tests/test_admin.py` 113 checks. 21 issues closed; **3 left open as a kid-app a11y follow-up** (#1601 avatar-unsaved dialog, #1603 challenge/duel sheets — kid scenes, not parent, #1604 calm-mode/tour-card focus) — see "left open" below.
+- **#1586** admin-only parent-password reset endpoint (`apps/api/app/routers/admin.py` + `test_admin.py`, 113 checks) — the no-SMTP box gets operator-assisted recovery; login shows honest "contact your admin" copy. No fake email flow.
+- **#1587** login/signup surface DISTINCT causes — 409 conflict vs 429 rate-limit vs network vs bad-credentials, with EN+BN strings (`errConflict`/`errRateLimited`/`errNetwork` in portal.ts dicts).
+- **#1588** dashboard monolith (`(dashboard)/page.tsx` 825-line net cut) split into `AuthGate`/`PortalHeader`/`OnboardingCard`/`EmptyState`/`KidSwitcher`/`SummaryCard`/`ConfirmDialog` + the section components — behavior byte-identical.
+- **#1589** edit-kid pre-fills current values + labels "Edit {name}" (was blank = looked like add).
+- **#1590** kid↔parent device-join explainer card (`pair-card` styles in globals.css) — verified the actual kid-app flow before writing copy, EN+BN.
+- **#1591** onboarding 'Not now' no longer permanently dismisses — re-openable via PortalHeader.
+- **#1592** difficulty/screen-time edits: sticky save bar (`.save-row-sticky`) pinned to viewport bottom so unsaved changes are never missed; save persists server-side.
+- **#1593** pause kill-switch persisted server-side + `ConfirmDialog` (danger) with the real state shown.
+- **#1594** share-link minting has inline success/failure in the dialog (was global banner); token/link copied clearly.
+- **#1595** duplicate-kid guard uses the shared `ConfirmDialog` (replaced `window.confirm`).
+- **#1596** notifications opt-in shows plain "not configured" with one-time dismiss (no needless password re-entry).
+- **#1597** `ShareClient.tsx` distinguishes 401/404 (expired: "This link has expired") from network/5xx ("Please try again later") — EN+BN.
+- **#1598** Bangla parity pass across all parent dictionaries (SIGNUP_LANGS, KID_FORM_LANGS, PAUSE_LANGS, REGEN_LANGS etc.) — locale gate proves parity.
+- **#1600** regenerate-narrative dialog via shared `ConfirmDialog` (focus trap, autofocus, Escape, restore-on-close). **#1602** kid-pause overlay likewise. **#1605** month-tablist roving tabindex + arrow keys. **#1606** real `<label>`s on login/signup (placeholders kept for e2e). **#1607** nav hash anchors move focus into the target section. **#1608** birth-date steppers get `role="spinbutton"` + native number input. **#1609** disclosure toggles `aria-controls` on all. **#1610** onboarding wrapped in a real `<form>` (Enter submits).
+- **Left open (kid-app a11y follow-up wave):** #1601 avatar unsaved-changes dialog focus-restore, #1603 challenge + land-boss duel sheets focus management (KID scenes — outside parent ownership), #1604 calm-mode sheet + first-play tour card focus trap.
+- Released **0.96.0**, deployed + smoke-tested live. 21 issues closed (#1586 #1587 #1588 #1589 #1590 #1591 #1592 #1593 #1594 #1595 #1596 #1597 #1598 #1600 #1602 #1605 #1606 #1607 #1608 #1609 #1610).
+
 ## 🔐 AUTH-HARDENING + SCENE-LIFECYCLE WAVE (#1669/#1672/#1673/#1675/#1676 + #1739–#1747) 17 Aug 2026 ✅ → 0.95.0 (4 fan-out subagents)
 - **All 4 tasks complete + verified on the merged tree:** 27 standalone api test files green (incl NEW test_auth_hardening 41 checks), kid/parent/admin tsc 0, vitest **280/280** (was 230 — +50 from the 4 new test files), locale parity ✓, png-metadata ✓, audit 0 errors, `node scripts/secret-scan.mjs` clean. Pairwise-disjoint ownership held: API/auth files vs the 9 scene-timer files vs backgrounds/svgAssets/question/reducedMotion vs NovaScene.
 - **#1669/#1676** `/auth/google` gets `_GOOGLE_RATE_LIMIT` (ip_rate_limit 20/min, tag="google") and `/auth/set-password` gets `_SET_PASSWORD_RATE_LIMIT` (10/min, tag="set-password") as route deps — the recovery path is now locked down harder than login. AuthAttemptGuard untouched.
