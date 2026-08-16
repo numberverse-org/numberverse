@@ -574,14 +574,18 @@ def l7_tofu():
 
 def l7_assets():
     pub = KID / "public"
-    need = ["og-card.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png",
-            "apple-touch-icon.png", "favicon.png"]
+    # #1734 — PWA manifest icons are WebP now (192/512 any + maskable), the PNG
+    # originals were removed; favicon.svg (#1736) is the primary favicon with
+    # favicon.png kept as the 32×32 fallback. og-card + apple-touch-icon stay PNG.
+    need = ["og-card.png", "apple-touch-icon.png", "favicon.png", "favicon.svg",
+            "icon-192.webp", "icon-512.webp", "icon-maskable-512.webp",
+            "icon-192-maskable.webp"]
     missing = [n for n in need if not (pub / n).exists()]
     svg_src = (KID / "src" / "assets" / "svgs.ts").read_text()
     urls = re.findall(r'url:\s*"([^"]+)"', svg_src)
     broken = [u for u in urls if not (pub / u.lstrip("/")).exists()]
     ok = not missing and not broken
-    return ok, (f"icons + og-card present; all {len(urls)} url assets resolve in public/"
+    return ok, (f"icons (PNG+WebP) + og-card present; all {len(urls)} url assets resolve in public/"
                 if ok else f"missing: {missing + broken}")
 
 def l7_svg_wellformed():
