@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.87.0 (test-coverage-kid: 11 vitest files/208 tests closing 15 feed findings + 6 real i18n bugs fixed (BN round-HUD digits, 5 hardcoded Round scenes, PercentScene pctFact))";
-export const APP_VERSION = "0.87.0";
+export const APP_BUILD = "16 Aug 2026 · 0.88.0 (test-coverage-api: 5 standalone test files (480+ checks) closing 12 feed findings + 4 real bug fixes (import updated_at round-trip, admin request NameError, admin string-PK id, #865 iat sub-second race))";
+export const APP_VERSION = "0.88.0";

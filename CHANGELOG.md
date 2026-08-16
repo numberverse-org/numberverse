@@ -1,3 +1,7 @@
+## 16 Aug 2026 — 0.88.0 (test-coverage-api: 5 standalone test files (480+ checks) closing 12 feed findings + 4 real bug fixes (import updated_at round-trip, admin request NameError, admin string-PK id, #865 iat sub-second race))
+
+504d59a 🧪 test-coverage-api: 5 standalone test files (480+ checks) closing feed #2/#3/#4/#5/#6/#7/#8/#9/#10/#11/#12 + 4 real bug fixes
+
 ## 16 Aug 2026 — 0.87.0 (test-coverage-kid: 11 vitest files/208 tests closing 15 feed findings + 6 real i18n bugs fixed (BN round-HUD digits, 5 hardcoded Round scenes, PercentScene pctFact))
 
 e1cca7c 📚 TRACKER: v50 test-coverage-kid feed closure (15 findings — 11 vitest files/208 tests + 6 i18n bugs fixed)
