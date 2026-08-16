@@ -609,10 +609,15 @@ export async function syncProgress(): Promise<void> {
     setChannelSyncState("progress", "syncing");
     // #9 — carry each kid's current coin wallet with the batch so the server
     // keeps the max (newest-wins) and a second device can restore it.
+    // #1804 — ALSO carry the monotonic wallet_seq so the server can do
+    // last-write-wins (a spend lowers coins but bumps seq; the old max-of-coins
+    // would resurrect the pre-spend balance).
     const coins: Record<string, number> = {};
+    const walletSeq: Record<string, number> = {};
     for (const e of mapped) {
       const sid = identity.kidFor(e.kidId);
       if (sid && !(sid in coins)) coins[sid] = useKidStore.getState().nova[e.kidId]?.coins ?? 0;
+      if (sid && !(sid in walletSeq)) walletSeq[sid] = useKidStore.getState().nova[e.kidId]?.walletSeq ?? 0;
     }
     const res = await fetch(`${API}/progress`, {
       method: "POST",
@@ -629,6 +634,7 @@ export async function syncProgress(): Promise<void> {
           timestamp: e.ts, // #1024 — client round timestamp, preserved
         })),
         coins,
+        wallet_seq: walletSeq, // #1804 — LWW wallet version per kid
       }),
     });
     if (res.ok) {
@@ -936,6 +942,7 @@ export function filterLocalStories(
  *  when there's no mapping / offline / server error — restore is always best-effort. */
 async function fetchSnapshot(localKidId: string): Promise<{
   coins: number;
+  walletSeq: number; // #1804 — monotonic wallet version (last-write-wins restore)
   mastery: Array<{ skillId: string; mastery: number; correct: number; attempts: number; streak: number }>;
 } | null> {
   const identity = await ensureIdentity();
@@ -947,7 +954,11 @@ async function fetchSnapshot(localKidId: string): Promise<{
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return { coins: data.coins ?? 0, mastery: data.mastery ?? [] };
+    return {
+      coins: data.coins ?? 0,
+      walletSeq: data.wallet_seq ?? 0,
+      mastery: data.mastery ?? [],
+    };
   } catch {
     return null; // offline — skip quietly, retry next tick
   }

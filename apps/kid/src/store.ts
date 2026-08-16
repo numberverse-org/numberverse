@@ -326,6 +326,11 @@ export const STORY_HARD_CAP = 600;
 
 export interface NovaState {
   coins: number;
+  /** #1804 — monotonic wallet version counter. Bumped on EVERY coins mutation
+   *  (grants AND spends) so the highest seq always carries the newest TRUE
+   *  balance. The server + restoreSnapshot use last-write-wins on this seq,
+   *  never a max of coins, so a spend (which lowers coins) can't resurrect. */
+  walletSeq: number;
   totalEarned: number;
   owned: string[];
   equipped: string;
@@ -418,6 +423,7 @@ export interface NovaState {
 export function defaultNova(): NovaState {
   return {
     coins: 0,
+    walletSeq: 0, // #1804 — monotonic wallet version (last-write-wins sync)
     totalEarned: 0,
     owned: [],
     equipped: "none",
@@ -676,11 +682,13 @@ interface KidState {
   /** #9 — merge a server snapshot into the local store, newest-wins. Called on
    *  a SECOND device after the parent signs in, so a kid's progress "follows"
    *  them (aggregate mastery + coins only — never voice/face). The device with
-   *  more accumulated corrects wins a skill; the wallet takes the max coins. */
+   *  more accumulated corrects wins a skill; the wallet takes the higher
+   *  wallet_seq (#1804) — never a max of coins, so a spend can't resurrect. */
   restoreSnapshot: (
     kidId: string,
     snap: {
       coins: number;
+      walletSeq: number;
       mastery: Array<{ skillId: string; mastery: number; correct: number; attempts: number; streak: number }>;
     }
   ) => void;
@@ -723,13 +731,47 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   if (!base) return undefined;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pending: { name: string; value: { state: S; version?: number } } | null = null;
+  // FIFO queue of writes already POSTED to the worker (replies arrive in the
+  // same order because the worker processes messages sequentially). A second
+  // debounce can fire before the first reply — the queue maps each reply to the
+  // right write instead of clobbering the newest with an older payload.
+  let inFlight: Array<{ name: string; value: { state: S; version?: number } }> = [];
   let writeFailed = false;
-  const write = () => {
-    if (!pending) return;
-    const p = pending;
-    pending = null;
+  // #1814 — serialize off the main thread. JSON.stringify of the WHOLE blob
+  // costs ~10–70ms on every trailing-edge write. The worker returns the state
+  // string; only the final localStorage.setItem stays here. Guarded so an
+  // environment without Worker (or a worker that fails to construct) falls back
+  // to the synchronous path. (In a WORKER thread `localStorage` is undefined, so
+  // `base` above is undefined and this whole function returns early — a persist
+  // worker never spawns a nested worker.)
+  let worker: Worker | null = null;
+  if (typeof Worker !== "undefined") {
     try {
-      base.setItem(p.name, p.value);
+      worker = new Worker(new URL("./persist.worker.ts", import.meta.url), { type: "module" });
+      worker.onmessage = (ev: MessageEvent<string>) => {
+        const p = inFlight.shift(); // oldest posted write — replies are ordered
+        if (!p) return;
+        // Build the zustand envelope {"state":…,"version":…} WITHOUT re-stringifying
+        // the state (that was the expensive part, now done off-thread).
+        writeBlob(p.name, `{"state":${ev.data},"version":${p.value.version ?? 0}}`);
+      };
+      worker.onerror = () => {
+        // Worker failed at runtime — fall back to synchronous writes forever.
+        worker = null;
+        const queued = inFlight;
+        inFlight = [];
+        for (const q of queued) writeSync(q);
+      };
+    } catch {
+      worker = null;
+    }
+  }
+  /** The ONE final write routine shared by both paths: worker reply AND the
+   *  synchronous flush fallback. Only the localStorage.setItem stays on the
+   *  main thread. */
+  const writeBlob = (name: string, blob: string) => {
+    try {
+      localStorage.setItem(name, blob);
       if (writeFailed) {
         writeFailed = false;
         emitPersistSignal(PERSIST_OK_EVENT);
@@ -741,12 +783,50 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
       emitPersistSignal(PERSIST_ERROR_EVENT);
     }
   };
+  /** Synchronous full-blob write (old path): used by the worker-fallback and
+   *  the pagehide/beforeunload durability flush. writeBlob handles the signal. */
+  const writeSync = (p: { name: string; value: { state: S; version?: number } }) => {
+    writeBlob(p.name, JSON.stringify(p.value));
+  };
+  const write = () => {
+    if (!pending) return;
+    const p = pending;
+    pending = null;
+    if (worker) {
+      inFlight.push(p);
+      try {
+        worker.postMessage(p.value.state);
+      } catch {
+        const idx = inFlight.indexOf(p);
+        if (idx >= 0) inFlight.splice(idx, 1);
+        writeSync(p);
+      }
+    } else {
+      writeSync(p);
+    }
+  };
   const flush = () => {
     if (timer) {
       clearTimeout(timer);
       timer = null;
     }
-    write();
+    // Durability guarantee (#1814): pagehide/beforeunload MUST write durably —
+    // an async worker round-trip may not finish on tab close. If a write is
+    // pending, stringify + setItem directly (the old synchronous path) via the
+    // shared final write routine. A sync write supersedes any older in-flight
+    // worker writes (their late replies are ignored because the queue is cleared).
+    if (pending) {
+      const p = pending;
+      pending = null;
+      inFlight = [];
+      writeSync(p);
+    } else if (inFlight.length > 0) {
+      // No pending (already posted) but replies may not land before tab close —
+      // write the NEWEST posted snapshot durably now.
+      const p = inFlight[inFlight.length - 1];
+      inFlight = [];
+      writeSync(p);
+    }
   };
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", flush);
@@ -805,6 +885,13 @@ function partializeKidState(s: KidState) {
   };
 }
 type PersistedKidState = ReturnType<typeof partializeKidState>;
+
+/** #1814 — pure JSON serialization of the persisted snapshot, shared by the
+ * main-thread flush path and the persist worker so the stringify logic has ONE
+ * implementation. Unit-testable by construction (pure function). */
+export function serializeSnapshot(state: PersistedKidState): string {
+  return JSON.stringify(state);
+}
 
 /** #789 — nv_store_v1 now carries an explicit persist version. The original
  * blob had no version, so zustand sees it as v0 and routes it through this
@@ -1137,6 +1224,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + add,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add,
                 earnedToday: todayEarned + add,
                 earnDay: today,
@@ -1164,6 +1252,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + add,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add,
                 earnedToday: te + add,
                 earnDay: today,
@@ -1197,6 +1286,7 @@ export const useKidStore = create<KidState>()(
                 ...cur,
                 bosses,
                 coins: cur.coins + add,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add,
                 earnedToday: te + add,
                 earnDay: today,
@@ -1240,6 +1330,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + add,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add,
                 earnedToday: earnedToday + add,
                 earnDay: today,
@@ -1308,6 +1399,9 @@ export const useKidStore = create<KidState>()(
                 species: speciesId,
                 adoptedPets: adopted,
                 coins: species.cost > 0 ? cur.coins - species.cost : cur.coins,
+                // #1804 — a spend bumps the seq too; even a $0 owl "adopt" still
+                // advances the wallet version so a later spend stays ordered.
+                walletSeq: (cur.walletSeq ?? 0) + 1,
               },
             },
           };
@@ -1338,13 +1432,34 @@ export const useKidStore = create<KidState>()(
               lastDecay: Date.now(),
             };
           }
-          // Wallet: keep the max (server may know a higher balance synced earlier).
-          // Only touch nova when the balance actually improves or a record needs
-          // creating — the skills merge above is the main event.
+          // #1804 — wallet last-write-wins on the monotonic wallet_seq, NOT a max
+          // of coins. A spend lowers coins but bumps seq; taking Math.max would
+          // resurrect the pre-spend balance. Adopt {coins, walletSeq} from the
+          // snapshot only when snap.walletSeq >= local walletSeq (equal = no-op
+          // on the seq, but still adopt the coins to heal drift). A LEGACY
+          // snapshot (pre-#1804, no wallet_seq) has no seq to compare — fall
+          // back to the old keep-the-max so a second-device restore still heals
+          // upward. Only touch nova when the seq wins or a record needs creating
+          // — the skills merge above is the main event.
           const cur = s.nova[kidId];
-          const nextCoins = Math.max(cur?.coins ?? 0, snap.coins);
+          const localSeq = cur?.walletSeq ?? 0;
           if (cur) {
+            if (typeof snap.walletSeq === "number") {
+              if (snap.walletSeq >= localSeq) {
+                return {
+                  skills,
+                  nova: { ...s.nova, [kidId]: { ...cur, coins: snap.coins, walletSeq: snap.walletSeq } },
+                };
+              }
+              return { skills };
+            }
+            const nextCoins = Math.max(cur.coins ?? 0, snap.coins);
             return { skills, nova: { ...s.nova, [kidId]: { ...cur, coins: nextCoins } } };
+          }
+          if (typeof snap.walletSeq === "number") {
+            return snap.coins > 0
+              ? { skills, nova: { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins, walletSeq: snap.walletSeq } } }
+              : { skills };
           }
           return snap.coins > 0
             ? { skills, nova: { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins } } }
@@ -1366,6 +1481,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins - outfit.cost,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — a spend bumps the seq
                 owned: [...cur.owned, outfitId],
                 equipped: outfitId,
               },
@@ -1420,6 +1536,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + add + bestCoins,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add + bestCoins,
                 careCoins: (cur.careCoins ?? 0) + add,
                 careDay: today,
@@ -1503,6 +1620,7 @@ export const useKidStore = create<KidState>()(
                 questClaimed: true,
                 questPaid: actual,
                 coins: cur.coins + actual,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + actual,
                 earnedToday: todayEarned + actual,
                 earnDay: today,
@@ -1537,6 +1655,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + add,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add,
                 earnedToday: todayEarned + add,
                 earnDay: today,
@@ -1623,6 +1742,7 @@ export const useKidStore = create<KidState>()(
                 ...cur,
                 boxes: [...(cur.boxes ?? []), next.id],
                 coins: cur.coins + add,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + add,
                 earnedToday: (cur.earnDay === today ? cur.earnedToday : 0) + add,
                 earnDay: today,
@@ -1646,6 +1766,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + NOVA_SHARE_REWARD,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + NOVA_SHARE_REWARD,
                 shareDay: today,
               },
@@ -1668,6 +1789,7 @@ export const useKidStore = create<KidState>()(
               [kidId]: {
                 ...cur,
                 coins: cur.coins + NOVA_BIRTHDAY_COINS,
+                walletSeq: (cur.walletSeq ?? 0) + 1, // #1804 — every grant bumps the seq
                 totalEarned: cur.totalEarned + NOVA_BIRTHDAY_COINS,
                 bdayYear: year,
               },

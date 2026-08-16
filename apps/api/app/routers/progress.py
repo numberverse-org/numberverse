@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -132,6 +132,25 @@ async def _get_owned_kid(
     return kid
 
 
+async def _lock_mastery_keys(db: AsyncSession, pairs: set[tuple[uuid.UUID, str]]) -> None:
+    """#1803 — serialize the BKT read-modify-write per unique (kid_id, skill_id).
+
+    The BKT mastery update below is a non-atomic read (db.get(SkillMastery)) →
+    mutate → commit. Two concurrent POSTs touching the SAME skill could both
+    read the same baseline and silently lose one update. A Postgres advisory
+    transaction lock on a stable hash of "kid_id:skill_id" makes those two
+    updates serialize: the lock is held until the handler's db.commit(), so the
+    second request's read can't start until the first request's write commits.
+    """
+    for kid_id, skill_id in pairs:
+        # Parameters are bound to the statement (not passed as execute kwargs)
+        # so in-memory test harnesses can swallow the raw-text query unchanged.
+        stmt = text(
+            "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"
+        ).bindparams(key=f"{kid_id}:{skill_id}")
+        await db.execute(stmt)
+
+
 # #853 — this handler is fully synchronous and commits before returning, so the
 # response is the imperative result (200), not a queued acknowledgement (202).
 @router.post("/progress", status_code=status.HTTP_200_OK)
@@ -194,6 +213,12 @@ async def record_progress(
         # BKT mastery update runs ONLY for genuinely-new events — a replayed
         # batch (lost ACK → same uid re-posted) is a silent no-op here, so
         # mastery is never double-counted.
+        # #1803 — acquire a Postgres advisory transaction lock for EVERY unique
+        # (kid_id, skill_id) in the inserted rows BEFORE the read-modify-write
+        # below, so two concurrent POSTs on the same skill serialize (the lock
+        # is held until the handler's commit at the end of this function).
+        pairs = {(k, s) for k, s, _ in inserted}
+        await _lock_mastery_keys(db, pairs)
         for kid_id, skill_id, correct in inserted:
             sm = await db.get(SkillMastery, (kid_id, skill_id))
             if sm is None:
@@ -230,19 +255,31 @@ async def record_progress(
                 prev_mastery, sm.mastery, sm.mastered_at, threshold, now_utc
             )
 
-    # #9 — multi-device sync: newest-wins coin wallet. The server keeps the max
-    # coin balance ever reported per kid (aggregate only — no voice/face).
+    # #9 — multi-device sync: the kid's Nova wallet follows them across devices
+    # (aggregate only — no voice/face).
     # #911 — the old read-then-write (`get`, compare, assign) could lose a
-    # concurrent update; GREATEST is evaluated atomically in Postgres.
-    if body.coins:
+    # concurrent update; the previous GREATEST was atomic but still WRONG for a
+    # value that can DECREASE (#1804): a spend reports a LOWER balance, GREATEST
+    # keeps the old higher value, and restore re-inflates via Math.max — spent
+    # coins resurrect. Switch to last-write-wins on a monotonic wallet_seq
+    # counter: this ONE atomic UPDATE only accepts a report when the incoming
+    # wallet_seq is STRICTLY GREATER than the stored value, and sets coins AND
+    # wallet_seq to the reported values. A spend lowers both seq-bumped values,
+    # so the server never resurrects a pre-spend balance. This assumes a
+    # single-writer-per-kid model — the kid app serializes every coins mutation
+    # (grants + spends) behind one monotonic counter, so a lower seq is always a
+    # stale/older snapshot.
+    if body.coins and body.wallet_seq:
         for kid_id in kid_ids:
             coin = body.coins.get(str(kid_id))
-            if coin is None:
+            seq = body.wallet_seq.get(str(kid_id))
+            if coin is None or seq is None:
                 continue
             await db.execute(
                 update(Kid)
                 .where(Kid.id == kid_id, Kid.profile_id == profile.id)
-                .values(coins=func.greatest(func.coalesce(Kid.coins, 0), coin))
+                .where(func.coalesce(Kid.wallet_seq, 0) < seq)
+                .values(coins=coin, wallet_seq=seq)
             )
 
     await db.commit()
@@ -289,7 +326,8 @@ async def get_kid_snapshot(
     """#9 — multi-device sync: the aggregate profile a SECOND device restores a
     kid from after the parent signs in. E2E-friendly by construction — mastery
     + coins only, never voice/face/raw answers. Conflict resolution is
-    newest-wins on the client (more accumulated corrects / higher coins win)."""
+    newest-wins on the client (more accumulated corrects / higher wallet_seq
+    wins — #1804)."""
     owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
@@ -301,6 +339,7 @@ async def get_kid_snapshot(
         name=owned.name,
         avatar=owned.avatar,
         coins=owned.coins or 0,
+        wallet_seq=owned.wallet_seq or 0,
         mastery=[
             MasteryOut(
                 skill_id=m.skill_id,

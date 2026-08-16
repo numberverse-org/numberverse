@@ -247,6 +247,8 @@ class KidOut(BaseModel):
     birth_year: int | None = None
     created_at: datetime
     coins: int = 0  # #987 — wallet balance surfaced in API
+    # #1804 — monotonic wallet version (last-write-wins spend sync).
+    wallet_seq: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -438,6 +440,11 @@ class ProgressBatchIn(BaseModel):
     # ("<kid_id>": int). The server keeps the max ever reported (newest-wins),
     # so a kid's Nova wallet follows them across devices.
     coins: dict[str, int] | None = None
+    # #1804 — per-kid monotonic wallet version ("<kid_id>": int). The server
+    # only accepts a coins+wallet_seq update when the incoming seq is strictly
+    # greater than the stored value (last-write-wins — a spend lowers both, so
+    # the old GREATEST never resurrects a pre-spend balance).
+    wallet_seq: dict[str, int] | None = None
 
 
 class KidSnapshotOut(BaseModel):
@@ -448,6 +455,8 @@ class KidSnapshotOut(BaseModel):
     name: str
     avatar: str | None = None
     coins: int = 0
+    # #1804 — monotonic wallet version (last-write-wins spend sync).
+    wallet_seq: int = 0
     mastery: list[MasteryOut]
 
     @field_validator("name")

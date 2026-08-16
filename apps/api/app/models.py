@@ -78,6 +78,10 @@ class Kid(Base):
     # carried so a kid's wallet follows them across devices. Auto-migrated on
     # boot by migrations.py (server_default → populated rows get 0).
     coins: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    # #1804 — monotonic wallet version counter for last-write-wins spend sync.
+    # Every coins mutation on the kid app bumps this; the server only accepts a
+    # higher seq, so a spend (which lowers the balance) never resurrects.
+    wallet_seq: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     # #245 — share-card deep link: a random opaque token minted on the parent's
     # first "share" (nullable until then). The token is UNGUESSABLE and only the
     # parent can request it; the public snapshot it unlocks carries NO identity.
