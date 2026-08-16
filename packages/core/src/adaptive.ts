@@ -73,8 +73,13 @@ export function isMastered(state: SkillState, params: AdaptiveParams = DEFAULT_P
 }
 
 /**
- * Pick a difficulty index for the given ascending levels array,
- * targeting ~targetSuccess success (level chosen by current mastery).
+ * Pick a difficulty VALUE for the given ladder, targeting ~targetSuccess
+ * success (level chosen by current mastery). The ladder is ordered
+ * easiest→hardest BY INDEX (per GameConfig), so `levels` may ascend OR
+ * descend in value — the engine only ever maps mastery onto the index.
+ * Returns `1` for an EMPTY ladder (no GAME ships one today; 1 is a safe
+ * neutral default that callers round-tripping via `ladder.indexOf(1)` land
+ * on index 0).
  */
 export function nextDifficulty(state: SkillState, levels: number[], targetSuccess = 0.8): number {
   if (levels.length === 0) return 1;

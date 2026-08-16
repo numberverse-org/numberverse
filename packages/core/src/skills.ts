@@ -510,7 +510,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-dectenths', skillId: 'en-dectenths', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-makechange', skillId: 'en-makechange', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-elapsed', skillId: 'en-elapsed', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
-  { id: 'game-measure', skillId: 'math-measure', difficultyLevels: [10, 20, 50, 100, 3, 5], targetSuccess: 0.8 },
+  { id: 'game-measure', skillId: 'math-measure', difficultyLevels: [10, 20, 50, 100, 300, 500], targetSuccess: 0.8 },
   { id: 'game-perim', skillId: 'en-perim', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-solidmatch', skillId: 'en-solidmatch', difficultyLevels: [4, 5, 6, 8, 8, 10], targetSuccess: 0.8 },
   { id: 'game-symmetry', skillId: 'en-symmetry', difficultyLevels: [4, 4, 5, 5, 6, 6], targetSuccess: 0.8 },
@@ -534,8 +534,8 @@ export const GAMES: GameConfig[] = [
   { id: 'game-idioms', skillId: 'bn-idioms', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-verbgender', skillId: 'bn-verbgender', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
   { id: 'game-classifiers', skillId: 'bn-classifiers', difficultyLevels: [4, 4, 6, 6, 8, 8], targetSuccess: 0.8 },
-  { id: 'game-digraphs', skillId: 'en-digraphs', difficultyLevels: [10000, 9000, 8000, 7000, 6000, 5000], targetSuccess: 0.8 },
-  { id: 'game-longvowels', skillId: 'en-longvowels', difficultyLevels: [10000, 9000, 8000, 7000, 6000, 5000], targetSuccess: 0.8 },
+  { id: 'game-digraphs', skillId: 'en-digraphs', difficultyLevels: [10000, 9000, 8000, 7000, 6000, 5000], targetSuccess: 0.8 }, // deliberately descending — timer ms (lower = less time = harder)
+  { id: 'game-longvowels', skillId: 'en-longvowels', difficultyLevels: [10000, 9000, 8000, 7000, 6000, 5000], targetSuccess: 0.8 }, // deliberately descending — timer ms (lower = less time = harder)
   { id: 'game-bdtaka', skillId: 'bd-taka', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-coinvalues', skillId: 'bn-coin-values', difficultyLevels: [8, 8, 12, 12, 20, 20], targetSuccess: 0.8 },
   { id: 'game-timewords', skillId: 'bn-time-words', difficultyLevels: [0, 0, 1, 1, 2, 2], targetSuccess: 0.8 },
@@ -545,7 +545,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-bnsightwords', skillId: 'bn-sightwords', difficultyLevels: [6, 6, 8, 8, 9, 9], targetSuccess: 0.8 },
   { id: 'game-sentencebuilder', skillId: 'bn-sentence-builder', difficultyLevels: [1, 1, 2, 2, 2, 2], targetSuccess: 0.8 },
   { id: 'game-storyread', skillId: 'bn-story-read', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
-  { id: 'game-rhymes', skillId: 'bn-rhymes', difficultyLevels: [2, 2, 1, 1, 0, 0], targetSuccess: 0.8 },
+  { id: 'game-rhymes', skillId: 'bn-rhymes', difficultyLevels: [2, 2, 1, 1, 0, 0], targetSuccess: 0.8 }, // deliberately descending — guide level (0 = listen-only, hardest)
   { id: 'game-wordpairs', skillId: 'bn-word-pairs', difficultyLevels: [3, 3, 4, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-punct', skillId: 'bn-punctuation', difficultyLevels: [2, 2, 3, 3, 4, 4], targetSuccess: 0.8 },
   { id: 'game-compounds', skillId: 'bn-compounds', difficultyLevels: [2, 2, 2, 3, 3, 3], targetSuccess: 0.8 },
@@ -591,7 +591,7 @@ export const GAMES: GameConfig[] = [
   { id: 'game-regroup', skillId: 'add-sub-regroup', difficultyLevels: [2, 3, 4, 5, 6, 8], targetSuccess: 0.8 },
   { id: 'game-picto', skillId: 'data-picto', difficultyLevels: [2, 2, 5, 5, 10, 10], targetSuccess: 0.8 },
   { id: 'game-bnwords', skillId: 'bn-words', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
-  { id: 'game-conjunctfind', skillId: 'bn-conjunct-find', difficultyLevels: [12, 11, 10, 9, 8, 7], targetSuccess: 0.8 },
+  { id: 'game-conjunctfind', skillId: 'bn-conjunct-find', difficultyLevels: [12, 11, 10, 9, 8, 7], targetSuccess: 0.8 }, // deliberately descending — timer seconds (lower = less time = harder)
   { id: 'game-cvc', skillId: 'en-cvc', difficultyLevels: [3, 4, 5, 6, 8, 10], targetSuccess: 0.8 },
   { id: 'game-contracts', skillId: 'en-contractions', difficultyLevels: [3, 3, 3, 4, 4, 4], targetSuccess: 0.8 },
   { id: 'game-compare', skillId: 'en-compare', difficultyLevels: [3, 4, 5, 5, 5, 5], targetSuccess: 0.8 }, // #1052 — active adjective pool grows big/small/tall → +short → +long

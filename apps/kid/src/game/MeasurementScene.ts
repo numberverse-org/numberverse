@@ -11,7 +11,7 @@ import { gameBackground } from "./backgrounds";
 import { txt, ringCorrect, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
-const LEVELS = GAMES.find((g) => g.id === "game-measure")?.difficultyLevels ?? [10, 20, 50, 100, 3, 5];
+const LEVELS = GAMES.find((g) => g.id === "game-measure")?.difficultyLevels ?? [10, 20, 50, 100, 300, 500];
 /** Same-unit gap per level — higher levels compare closer values. */
 const GAPS = [3, 3, 2, 2];
 const ROUNDS_TO_FINISH = 3;
@@ -157,7 +157,8 @@ export class MeasurementScene extends Phaser.Scene {
       smallBase = smaller;
     } else {
       // Big unit vs small unit: 1–3 m vs cm (level 4), 1–5 m vs cm (level 5).
-      const bigUnit = Phaser.Math.Between(1, max);
+      // Ladder holds cm-equivalents (300 / 500) so the array stays monotone.
+      const bigUnit = Phaser.Math.Between(1, max / 100);
       const small = Phaser.Math.Between(Math.floor((bigUnit * 100) / 3), bigUnit * 100 - 10);
       bigDisplay = bigUnit;
       smallDisplay = small;

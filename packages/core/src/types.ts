@@ -12,7 +12,15 @@ export interface Band {
 export interface GameConfig {
   id: string; // e.g. 'game-countpop'
   skillId: string; // e.g. 'count-1-10'
-  difficultyLevels: number[]; // ascending — engine picks an index
+  /** Difficulty ladder for the adaptive engine — ordered EASIEST (index 0) to
+   *  HARDEST (index n−1). `nextDifficulty` maps mastery onto the INDEX, so the
+   *  array itself must be monotone (either non-decreasing OR non-increasing,
+   *  never a sawtooth). NOTE: values are scene-semantics, NOT a global scale —
+   *  most scenes ascend (bigger number = harder), but time/reveal-based scenes
+   *  legitimately descend because LOWER duration/guidance = HARDER (e.g.
+   *  game-digraphs [10000..5000] timer ms, game-rhymes [2,2,1,1,0,0] guide
+   *  level). Editing a ladder: preserve monotonicity in the scene's own terms. */
+  difficultyLevels: number[];
   targetSuccess: number; // ~0.8
 }
 
