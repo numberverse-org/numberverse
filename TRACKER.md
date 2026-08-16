@@ -1,6 +1,16 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧪 V50 TEST-COVERAGE-CORE FEED (14 findings) 16 Aug 2026 ✅ → 0.85.0
+- **5 REAL BUGS fixed** (of 14 findings, verified by 254 regression checks):
+  - **#0 NaN poisoning** — `adaptive.observe()` degenerate params (pGuess=pSlip=0, extreme pMastered) made pCorrect 0/1 → Bayes posterior divides by zero → NaN. Guard returns finite unchanged state.
+  - **#2 dangling families** — 17 SKILLs referenced SKILL_FAMILIES entries that didn't exist; all 17 added (EN+BN title + tier list matching skill tiers).
+  - **#5 lookalike wa.me** — `isWhatsAppShare` used `endsWith("wa.me")` → `notwa.me` false positive. Now EXACT hostname match (wa.me + www.wa.me); real link (proto link) verified still true.
+  - **#6 truncated PNG** — `stripPngMetadata` returned a PARTIAL PNG (pixel-damaged) when a chunk was cut mid-stream; now returns the ORIGINAL bytes unchanged (strip only on intact streams).
+  - **#10 attention 6-floor** — `Math.max(6,…)` snapped strong round-4 threshold to 6 and Moni could never recover below 6. Now decays 1/round (3→2→1→null = fully recovered); genuine late-dip still fires ≥6.
+- **10 new self-contained regression test files** (run bare vs built dist, zero deps): adaptive, links, locale_festival, moni_attention, moni_diagnose, moni_fingerprint, moni_misconception, moni_plan, png, skills_families — all wired into the same check/fail style as catalog_monotone. All 12 core test files green.
+- Gates: kid tsc 0, parent tsc 0, core 12/12. Commits 354c5fa (5 fixes + 10 tests), f2191f2 (foreign nova3d fix → unblocked release).
+
 ## 🧠 V50 DIFFICULTY-MODEL FEED (13 findings) 16 Aug 2026 ✅ → 0.85.0
 - **#0 server mastery decay:** `progress.py` `_decay()` applies the device's `(1−decayPerDay)^days` idle decay (was never decaying — the parent portal drifted UP from the kid's local bar). `test_adaptive_model.py` proves 0.9 after 30 idle days ≈ 0.9·0.98³⁰.
 - **#1 BKT params divergence:** server no longer reads the `adaptive` config row — `_adaptive_params` returns COMPILED-IN `DEFAULT_PARAMS` mirroring `adaptive.ts` (offline-first kid hardcodes them, so divergence is now impossible by construction). Schema still accepts the row (archival).
