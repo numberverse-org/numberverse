@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy import case, select
+from sqlalchemy import case, delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +58,25 @@ _logged_throttle_windows: dict[tuple[str, str], int] = {}
 def _naive_utcnow() -> datetime:
     """Postgres returns naive TIMESTAMP columns, so store naive UTC everywhere."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+# #1767 — rate_limit_buckets is an unbounded append-only table: every key a
+# client ever touched (including login-email probing and spoofed XFF IPs)
+# leaves a row forever. The scheduled prune calls this ~hourly so the table
+# stays bounded. Buckets are short-lived windows — anything untouched for
+# 7 days is certainly dead.
+BUCKET_PRUNE_OLDER_THAN_DAYS = 7
+
+
+async def prune_rate_limit_buckets(db, older_than_days: int = BUCKET_PRUNE_OLDER_THAN_DAYS) -> int:
+    """Delete rate_limit_buckets rows whose window_start is older than
+    older_than_days. Returns the row count removed."""
+    cutoff = _naive_utcnow() - timedelta(days=older_than_days)
+    result = await db.execute(
+        delete(RateLimitBucket).where(RateLimitBucket.window_start < cutoff)
+    )
+    await db.commit()
+    return result.rowcount or 0
 
 
 def redact_key(value: str) -> str:
@@ -148,6 +167,13 @@ async def _allow_fixed_window(
     (resetting the window when it has expired), so two workers can't both pass
     a request on a stale count. The increment is committed immediately so a
     later route failure can't roll the limit back.
+
+    #1770 — the pre-commit is intentional: the durable cross-worker count must
+    survive a route that fails afterwards (422/413), or a second worker could
+    replay a burnt window and pass. The residual blast radius is bounded by
+    #1762's per-endpoint keys — a malformed-flood that exhausts this bucket can
+    only burn ITS OWN endpoint's bucket (e.g. /progress), never the /export
+    bucket, so one bad surface cannot starve another.
     """
     now = _naive_utcnow()
     cutoff = now - timedelta(seconds=window_seconds)
@@ -192,7 +218,17 @@ def rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
         # 120/min bucket across catalog reads, progress sync, kid writes,
         # export and import; each route group gets its own budget.
         endpoint = _endpoint_tag(request)
-        key = f"{profile.id}:{ip}:{endpoint}"
+        # #1769 — when there is no client socket (request.client is None),
+        # _request_ip falls back to the literal "unknown". Keying on
+        # profile.id alone then gives every no-IP client its own per-account
+        # bucket (the account key disambiguates; the ip half contributes
+        # nothing when there is no ip) instead of collapsing them all into one
+        # shared {profile.id}:unknown bucket that a few no-IP requests could
+        # lock out.
+        if ip == "unknown":
+            key = f"{profile.id}:{endpoint}"
+        else:
+            key = f"{profile.id}:{ip}:{endpoint}"
         if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
             _log_429("account", key, limit, _WINDOW_SECONDS)
             raise HTTPException(
@@ -220,7 +256,14 @@ def read_rate_limit(limit: int = READ_REQUESTS_PER_MIN) -> Callable:
     ) -> Profile:
         ip = _request_ip(request)
         endpoint = _endpoint_tag(request)
-        key = f"{profile.id}:{ip}:{endpoint}:read"
+        # #1769 — same no-IP fallback as `rate_limit`: with no client socket
+        # the literal "unknown" would merge every no-IP client into one shared
+        # {profile.id}:unknown:endpoint:read bucket, so drop the ip component
+        # and key on the account alone.
+        if ip == "unknown":
+            key = f"{profile.id}:{endpoint}:read"
+        else:
+            key = f"{profile.id}:{ip}:{endpoint}:read"
         if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
             _log_429("read", key, limit, _WINDOW_SECONDS)
             raise HTTPException(
@@ -241,10 +284,29 @@ def ip_rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
     from `rate_limit`. Unlike `rate_limit`, it does not depend on
     `get_current_profile` — it protects surfaces reachable without a token.
     Returns None; the route only needs the dependency to run before it.
+
+    #1769 — when there is no client socket, `_request_ip` yields "unknown";
+    this dep then falls back to the RIGHTMOST X-Forwarded-For hop (the value
+    nearest our trusted edge) so a no-IP client that DID send XFF still gets
+    its own bucket. A public client with neither a socket nor XFF has no
+    identifier at all and genuinely shares the single `ip:unknown` bucket —
+    a documented residual; such a client can't be told apart anyway.
     """
 
     async def dep(request: Request, db: AsyncSession = Depends(get_db)) -> None:
         ip = _request_ip(request)
+        # #1769 — no-IP fallback granularity: keep every share/catalog surface
+        # from collapsing into one shared "unknown" bucket. When the client
+        # socket is missing, use the RIGHTMOST XFF hop if one exists (that is
+        # the client as seen from our edge, appended by our own proxy); only a
+        # client with genuinely no identifier stays "unknown".
+        if ip == "unknown":
+            headers = getattr(request, "headers", None)
+            xff = headers.get("x-forwarded-for") if headers is not None else None
+            if xff:
+                candidate = xff.rsplit(",", 1)[-1].strip()
+                if candidate:
+                    ip = candidate
         key = f"ip:{ip}"
         if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
             _log_429("ip", key, limit, _WINDOW_SECONDS)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""#1760/#1761/#1762/#1751 — rate-limit key hardening + lockout logging.
+"""#1760/#1761/#1762/#1751/#1769/#1770 — rate-limit key hardening + lockout logging.
 
 Standalone (no Postgres, no pytest):  cd apps/api && python3 tests/test_ratelimit_keys.py
 
@@ -11,7 +11,12 @@ Asserts:
   (c) a 429 raises HTTPException AND emits a WARNING with a REDACTED key
       (#1751);
   (d) the auth wrong-password 401 path emits a WARNING with a hashed account
-      key (#1751).
+      key (#1751);
+  (e) the pre-committed increment is bounded to its OWN endpoint bucket, so a
+      422/413-flood on /progress can never burn the /export bucket (#1770);
+  (f) when request.client is None, rate_limit/read_rate_limit drop the ip
+      component (per-account granularity) and ip_rate_limit falls back to the
+      rightmost XFF hop, so no-IP clients no longer share one bucket (#1769).
 """
 import asyncio
 import logging
@@ -120,6 +125,54 @@ async def _call_rate_limit_429():
         rl._allow_fixed_window = orig
 
 
+async def _call_burn_isolation():
+    """#1770 — two requests with different endpoint tags produce distinct keys."""
+    captured = []
+
+    async def fake_allow(db, key, limit, window_seconds):
+        captured.append(key)
+        return True
+
+    orig = rl._allow_fixed_window
+    rl._allow_fixed_window = fake_allow
+    try:
+        dep = rl.rate_limit(limit=30)
+        await dep(req(path="/api/v1/progress"), SimpleNamespace(id="p123"), SimpleNamespace())
+        await dep(req(path="/api/v1/export"), SimpleNamespace(id="p123"), SimpleNamespace())
+    finally:
+        rl._allow_fixed_window = orig
+    return captured
+
+
+async def _call_no_ip_fallback():
+    """#1769 — no-IP fallback granularity: drop ip component, fall back to XFF."""
+    captured = []
+
+    async def fake_allow(db, key, limit, window_seconds):
+        captured.append(key)
+        return True
+
+    orig = rl._allow_fixed_window
+    rl._allow_fixed_window = fake_allow
+    try:
+        no_client = SimpleNamespace(
+            client=None, headers={}, url=SimpleNamespace(path="/api/v1/progress")
+        )
+        await rl.rate_limit()(no_client, SimpleNamespace(id="p123"), SimpleNamespace())
+        await rl.read_rate_limit()(no_client, SimpleNamespace(id="p123"), SimpleNamespace())
+        no_client_xff = SimpleNamespace(
+            client=None, headers={"x-forwarded-for": "1.2.3.4"}, url=SimpleNamespace(path="/")
+        )
+        await rl.ip_rate_limit()(no_client_xff, SimpleNamespace())
+        no_client_plain = SimpleNamespace(
+            client=None, headers={}, url=SimpleNamespace(path="/")
+        )
+        await rl.ip_rate_limit()(no_client_plain, SimpleNamespace())
+    finally:
+        rl._allow_fixed_window = orig
+    return captured
+
+
 async def _call_login_401():
     """Wrong-password login against a real (fake-DB) handler → 401 + WARNING.
 
@@ -193,6 +246,19 @@ def _run():
     check("raw email not in log", "parent@test.com" in msg2, False)
     check("account_key prefix present", "account_key=login:email:" in msg2, True)
     check("hashed email is a sha256 prefix", re.search(r"login:email:[0-9a-f]{12}", msg2) is not None, True)
+
+    print("⑤  burn isolation — a flood on one endpoint can't burn another (#1770)…")
+    captured = asyncio.run(_call_burn_isolation())
+    check("two distinct endpoint buckets", len(set(captured)), 2)
+    check("progress bucket", captured[0], "p123:1.2.3.4:progress")
+    check("export bucket", captured[1], "p123:1.2.3.4:export")
+
+    print("⑥  no-IP fallback granularity (#1769)…")
+    captured = asyncio.run(_call_no_ip_fallback())
+    check("rate_limit no-ip key drops the ip component", captured[0], "p123:progress")
+    check("read_rate_limit no-ip key keeps :read", captured[1], "p123:progress:read")
+    check("ip_rate_limit no-ip + XFF → rightmost hop", captured[2], "ip:1.2.3.4")
+    check("ip_rate_limit no-ip, no XFF → ip:unknown residual", captured[3], "ip:unknown")
 
     print()
     if fails:

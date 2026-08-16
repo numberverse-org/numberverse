@@ -239,6 +239,7 @@ async def _embed_loop():
                 _tick_count = 0
                 try:
                     async with SessionLocal() as db:
+                        from .ratelimit import prune_rate_limit_buckets
                         from .routers.admin import (
                             _prune_progress_events,
                             _prune_stories,
@@ -248,12 +249,18 @@ async def _embed_loop():
                         stories = await _prune_stories(db)
                         progress = await _prune_progress_events(db)
                         sessions = await _purge_revoked_sessions(db)
+                        # #1767 — rate_limit_buckets is otherwise append-only:
+                        # every XFF-rotating IP / login-email probing key leaves
+                        # a row forever. Same hourly tick keeps the table bounded.
+                        buckets = await prune_rate_limit_buckets(db)
                     if stories:
                         log.info("Kotha scheduled prune: removed %d stories", stories)
                     if progress:
                         log.info("Progress-event scheduled prune: removed %d rows", progress)
                     if sessions:
                         log.info("Revoked-session scheduled purge: removed %d rows", sessions)
+                    if buckets:
+                        log.info("Rate-limit bucket prune: removed %d stale rows", buckets)
                 except Exception as exc:  # noqa: BLE001
                     log.warning("Scheduled prune/purge failed: %s", exc)
         except Exception as exc:  # noqa: BLE001 — a scheduler must never die
