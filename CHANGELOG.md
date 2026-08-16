@@ -1,3 +1,13 @@
+## 17 Aug 2026 — 0.90.0 (sync/security/observability wave: #1803 mastery advisory-lock + #1804 wallet LWW spend sync (no more GREATEST resurrection) + #1814 persist worker off main thread; #1781/#1782 share page OG/Twitter card + server-shell split; #1771 secret guard min-length/entropy; #1760/#1761 trusted-proxy IP + #1762 per-endpoint rate keys + #1772 nginx CSP/HSTS/XFO headers + #1751 lockout logging; #1749/#1750 X-Request-ID correlation + structured 5xx logging)
+
+90980a3 📚 TRACKER: sync/security/observability wave in-flight (#1771–#1814, 5 waves) + #1802 closed as already-shipped
+4fc3de8 📡 obs #1749+#1750: request correlation IDs + structured 5xx logging
+201ae9a 🛡️ ratelimit-nginx #1760+#1761+#1762+#1772+#1751: trusted-proxy IP, per-endpoint keys, security headers, lockout logging
+2108308 🔑 secrets #1771: non-dev guard rejects weak/short/reused secrets
+8d01b2e 🖼️ share-og #1781+#1782: server-shell split + OG/Twitter card metadata for the public share page
+7578921 🔒 sync-persist #1803+#1804+#1814: mastery advisory-lock, wallet LWW spend sync, persist off main thread
+f044f96 📚 TRACKER: xss-prevention + main-thread-perf wave closed → 0.89.0 shipped+deployed (8 waves, 11 GitHub issues #1823-#1830 + #1820)
+
 ## 16 Aug 2026 — 0.89.0 (xss-prevention + main-thread-perf wave: #1823 external-URL allowlist drops data:/about:; #1824/#1828 name+avatar Unicode-charset/length validation (11 fields, 172 checks); #1826 CSV formula-injection guard; #1825/#1830/#1820 kid-app sanitize (download names, TTS control/RTL strip, parentHeatmap memo); #1816/#1819 SVG rasterize chunked off-boot + PNG strip without per-byte array; #1817/#1818/#1827 share-card paint async off game thread + name cap; #1821 44 room/background textures async/lazy; #1822 parent dashboard aggregation memo+chunked)
 
 a1277b8 ⚡ perf-8 #1822+#1829+#1825(parent): parent dashboard aggregation off main thread + sanitize - buildMissedQuestions/buildMonthlyArchive now async: WeakMap memoization keyed on input-array identity + setTimeout(0) chunking (50/100 rows/frame); page.tsx hydrates per-kid via useEffect (state-backed, cache-hit aware, cancelled-cleanup) - new apps/parent/app/sanitize.ts: sanitizeDisplayName (confirm dialogs) + sanitizeDownloadName (CSV filename) - parent tsc 0 errors
