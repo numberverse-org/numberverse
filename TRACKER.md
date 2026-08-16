@@ -8,7 +8,8 @@
   - **admin `create_resource`/`get_resource` NameError** — both referenced `request` (for #968 org-scoping) without declaring the `Request` param → creating/fetching ANY org-scoped model (subscriptions, kids, classrooms…) raised `NameError`. Added `request: Request` to both signatures.
   - **admin string-PK create stripped `id`** — the mass-assignment guard dropped `id` even for client-keyed catalog rows (skills, content_items) whose PK has no server default → every create would flush a NULL PK. `create_resource` now restores the client id for non-UUID-PK models.
   - **#865 legacy-cutoff sub-second race** — `create_access_token` emitted `iat` as a datetime, PyJWT truncates to whole seconds → a legacy no-sid token minted µs after logout-all/password-change was falsely rejected. Now emits float unix timestamps (deps.py already accepts int|float).
-- **2 real bugs reported by waves + documented RED tests then verified FIXED:** import #12 and admin request/id. The CI api-job install line is missing `bcrypt`/`email-validator` (reported; wiring to follow in a housekeeping pass).
+- **2 real bugs reported by waves + documented RED tests then verified FIXED:** import #12 and admin request/id.
+- **CI housekeeping closed (commit 8742890):** the api-job install line was missing `bcrypt`/`email-validator` (security.py + EmailStr schemas both needed) — added. Also wired the 5 new coverage files into CI as explicit steps (auth 66 / admin 89 / progress 62 / kids 50 / import 65). Verified all 14 standalone api test files pass with the exact CI install line in a scratch Python-3.12 venv.
 - Verified: **all 14 standalone api test files exit 0** (auth 66, admin 89, progress 62, kids 50, import 65, + the 8 pre-existing), `py_compile` clean, `app.main` imports. Commit 07c2b1e → 0.88.0.
 
 ## 🧪 V50 TEST-COVERAGE-KID FEED (15 findings) 16 Aug 2026 ✅ → 0.87.0
