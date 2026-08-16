@@ -122,8 +122,12 @@ export function observeRound(
         p.attention.fatigueThreshold = Math.max(0, sessionRounds);
       } else {
         // Decay the threshold back toward null on consecutive strong rounds:
-        // weaken it by 1 each time a strong session extends past it.
-        p.attention.fatigueThreshold = Math.max(6, p.attention.fatigueThreshold - 1);
+        // weaken it by 1 each time a strong session extends past it. NO floor
+        // at 6 — the old Math.max(6, …) snapped a strong round-4 threshold
+        // straight to 6 and could never recover below 6, so Moni stayed
+        // "fatigued" forever after one dip. Reaching 0 = fully recovered.
+        const next = p.attention.fatigueThreshold - 1;
+        p.attention.fatigueThreshold = next <= 0 ? null : next;
       }
     }
   }

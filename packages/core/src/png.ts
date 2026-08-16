@@ -28,7 +28,12 @@ export function stripPngMetadata(buf: ArrayBuffer | Uint8Array): ArrayBuffer {
       ((bytes[off] << 24) | (bytes[off + 1] << 16) | (bytes[off + 2] << 8) | bytes[off + 3]) >>> 0;
     const type = String.fromCharCode(bytes[off + 4], bytes[off + 5], bytes[off + 6], bytes[off + 7]);
     const chunkEnd = off + 8 + len + 4;
-    if (chunkEnd > bytes.length) break; // truncated file — stop safely
+    if (chunkEnd > bytes.length) {
+      // Truncated file — a cut-off chunk means we can't safely rebuild. Return
+      // the ORIGINAL input unchanged (better a PNG with metadata than a broken
+      // image with none): stripping is only safe on an intact chunk stream.
+      return new Uint8Array(bytes).buffer;
+    }
     if (KEEP.has(type)) {
       for (let i = off; i < chunkEnd; i++) out.push(bytes[i]);
     }

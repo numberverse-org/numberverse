@@ -51,11 +51,17 @@ export function openExternalWith(
   }
 }
 
-/** The only non-web flow we ship: WhatsApp share via wa.me over https. */
+/** The only non-web flow we ship: WhatsApp share via wa.me over https.
+ *  EXACT hostname match — `endsWith("wa.me")` let `notwa.me` (a lookalike
+ *  domain) through as a false positive; pin to the exact host so lookalike
+ *  suffixes AND malicious subdomains are both rejected. */
 export function isWhatsAppShare(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" && u.hostname.endsWith("wa.me");
+    return (
+      u.protocol === "https:" &&
+      (u.hostname === "wa.me" || u.hostname === "www.wa.me")
+    );
   } catch {
     return false;
   }

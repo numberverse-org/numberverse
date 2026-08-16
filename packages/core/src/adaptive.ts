@@ -41,6 +41,21 @@ export function observe(state: SkillState, correct: boolean, params: AdaptivePar
   const p = state.pMastered;
   // P(observing this answer)
   const pCorrect = p * (1 - params.pSlip) + (1 - p) * params.pGuess;
+  // Pathological params (pGuess=0 & pSlip=0, or pMastered at an extreme) make
+  // pCorrect 0 or 1 → the Bayes posterior divides by zero → NaN. A degenerate
+  // model carries NO signal, so keep mastery unchanged (finite) instead of
+  // poisoning the state with NaN. (#1044-audit test-coverage-core #0)
+  if (!Number.isFinite(pCorrect) || pCorrect <= 0 || pCorrect >= 1) {
+    return {
+      ...state,
+      pMastered: clamp01(p),
+      correct: state.correct + (correct ? 1 : 0),
+      attempts: state.attempts + 1,
+      streak: correct ? state.streak + 1 : 0,
+      lastPractice: now,
+      lastDecay: now,
+    };
+  }
   // Posterior P(mastered | observation) via Bayes
   const pMasteredGiven = correct
     ? (p * (1 - params.pSlip)) / pCorrect

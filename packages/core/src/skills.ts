@@ -47,6 +47,26 @@ export const SKILL_FAMILIES: SkillFamily[] = [
   { id: 'percent', title: 'Percent of a number', titleBn: 'সংখ্যার শতকরা', tiers: ['10/25/50%', '+75%'] },
   { id: 'decimals', title: 'Decimals', titleBn: 'দশমিক', tiers: ['tenths strip', 'compare/order', 'place value'] },
   { id: 'clock', title: 'Tell time', titleBn: 'ঘড়ি পড়া', tiers: ['hour/half', 'minute'] },
+  // ── band 4+ families (added 2026-08-16 — SKILLS referenced these 17 ids
+  //    before SKILL_FAMILIES defined them; getFamily() returned undefined so
+  //    family cards fell back to the skill title and unit gates had no tier).
+  { id: 'algebra', title: 'Algebra', titleBn: 'বীজগণিত', tiers: ['missing number', 'one step', 'two step'] },
+  { id: 'negatives', title: 'Negative numbers', titleBn: 'ঋণাত্মক সংখ্যা', tiers: ['compare/order', 'number line', 'arithmetic'] },
+  { id: 'ratio', title: 'Ratio & proportion', titleBn: 'অনুপাত', tiers: ['simplify', 'equivalent', 'unit rate'] },
+  { id: 'probability', title: 'Probability', titleBn: 'সম্ভাবনা', tiers: ['words'] },
+  { id: 'statistics', title: 'Statistics', titleBn: 'পরিসংখ্যান', tiers: ['mean/mode', 'larger sets'] },
+  { id: 'geometry', title: 'Geometry', titleBn: 'জ্যামিতি', tiers: ['volume', 'angles'] },
+  { id: 'forces-energy', title: 'Forces & energy', titleBn: 'বল ও শক্তি', tiers: ['motion', 'energy transfer', 'depth'] },
+  { id: 'ecosystems', title: 'Ecosystems', titleBn: 'বাস্তুতন্ত্র', tiers: ['habitats', 'cycles', 'food webs'] },
+  { id: 'human-body', title: 'The human body', titleBn: 'মানবদেহ', tiers: ['systems', 'depth', 'grade 8'] },
+  { id: 'bgs-economics', title: 'Economics & society', titleBn: 'অর্থনীতি ও সমাজ', tiers: ['economics'] },
+  { id: 'grammar-parts', title: 'Grammar: parts of speech', titleBn: 'ব্যাকরণ: পদ', tiers: ['adjectives/adverbs'] },
+  { id: 'grammar-past', title: 'Grammar: past tense', titleBn: 'ব্যাকরণ: অতীতকাল', tiers: ['regular', 'irregular'] },
+  { id: 'grammar-plurals', title: 'Grammar: plurals', titleBn: 'ব্যাকরণ: বহুবচন', tiers: ['irregulars'] },
+  { id: 'reading-comp', title: 'Reading comprehension', titleBn: 'পাঠবোধ', tiers: ['inference', 'critical', 'evaluate'] },
+  { id: 'writing-order', title: 'Writing order', titleBn: 'লেখার ক্রম', tiers: ['paragraph'] },
+  { id: 'digital-literacy', title: 'Digital literacy', titleBn: 'ডিজিটাল দক্ষতা', tiers: ['basics', 'citizenship'] },
+  { id: 'coding-logic', title: 'Coding & logic', titleBn: 'কোডিং ও যুক্তি', tiers: ['blocks', 'steps', 'debug'] },
 ];
 
 export const SKILLS: Skill[] = [
