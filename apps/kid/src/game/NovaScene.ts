@@ -867,6 +867,7 @@ export class NovaScene extends Phaser.Scene {
   private dozing = false;
   private zzz?: Phaser.GameObjects.Text;
   private touched = false;
+  private alive = true; // #1741 — teardown guard: idle/doze ticks no-op after shutdown
 
   private unsub?: () => void;
 
@@ -907,6 +908,7 @@ export class NovaScene extends Phaser.Scene {
     this.recTitleBn = data?.recTitleBn ?? null;
     this.streak = data?.streak ?? 0;
     this.lang = getAppLang() === "bn" ? "bn" : "en";
+    this.alive = true; // #1741 — re-arm teardown guard on (re)entry
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => cancelSpeech());
 
     this.buildTopBar();
@@ -946,6 +948,7 @@ export class NovaScene extends Phaser.Scene {
 
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layout, this);
     const teardown = () => {
+      this.alive = false; // #1741 — straggler idle ticks no-op from here on
       this.scale.off(Phaser.Scale.Events.RESIZE, this.layout, this);
       this.dust.forEach((d) => this.tweens.killTweensOf(d));
       this.dust.forEach((d) => d.destroy());
@@ -955,6 +958,16 @@ export class NovaScene extends Phaser.Scene {
       this.roomAmbient = [];
       this.swipeHintTimer?.remove();
       this.swipeHintTimer = undefined;
+      // #1741 — Phaser's scene shutdown does NOT clear the scene clock, so the
+      // recursively re-scheduled idle timers would keep running on the dead scene.
+      this.blinkTimer?.remove();
+      this.blinkTimer = undefined;
+      this.headTimer?.remove();
+      this.headTimer = undefined;
+      this.wingTimer?.remove();
+      this.wingTimer = undefined;
+      this.idleTimer?.remove();
+      this.idleTimer = undefined;
       if (this.swipeHint) {
         this.tweens.killTweensOf(this.swipeHintChevL);
         this.tweens.killTweensOf(this.swipeHintChevR);
@@ -2879,9 +2892,12 @@ export class NovaScene extends Phaser.Scene {
   }
 
   private scheduleBlink() {
+    this.blinkTimer?.remove(); // #1741 — idempotent: never double-schedule
     this.blinkTimer = this.time.delayedCall(Phaser.Math.Between(2200, 5200), () => {
+      if (!this.alive) return; // #1741 — straggler tick after teardown
       this.tweens.add({ targets: this.eyeL, scaleY: 0.08, duration: 80, yoyo: true, ease: "Sine.easeInOut" });
       this.time.delayedCall(Phaser.Math.Between(40, 120), () => {
+        if (!this.alive) return; // #1741 — straggler tick after teardown
         if (!this.dozing) this.tweens.add({ targets: this.eyeR, scaleY: 0.08, duration: 80, yoyo: true, ease: "Sine.easeInOut" });
       });
       this.scheduleBlink();
@@ -2889,7 +2905,9 @@ export class NovaScene extends Phaser.Scene {
   }
 
   private scheduleHead() {
+    this.headTimer?.remove(); // #1741 — idempotent: never double-schedule
     this.headTimer = this.time.delayedCall(Phaser.Math.Between(5000, 9000), () => {
+      if (!this.alive) return; // #1741 — straggler tick after teardown
       const a = Phaser.Math.Between(-1, 1) * Phaser.Math.FloatBetween(2, 4.5);
       this.tweens.add({ targets: this.root, angle: a, duration: 320, yoyo: true, ease: "Sine.easeInOut" });
       this.scheduleHead();
@@ -2897,7 +2915,9 @@ export class NovaScene extends Phaser.Scene {
   }
 
   private scheduleWing() {
+    this.wingTimer?.remove(); // #1741 — idempotent: never double-schedule
     this.wingTimer = this.time.delayedCall(Phaser.Math.Between(3800, 7200), () => {
+      if (!this.alive) return; // #1741 — straggler tick after teardown
       const side = Math.random() > 0.5 ? this.wingL : this.wingR;
       const flip = side === this.wingL ? 1 : -1;
       this.tweens.add({ targets: side, angle: -16 * flip, duration: 180, yoyo: true, ease: "Sine.easeInOut" });
@@ -2907,7 +2927,10 @@ export class NovaScene extends Phaser.Scene {
 
   private resetIdleTimer() {
     if (this.idleTimer) this.idleTimer.remove();
-    this.idleTimer = this.time.delayedCall(16000, () => this.doze());
+    this.idleTimer = this.time.delayedCall(16000, () => {
+      if (!this.alive) return; // #1741 — straggler doze tick after teardown
+      this.doze();
+    });
   }
 
   private doze() {
@@ -3021,7 +3044,12 @@ export class NovaScene extends Phaser.Scene {
     this.wallet.setText(`🪙 ${nova.coins}`);
     this.walletSub.setText(this.t().daily(Math.min(earnedToday, NOVA_DAILY_CAP)));
     this.careBadge.setText(`🐾 ${nova.careCoins ?? 0}`);
-    this.tweens.add({ targets: this.wallet, scale: 1.18, duration: 120, yoyo: true });
+    // #1747 — kill any in-flight wallet pulse first so rapid store updates don't
+    // stack overlapping scale tweens (wallet stutter/blink).
+    if (this.wallet && this.wallet.active) {
+      this.tweens.killTweensOf(this.wallet);
+      this.tweens.add({ targets: this.wallet, scale: 1.18, duration: 120, yoyo: true });
+    }
 
     this.streakText.setText(`🔥 ${this.t().streak(nova.streak)}`);
     const streakHalf = this.streakText.width / 2;
