@@ -1,3 +1,4 @@
+import logging
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import Profile, Session
-from ..ratelimit import AuthAttemptGuard, ip_rate_limit
+from ..ratelimit import AuthAttemptGuard, _request_ip, ip_rate_limit, redact_key
 from ..schemas import (
     ChangePasswordIn,
     DeleteAccountIn,
@@ -28,6 +29,8 @@ from ..session_guard import revoke_other_sessions  # #265 — password change ki
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+logger = logging.getLogger("numberverse")
+
 # #1489 — credential endpoints get their own failure-aware limiter (exponential
 # lockout) rather than the throughput-oriented fixed window used by the write
 # routers. Login keys on email+IP; change-password keys on profile+IP.
@@ -37,10 +40,6 @@ _PASSWORD_GUARD = AuthAttemptGuard()
 # (rather than the failure-aware guard above) to stop email enumeration and
 # mass account creation. Signup is a rare one-time action; 10/min is generous.
 _SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10)
-
-
-def _client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
 
 
 def _verify_google_token(id_token: str) -> dict:
@@ -121,12 +120,18 @@ async def signup(
 @router.post("/login", response_model=TokenOut)
 async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_db)):
     email = body.email.lower()
-    ip = _client_ip(request)
+    ip = _request_ip(request)
     # #1489 — fail fast on a locked account/IP BEFORE the profile lookup and bcrypt.
     await _LOGIN_GUARD.raise_if_locked(db, f"login:email:{email}", f"login:ip:{ip}")
     profile = await db.scalar(select(Profile).where(Profile.email == email))
     if not profile or not verify_password(body.password, profile.password_hash):
         await _LOGIN_GUARD.record_failure(db, f"login:email:{email}", f"login:ip:{ip}")
+        # #1751 — credential-stuffing must leave a trace. Hash the email, never
+        # log the raw address (the ip is redacted too).
+        logger.warning(
+            "auth 401 route=login account_key=login:email:%s ip=%s",
+            redact_key(email), redact_key(ip),
+        )
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     await _LOGIN_GUARD.reset(db, f"login:email:{email}", f"login:ip:{ip}")
     token = await _issue_session(profile, request, db)
@@ -341,11 +346,17 @@ async def change_password(
             status.HTTP_400_BAD_REQUEST,
             "Google accounts can't change a password here — set a password first",
         )
-    ip = _client_ip(request)
+    ip = _request_ip(request)
     # #1489 — fail fast when this profile or IP is locked, BEFORE bcrypt.
     await _PASSWORD_GUARD.raise_if_locked(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     if not verify_password(body.current_password, profile.password_hash):
         await _PASSWORD_GUARD.record_failure(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+        # #1751 — wrong-password 401s must leave a trace. Hash the profile id
+        # (the raw id and ip never reach the log).
+        logger.warning(
+            "auth 401 route=change-password account_key=pw:profile:%s ip=%s",
+            redact_key(str(profile.id)), redact_key(ip),
+        )
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current password is incorrect")
     await _PASSWORD_GUARD.reset(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
     profile.password_hash = hash_password(body.new_password)

@@ -21,8 +21,14 @@ COPY apps/api/app ./app
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --retries=6 \
   CMD uv run --frozen python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
-# #923 — trust nginx's X-Forwarded-* headers (the API is only reachable through
-# the web container here) so request.client.host — used by auth/session/rate
-# limiting — sees the real client IP, matching the host-run dev path instead of
-# always reporting the web container's private IP.
-CMD ["uv", "run", "--frozen", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# #923/#1760 — trust nginx's X-Forwarded-* headers (the API is only reachable
+# through the web container here) so request.client.host — used by auth/session/
+# rate limiting — sees the real client IP, matching the host-run dev path
+# instead of always reporting the web container's private IP.
+# #1760 — the trust is now SCOPED to the docker bridge subnet (the compose
+# default network the nginx `web` container sits on), NOT '*' — a non-bridge
+# attacker connecting directly can't mint a fresh bucket or dodge an ip-side
+# lockout by injecting a leftmost X-Forwarded-For value. 172.16/12 covers the
+# bridge network range without trusting arbitrary external peers. 127.0.0.1
+# (the in-container healthcheck) is always trusted by uvicorn.
+CMD ["uv", "run", "--frozen", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "172.16.0.0/12"]
