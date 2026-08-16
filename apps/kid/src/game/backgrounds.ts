@@ -65,6 +65,54 @@ function lerpColor(a: number, b: number, t: number): number {
   );
 }
 
+/* ─────────────────── non-blocking texture paint helpers (#1821) ─────────────────── */
+
+/** Yield to the browser so Phaser's game loop + pre-render keep breathing while
+ *  a procedural texture is painted in chunks. Falls back to a ~16ms timeout
+ *  outside a browser / animation-frame context. */
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 16);
+    }
+  });
+}
+
+/** Phaser exposes no canvas→CanvasTexture reverse lookup, and the texture
+ *  builders here only receive a 2D context (not the scene/texture). So we keep
+ *  a WeakMap of every canvas Phaser creates: a light, additive wrap of
+ *  `TextureManager.createCanvas` registers each CanvasTexture once without ever
+ *  changing what it returns. */
+const canvasTextures = new WeakMap<HTMLCanvasElement, Phaser.Textures.CanvasTexture>();
+let canvasTexturesWired = false;
+function wireCanvasTextureRegistry(): void {
+  if (canvasTexturesWired) return;
+  canvasTexturesWired = true;
+  const proto = (Phaser.Textures.TextureManager as unknown as {
+    prototype?: { createCanvas?: (key: string, width?: number, height?: number) => Phaser.Textures.CanvasTexture | null };
+  }).prototype;
+  if (!proto || typeof proto.createCanvas !== "function") return;
+  const orig = proto.createCanvas;
+  proto.createCanvas = function (this: Phaser.Textures.TextureManager, key: string, width?: number, height?: number) {
+    const tex = orig.call(this, key, width, height);
+    if (tex && tex.canvas) canvasTextures.set(tex.canvas, tex);
+    return tex;
+  };
+}
+wireCanvasTextureRegistry();
+
+/** After an async texture paint finishes, push the (possibly partially-uploaded)
+ *  canvas to the GPU so the finished pixels actually render. Safe no-op if the
+ *  canvas wasn't created by Phaser (or the registry couldn't be wired), and a
+ *  no-op if the owning texture has been destroyed mid-paint (its canvas is
+ *  nulled by Phaser, and the element may have been returned to the CanvasPool). */
+function refreshCanvasTexture(ctx: CanvasRenderingContext2D): void {
+  const tex = canvasTextures.get(ctx.canvas);
+  if (tex && tex.canvas === ctx.canvas) tex.refresh();
+}
+
 /* ─────────────────────── smooth gradient texture ─────────────────────── */
 
 function makeGradient(
@@ -99,89 +147,139 @@ function makeGradient(
 /* ─────────────────────── soft textures (cached) ─────────────────────── */
 
 const blobCache = new Map<number, Phaser.Textures.CanvasTexture>();
+const blobPainted = new Set<number>();
+
+/** #1821 — the blob is a soft 512px radial glow. The texture key is created
+ *  synchronously (so `scene.add.image` never sees a missing texture), but the
+ *  actual radial-gradient fill is painted on a later frame so a scene create
+ *  that touches several blob colors never rasterises them all in one tick.
+ *  `blobPainted` guards the global cache so we only schedule the paint once.
+ *  If the texture has been destroyed before the deferred paint runs (scene
+ *  shutdown), the `tex.canvas` guard skips it harmlessly. */
+function paintBlobTex(tex: Phaser.Textures.CanvasTexture, color: number): void {
+  void (async () => {
+    await nextFrame(); // defer the fill off the scene-create synchronous path
+    if (!tex.canvas) return; // texture was destroyed (scene shutdown)
+    const ctx = tex.getContext();
+    const size = tex.width;
+    const [r, g, b] = hexToRgb(color);
+    ctx.clearRect(0, 0, size, size);
+    const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0.5)`);
+    grad.addColorStop(0.45, `rgba(${r},${g},${b},0.2)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    refreshCanvasTexture(ctx);
+  })();
+}
 
 function getBlobTex(scene: Phaser.Scene, color: number): Phaser.Textures.CanvasTexture {
   let tex = blobCache.get(color);
-  if (tex && scene.textures.exists(tex.key)) return tex;
+  if (tex && scene.textures.exists(tex.key)) {
+    if (!blobPainted.has(color)) {
+      blobPainted.add(color);
+      paintBlobTex(tex, color);
+    }
+    return tex;
+  }
   const key = `blob-${color.toString(16)}`;
   const size = 512;
   if (!scene.textures.exists(key)) scene.textures.createCanvas(key, size, size);
   tex = scene.textures.get(key) as Phaser.Textures.CanvasTexture;
-  const ctx = tex.getContext();
-  const [r, g, b] = hexToRgb(color);
-  ctx.clearRect(0, 0, size, size);
-  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  grad.addColorStop(0, `rgba(${r},${g},${b},0.5)`);
-  grad.addColorStop(0.45, `rgba(${r},${g},${b},0.2)`);
-  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, size, size);
-  tex.refresh();
   blobCache.set(color, tex);
+  if (!blobPainted.has(color)) {
+    blobPainted.add(color);
+    paintBlobTex(tex, color);
+  }
   return tex;
 }
 
-/** White shape textures — reuse one canvas each, tinted per theme. */
+/** White shape textures — reuse one canvas each, tinted per theme.
+ *  #1821 — the four canvases are created synchronously (so every texture key
+ *  exists before `buildBg` places the images), but the actual shape painting is
+ *  chunked across frames (one shape per frame + refresh) so a scene create that
+ *  touches every shape texture never rasterises all four in a single tick. */
 function ensureShapeTex(scene: Phaser.Scene) {
   if (scene.textures.exists("nv-shape-circle")) return;
-  const make = (key: string, draw: (ctx: CanvasRenderingContext2D, s: number) => void) => {
-    const size = 128;
+  const size = 128;
+  const make = (key: string): Phaser.Textures.CanvasTexture => {
     scene.textures.createCanvas(key, size, size)!;
-    const tex = scene.textures.get(key) as Phaser.Textures.CanvasTexture;
-    const ctx = tex.getContext();
-    draw(ctx, size);
-    tex.refresh();
+    return scene.textures.get(key) as Phaser.Textures.CanvasTexture;
   };
-  // soft glowing dot
-  make("nv-shape-circle", (ctx, s) => {
-    const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-    g.addColorStop(0, "rgba(255,255,255,0.95)");
-    g.addColorStop(0.6, "rgba(255,255,255,0.3)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, s, s);
-  });
-  // glassy rounded square with soft glow
-  make("nv-shape-round", (ctx, s) => {
-    const x = s * 0.22, y = s * 0.22, w = s * 0.56, r = s * 0.14;
-    ctx.shadowColor = "rgba(255,255,255,0.55)";
-    ctx.shadowBlur = 18;
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, w, r);
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(255,255,255,0.35)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  });
-  // gradient ring
-  make("nv-shape-ring", (ctx, s) => {
-    ctx.shadowColor = "rgba(255,255,255,0.6)";
-    ctx.shadowBlur = 14;
-    ctx.strokeStyle = "rgba(255,255,255,0.75)";
-    ctx.lineWidth = s * 0.055;
-    ctx.beginPath();
-    ctx.arc(s / 2, s / 2, s * 0.32, 0, Math.PI * 2);
-    ctx.stroke();
-  });
-  // 4-point sparkle
-  make("nv-shape-spark", (ctx, s) => {
-    ctx.shadowColor = "rgba(255,255,255,0.9)";
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.beginPath();
-    ctx.moveTo(s / 2, s * 0.06);
-    ctx.lineTo(s * 0.62, s * 0.38);
-    ctx.lineTo(s * 0.94, s / 2);
-    ctx.lineTo(s * 0.62, s * 0.62);
-    ctx.lineTo(s / 2, s * 0.94);
-    ctx.lineTo(s * 0.38, s * 0.62);
-    ctx.lineTo(s * 0.06, s / 2);
-    ctx.lineTo(s * 0.38, s * 0.38);
-    ctx.closePath();
-    ctx.fill();
-  });
+  const circle = make("nv-shape-circle");
+  const round = make("nv-shape-round");
+  const ring = make("nv-shape-ring");
+  const spark = make("nv-shape-spark");
+  const alive = (t: Phaser.Textures.CanvasTexture) => t.canvas !== null;
+
+  void (async () => {
+    await nextFrame(); // defer every shape off the scene-create synchronous path
+    // soft glowing dot
+    if (alive(circle)) {
+      const c = circle.getContext();
+      const cg = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      cg.addColorStop(0, "rgba(255,255,255,0.95)");
+      cg.addColorStop(0.6, "rgba(255,255,255,0.3)");
+      cg.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = cg;
+      c.fillRect(0, 0, size, size);
+      refreshCanvasTexture(c);
+    }
+    await nextFrame();
+
+    // glassy rounded square with soft glow
+    if (alive(round)) {
+      const r = round.getContext();
+      const x = size * 0.22, y = size * 0.22, w = size * 0.56, rad = size * 0.14;
+      r.shadowColor = "rgba(255,255,255,0.55)";
+      r.shadowBlur = 18;
+      r.beginPath();
+      r.roundRect(x, y, w, w, rad);
+      r.fillStyle = "rgba(255,255,255,0.5)";
+      r.fill();
+      r.shadowBlur = 0;
+      r.strokeStyle = "rgba(255,255,255,0.35)";
+      r.lineWidth = 2;
+      r.stroke();
+      refreshCanvasTexture(r);
+    }
+    await nextFrame();
+
+    // gradient ring
+    if (alive(ring)) {
+      const ri = ring.getContext();
+      ri.shadowColor = "rgba(255,255,255,0.6)";
+      ri.shadowBlur = 14;
+      ri.strokeStyle = "rgba(255,255,255,0.75)";
+      ri.lineWidth = size * 0.055;
+      ri.beginPath();
+      ri.arc(size / 2, size / 2, size * 0.32, 0, Math.PI * 2);
+      ri.stroke();
+      refreshCanvasTexture(ri);
+    }
+    await nextFrame();
+
+    // 4-point sparkle
+    if (alive(spark)) {
+      const s = spark.getContext();
+      s.shadowColor = "rgba(255,255,255,0.9)";
+      s.shadowBlur = 14;
+      s.fillStyle = "rgba(255,255,255,0.95)";
+      s.beginPath();
+      s.moveTo(size / 2, size * 0.06);
+      s.lineTo(size * 0.62, size * 0.38);
+      s.lineTo(size * 0.94, size / 2);
+      s.lineTo(size * 0.62, size * 0.62);
+      s.lineTo(size / 2, size * 0.94);
+      s.lineTo(size * 0.38, size * 0.62);
+      s.lineTo(size * 0.06, size / 2);
+      s.lineTo(size * 0.38, size * 0.38);
+      s.closePath();
+      s.fill();
+      refreshCanvasTexture(s);
+    }
+  })();
 }
 
 /* ─────────────────────────── background state ─────────────────────────── */

@@ -1,8 +1,14 @@
+import Phaser from "phaser"; // #1821 — canvas→CanvasTexture registry for async backdrop paints
 import { NV_GOLD, NV_ORANGE, NV_PINK } from "./ui"; // tokenized #591
 /**
  * Nova's rooms — 12 procedurally-drawn "2026-style" backdrops (zero image assets).
  * Each room is a full-screen canvas texture: soft gradients + dimensional decor,
  * no 90s clip-art. `draw(ctx, w, h)` paints the whole backdrop.
+ *
+ * #1821 — the backdrops are painted ASYNC: heavy loops yield to the browser
+ * every N draw calls so scene create / a room flip never stalls the game
+ * thread, and the owning CanvasTexture is refreshed once the paint finishes so
+ * the final pixels are byte-for-byte the same as the old synchronous draw.
  */
 
 export interface RoomDef {
@@ -12,7 +18,70 @@ export interface RoomDef {
   emoji: string;
   /** Floating ambient particles unique to the room. */
   ambient?: "bubbles" | "fireflies" | "stars" | "confetti" | "snow";
-  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
+  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => Promise<void>;
+}
+
+/* ─────────────────── non-blocking backdrop paint helpers (#1821) ─────────────────── */
+
+/** Yield to the browser so Phaser's game loop + pre-render keep breathing while
+ *  a procedural backdrop is painted in chunks. Falls back to a ~16ms timeout
+ *  outside a browser / animation-frame context. */
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 16);
+    }
+  });
+}
+
+/** Phaser exposes no canvas→CanvasTexture reverse lookup, and a room `draw`
+ *  only receives the 2D context (not the scene/texture). So we keep a WeakMap
+ *  of every canvas Phaser creates: a light, additive wrap of
+ *  `TextureManager.createCanvas` registers each CanvasTexture once without ever
+ *  changing what it returns. */
+const canvasTextures = new WeakMap<HTMLCanvasElement, Phaser.Textures.CanvasTexture>();
+let canvasTexturesWired = false;
+function wireCanvasTextureRegistry(): void {
+  if (canvasTexturesWired) return;
+  canvasTexturesWired = true;
+  const proto = (Phaser.Textures.TextureManager as unknown as {
+    prototype?: { createCanvas?: (key: string, width?: number, height?: number) => Phaser.Textures.CanvasTexture | null };
+  }).prototype;
+  if (!proto || typeof proto.createCanvas !== "function") return;
+  const orig = proto.createCanvas;
+  proto.createCanvas = function (this: Phaser.Textures.TextureManager, key: string, width?: number, height?: number) {
+    const tex = orig.call(this, key, width, height);
+    if (tex && tex.canvas) canvasTextures.set(tex.canvas, tex);
+    return tex;
+  };
+}
+wireCanvasTextureRegistry();
+
+/** After an async room paint finishes, push the (possibly partially-uploaded)
+ *  canvas to the GPU so the finished pixels actually render. Safe no-op if the
+ *  canvas wasn't created by Phaser (or the registry couldn't be wired), and a
+ *  no-op if the owning texture has been destroyed mid-paint (its canvas is
+ *  nulled by Phaser, and the element may have been returned to the CanvasPool). */
+function refreshCanvasTexture(ctx: CanvasRenderingContext2D): void {
+  const tex = canvasTextures.get(ctx.canvas);
+  if (tex && tex.canvas === ctx.canvas) tex.refresh();
+}
+
+/** Yield to the browser, then report whether the canvas is still owned by the
+ *  same CanvasTexture that was being painted when the chunk started.
+ *
+ *  NovaScene calls `buildRoom` twice during a single synchronous create (once
+ *  in `create`, once via `layout`), and the second call removes the first
+ *  texture — returning its canvas to Phaser's CanvasPool — before `createCanvas`
+ *  re-requests it. A stale chunk that kept drawing would therefore paint the old
+ *  room onto the NEW room's texture. Returning `false` lets the room draw bail
+ *  out harmlessly (the newer buildRoom owns the canvas now). */
+async function yieldRoomPaint(ctx: CanvasRenderingContext2D): Promise<boolean> {
+  const owner = canvasTextures.get(ctx.canvas);
+  await nextFrame();
+  return canvasTextures.get(ctx.canvas) === owner;
 }
 
 /* ─────────────────────────── shared canvas helpers ─────────────────────────── */
@@ -98,7 +167,7 @@ function tree(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, ca
 export const ROOMS: RoomDef[] = [
   {
     id: "field", name: "Field", nameBn: "মাঠ", emoji: "🌾", ambient: "fireflies",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#8ecdf5", 0], ["#b7e4fb", 0.55], ["#cdeefb", 0.75], ["#a5e3bd", 1]]);
       ctx.fillRect(0, 0, w, h);
       sun(ctx, w * 0.82, h * 0.16, 26);
@@ -119,16 +188,18 @@ export const ROOMS: RoomDef[] = [
         const fy = h * (0.8 + ((i * 37) % 9) * 0.012);
         dot(ctx, fx, fy, 5, "rgba(255,255,255,0.95)");
         dot(ctx, fx, fy, 3, fl[i % fl.length]);
+        if (i % 5 === 4) if (!(await yieldRoomPaint(ctx))) return;
       }
       // drifting cloud
       ctx.fillStyle = "rgba(255,255,255,0.5)";
       ell(ctx, w * 0.2, h * 0.13, 46, 15);
       ell(ctx, w * 0.27, h * 0.11, 32, 12);
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "garden", name: "Garden", nameBn: "বাগান", emoji: "🌷", ambient: "fireflies",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#aee4f7", 0], ["#d8f3fb", 0.6], ["#bfecd0", 1]]);
       ctx.fillRect(0, 0, w, h);
       sun(ctx, w * 0.16, h * 0.15, 22);
@@ -159,16 +230,20 @@ export const ROOMS: RoomDef[] = [
         ctx.fillStyle = cols[i % cols.length];
         for (let f = 0; f < 5; f++) dot(ctx, bx + (f - 2) * 7, by - (f % 2) * 4, 4, cols[(i + f) % cols.length]);
         dot(ctx, bx, by, 5, "#fff");
+        if (i % 3 === 2) if (!(await yieldRoomPaint(ctx))) return;
       }
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "bathroom", name: "Bathroom", nameBn: "বাথরুম", emoji: "🛁", ambient: "bubbles",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#cfe9f4", 0], ["#eaf7fb", 1]]);
       ctx.fillRect(0, 0, w, h);
-      // wall tiles
+      // wall tiles (the biggest loop in the file) — yield every ~180 tiles so a
+      // full 1920×1080 wall never blocks a whole frame on a room flip.
       const ts = 44;
+      let tiles = 0;
       for (let ty = 0; ty < h * 0.58; ty += ts) {
         for (let tx = 0; tx < w; tx += ts) {
           ctx.fillStyle = (tx / ts + ty / ts) % 2 === 0 ? "rgba(255,255,255,0.4)" : "rgba(180,222,236,0.4)";
@@ -177,6 +252,7 @@ export const ROOMS: RoomDef[] = [
           ctx.strokeStyle = "rgba(255,255,255,0.5)";
           ctx.lineWidth = 1.2;
           ctx.stroke();
+          if (++tiles % 180 === 0) if (!(await yieldRoomPaint(ctx))) return;
         }
       }
       // floor
@@ -231,11 +307,12 @@ export const ROOMS: RoomDef[] = [
         ctx.arc(w * (0.35 + i * 0.06), h * (0.68 + (i % 2) * 0.03), 7 + i, 0, Math.PI * 2);
         ctx.stroke();
       }
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "kitchen", name: "Kitchen", nameBn: "রান্নাঘর", emoji: "🍳",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#f7e6c8", 0], ["#fdf3e0", 0.6], ["#e8b07c", 1]]);
       ctx.fillRect(0, 0, w, h);
       // window
@@ -292,11 +369,12 @@ export const ROOMS: RoomDef[] = [
       ctx.stroke();
       dot(ctx, w * 0.9, h * 0.46, 3, "#6b7a8a");
       dot(ctx, w * 0.9, h * 0.6, 3, "#6b7a8a");
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "bedroom", name: "Bedroom", nameBn: "শোবার ঘর", emoji: "🛏️",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#4a3566", 0], ["#6b4d8f", 0.6], ["#8a6ab0", 1]]);
       ctx.fillRect(0, 0, w, h);
       moon(ctx, w * 0.82, h * 0.14, 20);
@@ -335,11 +413,12 @@ export const ROOMS: RoomDef[] = [
       lampG.addColorStop(1, "rgba(255,214,130,0)");
       ctx.fillStyle = lampG;
       ell(ctx, w * 0.75, h * 0.56, w * 0.12, w * 0.09);
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "living", name: "Living Room", nameBn: "বসার ঘর", emoji: "🛋️",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#f4e0c8", 0], ["#f8ecd8", 0.6], ["#d9b38c", 1]]);
       ctx.fillRect(0, 0, w, h);
       // picture frame
@@ -389,11 +468,12 @@ export const ROOMS: RoomDef[] = [
       ell(ctx, w * 0.815, h * 0.7, w * 0.06, h * 0.08);
       ell(ctx, w * 0.79, h * 0.66, w * 0.04, h * 0.06);
       ell(ctx, w * 0.84, h * 0.66, w * 0.04, h * 0.06);
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "beach", name: "Beach", nameBn: "সৈকত", emoji: "🏖️",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#8fd4f7", 0], ["#cdeefb", 0.55], ["#fff1d6", 1]]);
       ctx.fillRect(0, 0, w, h);
       sun(ctx, w * 0.84, h * 0.14, 26);
@@ -436,13 +516,15 @@ export const ROOMS: RoomDef[] = [
         ctx.beginPath();
         ctx.ellipse(w * 0.62 + Math.cos(a) * 40, h * 0.52 + Math.sin(a) * 20, 34, 10, a, 0, Math.PI * 2);
         ctx.fill();
+        if (i === 3) if (!(await yieldRoomPaint(ctx))) return;
       }
       dot(ctx, w * 0.62, h * 0.5, 8, "#d96a1f");
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "forest", name: "Forest", nameBn: "জঙ্গল", emoji: "🌲", ambient: "fireflies",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#16283f", 0], ["#1e3d3a", 0.6], ["#2c5a4a", 1]]);
       ctx.fillRect(0, 0, w, h);
       moon(ctx, w * 0.8, h * 0.12, 18);
@@ -462,7 +544,11 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = gradV(ctx, 0, h * 0.78, 0, h, [["#2c5a4a", 0], ["#1e4638", 1]]);
       ctx.fillRect(0, h * 0.78, w, h * 0.22);
       ctx.fillStyle = "rgba(255,255,255,0.06)";
-      for (let x = 0; x < w; x += 20) ell(ctx, x, h * 0.84, 9, 4);
+      let moss = 0;
+      for (let x = 0; x < w; x += 20) {
+        ell(ctx, x, h * 0.84, 9, 4);
+        if (++moss % 70 === 0) if (!(await yieldRoomPaint(ctx))) return;
+      }
       // glowing mushrooms
       for (let i = 0; i < 4; i++) {
         const mx = w * (0.3 + i * 0.14);
@@ -473,15 +559,20 @@ export const ROOMS: RoomDef[] = [
         ctx.fill();
         dot(ctx, mx, my, 3, "#ffe6b0");
       }
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "space", name: "Space", nameBn: "মহাকাশ", emoji: "🪐", ambient: "stars",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#0b0f2e", 0], ["#1b1757", 0.6], ["#3a2a7a", 1]]);
       ctx.fillRect(0, 0, w, h);
-      // stars
-      for (let i = 0; i < 60; i++) dot(ctx, Math.random() * w, Math.random() * h * 0.7, Math.random() * 1.6 + 0.4, "rgba(255,255,255,0.85)");
+      // stars (60 arcs) — split into two frame-budgeted bursts so the field
+      // never holds the thread for the whole random spray.
+      for (let i = 0; i < 60; i++) {
+        dot(ctx, Math.random() * w, Math.random() * h * 0.7, Math.random() * 1.6 + 0.4, "rgba(255,255,255,0.85)");
+        if (i === 29) if (!(await yieldRoomPaint(ctx))) return;
+      }
       // shooting star
       const sg = ctx.createLinearGradient(w * 0.2, h * 0.2, w * 0.34, h * 0.28);
       sg.addColorStop(0, "rgba(255,255,255,0.9)");
@@ -510,11 +601,12 @@ export const ROOMS: RoomDef[] = [
       ell(ctx, w * 0.5, h * 0.78, w * 0.5, h * 0.2);
       ctx.fillStyle = "rgba(60,120,255,0.2)";
       ell(ctx, w * 0.3, h * 0.9, w * 0.4, h * 0.18);
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "party", name: "Party", nameBn: "পার্টি", emoji: "🎉", ambient: "confetti",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#6b3fa0", 0], ["#9a4fbf", 0.5], ["#e06b9a", 1]]);
       ctx.fillRect(0, 0, w, h);
       // bunting
@@ -561,15 +653,17 @@ export const ROOMS: RoomDef[] = [
         const cx = Math.random() * w;
         const cy = h * 0.7 + Math.random() * h * 0.28;
         ctx.fillRect(cx, cy, 6, 4);
+        if (i === 11) if (!(await yieldRoomPaint(ctx))) return;
       }
       // floor
       ctx.fillStyle = "rgba(120,50,110,0.4)";
       ell(ctx, w * 0.5, h * 0.98, w * 0.55, h * 0.05);
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "school", name: "School", nameBn: "স্কুল", emoji: "🏫",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#eef4ea", 0], ["#f7f0e0", 0.6], ["#d8b78a", 1]]);
       ctx.fillRect(0, 0, w, h);
       // window
@@ -633,15 +727,17 @@ export const ROOMS: RoomDef[] = [
       ctx.fillStyle = "rgba(150,110,75,0.25)";
       rr(ctx, 0, h * 0.86, w, h * 0.14, 0);
       ctx.fill();
+      refreshCanvasTexture(ctx);
     },
   },
   {
     id: "rooftop", name: "Rooftop", nameBn: "ছাদ", emoji: "🌃", ambient: "stars",
-    draw(ctx, w, h) {
+    async draw(ctx, w, h) {
       ctx.fillStyle = gradV(ctx, 0, 0, 0, h, [["#0e1233", 0], ["#202158", 0.55], ["#3a2a6a", 1]]);
       ctx.fillRect(0, 0, w, h);
       moon(ctx, w * 0.78, h * 0.12, 18);
-      // city skyline
+      // city skyline (6 buildings × lit windows) — split the skyline in half so
+      // the second batch of windows starts on a fresh frame.
       const bs = ["#1a1e44", "#22264f", "#151939", "#262a55", "#1e2248"];
       for (let i = 0; i < 6; i++) {
         const bw = w * 0.16;
@@ -656,6 +752,7 @@ export const ROOMS: RoomDef[] = [
             if ((wy * 7 + wx) % 3 !== 0) ctx.fillRect(bx + 8 + wx * 14, h * 0.78 - bh + 10 + wy * 18, 6, 8);
           }
         }
+        if (i === 2) if (!(await yieldRoomPaint(ctx))) return;
       }
       // rooftop ledge
       ctx.fillStyle = "#2c2a55";
@@ -680,6 +777,7 @@ export const ROOMS: RoomDef[] = [
       ctx.lineTo(w * 0.2, h * 0.62);
       ctx.stroke();
       dot(ctx, w * 0.2, h * 0.6, 3, "#ff5c7a");
+      refreshCanvasTexture(ctx);
     },
   },
 ];
