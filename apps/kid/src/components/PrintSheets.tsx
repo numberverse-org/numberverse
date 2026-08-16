@@ -288,7 +288,7 @@ export function FlashcardsScreen({ kid, skillsMap, t, lang, onBack }: Omit<Sheet
                 return (
                   <div key={s.id} className="fc-card">
                     <div className="fc-qr">
-                      {url ? <img src={url} alt="" width={220} height={220} /> : <span className="fc-qr-text">NV:{s.id}</span>}
+                      {url ? <img src={url} alt="" width={220} height={220} loading="lazy" decoding="async" /> : <span className="fc-qr-text">NV:{s.id}</span>}
                     </div>
                     <div className="fc-card-title">{skillLabel(s, lang)}</div>
                     <div className="fc-card-code">NV:{s.id}</div>

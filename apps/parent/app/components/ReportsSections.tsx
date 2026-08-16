@@ -207,6 +207,8 @@ export function HelpNeededCard({
                 alt={`QR code to open ${reteachQr[f.skillId].title} in the kid app`}
                 width={116}
                 height={116}
+                loading="lazy"
+                decoding="async"
               />
               <span className="muted small">
                 Scan in the kid app to open {reteachQr[f.skillId].title}

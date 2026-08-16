@@ -73,6 +73,8 @@ export const Icon = memo(function Icon({
         src={src}
         alt={alt ?? name}
         draggable={false}
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
       />

@@ -45,12 +45,21 @@ export default defineConfig({
         background_color: "#0b2545",
         categories: ["education", "kids", "games"],
         icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          // #1734 — manifest icons in WebP (the lightest format Vite emits):
+          // 192 any + 512 any + 192 maskable + 512 maskable. Modern Android
+          // launchers accept WebP; the 512 RGBA PNG was 45 KB vs ~14 KB WebP.
+          { src: "/icon-192.webp", sizes: "192x192", type: "image/webp" },
+          { src: "/icon-512.webp", sizes: "512x512", type: "image/webp" },
           {
-            src: "/icon-maskable-512.png",
+            src: "/icon-192-maskable.webp",
+            sizes: "192x192",
+            type: "image/webp",
+            purpose: "maskable",
+          },
+          {
+            src: "/icon-maskable-512.webp",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/webp",
             purpose: "maskable",
           },
         ],

@@ -80,9 +80,14 @@ export class GardenScene extends Phaser.Scene {
     const tree = this.add.image(0, 0, "nv-deco-tree").setAlpha(0.92);
     const rock = this.add.image(0, 0, "nv-deco-rock").setAlpha(0.92);
     const bush = this.add.image(0, 0, "nv-deco-bush").setAlpha(0.92);
-    tree.setScale(Math.max(0.35, Math.min(0.9, width * 0.16 / tree.width)));
-    rock.setScale(Math.max(0.35, Math.min(0.9, width * 0.12 / rock.width)));
-    bush.setScale(Math.max(0.3, Math.min(0.8, width * 0.10 / bush.width)));
+    // #1737 — forest decor sources were downscaled to roughly the max
+    // displayed size (tree 62×128, rock 90×96, bush 87×96; previously
+    // 120×247, 232×248, 225×248). The clamp bounds are scaled by
+    // oldSourceWidth ÷ newSourceWidth so the DISPLAYED size stays
+    // pixel-identical — only the source density changed.
+    tree.setScale(Math.max(0.35 * 120 / tree.width, Math.min(0.9 * 120 / tree.width, width * 0.16 / tree.width)));
+    rock.setScale(Math.max(0.35 * 232 / rock.width, Math.min(0.9 * 232 / rock.width, width * 0.12 / rock.width)));
+    bush.setScale(Math.max(0.3 * 225 / bush.width, Math.min(0.8 * 225 / bush.width, width * 0.10 / bush.width)));
     this.decor.add([tree, rock, bush]);
     this.positionDecor();
   }

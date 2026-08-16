@@ -191,11 +191,11 @@ const AVATARS: Record<string, Asset> = {
   },
   /* KayKit adventurers — CC0 3D models (Kay Lousberg, kaylousberg.com)
      rendered to transparent sprites. Static PNGs, precached by the PWA. */
-  knight:    { emoji: "🛡️", url: "/avatars/knight.png",    aspect: 139 / 248 },
-  mage:      { emoji: "🔮", url: "/avatars/mage.png",      aspect: 193 / 248 },
-  rogue:     { emoji: "🗡️", url: "/avatars/rogue.png",     aspect: 124 / 247 },
-  barbarian: { emoji: "🪓", url: "/avatars/barbarian.png", aspect: 130 / 248 },
-  ranger:    { emoji: "🏹", url: "/avatars/ranger.png",    aspect: 123 / 248 },
+  knight:    { emoji: "🛡️", url: "/avatars/knight.png",    aspect: 54 / 96 },
+  mage:      { emoji: "🔮", url: "/avatars/mage.png",      aspect: 74 / 96 },
+  rogue:     { emoji: "🗡️", url: "/avatars/rogue.png",     aspect: 48 / 96 },
+  barbarian: { emoji: "🪓", url: "/avatars/barbarian.png", aspect: 50 / 96 },
+  ranger:    { emoji: "🏹", url: "/avatars/ranger.png",    aspect: 47 / 96 },
 };
 
 /* ────────────────────────────── world emblems ────────────────────────────── */
