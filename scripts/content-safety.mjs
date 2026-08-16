@@ -12,17 +12,20 @@
  * Mirrors the oracle's l1_safety() check but as a fast, self-contained gate
  * with a real ALLOWLIST (the oracle has none).
  *
- * The word lists live in apps/kid/src/game/unsafeWords.json — the SINGLE
- * source of truth shared by this gate, scripts/team/oracle_team.py, and the
- * runtime TTS guard in apps/kid/src/game/speech.ts (no duplicate lists to
- * drift out of sync).
+ * The UNSAFE word table + ALLOWLIST are the SINGLE shared table exported by
+ * scripts/safety-words.mjs (#1664), consumed here AND by
+ * scripts/team/oracle_team.py — no duplicate lists to drift out of sync. The
+ * word table itself lives in apps/kid/src/game/unsafeWords.json (shared with
+ * the runtime TTS guard in apps/kid/src/game/speechSafety.ts); the allowlist
+ * lives in safety-words.mjs so both gates agree (docs/CONTENT_SAFETY.md).
  *
- * If a word is BOTH legitimate in context AND kid-safe, add it to ALLOWLIST
- * with a one-line reason (see docs/CONTENT_SAFETY.md). Word-boundary regexes,
- * so "skills" never trips "kill" and "diet" never trips "die".
+ * If a word is BOTH legitimate in context AND kid-safe, add it to the
+ * ALLOWLIST in scripts/safety-words.mjs with a one-line reason. Word-boundary
+ * regexes, so "skills" never trips "kill" and "diet" never trips "die".
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { unsafeWords, ALLOWLIST } from "./safety-words.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
@@ -32,14 +35,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const BANGLA_RANGE = "\\u0980-\\u09FF";
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const WORDS_JSON = join(ROOT, "apps", "kid", "src", "game", "unsafeWords.json");
-let wordsByLang;
-try {
-  wordsByLang = JSON.parse(readFileSync(WORDS_JSON, "utf8"));
-} catch (err) {
-  console.error(`✖ cannot read shared unsafe-word list at ${WORDS_JSON}: ${err.message}`);
-  process.exit(1);
-}
+const wordsByLang = unsafeWords;
 
 const UNSAFE = [
   ...Object.values(wordsByLang.en).flat().map((w) =>
@@ -47,11 +43,6 @@ const UNSAFE = [
   ...Object.values(wordsByLang.bn).flat().map((w) =>
     new RegExp(`(?<![${BANGLA_RANGE}])${escapeRegExp(w)}(?![${BANGLA_RANGE}])`, "u")),
 ];
-
-// Legitimate kid-safe uses. Key = the unsafe word (lowercase). Value = reason.
-const ALLOWLIST = new Map([
-  // e.g. ["die", "math game uses 'roll the die' (singular of dice)"],
-]);
 
 const SRC = join(ROOT, "packages", "core", "src");
 const KID = join(ROOT, "apps", "kid", "src");

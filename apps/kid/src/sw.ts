@@ -161,13 +161,47 @@ registerRoute(
 const VOICE_MAX_CACHE_BYTES = 150 * 1024 * 1024; // ~110MB model + ORT wasm headroom
 const voiceSizeGuard: WorkboxPlugin = {
   cacheWillUpdate: async ({ response }) => {
-    if (!response || (response.status !== 200 && response.status !== 0)) return null;
+    // #1662 — voice is same-origin and ALWAYS 200; an opaque (status 0)
+    // response has no readable headers, so the size guard could not vet it.
+    // Only a real 200 may enter nv-voice.
+    if (!response || response.status !== 200) return null;
     const declared = response.headers.get("content-length");
     if (declared) {
       const bytes = Number(declared);
       if (Number.isFinite(bytes) && bytes > VOICE_MAX_CACHE_BYTES) return null;
+      return response;
     }
-    return response;
+    // #1657 — no Content-Length (chunked / CDN-stripped) previously bypassed
+    // the guard, so an uncapped body could bloat (or evict) the cache. Stream
+    // the body counting ACTUAL bytes and refuse anything over the cap; then
+    // reconstruct a fresh Response from the buffered body to cache.
+    if (!response.body) return null; // unverifiable length — never cache
+    const reader = response.body.getReader();
+    const chunks: BlobPart[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > VOICE_MAX_CACHE_BYTES) {
+          await reader.cancel();
+          return null; // over the cap — do not cache an unbounded body
+        }
+        chunks.push(value);
+      }
+    } catch {
+      return null; // stream error — length unverifiable, refuse to cache
+    } finally {
+      reader.releaseLock();
+    }
+    const headers = new Headers(response.headers);
+    headers.set("content-length", String(total));
+    return new Response(new Blob(chunks), {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   },
 };
 registerRoute(
@@ -176,7 +210,9 @@ registerRoute(
     cacheName: "nv-voice",
     plugins: [
       new ExpirationPlugin({ maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 180 }),
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      // #1662 — [200] only: voice is same-origin, never opaque (0). An opaque
+      // hit would skip the size guard and cache an unvettable body.
+      new CacheableResponsePlugin({ statuses: [200] }),
       voiceSizeGuard,
     ],
   }),
@@ -194,28 +230,105 @@ function offlineEnvelope(status = 503, body: Record<string, unknown> = { offline
   });
 }
 
-registerRoute(
-  ({ url }) => url.pathname.startsWith("/api/"),
-  async ({ request }) => {
-    const cache = await caches.open(API_CACHE);
-    try {
-      const response = await fetch(request);
-      // Cache successful GETs (kid settings, snapshots, roster) so a later
-      // offline session replays the last-good server state instead of failing.
-      if (request.method === "GET" && response.ok) {
-        await cache.put(request, response.clone());
-      }
-      return response;
-    } catch {
-      // Network unreachable — NEVER let this escape as a network failure.
-      if (request.method === "GET") {
-        const cached = await cache.match(request, { ignoreSearch: true });
-        if (cached) return cached;
-        return offlineEnvelope(503, {});
-      }
-      // Mutation offline: the app keeps its durable outbox queued and retries
-      // on the online heartbeat — a 503 here is "accepted for retry", not loss.
-      return offlineEnvelope();
+// #1659 — nv-api is a SHORT-TTL, BOUNDED snapshot of the last-good server state
+// (never an unbounded log). maxEntries caps growth so the cache can't balloon
+// and evict the voice seed; maxAgeSeconds keeps a replay from being arbitrarily
+// ancient.
+const API_MAX_ENTRIES = 40;
+const API_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7-day TTL last-good snapshot
+
+async function apiCachePut(cache: Cache, request: Request, response: Response): Promise<void> {
+  const now = Date.now();
+  // Stamp the replay time so the staleness marker + TTL purge have a date.
+  const headers = new Headers(response.headers);
+  headers.set("X-NV-Cached-At", String(now));
+  const stamped = new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+  await cache.put(request, stamped);
+  await trimApiCache(cache, now);
+}
+
+async function trimApiCache(cache: Cache, now: number): Promise<void> {
+  const read = async (): Promise<Array<{ key: Request; t: number }>> => {
+    const out: Array<{ key: Request; t: number }> = [];
+    for (const key of await cache.keys()) {
+      const res = await cache.match(key);
+      const t = Number(res?.headers.get("X-NV-Cached-At") || 0);
+      out.push({ key, t });
+    }
+    out.sort((a, b) => a.t - b.t); // ascending → oldest first
+    return out;
+  };
+
+  // maxAge — drop entries older than the TTL (ascending → break at first fresh).
+  for (const e of await read()) {
+    if (e.t && now - e.t > API_MAX_AGE_MS) await cache.delete(e.key);
+    else break;
+  }
+  // maxEntries — cap the live count, deleting oldest first.
+  let live = await cache.keys();
+  let count = live.length;
+  if (count > API_MAX_ENTRIES) {
+    for (const e of await read()) {
+      if (count <= API_MAX_ENTRIES) break;
+      await cache.delete(e.key);
+      count--;
     }
   }
-);
+}
+
+// #1658 — an offline replay is NOT the live server state: mark it with
+// X-NV-Offline:1 (plus Date/Age) so the UI can show "showing last saved data"
+// instead of presenting a stale snapshot as if it were current.
+function staleEnvelope(cached: Response): Response {
+  const headers = new Headers(cached.headers);
+  headers.set("X-NV-Offline", "1");
+  const date = headers.get("date") || headers.get("X-NV-Cached-At");
+  if (date) headers.set("Date", date);
+  headers.set("Age", "0");
+  return new Response(cached.body, {
+    status: cached.status,
+    statusText: cached.statusText,
+    headers,
+  });
+}
+
+async function apiNetworkBoundary({ request }: { request: Request }): Promise<Response> {
+  const cache = await caches.open(API_CACHE);
+  try {
+    const response = await fetch(request);
+    // Cache successful GETs (kid settings, snapshots, roster) so a later
+    // offline session replays the last-good server state instead of failing.
+    if (request.method === "GET" && response.ok) {
+      await apiCachePut(cache, request, response.clone());
+    }
+    return response;
+  } catch {
+    // Network unreachable — NEVER let this escape as a network failure.
+    if (request.method === "GET") {
+      const cached = await cache.match(request, { ignoreSearch: true });
+      if (cached) return staleEnvelope(cached);
+      return offlineEnvelope(503, {});
+    }
+    // Mutation offline: the app keeps its durable outbox queued and retries
+    // on the online heartbeat — a 503 here is "accepted for retry", not loss.
+    return offlineEnvelope();
+  }
+}
+
+// #1651 — registerRoute defaulted to GET, so the mutation 503 branch above was
+// dead for non-GETs and offline writes failed with a TypeError instead of the
+// documented 503 + X-NV-Offline:1 envelope. Workbox routes by ONE HTTP method
+// per route (Router._routes is keyed by request.method), so register the same
+// handler under every method that can hit /api/.
+const API_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+for (const method of API_METHODS) {
+  registerRoute(
+    ({ url }) => url.pathname.startsWith("/api/"),
+    apiNetworkBoundary,
+    method
+  );
+}

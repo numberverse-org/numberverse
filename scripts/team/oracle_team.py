@@ -166,21 +166,33 @@ def scene_texts():
     return texts
 
 # word-boundary matched — "skill!" must not trip "kill", "die" must not trip "diet".
-# The single source of truth is apps/kid/src/game/unsafeWords.json (shared with
-# scripts/content-safety.mjs + the runtime TTS guard) so the lists can't drift.
-_SAFETY_WORDS = json.loads((KID / "src" / "game" / "unsafeWords.json").read_text())
-def _unsafe_patterns():
+# The SINGLE shared unsafe-word table + allowlist is scripts/safety-words.mjs
+# (#1664), consumed here (via `node scripts/safety-words.mjs` CLI JSON — Python
+# can't import ESM) AND by scripts/content-safety.mjs, so the lists can't drift.
+# The word table lives in apps/kid/src/game/unsafeWords.json (shared with the
+# runtime TTS guard).
+_BANGLA_RANGE = "ঀ-৿"
+
+def _shared_safety_table():
+    """The one shared UNSAFE+ALLOWLIST table (scripts/safety-words.mjs)."""
+    p = run(["node", "scripts/safety-words.mjs"], timeout=30)
+    if p.returncode != 0:
+        raise RuntimeError(f"safety-words.mjs failed: {(p.stderr or p.stdout or '')[-200:]}")
+    data = json.loads(p.stdout)
+    return data["unsafeWords"], set(data["allowlist"].keys())
+
+def _safety_patterns(words):
+    """[(term, regex), ...] — term kept so the shared allowlist can be applied."""
     pats = []
-    for w in _SAFETY_WORDS.get("en", {}).values():
+    for w in words.get("en", {}).values():
         for term in w:
-            pats.append(r"\b" + re.escape(term) + r"\b")
+            pats.append((term, r"\b" + re.escape(term) + r"\b"))
     # Bangla script has no ASCII word boundary, so match only when the term is
     # NOT surrounded by other Bangla letters ("মর" must not trip "মরিচ").
-    for w in _SAFETY_WORDS.get("bn", {}).values():
+    for w in words.get("bn", {}).values():
         for term in w:
-            pats.append(r"(?<![ঀ-৿])" + re.escape(term) + r"(?![ঀ-৿])")
+            pats.append((term, r"(?<![" + _BANGLA_RANGE + r"])" + re.escape(term) + r"(?![" + _BANGLA_RANGE + r"])"))
     return pats
-UNSAFE = _unsafe_patterns()
 # real tracker/ad SDK fingerprints — URL domains or SDK call shapes, NOT plain words
 AD_SDKS = ["adsbygoogle", "doubleclick.net", "googlesyndication", "googletagmanager.com",
            "mixpanel.com", "segment.com", "amplitude.com", "fullstory.com", "hotjar.com",
@@ -197,40 +209,46 @@ def _strip_js_comments(src: str) -> str:
     src = re.sub(r"//[^\n]*", "", src)
     return src
 
-def _flag_unsafe(hits, label, text):
+def _flag_unsafe(hits, label, text, patterns, allowlist):
     low = text.lower()
-    for w in UNSAFE:
-        if re.search(w, low):
-            hits.append(f"{label}: ~{w}")
+    for term, pat in patterns:
+        if re.search(pat, low):
+            if term in allowlist:
+                continue  # shared allowlist — same sanctioned path as the CI gate
+            hits.append(f"{label}: ~{term}")
             return
 
 def l1_safety():
+    """Child-safety scan — uses the SAME shared table + allowlist as the CI gate
+    (scripts/safety-words.mjs, #1664) and scans the i18n corpus (#1663)."""
     hits = []
+    words, allowlist = _shared_safety_table()
+    patterns = _safety_patterns(words)
     # EN + BN title/description fields (SKILLS + BANDS + SKILL_FAMILIES) are all
     # rendered to kids — scan the same source the content-safety gate scans.
     skills_src = (CORE / "skills.ts").read_text(errors="ignore")
     for m in re.finditer(r"\b(titleBn|descriptionBn|description|title):\s*'([^']+)'", skills_src):
         line_no = skills_src[:m.start()].count("\n") + 1
-        _flag_unsafe(hits, f"skills.ts:{m.group(1)}:{line_no}", m.group(2))
+        _flag_unsafe(hits, f"skills.ts:{m.group(1)}:{line_no}", m.group(2), patterns, allowlist)
     # Game scenes — quoted display strings a kid reads/hears.
     for fn, txt in scene_texts():
         for m in re.finditer(r"['\"`]([^'\"`\n]{3,120})['\"`]", txt):
-            _flag_unsafe(hits, fn, m.group(1))
+            _flag_unsafe(hits, fn, m.group(1), patterns, allowlist)
     # 3D island source — child-facing strings outside the Scene dir (#896).
     for f in (KID / "src" / "nova3d").glob("*"):
         if f.suffix not in (".ts", ".tsx"):
             continue
         txt = f.read_text(errors="ignore")
         for m in re.finditer(r"['\"`]([^'\"`\n]{3,120})['\"`]", txt):
-            _flag_unsafe(hits, f.name, m.group(1))
-    # i18n dictionaries — the largest child-facing text surface (#897). Scan
-    # comment-stripped lines so template-literal fragments can't hide a word.
+            _flag_unsafe(hits, f.name, m.group(1), patterns, allowlist)
+    # i18n dictionaries — the largest child-facing text surface (#897/#1663).
+    # Scan comment-stripped lines so template-literal fragments can't hide a word.
     for f in [KID / "src" / "i18n.ts", KID / "src" / "game" / "i18n.ts"]:
         txt = _strip_js_comments(f.read_text(errors="ignore"))
         for line_no, line in enumerate(txt.splitlines(), 1):
             if not line.strip():
                 continue
-            _flag_unsafe(hits, f"{f.name}:{line_no}", line)
+            _flag_unsafe(hits, f"{f.name}:{line_no}", line, patterns, allowlist)
     return (not hits), (f"0 unsafe hits" if not hits else f"{len(hits)} flagged: {hits[:4]}")
 
 def l1_privacy():

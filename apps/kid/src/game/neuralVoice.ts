@@ -43,9 +43,16 @@ const VOICE_V = "v9"; // v9 = ORT engine back to 1.17 (piper-wasm's engine) — 
 // model rev together — a voice deploy that only renames the .onnx file would
 // otherwise leave the .onnx.json config frozen in the 6-month CacheFirst cache,
 // creating a mismatched model+config pair for installed clients.
-const PHON_JS = BASE + "piper_phonemize.js";
-const PHON_WASM = BASE + "piper_phonemize.wasm";
-const PHON_DATA = BASE + "piper_phonemize.data";
+// #1652 — the PHON_* phonemizer files used to be fetched at bare URLs, so an
+// installed PWA kept serving old phonemizer bytes up to 6 months after a deploy
+// (game by the 180d CacheFirst voice route) → model/phonemizer mismatch. They
+// now carry ?v=VOICE_V too, so the whole voice payload revs together. The ONLY
+// exception is ORT_WASM (below), which must keep its UNVERSIONED URL because
+// ORT 1.17's loader string-concats its own filename — that one uses the
+// rename-on-change convention instead.
+const PHON_JS = BASE + "piper_phonemize.js?v=" + VOICE_V;
+const PHON_WASM = BASE + "piper_phonemize.wasm?v=" + VOICE_V;
+const PHON_DATA = BASE + "piper_phonemize.data?v=" + VOICE_V;
 const WORKER_JS = BASE + "piper_worker.js?v=" + VOICE_V;
 const MODEL = BASE + "bn_BD-google-medium.onnx?v=" + VOICE_V;
 const MODEL_JSON = BASE + "bn_BD-google-medium.onnx.json?v=" + VOICE_V;
