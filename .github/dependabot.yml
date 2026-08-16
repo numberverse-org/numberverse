@@ -1,0 +1,75 @@
+# #1694 — Dependabot config: weekly, grouped dependency-update PRs for the
+# npm (pnpm workspace) and pip (uv) ecosystems.
+#
+# Every Dependabot PR triggers the existing CI gates on this repo:
+#   - dep-audit   → scripts/audit-deps.mjs  (npm vuln gate, #308/#1698/#1699)
+#   - python-audit → uv lock --check + pip-audit (Python vuln gate, #1691/#1692)
+#   - license-audit → scripts/license-audit.mjs
+# A dependency update that trips a gate will fail the PR, which is the intent.
+version: 2
+updates:
+  # ── npm (pnpm workspace) — root + each workspace member ────────────────
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-runtime:
+        dependency-type: "production"
+      npm-dev:
+        dependency-type: "development"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "npm"
+    directory: "/apps/kid"
+    schedule:
+      interval: "weekly"
+    groups:
+      kid-runtime:
+        dependency-type: "production"
+      kid-dev:
+        dependency-type: "development"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "npm"
+    directory: "/apps/parent"
+    schedule:
+      interval: "weekly"
+    groups:
+      parent-runtime:
+        dependency-type: "production"
+      parent-dev:
+        dependency-type: "development"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "npm"
+    directory: "/apps/admin"
+    schedule:
+      interval: "weekly"
+    groups:
+      admin-runtime:
+        dependency-type: "production"
+      admin-dev:
+        dependency-type: "development"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "npm"
+    directory: "/packages/core"
+    schedule:
+      interval: "weekly"
+    groups:
+      core-runtime:
+        dependency-type: "production"
+      core-dev:
+        dependency-type: "development"
+    open-pull-requests-limit: 10
+
+  # ── pip (uv-managed API) ────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+    groups:
+      pip-deps:
+        patterns: ["*"]
+    open-pull-requests-limit: 10

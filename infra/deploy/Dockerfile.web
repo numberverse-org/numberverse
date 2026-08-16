@@ -51,9 +51,16 @@ FROM python:3.12-slim@sha256:dd29372629eeba2dd003fd9e9d35a5b8236c44727875a036425
 ARG VOICE_MODEL_URL=https://huggingface.co/rhasspy/piper-voices/resolve/main/bn/bn_BD/google/medium/bn_BD-google-medium.onnx
 COPY infra/deploy/scripts/fetch_voice_assets.sh /tmp/fetch_voice_assets.sh
 COPY infra/deploy/scripts/quantize_voice.py /tmp/quantize_voice.py
+# #1701 — build-time Python deps (numpy/onnx/onnxruntime) are installed from a
+# pinned, hash-verified requirements file (apps/api/pip-hashes.txt, generated
+# by `uv pip compile --generate-hashes`). Every wheel is checked against its
+# SHA-256 before install, so a compromised PyPI release can never execute in
+# the build. Refresh the versions by re-running `uv pip compile` and updating
+# the file — never loosen this install to an unhashed `pip install pkg`.
+COPY apps/api/pip-hashes.txt /tmp/pip-hashes.txt
 RUN apt-get update && apt-get install -y --no-install-recommends curl tar \
     && sh /tmp/fetch_voice_assets.sh /voice "${VOICE_MODEL_URL}" \
-    && pip install --no-cache-dir "numpy<2" "onnx==1.16.1" onnxruntime==1.17.0 \
+    && pip install --no-cache-dir --require-hashes -r /tmp/pip-hashes.txt \
     && python3 /tmp/quantize_voice.py /voice/bn_BD-google-medium.onnx /voice/bn_BD-google-medium.onnx
 
 # Precompress the big static files — each gains a <file>.gz served by nginx

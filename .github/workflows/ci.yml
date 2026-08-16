@@ -84,15 +84,29 @@ jobs:
         run: node scripts/test-png-metadata.mjs
 
   api:
-    name: api
+    name: api (3.12 / 3.13)
     runs-on: ubuntu-latest
+    # #1702 — supported-interpreter matrix: the requires-python bound is
+    # ">=3.12,<3.14", so every API test runs on both supported interpreters to
+    # catch interpreter regressions before merge.
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: Install API base deps (org-isolation test needs the stack)
-        run: python3 -m pip install --quiet "fastapi>=0.115" "sqlalchemy[asyncio]>=2.0" "psycopg[binary]>=3.2" "pydantic-settings>=2.4" "pyjwt>=2.9" "bcrypt>=4.1" "email-validator>=2.0"
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv (pinned for lockfile-toolchain reproducibility)
+        run: python3 -m pip install --quiet "uv==0.11.3"
+      - name: Lockfile drift guard (#1692)
+        working-directory: apps/api
+        run: uv lock --check
+      - name: Sync API deps from lockfile (uv sync --frozen --no-dev, #1692/#1693)
+        working-directory: apps/api
+        run: uv sync --frozen --no-dev
+      - name: Put synced venv on PATH for the unit tests
+        run: echo "apps/api/.venv/bin" >> "$GITHUB_PATH"
       - name: API app compiles
         run: python3 -m compileall -q apps/api/app
       - name: API unit tests (PII scrubber)
@@ -153,6 +167,43 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Dependency vulnerability gate (#308)
         run: node scripts/audit-deps.mjs
+      - name: Core-react major-skew check (#1697)
+        run: |
+          # react-is must resolve to a single major across the tree (the admin
+          # app once resolved 16.13.1 + 19.2.8 transitively). A pnpm override
+          # pins it to 19.x; this guard fails if a future change reintroduces
+          # a second major of a core react package.
+          MAJORS=$(grep -oE 'react-is@[0-9]+\.' pnpm-lock.yaml | sort -u | wc -l | tr -d ' ')
+          echo "react-is resolved: $(grep -oE 'react-is@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml | sort -u | tr '\n' ' ')"
+          if [ "$MAJORS" -gt 1 ]; then
+            echo "✖ react-is resolves to $MAJORS different majors — align via pnpm override (#1697)."
+            exit 1
+          fi
+          echo "✓ react-is resolved to a single major"
+
+  python-audit:
+    name: python-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv (pinned for lockfile-toolchain reproducibility)
+        run: python3 -m pip install --quiet "uv==0.11.3"
+      # #1691 — Python backend deps get a vulnerability scan (mirror of the npm
+      # dep-audit gate #308). `uv lock --check` guards against lockfile drift
+      # (#1692) and `pip-audit` fails on any known vulnerability in the locked
+      # non-dev requirement set. A seeded vulnerable pin (e.g. requests<2.32)
+      # fails this gate.
+      - name: Python dependency vulnerability audit (#1691/#1692)
+        working-directory: apps/api
+        run: |
+          uv lock --check
+          # --python 3.12: the locked requirement set is bounded to <3.14, so
+          # pip-audit's collection must run on a supported interpreter (uvx
+          # would otherwise pick an arbitrary uv-managed Python).
+          uvx --python 3.12 pip-audit -r <(uv export --frozen --no-dev) --strict
 
   bundle-size:
     name: bundle-size

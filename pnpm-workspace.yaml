@@ -17,3 +17,13 @@ onlyBuiltDependencies:
 # (transitive via postcss from next/vite; 3.3.17 is in the vulnerable range).
 overrides:
   nanoid: ^3.3.18
+  # #1700 — dedupe duplicate majors to single current versions:
+  #  - sharp 0.34.5 (via @gltf-transform/cli) was <0.35.0 → GHSA-f88m-g3jw-g9cj
+  #    (libvips CVEs). 0.35.3 is already in the tree; force everything to it.
+  #  - postcss 8.4.31 (via next@14) is in the vulnerable range of several
+  #    source-map advisories; 8.5.26 is the current patched release.
+  #  - react-is (admin tree) resolved as 16.13.1 + 19.2.8 transitive majors;
+  #    align to the 19.x used by react-admin/MUI.
+  sharp: ^0.35.3
+  postcss: ^8.5.26
+  react-is: ^19.2.0
