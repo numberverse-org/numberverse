@@ -204,6 +204,7 @@ jobs:
 
   offline-e2e:
     name: e2e
+    needs: build-core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -215,8 +216,39 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-dist
+          path: packages/core/dist
       - name: Install Playwright browsers (chromium + firefox + webkit)
         run: pnpm exec playwright install --with-deps
+      # The e2e suite now ALSO runs against the PR's OWN bundles (via the
+      # scripts/e2e-preview.mjs single-origin proxy). Building the parent with
+      # NEXT_PUBLIC_BASE_PATH=/parent reproduces the production export layout
+      # (nginx serves apps/parent/out under /parent/), and VITE/NEXT_PUBLIC_API_URL
+      # keep the apps on the same-origin /api/v1 like the deployed build.
+      - name: Build PR bundles (kid + parent) for local-preview e2e
+        run: |
+          pnpm --filter kid build
+          NEXT_PUBLIC_BASE_PATH=/parent pnpm --filter parent build
+        env:
+          VITE_API_URL: /api/v1
+          NEXT_PUBLIC_API_URL: /api/v1
+      - name: Numberverse e2e — PR's own bundles (local preview, #264/#925/#926/#927)
+        env:
+          NV_E2E_BASE: http://127.0.0.1:8081
+          NV_E2E_SKIP_VERSION_CHECK: "1"
+        run: |
+          # Preview server in the background; the env above reaches BOTH the
+          # proxy script and the Playwright run. The trap kills the preview
+          # when the step exits (success or failure) so no orphan lingers.
+          node scripts/e2e-preview.mjs > /tmp/nv-e2e-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          pnpm exec playwright test
+      # The live-targeted run stays as the shipped-artifact gate (#930): it
+      # guards the deployed version and fails PRs whose stamp differs from live.
+      # The local-preview step above is what exercises the PR's own bundles.
       - name: Numberverse e2e (#264 offline, #925 sync drain, #926 cross-app, #927 portal)
         run: pnpm exec playwright test
 

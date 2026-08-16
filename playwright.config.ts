@@ -43,6 +43,15 @@ export default defineConfig({
         // NV_E2E_CHANNEL=chrome → use the machine's Google Chrome (no browser
         // download needed locally). Unset → bundled chromium (CI default).
         channel: process.env.NV_E2E_CHANNEL as "chrome" | undefined,
+        // 🔊 MUTE all test-browser audio: the kid app's Web Speech API
+        // (speechSynthesis) speaks through the Mac's default output (Hasan's
+        // BT earbuds) whenever a test claims a daily reward / unlocks a badge
+        // etc. — every playwright run must be silent. `--mute-audio` is a
+        // Chromium launch arg; speechSynthesis still fires its events, so
+        // assertions on the API keep working — only audible output is muted.
+        launchOptions: {
+          args: ["--mute-audio"],
+        },
       },
     },
     {

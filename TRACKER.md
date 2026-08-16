@@ -1,6 +1,15 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧪 V50 E2E-SCENARIO-COVERAGE FEED (13 spec pairs + vitest foundation) 16 Aug 2026 ✅ → 0.86.0
+- **13 new mock-backed e2e specs** (no live accounts, catch-all `**/api/v1/**` in `e2e/lib/apiMocks.ts`):
+  gameplay (CountPop 5 rounds → done → progress POST), pin-gate (#86 PIN setup/unlock/3-try lockout/offline Q&A recovery), age-band (birth-year → band surfaces), parent-guardrails (band lock + daily time limit + quiet hours survive reload + danger-zone delete), session-management (revoke → re-login → rejected token; sign-out-all), qr-cards (QR card print → scan → launch), share-card (public privacy contract — aggregate tiles, no name/avatar/id leak), push-consent (#1535 password-reconfirm + subscribe POST with endpoint+p256dh+auth), bangla-surface (nv_lang=bn home/settings/lesson/done all বাংলা + bnNum digits), guest-upgrade (guest → account, local progress kept), admin (mock profile list + edit), retention (7-day calendar claim + mystery-box pay persist to nv_store_v1), google-signin (Continue-with-Google button + id-token POST).
+- **5 real spec bugs found + fixed this session:** (1) `.hud-back`/`.hud-music` are SHARED classes (back+pause / sound+calm+lang) → role+name selectors; (2) post-session Moni #327 break interstitial appears before done-screen → keep-going tap; (3) fake `navigator.serviceWorker` needed `getRegistration()` too (missing method crashed the portal shell); (4) `.cal-tile.claim` has an INFINITE pulse + sits below the 720px fold → both Playwright click paths fail → native DOM `.click()`; (5) `readNova` is async — `readNova()?.coins` reads `.coins` off a PROMISE → all 6 persisted-store polls awaited it.
+- **Vitest foundation for apps/kid** (next-ranked feed test-coverage-kid): vitest 2.1.9 + jsdom, minimal `vitest.config.ts` (`tests/**/*.test.ts`), `pnpm --filter kid test` script.
+- **CI offline-e2e preview job** (.github/workflows/ci.yml): build PR bundles → `scripts/e2e-preview.mjs` local proxy (:8081) → run mock-backed specs against the preview; live-targeted run stays.
+- **`--mute-audio`** launch arg in playwright.config.ts — every test-browser run is silent (Web Speech still fires events; only audible output muted).
+- Verified: **14/14 chromium tests green** (13 specs, parent-guardrails + session-management each 2 tests) against the live host. Commits to follow in 0.86.0.
+
 ## 🧪 V50 E2E FEED (8 findings) 16 Aug 2026 ✅ → 0.85.0
 - **#1/#2/#3 (specs already shipped in batch-2, b62f31a):** sync-drain.spec.ts (#925, offline→online outbox drain via patched navigator.onLine + real online event), cross-app.spec.ts (#926, signup→play→portal→logout on the shared origin), parent-portal.spec.ts (#927) — all mock-backed via `e2e/lib/apiMocks` (catch-all fulfills every /api/v1/** so no live account is ever created).
 - **#4 positive assertions:** ALREADY implemented — `assertLaunchShellSucceeded` (#928) asserts document + /assets/ + /fonts/ + icons + manifest each SUCCEEDED from the SW precache (not merely "didn't fail").
