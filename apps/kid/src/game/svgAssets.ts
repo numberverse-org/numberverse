@@ -1,5 +1,10 @@
 import Phaser from "phaser";
 import { ASSETS } from "../assets/svgs";
+// #1744 — the blob cache lives in backgrounds.ts and must drop its dead
+// CanvasTextures the moment a brand-new game is detected. This import is
+// deliberately only referenced from run-time call sites (never at module-eval
+// time), so the backgrounds → ui → svgAssets cycle it forms stays inert.
+import { clearBlobCache } from "./backgrounds";
 
 /**
  * SVG → Phaser texture bridge.
@@ -80,12 +85,26 @@ export function ensureAssets(scene: Phaser.Scene): void {
 
 async function runEnsureAssets(scene: Phaser.Scene, gen: number): Promise<void> {
   const keys = Object.keys(ASSETS);
-  // Brand-new game? (App destroys + recreates the game when leaving play.)
-  // Drop any in-flight loads aimed at the old game's dead textures.
+  // Brand-new game? App destroys + recreates the Phaser game when the kid
+  // leaves play, which wipes the whole texture manager (so the first key's
+  // texture is gone). Drop anything aimed at the old game:
+  //  · inFlight — stale <img> loads whose onload would paint into dead ghosts
+  //  · waiters  — upgrade callbacks bound to the old game's Scene containers
+  //  · failed   — a once-failed SVG was pinned to emoji forever; the failure is
+  //    usually transient (network blip), so a brand-new game gets a fresh retry
+  //  · clearBlobCache() — the old game's 512×512 blob CanvasTextures are dead
+  //    but were retained by the module-level cache forever (#1744).
+  // (The historical `&& inFlight.size > 0` guard is gone: it only fired when a
+  // load happened to still be running, so a typical new game with everything
+  // settled silently KEPT the stale failed-set and blob cache. The texture
+  // being missing is the reliable signal — it cannot be absent mid-game, since
+  // startOne() creates the first key's texture synchronously.)
   const first = keys[0];
-  if (!scene.textures.exists(textureKey(first)) && inFlight.size > 0) {
+  if (!scene.textures.exists(textureKey(first))) {
     inFlight.clear();
     waiters.clear();
+    failed.clear(); // #1745
+    clearBlobCache(); // #1744
   }
   for (let i = 0; i < keys.length; i += SVG_BATCH) {
     if (gen !== runGen) return; // superseded by a newer boot/game

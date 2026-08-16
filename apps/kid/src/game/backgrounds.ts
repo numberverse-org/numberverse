@@ -149,6 +149,19 @@ function makeGradient(
 const blobCache = new Map<number, Phaser.Textures.CanvasTexture>();
 const blobPainted = new Set<number>();
 
+/** #1744 — the blob cache is module-level, but the CanvasTextures it holds die
+ *  with their Phaser game: App destroys + recreates the game when the kid
+ *  leaves play, so every cached 512×512 texture from the old game is dead but
+ *  would otherwise be pinned here for the app's lifetime (memory grows across
+ *  game sessions). svgAssets.ensureAssets() detects a brand-new game and calls
+ *  this so each session starts with a clean cache AND a fresh paint (the paint
+ *  guard is cleared too — otherwise a recreated game would reuse a dead
+ *  texture's "already painted" mark and show a transparent blank blob). */
+export function clearBlobCache(): void {
+  blobCache.clear();
+  blobPainted.clear();
+}
+
 /** #1821 — the blob is a soft 512px radial glow. The texture key is created
  *  synchronously (so `scene.add.image` never sees a missing texture), but the
  *  actual radial-gradient fill is painted on a later frame so a scene create
@@ -182,6 +195,14 @@ function getBlobTex(scene: Phaser.Scene, color: number): Phaser.Textures.CanvasT
       paintBlobTex(tex, color);
     }
     return tex;
+  }
+  // #1744 — the cached texture died with a previous Phaser game. Drop the stale
+  // entry AND its paint guard so the fresh canvas below is actually painted (a
+  // lingering "already painted" mark would otherwise leave a transparent blank
+  // blob on a recreated game that reuses the same palette color).
+  if (tex) {
+    blobCache.delete(color);
+    blobPainted.delete(color);
   }
   const key = `blob-${color.toString(16)}`;
   const size = 512;
@@ -696,7 +717,16 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
   scene.scale.on(Phaser.Scale.Events.RESIZE, onResize);
   resizeFns.set(scene, onResize);
 
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+  // #1746 — the reduced-motion callback lives in a module-level Set and the
+  // resize listener lives on the game-level ScaleManager, so BOTH must be
+  // released on DESTROY too (a game teardown destroys scenes without a stop).
+  // Same SHUTDOWN+DESTROY convention as sceneLifecycle.ts / NovaScene; `once`
+  // fires each event at most once and the tornDown guard makes a double-fire a
+  // no-op (offReducedMotion is itself idempotent after #1746).
+  let tornDown = false;
+  const teardown = () => {
+    if (tornDown) return;
+    tornDown = true;
     state.offReducedMotion?.();
     const rf = resizeFns.get(scene);
     if (rf) scene.scale.off(Phaser.Scale.Events.RESIZE, rf);
@@ -713,7 +743,9 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
     bgState.delete(scene);
     resizeFns.delete(scene);
     state.root.destroy();
-  });
+  };
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, teardown);
+  scene.events.once(Phaser.Scenes.Events.DESTROY, teardown);
 
   return state;
 }

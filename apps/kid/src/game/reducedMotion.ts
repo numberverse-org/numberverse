@@ -17,10 +17,18 @@ const listeners = new Set<ReducedMotionListener>();
 /** Subscribe to in-app reduced-motion changes. Returns an unsubscribe fn.
  *  Only fires for explicit setReducedMotion() toggles — used by long-lived
  *  Phaser scenes/helpers so a toggle has a live effect on an already-running
- *  scene instead of being read once at create time (#1440). */
+ *  scene instead of being read once at create time (#1440).
+ *  #1746 — the unsubscribe is idempotent: a scene wires its cleanup to BOTH
+ *  SHUTDOWN and DESTROY (the codebase convention), and if both ever fire for
+ *  one scene a second unsubscribe must be a harmless no-op. */
 export function onReducedMotionChange(listener: ReducedMotionListener): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  let unsubscribed = false;
+  return () => {
+    if (unsubscribed) return;
+    unsubscribed = true;
+    listeners.delete(listener);
+  };
 }
 
 export function prefersReducedMotion(): boolean {

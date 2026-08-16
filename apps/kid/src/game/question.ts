@@ -199,10 +199,20 @@ export function questionPanel(
     if (reduced) stopIdleMotion();
     else startIdleMotion();
   });
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+  // #1746 — the listener lives in a module-level Set, so it must be released
+  // on BOTH SHUTDOWN and DESTROY (a game teardown destroys scenes without a
+  // stop). `once` fires each event at most once; the tornDown guard makes a
+  // double-fire (both events for one scene) a no-op, and offReducedMotion is
+  // itself idempotent.
+  let tornDown = false;
+  const teardown = () => {
+    if (tornDown) return;
+    tornDown = true;
     offReducedMotion();
     stopIdleMotion();
-  });
+  };
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, teardown);
+  scene.events.once(Phaser.Scenes.Events.DESTROY, teardown);
 
   layout();
 
