@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import Profile, PushSubscription
+from ..ratelimit import rate_limit
 
 router = APIRouter(prefix="/api/v1/push", tags=["push"])
 
@@ -40,6 +41,11 @@ router = APIRouter(prefix="/api/v1/push", tags=["push"])
 ENDPOINT_MAX_LENGTH = 2048
 P256DH_MAX_LENGTH = 2048
 AUTH_MAX_LENGTH = 1024
+
+# #1766 — subscribe/unsubscribe churn the push_subscriptions table (row
+# upserts + key-material rotation): same account+IP durable budget as every
+# other write surface.
+PUSH_WRITE_RATE_LIMIT = rate_limit()
 
 
 class PushSubscribeIn(BaseModel):
@@ -71,6 +77,7 @@ async def subscribe(
     body: PushSubscribeIn,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _limiter: Profile = Depends(PUSH_WRITE_RATE_LIMIT),
 ):
     """Upsert the caller's push subscription for `endpoint`.
 
@@ -110,6 +117,7 @@ async def unsubscribe(
     body: PushUnsubscribeIn,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _limiter: Profile = Depends(PUSH_WRITE_RATE_LIMIT),
 ):
     """Delete the caller's push subscription for `endpoint`.
 
