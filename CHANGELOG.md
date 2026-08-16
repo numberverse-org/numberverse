@@ -1,3 +1,14 @@
+## 17 Aug 2026 — 0.92.0 (ratelimit/keymgmt wave: #1765 admin search+embed budgets, #1766 push rate limit, #1767/#1769/#1770 bucket eviction + no-IP keys + burn isolation, #1768 export/import 10/min, #1774 JWT key rotation, #1775 device credential derivation, #1777 share-token sha256 fingerprint)
+
+f6672e5 docs: TRACKER wave entry — ratelimit/keymgmt wave → 0.92.0
+3ec4c0d #1777 share tokens stored as sha256 fingerprints (legacy lazy-migration; public route hashes inbound token)
+7d8c265 #1775 device-bound credential: PBKDF2 deriveDeviceSecret + legacy raw-seed 401 fallback (audit clean)
+3f8703a #1774 JWT HS256 key rotation: kid claim + previous-key grace window, dual-key verify in decode_token
+e99d564 #1768 export/import heavy endpoints get rate_limit(10) instead of the 120/min read budget
+91ad7bd #1767 rate-limit bucket prune (7d) wired into hourly tick; #1769 no-IP fallback granularity; #1770 burn-isolation proven in test_ratelimit_keys
+5d65488 #1766 push subscribe/unsubscribe write endpoints get PUSH_WRITE_RATE_LIMIT (120/min) + standalone test
+5d29a3e #1765 admin search/embed endpoints get their own rate-limit budgets (20/min search, 10/min embed) via _limiter deps
+
 ## 17 Aug 2026 — 0.91.0 (auth/ratelimit/ddl wave: #1773 JWT httpOnly refresh rotation, #1764 read-tier rate limits, #1801 admin IN-clause cap, #1793-#1798 migrations DDL hardening, #1776 DB-password+Bearer log redaction)
 
 3816205 docs: TRACKER wave entry — auth/ratelimit/ddl wave → 0.91.0
