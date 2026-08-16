@@ -30,6 +30,10 @@ async def get_current_profile(
     if not cred:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
     try:
+        # #1774 — decode_token routes the verifying key by the token's `kid`
+        # claim: current key (jwt_secret) or, during a rotation's grace window,
+        # the previous key (jwt_secret_old). Any unknown/mismatched kid or bad
+        # signature surfaces as an Exception and lands here as a 401.
         payload = decode_token(cred.credentials)
     except Exception:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")

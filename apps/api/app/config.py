@@ -60,6 +60,14 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://numberverse:numberverse_dev@localhost:5434/numberverse"
     jwt_secret: str = DEFAULT_JWT_SECRET
+    # #1774 — JWT signing-key rotation. `jwt_secret` is the CURRENT key; tokens
+    # carry a `kid` claim naming it. When you rotate, keep the OLD secret in
+    # `jwt_secret_old` (with its own kid) for one rollout so outstanding tokens
+    # keep verifying, then clear it. Without this, a key change force-logs-out
+    # every client at once.
+    jwt_kid: str = "v1"
+    jwt_secret_old: str | None = None
+    jwt_kid_old: str = "v0"
     # #1773 — short-lived access tokens (minutes) + a long-lived ROTATING
     # refresh cookie (days). The old single week-long JWT in localStorage is
     # gone: the access token is now short-lived, and the week-long credential

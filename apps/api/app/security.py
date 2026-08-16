@@ -39,6 +39,11 @@ def create_access_token(subject: str, role: str = "user", session_id: str | None
     # admin. The week-long credential is now the rotating httpOnly refresh cookie.
     lifetime_min = settings.admin_access_minutes if role in ("admin", "super_admin") else settings.jwt_access_minutes
     payload: dict[str, Any] = {
+        # #1774 — key-id claim naming the signing key. `decode_token` routes on
+        # it, so rotating NV_JWT_SECRET only needs to accept the current key
+        # plus the previous key (jwt_secret_old) during the grace window —
+        # outstanding tokens keep verifying and nobody is force-logged-out.
+        "kid": settings.jwt_kid,
         "sub": str(subject),
         # #868 — role claim (informational/forward-compatible). `require_role`
         # always re-checks the DB via `get_current_profile`, so this claim is
@@ -58,7 +63,19 @@ def create_access_token(subject: str, role: str = "user", session_id: str | None
 
 
 def decode_token(token: str) -> dict[str, Any]:
-    return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    # #1774 — pick the verifying key by the token's kid claim so a rotated
+    # secret only has to accept the CURRENT key plus the previous key during
+    # the grace window (no force-logout on rotation).
+    payload = jwt.decode(
+        token, settings.jwt_secret, algorithms=["HS256"], options={"verify_signature": False}
+    )
+    kid = payload.get("kid")
+    if kid == settings.jwt_kid:
+        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    if settings.jwt_secret_old and kid == settings.jwt_kid_old:
+        return jwt.decode(token, settings.jwt_secret_old, algorithms=["HS256"])
+    # Unknown/absent kid on a token signed by a retired key → reject.
+    raise jwt.InvalidTokenError("unknown key id")
 
 
 # #1773 — rotating refresh cookie. The raw refresh token is NEVER stored or
