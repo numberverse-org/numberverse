@@ -1,14 +1,29 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 17 Aug 2026
 
-## 🛡️ SYNC/SECURITY/OBSERVABILITY WAVE (#1771–#1814) 16 Aug 2026 ⏳ in-flight → next release (5 fan-out subagents)
-- **Dispatched 5 disjoint fan-out subagents** (pairwise-disjoint file sets):
-  - sync-persist #1803+#1804+#1814 — mastery atomicity (advisory xact lock), wallet spend sync (LWW on monotonic wallet_seq, no more GREATEST resurrection), persist JSON.stringify off main thread (dedicated worker, pagehide stays synchronous). NOTE: #1802 (progress uid dedup) verified ALREADY SHIPPED — model has `uid` + `UniqueConstraint(kid_id,uid)`, record_progress uses `on_conflict_do_nothing`, client sends `uid`. Will close as done, not re-implement.
-  - share-og #1781+#1782 — server-component split of /share page + OG/Twitter card metadata + static 1200x630 og image.
-  - secrets #1771 — non-dev guard enforces min-length (32 jwt / 12 pw) + entropy + adds `numberverse-dev-secret-change-me` to placeholder sets.
-  - ratelimit-nginx #1760+#1761+#1762+#1772+#1751 — trusted-proxy IP (nginx replaces XFF, uvicorn allow-list), per-endpoint keys, CSP/HSTS/XFO/Referrer/nosniff headers, WARNING logs on 429/401.
-  - obs #1749+#1750 — RequestIDMiddleware (X-Request-ID echo + contextvar), _JsonFormatter adds request_id, Exception/HTTPException handlers log method/path/status/request_id.
-- Deferred to next batch (overlapping file ownership): #1764 (read-tier rate limits — needs #1762 per-endpoint keys first) and #1773 (JWT httpOnly architecture — needs exclusive ownership of kid api.ts).
+## 🔐 AUTH/RATELIMIT/DDL WAVE (#1773, #1764, #1801, #1793–#1798, #1776) 17 Aug 2026 ✅ → 0.91.0 (5 fan-out subagents)
+- **All 5 waves complete + verified on the merged tree:** 22 standalone api test files green (incl 3 new: refresh-rotation 36, read-tier 19, migrations-DDL 17), kid/parent/admin tsc 0, vitest 224/224, locale parity ✓, png-metadata ✓, audit 0 errors.
+- **#1773** JWT httpOnly architecture — week-long localStorage JWT replaced by a **15-min access token (10-min admin)** + a **rotating `nv_refresh` httpOnly+Secure+SameSite=strict cookie** scoped to `/api/v1/auth`. New `POST /auth/refresh` rotates (swaps `Session.refresh_hash` in place — old refresh dies instantly); login/signup/google set the cookie, logout clears it; `refresh_hash`/`refresh_expires_at` columns auto-migrated; CORS `allow_credentials` toggles off only under wildcard origins; `jwt_expires_minutes` kept as a backward-compat property + legacy env var dropped. Parent boot refresh-on-load, admin `checkAuth`/`checkError` refresh, kid `tryRefreshParentSession` 401-retry — **no full-week JWT is reachable from document.cookie-less JS on the parent/admin origin**.
+- **#1764** read-tier rate limits — new `READ_REQUESTS_PER_MIN = 600` + `read_rate_limit()` with a `:read` key namespace; wired onto snapshot/mastery/stories/stats/acceleration/aggregates (progress.py), activity/weekly (kids.py), share-token (shares.py). A 1000/min activity loop now 429s (unit-verified at the 601st call).
+- **#1801** admin IN-clause — `MAX_FILTER_LIST_LEN = 200`, oversized `?filter={"id":[...]}` → 400 before `col.in_(val)`.
+- **#1793–#1798** migrations.py DDL hardening — `_q()` quotes every interpolated identifier (incl type-migration + FK/constraint DDL); `_constraint_name` truncates to ≤63 chars with stable sha256 suffix; `CreateIndex(if_not_exists=True)` replaces prefix string-splicing; both ADD COLUMN branches unified through `CreateColumn` (nullable copy for NOT-NULL-no-default); CHECK sqltext gated by a strict per-model allowlist (RuntimeError on unregistered); share-token ALTERs via `_q`.
+- **#1776** scrub redacts `scheme://user:password@host` URLs and `Authorization: Bearer` tokens — a DB conn-string password or leaked JWT can no longer reach error.log.
+- Released **0.91.0**, deployed + smoke-tested live. 5 issues closed (+ 6 migrations sub-issues folded into one wave).
+
+## 🛡️ SYNC/SECURITY/OBSERVABILITY WAVE (#1771–#1814) 16 Aug 2026 ✅ → 0.90.2 (5 fan-out subagents)
+- **All 5 waves complete + verified on the merged tree:** kid tsc 0, parent tsc 0, core build+links 30, vitest 224/224, all 19 standalone api test files green, locale parity ✓, audit 0 errors, png-metadata ✓.
+- **#1803** BKT mastery serialized per (kid,skill) via `pg_advisory_xact_lock` — concurrent POSTs on the same skill can't lose an update (uid dedup was already shipped — #1802 closed as done).
+- **#1804** coin wallet GREATEST → last-write-wins on monotonic `wallet_seq` (Kid column auto-migrated; atomic `UPDATE ... WHERE wallet_seq < seq`; kid bumps seq on every grant/spend; restoreSnapshot LWW) — spent coins no longer resurrect.
+- **#1814** persist JSON.stringify off the main thread — `serializeSnapshot` pure fn + `persist.worker.ts`; pagehide/beforeunload flush stays synchronous for durability.
+- **#1781/#1782** share page → server shell + `ShareClient` child; `share/layout.tsx` OG/Twitter metadata + 1200×630 og card (24 og:/twitter: tags in out/share.html); **+0.90.2 fix:** nginx pins trailing-slash `/parent/share/` to share.html — minted links were serving the dashboard (static export has no `share/` dir).
+- **#1771** non-dev guard: 32/12-char minimums + `_entropy_bits` (len·log2 distinct-char alphabet, 64-bit JWT / 48-bit pw) + dev-secret placeholders from a single constant; **+0.90.1 fix:** the original ≥3-class heuristic crash-looped prod (rejected strong 48-char hex JWT) — now entropy-based, 7 subprocess cases.
+- **#1760/#1761** nginx `/api/` replaces X-Forwarded-For with `$remote_addr` (+ X-Real-IP); uvicorn `--forwarded-allow-ips` tightened `*` → `172.16.0.0/12`; app `_request_ip` uses the rightmost trusted hop — IP limiter/lockout no longer spoofable.
+- **#1762** rate_limit key now `{profile.id}:{ip}:{endpoint}` — a busy sync can't starve catalog reads; public signatures unchanged (#1764 rides on this next).
+- **#1772** CSP (self + Google CDN + wasm-unsafe-eval + parent inline) + HSTS/preload + nosniff + Referrer-Policy + X-Frame-Options DENY live on /, /parent/, /admin/ (curl-verified).
+- **#1751** deduped WARNING on each 429 (redacted sha256 key) + hashed-account-key WARNING on wrong-password 401s.
+- **#1749/#1750** RequestIDMiddleware (mint/sanitize X-Request-ID → `request_id_ctx`, echo on every path) + `_JsonFormatter` stamps request_id; Exception/HTTPException handlers log method/path/status/request_id for 5xx; test rewritten dependency-free (no httpx2/TestClient).
+- Released **0.90.0 → 0.90.1 (guard fix) → 0.90.2 (share link fix)**, all deployed + smoke-tested live (https://kids.munna-khan.xyz). 14 issues closed (#1802 already-shipped + 13).
+- Next clusters: **#1773** (JWT httpOnly architecture, batch-2 exclusive) + **#1764** (read-tier rate limits — now rides on #1762's per-endpoint keys) + #1801 (admin IN-clause).
 
 ## 🔐 XSS-PREVENTION + MAIN-THREAD-PERF WAVE (#1823–#1830) 16 Aug 2026 ✅ → 0.89.0 (8 fan-out subagents)
 - **All 8 waves complete + verified on the merged tree:** kid tsc 0, parent tsc 0, core build+links 30, png-metadata ✓, vitest 220/220 (incl new sanitize.test.ts 12), all 15 standalone api test files green (incl new test_schemas_validation 172), locale parity ✓, audit 0 errors.
