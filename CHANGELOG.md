@@ -1,3 +1,8 @@
+## 16 Aug 2026 — 0.87.0 (test-coverage-kid: 11 vitest files/208 tests closing 15 feed findings + 6 real i18n bugs fixed (BN round-HUD digits, 5 hardcoded Round scenes, PercentScene pctFact))
+
+e1cca7c 📚 TRACKER: v50 test-coverage-kid feed closure (15 findings — 11 vitest files/208 tests + 6 i18n bugs fixed)
+261c56c 🧪 test-coverage-kid: 11 vitest files (208 tests) closing feed #1/#2/#4/#6/#7/#8/#9/#10/#12/#13/#14 + 6 i18n bug fixes
+
 ## 16 Aug 2026 — 0.86.0 (e2e-scenario-coverage: 13 mock-backed specs (gameplay/pin-gate/retention/push-consent/bangla-surface/admin/guardrails/sessions/share-card/qr-cards/google-signin/guest-upgrade/age-band) + vitest foundation for apps/kid + CI preview job + 5 spec-bug fixes)
 
 4a609dd 🧪 e2e-scenario-coverage: 13 mock-backed specs + vitest foundation + CI preview job

@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.86.0 (e2e-scenario-coverage: 13 mock-backed specs (gameplay/pin-gate/retention/push-consent/bangla-surface/admin/guardrails/sessions/share-card/qr-cards/google-signin/guest-upgrade/age-band) + vitest foundation for apps/kid + CI preview job + 5 spec-bug fixes)";
-export const APP_VERSION = "0.86.0";
+export const APP_BUILD = "16 Aug 2026 · 0.87.0 (test-coverage-kid: 11 vitest files/208 tests closing 15 feed findings + 6 real i18n bugs fixed (BN round-HUD digits, 5 hardcoded Round scenes, PercentScene pctFact))";
+export const APP_VERSION = "0.87.0";
