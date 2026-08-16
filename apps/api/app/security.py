@@ -21,6 +21,26 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
+# #1675 — bcrypt only reads the FIRST 72 BYTES of a password and silently
+# ignores the rest, so two long passphrases that share a 72-byte prefix would
+# authenticate as the same one. `len()` counts CHARACTERS, but bcrypt reads
+# BYTES — a 72-char emoji password is 288 bytes and would be truncated.
+# Every password-INPUT route rejects such inputs BEFORE bcrypt instead of
+# silently truncating.
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
+def password_bytes_ok(password: str) -> bool:
+    """True when `password` fits in bcrypt's 72-BYTE input window.
+
+    Call on every password-INPUT path (signup, change-password, set-password,
+    delete-account) before any bcrypt work; a False here means the route should
+    reject with a clear 422 rather than let bcrypt silently check only the
+    first 72 bytes.
+    """
+    return len(password.encode("utf-8")) <= BCRYPT_MAX_PASSWORD_BYTES
+
+
 def sha256_token(token: str) -> str:
     """One-way fingerprint of a signed token — used to look up (and revoke) a
     session without ever storing the raw JWT."""

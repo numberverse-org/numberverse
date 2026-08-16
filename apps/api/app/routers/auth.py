@@ -32,6 +32,7 @@ from ..security import (
     create_access_token,
     generate_refresh_token,
     hash_password,
+    password_bytes_ok,
     set_refresh_cookie,
     sha256_token,
     verify_password,
@@ -55,6 +56,35 @@ _SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10, tag="signup")
 # credential), so it gets a throughput cap per IP to stop cookie-replay brute
 # force and endpoint abuse. 60/min is far above a real browser's refresh cadence.
 _REFRESH_RATE_LIMIT = ip_rate_limit(limit=60, tag="refresh")
+# #1669 — /auth/google verifies a Google ID token on EVERY call (a server-side
+# network+CPU round-trip to Google's certificate endpoint) with no account to
+# key on, so an unauthenticated attacker could hammer it for free. It gets the
+# same per-IP throughput treatment as signup/refresh; 20/min is generous for a
+# parent finishing one Google sign-in. The dep rides the route, not the shared
+# _verify_google_token helper (#1669).
+_GOOGLE_RATE_LIMIT = ip_rate_limit(limit=20, tag="google")
+# #1676 — /auth/set-password is the password-RECOVERY path: a Google-only
+# account proves it still owns the Google account with a fresh ID token, then
+# sets a real password. Recovery must be locked down HARDER than login — a
+# handful of legit calls per account is normal, so 10/min per IP stops
+# token-replay / verification abuse without touching the AuthAttemptGuard
+# semantics on login/change-password (guard untouched, #1676).
+_SET_PASSWORD_RATE_LIMIT = ip_rate_limit(limit=10, tag="set-password")
+
+
+def _check_password_bytes(password: str) -> None:
+    """#1675 — reject a password that exceeds bcrypt's 72-BYTE window with a
+    clear 422 BEFORE any bcrypt work.
+
+    `len()` counts characters; bcrypt reads bytes. A 72-char emoji password is
+    288 bytes and would otherwise be silently truncated to its first 72 bytes —
+    letting two visually-different long passphrases authenticate as the same
+    one. The schemas already cap at 72 CHARACTERS; this closes the byte gap."""
+    if not password_bytes_ok(password):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Password too long (max 72 bytes)",
+        )
 
 
 def _verify_google_token(id_token: str) -> dict:
@@ -141,6 +171,7 @@ async def signup(
     _signup_limit: None = Depends(_SIGNUP_RATE_LIMIT),
     response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
 ):
+    _check_password_bytes(body.password)  # #1675 — reject before bcrypt
     existing = await db.scalar(select(Profile).where(Profile.email == body.email.lower()))
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
@@ -205,6 +236,7 @@ async def google_auth(
     body: GoogleAuthIn,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    _google_limit: None = Depends(_GOOGLE_RATE_LIMIT),  # #1669 — per-IP cap on Google verification
     response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
 ):
     """Sign in / create an account with a Google ID token (Google Identity
@@ -376,7 +408,11 @@ async def revoke_session(
 
 
 @router.post("/set-password", status_code=status.HTTP_204_NO_CONTENT)
-async def set_password(body: SetPasswordIn, db: AsyncSession = Depends(get_db)):
+async def set_password(
+    body: SetPasswordIn,
+    db: AsyncSession = Depends(get_db),
+    _set_password_limit: None = Depends(_SET_PASSWORD_RATE_LIMIT),  # #1676 — recovery path locked down harder than login
+):
     """#1488 — password recovery for a Google-only account.
 
     A parent who previously only signed in with Google can prove they still own
@@ -390,6 +426,7 @@ async def set_password(body: SetPasswordIn, db: AsyncSession = Depends(get_db)):
     Google-only profile gets the same generic 400 as an already-local account.
     All existing sessions are revoked — the old random-hash credential era is
     over and any leaked tokens die with it."""
+    _check_password_bytes(body.new_password)  # #1675 — reject before bcrypt (and before Google verify)
     info = _verify_google_token(body.id_token)
     email = _google_email(info)
     profile = await db.scalar(select(Profile).where(Profile.email == email))
@@ -430,6 +467,11 @@ async def change_password(
             status.HTTP_400_BAD_REQUEST,
             "Google accounts can't change a password here — set a password first",
         )
+    # #1675 — both the old secret being bcrypt-CHECKED and the new secret being
+    # bcrypt-HASHED must fit bcrypt's 72-byte window; reject before the guard
+    # and before any bcrypt work.
+    _check_password_bytes(body.current_password)
+    _check_password_bytes(body.new_password)
     ip = _request_ip(request)
     # #1489 — fail fast when this profile or IP is locked, BEFORE bcrypt.
     await _PASSWORD_GUARD.raise_if_locked(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
@@ -477,6 +519,9 @@ async def delete_account(
     #980 — satisfies GDPR Art.17 right-to-erasure / COPPA 16 CFR 312.6 deletion."""
     from ..models import Kid
 
+    # #1675 — the confirmation password is bcrypt-CHECKED below (local) and
+    # must fit bcrypt's 72-byte window; reject before any bcrypt work.
+    _check_password_bytes(body.password)
     # Google-only accounts can't provide a password they set — require the typed
     # confirmation string as the safeguard instead.
     if profile.auth_provider == "google":

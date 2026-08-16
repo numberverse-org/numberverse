@@ -215,6 +215,96 @@ class RequestIDMiddleware:
             request_id_ctx.reset(token)
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# #1672 — CSRF defense-in-depth for state-changing /auth/ endpoints.
+# The rotating refresh cookie is SameSite=strict (#1773) — the PRIMARY defense.
+# This Origin check is the SECOND layer: when a browser sends an Origin header
+# that is neither same-origin nor a configured CORS origin, the request is
+# rejected with 403 BEFORE any auth state is touched. A request with NO Origin
+# header (curl, native apps, most non-browser clients) passes through — only a
+# PRESENT, mismatched Origin is rejected — so the LAN/dev CORS allow-list and
+# localhost setups stay non-breaking.
+# ═════════════════════════════════════════════════════════════════════════
+_AUTH_STATE_MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_AUTH_PATH_PREFIX = "/api/v1/auth"
+
+
+def _host_origin(scope) -> str | None:
+    """Reconstruct the request's own origin (``scheme://host[:port]``).
+
+    Behind nginx the outer scheme is https via ``X-Forwarded-Proto`` even though
+    the socket connection uvicorn sees is plain http; mirror ``_is_https_request``
+    in security.py so a same-origin HTTPS page is not falsely rejected.
+    """
+    host = _first_header(scope, b"host")
+    if not host:
+        return None
+    scheme = scope.get("scheme") or "http"
+    proxy_proto = _first_header(scope, b"x-forwarded-proto")
+    if proxy_proto:
+        scheme = proxy_proto.split(",", 1)[0].strip().lower()
+    return f"{scheme.rstrip(':')}://{host}".lower()
+
+
+def _origin_ok(scope) -> bool:
+    """True when the request should be allowed on Origin grounds.
+
+    Absent Origin → allowed (browser CSRF always sends one; curl/native don't).
+    Present Origin → must equal the request's own origin (same-origin) OR be a
+    configured CORS origin (the LAN/dev allow-list). Any other present Origin is
+    a cross-site request and is rejected.
+    """
+    origin = _first_header(scope, b"origin")
+    if not origin:
+        return True
+    origin = origin.strip().rstrip("/").lower()
+    if origin == "null":
+        return False
+    own = _host_origin(scope)
+    if own and origin == own:
+        return True
+    return origin in {o.strip().rstrip("/").lower() for o in settings.origins}
+
+
+class SameOriginAuthMiddleware:
+    """#1672 — reject state-changing /api/v1/auth requests whose Origin header
+    is neither same-origin nor a configured CORS origin.
+
+    A pure middleware (not a per-route dependency) so every current and future
+    state-changing auth route is covered by construction. GET/read endpoints are
+    intentionally NOT checked (no state change → no CSRF risk — status/me/share
+    reads stay unaffected), and OPTIONS preflights pass through to the CORS
+    middleware unchanged. The rejection is a bare 403 JSON (no CORS headers: the
+    request came from an origin we do not trust, so the cross-origin caller
+    should not be able to read the response).
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if (
+            scope["type"] == "http"
+            and scope.get("method") in _AUTH_STATE_MUTATING_METHODS
+            and (scope.get("path") or "").startswith(_AUTH_PATH_PREFIX)
+            and not _origin_ok(scope)
+        ):
+            body = b'{"detail":"Cross-origin request rejected"}'
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 403,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode("ascii")),
+                    ],
+                }
+            )
+            await send({"type": "http.response.body", "body": body})
+            return
+        await self.app(scope, receive, send)
+
+
 async def _embed_loop():
     """📚 KOTHA background embed job (#329) — runs on schedule, never crashes.
     If the model/pgvector is missing it reports `skipped` and waits for the
@@ -331,23 +421,37 @@ app.add_middleware(
     # dev default and prod — credentials ARE allowed so the LAN portal (:3000
     # → :8000) can send/receive the httpOnly refresh cookie cross-origin.
     allow_credentials=("*" not in settings.origins),
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Range", "X-Total-Count"],
+    # #1673 — the routers expose exactly GET/POST/PUT/PATCH/DELETE (+ OPTIONS
+    # for browser preflight); tighten from the old wildcard "*". The frontend
+    # fetch calls send exactly Content-Type + Authorization (+ the API's own
+    # X-Request-ID correlation header and the optional X-Org-ID tenant header).
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-Org-ID"],
+    expose_headers=["Content-Range", "X-Total-Count", "X-Request-ID"],
 )
 
 # Middleware stack — FastAPI inserts each add_middleware at the HEAD of its
 # list, so the runtime stack (outermost → innermost) is the reverse of the
 # declaration order below:
 #
-#   RequestID → RequestBodySizeLimit → AccessLog → CORS → app
+#   RequestID → RequestBodySizeLimit → AccessLog → SameOrigin → CORS → app
 #
 # RequestID stays OUTERMOST (#1749, added LAST) so request_id_ctx is set for
 # every layer beneath it — including RequestBodySizeLimit's 413 rejection
-# (#1757) and the access log (#1754). RequestBodySizeLimit rejects oversized
-# bodies before any CORS/framework work. AccessLog is INSIDE RequestID (so
-# request_id is already set when it emits) and inside RequestBodySizeLimit (so
-# it only sees requests that passed the body-size guard).
+# (#1757), the access log (#1754), and SameOriginAuthMiddleware's 403
+# rejection (#1672). RequestBodySizeLimit rejects oversized bodies before any
+# CORS/framework work. SameOriginAuthMiddleware (#1672) sits between AccessLog
+# (so its 403 rejections are access-logged and carry request_id) and CORS (so a
+# cross-origin auth POST is rejected with a CORS-free 403 before CORS context
+# is added). AccessLog is INSIDE RequestID (so request_id is already set when
+# it emits) and inside RequestBodySizeLimit (so it only sees requests that
+# passed the body-size guard).
+
+# #1672 — CSRF defense-in-depth origin check for state-changing /auth/ routes.
+# Declared AFTER CORS (runtime: AccessLog → SameOrigin → CORS) so same-origin /
+# configured-origin requests still flow through CORS unchanged. FastAPI's
+# reverse-order wrap puts the LAST-declared user middleware outermost; see above.
+app.add_middleware(SameOriginAuthMiddleware)
 
 # #1754 — access timing log. Declared FIRST so it lands INNERMOST of the user
 # middleware: inside RequestID (request_id_ctx already set) and inside the
