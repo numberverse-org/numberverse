@@ -146,6 +146,30 @@ check(
     "START_OK",
 )
 
+print("⑥  Production + strong 48-char HEX JWT (2 classes) → starts (entropy, not class count)…")
+check(
+    "hex JWT accepted (regression: class-count rejected strong hex keys)",
+    _child({
+        "NV_ENVIRONMENT": "production",
+        "NV_JWT_SECRET": secrets.token_hex(24),  # 48 hex chars, only 2 classes, 192+ bits
+        "NV_ADMIN_PASSWORD": _strong_password(),
+        "NV_DEMO_PASSWORD": _strong_password(),
+    }),
+    "START_OK",
+)
+
+print("⑦  Production + 32x'a' JWT → refuses (length ok, ~0 entropy)…")
+check(
+    "repeated-char JWT refused",
+    _child({
+        "NV_ENVIRONMENT": "production",
+        "NV_JWT_SECRET": "a" * 32,
+        "NV_ADMIN_PASSWORD": _strong_password(),
+        "NV_DEMO_PASSWORD": _strong_password(),
+    }),
+    "REFUSED",
+)
+
 print()
 if fails:
     print(f"✖ {len(fails)} FAILURES")

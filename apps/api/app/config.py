@@ -31,16 +31,24 @@ _DEMO_PASSWORD_PLACEHOLDERS = {DEFAULT_DEMO_PASSWORD, "demo", "demo-password"}
 # #1771 — minimum acceptable entropy for non-dev secrets.
 _JWT_SECRET_MIN_LENGTH = 32
 _PASSWORD_MIN_LENGTH = 12
+# Estimated bits of entropy a secret must carry (lower than the length floor
+# for the JWT key, higher bar on the wallet-adjacent passwords). These accept
+# cryptographically strong hex/Base32/Base64 secrets (2 classes) while still
+# rejecting short or repeated-character values.
+_JWT_SECRET_MIN_BITS = 64
+_PASSWORD_MIN_BITS = 48
 
 
-def _character_classes(value: str) -> int:
-    """Count how many of {lowercase, uppercase, digit, symbol} appear."""
-    return sum((
-        any(c.islower() for c in value),
-        any(c.isupper() for c in value),
-        any(c.isdigit() for c in value),
-        any(not c.isalnum() for c in value),
-    ))
+def _entropy_bits(value: str) -> float:
+    """Shannon-style estimate: `len * log2(alphabet_size)` where alphabet_size
+    is the number of DISTINCT characters present (the effective per-char
+    alphabet). A 48-char hex secret → 48·log2(16) = 192 bits; a 32×'a' string
+    → 0 bits. Character CLASS count alone was wrong here: it rejected strong
+    hex/Base32 keys that legitimately use only 2 classes (#1771 regression)."""
+    distinct = len(set(value))
+    if distinct < 2:
+        return 0.0
+    return len(value) * __import__("math").log2(distinct)
 
 
 class Settings(BaseSettings):
@@ -108,7 +116,7 @@ if settings.environment.strip().lower() != DEV_ENVIRONMENT:
         or not _jwt.strip()
         or _jwt in _JWT_SECRET_PLACEHOLDERS
         or len(_jwt) < _JWT_SECRET_MIN_LENGTH
-        or _character_classes(_jwt) < 3
+        or _entropy_bits(_jwt) < _JWT_SECRET_MIN_BITS
     ):
         _problems.append("NV_JWT_SECRET (set a strong, non-default value)")
     _admin = settings.admin_password
@@ -117,7 +125,7 @@ if settings.environment.strip().lower() != DEV_ENVIRONMENT:
         or not _admin.strip()
         or _admin in _ADMIN_PASSWORD_PLACEHOLDERS
         or len(_admin) < _PASSWORD_MIN_LENGTH
-        or _character_classes(_admin) < 3
+        or _entropy_bits(_admin) < _PASSWORD_MIN_BITS
     ):
         _problems.append("NV_ADMIN_PASSWORD (set a strong, non-default value)")
     _demo = settings.demo_password
@@ -126,7 +134,7 @@ if settings.environment.strip().lower() != DEV_ENVIRONMENT:
         or not _demo.strip()
         or _demo in _DEMO_PASSWORD_PLACEHOLDERS
         or len(_demo) < _PASSWORD_MIN_LENGTH
-        or _character_classes(_demo) < 3
+        or _entropy_bits(_demo) < _PASSWORD_MIN_BITS
     ):
         _problems.append("NV_DEMO_PASSWORD (set a strong, non-default value)")
     if "*" in settings.origins:
