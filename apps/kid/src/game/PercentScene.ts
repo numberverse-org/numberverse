@@ -106,7 +106,7 @@ export class PercentScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.factText.setText(`${this.percent}% of ${this.total} = ?`);
+    this.factText.setText(t("pctFact", { p: this.percent, t: this.total }));
     speakMath("pct", this.percent, this.total);
     this.spawnButtons();
     this.armChallenge();

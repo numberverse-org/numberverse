@@ -123,6 +123,9 @@ const EN: Record<string, Entry> = {
   qDiv: "What is {a} divided by {b}?",
   qPct: "What is {a} percent of {b}?",
   qBonds: "What plus {a} makes {b}?",
+  // #939 — compact percent fact line shown above the answer buttons
+  // ("50% of 8 = ?"). The BN entry mirrors the qPct word order ({y}-এর {x}).
+  pctFact: (vars) => `${vars?.p ?? "{p}"}% of ${vars?.t ?? "{t}"} = ?`,
   qConcreteAdd: "Here are {a} apples, and {b} more come. How many in all?",
   qConcreteSub: "There are {a} apples. Take {b} away. How many are left?",
 
@@ -1732,7 +1735,10 @@ const EN: Record<string, Entry> = {
 
 const BN: Record<string, Entry> = {
   /* ── round / shared ── */
-  round: "রাউন্ড {n}",
+  // #939 — Bangla round-HUD must render Bengali digits: the round counter is a
+  // display number, so the BN entry converts via bnNum() (same digit-aware
+  // function-entry convention as exploreGardenCounter/petBirthdayCoins below).
+  round: (vars) => `রাউন্ড ${bnNum(vars?.n ?? "{n}")}`,
   // #785/#1005 — keyboard + screen-reader answer bridge
   a11yOptions: "উত্তর বাছাই করো — {count}টি বিকল্প: {list}।",
   a11yOption: "বিকল্প {n}/{total}: {label}",
@@ -1832,6 +1838,8 @@ const BN: Record<string, Entry> = {
   qDiv: "{x} ভাগ {y} কত?",
   qPct: "{y}-এর {x} শতাংশ কত?",
   qBonds: "{x}-এর সাথে কত যোগ করলে {y} হয়?",
+  // #939 — compact percent fact line, mirrors the qPct word order ({y}-এর {x}).
+  pctFact: (vars) => `${bnNum(vars?.t ?? "{t}")}-এর ${bnNum(vars?.p ?? "{p}")}% = ?`,
   qConcreteAdd: "এখানে {x}টা আপেল আছে, আর {y}টা যোগ হলো — মোট কতগুলো?",
   qConcreteSub: "{x}টা আপেল আছে। {y}টা নিয়ে নাও — বাস্কেটে কতগুলো বাকি?",
 

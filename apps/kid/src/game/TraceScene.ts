@@ -3,6 +3,7 @@ import { onSceneResize } from "./sceneLifecycle";
 import { pop, win } from "./audio";
 import { speak, bnNumber, enNumber } from "./speech";
 import { getAppLang } from "./locale";
+import { t } from "./i18n";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { correctCelebrate } from "./celebrate";
@@ -428,7 +429,7 @@ export class TraceScene extends Phaser.Scene {
     this.activePointerId = null;
     this.advanceGlyph();
     this.startedAt = this.time.now;
-    this.roundText.setText(`Round ${this.levelIndex + 1}`);
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.hintText.setText(this.instructionText());
     this.layout();

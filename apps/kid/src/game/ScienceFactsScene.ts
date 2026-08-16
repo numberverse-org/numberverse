@@ -4,6 +4,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { getAppLang } from "./locale";
+import { t } from "./i18n";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, correctButton, roundMeter, BTN_PRIMARY, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -174,7 +175,7 @@ export class ScienceFactsScene extends Phaser.Scene {
     const pool = this.factsForLevel();
     this.target = pool[Phaser.Math.Between(0, pool.length - 1)];
     this.startedAt = this.time.now;
-    this.roundText.setText(`Round ${this.levelIndex + 1}`);
+    this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.questionText.setText(`${this.target.emoji} ${L(this.target.q, this.target.qBn)}`);
     this.spawnButtons();
