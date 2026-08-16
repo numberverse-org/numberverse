@@ -52,7 +52,7 @@ const EN: Record<string, Entry> = {
   whatArea: "What is the area?",
   tapAnswer: "Tap the answer!",
   tapColor: "Tap the color!",
-  findLetter: "Find  {ch}  ({hint})",
+  findLetter: "Find {ch} ({hint})",
   enLettersHint: "Find the letter {ch} — say its sound",
   listenNumber: "Listen — which number?",
   tapMatra: "Tap the letter with the matra!",
@@ -1768,7 +1768,7 @@ const BN: Record<string, Entry> = {
   whatArea: "ক্ষেত্রফল কত?",
   tapAnswer: "সঠিক উত্তর ট্যাপ করো!",
   tapColor: "সঠিক রং ট্যাপ করো!",
-  findLetter: "খুঁজে বের করো  {ch}  ({hint})",
+  findLetter: "খুঁজে বের করো {ch} ({hint})",
   enLettersHint: "{ch} অক্ষরটি খুঁজো — শব্দটা বলো",
   listenNumber: "শোনো — কোন সংখ্যাটা?",
   tapMatra: "মাত্রা দেওয়া অক্ষর ট্যাপ করো!",
@@ -3461,8 +3461,15 @@ export function t(key: string, vars?: TVars): string {
   const dict = DICTS[getAppLang()] ?? EN;
   const entry = dict[key] ?? EN[key] ?? key;
   if (typeof entry === "function") return entry(vars);
-  if (!vars) return entry;
-  return entry.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
+  return entry.replace(/\{(\w+)\}/g, (_, k) => {
+    const val = vars?.[k];
+    if (val === undefined) {
+      // #268 — never leak a literal {n} to a kid; warn the developer in dev only.
+      if (import.meta.env.DEV) console.error(`[i18n] t("${key}") missing var "${k}"`);
+      return "";
+    }
+    return String(val);
+  });
 }
 
 /** Convenience: t() resolved to the CURRENT language for the current key. */
