@@ -1,3 +1,9 @@
+## 16 Aug 2026 — 0.86.0 (e2e-scenario-coverage: 13 mock-backed specs (gameplay/pin-gate/retention/push-consent/bangla-surface/admin/guardrails/sessions/share-card/qr-cards/google-signin/guest-upgrade/age-band) + vitest foundation for apps/kid + CI preview job + 5 spec-bug fixes)
+
+4a609dd 🧪 e2e-scenario-coverage: 13 mock-backed specs + vitest foundation + CI preview job
+5c7b3d0 📚 TRACKER: v50 e2e feed closure (8 findings — 3 spec pairs + 5 quality items, incl. #935 event-driven precache drain)
+7c21f0d 🧪 e2e #5/#935: coldSeed precache drain now event-driven (no fixed 4s sleep)
+
 ## 16 Aug 2026 — 0.85.0 (Difficulty-model + core test-coverage batch: honest difficulty metric, server BKT decay, 5 real core bugs, 254 regression checks, foreign nova3d fix)
 
 51b1577 📣 docs/marketing: Numberverse Facebook beta launch plan (phases 1-4, go/no-go metrics)
