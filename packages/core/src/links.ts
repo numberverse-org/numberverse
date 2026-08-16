@@ -10,11 +10,16 @@
  *   - https  → web pages (incl. wa.me WhatsApp share, the one share flow)
  *   - mailto → "email us" links
  *   - blob   → same-origin downloaded images (share card PNG)
- *   - data:  → tiny inline assets (favicons, safe inline images)
- *   - about  → about:blank never needs to be used, but nothing else should be
- *              added here casually.
+ *
+ * Rejected (removed in #1823):
+ *   - data:  → `data:text/html,...` can render active HTML in a fresh browsing
+ *              context via window.open (XSS). Inline assets (favicons, SVG)
+ *              are browser-rendered `<img>`/`<audio>` srcs in the apps, NOT
+ *              opened through this external allowlist, so they never belonged
+ *              here.
+ *   - about: → about:blank never needs to be used.
  */
-export const ALLOWED_EXTERNAL_SCHEMES = new Set(["https:", "mailto:", "blob:", "data:", "about:"]);
+export const ALLOWED_EXTERNAL_SCHEMES = new Set(["https:", "mailto:", "blob:"]);
 
 /** true when a URL's scheme is on the allowlist (safe to open externally). */
 export function isAllowedExternalUrl(url: string): boolean {

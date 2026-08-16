@@ -8,12 +8,12 @@
  *   - isWhatsAppShare       → EXACT hostname match (wa.me / www.wa.me over https)
  *
  * Source rules (read from links.ts):
- *   ALLOWED_EXTERNAL_SCHEMES = { https:, mailto:, blob:, data:, about: }
+ *   ALLOWED_EXTERNAL_SCHEMES = { https:, mailto:, blob: }   (#1823: data:/about: removed)
  *   isAllowedExternalUrl parses with base "https://numberverse.invalid", so:
  *     • http:       is NOT allowlisted           → REJECT
  *     • javascript: / file: are NOT allowlisted  → REJECT
- *     • data:       IS allowlisted (source permits it, despite the task's
- *                   parenthetical listing it as blocked)  → ALLOW
+ *     • data:       is NOT allowlisted (#1823 XSS)          → REJECT
+ *     • about:      is NOT allowlisted (#1823, never needed) → REJECT
  *     • host/port/path are NOT gated: any https host/port/path passes the
  *       scheme-only predicate; a malformed host (URL parse throws) → REJECT.
  *   openExternalWith: allowed → calls opener(url, target, "noopener,noreferrer")
@@ -44,10 +44,11 @@ const MATRIX = [
   { case: "http scheme — NOT in allowlist → reject",  url: "http://numberverse.invalid/",                         want: false },
   { case: "javascript: scheme — not allowlisted",     url: "javascript:alert(1)",                                want: false },
   { case: "file: scheme — not allowlisted",           url: "file:///etc/passwd",                                 want: false },
-  { case: "data: scheme — source ALLOWS it",          url: "data:image/png;base64,iVBORw0KGgo=",                 want: true },
+  { case: "data: scheme — REJECTED (#1823 XSS)",      url: "data:text/html,<script>alert(1)</script>",           want: false },
+  { case: "data:image — REJECTED (#1823)",            url: "data:image/png;base64,iVBORw0KGgo=",                 want: false },
   { case: "mailto: scheme — allowlisted",             url: "mailto:hello@numberverse.invalid",                   want: true },
   { case: "blob: scheme — allowlisted",               url: "blob:https://numberverse.invalid/uuid",               want: true },
-  { case: "about: scheme — allowlisted",              url: "about:blank",                                         want: true },
+  { case: "about: scheme — REJECTED (#1823)",         url: "about:blank",                                         want: false },
   { case: "blocked host (malformed: no host → parse throws)", url: "https://",                                    want: false },
   { case: "blocked host (malformed: space → parse throws)",   url: "https://exa mple.com/",                       want: false },
   { case: "arbitrary https host — no host allowlist in source", url: "https://evil.example.com/steal",            want: true },
