@@ -187,7 +187,7 @@ export class GrowCountScene extends Phaser.Scene {
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
       this.growReward();
       correctCelebrate(this, this.rewardPlant.x, this.rewardPlant.y + 10);
-      this.onRoundDone?.(this.planted >= this.target, ms, this.target);
+      this.onRoundDone?.(this.planted >= this.target, ms, this.levelIndex + 1);
       this.time.delayedCall(700, () => {
         if (this.roundsDone >= ROUNDS_TO_FINISH) {
           this.roundsDone = 0;

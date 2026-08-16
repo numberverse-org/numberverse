@@ -204,7 +204,7 @@ export class Build999Scene extends Phaser.Scene {
     win();
     speak(t("build999DoneSpeak", { n: target }), { rate: 0.9 });
     correctCelebrate(this, width / 2, Math.round(height * 0.32));
-    this.onRoundDone?.(this.total >= target, ms, target);
+    this.onRoundDone?.(this.total >= target, ms, this.levelIndex + 1);
     this.levelIndex++;
     this.time.delayedCall(800, () => this.startRound());
   }

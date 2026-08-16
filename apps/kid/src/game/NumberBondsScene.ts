@@ -174,7 +174,7 @@ export class NumberBondsScene extends Phaser.Scene {
     correctCelebrate(this, container.x, container.y);
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(value === this.answer, ms, this.shown);
+    this.onRoundDone?.(value === this.answer, ms, this.levelIndex + 1);
     this.time.delayedCall(800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

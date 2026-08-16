@@ -174,7 +174,7 @@ export class ClockTimeScene extends Phaser.Scene {
       this.roundsDone++;
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
-      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levelIndex + 1);
       this.levelIndex++;
       this.startRound();
     });
@@ -324,8 +324,9 @@ export class ClockTimeScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    // #1170 — difficulty is the skill's ladder value (1..6), not the index.
-    this.onRoundDone?.(picked.h === c.h && picked.m === c.m, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+    // #1170/#1044-feed — difficulty is the 1-based LEVEL INDEX (levelIndex + 1),
+    // not the ladder value: roundCoinTier + stored difficulty expect a 1..6 index.
+    this.onRoundDone?.(picked.h === c.h && picked.m === c.m, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

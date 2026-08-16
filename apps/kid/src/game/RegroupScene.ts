@@ -353,7 +353,7 @@ export class RegroupScene extends Phaser.Scene {
     correctCelebrate(this, this.scale.width / 2, Math.round(this.scale.height * 0.3));
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(this.cur >= this.digits, ms, LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)]);
+    this.onRoundDone?.(this.cur >= this.digits, ms, this.levelIndex + 1);
     this.time.delayedCall(900, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

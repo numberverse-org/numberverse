@@ -293,7 +293,7 @@ export class CountPopScene extends Phaser.Scene {
     if (this.roundCount >= this.roundTarget) {
       const ms = Math.max(1, this.time.now - this.startedAt);
       win();
-      this.onRoundDone?.(this.roundCount >= this.roundTarget, ms, this.roundTarget);
+      this.onRoundDone?.(this.roundCount >= this.roundTarget, ms, this.levelIndex + 1);
       this.levelIndex++;
       this.time.delayedCall(700, () => this.startRound());
     }

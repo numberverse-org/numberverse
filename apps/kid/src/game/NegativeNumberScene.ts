@@ -349,7 +349,7 @@ export class NegativeNumberScene extends Phaser.Scene {
       this.roundsDone++;
       this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
-      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+      this.onRoundDone?.(false, CHALLENGE_SECONDS * 1000, this.levelIndex + 1);
       this.levelIndex++;
       this.startRound();
     });
@@ -403,7 +403,7 @@ export class NegativeNumberScene extends Phaser.Scene {
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(value === this.round.correct, ms, this.levels[Math.min(this.levelIndex, this.levels.length - 1)]);
+    this.onRoundDone?.(value === this.round.correct, ms, this.levelIndex + 1);
     this.time.delayedCall(950, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;

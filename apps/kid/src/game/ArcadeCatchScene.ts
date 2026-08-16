@@ -416,7 +416,7 @@ export class ArcadeCatchScene extends Phaser.Scene {
     this.freezeTokens();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.onRoundDone?.(correct, ms, this.level());
+    this.onRoundDone?.(correct, ms, this.levelIndex + 1);
     this.time.delayedCall(correct ? 900 : 700, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
