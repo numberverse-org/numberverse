@@ -193,14 +193,22 @@ ORG_SCOPED_MODELS = {Organization, OrgMember, TenantConfig, OrgSyllabus, Classro
 # documents its allowed value shape here so a typo can't silently break every
 # learning round. This is deliberately NOT a generic JSON-schema engine — just
 # the shapes we actually serve.
+#
+# NOTE: progress.py uses the COMPILED-IN DEFAULT_PARAMS (mirroring the offline
+# kid app) and does NOT read this row — an admin tuning the parent-facing model
+# without reaching the device would desync the two BKT estimates (#2). The full
+# 5-param shape is still accepted so a future client-sync can carry it without a
+# schema migration, but today it is reserved/archival.
 CONFIG_SCHEMAS: dict[str, dict] = {
     "adaptive": {
         "type": "object",
-        "required": ["pLearn", "pGuess", "pSlip"],
+        "required": ["pLearn", "pGuess", "pSlip", "decayPerDay", "masteryThreshold"],
         "properties": {
             "pLearn": {"type": "number", "minimum": 0.0, "maximum": 1.0},
             "pGuess": {"type": "number", "minimum": 0.0, "maximum": 1.0},
             "pSlip": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "decayPerDay": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "masteryThreshold": {"type": "number", "minimum": 0.0, "maximum": 1.0},
         },
     },
 }

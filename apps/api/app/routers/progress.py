@@ -10,7 +10,7 @@ from ..bandlock import skill_band_allowed
 from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile, org_scoped, resolve_org_id
-from ..models import AccelerationLog, ConfigEntry, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
+from ..models import AccelerationLog, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import rate_limit
 from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn, StoryStatsOut
 from ..scrub import redact_context
@@ -53,20 +53,65 @@ def _bkt_update(mastery: float, correct: bool, p_learn=0.10, p_guess=0.15, p_sli
     return min(1.0, p_given + (1 - p_given) * p_learn)
 
 
+def _decay(mastery: float, last_decay: datetime | None, now: datetime, decay_per_day: float = 0.02) -> float:
+    """Apply the same spaced-repetition idle decay the kid's DEVICE runs
+    (packages/core/src/adaptive.ts decay: mastery *= (1 - decayPerDay)^days).
+    The server previously never decayed, so the parent portal drifted UP from
+    the kid's local bar over idle days — 'mastered' could disagree across the
+    two surfaces. last_decay None (fresh row) → no decay."""
+    if last_decay is None:
+        return mastery
+    days = max(0.0, (now - last_decay).total_seconds() / 86_400.0)
+    if days <= 0:
+        return mastery
+    return max(0.0, mastery * ((1 - decay_per_day) ** days))
+
+
 def _clamp01(n: float) -> float:
     return min(1.0, max(0.0, n))
 
 
+def _next_mastered_at(
+    prev_mastery: float,
+    new_mastery: float,
+    mastered_at: datetime | None,
+    threshold: float,
+    now_utc: datetime,
+) -> datetime | None:
+    """#79/#11 — the mastered_at state machine (pure, unit-tested).
+
+    · stamp the FIRST crossing of ≥ threshold — never overwrite an older stamp
+      (the parent portal's mastery timeline sorts skills by this moment);
+    · clear the stamp when mastery decays back BELOW the threshold (a skill
+      being re-learned is no longer 'currently mastered');
+    · otherwise keep the current stamp."""
+    if mastered_at is None and prev_mastery < threshold and new_mastery >= threshold:
+        return now_utc
+    if mastered_at is not None and new_mastery < threshold:
+        return None
+    return mastered_at
+
+
+# Compiled-in adaptive params — MIRROR packages/core/src/adaptive.ts DEFAULT_PARAMS.
+# The kid app is offline-first and hardcodes these (roundLearning.ts:38), so the
+# server MUST use the same constants: reading the `adaptive` config row here would
+# let an admin tune the parent-facing model without ever reaching the device, and
+# the two BKT estimates would diverge permanently. The config schema still accepts
+# the row (see admin.py) but it is documented as reserved for a future client sync.
+DEFAULT_PARAMS: dict = {
+    "p_learn": 0.10,
+    "p_guess": 0.15,
+    "p_slip": 0.10,
+    "decay_per_day": 0.02,
+    "mastery_threshold": 0.8,
+}
+
+
 async def _adaptive_params(db: AsyncSession) -> dict:
-    cfg = await db.get(ConfigEntry, "adaptive")
-    if cfg:
-        v = cfg.value
-        return {
-            "p_learn": v.get("pLearn", 0.10),
-            "p_guess": v.get("pGuess", 0.15),
-            "p_slip": v.get("pSlip", 0.10),
-        }
-    return {"p_learn": 0.10, "p_guess": 0.15, "p_slip": 0.10}
+    """Return the compiled-in adaptive params (same constants as the kid app).
+    Kept async for the call site; the row is intentionally NOT read so the server
+    and device can never diverge (#2 — see DEFAULT_PARAMS above)."""
+    return dict(DEFAULT_PARAMS)
 
 
 router = APIRouter(prefix="/api/v1", tags=["progress"])
@@ -161,17 +206,29 @@ async def record_progress(
                     streak=0,
                 )
                 db.add(sm)
+            now_utc = datetime.now(timezone.utc)
             prev_mastery = sm.mastery
-            sm.mastery = _bkt_update(sm.mastery, correct, **params)
+            # #1 — idle decay FIRST (same as the device: observe(decay(prev),
+            # ...)) so idle days drop the parent-facing mastery in lockstep with
+            # the kid's local bar, then the round's BKT update.
+            sm.mastery = _decay(sm.mastery, sm.last_decay, now_utc, params["decay_per_day"])
+            sm.mastery = _bkt_update(
+                sm.mastery, correct,
+                p_learn=params["p_learn"], p_guess=params["p_guess"], p_slip=params["p_slip"],
+            )
             sm.correct = sm.correct + (1 if correct else 0)
             sm.attempts = sm.attempts + 1
             sm.streak = sm.streak + 1 if correct else 0
-            sm.last_practice = datetime.now(timezone.utc)
-            sm.last_decay = datetime.now(timezone.utc)
-            # #79 — stamp the FIRST crossing of ≥80% once (never overwritten). The
-            # parent portal's mastery timeline sorts skills by this moment.
-            if sm.mastered_at is None and prev_mastery < 0.8 and sm.mastery >= 0.8:
-                sm.mastered_at = datetime.now(timezone.utc)
+            sm.last_practice = now_utc
+            sm.last_decay = now_utc
+            # #79/#11 — stamp the FIRST crossing of ≥ threshold once (never
+            # overwritten), and clear the stamp when decay pulls mastery back
+            # below the bar (see _next_mastered_at). The portal's "currently
+            # mastered" list = mastery ≥ threshold AND mastered_at is not None.
+            threshold = params["mastery_threshold"]
+            sm.mastered_at = _next_mastered_at(
+                prev_mastery, sm.mastery, sm.mastered_at, threshold, now_utc
+            )
 
     # #9 — multi-device sync: newest-wins coin wallet. The server keeps the max
     # coin balance ever reported per kid (aggregate only — no voice/face).

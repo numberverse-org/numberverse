@@ -69,18 +69,41 @@ async def _get_owned_kid(
 
 
 def _age_band_cap(birth_year: int | None) -> int | None:
-    """#986 — derive a sensible max_band from the kid's birth year. Younger kids
-    (age ≤6) default to band 2 (Sprout Grove), age 7-8 → band 3, age 9+ → None
-    (no cap). None birth_year returns None (parent can set manually)."""
+    """#986/#1044 — derive the default max_band from the kid's birth year.
+
+    This must MIRROR the kid app's `bandForAge` (apps/kid/src/lib/journey.ts)
+    exactly: the server uses max_band to flag band_skipped progress, so a cap
+    set BELOW the band the device places the kid in silently drops legit
+    progress. The old ladder (age ≤6 → 2, ≤8 → 3, 9+ → None) sat under the
+    client's mapping at ages 6 and 8 (client says 3 and 4) — a 6-year-old's
+    band-3 round was skipped server-side even though the app had placed them
+    there. Mapping 1:1 onto bandForAge makes the default cap the ceiling of
+    the age's own surface (parent can still widen it via settings).
+
+      age < 4  → 1, <6 → 2, <8 → 3, <10 → 4, <13 → 5, <14 → 6, 14+ → 8
+      (band 7 is deliberately skipped for age placement, matching the client —
+       Summit Peaks band 8 is where the oldest cohort lands by age.)
+
+    None birth_year returns None (parent can set manually)."""
     if birth_year is None:
         return None
     current_year = date.today().year
     age = current_year - birth_year
-    if age <= 6:
+    if age < 4:
+        return 1
+    if age < 6:
         return 2
-    elif age <= 8:
+    if age < 8:
         return 3
-    return None
+    if age < 10:
+        return 4
+    if age < 13:
+        return 5
+    if age < 14:
+        return 6
+    # 14+ → band 8 (Summit Peaks). Mirrors the client's `Math.min(8, BANDS.length)`
+    # with the catalog's current 8-band ceiling.
+    return 8
 
 
 @router.post("", response_model=KidOut, status_code=status.HTTP_201_CREATED)
@@ -125,6 +148,23 @@ async def update_kid(
     for field, val in {"name": body.name, "avatar": body.avatar, "birth_year": body.birth_year}.items():
         if val is not None:
             setattr(kid, field, val)
+    # #1044 — a birth_year edit changes the age-derived default max_band, so
+    # recompute the cap. A kid created capped at band 2 who is now 9+ must be
+    # cleared/raised to the new age's surface — otherwise their legit progress
+    # keeps getting band_skipped server-side. Only overwrite when the cap CHANGES
+    # so a parent who hand-widened settings after creation isn't clobbered back
+    # to a narrower default on an unrelated field edit (name/avatar).
+    if body.birth_year is not None:
+        new_cap = _age_band_cap(body.birth_year)
+        s = await db.get(KidSettings, kid_id)
+        if new_cap is None and s is not None:
+            s.max_band = None
+        elif new_cap is not None:
+            if s is None:
+                s = KidSettings(kid_id=kid_id)
+                db.add(s)
+            if s.max_band is None or new_cap > s.max_band:
+                s.max_band = new_cap
     await db.commit()
     await db.refresh(kid)
     return kid
