@@ -1,3 +1,7 @@
+## 17 Aug 2026 — 0.90.2 (fix: nginx pins /parent/share/ (trailing-slash minted link) to share.html so the OG share card renders instead of the dashboard)
+
+bcc8a16 🔗 nginx #1782: pin trailing-slash share link (/parent/share/) to share.html — minted links were falling through to the dashboard (static export has no share/ dir, so $uri/ never matched); ?t= query preserved, OG card now renders for old + new links
+
 ## 17 Aug 2026 — 0.90.1 (fix: #1771 secret-guard entropy uses len·log2(distinct chars) so strong hex/Base32 keys pass (0.90.0 crash-loop regression — prod 48-char hex JWT + 32-char hex demo password were refused by the over-strict ≥3-class heuristic))
 
 47995f2 🐛 config guard #1771: entropy by distinct-char alphabet (len·log2) not class count — accepts strong hex/Base32 keys, rejects repeated-char values

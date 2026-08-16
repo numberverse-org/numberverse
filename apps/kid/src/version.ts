@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "17 Aug 2026 · 0.90.1 (fix: #1771 secret-guard entropy uses len·log2(distinct chars) so strong hex/Base32 keys pass (0.90.0 crash-loop regression — prod 48-char hex JWT + 32-char hex demo password were refused by the over-strict ≥3-class heuristic))";
-export const APP_VERSION = "0.90.1";
+export const APP_BUILD = "17 Aug 2026 · 0.90.2 (fix: nginx pins /parent/share/ (trailing-slash minted link) to share.html so the OG share card renders instead of the dashboard)";
+export const APP_VERSION = "0.90.2";
