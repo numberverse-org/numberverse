@@ -1,7 +1,21 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
-## 🔐 XSS-PREVENTION + MAIN-THREAD-PERF WAVE (#1823–#1830) 16 Aug 2026 🚧 IN FLIGHT (8 fan-out subagents)
+## 🔐 XSS-PREVENTION + MAIN-THREAD-PERF WAVE (#1823–#1830) 16 Aug 2026 ✅ → 0.89.0 (8 fan-out subagents)
+- **All 8 waves complete + verified on the merged tree:** kid tsc 0, parent tsc 0, core build+links 30, png-metadata ✓, vitest 220/220 (incl new sanitize.test.ts 12), all 15 standalone api test files green (incl new test_schemas_validation 172), locale parity ✓, audit 0 errors.
+- **#1823** external-URL allowlist drops `data:`/`about:` (data:text/html XSS via window.open); core links test 30 checks.
+- **#1824/#1828** name+avatar Unicode-charset/length validation — 11 fields (KidIn/Update/Out, KidSnapshotOut, ProfileOut, SignupIn, ProfileUpdateIn): control chars, bidi overrides, angle brackets rejected; Bengali letters/marks accepted; avatar 32-char cap.
+- **#1826** CSV formula-injection guard (`_guard_csv_cell` prefixes `=` `+` `-` `@` `\t` `\r` with `'`), all 8 fields/row; test_export 54 (was 37).
+- **#1825/#1830/#1820** kid-app sanitize: new `sanitize.ts` wired into 9 call sites (3 download names + 6 TTS); speech.ts normalizer strips control/RTL from ANY utterance; `parentHeatmap` keyed on stable digest (30s poll / store tick no longer re-folds ledger).
+- **#1816/#1819** SVG ensureAssets chunked 6/frame off boot; png strip uses `subarray`+`.set()` (no per-byte number[]); core png 11 checks + png-metadata green.
+- **#1817/#1818/#1827** renderShareCard/renderCertCard async chunked across frames; PhotoBooth awaits with busy overlay (share tap no longer freezes game loop); kid name capped 24 chars+ellipsis on card.
+- **#1821** 44 room/background textures made async/lazy (12 nv-room + 28 blob + 4 nv-shape); byte-identical pixels.
+- **#1822/#1829/#1825-parent** parent dashboard buildMissedQuestions/buildMonthlyArchive async + WeakMap memo + setTimeout chunking; page.tsx hydrates via useEffect; new parent sanitize.ts (confirm dialogs + download names).
+- Cross-wave async contract resolved: App.tsx awaits renderShareCard/renderCertCard (forward-compatible), PhotoBooth awaits, canvasToBlob accepts a Promise. Commit 2066d3b → a1277b8, released 0.89.0 + deployed + smoke-tested.
+- Backlog sweep note: all 269 v50/v40/deepthink feed audit tasks confirmed complete; 13 stale task files verified ALREADY SHIPPED (batch-3 0.72.0 / scene-patterns 0.83.0); 183 consumed task files archived to `~/.tresha/dispatch/consumed/`.
+- Remaining `status: todo` backlog: 291 issues (next clusters: outbox/sync #1802-#1815, admin IN-clause #1801).
+
+
 - **Backlog sweep:** all 269 v50/v40/deepthink feed audit tasks confirmed complete (every task file has a feed result); the 13 stale task files (nv-997/nv-1000–1004, nv-b9–b15) verified as ALREADY SHIPPED (batch-3 #942–999 in 0.72.0, scene-patterns #997–1004 in 0.83.0) — their work was done; only the task files remained. 183 consumed task files archived to `~/.tresha/dispatch/consumed/`.
 - **Next-ranked genuine backlog:** 299 `status: todo` GitHub issues the pipeline hasn't dispatched. Top cluster = #1816–#1830 (xss-prevention + main-thread perf), all confirmed OPEN in code.
 - **Dispatched 8 disjoint fan-out subagents** (pairwise-disjoint file sets):
