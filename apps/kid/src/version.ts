@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.88.0 (test-coverage-api: 5 standalone test files (480+ checks) closing 12 feed findings + 4 real bug fixes (import updated_at round-trip, admin request NameError, admin string-PK id, #865 iat sub-second race))";
-export const APP_VERSION = "0.88.0";
+export const APP_BUILD = "16 Aug 2026 · 0.89.0 (xss-prevention + main-thread-perf wave: #1823 external-URL allowlist drops data:/about:; #1824/#1828 name+avatar Unicode-charset/length validation (11 fields, 172 checks); #1826 CSV formula-injection guard; #1825/#1830/#1820 kid-app sanitize (download names, TTS control/RTL strip, parentHeatmap memo); #1816/#1819 SVG rasterize chunked off-boot + PNG strip without per-byte array; #1817/#1818/#1827 share-card paint async off game thread + name cap; #1821 44 room/background textures async/lazy; #1822 parent dashboard aggregation memo+chunked)";
+export const APP_VERSION = "0.89.0";
