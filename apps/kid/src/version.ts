@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "16 Aug 2026 · 0.82.0 (🛡️ Guardrails closure: scheduled progress_events prune + revoked-session purge (#983/#984), VPC consent + birth_year band cap + export v2 (accel/coins) verified (#985-#987), MODEL_JSON versioning (#988))";
-export const APP_VERSION = "0.82.0";
+export const APP_BUILD = "16 Aug 2026 · 0.85.0 (Difficulty-model + core test-coverage batch: honest difficulty metric, server BKT decay, 5 real core bugs, 254 regression checks, foreign nova3d fix)";
+export const APP_VERSION = "0.85.0";

@@ -1,3 +1,22 @@
+## 16 Aug 2026 — 0.85.0 (Difficulty-model + core test-coverage batch: honest difficulty metric, server BKT decay, 5 real core bugs, 254 regression checks, foreign nova3d fix)
+
+51b1577 📣 docs/marketing: Numberverse Facebook beta launch plan (phases 1-4, go/no-go metrics)
+0a17e82 📚 TRACKER: v50 test-coverage-core feed closure (5 real bugs, 10 test files) → 0.85.0
+f2191f2 🩹 fix foreign session's broken nova3d edit (release blocker)
+354c5fa 🧪 v50 test-coverage-core: 5 real bugs fixed + 10 regression test files (254 checks)
+f6be107 📚 TRACKER: v50 difficulty-model feed closure (13 findings) → 0.85.0
+8c86381 🎮 v50 difficulty-model #11: every onRoundDone difficulty arg is the 1-based level index
+a27df2e 🧠 server adaptive batch: idle decay + compiled BKT params + bandForAge-aligned caps
+3699eb2 🐛 v50 difficulty-model: band-8 placement, full-date age, hardest-tier family mastery
+cef6a5e 🐛 v50 difficulty-model: monotone ladders + nextDifficulty contract (#1044-audit)
+a4ba3d3 🧠 MONI audit fixes (v50 feed_moni): neutral speedTendency, band-gated weak focus, one occurrence per streak
+84e5759 📚 TRACKER: Moni difficulty cluster (#1044/#1046/#1047/#1048) closure → 0.84.0
+7aa8f54 🧠 MONI difficulty cluster #1044/#1046/#1047/#1048: per-skill + per-subject difficulty
+1f169ec 📚 TRACKER: scene-patterns cluster (#997-#1004) closure → 0.83.0
+453618c 🗣️ #1000: drop redundant speak lang:'bn' + port CoinValue hardcoded Bangla strings to i18n
+4e3996a 🧩 scene-patterns Wave B: inline scene i18n tables → central i18n.ts (#1001)
+825e8dd 🧩 scene-patterns Wave A: real round correctness (#1002), scene-archetype registry (#1003), shared hintWrong (#1004)
+
 ## 16 Aug 2026 — 0.82.0 (🛡️ Guardrails closure: scheduled progress_events prune + revoked-session purge (#983/#984), VPC consent + birth_year band cap + export v2 (accel/coins) verified (#985-#987), MODEL_JSON versioning (#988))
 
 73cf854 📚 TRACKER: guardrails cluster (#983-#988) closure → 0.82.0
