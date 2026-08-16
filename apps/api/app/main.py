@@ -1,14 +1,17 @@
 import asyncio
 import logging
+import re
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import settings
 from .db import SessionLocal
 from .embeddings import embed_stories
-from .errorlog import install as install_errorlog
+from .errorlog import install as install_errorlog, request_id_ctx
 from .routers import admin, auth, content, export, kids, progress, shares
 from .scrub import ScrubFilter
 from .seed import create_tables, seed
@@ -110,6 +113,82 @@ class RequestBodySizeLimitMiddleware:
             }
         )
         await send({"type": "http.response.body", "body": body})
+
+
+# #1749 — request correlation ids. Header values are attacker-controlled, so we
+# only ever echo back a sanitized fragment: printable ASCII excluding the
+# control/whitespace range that could smuggle CR/LF header injection, capped at
+# 64 chars. Anything else falls back to a minted uuid4 hex id.
+_REQUEST_ID_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
+_REQUEST_ID_MAX_LEN = 64
+
+
+def _sanitize_request_id(value: str | None) -> str | None:
+    """Return a header-safe X-Request-ID fragment, or None if unusable."""
+    if not value:
+        return None
+    cleaned = _REQUEST_ID_SAFE_RE.sub("", value.strip())[:_REQUEST_ID_MAX_LEN]
+    return cleaned or None
+
+
+def _first_header(scope, target: bytes) -> str | None:
+    for name, value in scope.get("headers", []):
+        if name.lower() == target:
+            return value.decode("latin-1")
+    return None
+
+
+class RequestIDMiddleware:
+    """Outermost ASGI middleware: mint/propagate a per-request X-Request-ID.
+
+    Reads an incoming X-Request-ID header (sanitized to a safe charset, max
+    64 chars), or mints ``uuid4().hex`` when absent; stores it in
+    ``request_id_ctx`` for the lifetime of the request so the structured
+    WARNING+ log can carry it on every record; and echoes the id back as an
+    ``X-Request-ID`` response header — including on error paths, because the
+    header is attached to the response before the downstream app dispatches.
+    Non-HTTP scopes (lifespan, websockets) pass through untouched.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request_id = _sanitize_request_id(_first_header(scope, b"x-request-id"))
+        if request_id is None:
+            request_id = uuid.uuid4().hex
+
+        token = request_id_ctx.set(request_id)
+
+        async def send_with_request_id(message):
+            if message["type"] == "http.response.start":
+                message = {
+                    **message,
+                    "headers": [
+                        (name, value)
+                        for name, value in message.get("headers", [])
+                        if name.lower() != b"x-request-id"
+                    ]
+                    + [(b"x-request-id", request_id.encode("ascii"))],
+                }
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_with_request_id)
+        except Exception:
+            # Keep request_id_ctx set on the unhandled-exception path: FastAPI
+            # routes an app.exception_handler(Exception) to Starlette's
+            # ServerErrorMiddleware, which runs AFTER this middleware has already
+            # unwound. If we reset here the 500 handler + structured formatter
+            # would see "-" instead of the request id. The request is dying, so
+            # the token is discarded when the task ends.
+            raise
+        else:
+            request_id_ctx.reset(token)
 
 
 async def _embed_loop():
@@ -222,6 +301,10 @@ app.add_middleware(
 # Must be outermost so oversized bodies are rejected before CORS/framework work.
 app.add_middleware(RequestBodySizeLimitMiddleware)
 
+# #1749 — outermost layer (added LAST): mints/propagates X-Request-ID so every
+# structured WARNING+/ERROR record and every response carries a correlation id.
+app.add_middleware(RequestIDMiddleware)
+
 app.include_router(auth.router)
 app.include_router(kids.router)
 app.include_router(progress.router)
@@ -229,6 +312,50 @@ app.include_router(content.router)
 app.include_router(export.router)
 app.include_router(shares.router)
 app.include_router(admin.router)
+
+
+# #1750 — structured 5xx logging. Unhandled exceptions and 5xx HTTPExceptions
+# now land as ERROR records in data/error.log (method/path/status/request_id,
+# PII-scrubbed) instead of falling through Starlette's ServerErrorMiddleware
+# with no method/path/request_id. The handlers still return the client-visible
+# JSON payload unchanged — the log record is the point. 4xx stays quiet
+# (except the 401/429 WARNINGs added by the rate-limit wave), and
+# RequestValidationError (422) keeps FastAPI's specific handler because it is
+# more specific than Exception.
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code >= 500:
+        log.error(
+            "HTTPException %s %s → %d (request_id=%s)",
+            request.method, request.url.path, exc.status_code, request_id_ctx.get(),
+        )
+    # The RequestIDMiddleware re-stamps X-Request-ID on every response that flows
+    # through it, so threading it here too is harmless for handled HTTPExceptions
+    # and covers the case where the response bypasses the middleware's send wrap.
+    headers = dict(getattr(exc, "headers", None) or {})
+    headers.setdefault("X-Request-ID", request_id_ctx.get())
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    log.error(
+        "Unhandled exception %s %s → 500 (request_id=%s)",
+        request.method, request.url.path, request_id_ctx.get(),
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    # Starlette's ServerErrorMiddleware sends this response directly to the
+    # transport, bypassing RequestIDMiddleware's send wrapper — so the correlation
+    # id must be threaded explicitly here for 500 responses.
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+        headers={"X-Request-ID": request_id_ctx.get()},
+    )
 
 
 @app.get("/health")

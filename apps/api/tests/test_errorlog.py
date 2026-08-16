@@ -105,11 +105,35 @@ def test_idempotent():
         check("exactly one file handler", len(file_handlers) == 1, f"got {len(file_handlers)}")
 
 
+def test_request_id_in_records():
+    print("⑤ formatter emits request_id (contextvar value; '-' when unset)")
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "error.log")
+        reset(path)
+        log = logging.getLogger("numberverse.test")
+        tok = errorlog.request_id_ctx.set("req-trace-001")
+        try:
+            log.error("boom with contextvar set")
+        finally:
+            errorlog.request_id_ctx.reset(tok)
+        log.error("boom with contextvar unset")
+        lines = read_lines(path)
+        check("two records written", len(lines) == 2, f"got {len(lines)}")
+        if len(lines) == 2:
+            a, b = (json.loads(l) for l in lines)
+            check("request_id equals contextvar value", a["request_id"], "req-trace-001")
+            check("request_id defaults to '-' when unset", b["request_id"], "-")
+            check("existing keys still present (level/logger/msg)", all(
+                k in a and k in b for k in ("ts", "level", "logger", "msg")
+            ), True)
+
+
 if __name__ == "__main__":
     test_write_scrub_no_info()
     test_traceback_scrubbed()
     test_rotation()
     test_idempotent()
+    test_request_id_in_records()
     print()
     if FAILS:
         print(f"✖ {len(FAILS)} check(s) failed: {FAILS}")

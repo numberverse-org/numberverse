@@ -16,6 +16,7 @@ import json
 import logging
 import logging.handlers
 import os
+from contextvars import ContextVar
 from datetime import datetime, timezone
 
 from .scrub import ScrubFilter, redact_text
@@ -24,9 +25,16 @@ LOG_PATH = "data/error.log"
 _MAX_BYTES = 1024 * 1024  # 1 MB
 _BACKUP_COUNT = 3
 
+# #1749 — per-request correlation id. RequestIDMiddleware (app/main.py) sets this
+# for the lifetime of an HTTP request so every WARNING+/ERROR record written by
+# the structured formatter below can be grepped out of data/error.log as one
+# request. Defaults to "-" for logs that happen outside any request (startup,
+# the background embed/prune loop, tests).
+request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
+
 
 class _JsonFormatter(logging.Formatter):
-    """One JSON object per line: ts, level, logger, msg, exc (redacted)."""
+    """One JSON object per line: ts, level, logger, msg, request_id, exc (redacted)."""
 
     def format(self, record: logging.LogRecord) -> str:
         # Calling the base formatter renders exc_text from exc_info — do it
@@ -37,6 +45,7 @@ class _JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),
+            "request_id": request_id_ctx.get(),
         }
         exc = getattr(record, "exc_text", None)
         if exc:
