@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .accesslog import AccessLogMiddleware, install_access
 from .config import settings
 from .db import SessionLocal
 from .embeddings import embed_stories
@@ -24,6 +25,9 @@ for _h in logging.getLogger().handlers:
 # file (data/error.log) for local debugging. Zero analytics — nothing leaves
 # the box. Attaches at most once (uvicorn reload, tests).
 install_errorlog()
+# #1754 — every HTTP request also lands as one JSON line in data/access.log
+# (its own rotating file, same scrubber). Attaches at most once.
+install_access()
 log = logging.getLogger("numberverse")
 
 # #836 — abuse guard: FastAPI/Starlette impose no global request-body cap, so a
@@ -52,7 +56,12 @@ class RequestBodySizeLimitMiddleware:
 
         content_length = self._content_length(scope)
         if content_length is not None and content_length > self.max_body_bytes:
-            await self._send_413(send)
+            await self._send_413(
+                send,
+                path=scope.get("path"),
+                content_length=content_length,
+                request_id=request_id_ctx.get(),
+            )
             return
 
         state = {"received": 0, "response_started": False, "rejected": False}
@@ -66,7 +75,14 @@ class RequestBodySizeLimitMiddleware:
                 if state["received"] > self.max_body_bytes:
                     state["rejected"] = True
                     if not state["response_started"]:
-                        await self._send_413(send)
+                        # #1757 — log the rejection once, with the real path and
+                        # request id, so oversized-body floods are debuggable.
+                        await self._send_413(
+                            send,
+                            path=scope.get("path"),
+                            content_length=self._content_length(scope) or "chunked",
+                            request_id=request_id_ctx.get(),
+                        )
                     # Stop the downstream app from consuming the rest of the
                     # oversized stream; it would just waste CPU/network.
                     return {"type": "http.disconnect"}
@@ -100,7 +116,15 @@ class RequestBodySizeLimitMiddleware:
                 continue
         return max(lengths) if lengths else None
 
-    async def _send_413(self, send):
+    async def _send_413(self, send, path=None, content_length=None, request_id=None):
+        # #1757 — oversized-body rejections were silent; surface them as a
+        # WARNING (PII-scrubbed) before the 413 goes out. `content_length` is
+        # the observed Content-Length header value, or "chunked" for streamed
+        # bodies of unknown length.
+        log.warning(
+            "413 too large: path=%s content_length=%s request_id=%s",
+            path, content_length, request_id,
+        )
         body = b'{"detail":"Request body too large"}'
         await send(
             {
@@ -196,9 +220,12 @@ async def _embed_loop():
     If the model/pgvector is missing it reports `skipped` and waits for the
     next tick; once the stack is present it quietly catches up on new stories."""
     interval = settings.kotha_embed_interval_minutes * 60
-    # #944 — track consecutive skipped ticks with the same reason so a
-    # deployment that forgot `pip install numberverse-api[embeddings]` or
-    # lacks the pgvector extension surfaces a clear signal instead of silence.
+    # #944 — track consecutive skipped ticks so a deployment that forgot
+    # `pip install numberverse-api[embeddings]` or lacks the pgvector extension
+    # surfaces a clear signal instead of silence. #1758 — ANY consecutive
+    # skipped tick counts, regardless of whether the reason alternates (two
+    # alternating reasons previously pinned the count at 1 and the >=3 WARNING
+    # never fired).
     _skip_reason: str | None = None
     _skip_count: int = 0
     # #950 — run the prune job once per hour (every N ticks at 15-min interval)
@@ -209,17 +236,17 @@ async def _embed_loop():
             async with SessionLocal() as db:
                 result = await embed_stories(db)
             status = result.get("status")
-            if status == "ok" and result.get("embedded", 0) > 0:
-                log.info("Kotha embed tick: embedded %s", result["embedded"])
+            if status == "ok":
+                if result.get("embedded", 0) > 0:
+                    log.info("Kotha embed tick: embedded %s", result["embedded"])
                 _skip_reason = None
                 _skip_count = 0
             elif status == "skipped":
+                # #1758 — count ANY consecutive skipped tick; the reason is
+                # carried for the WARNING message but does not reset the count.
                 reason = result.get("reason", "unknown")
-                if reason == _skip_reason:
-                    _skip_count += 1
-                else:
-                    _skip_reason = reason
-                    _skip_count = 1
+                _skip_reason = reason
+                _skip_count += 1
                 if _skip_count >= 3:
                     log.warning(
                         "Kotha embed tick skipped %d consecutive times: %s",
@@ -308,6 +335,24 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Range", "X-Total-Count"],
 )
+
+# Middleware stack — FastAPI inserts each add_middleware at the HEAD of its
+# list, so the runtime stack (outermost → innermost) is the reverse of the
+# declaration order below:
+#
+#   RequestID → RequestBodySizeLimit → AccessLog → CORS → app
+#
+# RequestID stays OUTERMOST (#1749, added LAST) so request_id_ctx is set for
+# every layer beneath it — including RequestBodySizeLimit's 413 rejection
+# (#1757) and the access log (#1754). RequestBodySizeLimit rejects oversized
+# bodies before any CORS/framework work. AccessLog is INSIDE RequestID (so
+# request_id is already set when it emits) and inside RequestBodySizeLimit (so
+# it only sees requests that passed the body-size guard).
+
+# #1754 — access timing log. Declared FIRST so it lands INNERMOST of the user
+# middleware: inside RequestID (request_id_ctx already set) and inside the
+# body-size guard.
+app.add_middleware(AccessLogMiddleware)
 
 # Must be outermost so oversized bodies are rejected before CORS/framework work.
 app.add_middleware(RequestBodySizeLimitMiddleware)

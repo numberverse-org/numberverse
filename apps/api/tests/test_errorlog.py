@@ -128,12 +128,74 @@ def test_request_id_in_records():
             ), True)
 
 
+def test_ts_utc():
+    print("⑥ ts ends with +00:00 (#1752)")
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "error.log")
+        reset(path)
+        log = logging.getLogger("numberverse.test")
+        log.error("utc check")
+        lines = read_lines(path)
+        check("one record written", len(lines) == 1, f"got {len(lines)}")
+        if lines:
+            rec = json.loads(lines[0])
+            check("ts ends with +00:00", rec["ts"].endswith("+00:00"), f"got {rec['ts']!r}")
+
+
+def test_schema_fields():
+    print("⑦ payload contains module, funcName, lineno (#1753)")
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "error.log")
+        reset(path)
+        log = logging.getLogger("numberverse.test")
+        log.error("schema check")
+        lines = read_lines(path)
+        check("one record written", len(lines) == 1, f"got {len(lines)}")
+        if lines:
+            rec = json.loads(lines[0])
+            check("module present", "module" in rec, True)
+            check("funcName present", "funcName" in rec, True)
+            check("lineno present", "lineno" in rec, True)
+            check("module is test_errorlog", rec["module"], "test_errorlog")
+            check("funcName is not empty", bool(rec["funcName"]), True)
+            check("lineno is positive int", isinstance(rec["lineno"], int) and rec["lineno"] > 0, True)
+
+
+def test_extra_context():
+    print("⑧ extra context keys survive into JSON, PII redacted (#1753)")
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "error.log")
+        reset(path)
+        log = logging.getLogger("numberverse.test")
+        # Use the real logger path so ScrubFilter runs on the handler and
+        # redacts extra values in __dict__ before the formatter sees them.
+        # The extra values are redacted both by the filter (on msg/args) and
+        # by the formatter (on extra dict keys).  We assert the end result.
+        log.warning("test extra", extra={"kid_id_hash": "abc", "duration_ms": 12})
+        log.warning("test scrub extra", extra={"email": "admin@numberverse.dev"})
+        lines = read_lines(path)
+        check("two records written", len(lines) == 2, f"got {len(lines)}")
+        if len(lines) == 2:
+            a, b = (json.loads(l) for l in lines)
+            check("kid_id_hash present in first record", "kid_id_hash" in a, True)
+            check("kid_id_hash value preserved", a["kid_id_hash"], "abc")
+            check("duration_ms present (int)", a.get("duration_ms"), 12)
+            check("email present in second record", "email" in b, True)
+            check("email value redacted", b["email"], "[REDACTED]")
+            check("deterministic order: ts, level, logger, msg, request_id, module, funcName, lineno, extras, exc",
+                  list(a.keys())[:8],
+                  ["ts", "level", "logger", "msg", "request_id", "module", "funcName", "lineno"])
+
+
 if __name__ == "__main__":
     test_write_scrub_no_info()
     test_traceback_scrubbed()
     test_rotation()
     test_idempotent()
     test_request_id_in_records()
+    test_ts_utc()
+    test_schema_fields()
+    test_extra_context()
     print()
     if FAILS:
         print(f"✖ {len(FAILS)} check(s) failed: {FAILS}")

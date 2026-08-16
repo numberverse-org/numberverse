@@ -5,10 +5,16 @@ Every warning/error from any ``numberverse.*`` logger is appended to
 (1 MB × 3 backups). Debug/info never lands on disk. The box stays in control
 of its own log file — nothing leaves the machine.
 
-Privacy (#124 checklist): every field passes through the same scrubber as #266,
-and the formatter re-redacts the *rendered* traceback (``Formatter.format``
-computes ``exc_text`` from ``exc_info`` AFTER filters run, so a filter alone
-would let PII-shaped traceback lines through). Verify with tests/test_errorlog.py.
+Record schema (one JSON object per line):
+``ts`` (UTC, ``+00:00`` offset — #1752), ``level``, ``logger``, ``msg``,
+``request_id``, ``module``, ``funcName``, ``lineno``, then any non-standard
+``extra={...}`` keys sorted by name (#1753), then ``exc`` (redacted) last.
+
+Privacy (#124 checklist): every field passes through the same scrubber as #266
+(including ``extra={...}`` string values), and the formatter re-redacts the
+*rendered* traceback (``Formatter.format`` computes ``exc_text`` from
+``exc_info`` AFTER filters run, so a filter alone would let PII-shaped
+traceback lines through). Verify with tests/test_errorlog.py.
 """
 from __future__ import annotations
 
@@ -33,20 +39,44 @@ _BACKUP_COUNT = 3
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
 
+# Standard LogRecord attributes — anything else in record.__dict__ is treated
+# as caller-supplied structured context (extra={...}) and merged into the JSON
+# (#1753). request_id is handled separately (from request_id_ctx), so it is
+# excluded even though the RequestIDMiddleware stores it on the record too.
+_STANDARD_RECORD_KEYS = frozenset({
+    "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
+    "module", "exc_text", "exc_info", "stack_info", "lineno", "funcName",
+    "created", "msecs", "relativeCreated", "thread", "threadName",
+    "processName", "process", "taskName", "message", "asctime", "request_id",
+})
+
+
 class _JsonFormatter(logging.Formatter):
-    """One JSON object per line: ts, level, logger, msg, request_id, exc (redacted)."""
+    """One JSON object per line: ts(UTC), level, logger, msg, request_id,
+    module, funcName, lineno, sorted extra context (PII-redacted), exc last."""
 
     def format(self, record: logging.LogRecord) -> str:
         # Calling the base formatter renders exc_text from exc_info — do it
         # BEFORE we build JSON so we can redact the rendered traceback.
         super().format(record)
         payload = {
-            "ts": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
+            # #1752 — UTC only: astimezone() would shift the host's local offset,
+            # while every DB path and the rest of the stack already uses UTC.
+            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "level": record.levelname,
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": redact_text(record.getMessage()),
             "request_id": request_id_ctx.get(),
+            "module": record.module,
+            "funcName": record.funcName,
+            "lineno": record.lineno,
         }
+        # #1753 — non-standard extra keys (extra={...}) ride along verbatim,
+        # sorted for deterministic output, and every string passes the same
+        # scrubber that governs msg/exc. Non-strings are kept as-is.
+        for key in sorted(record.__dict__.keys() - _STANDARD_RECORD_KEYS):
+            value = record.__dict__[key]
+            payload[key] = redact_text(value) if isinstance(value, str) else value
         exc = getattr(record, "exc_text", None)
         if exc:
             payload["exc"] = redact_text(exc)
