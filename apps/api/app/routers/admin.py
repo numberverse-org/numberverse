@@ -5,12 +5,14 @@ from datetime import datetime, date, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
 from ..deps import org_scoped, require_admin, require_super_admin, resolve_org_id
+from ..security import hash_password, password_bytes_ok
 from ..models import (
     AdminAudit,
     Classroom,
@@ -1161,4 +1163,63 @@ async def delete_resource(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     await db.delete(obj)
     _write_audit(db, profile, "delete", resource, item_id, {"id": item_id})
+    await db.commit()
+
+
+class AdminResetPasswordIn(BaseModel):
+    """#1586 — operator-assisted parent password recovery.
+
+    This box has NO SMTP, so a locked-out parent cannot self-serve an email
+    reset. An admin resets the password here and relays the new secret to the
+    parent out-of-band. Same 8..72 password policy as every other auth flow."""
+
+    new_password: str = Field(min_length=8, max_length=72)
+
+
+@router.post(
+    "/parents/{parent_id}/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def reset_parent_password(
+    parent_id: uuid.UUID,
+    body: AdminResetPasswordIn,
+    profile: Profile = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """#1586 — ADMIN-ONLY parent-password recovery (operator-assisted).
+
+    The service cannot send email, so there is deliberately no self-serve
+    forgot-password. An authenticated admin (or super-admin) resets a locked-out
+    parent's password; the operator relays the temporary secret out-of-band.
+    The parent's existing sessions are revoked so a stale/leaked token dies at
+    once, and the row is flipped to `local` so a Google-only account can log in
+    with the new password too. Credential material is never returned or
+    audited — `_write_audit` never receives the hash or the plaintext."""
+    if not password_bytes_ok(body.new_password):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Password too long (max 72 bytes)",
+        )
+    target = await db.get(Profile, parent_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parent not found")
+    target.password_hash = hash_password(body.new_password)
+    # #1487 — a Google-created parent has an un-knowable random hash; a real
+    # password makes email/password login work from now on.
+    target.auth_provider = "local"
+    now = datetime.now(timezone.utc)
+    sessions = (
+        await db.scalars(
+            select(Session).where(
+                Session.profile_id == target.id,
+                Session.revoked_at.is_(None),
+            )
+        )
+    ).all()
+    for s in sessions:
+        s.revoked_at = now
+    # #865 — legacy no-sid tokens have no sessions row; stamp the cutoff so any
+    # token minted on or before this reset is rejected on its next request.
+    target.legacy_sessions_revoked_at = now
+    _write_audit(db, profile, "reset-password", "profiles", target.id)
     await db.commit()

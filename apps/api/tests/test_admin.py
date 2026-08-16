@@ -64,7 +64,9 @@ from app.models import (  # noqa: E402
     AdminAudit,
     ContentItem,
     Kid,
+    Profile,
     RateLimitBucket,
+    Session,
     Subscription,
 )
 from app.ratelimit import (  # noqa: E402
@@ -75,6 +77,7 @@ from app.ratelimit import (  # noqa: E402
     rate_limit,
 )
 from app.routers import admin as admin_router  # noqa: E402
+from app.security import hash_password, verify_password  # noqa: E402
 
 passes = 0
 fails = 0
@@ -986,6 +989,70 @@ async def _run_search_embed_direct_calls():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# ⑬  #1586 — admin-only parent-password reset (operator-assisted recovery)
+# ══════════════════════════════════════════════════════════════════════════
+
+async def _run_admin_reset_password():
+    print("⑬  #1586 — admin reset-parent-password (operator-assisted recovery)…")
+
+    # ── authz: only admin/super_admin may reset a parent's password
+    try:
+        await admin_router.require_admin(_profile(role="user", is_admin=False))
+        check("reset as plain user → 403", "no-403", 403)
+    except HTTPException as exc:
+        check("reset as plain user → 403", exc.status_code, 403)
+    got = await admin_router.require_admin(_profile(role="admin", is_admin=False))
+    check("reset as admin allowed", got.role, "admin")
+
+    # ── happy path: new hash, flips auth_provider, revokes sessions, audits
+    parent = Profile(
+        id=uuid.uuid4(),
+        email="locked@example.com",
+        password_hash=hash_password("oldpass123"),
+        auth_provider="google",
+        display_name="Locked Parent",
+        is_admin=False,
+        role="user",
+        legacy_sessions_revoked_at=None,
+    )
+    old_session = Session(
+        id=uuid.uuid4(),
+        profile_id=parent.id,
+        token_hash="stale-hash",
+        revoked_at=None,
+        user_agent=None,
+        ip=None,
+        last_seen_at=None,
+        created_at=datetime(2026, 8, 1, 12, 0, 0),
+    )
+    db = _FakeDB()
+    db.crud_rows[str(parent.id)] = parent
+    db.list_rows = [old_session]
+    await admin_router.reset_parent_password(
+        parent.id, SimpleNamespace(new_password="newpass123"), _profile(), db
+    )
+    check("reset sets a working password hash", verify_password("newpass123", parent.password_hash), True)
+    check("reset flips auth_provider to local", parent.auth_provider, "local")
+    check("reset revokes the active session", old_session.revoked_at is not None, True)
+    check("reset stamps the legacy-token cutoff", parent.legacy_sessions_revoked_at is not None, True)
+    check("reset writes an audit row", any(
+        isinstance(a, AdminAudit) and a.action == "reset-password" for a in db.added
+    ), True)
+
+    # ── unknown parent → 404 (never 500)
+    st, _ = await aexc_status(admin_router.reset_parent_password(
+        uuid.uuid4(), SimpleNamespace(new_password="newpass123"), _profile(), _FakeDB()
+    ))
+    check("reset missing parent → 404", st, 404)
+
+    # ── #1675 — byte-too-long password → 422 (25 emojis = 100 bytes > 72)
+    st, dt = await aexc_status(admin_router.reset_parent_password(
+        parent.id, SimpleNamespace(new_password="👍" * 25), _profile(), db
+    ))
+    check("reset over-72-byte password → 422", (st, "too long" in (dt or "").lower()), (422, True))
+
+
+# ══════════════════════════════════════════════════════════════════════════
 
 def _run():
     test_mass_assignment_guard()
@@ -1000,6 +1067,7 @@ def _run():
     asyncio.run(_run_middleware())
     test_search_embed_rate_limits()
     asyncio.run(_run_search_embed_direct_calls())
+    asyncio.run(_run_admin_reset_password())
 
     print()
     if fails:
