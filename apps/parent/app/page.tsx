@@ -86,7 +86,10 @@ import {
   toBnNum,
   weekdayLimits,
   weeklyShareText,
+  type MissedSkill,
+  type MonthSummary,
 } from "./lib/portal";
+import { sanitizeDisplayName, sanitizeDownloadName } from "./sanitize";
 import LearningControls from "./components/LearningControls";
 import { FamilyOverview, TodayCard, WeeklyCard, MasteryTimeline } from "./components/OverviewSections";
 import {
@@ -175,6 +178,12 @@ export default function ParentDashboard() {
   const [archMonth, setArchMonth] = useState<Record<string, string>>({});
   // 🧵 #255 — per-kid session-timeline day filter ("all" = no filter).
   const [sessionDay, setSessionDay] = useState<Record<string, string>>({});
+  // #1822 — off-thread aggregation results (per kid). buildMissedQuestions and
+  // buildMonthlyArchive are async (chunked across frames + memoized on the input
+  // array reference in portal.ts), so their outputs live in state and are
+  // refreshed by the effect below instead of blocking the dashboard hydrate.
+  const [missedByKid, setMissedByKid] = useState<Record<string, MissedSkill[]>>({});
+  const [archiveByKid, setArchiveByKid] = useState<Record<string, MonthSummary[]>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -726,6 +735,38 @@ export default function ParentDashboard() {
     setNarrCopied(false);
   }, [activeId]);
 
+  // #1822 — hydrate the async per-kid aggregations OFF the main thread. The
+  // builders chunk their folds across frames and memoize on the input-array
+  // reference (portal.ts), so a re-hydration with the SAME feed is a cache hit.
+  // Results are keyed by kid so switching never shows another kid's data while
+  // the first build for the newly active kid is still in flight.
+  useEffect(() => {
+    if (!activeId) return;
+    let cancelled = false;
+    const kidStories = stories[activeId] ?? null;
+    const kidArch = archActivity[activeId] ?? null;
+    if (kidStories) {
+      void buildMissedQuestions(kidStories)
+        .then((rows) => {
+          if (!cancelled) setMissedByKid((prev) => (prev[activeId] === rows ? prev : { ...prev, [activeId]: rows }));
+        })
+        // Pure builders never reject; a catch keeps an unexpected failure from
+        // becoming an unhandled rejection while the dashboard stays on the
+        // previous (or empty) value.
+        .catch(() => {});
+    }
+    if (kidArch) {
+      void buildMonthlyArchive(kidArch)
+        .then((rows) => {
+          if (!cancelled) setArchiveByKid((prev) => (prev[activeId] === rows ? prev : { ...prev, [activeId]: rows }));
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, stories, archActivity]);
+
   // #1496 — keep the sidebar's active-section highlight in sync with the
   // section currently in view. Sections appear/disappear as the active kid and
   // the add-kid form change, so the observer is rebuilt on those transitions.
@@ -909,7 +950,9 @@ export default function ParentDashboard() {
     const name = editName.trim();
     const duplicate = kids.some((k) => k.name.trim().toLowerCase() === name.toLowerCase());
     if (duplicate) {
-      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", name));
+      // #1829 — strip control chars/newlines before interpolating into the
+      // native confirm() so a pasted/weird name can't break the dialog message.
+      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", sanitizeDisplayName(name)));
       if (!ok) return;
     } else if (kids.length >= 8) {
       const ok = window.confirm(WIZARD_LANGS[wizLang].manyKidsWarn.replace("{count}", String(kids.length)));
@@ -953,7 +996,9 @@ export default function ParentDashboard() {
     const name = editName.trim();
     const duplicate = kids.some((k) => k.name.trim().toLowerCase() === name.toLowerCase());
     if (duplicate) {
-      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", name));
+      // #1829 — strip control chars/newlines before interpolating into the
+      // native confirm() so a pasted/weird name can't break the dialog message.
+      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", sanitizeDisplayName(name)));
       if (!ok) return;
     } else if (kids.length >= 8) {
       const ok = window.confirm(WIZARD_LANGS[wizLang].manyKidsWarn.replace("{count}", String(kids.length)));
@@ -1252,13 +1297,17 @@ export default function ParentDashboard() {
   // #239 — top Moni-flagged skills this week, derived from the same stories.
   const flags = activeId ? buildFlaggedSkills(stories[activeId] ?? []) : [];
   // #89 — per-skill missed questions, derived from the same offline story ledger.
-  const missedSkills = activeId ? buildMissedQuestions(stories[activeId] ?? []) : [];
+  // #1822 — the builder is async; its per-kid result is hydrated into state by
+  // the effect above (chunked across frames, memoized on the story-array ref).
+  const missedSkills = activeId ? (missedByKid[activeId] ?? []) : [];
   // 🚀 #249 — the kid's acceleration plan (skills skipped ahead, newest first —
   // the backend already sorts; offline-safe because it's already-loaded state).
   const accelRows = activeId ? accel[activeId] ?? [] : [];
   // 🗓️ #251 — the 12-month archive derived client-side from the full activity
   // feed (once loaded, fully offline). Selected month defaults to the newest.
-  const activeArchive = activeId ? buildMonthlyArchive(archActivity[activeId] ?? []) : [];
+  // #1822 — the builder is async; its per-kid result is hydrated into state by
+  // the effect above (chunked across frames, memoized on the activity-array ref).
+  const activeArchive = activeId ? (archiveByKid[activeId] ?? []) : [];
   // #1506/#1518 — archive lifecycle is per-kid now. Derive the card flags from
   // archStatus so switching kids never shows another kid's loading indicator.
   const archLoading = !!activeId && archStatus[activeId] === "loading";
@@ -1298,7 +1347,9 @@ export default function ParentDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `numberverse-monthly-${active.name}-${activeId.slice(0, 8)}.csv`;
+    // #1825 — sanitize the kid name before putting it in the filename: strip
+    // path separators/control chars/leading dots, collapse whitespace, cap ~60.
+    a.download = `numberverse-monthly-${sanitizeDownloadName(active.name)}-${activeId.slice(0, 8)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -963,30 +963,50 @@ export interface MissedSkill {
   misses: MissedQ[];
 }
 
+/** #1822 — memoized result cache keyed on the actual story-array reference, so
+ *  re-hydrating the dashboard with the SAME feed is an O(1) cache hit instead of
+ *  a re-scan. WeakMap keys (arrays) are GC'd with the feed — no unbounded growth. */
+const missedQuestionsCache = new WeakMap<LearningStoryRow[], Promise<MissedSkill[]>>();
+
 /** #89 — derive the per-skill missed-question list from the loaded stories
- *  (newest-first). Pure + client-side, offline-friendly, nothing fetched. */
-export function buildMissedQuestions(stories: LearningStoryRow[]): MissedSkill[] {
-  const bySkill = new Map<string, MissedQ[]>();
-  let count = 0;
-  for (const s of stories) {
-    if (s.outcome) continue; // only misses
-    if (count++ >= 400) break; // cap the scan — newest first is what matters
-    const arr = bySkill.get(s.skill_id) ?? [];
-    arr.push({
-      gameId: s.game_id,
-      at: s.created_at,
-      wrongAnswer: (typeof s.context?.wrongAnswer === "number" ? s.context.wrongAnswer : null) as string | number | null,
-      correctAnswer: (typeof s.context?.correctAnswer === "number" ? s.context.correctAnswer : null) as string | number | null,
-      errorKind: s.error_kind,
-      fingerprint: (typeof s.context?.fingerprint === "string" ? s.context.fingerprint : null) as string | null,
-      reteaching: s.action === "reteach",
-    });
-    bySkill.set(s.skill_id, arr);
-  }
-  return [...bySkill.entries()]
-    .map(([skillId, misses]) => ({ skillId, misses: misses.slice(0, 5) }))
-    .sort((a, b) => b.misses.length - a.misses.length)
-    .slice(0, 8);
+ *  (newest-first). Pure + client-side, offline-friendly, nothing fetched.
+ *  #1822 — async: the first fold is chunked across frames (yields to the event
+ *  loop every CHUNK rows) so the dashboard hydrate never blocks the UI thread. */
+export async function buildMissedQuestions(stories: LearningStoryRow[]): Promise<MissedSkill[]> {
+  const hit = missedQuestionsCache.get(stories);
+  if (hit) return hit;
+  const promise = (async () => {
+    const bySkill = new Map<string, MissedQ[]>();
+    let count = 0;
+    const CHUNK = 50;
+    for (let i = 0; i < stories.length; i++) {
+      const s = stories[i];
+      if (s.outcome) continue; // only misses
+      if (count++ >= 400) break; // cap the scan — newest first is what matters
+      const arr = bySkill.get(s.skill_id) ?? [];
+      arr.push({
+        gameId: s.game_id,
+        at: s.created_at,
+        wrongAnswer: (typeof s.context?.wrongAnswer === "number" ? s.context.wrongAnswer : null) as string | number | null,
+        correctAnswer: (typeof s.context?.correctAnswer === "number" ? s.context.correctAnswer : null) as string | number | null,
+        errorKind: s.error_kind,
+        fingerprint: (typeof s.context?.fingerprint === "string" ? s.context.fingerprint : null) as string | null,
+        reteaching: s.action === "reteach",
+      });
+      bySkill.set(s.skill_id, arr);
+      if ((i + 1) % CHUNK === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+    return [...bySkill.entries()]
+      .map(([skillId, misses]) => ({ skillId, misses: misses.slice(0, 5) }))
+      .sort((a, b) => b.misses.length - a.misses.length)
+      .slice(0, 8);
+  })();
+  // On an (unexpected) rejection, drop the entry so a later call can retry.
+  missedQuestionsCache.set(stories, promise);
+  promise.catch(() => {
+    missedQuestionsCache.delete(stories);
+  });
+  return promise;
 }
 
 /** #89 — humanize a skill id ("count-pop-to-10" → "count pop to 10"). */
@@ -1149,34 +1169,54 @@ export interface MonthSummary {
   top: Array<{ id: string; rounds: number; correct: number }>;
 }
 
+/** #1822 — memoized result cache keyed on the actual activity-array reference,
+ *  so a re-hydration with the SAME full feed is an O(1) cache hit instead of a
+ *  re-bucket of up to ~2000 rounds. WeakMap keys (arrays) are GC'd with the feed. */
+const monthlyArchiveCache = new WeakMap<ActivityRow[], Promise<MonthSummary[]>>();
+
 /** Bucket activity rounds into the rolling 12-month archive. `activity` must be
- *  sorted newest-first (as the API returns it). Pure + offline. */
-export function buildMonthlyArchive(activity: ActivityRow[]): MonthSummary[] {
-  const byKey = new Map<string, { rounds: number; correct: number; ms: number; skills: Map<string, { rounds: number; correct: number }> }>();
-  for (const a of activity) {
-    const key = a.created_at.slice(0, 7); // "2026-07-08…" → "2026-07"
-    let b = byKey.get(key);
-    if (!b) {
-      b = { rounds: 0, correct: 0, ms: 0, skills: new Map() };
-      byKey.set(key, b);
+ *  sorted newest-first (as the API returns it). Pure + offline.
+ *  #1822 — async: the fold is chunked across frames (yields every CHUNK rows) so
+ *  a large feed can't block the UI thread during the dashboard hydrate. */
+export async function buildMonthlyArchive(activity: ActivityRow[]): Promise<MonthSummary[]> {
+  const hit = monthlyArchiveCache.get(activity);
+  if (hit) return hit;
+  const promise = (async () => {
+    const byKey = new Map<string, { rounds: number; correct: number; ms: number; skills: Map<string, { rounds: number; correct: number }> }>();
+    const CHUNK = 100;
+    for (let i = 0; i < activity.length; i++) {
+      const a = activity[i];
+      const key = a.created_at.slice(0, 7); // "2026-07-08…" → "2026-07"
+      let b = byKey.get(key);
+      if (!b) {
+        b = { rounds: 0, correct: 0, ms: 0, skills: new Map() };
+        byKey.set(key, b);
+      }
+      b.rounds += 1;
+      if (a.correct) b.correct += 1;
+      b.ms += a.response_ms ?? 0;
+      const s = b.skills.get(a.skill_id) ?? { rounds: 0, correct: 0 };
+      s.rounds += 1;
+      if (a.correct) s.correct += 1;
+      b.skills.set(a.skill_id, s);
+      if ((i + 1) % CHUNK === 0) await new Promise((r) => setTimeout(r, 0));
     }
-    b.rounds += 1;
-    if (a.correct) b.correct += 1;
-    b.ms += a.response_ms ?? 0;
-    const s = b.skills.get(a.skill_id) ?? { rounds: 0, correct: 0 };
-    s.rounds += 1;
-    if (a.correct) s.correct += 1;
-    b.skills.set(a.skill_id, s);
-  }
-  return rollingMonths(12).map((m) => {
-    const b = byKey.get(m.key);
-    if (!b) return { key: m.key, rounds: 0, correct: 0, minutes: 0, top: [] };
-    const top = [...b.skills.entries()]
-      .map(([id, s]) => ({ id, ...s }))
-      .sort((x, y) => y.rounds - x.rounds)
-      .slice(0, 3);
-    return { key: m.key, rounds: b.rounds, correct: b.correct, minutes: Math.round((b.ms / 60000) * 10) / 10, top };
+    return rollingMonths(12).map((m) => {
+      const b = byKey.get(m.key);
+      if (!b) return { key: m.key, rounds: 0, correct: 0, minutes: 0, top: [] };
+      const top = [...b.skills.entries()]
+        .map(([id, s]) => ({ id, ...s }))
+        .sort((x, y) => y.rounds - x.rounds)
+        .slice(0, 3);
+      return { key: m.key, rounds: b.rounds, correct: b.correct, minutes: Math.round((b.ms / 60000) * 10) / 10, top };
+    });
+  })();
+  // On an (unexpected) rejection, drop the entry so a later call can retry.
+  monthlyArchiveCache.set(activity, promise);
+  promise.catch(() => {
+    monthlyArchiveCache.delete(activity);
   });
+  return promise;
 }
 
 /** CSV export of the 12-month archive (and, if a month is selected, its top
