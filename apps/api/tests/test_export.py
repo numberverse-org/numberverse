@@ -9,17 +9,88 @@ fastapi imports) so this runs in CI with zero Postgres — the same pattern as
   ②  The privacy contract: NO password_hash / session / admin internals leak.
   ③  CSV round rows carry kid names + sort by date; Bangla survives (BOM).
   ④  Naive DB timestamps serialize as UTC ISO with a Z.
+  ⑤  Format version constant is 2; ⑥ CSV formula-injection guard (#1826).
+  ⑦  #1768 — export gets its OWN much smaller per-minute budget: the exported
+      dep's captured limit is strictly below the shared 120/min _REQUESTS_PER_MIN.
 
 Run:  python3 apps/api/tests/test_export.py
 """
 import csv
+import importlib.util
+import inspect
 import sys
+import types
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+API = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(API))
+
+# ═══════════════════════════════════════════════════════════════════
+# Bootstrap — load the REAL app/routers/export.py (and its dependencies) so the
+# #1768 budget check inspects the live EXPORT_RATE_LIMIT dependency. Same stub
+# pattern as test_import.py: only the bare-Python-missing runtime deps
+# (pydantic_settings, jwt, psycopg, ...) are replaced.
+# ═══════════════════════════════════════════════════════════════════
+
+_app_pkg = types.ModuleType("app")
+_app_pkg.__path__ = [str(API / "app")]
+sys.modules["app"] = _app_pkg
+_rts_pkg = types.ModuleType("app.routers")
+_rts_pkg.__path__ = [str(API / "app" / "routers")]
+sys.modules["app.routers"] = _rts_pkg
+
+
+def _stub(name, **attrs):
+    mod = types.ModuleType(name)
+    for key, val in attrs.items():
+        setattr(mod, key, val)
+    sys.modules[name] = mod
+
+
+async def _get_db():
+    yield None
+
+
+from sqlalchemy.orm import DeclarativeBase  # noqa: E402
+
+
+class _Base(DeclarativeBase):
+    pass
+
+
+# app.db — only Base (real) + get_db (dummy) are needed by the real models.
+_stub("app.db", get_db=_get_db, Base=_Base)
+# app.deps — ratelimit.py imports get_current_profile at module load; both
+# limiter deps are only used as FastAPI's Depends() arguments, which this suite
+# bypasses by calling the raw functions directly.
+_stub("app.deps", get_current_profile=lambda *a, **k: None)
+# app.schemas — RoundedInt is the only name the import router uses; int|None is
+# faithful for these tests.
+_stub("app.schemas", RoundedInt=int | None)
+# app.scrub — redact_context is a pure PII scrubber tested separately; the
+# router only needs a callable envelope.
+_stub("app.scrub", redact_context=lambda ctx: ctx or {})
+
+
+def _load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# Real modules. `app/ratelimit.py` is a READ-ONLY import here (a sibling task
+# owns it — we never modify it, we only read `_REQUESTS_PER_MIN` for #1768).
+models = _load("app.models", API / "app" / "models.py")
+ratelimit = _load("app.ratelimit", API / "app" / "ratelimit.py")
+export_format = _load("app.export_format", API / "app" / "export_format.py")
+import_data = _load("app.routers.import_data", API / "app" / "routers" / "import_data.py")
+export = _load("app.routers.export", API / "app" / "routers" / "export.py")
+
 from app.export_format import (  # noqa: E402
     VERSION,
     _guard_csv_cell,
@@ -208,6 +279,19 @@ for _plain in ("Aarif", "আরিফ"):
     ).decode("utf-8-sig")
     _plain_cell = next(iter(csv.reader([_plain_csv.splitlines()[1]])))[0]
     check(f"csv keeps {_plain!r} unchanged", _plain_cell, _plain)
+
+print("⑦  #1768 — export gets its own much smaller per-minute budget…")
+# Read-only import of the shared write-tier constant — app/ratelimit.py is
+# owned by a sibling task, so we never modify it, only read it. The router's
+# EXPORT_RATE_LIMIT is the FastAPI dep returned by rate_limit(limit=...); the
+# budget it was built with is captured in that dep's closure, which we read
+# back with inspect.getclosurevars.
+from app.ratelimit import _REQUESTS_PER_MIN  # noqa: E402
+
+_export_budget = inspect.getclosurevars(export.EXPORT_RATE_LIMIT).nonlocals.get("limit")
+check("EXPORT_RATE_LIMIT strictly below _REQUESTS_PER_MIN (120/min)",
+      _export_budget is not None and _export_budget < _REQUESTS_PER_MIN, True)
+check("EXPORT_RATE_LIMIT is 10/min", _export_budget, 10)
 
 print()
 print(f"✓ export format matrix: {passes} passed, {fails} failed")

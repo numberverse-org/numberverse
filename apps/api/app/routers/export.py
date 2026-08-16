@@ -44,7 +44,11 @@ router = APIRouter(prefix="/api/v1", tags=["export"])
 # #838 — exports stream a family's entire history, so bound how often a
 # (possibly breached) token may pull a heavy full export. Reuses the same
 # account+IP durable fixed-window limiter as the write endpoints.
-EXPORT_RATE_LIMIT = rate_limit()
+# #1768 — export/import get their OWN much smaller per-minute budgets. A full
+# family history per request is the heaviest surface in the API, yet it used to
+# cost the same single unit as a one-row kid read; now 10 full-family exports
+# per minute per account+IP.
+EXPORT_RATE_LIMIT = rate_limit(limit=10)
 
 CSV_FIELDS = ["kid", "kid_id", "date", "skill_id", "game_id", "correct", "response_ms", "difficulty"]
 

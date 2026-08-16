@@ -23,6 +23,7 @@ Run:  cd apps/api && python3 tests/test_import.py
 """
 import asyncio
 import importlib.util
+import inspect
 import sys
 import types
 import uuid
@@ -65,10 +66,10 @@ class _Base(DeclarativeBase):
 
 # app.db — only Base (real) + get_db (dummy) are needed by the real models.
 _stub("app.db", get_db=_get_db, Base=_Base)
-# app.ratelimit — the router calls rate_limit() at import time; the return value
-# is only used as FastAPI's Depends() argument, which we bypass by calling the
-# raw endpoint directly.
-_stub("app.ratelimit", rate_limit=lambda *a, **k: None)
+# app.deps — ratelimit.py imports get_current_profile at module load; the
+# limiter deps are only used as FastAPI's Depends() arguments, which this suite
+# bypasses by calling the raw endpoint directly.
+_stub("app.deps", get_current_profile=lambda *a, **k: None)
 # app.schemas — RoundedInt is the only name the import router uses; a plain
 # int|None alias is faithful for these tests.
 _stub("app.schemas", RoundedInt=int | None)
@@ -85,7 +86,12 @@ def _load(name, path):
     return mod
 
 
+# Real modules. `app/ratelimit.py` is a READ-ONLY import here (a sibling task
+# owns it — we never modify it, only read `_REQUESTS_PER_MIN` for #1768). The
+# import-data router builds IMPORT_RATE_LIMIT from the REAL rate_limit(), so
+# the budget check below inspects the live dependency.
 models = _load("app.models", API / "app" / "models.py")
+ratelimit = _load("app.ratelimit", API / "app" / "ratelimit.py")
 export_format = _load("app.export_format", API / "app" / "export_format.py")
 import_data = _load("app.routers.import_data", API / "app" / "routers" / "import_data.py")
 
@@ -441,6 +447,23 @@ for label, kw in [("max_band out of range", dict(max_band=99)),
         check(f"schema rejects {label}", "accepted", "rejected")
     except ValidationError:
         check(f"schema rejects {label}", "rejected", "rejected")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ⑪  #1768 — import budget is its own, much smaller per-minute budget
+# ═══════════════════════════════════════════════════════════════════
+print("⑪  #1768 — import gets its own much smaller per-minute budget…")
+# Read-only import of the shared write-tier constant — app/ratelimit.py is
+# owned by a sibling task, so we never modify it, only read it. The router's
+# IMPORT_RATE_LIMIT is the FastAPI dep returned by rate_limit(limit=...); the
+# budget it was built with is captured in that dep's closure, which we read
+# back with inspect.getclosurevars.
+from app.ratelimit import _REQUESTS_PER_MIN  # noqa: E402
+
+_import_budget = inspect.getclosurevars(import_data.IMPORT_RATE_LIMIT).nonlocals.get("limit")
+check("IMPORT_RATE_LIMIT strictly below _REQUESTS_PER_MIN (120/min)",
+      _import_budget is not None and _import_budget < _REQUESTS_PER_MIN, True)
+check("IMPORT_RATE_LIMIT is 10/min", _import_budget, 10)
 
 
 # ═══════════════════════════════════════════════════════════════════

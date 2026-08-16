@@ -41,7 +41,10 @@ router = APIRouter(prefix="/api/v1", tags=["import"])
 # Same account+IP durable fixed-window limiter as every write endpoint. The
 # import body is a whole family's history, so keep it on the same bounded budget
 # as export (#838).
-IMPORT_RATE_LIMIT = rate_limit()
+# #1768 — import/export get their OWN much smaller per-minute budgets: one
+# request upserts a family's whole history; now 10 imports per minute per
+# account+IP.
+IMPORT_RATE_LIMIT = rate_limit(limit=10)
 
 # Defense-in-depth on top of the app's global request-body guard (#836). The
 # global middleware is stricter (1 MiB), but if it is ever relaxed this route
