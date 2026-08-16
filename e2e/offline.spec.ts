@@ -21,9 +21,44 @@ import { test, expect, type Page, type Request } from "@playwright/test";
  *      favicon) all succeed from cache.
  */
 
-const SETTLE_MS = 4000; // let the first online visit finish precaching
 const QUIET_MS = 350; // event-driven settle: quiet window after the last request
 const SETTLE_TIMEOUT_MS = 3000; // bounded ceiling for late runtime fetches
+// #935 — the cold precache drain (~79 entries, up to ~8MB) is event-driven too:
+// a fixed SETTLE_MS=4000 sleep raced slow CI (drain not finished → precache
+// partial → offline reload flake) AND wasted 4s per test on fast machines.
+const PRECACHE_QUIET_MS = 500; // quiet window after the last precache request
+const PRECACHE_CEILING_MS = 20_000; // cold install can fetch the whole manifest; never hang a slow box
+
+/** #935 — wait for the SW precache manifest drain by EVENT (request-quiet),
+ *  not a fixed sleep. The precache is complete once requests stop for a quiet
+ *  window; the ceiling keeps a slow-but-never-quiet box from hanging the run. */
+async function waitForPrecacheDrain(page: Page): Promise<void> {
+  await new Promise<void>((resolve) => {
+    let quietTimer: ReturnType<typeof setTimeout> | undefined;
+    let ceiling: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+
+    const bump = () => {
+      if (quietTimer) clearTimeout(quietTimer);
+      quietTimer = setTimeout(finish, PRECACHE_QUIET_MS);
+    };
+    const cleanup = () => {
+      page.off("requestfinished", bump);
+      if (quietTimer) clearTimeout(quietTimer);
+      if (ceiling) clearTimeout(ceiling);
+    };
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+
+    ceiling = setTimeout(finish, PRECACHE_CEILING_MS);
+    page.on("requestfinished", bump);
+    bump(); // drain may already be quiet → settle without waiting out the ceiling
+  });
+}
 
 /** Load online once (fresh-install precache seed), wait for SW ready + precache. */
 async function coldSeed(page: Page): Promise<void> {
@@ -37,7 +72,7 @@ async function coldSeed(page: Page): Promise<void> {
     { timeout: 30_000 }
   );
   await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.waitForTimeout(SETTLE_MS); // precache manifest drain
+  await waitForPrecacheDrain(page);
 }
 
 // Documented runtime-only features allowed to attempt the network offline.
