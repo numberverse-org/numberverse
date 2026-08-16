@@ -1,6 +1,15 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧪 V50 E2E FEED (8 findings) 16 Aug 2026 ✅ → 0.85.0
+- **#1/#2/#3 (specs already shipped in batch-2, b62f31a):** sync-drain.spec.ts (#925, offline→online outbox drain via patched navigator.onLine + real online event), cross-app.spec.ts (#926, signup→play→portal→logout on the shared origin), parent-portal.spec.ts (#927) — all mock-backed via `e2e/lib/apiMocks` (catch-all fulfills every /api/v1/** so no live account is ever created).
+- **#4 positive assertions:** ALREADY implemented — `assertLaunchShellSucceeded` (#928) asserts document + /assets/ + /fonts/ + icons + manifest each SUCCEEDED from the SW precache (not merely "didn't fail").
+- **#5 flaky static sleeps:** offlineReload's 2s wait already event-driven (`waitForRequestsToSettle`, #929). This session #935 replaced coldSeed's fixed 4s precache-drain sleep with `waitForPrecacheDrain` (QUIET_MS 500 + 20s ceiling). Verified green on chrome (cold 28s, warm 11s).
+- **#6 staging/version pin:** global-setup.ts #930 — e2e aborts unless the target host serves the version stamped in version.ts (NV_E2E_BASE/NV_E2E_VERSION/NV_E2E_SKIP_VERSION_CHECK overrides).
+- **#7 browser matrix:** firefox + webkit projects run offline.spec.ts (#931).
+- **#8 listener lifecycle:** requestfailed/requestfinished listeners detached in `finally` (#932).
+- Commit 7c21f0d (#935) + b62f31a (batch-2).
+
 ## 🧪 V50 TEST-COVERAGE-CORE FEED (14 findings) 16 Aug 2026 ✅ → 0.85.0
 - **5 REAL BUGS fixed** (of 14 findings, verified by 254 regression checks):
   - **#0 NaN poisoning** — `adaptive.observe()` degenerate params (pGuess=pSlip=0, extreme pMastered) made pCorrect 0/1 → Bayes posterior divides by zero → NaN. Guard returns finite unchanged state.
