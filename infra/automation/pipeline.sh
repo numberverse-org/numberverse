@@ -76,24 +76,30 @@ conductor(){
   active=$(gh pr list --repo "$R" --state open --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)
   if [ "$active" -gt 0 ]; then log "conductor: open PR exists — waiting for merge, idle"; _snapshot; exit 0; fi
 
-  # 2. Pick the next groomed issue: priority high > medium > low, then milestone.
+  # 2. Pick the next groomed issue: hard > priority high > medium > low, then milestone.
+  #    `hard` (or `priority: hard`) flags a complex multi-step task → routes to
+  #    DeepSeek v4-pro via `tresha-work`/`tresha-pro` instead of cheap flash.
   local pick
   pick=$(gh issue list --repo "$R" --state open --label "status: todo" --limit 50 \
     --json number,title,milestone,labels \
-    --jq 'def prio($l): ($l | if index("priority: high") then 3 elif index("priority: medium") then 2 elif index("priority: low") then 1 else 0 end);
-          . | map({number,title,ms:(.milestone.title // ""),p:(prio(.labels|map(.name)))})
-          | sort_by(-.p, .ms)
+    --jq 'def ishard($l): ($l | (index("hard") != null) or (index("priority: hard") != null));
+          def prio($l): ($l | if index("priority: high") then 3 elif index("priority: medium") then 2 elif index("priority: low") then 1 else 0 end);
+          . | map({number,title,ms:(.milestone.title // ""),h:(ishard(.labels|map(.name))),p:(prio(.labels|map(.name)))})
+          | sort_by((.h | not), -.p, .ms)
           | first
-          | "\(.number)|\(.title)|\(.ms)"' 2>/dev/null || true)
+          | "\(.number)|\(.title)|\(.ms)|\(.h)"' 2>/dev/null || true)
 
   if [ -z "$pick" ] || [ "$pick" = "null" ]; then
     log "conductor: no groomed status:todo issue — idle (groom one: gh issue edit N --add-label \"status: todo\")"
     _snapshot; exit 0
   fi
-  IFS='|' read -r NUM TITLE MS <<<"$pick"
+  IFS='|' read -r NUM TITLE MS HARD <<<"$pick"
   if [ -z "$NUM" ] || [ "$NUM" = "null" ]; then
     log "conductor: pick guard — invalid issue, idle"
     _snapshot; exit 0
+  fi
+  if [ "$HARD" = "true" ]; then
+    log "conductor: issue #$NUM marked HARD → routes to v4-pro (tresha-pro) when dispatched"
   fi
 
   # 3. Open the feature branch off main.
@@ -108,6 +114,9 @@ conductor(){
   {
     echo "# Work order #$NUM — $TITLE"
     echo "> milestone: $MS · branch: \`$BR\`"
+    if [ "$HARD" = "true" ]; then
+      echo "> ⚡ HARD task → dispatch with \`tresha-work $NUM\` (auto-routes to DeepSeek v4-pro)"
+    fi
     echo
     echo "## Acceptance criteria (from the issue)"
     echo
@@ -139,10 +148,17 @@ conductor(){
   fi
 
   # 6. Page the human: a work order is ready to implement.
-  _tg "⚡ Pipeline: work order ready → #$NUM $TITLE ($MS)
+  if [ "$HARD" = "true" ]; then
+    _tg "⚡ Pipeline: HARD work order ready → #$NUM $TITLE ($MS)
 Branch: feat/issue-$NUM
 Plan: docs/work-orders/$NUM.md
-Implement it, open a PR, and the loop takes it home."
+Routes to DeepSeek v4-PRO (dispatch: \`tresha-work $NUM\`). Implement it, open a PR, and the loop takes it home."
+  else
+    _tg "⚡ Pipeline: work order ready → #$NUM $TITLE ($MS)
+Branch: feat/issue-$NUM
+Plan: docs/work-orders/$NUM.md
+Dispatch: \`tresha-work $NUM\` (cheap flash unless labeled hard). Implement it, open a PR, and the loop takes it home."
+  fi
 
   git checkout -q main
   log "conductor: work order #$NUM ready → $BR (board → in-progress, paged)"
