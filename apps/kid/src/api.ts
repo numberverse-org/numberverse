@@ -583,6 +583,93 @@ function currentAuthToken(): string | null {
   return localStorage.getItem(LS.parentToken) ?? localStorage.getItem(LS.deviceToken);
 }
 
+/* ── #1615 — ONE shared wire-payload type per endpoint ──────────────────────
+ * The sync functions used to hand-roll snake_case object literals next to the
+ * camelCase SyncEvent/KothaStory/AccelEvent interfaces — a field rename on one
+ * side could silently drift from the other. These typed mappers are the single
+ * serialization seam: the payload shape cannot change without TS checking it
+ * against the interface it serializes. */
+
+export interface ProgressWireEvent {
+  kid_id: string;
+  skill_id: string;
+  game_id: string;
+  correct: boolean;
+  response_ms: number;
+  difficulty: number;
+  uid: string | null; // #1023 — durable-outbox dedup key
+  timestamp: number; // #1024 — client round timestamp (epoch ms)
+  kind?: string; // #1616 — engagement/telemetry kind (round|wrong|coins|…)
+  meta?: Record<string, unknown>; // #1616 — small engagement payload
+}
+
+export interface StoryWireEvent {
+  kid_id: string;
+  uid: string | null; // #331 — durable-outbox dedup key
+  skill_id: string;
+  game_id: string;
+  outcome: boolean;
+  error_kind: string | null;
+  misconception_code: string | null;
+  action: string | null;
+  difficulty: number;
+  response_ms: number;
+  wrong_streak: number;
+  context: Record<string, unknown>;
+}
+
+export interface AccelWireEvent {
+  kid_id: string;
+  uid: string | null; // #249 — durable-outbox dedup key
+  skill_id: string;
+  reason: string;
+  band_from: number;
+  band_to: number;
+}
+
+function toProgressWire(e: SyncEvent, serverKid: string): ProgressWireEvent {
+  return {
+    kid_id: serverKid,
+    skill_id: e.skillId,
+    game_id: e.gameId,
+    correct: e.correct,
+    response_ms: e.responseMs,
+    difficulty: e.difficulty,
+    uid: e.uid,
+    timestamp: e.ts,
+    ...(e.kind ? { kind: e.kind } : {}),
+    ...(e.meta ? { meta: e.meta } : {}),
+  };
+}
+
+function toStoryWire(st: KothaStory, serverKid: string): StoryWireEvent {
+  return {
+    kid_id: serverKid,
+    uid: st.uid,
+    skill_id: st.skillId,
+    game_id: st.gameId,
+    outcome: st.outcome,
+    error_kind: st.errorKind,
+    misconception_code: st.misconceptionCode,
+    action: st.action,
+    difficulty: st.difficulty,
+    response_ms: st.responseMs,
+    wrong_streak: st.wrongStreak,
+    context: st.context,
+  };
+}
+
+function toAccelWire(a: AccelEvent, serverKid: string): AccelWireEvent {
+  return {
+    kid_id: serverKid,
+    uid: a.uid,
+    skill_id: a.skillId,
+    reason: a.reason,
+    band_from: a.bandFrom,
+    band_to: a.bandTo,
+  };
+}
+
 /** #1029 — the captured identity predates a sign-out/in; drop this drain and
  *  re-resolve fresh next heartbeat so the kid's progress lands on the CURRENT
  *  account (never silently on the old parent's profile). */
@@ -665,17 +752,9 @@ export async function syncProgress(): Promise<void> {
     const res = await fetch(`${API}/progress`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
+      // #1615 — typed wire mapper (single serialization seam; see above).
       body: JSON.stringify({
-        events: mapped.map((e) => ({
-          kid_id: identity.kidFor(e.kidId),
-          skill_id: e.skillId,
-          game_id: e.gameId,
-          correct: e.correct,
-          response_ms: e.responseMs,
-          difficulty: e.difficulty,
-          uid: e.uid, // #1023 — dedup key: replayed batches are no-ops server-side
-          timestamp: e.ts, // #1024 — client round timestamp, preserved
-        })),
+        events: mapped.map((e) => toProgressWire(e, identity.kidFor(e.kidId) as string)),
         coins,
         wallet_seq: walletSeq, // #1804 — LWW wallet version per kid
       }),
@@ -734,12 +813,16 @@ export async function syncStories(): Promise<void> {
   }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     setChannelSyncState("stories", "offline");
+    // #1612 — a stuck /stories outbox is parent-visible too, not just a
+    // channel state: the durable sync signal must reflect it.
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
     return;
   }
   const identity = await ensureIdentity();
   if (!identity) {
     setChannelSyncState("stories", "offline");
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
     return;
   }
@@ -762,21 +845,9 @@ export async function syncStories(): Promise<void> {
     const res = await fetch(`${API}/stories`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
+      // #1615 — typed wire mapper (single serialization seam).
       body: JSON.stringify(
-        mapped.map((st) => ({
-          kid_id: identity.kidFor(st.kidId),
-          uid: st.uid, // dedup key — replayed batches are no-ops server-side (#331)
-          skill_id: st.skillId,
-          game_id: st.gameId,
-          outcome: st.outcome,
-          error_kind: st.errorKind,
-          misconception_code: st.misconceptionCode,
-          action: st.action,
-          difficulty: st.difficulty,
-          response_ms: st.responseMs,
-          wrong_streak: st.wrongStreak,
-          context: st.context,
-        })),
+        mapped.map((st) => toStoryWire(st, identity.kidFor(st.kidId) as string)),
       ),
     });
     if (res.ok) {
@@ -786,13 +857,18 @@ export async function syncStories(): Promise<void> {
       const done = new Set(mapped.filter((st) => !skipped.has(st.uid)).map((st) => st.uid));
       useKidStore.getState().clearStories(done);
       setChannelSyncState("stories", "ok");
+      // #1612 — a confirmed /stories drain clears the parent-visible signal
+      // exactly like syncProgress does.
+      useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       reportSyncOutcome(true);
     } else {
       setChannelSyncState("stories", "error");
+      useKidStore.getState().setSyncSignal({ lastError: "error" });
       reportSyncOutcome(false);
     }
   } catch {
     setChannelSyncState("stories", "offline");
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
   } finally {
     storySyncing = false;
@@ -828,12 +904,15 @@ export async function syncAccel(): Promise<void> {
   }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     setChannelSyncState("accel", "offline");
+    // #1612 — a stuck /acceleration outbox is parent-visible too.
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
     return;
   }
   const identity = await ensureIdentity();
   if (!identity) {
     setChannelSyncState("accel", "offline");
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
     return;
   }
@@ -856,15 +935,9 @@ export async function syncAccel(): Promise<void> {
     const res = await fetch(`${API}/acceleration`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${identity.token}` },
+      // #1615 — typed wire mapper (single serialization seam).
       body: JSON.stringify(
-        mapped.map((a) => ({
-          kid_id: identity.kidFor(a.kidId),
-          uid: a.uid, // dedup key — replayed batches are no-ops server-side
-          skill_id: a.skillId,
-          reason: a.reason,
-          band_from: a.bandFrom,
-          band_to: a.bandTo,
-        })),
+        mapped.map((a) => toAccelWire(a, identity.kidFor(a.kidId) as string)),
       ),
     });
     if (res.ok) {
@@ -875,13 +948,18 @@ export async function syncAccel(): Promise<void> {
       const done = new Set(mapped.filter((a) => !skipped.has(a.uid)).map((a) => a.uid));
       useKidStore.getState().clearAccel(done);
       setChannelSyncState("accel", "ok");
+      // #1612 — a confirmed /acceleration drain clears the parent-visible
+      // signal exactly like syncProgress does.
+      useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       reportSyncOutcome(true);
     } else {
       setChannelSyncState("accel", "error");
+      useKidStore.getState().setSyncSignal({ lastError: "error" });
       reportSyncOutcome(false);
     }
   } catch {
     setChannelSyncState("accel", "offline");
+    useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
   } finally {
     accelSyncing = false;
@@ -1025,6 +1103,46 @@ export async function restoreServerState(): Promise<void> {
   }
 }
 
+/** #1621 — dedupe key for session-start events: { localKidId: localDayKey }.
+ *  At most one app-open/session-start event per kid per LOCAL day, so the
+ *  heartbeat re-firing (every 30s–5min) never spams the outbox. */
+const LS_SESSION_START_DAY = "nv_session_start_day";
+
+/** #1621 — emit a session-start / app-open SyncEvent per local kid, ONCE per
+ *  local day. Called on boot and on foreground return; the localStorage dedupe
+ *  keeps it to one event per kid per day while still capturing every day the
+ *  device was actually used (active-days from the client's perspective). */
+function emitSessionStart(): void {
+  const today = localDayKey();
+  let marks: Record<string, string> = {};
+  try {
+    const raw = localStorage.getItem(LS_SESSION_START_DAY);
+    if (raw) marks = JSON.parse(raw) as Record<string, string>;
+  } catch {
+    marks = {};
+  }
+  let changed = false;
+  for (const k of localKids()) {
+    if (marks[k.id] === today) continue;
+    marks[k.id] = today;
+    changed = true;
+    useKidStore.getState().queueSessionStart(k.id);
+  }
+  if (changed) {
+    try {
+      localStorage.setItem(LS_SESSION_START_DAY, JSON.stringify(marks));
+    } catch {
+      /* storage full — the in-memory store still holds the queued events */
+    }
+  }
+}
+
+/** #1618 — foreground-session boundary tracker for session-minutes events.
+ *  Stamped on boot/foreground and read on hidden/pagehide; the elapsed
+ *  wall-clock (thinking + between-round + idle) is the honest session time the
+ *  old Σ response_ms proxy undercounted. */
+let sessionActiveSince = Date.now();
+
 /** Kick off always-sync: immediate drain (clears offline backlog on open),
  *  a self-arming heartbeat with exponential backoff + jitter on repeated
  *  failure (#1031 — a flat 30s interval hammered a failing server / burned
@@ -1045,6 +1163,8 @@ export function startAutoSync(): () => void {
     void syncProgress();
     void syncStories();
     void syncAccel(); // 🚀 #249 — acceleration outbox drains with the same heartbeat
+    // #1621 — app-open/session-start (deduped to once per kid per day).
+    emitSessionStart();
     // #9 — second-device catch-up: throttled inside.
     void restoreServerState();
     schedule();
@@ -1057,22 +1177,42 @@ export function startAutoSync(): () => void {
     }
     tick();
   };
-  const onVisible = () => {
-    if (document.visibilityState !== "visible") return;
-    syncFailStreak = 0;
-    if (scheduled) {
-      window.clearTimeout(timer);
-      scheduled = false;
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") {
+      syncFailStreak = 0;
+      sessionActiveSince = Date.now(); // a fresh foreground session boundary
+      if (scheduled) {
+        window.clearTimeout(timer);
+        scheduled = false;
+      }
+      tick();
+    } else if (document.visibilityState === "hidden") {
+      onHidden();
     }
-    tick();
+  };
+  const onHidden = () => {
+    // #1618 — the app left the foreground: report the elapsed session minutes
+    // so the server's weekly minutes-played is session time, not a response_ms
+    // proxy. Best-effort telemetry; a tiny session (<0.05 min) is noise.
+    const mins = (Date.now() - sessionActiveSince) / 60_000;
+    // Reset the boundary so a double-fire (pagehide + visibilitychange both
+    // fire on close) can't emit the SAME session twice — the second call sees
+    // ~0 minutes and is filtered by the 0.05 threshold.
+    sessionActiveSince = Date.now();
+    if (mins >= 0.05) {
+      const rounded = Math.round(mins * 1000) / 1000;
+      for (const k of localKids()) useKidStore.getState().queueSessionMinutes(k.id, rounded);
+    }
   };
   tick();
   window.addEventListener("online", onOnline);
-  document.addEventListener("visibilitychange", onVisible);
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("pagehide", onHidden);
   return () => {
     window.clearTimeout(timer);
     window.removeEventListener("online", onOnline);
-    document.removeEventListener("visibilitychange", onVisible);
+    document.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("pagehide", onHidden);
   };
 }
 

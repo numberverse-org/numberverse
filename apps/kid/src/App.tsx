@@ -19,7 +19,7 @@ import {
   type Skill,
   type ErrorKind,
 } from "@numberverse/core";
-import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
+import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_SHARE_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
 import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, updateKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { googleEnabled, googleClientId } from "./googleAuthMeta";
 import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, coinSound, setQuietLevel as setAudioQuiet } from "./game/audio";
@@ -1966,7 +1966,7 @@ export default function App() {
       if (useKidStore.getState().novaShareReward(k.id)) {
         tada();
         cancelSpeech();
-        speak(t.shareRewardSpeak(sanitizeDisplayName(k.name, { forSpeech: true })), { lang: lang === "bn" ? "bn" : "en" });
+        speak(t.shareRewardSpeak(sanitizeDisplayName(k.name, { forSpeech: true }), NOVA_SHARE_REWARD), { lang: lang === "bn" ? "bn" : "en" });
       }
       flashShare(res === "downloaded" ? t.shareDownloaded : t.shareDone);
     } catch {
@@ -4981,7 +4981,7 @@ export default function App() {
                   <span className="world-emoji"><KidAvatar kid={k} size={46} /></span>
                   <span className="world-meta">
                     <span className="world-name">{k.name}</span>
-                    <span className="world-age">⭐ {t.skillsMastered(mastered)} · {t.worldsOpen(worldsOpen)}</span>
+                    <span className="world-age">⭐ {t.skillsMastered(mastered)} · {t.worldsOpen(worldsOpen, BANDS.length)}</span>
                   </span>
                   <span className="world-state">▶</span>
                 </button>

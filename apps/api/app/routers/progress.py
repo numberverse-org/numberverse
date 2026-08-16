@@ -77,6 +77,24 @@ def _clamp01(n: float) -> float:
     return min(1.0, max(0.0, n))
 
 
+def _client_ts_from(e) -> datetime | None:
+    """#1611 — the client-observed occurred_at instant for a progress event.
+
+    Prefer the ISO-8601 ``client_ts`` field; fall back to the integer epoch-ms
+    ``timestamp`` (the #1024 wire field) so pre-#1611 clients still get their
+    real round time bucketed instead of the server-stamped created_at. Returns
+    None only when neither is present (legacy rows → analytics fall back to
+    created_at)."""
+    if e.client_ts is not None:
+        return e.client_ts
+    if e.timestamp is not None:
+        try:
+            return datetime.fromtimestamp(e.timestamp / 1000.0, tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            return None
+    return None
+
+
 def _next_mastered_at(
     prev_mastery: float,
     new_mastery: float,
@@ -205,27 +223,35 @@ async def record_progress(
                 "difficulty": e.difficulty,
                 # #1024 — preserve the client round timestamp (was dropped).
                 "timestamp": e.timestamp,
+                # #1611 — the client-observed instant as a real timestamptz so
+                # weekly/active-days/streak can bucket by the round's real day.
+                "client_ts": _client_ts_from(e),
+                # #1616 — engagement/telemetry kind; default "round".
+                "kind": e.kind or "round",
+                "meta": e.meta,
             }
             for e in events
         ]
         stmt = pg_insert(ProgressEvent).values(rows)
         stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"]).returning(
-            ProgressEvent.kid_id, ProgressEvent.skill_id, ProgressEvent.correct
+            ProgressEvent.kid_id, ProgressEvent.skill_id, ProgressEvent.correct, ProgressEvent.kind
         )
         result = await db.execute(stmt)
         inserted = result.all()
         duplicates_skipped = len(events) - len(inserted)
 
-        # BKT mastery update runs ONLY for genuinely-new events — a replayed
-        # batch (lost ACK → same uid re-posted) is a silent no-op here, so
-        # mastery is never double-counted.
+        # #1616 — ONLY genuinely-new COMPLETED ROUNDS (kind=round) drive BKT
+        # mastery. Engagement/telemetry rows (coins/quest/garden/challenge/
+        # session-*) are persisted as progress_events for the parent feed but
+        # MUST NOT move mastery or attempts — they're not practice.
         # #1803 — acquire a Postgres advisory transaction lock for EVERY unique
-        # (kid_id, skill_id) in the inserted rows BEFORE the read-modify-write
-        # below, so two concurrent POSTs on the same skill serialize (the lock
-        # is held until the handler's commit at the end of this function).
-        pairs = {(k, s) for k, s, _ in inserted}
+        # (kid_id, skill_id) in the inserted ROUND rows BEFORE the read-modify-
+        # write below, so two concurrent POSTs on the same skill serialize (the
+        # lock is held until the handler's commit at the end of this function).
+        round_rows = [(k, s, c) for k, s, c, knd in inserted if knd in (None, "round")]
+        pairs = {(k, s) for k, s, _ in round_rows}
         await _lock_mastery_keys(db, pairs)
-        for kid_id, skill_id, correct in inserted:
+        for kid_id, skill_id, correct in round_rows:
             sm = await db.get(SkillMastery, (kid_id, skill_id))
             if sm is None:
                 sm = SkillMastery(

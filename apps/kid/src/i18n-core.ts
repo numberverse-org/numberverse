@@ -95,7 +95,7 @@ export interface Strings {
   kidsFull: string;
   kidsFullSub: string;
   skillsMastered: (n: number) => string;
-  worldsOpen: (n: number) => string;
+  worldsOpen: (open: number, total: number) => string;
   worldsOf: (name: string) => string;
   masterSkillsSub: string;
   worldComplete: string;
@@ -705,8 +705,8 @@ export interface Strings {
   shareStatsScore: string;
   shareStatsSessions: string;
   shareWorldsTitle: string;
-  shareRewardSpeak: (name: string) => string;
-  shareRewardToast: string;
+  shareRewardSpeak: (name: string, n: number) => string;
+  shareRewardToast: (n: number) => string;
   shareWhatsApp: string;
   shareDone: string;
   shareDownloaded: string;

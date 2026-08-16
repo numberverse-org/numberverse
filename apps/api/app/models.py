@@ -408,6 +408,20 @@ class ProgressEvent(Base):
     # server-side; preserved here so the activity feed / weekly report can use
     # the round's real time. NULL for legacy rows (feed falls back to created_at).
     timestamp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # #1611 — the client-observed instant as a real timestamptz (converted from
+    # the integer `timestamp` epoch-ms at insert). Weekly bucketing, active-days
+    # and the streak walk use THIS when present so an offline-delayed round is
+    # attributed to the day it happened, not the day it synced. NULL for legacy
+    # rows → the analytics fall back to server-stamped created_at.
+    client_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    # #1616 — event kind. "round" (default) is a completed practice round and
+    # drives BKT; engagement kinds (coins/quest/garden/challenge/session-start/
+    # session-minutes) are telemetry rows that reflect activity WITHOUT touching
+    # mastery. Kept small and consistent with the client wire payload.
+    kind: Mapped[str] = mapped_column(String(24), default="round", server_default="round")
+    # #1616 — small engagement payload (e.g. {"amount": 3, "reason": "round"}).
+    # Opaque JSONB so future event shapes don't need a migration.
+    meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

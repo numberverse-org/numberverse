@@ -37,6 +37,54 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 
+
+def _occurred_at(e: ProgressEvent) -> datetime:
+    """#1611 — the effective occurred-at instant of a progress event.
+
+    Bucketing (weekly days, active-days, streak, activity ordering) uses the
+    client-observed ``client_ts`` when present — an offline-delayed round is
+    attributed to the day it HAPPENED, not the day it synced — and falls back to
+    the server-stamped ``created_at`` for legacy rows."""
+    return e.client_ts if e.client_ts is not None else e.created_at
+
+
+def _is_round(e: ProgressEvent) -> bool:
+    """#1616 — a completed practice round (drives the rounds count + top_game).
+    Engagement/telemetry rows (coins/quest/garden/challenge/session-*) are
+    activity, NOT a practice round, and never count toward accuracy."""
+    return e.kind in (None, "round")
+
+
+def _is_attempt(e: ProgressEvent) -> bool:
+    """#1613 — accuracy-parity denominator: completed rounds PLUS mid-round
+    wrong taps (kind='wrong'). Without the wrong taps, a kid who tapped 8 wrong
+    answers before solving read as 100% accuracy — the wrongs now count."""
+    return e.kind in (None, "round", "wrong")
+
+
+def _session_minutes(evs: list[ProgressEvent]) -> float:
+    """#1618 — SESSION minutes from the client's session-minutes events
+    (meta.minutes = elapsed wall-clock per play session). 0 when the client
+    hasn't shipped session-minutes events yet."""
+    total = 0.0
+    for e in evs:
+        if e.kind == "session-minutes":
+            total += float((e.meta or {}).get("minutes") or 0)
+    return total
+
+
+def _weekly_minutes(evs: list[ProgressEvent]) -> float:
+    """#1618 — the week's minutes-played: session minutes when the client sends
+    them (the honest session-boundary definition), else the legacy #859
+    response-time proxy (Σ response_ms over completed rounds)."""
+    sm = _session_minutes(evs)
+    if sm > 0:
+        return round(sm, 1)
+    return round(
+        sum(e.response_ms or 0 for e in evs if _is_round(e)) / 60000.0,
+        1,
+    )
+
 # #837 — write/destructive kid routes carry the account+IP durable fixed-window
 # limiter (same as progress/stories/acceleration), so a breached token can't
 # script profile-mutating calls. Reads stay auth-only (get_current_profile).
@@ -320,10 +368,15 @@ async def get_kid_activity(
     await _get_owned_kid(kid_id, profile, db)
     # #251 — cap raised 200 → 2000 so one fetch covers a full year of rounds.
     limit = max(1, min(limit, 2000))
+    # #1611 — order by the client-observed occurred_at (coalesced to created_at)
+    # so an offline-delayed round sits where it HAPPENED, not where it synced.
     result = await db.scalars(
         select(ProgressEvent)
         .where(ProgressEvent.kid_id == kid_id)
-        .order_by(ProgressEvent.created_at.desc(), ProgressEvent.id.desc())
+        .order_by(
+            func.coalesce(ProgressEvent.client_ts, ProgressEvent.created_at).desc(),
+            ProgressEvent.id.desc(),
+        )
         .limit(limit)
     )
     return list(result)
@@ -357,7 +410,9 @@ async def get_kid_weekly(
 ):
     """7-day learning report for a parent — the "show me my kid actually
     learned this week" card. Aggregates round events + mastery crossings.
-    Times are UTC (events are stamped server-side), dates are calendar days."""
+    Times are UTC; weekly bucketing uses the client-observed instant
+    (client_ts, #1611) so an offline-delayed round counts on the day it was
+    actually played, falling back to the server-stamped created_at."""
     owned = await _get_owned_kid(kid_id, profile, db)
     # #857 — events are stamped `datetime.now(timezone.utc)` server-side, so the
     # week window and "today" must derive from UTC too. A naive `date.today()`
@@ -372,18 +427,25 @@ async def get_kid_weekly(
         await db.scalars(
             select(ProgressEvent).where(
                 ProgressEvent.kid_id == kid_id,
-                ProgressEvent.created_at >= start_dt,
+                # #1611 — window on the client-observed instant when present so
+                # a round played Sunday but synced Tuesday lands in Sunday.
+                func.coalesce(ProgressEvent.client_ts, ProgressEvent.created_at) >= start_dt,
             )
         )
     ).all()
 
-    rounds = len(events)
-    correct = sum(1 for e in events if e.correct)
-    # #859 — minutes is a response-time proxy (Σ response_ms), NOT session time.
-    minutes = round(sum(e.response_ms or 0 for e in events) / 60000.0, 1)
+    round_events = [e for e in events if _is_round(e)]
+    # #1613 — accuracy denominator includes wrong-tap events (kind='wrong') so
+    # the weekly accuracy reflects real struggle, not just solved rounds.
+    attempt_events = [e for e in events if _is_attempt(e)]
+    rounds = len(round_events)
+    correct = sum(1 for e in round_events if e.correct)
+    # #1618 — SESSION minutes (Σ session-minutes meta.minutes); legacy #859
+    # response-time proxy only when the client hasn't shipped session events.
+    minutes = _weekly_minutes(events)
     by_day: dict[date, list[ProgressEvent]] = {}
     for e in events:
-        d = e.created_at.date()
+        d = _occurred_at(e).date()
         by_day.setdefault(d, []).append(e)
     days = []
     for i in range(7):
@@ -392,13 +454,14 @@ async def get_kid_weekly(
         days.append(
             WeeklyDayOut(
                 date=d.isoformat(),
-                rounds=len(ev),
-                # #859 — same response-time proxy, not session duration.
-                minutes=round(sum(x.response_ms or 0 for x in ev) / 60000.0, 1),
+                # #1616 — day rounds count completed practice rounds only.
+                rounds=sum(1 for x in ev if _is_round(x)),
+                # #1618 — same session-minutes definition per day.
+                minutes=_weekly_minutes(ev),
             )
         )
     active_days = sum(1 for ev in by_day.values() if ev)
-    games = Counter(e.game_id for e in events)
+    games = Counter(e.game_id for e in round_events)
     top_game = games.most_common(1)[0][0] if games else None
 
     # #4 — 🔥 current streak: consecutive calendar days with ≥1 round, ending
@@ -408,7 +471,17 @@ async def get_kid_weekly(
     played_dates = set(
         (
             await db.execute(
-                select(func.date(func.timezone("UTC", ProgressEvent.created_at)))
+                # #1611 — the streak counts the client-observed day (coalesced)
+                # so an offline-delayed round keeps the streak alive on the day
+                # it was actually played.
+                select(
+                    func.date(
+                        func.timezone(
+                            "UTC",
+                            func.coalesce(ProgressEvent.client_ts, ProgressEvent.created_at),
+                        )
+                    )
+                )
                 .where(ProgressEvent.kid_id == kid_id)
                 .distinct()
             )
@@ -453,7 +526,7 @@ async def get_kid_weekly(
     return WeeklyOut(
         days=days,
         rounds=rounds,
-        correct_pct=round(100 * correct / rounds) if rounds else 0,
+        correct_pct=round(100 * correct / len(attempt_events)) if attempt_events else 0,
         minutes=minutes,
         active_days=active_days,
         mastered_this_week=mastered_ids,

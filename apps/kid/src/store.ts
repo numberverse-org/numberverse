@@ -25,6 +25,20 @@ export interface RoundResult {
   responseMs: number;
 }
 
+/** #1616 — engagement/telemetry event kinds the kid app can emit alongside
+ *  completed practice rounds. Absent/undefined = a normal practice round.
+ *  "wrong" is a mid-round wrong TAP (accuracy parity, never BKT). Kept in sync
+ *  with apps/api/app/schemas.py PROGRESS_EVENT_KINDS. */
+export type SyncEventKind =
+  | "round"
+  | "wrong"
+  | "coins"
+  | "quest"
+  | "garden"
+  | "challenge"
+  | "session-start"
+  | "session-minutes";
+
 /** A round queued for server sync — durable outbox (persisted) so nothing is
  *  lost when the kid plays offline. kidId + ts attach context the RoundResult
  *  doesn't carry; uid lets the sync drain precisely the events it posted. */
@@ -32,6 +46,10 @@ export interface SyncEvent extends RoundResult {
   uid: string;
   kidId: string;
   ts: number;
+  /** #1616/#1621 — event kind; absent = a completed practice round. */
+  kind?: SyncEventKind;
+  /** #1616 — small engagement payload (amount, reason, minutes…). */
+  meta?: Record<string, unknown>;
 }
 
 /** 📚 A KOTHA (কথা) learning moment — the RAG knowledge lake outbox.
@@ -324,6 +342,36 @@ export const STORY_QUEUE_CAP = 300;
  *  interactive store) — only the downstream Kotha/progress mirror pauses. */
 export const STORY_HARD_CAP = 600;
 
+/** #1616 — a real seed skill used as the FK-safe fallback context when an
+ *  engagement event (coins grant, quest, garden, challenge, session) fires
+ *  before the kid has practiced ANY skill yet. The server's progress_events
+ *  skill_id is a NOT-NULL FK, so telemetry rows always carry a real skill. */
+export const FALLBACK_ENGAGEMENT_SKILL = "count-1-10";
+
+/** #1616 — the kid's most-recent practice context (skill + game) for engagement
+ *  events that have no natural skill/game of their own. Uses the highest
+ *  lastPractice skill for the kid, falling back to the global events tail's game
+ *  and the seed fallback skill. Telemetry-only: a single-kid device (the common
+ *  case) is exact; a multi-kid device is a close approximation. */
+export function lastRoundContext(
+  skills: Record<string, SkillState>,
+  events: RoundResult[],
+  kidId: string,
+): { skillId: string; gameId: string } {
+  let skillId = "";
+  let latest = -1;
+  for (const [k, v] of Object.entries(skills)) {
+    if (!k.startsWith(`${kidId}:`)) continue;
+    const t = v.lastPractice ?? -1;
+    if (t > latest) {
+      latest = t;
+      skillId = k.slice(kidId.length + 1);
+    }
+  }
+  const tail = events[events.length - 1];
+  return { skillId: skillId || FALLBACK_ENGAGEMENT_SKILL, gameId: tail?.gameId ?? "nova" };
+}
+
 export interface NovaState {
   coins: number;
   /** #1804 — monotonic wallet version counter. Bumped on EVERY coins mutation
@@ -583,6 +631,17 @@ interface KidState {
    *  resolution: the pattern is beaten, so Moni stops flagging it. */
   moniResolveMisconception: (kidId: string, skillId: string, code: string) => void;
   addEvent: (kidId: string, e: RoundResult) => void;
+  /** #1616/#1621 — queue an engagement/telemetry SyncEvent (coins/quest/garden/
+   *  challenge/session-*). Same durable outbox as rounds; the sync drains it to
+   *  /progress exactly like any other event. */
+  queueSyncEvent: (e: Omit<SyncEvent, "uid" | "ts"> & { uid?: string; ts?: number }) => void;
+  /** #1621 — emit a session-start / app-open event for a kid (once per local
+   *  day, deduped in api.ts) so the server can attribute active days from the
+   *  client's perspective. */
+  queueSessionStart: (kidId: string) => void;
+  /** #1618 — emit a session-minutes event (elapsed wall-clock) so the server's
+   *  weekly minutes-played is session time, not a response_ms proxy. */
+  queueSessionMinutes: (kidId: string, minutes: number) => void;
   clearPending: (uids: Set<string>) => void;
   /** Drop the Kotha stories that were just posted (by uid). */
   clearStories: (uids: Set<string>) => void;
@@ -991,8 +1050,14 @@ export const useKidStore = create<KidState>()(
           const mNext = buildRoundMistake(m0, e, now);
           const pending = s.pending ?? [];
           const stories = s.stories ?? [];
-          const nextPending = buildRoundPending(pending, { uid: genUid(), kidId, ...e, ts: now }, STORY_HARD_CAP);
-          const nextStories = buildRoundStory(genUid(), kidId, e, now, diag, mis, wrongStreak, stories, STORY_HARD_CAP);
+          // #1620 — ONE uid for the SAME logical round across BOTH outboxes
+          // (pending → /progress and stories → /stories). A retry re-posts the
+          // same uid, so the server's per-table (kid_id, uid) dedup can never
+          // double-count a completed round, and the two outboxes share one
+          // dedup namespace instead of silently minting a new identity per copy.
+          const uid = genUid();
+          const nextPending = buildRoundPending(pending, { uid, kidId, ...e, ts: now }, STORY_HARD_CAP);
+          const nextStories = buildRoundStory(uid, kidId, e, now, diag, mis, wrongStreak, stories, STORY_HARD_CAP);
           return {
             events: [...s.events, e],
             // durable outbox — survives reloads; the sync drains it online
@@ -1027,10 +1092,11 @@ export const useKidStore = create<KidState>()(
         const moniPrev = get().moni[kidId] ?? moni.initial(kidId, now);
         const wrongStreak = (get().moniWrongStreak[mk] ?? 0) + 1;
         const skill = get().skills[mk] ?? initialSkillState(kidId, skillId);
-        // Use slowMs+1 so it clears the strict > slowMs check in diagnose.ts
-        // and gets classified as slow/hesitant (gap) rather than falling through
-        // to the generic fallback. A real responseMs would be better — #956.
-        const responseMs = DEFAULT_MONI_PARAMS.slowMs + 1;
+        // #1619 — a wrong TAP has no scored response time; 0 is the HONEST value
+        // (the old code fabricated slowMs+1 to force the "slow/hesitant" branch).
+        // diagnose.ts already treats falsy/NaN responseMs as slow, so passing 0
+        // yields the SAME gap classification WITHOUT inventing timing data.
+        const responseMs = 0;
         const round = { kidId, skillId, gameId, correct: false, difficulty, responseMs, timestamp: now };
         let moniNext = moni.observeWrong(moniPrev, round, { ...skill, wrongStreak }, DEFAULT_MONI_PARAMS, now);
         // 🖐️ FINGERPRINT — cluster the wrong VALUE into a misconception code
@@ -1066,11 +1132,24 @@ export const useKidStore = create<KidState>()(
         set((s) => {
           const m = s.mistakes[mk] ?? initialMistake(now, difficulty);
           const day = todayIso();
+          // #1620 — ONE uid for the SAME logical wrong-tap event across BOTH
+          // outboxes (pending → /progress and stories → /stories). Shared
+          // identity means a retry re-posts the same uid, and the server's
+          // per-table (kid_id, uid) dedup can never double-count.
+          const uid = genUid();
+          // #1613 — queue a progress SyncEvent with correct=false so the
+          // parent's weekly accuracy reflects the wrong tap instead of showing
+          // 100% for a kid who tapped 8 wrongs before solving.
+          const syncEvt: SyncEvent = { uid, kidId, skillId, gameId, correct: false, difficulty, responseMs: 0, ts: now, kind: "wrong" };
+          const pending = s.pending ?? [];
+          const nextPending = pending.length >= STORY_HARD_CAP
+            ? pending
+            : [...pending, syncEvt];
           // #89 — carry the CORRECT answer too so the parent panel can show
           // "picked X → answer Y" (the exact question's two sides) from the
           // same offline story ledger — no extra fetch, no schema change.
-          const story = {
-            uid: genUid(),
+          const story: KothaStory = {
+            uid,
             kidId,
             skillId,
             gameId,
@@ -1083,7 +1162,7 @@ export const useKidStore = create<KidState>()(
             wrongStreak,
             context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null, correctAnswer: typeof correct === "number" ? correct : null },
             ts: now,
-          } as KothaStory;
+          };
           // #1228 — coalesce a wrong-tap BURST: consecutive wrongs on the SAME
           // skill within 5s are one learning moment, not N stories. The keypad
           // mash becomes a single story whose wrongStreak/answers/latest
@@ -1106,6 +1185,8 @@ export const useKidStore = create<KidState>()(
               ? stories
               : [...stories, story];
           return {
+            pending: nextPending,
+            syncSignal: { ...(s.syncSignal ?? DEFAULT_SYNC_SIGNAL), pendingCount: nextPending.length },
             mistakes: {
               ...(s.mistakes ?? {}),
               [mk]: {
@@ -1122,6 +1203,9 @@ export const useKidStore = create<KidState>()(
             stories: nextStories,
           };
         });
+        // #1556 — the pending outbox changed (a wrong tap is now a progress
+        // event too); mirror the fresh backlog count to the parent-readable key.
+        persistSyncSignal(get());
       },
       moniFor: (kidId) => get().moni[kidId] ?? moni.initial(kidId),
       moniResolveMisconception: (kidId, skillId, code) =>
@@ -1138,6 +1222,33 @@ export const useKidStore = create<KidState>()(
         });
         // #1556 — a confirmed drain shrunk the backlog: mirror it immediately.
         persistSyncSignal(get());
+      },
+      // #1616/#1621 — queue an engagement/telemetry SyncEvent into the SAME
+      // durable `pending` outbox as completed rounds, so the /progress drain
+      // carries it and the parent feed/metrics reflect engagement. Offline
+      // ceiling respected (#1229); uid optional (minted here when absent).
+      queueSyncEvent: (e) => {
+        const uid = e.uid ?? genUid();
+        const ts = e.ts ?? Date.now();
+        set((s) => {
+          const pending = s.pending ?? [];
+          if (pending.length >= STORY_HARD_CAP) return {};
+          const next = [...pending, { ...e, uid, ts } as SyncEvent];
+          return { pending: next, syncSignal: { ...(s.syncSignal ?? DEFAULT_SYNC_SIGNAL), pendingCount: next.length } };
+        });
+        persistSyncSignal(get());
+      },
+      // #1621 — a session-start / app-open event for a kid (api.ts dedupes to
+      // once per local day). Buckets the kid as active on that day server-side.
+      queueSessionStart: (kidId) => {
+        const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+        get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: 0, responseMs: 0, kind: "session-start", meta: { source: "app-open" } });
+      },
+      // #1618 — one session-minutes event with the elapsed wall-clock minutes
+      // (the server replaces its Σ response_ms proxy with this).
+      queueSessionMinutes: (kidId, minutes) => {
+        const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+        get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: 0, responseMs: 0, kind: "session-minutes", meta: { minutes } });
       },
       clearStories: (uids) =>
         set((s) => (uids.size ? { stories: (s.stories ?? []).filter((st) => !uids.has(st.uid)) } : s)),
@@ -1213,11 +1324,14 @@ export const useKidStore = create<KidState>()(
         const today = todayIso();
         const earnedToday = n.earnDay === today ? n.earnedToday : 0;
         if (earnedToday >= NOVA_DAILY_CAP) return;
+        // #1616 — grant amount from the get() snapshot (safe: no await between
+        // get and set in this sync action) so we can emit an engagement event
+        // only when coins were ACTUALLY paid.
+        const add = Math.min(coins, NOVA_DAILY_CAP - earnedToday);
         set((s) => {
           const cur = s.nova[kidId] ?? defaultNova();
           const todayEarned = cur.earnDay === today ? cur.earnedToday : 0;
           if (todayEarned >= NOVA_DAILY_CAP) return { nova: s.nova };
-          const add = Math.min(coins, NOVA_DAILY_CAP - todayEarned);
           return {
             nova: {
               ...s.nova,
@@ -1232,6 +1346,12 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
+        // #1616 — coins-awarded engagement event so the parent sees the economy
+        // in motion, not just practice rounds.
+        if (add > 0) {
+          const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+          get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: difficulty ?? 0, responseMs: 0, kind: "coins", meta: { amount: add, source: "round" } });
+        }
       },
       /* #280 — Beat-Nova challenge prize: flat grant, daily cap still applies.
        * A full cap grants 0 (the win still counts — learning is the reward). */
@@ -1260,6 +1380,11 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
+        // #1616 — Beat-Nova / challenge reward engagement event.
+        if (granted > 0) {
+          const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+          get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: 0, responseMs: 0, kind: "challenge", meta: { amount: granted, source: "nova" } });
+        }
         return granted;
       },
 
@@ -1594,6 +1719,11 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
+        // #1616 — a completed daily-quest engagement event (reached just flips).
+        if (reached) {
+          const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+          get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: 0, responseMs: 0, kind: "quest", meta: { done: true, type } });
+        }
         return reached;
       },
 
@@ -1628,6 +1758,11 @@ export const useKidStore = create<KidState>()(
             },
           };
         });
+        // #1616 — quest reward claimed engagement event.
+        if (grant > 0) {
+          const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+          get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: 0, responseMs: 0, kind: "quest", meta: { claimed: true, amount: grant, type } });
+        }
         return grant;
       },
 
@@ -1816,13 +1951,15 @@ export const useKidStore = create<KidState>()(
 
       /* ── Growth Garden: correct answers water it, mastery plants flowers ── */
 
-      gardenWater: (kidId, amount) =>
-        set((s) => {
-          const g = s.garden[kidId] ?? emptyGarden();
-          const next = waterGarden(g, amount);
-          if (next === g) return { garden: s.garden }; // full garden — nothing to grow
-          return { garden: { ...s.garden, [kidId]: next } };
-        }),
+      gardenWater: (kidId, amount) => {
+        const g = get().garden[kidId] ?? emptyGarden();
+        const next = waterGarden(g, amount);
+        if (next === g) return; // full garden — nothing to grow
+        set((s) => ({ garden: { ...s.garden, [kidId]: next } }));
+        // #1616 — garden-growth engagement event.
+        const { skillId, gameId } = lastRoundContext(get().skills, get().events, kidId);
+        get().queueSyncEvent({ kidId, skillId, gameId, correct: true, difficulty: 0, responseMs: 0, kind: "garden", meta: { growth: amount ?? 1 } });
+      },
 
       gardenMastery: (kidId, skillId, title) =>
         set((s) => {

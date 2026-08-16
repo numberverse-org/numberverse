@@ -374,6 +374,16 @@ class ActivityOut(BaseModel):
     response_ms: int | None = None
     difficulty: float | None = None
     created_at: datetime
+    # #1611 — the client-observed occurred_at instant (nullable for legacy rows
+    # that predate the column). The parent feed keeps rendering `created_at`
+    # (server-stamp) for legacy; new rows carry the real round time here.
+    client_ts: datetime | None = None
+    # #1616 — event kind (round|coins|quest|garden|challenge|session-*). The
+    # parent feed can filter engagement rows out of the "rounds" list if it
+    # wants; rounds-only clients can ignore the new field.
+    kind: str = "round"
+    # #1616 — small engagement payload (amount, reason, minutes…).
+    meta: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -406,6 +416,48 @@ class WeakSkillOut(BaseModel):
 
 
 # ── Progress ──
+# #1616 — the engagement/telemetry event kinds the kid app can emit alongside
+# completed practice rounds. "round" (None/absent → "round") drives BKT mastery;
+# every other kind is a small telemetry row (coins awarded, daily-quest outcome,
+# garden growth, challenge reward, session-start, session-minutes) that reflects
+# activity WITHOUT moving mastery. Kept in sync with apps/kid/src/store.ts.
+PROGRESS_EVENT_KINDS = frozenset(
+    {"round", "wrong", "coins", "quest", "garden", "challenge", "session-start", "session-minutes"}
+)
+
+
+def _validate_kind(v: str | None) -> str | None:
+    if v is None:
+        return None
+    if v not in PROGRESS_EVENT_KINDS:
+        raise ValueError(f"unknown event kind: {v!r}")
+    return v
+
+
+# #1614 — the SAME enum sets the client emits (packages/core/src/moni/*.ts).
+# error_kind: ErrorKind = slip | gap | misconception | fatigue | guessing.
+# action: ActionType = slow-down | reteach | contrast | easier | challenge |
+#          break | celebrate.
+# misconception_code: the fingerprint codes (moni/fingerprint.ts) + the generic
+# "repeated-error" profile fallback. Anything else is free text → 422.
+ERROR_KINDS = frozenset({"slip", "gap", "misconception", "fatigue", "guessing"})
+STORY_ACTIONS = frozenset(
+    {"slow-down", "reteach", "contrast", "easier", "challenge", "break", "celebrate"}
+)
+MISCONCEPTION_CODES = frozenset(
+    {
+        "overcount-1",
+        "undercount-1",
+        "off-by-ten",
+        "off-by-hundred",
+        "double",
+        "half",
+        "reversal",
+        "repeated-error",
+    }
+)
+
+
 class ProgressEventIn(BaseModel):
     kid_id: uuid.UUID
     skill_id: str
@@ -418,21 +470,47 @@ class ProgressEventIn(BaseModel):
     uid: str | None = None
     # #1024 — client round timestamp (epoch ms), preserved instead of dropped.
     timestamp: RoundedInt = None
+    # #1611 — the client-observed occurred_at instant (ISO-8601). When present it
+    # wins over the integer `timestamp` for the new client_ts column.
+    client_ts: datetime | None = None
+    # #1616 — engagement/telemetry kind (round|coins|quest|garden|challenge|
+    # session-start|session-minutes). None/absent = a normal practice round.
+    kind: str | None = None
+    # #1616 — small engagement payload (amount, reason, minutes…). Opaque but
+    # size-capped so it can't become a storage-abuse surface.
+    meta: dict | None = None
+
+    @field_validator("kind")
+    @classmethod
+    def _progress_kind(cls, v: str | None) -> str | None:
+        return _validate_kind(v)
+
+    @field_validator("meta")
+    @classmethod
+    def _progress_meta_budget(cls, v: dict | None) -> dict | None:
+        if not v:
+            return None
+        size = len(json.dumps(v, separators=(",", ":"), default=str))
+        if size > 1024:
+            raise ValueError("meta too large (max 1024 bytes)")
+        return v
 
 
 # ── Weekly report (parent-facing "show me my kid learned this week") ──
 class WeeklyDayOut(BaseModel):
     date: str  # YYYY-MM-DD
     rounds: int
-    minutes: float  # #859 — response-time proxy (Σ response_ms/60000), NOT session time
+    minutes: float  # #1618 — SESSION minutes (Σ session-minutes events), NOT response-time proxy
 
 
 class WeeklyOut(BaseModel):
     days: list[WeeklyDayOut]      # last 7 days, oldest → newest
-    rounds: int                   # rounds played this week
-    correct_pct: int              # 0–100 accuracy — intentionally rounded to int (#859)
-    minutes: float                # #859 — response-time proxy (Σ response_ms), NOT session duration
-    active_days: int              # distinct days with at least one round
+    rounds: int                   # completed practice rounds played this week (kind=round)
+    correct_pct: int              # 0–100 accuracy over completed rounds — intentionally rounded to int (#859)
+    minutes: float                # #1618 — SESSION minutes: Σ session-minutes event meta.minutes in the
+                                  # window; falls back to the legacy Σ response_ms proxy when the client
+                                  # hasn't shipped session-minutes events yet.
+    active_days: int              # distinct days with at least one progress event (rounds + engagement)
     mastered_this_week: list[str]  # skill ids now ≥80% + last practiced this week
     mastered_today: list[str] = []  # #244 — ≥80% + last practiced today
     top_game: str | None          # most-played game this week
@@ -512,6 +590,31 @@ class LearningStoryIn(BaseModel):
     response_ms: RoundedInt = None
     wrong_streak: RoundedInt = None
     context: dict = Field(default_factory=dict)
+
+    # #1614 — validate Moni's enums at the boundary instead of storing free text:
+    # the client emits these EXACT values (packages/core/src/moni/*.ts), so a
+    # drifted/wrong value is a bug or an abuse attempt → 422 the whole batch
+    # (same behaviour as any other Pydantic Literal violation).
+    @field_validator("error_kind")
+    @classmethod
+    def _story_error_kind(cls, v: str | None) -> str | None:
+        if v is not None and v not in ERROR_KINDS:
+            raise ValueError(f"unknown error_kind: {v!r}")
+        return v
+
+    @field_validator("action")
+    @classmethod
+    def _story_action(cls, v: str | None) -> str | None:
+        if v is not None and v not in STORY_ACTIONS:
+            raise ValueError(f"unknown action: {v!r}")
+        return v
+
+    @field_validator("misconception_code")
+    @classmethod
+    def _story_misconception_code(cls, v: str | None) -> str | None:
+        if v is not None and v not in MISCONCEPTION_CODES:
+            raise ValueError(f"unknown misconception_code: {v!r}")
+        return v
 
     @field_validator("context")
     @classmethod

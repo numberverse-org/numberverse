@@ -122,7 +122,9 @@ class FakeSession:
                 if key in self._inserted_uid_keys:
                     continue  # ON CONFLICT DO NOTHING → not returned, not re-counted
                 self._inserted_uid_keys.add(key)
-                inserted.append((r["kid_id"], r["skill_id"], r["correct"]))
+                # #1616 — the returning() clause now also surfaces the event
+                # kind so the handler can split BKT rounds from engagement rows.
+                inserted.append((r["kid_id"], r["skill_id"], r["correct"], r.get("kind") or "round"))
             return FakeResult(inserted)
         if isinstance(stmt, Update):
             table = stmt.table

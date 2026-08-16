@@ -61,14 +61,14 @@ describe("t() interpolation — {name}/{n} placeholder evaluation", () => {
     setAppLang("en");
     expect(t("round", { n: 3 })).toBe("Round 3");
     expect(t("whereLivesN", { n: 2, total: 5 })).toBe("Where does this live? (2/5)");
-    expect(t("findLetter", { ch: "অ", hint: "a" })).toBe("Find  অ  (a)");
+    expect(t("findLetter", { ch: "অ", hint: "a" })).toBe("Find অ (a)");
   });
 
-  it("leaves missing placeholders literal (never renders undefined)", () => {
+  it("renders empty string for missing placeholders (never leaks {n} to a kid)", () => {
     setAppLang("en");
-    expect(t("round", {})).toBe("Round {n}");
-    expect(t("round")).toBe("Round {n}");
-    expect(t("whereLivesN", { n: 1 })).toBe("Where does this live? (1/{total})");
+    expect(t("round", {})).toBe("Round ");
+    expect(t("round")).toBe("Round ");
+    expect(t("whereLivesN", { n: 1 })).toBe("Where does this live? (1/)");
   });
 
   it("falls back EN → key for unknown keys", () => {
