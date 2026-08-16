@@ -31,6 +31,70 @@ from .db import Base, engine
 log = logging.getLogger(__name__)
 
 
+# ── pure DDL-string helpers (#1793–#1798) ────────────────────────────────────
+# Every interpolated identifier is routed through `_q` so a table/constraint/
+# column name can never be an injection vector (#1794). CHECK expressions are
+# gated by an explicit allowlist (#1793). Auto-generated constraint names are
+# truncated to PostgreSQL's 63-char identifier limit with a stable hash suffix
+# (#1798). All of these are pure functions — no engine access — so the DDL can
+# be unit-tested without a database.
+
+
+def _q(name: str) -> str:
+    """Quote a PostgreSQL identifier. Doubles any embedded double quote."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _column_ddl(col, dialect, *, force_nullable: bool) -> str:
+    """Compile one column's ADD COLUMN clause through CreateColumn uniformly
+    (#1796). force_nullable=True emits the column WITHOUT 'NOT NULL' so a
+    populated table can gain a column that has no server default."""
+    if force_nullable:
+        from sqlalchemy import Column
+
+        return CreateColumn(Column(col.name, col.type, nullable=True)).compile(dialect=dialect)
+    return CreateColumn(col).compile(dialect=dialect)
+
+
+def _constraint_name(prefix: str, parts: list[str], *, ref: str | None = None) -> str:
+    """#1798 — synthesize a constraint name, truncated to PostgreSQL's 63-char
+    identifier limit with a stable 8-hex sha256 suffix so long names never
+    collide and never crash boot."""
+    base = f"{prefix}_{'_'.join(parts)}"
+    if ref is not None:
+        base = f"{base}_ref_{ref}"
+    if len(base) <= 63:
+        return base
+    import hashlib
+
+    h = hashlib.sha256(base.encode("utf-8")).hexdigest()[:8]
+    return base[: 63 - 9] + "_" + h
+
+
+def _index_ddl(index, dialect) -> str:
+    """#1795 — compile CREATE [UNIQUE] INDEX IF NOT EXISTS via SQLAlchemy's
+    own if_not_exists flag (no string slicing of the emitted prefix)."""
+    return CreateIndex(index, if_not_exists=True).compile(dialect=dialect).string
+
+
+_CHECK_SQLTEXT_ALLOWLIST: dict[str, set[str]] = {
+    # #1793 — every CheckConstraint a model declares must be registered here
+    # VERBATIM (extract each `str(c.sqltext)` from models.py at write time and
+    # paste the exact string). A model CHECK that is not allowlisted REFUSES to
+    # boot, so new expressions are always reviewed, never silently executed.
+    "kid_settings": {
+        "weekday_limits_min IS NULL OR weekday_limits_min ~ '^([0-9]{1,3},){6}[0-9]{1,3}$'",
+        "quiet_windows IS NULL OR quiet_windows ~ '^(-|[0-9]{1,2}:[0-9]{2}-[0-9]{1,2}:[0-9]{2})(,(-|[0-9]{1,2}:[0-9]{2}-[0-9]{1,2}:[0-9]{2})){6}$'",
+        "moni_strictness IS NULL OR moni_strictness IN ('gentle', 'steady', 'challenging')",
+    },
+}
+
+
+def _check_sqltext_ok(table_name: str, sqltext: str) -> bool:
+    """#1793 — only allowlist-registered CHECK expressions are executed."""
+    return sqltext in _CHECK_SQLTEXT_ALLOWLIST.get(table_name, set())
+
+
 async def apply_column_migrations() -> list[str]:
     """Add any columns the models declare that the DB doesn't have. Returns the
     list of `table.column` names added (empty when up to date). Never raises on
@@ -55,14 +119,11 @@ async def apply_column_migrations() -> list[str]:
                 # table that already has rows — add it NULLABLE (safe; the app
                 # treats None as the default). The models that are NOT NULL
                 # carry a server_default, so this is only a safety net.
-                if col.nullable is False and col.server_default is None:
-                    typ = col.type.compile(dialect=dialect)
-                    ddl = f'ALTER TABLE {table.name} ADD COLUMN IF NOT EXISTS "{col.name}" {typ}'
-                else:
-                    ddl = (
-                        f"ALTER TABLE {table.name} "
-                        f"ADD COLUMN IF NOT EXISTS {CreateColumn(col).compile(dialect=dialect)}"
-                    )
+                force_nullable = col.nullable is False and col.server_default is None
+                ddl = (
+                    f"ALTER TABLE {_q(table.name)} "
+                    f"ADD COLUMN IF NOT EXISTS {_column_ddl(col, dialect, force_nullable=force_nullable)}"
+                )
                 await conn.execute(text(ddl))
                 added.append(f"{table.name}.{col.name}")
                 log.warning("migrated missing column %s.%s", table.name, col.name)
@@ -70,9 +131,13 @@ async def apply_column_migrations() -> list[str]:
     # #1550 — share-token rotation audit columns. Added here as idempotent ALTERs
     # (not on the Kid ORM model, which a sibling change owns) so an existing
     # `kids` table gains the timestamps without a hand-written migration file.
+    # #1797 — identifier interpolations still use f-strings but are routed through
+    # the quoting helper so they can never become an injection vector.
     async with engine.begin() as conn:
         for name in ("share_token_created_at", "share_token_revoked_at"):
-            await conn.execute(text(f'ALTER TABLE kids ADD COLUMN IF NOT EXISTS "{name}" TIMESTAMPTZ'))
+            await conn.execute(
+                text(f'ALTER TABLE {_q("kids")} ADD COLUMN IF NOT EXISTS {_q(name)} TIMESTAMPTZ')
+            )
             added.append(f"kids.{name}")
 
     # #1534 — Web Push subscription storage. `create_all` already creates this
@@ -137,8 +202,8 @@ async def apply_type_migrations() -> list[str]:
                 if not isinstance(live_type, DateTime) or getattr(live_type, "timezone", False):
                     continue
                 ddl = (
-                    f'ALTER TABLE {table.name} ALTER COLUMN "{col.name}" '
-                    f"TYPE TIMESTAMPTZ USING \"{col.name}\" AT TIME ZONE 'UTC'"
+                    f"ALTER TABLE {_q(table.name)} ALTER COLUMN {_q(col.name)} "
+                    f"TYPE TIMESTAMPTZ USING {_q(col.name)} AT TIME ZONE 'UTC'"
                 )
                 await conn.execute(text(ddl))
                 altered.append(f"{table.name}.{col.name}")
@@ -212,12 +277,12 @@ async def apply_constraint_migrations() -> list[str]:
                     # PK's name → DuplicateTable on every boot.
                     if cols in have["unique_cols"] or set(cols) <= set(have["pk_cols"]):
                         continue
-                    name = constraint.name or f"uq_{table.name}_{'_'.join(cols)}"
-                    col_sql = ", ".join(f'"{c}"' for c in cols)
+                    name = constraint.name or _constraint_name("uq", [table.name, *cols])
+                    col_sql = ", ".join(_q(c) for c in cols)
                     await conn.execute(
                         text(
-                            f"ALTER TABLE {table.name} "
-                            f"ADD CONSTRAINT {name} UNIQUE ({col_sql})"
+                            f"ALTER TABLE {_q(table.name)} "
+                            f"ADD CONSTRAINT {_q(name)} UNIQUE ({col_sql})"
                         )
                     )
                     added.append(f"{table.name}.{name}")
@@ -225,10 +290,17 @@ async def apply_constraint_migrations() -> list[str]:
                 elif isinstance(constraint, CheckConstraint):
                     if constraint.name in have["check"]:
                         continue
+                    sqltext = str(constraint.sqltext)
+                    if not _check_sqltext_ok(table.name, sqltext):
+                        raise RuntimeError(
+                            f"refusing to create CHECK constraint {table.name}.{constraint.name}: "
+                            f"expression is not registered in _CHECK_SQLTEXT_ALLOWLIST — add "
+                            f"{sqltext!r} to the allowlist after review"
+                        )
                     await conn.execute(
                         text(
-                            f"ALTER TABLE {table.name} "
-                            f"ADD CONSTRAINT {constraint.name} CHECK ({constraint.sqltext}) NOT VALID"
+                            f"ALTER TABLE {_q(table.name)} "
+                            f"ADD CONSTRAINT {_q(constraint.name)} CHECK ({sqltext}) NOT VALID"
                         )
                     )
                     added.append(f"{table.name}.{constraint.name}")
@@ -240,14 +312,14 @@ async def apply_constraint_migrations() -> list[str]:
                     key = (cols, referred_table, referred_cols)
                     if key in have["foreign"]:
                         continue
-                    name = constraint.name or (
-                        f"fk_{table.name}_{'_'.join(cols)}_ref_{referred_table}"
+                    name = constraint.name or _constraint_name(
+                        "fk", [table.name, *cols], ref=referred_table
                     )
                     await conn.execute(
                         text(
-                            f"ALTER TABLE {table.name} ADD CONSTRAINT {name} "
-                            f"FOREIGN KEY ({', '.join(f'"{c}"' for c in cols)}) "
-                            f"REFERENCES {referred_table} ({', '.join(f'"{c}"' for c in referred_cols)})"
+                            f"ALTER TABLE {_q(table.name)} ADD CONSTRAINT {_q(name)} "
+                            f"FOREIGN KEY ({', '.join(_q(c) for c in cols)}) "
+                            f"REFERENCES {_q(referred_table)} ({', '.join(_q(c) for c in referred_cols)})"
                         )
                     )
                     added.append(f"{table.name}.{name}")
@@ -274,11 +346,7 @@ async def apply_index_migrations() -> list[str]:
             for index in table.indexes:
                 if index.name in have:
                     continue
-                create_sql = CreateIndex(index).compile(dialect=dialect).string.strip()
-                prefix = "CREATE UNIQUE INDEX" if index.unique else "CREATE INDEX"
-                if create_sql.upper().startswith(prefix):
-                    create_sql = create_sql[: len(prefix)] + " IF NOT EXISTS" + create_sql[len(prefix) :]
-                await conn.execute(text(create_sql))
+                await conn.execute(text(_index_ddl(index, dialect)))
                 added.append(f"{table.name}.{index.name}")
                 log.warning("migrated missing index %s.%s", table.name, index.name)
     return added
