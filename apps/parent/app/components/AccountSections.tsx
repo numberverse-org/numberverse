@@ -10,6 +10,7 @@ import {
   AVATARS,
   DEBUG_LANGS,
   HELP_LANGS,
+  KID_FORM_LANGS,
   NV_DIAG_MAX,
   avatarName,
   fmtTime,
@@ -54,29 +55,38 @@ export function AddKidCard({
 }) {
   // #1511 — inline range hint for the birth-year field (no magic default).
   const [birthHint, setBirthHint] = useState<string | null>(null);
+  const t = KID_FORM_LANGS[wizLang];
   if (!showAdd) return null;
   return (
         <section className="card add-kid" id="add-kid">
-<h2>Add a new kid</h2>
-<div className="avatar-row">
+<h2>{t.addTitle}</h2>
+<div className="avatar-row" role="group" aria-label={t.nameLabel}>
   {AVATARS.map((a) => (
-    <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)} aria-label={avatarName(a, wizLang)}>
+    <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)} aria-label={avatarName(a, wizLang)} aria-pressed={editAvatar === a}>
       <span aria-hidden="true">{a}</span>
     </button>
   ))}
 </div>
 <div className="form-grid">
   <label>
-    Name
-    <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="e.g. Aria" />
+    {t.nameLabel}
+    <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t.namePlaceholder} />
   </label>
   <label>
-    Birth year
+    {t.birthLabel}
+    {/* #1608 — spinbutton semantics + direct keyboard entry (native number
+        input: arrow up/down steps, typed values validated below). */}
     <input
       type="number"
+      inputMode="numeric"
       min={2010}
       max={2030}
       value={editBirthYear}
+      aria-label={t.birthLabel}
+      role="spinbutton"
+      aria-valuemin={2010}
+      aria-valuemax={2030}
+      aria-valuenow={editBirthYear}
       onChange={(e) => {
         // #1511 — keep the last valid value; empty/non-numeric input never
         // snaps to a magic default, and out-of-range shows an inline hint.
@@ -88,12 +98,16 @@ export function AddKidCard({
         const v = Number(raw);
         if (!Number.isFinite(v)) return;
         if (v < 2010 || v > 2030) {
-          const bn = typeof window !== "undefined" && localStorage.getItem("nv_parent_lang") === "bn";
+          const bn = wizLang === "bn";
           setBirthHint(bn ? ACCOUNT_LANGS.bn.birthRangeErr : ACCOUNT_LANGS.en.birthRangeErr);
           return;
         }
         setBirthHint(null);
         setEditBirthYear(v);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowUp" && editBirthYear < 2030) setEditBirthYear(editBirthYear + 1);
+        if (e.key === "ArrowDown" && editBirthYear > 2010) setEditBirthYear(editBirthYear - 1);
       }}
     />
     {birthHint && <span className="err inline">{birthHint}</span>}
@@ -101,9 +115,9 @@ export function AddKidCard({
 </div>
 <div className="row-buttons">
   <button className="btn primary" disabled={busy || !editName.trim()} onClick={handleCreate}>
-    {busy ? "Adding…" : "Add kid"}
+    {busy ? t.adding : t.addKid}
   </button>
-  <button className="btn ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+  <button className="btn ghost" onClick={() => setShowAdd(false)}>{t.cancel}</button>
 </div>
         </section>
   );
@@ -358,28 +372,37 @@ export function EditKidCard({
 }) {
   // #1511 — inline range hint for the birth-year field (no magic default).
   const [birthHint, setBirthHint] = useState<string | null>(null);
+  const t = KID_FORM_LANGS[wizLang];
   return (
 <section className="card danger" id="edit-kid">
-  <h2>⚙️ Edit {active.name}</h2>
-  <div className="avatar-row">
+  {/* #1589 — labelled "Edit {name}" so it never reads as a blank "add kid". */}
+  <h2>⚙️ {t.editTitle.replace("{name}", active.name)}</h2>
+  <div className="avatar-row" role="group" aria-label={t.nameLabel}>
     {AVATARS.map((a) => (
-      <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)} aria-label={avatarName(a, wizLang)}>
+      <button key={a} className={`avatar-pick${editAvatar === a ? " on" : ""}`} onClick={() => setEditAvatar(a)} aria-label={avatarName(a, wizLang)} aria-pressed={editAvatar === a}>
         <span aria-hidden="true">{a}</span>
       </button>
     ))}
   </div>
   <div className="form-grid">
     <label>
-      Name
+      {t.nameLabel}
       <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={active.name} />
     </label>
     <label>
-      Birth year
+      {t.birthLabel}
+      {/* #1608 — spinbutton semantics + direct keyboard entry. */}
       <input
         type="number"
+        inputMode="numeric"
         min={2010}
         max={2030}
         value={editBirthYear}
+        aria-label={t.birthLabel}
+        role="spinbutton"
+        aria-valuemin={2010}
+        aria-valuemax={2030}
+        aria-valuenow={editBirthYear}
         onChange={(e) => {
           // #1511 — keep the last valid value; empty/non-numeric input never
           // snaps to a magic default, and out-of-range shows an inline hint.
@@ -391,12 +414,16 @@ export function EditKidCard({
           const v = Number(raw);
           if (!Number.isFinite(v)) return;
           if (v < 2010 || v > 2030) {
-            const bn = typeof window !== "undefined" && localStorage.getItem("nv_parent_lang") === "bn";
+            const bn = wizLang === "bn";
             setBirthHint(bn ? ACCOUNT_LANGS.bn.birthRangeErr : ACCOUNT_LANGS.en.birthRangeErr);
             return;
           }
           setBirthHint(null);
           setEditBirthYear(v);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp" && editBirthYear < 2030) setEditBirthYear(editBirthYear + 1);
+          if (e.key === "ArrowDown" && editBirthYear > 2010) setEditBirthYear(editBirthYear - 1);
         }}
       />
       {birthHint && <span className="err inline">{birthHint}</span>}
@@ -404,38 +431,38 @@ export function EditKidCard({
   </div>
   <div className="row-buttons">
     <button className="btn primary" disabled={busy || !editName.trim()} onClick={handleRename}>
-      {busy ? "Saving…" : "Save changes"}
+      {busy ? t.saving : t.saveChanges}
     </button>
   </div>
 
   <hr />
   <div className="danger-row">
     <div>
-      <h3>Reset progress</h3>
-      <p className="muted small">Wipes all of {active.name}’s mastery and history. The profile stays.</p>
+      <h3>{t.resetTitle}</h3>
+      <p className="muted small">{t.resetHint.replace("{name}", active.name)}</p>
     </div>
     {confirmReset ? (
       <div className="confirm-group">
-        <button className="btn danger" disabled={busy} onClick={handleReset}>Yes, reset everything</button>
-        <button className="btn ghost" onClick={() => setConfirmReset(false)}>Cancel</button>
+        <button className="btn danger" disabled={busy} onClick={handleReset}>{t.confirmReset}</button>
+        <button className="btn ghost" onClick={() => setConfirmReset(false)}>{t.cancel}</button>
       </div>
     ) : (
-      <button className="btn danger-ghost" onClick={() => { setConfirmReset(true); setConfirmDelete(false); }}>Reset progress…</button>
+      <button className="btn danger-ghost" onClick={() => { setConfirmReset(true); setConfirmDelete(false); }}>{t.resetCta}</button>
     )}
   </div>
 
   <div className="danger-row">
     <div>
-      <h3>Delete {active.name}</h3>
-      <p className="muted small">Permanently removes this profile and all history. This cannot be undone.</p>
+      <h3>{t.deleteTitle.replace("{name}", active.name)}</h3>
+      <p className="muted small">{t.deleteHint}</p>
     </div>
     {confirmDelete ? (
       <div className="confirm-group">
-        <button className="btn danger" disabled={busy} onClick={handleDelete}>Yes, delete</button>
-        <button className="btn ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
+        <button className="btn danger" disabled={busy} onClick={handleDelete}>{t.confirmDelete}</button>
+        <button className="btn ghost" onClick={() => setConfirmDelete(false)}>{t.cancel}</button>
       </div>
     ) : (
-      <button className="btn danger-ghost" onClick={() => { setConfirmDelete(true); setConfirmReset(false); }}>Delete…</button>
+      <button className="btn danger-ghost" onClick={() => { setConfirmDelete(true); setConfirmReset(false); }}>{t.deleteCta}</button>
     )}
   </div>
 </section>
@@ -461,12 +488,12 @@ export function DiagnosticsCard({
 }) {
   return (
 <section className="card diag-card">
-  <button className="diag-toggle" onClick={() => setDebugOpen((o) => !o)} aria-expanded={debugOpen}>
+  <button className="diag-toggle" onClick={() => setDebugOpen((o) => !o)} aria-expanded={debugOpen} aria-controls="diag-body">
     {DEBUG_LANGS[wizLang].toggle}
     <span className="diag-caret">{debugOpen ? "▾" : "▸"}</span>
   </button>
   {debugOpen && (
-    <div className="diag-body">
+    <div className="diag-body" id="diag-body">
       <p className="muted small">{DEBUG_LANGS[wizLang].hint}</p>
       <dl className="diag-grid">
         <div>
@@ -527,12 +554,12 @@ export function HelpCard({ helpOpen, setHelpOpen, wizLang }: {
 }) {
   return (
 <section className="card help-card" id="help">
-  <button className="help-toggle" onClick={() => setHelpOpen((o) => !o)} aria-expanded={helpOpen}>
+  <button className="help-toggle" onClick={() => setHelpOpen((o) => !o)} aria-expanded={helpOpen} aria-controls="help-body">
     {HELP_LANGS[wizLang].toggle}
     <span className="help-caret">{helpOpen ? "▾" : "▸"}</span>
   </button>
   {helpOpen && (
-    <div className="help-body">
+    <div className="help-body" id="help-body">
       <h3>{HELP_LANGS[wizLang].installTitle}</h3>
       <ol className="help-steps">
         {[1, 2, 3, 4, 5].map((i) => (
@@ -552,6 +579,15 @@ export function HelpCard({ helpOpen, setHelpOpen, wizLang }: {
           <li key={i}>{HELP_LANGS[wizLang][`stampStep${i}` as keyof typeof HELP_LANGS.en]}</li>
         ))}
       </ol>
+      {/* #1590 — how the kid's device joins (the kid app signs in with the
+          parent account — no device code). */}
+      <h3>{HELP_LANGS[wizLang].pairTitle}</h3>
+      <ol className="help-steps">
+        {[1, 2, 3, 4].map((i) => (
+          <li key={i}>{HELP_LANGS[wizLang][`pairStep${i}` as keyof typeof HELP_LANGS.en]}</li>
+        ))}
+      </ol>
+      <p className="hint">{HELP_LANGS[wizLang].pairNote}</p>
     </div>
   )}
 </section>

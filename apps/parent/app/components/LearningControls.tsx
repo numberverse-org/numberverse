@@ -4,6 +4,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
 import type { KidSettings as KidSettingsT } from "../../lib/api";
 import {
   DEFAULT_SETTINGS,
@@ -37,6 +38,9 @@ interface LearningControlsProps {
   busy: boolean;
   handleSaveSettings: () => void;
   savedTick: number;
+  /** #1593 — persist the parent's pause decision SERVER-SIDE. page.tsx owns the
+   *  API call; this component shows the two-tap confirm + the real state. */
+  onTogglePause: () => void;
 }
 
 export default function LearningControls({
@@ -47,7 +51,10 @@ export default function LearningControls({
   busy,
   handleSaveSettings,
   savedTick,
+  onTogglePause,
 }: LearningControlsProps) {
+  // #1593/#1602 — armed pause/resume confirmation (accessible modal).
+  const [pauseConfirm, setPauseConfirm] = useState<"pause" | "resume" | null>(null);
   // #1513 — track the last-saved settings snapshot per kid so the save row can
   // show a subtle "Unsaved changes" badge while edits are still pending.
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, KidSettingsT>>({});
@@ -126,7 +133,7 @@ export default function LearningControls({
 
   return (
 <section className="card controls" id="controls">
-  <h2>🎛️ Learning controls</h2>
+  <h2>{LEARNING_LANGS[wizLang].controlsTitle ?? "🎛️ Learning controls"}</h2>
 
   {/* #272 — safety: instant pause (parent kill-switch). One tap stops
       every game for this kid with a kid-safe screen; stays paused
@@ -138,13 +145,37 @@ export default function LearningControls({
         ? PAUSE_LANGS[wizLang].onHint.replace("{name}", active.name)
         : PAUSE_LANGS[wizLang].offHint.replace("{name}", active.name)}
     </p>
+    {/* #1593 — the button arms a two-tap confirm (actual resulting state shown)
+        and the page handler persists the decision server-side immediately. */}
     <button
       className={`btn${activeSettings.paused ? " danger-ghost" : " danger"}`}
-      onClick={() => patchSettings({ paused: !activeSettings.paused })}
+      onClick={() => setPauseConfirm(activeSettings.paused ? "resume" : "pause")}
       aria-pressed={activeSettings.paused}
+      disabled={busy}
     >
-      {activeSettings.paused ? PAUSE_LANGS[wizLang].resume : PAUSE_LANGS[wizLang].pause}
+      {busy ? PAUSE_LANGS[wizLang].saving : activeSettings.paused ? PAUSE_LANGS[wizLang].resume : PAUSE_LANGS[wizLang].pause}
     </button>
+    <ConfirmDialog
+      open={pauseConfirm !== null}
+      title={
+        pauseConfirm === "resume"
+          ? PAUSE_LANGS[wizLang].confirmResumeTitle.replace("{name}", active.name)
+          : PAUSE_LANGS[wizLang].confirmPauseTitle.replace("{name}", active.name)
+      }
+      body={
+        pauseConfirm === "resume"
+          ? PAUSE_LANGS[wizLang].confirmResumeBody.replace("{name}", active.name)
+          : PAUSE_LANGS[wizLang].confirmPauseBody.replace("{name}", active.name)
+      }
+      confirmLabel={PAUSE_LANGS[wizLang].confirm}
+      cancelLabel={PAUSE_LANGS[wizLang].cancel}
+      danger={pauseConfirm === "pause"}
+      onConfirm={() => {
+        setPauseConfirm(null);
+        onTogglePause();
+      }}
+      onCancel={() => setPauseConfirm(null)}
+    />
   </div>
 
   {/* #1041/#1042 — MONI STRICTNESS: the adaptive tutor's difficulty knob.
@@ -222,7 +253,7 @@ export default function LearningControls({
   </div>
 
   <div className="ctrl-block">
-    <h3>Subjects</h3>
+    <h3>{LEARNING_LANGS[wizLang].subjectsTitle}</h3>
     <p className="muted small">
       {LEARNING_LANGS[wizLang].subjectsHint.replace("{name}", active.name)}
     </p>
@@ -320,9 +351,9 @@ export default function LearningControls({
   </div>
 
   <div className="ctrl-block">
-    <h3>Playtime per day</h3>
+    <h3>{LEARNING_LANGS[wizLang].playtimeTitle}</h3>
     <p className="muted small">
-      A soft limit per day of the week — the app gently stops play when {active.name} reaches it. Default: 45 min school days, 90 weekend.
+      {LEARNING_LANGS[wizLang].playtimeHint.replace("{name}", active.name)}
     </p>
     <div className="weekday-limits">
       {WEEKDAYS.map((d, i) => {
@@ -330,7 +361,7 @@ export default function LearningControls({
         return (
           <div key={d.key} className="weekday-row">
             <span className="weekday-name" title={d.full}>{d.short}</span>
-            <div className="weekday-chips" role="group" aria-label={`${d.full} playtime`}>
+            <div className="weekday-chips" role="group" aria-label={`${d.full} ${LEARNING_LANGS[wizLang].playtimeTitle}`}>
               {LIMIT_CHOICES.map((m) => (
                 <button
                   key={m}
@@ -341,7 +372,7 @@ export default function LearningControls({
                     patchSettings(writeWeekdayLimits(activeSettings, arr));
                   }}
                 >
-                  {m === 0 ? "Off" : `${m}m`}
+                  {m === 0 ? LEARNING_LANGS[wizLang].off : `${m}m`}
                 </button>
               ))}
             </div>
@@ -354,13 +385,13 @@ export default function LearningControls({
         className="ghost-btn small"
         onClick={() => patchSettings(writeWeekdayLimits(activeSettings, WEEKDAY_DEFAULTS))}
       >
-        ↺ Default (45/90)
+        {LEARNING_LANGS[wizLang].defaultPreset}
       </button>
       <button
         className="ghost-btn small"
         onClick={() => patchSettings(writeWeekdayLimits(activeSettings, [0, 0, 0, 0, 0, 0, 0]))}
       >
-        No limit
+        {LEARNING_LANGS[wizLang].noLimitPreset}
       </button>
     </div>
   </div>
@@ -369,11 +400,9 @@ export default function LearningControls({
       The server clamps it to the day's cap, so it respects the limits
       set just above. */}
   <div className="ctrl-block">
-    <h3>🎯 Daily goal</h3>
+    <h3>{LEARNING_LANGS[wizLang].dailyGoalTitle}</h3>
     <p className="muted small">
-      A gentle goal {active.name} can aim for each day. Nova cheers it on
-      without pressure — it never blocks play, and it always stays at or
-      below the day's limit above.
+      {LEARNING_LANGS[wizLang].dailyGoalHint.replace("{name}", active.name)}
     </p>
     <div className="goal-row">
       <input
@@ -382,7 +411,8 @@ export default function LearningControls({
         min={0}
         max={goalMax}
         value={goalValue ?? ""}
-        placeholder="No goal"
+        placeholder={LEARNING_LANGS[wizLang].noGoalPlaceholder}
+        aria-label={LEARNING_LANGS[wizLang].dailyGoalTitle}
         onChange={(e) => {
           const v = e.target.value.trim();
           // #1514 — empty/0 = "No goal" (null); negative/invalid inputs are
@@ -396,7 +426,7 @@ export default function LearningControls({
           patchSettings({ goal_min: n === 0 ? null : Math.min(n, goalMax) });
         }}
       />
-      <span className="goal-unit">minutes / day</span>
+      <span className="goal-unit">{LEARNING_LANGS[wizLang].minutesPerDay}</span>
     </div>
     {effectiveGoal != null && (
       <p className="hint">
@@ -410,10 +440,9 @@ export default function LearningControls({
   {/* 📌 #257 — curriculum focus pin: a subject + world the journey
       leads with. Both-or-neither; Clear restores the normal path. */}
   <div className="ctrl-block">
-    <h3>📌 Focus</h3>
+    <h3>{LEARNING_LANGS[wizLang].focusTitle}</h3>
     <p className="muted small">
-      Pin a subject + world so {active.name}’s journey leads with those skills.
-      Clear it anytime to go back to the normal path.
+      {LEARNING_LANGS[wizLang].focusHint.replace("{name}", active.name)}
     </p>
     <div className="focus-subjects">
       {SUBJECTS.map((sub) => (
@@ -452,49 +481,51 @@ export default function LearningControls({
           className="ghost-btn small"
           onClick={() => patchSettings({ focus_subject: null, focus_band: null })}
         >
-          ✕ Clear focus
+          {LEARNING_LANGS[wizLang].clearFocus}
         </button>
       </div>
     )}
   </div>
 
   <div className="ctrl-block">
-    <h3>Reading & sound</h3>
+    <h3>{LEARNING_LANGS[wizLang].readingSoundTitle}</h3>
     <div className="toggle-grid">
       <button
         className={`toggle-chip${activeSettings.tts_enabled ? " on" : ""}`}
         onClick={() => patchSettings({ tts_enabled: !activeSettings.tts_enabled })}
       >
-        🔊 Voice reading
+        {LEARNING_LANGS[wizLang].voiceReading}
       </button>
       <button
         className={`toggle-chip${activeSettings.music_enabled ? " on" : ""}`}
         onClick={() => patchSettings({ music_enabled: !activeSettings.music_enabled })}
       >
-        🎵 Background music
+        {LEARNING_LANGS[wizLang].backgroundMusic}
       </button>
       <button
         className={`toggle-chip${activeSettings.voice_record_enabled ? " on" : ""}`}
         onClick={() => patchSettings({ voice_record_enabled: !activeSettings.voice_record_enabled })}
-        title="Kid can record their own voice and replay. Stays on this device — never synced."
+        title={LEARNING_LANGS[wizLang].voiceRecordingHint}
       >
-        🎙️ Voice recording
+        {LEARNING_LANGS[wizLang].voiceRecording}
       </button>
     </div>
     {/* #243 — per-kid volume balance: voice / sfx / music, with a Try button */}
     <div className="volume-balance">
       {(
         [
-          { key: "voice_volume", icon: "🗣️", label: "Voice", hint: "Read-aloud and spoken feedback" },
-          { key: "sfx_volume", icon: "✨", label: "Sound effects", hint: "Pops, chimes and win sounds" },
-          { key: "music_volume", icon: "🎵", label: "Music", hint: "The background music" },
+          { key: "voice_volume", icon: "🗣️", labelKey: "volVoice", hintKey: "volVoiceHint" },
+          { key: "sfx_volume", icon: "✨", labelKey: "volSfx", hintKey: "volSfxHint" },
+          { key: "music_volume", icon: "🎵", labelKey: "volMusic", hintKey: "volMusicHint" },
         ] as const
       ).map((row) => {
         const cur = activeSettings[row.key] ?? 1;
+        const label = LEARNING_LANGS[wizLang][row.labelKey];
+        const hint = LEARNING_LANGS[wizLang][row.hintKey];
         return (
           <div key={row.key} className="vol-row">
-            <span className="vol-label" title={row.hint}>
-              {row.icon} {row.label}
+            <span className="vol-label" title={hint}>
+              {row.icon} {label}
             </span>
             <input
               type="range"
@@ -502,7 +533,7 @@ export default function LearningControls({
               max={1}
               step={0.05}
               value={cur}
-              aria-label={`${row.label} volume`}
+              aria-label={`${label} volume`}
               onChange={(e) => patchSettings({ [row.key]: Number(e.target.value) })}
             />
             <span className="vol-num">{Math.round(cur * 100)}%</span>
@@ -511,7 +542,7 @@ export default function LearningControls({
               type="button"
               onClick={() => trySoundPreview(row.key.replace("_volume", "") as "voice" | "sfx" | "music", cur)}
             >
-              🔊 Try
+              {LEARNING_LANGS[wizLang].try}
             </button>
           </div>
         );
@@ -573,28 +604,28 @@ export default function LearningControls({
         {VOICE_LANGS[wizLang].try}
       </button>
     </div>
-    <p className="muted small">🎙️ Voice recording lets a kid record and replay their own voice. Recordings stay on this device and are never sent to the server.</p>
+    <p className="muted small">{LEARNING_LANGS[wizLang].voiceRecordingHint}</p>
   </div>
 
   {/* #248 — quiet hours: auto-soften during a per-day schedule, never blocks play */}
   <div className="ctrl-block quiet-block">
-    <h3>🌙 Quiet hours</h3>
+    <h3>{LEARNING_LANGS[wizLang].quietTitle}</h3>
     <p className="muted small">
-      During these times the app gently lowers volume and dims the screen — play is never blocked.
+      {LEARNING_LANGS[wizLang].quietHint}
     </p>
     <div className="toggle-grid">
       <button
         className={`toggle-chip${activeSettings.quiet_enabled ? " on" : ""}`}
         onClick={() => patchSettings({ quiet_enabled: !activeSettings.quiet_enabled })}
       >
-        🌙 Quiet hours on
+        {LEARNING_LANGS[wizLang].quietOn}
       </button>
       <button
         className={`toggle-chip${activeSettings.quiet_dim ? " on" : ""}`}
         onClick={() => patchSettings({ quiet_dim: !activeSettings.quiet_dim })}
-        title="Gently dims the screen during quiet hours."
+        title={LEARNING_LANGS[wizLang].gentleDimHint}
       >
-        🕯️ Gentle dimming
+        {LEARNING_LANGS[wizLang].gentleDim}
       </button>
     </div>
 
@@ -614,7 +645,7 @@ export default function LearningControls({
                   patchSettings(writeQuietWindows(activeSettings, arr));
                 }}
               />
-              On
+              {LEARNING_LANGS[wizLang].on}
             </label>
             <input
               type="time"
@@ -646,30 +677,39 @@ export default function LearningControls({
           </div>
         );
       })}
-      <p className="muted small">Overnight windows cross midnight — e.g. 20:00 → 07:00. Start later than end for bedtime.</p>
+      <p className="muted small">{LEARNING_LANGS[wizLang].overnightHint}</p>
     </div>
 
     <div className="vol-row">
-      <span className="vol-label" title="How soft the app gets during quiet hours.">🔉 Soft volume</span>
+      <span className="vol-label" title={LEARNING_LANGS[wizLang].softVolumeHint}>{LEARNING_LANGS[wizLang].softVolume}</span>
       <input
         type="range"
         min={0.05}
         max={1}
         step={0.05}
         value={activeSettings.quiet_volume ?? 0.15}
-        aria-label="Quiet hours volume"
+        aria-label={LEARNING_LANGS[wizLang].quietVolumeLabel}
         onChange={(e) => patchSettings({ quiet_volume: Number(e.target.value) })}
       />
       <span className="vol-num">{Math.round((activeSettings.quiet_volume ?? 0.15) * 100)}%</span>
     </div>
   </div>
 
-  <div className="row-buttons save-row">
+  {/* #1592 — the save row sticks to the bottom while there are unsaved edits,
+      so a parent who changed difficulty / screen-time can't miss the fact that
+      it isn't persisted yet (previously the Save button was below the fold and
+      edits silently vanished on reload). */}
+  <div className={`row-buttons save-row${unsaved ? " save-row-sticky" : ""}`}>
     <button className="btn primary" disabled={busy} onClick={handleSaveSettings}>
-      {busy ? "Saving…" : "Save settings"}
+      {busy ? LEARNING_LANGS[wizLang].saving : LEARNING_LANGS[wizLang].saveSettings}
     </button>
-    {savedTick > 0 && !unsaved && <span className="saved-note">✓ Saved</span>}
+    {savedTick > 0 && !unsaved && <span className="saved-note">{LEARNING_LANGS[wizLang].saved}</span>}
     {unsaved && <span className="muted small unsaved-note">{LEARNING_LANGS[wizLang].unsavedBadge}</span>}
   </div>
+  {unsaved && (
+    <p className="hint center" role="status" style={{ marginTop: 6 }}>
+      {LEARNING_LANGS[wizLang].unsavedSticky}
+    </p>
+  )}
 </section>  );
 }

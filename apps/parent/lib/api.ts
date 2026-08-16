@@ -211,7 +211,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
     // LAN dev via CORS credentials; same-origin prod).
     credentials: "include",
   });
-  if (!res.ok) throw new Error("Invalid credentials");
+  if (!res.ok) await throwApiError(res, "Invalid email or password");
   return res.json();
 }
 
@@ -225,7 +225,7 @@ export async function signup(email: string, password: string, displayName: strin
     // #1773 — accept/store the httpOnly refresh cookie the API sets.
     credentials: "include",
   });
-  if (!res.ok) throw new Error("Signup failed");
+  if (!res.ok) await throwApiError(res, "Signup failed");
   return res.json();
 }
 
@@ -456,15 +456,33 @@ export async function getShareToken(token: string, kidId: string): Promise<strin
 }
 
 /** #245 — PUBLIC read of a share snapshot (no auth — the token IS the key).
- *  Returns null for unknown links / offline, so the share page can degrade
- *  gracefully. No tracking: this page makes exactly this one fetch. */
-export async function fetchShareSnapshot(shareToken: string): Promise<ShareSnapshot | null> {
+ *  No tracking: this page makes exactly this one fetch. */
+export interface ShareFetchResult {
+  ok: true;
+  data: ShareSnapshot;
+}
+
+export interface ShareFetchFailure {
+  ok: false;
+  /** #1597 — 401/404 means the token died (expired/invalid); anything else
+   *  (5xx, offline) is a transient "try again later". The share page renders a
+   *  different line for each instead of one generic failure. */
+  reason: "expired" | "unavailable";
+}
+
+/** #245 + #1597 — fetch a share snapshot and classify the failure so the page
+ *  can tell an expired/invalid link from a network/server outage. */
+export async function fetchShareSnapshot(
+  shareToken: string
+): Promise<ShareFetchResult | ShareFetchFailure> {
   try {
     const res = await fetch(`${API}/share/${encodeURIComponent(shareToken)}`);
-    if (!res.ok) return null;
-    return res.json();
+    if (!res.ok) {
+      return { ok: false, reason: res.status === 401 || res.status === 404 ? "expired" : "unavailable" };
+    }
+    return { ok: true, data: (await res.json()) as ShareSnapshot };
   } catch {
-    return null;
+    return { ok: false, reason: "unavailable" };
   }
 }
 

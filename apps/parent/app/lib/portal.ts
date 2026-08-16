@@ -126,32 +126,97 @@ export type WizardLang = keyof typeof WIZARD_LANGS;
 export const SIGNUP_LANGS = {
   en: {
     title: "Create your parent account",
+    nameLabel: "Your name",
     namePlaceholder: "Your name",
+    emailLabel: "Parent email",
     emailPlaceholder: "Parent email",
+    passwordLabel: "Password",
     passwordPlaceholder: "Password (at least 8 characters)",
     submit: "Create account",
     success: "Account created — signed in as",
     openDashboard: "Open dashboard →",
     signInLink: "Already have an account? Sign in",
     err: "Couldn't create your account — check your details and try again.",
+    errConflict: "An account with this email already exists — sign in instead.",
+    errRateLimited: "Too many sign-ups — wait a moment and try again.",
+    errNetwork: "Can't reach Numberverse right now — check your connection and try again.",
     pwTooShort: "Password must be at least 8 characters.",
     nameRequired: "Please enter your name.",
   },
   bn: {
     title: "আপনার অভিভাবক অ্যাকাউন্ট তৈরি করুন",
+    nameLabel: "আপনার নাম",
     namePlaceholder: "আপনার নাম",
+    emailLabel: "অভিভাবকের ইমেইল",
     emailPlaceholder: "অভিভাবকের ইমেইল",
+    passwordLabel: "পাসওয়ার্ড",
     passwordPlaceholder: "পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)",
     submit: "অ্যাকাউন্ট তৈরি করুন",
     success: "অ্যাকাউন্ট তৈরি হয়েছে — সাইন ইন করেছেন",
     openDashboard: "ড্যাশবোর্ড খুলুন →",
     signInLink: "ইতিমধ্যে অ্যাকাউন্ট আছে? সাইন ইন করুন",
     err: "অ্যাকাউন্ট তৈরি করা যায়নি — তথ্য পরীক্ষা করে আবার চেষ্টা করুন।",
+    errConflict: "এই ইমেইলে একটি অ্যাকাউন্ট ইতিমধ্যে আছে — পরিবর্তে সাইন ইন করুন।",
+    errRateLimited: "অনেকবার সাইন আপ করা হয়েছে — একটু অপেক্ষা করে আবার চেষ্টা করুন।",
+    errNetwork: "এই মুহূর্তে নাম্বারভার্সে যাওয়া যাচ্ছে না — ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।",
     pwTooShort: "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।",
     nameRequired: "আপনার নাম লিখুন।",
   },
 } as const;
 export type SignupLang = keyof typeof SIGNUP_LANGS;
+
+/** 🔑 login page strings (EN + BN). #1586 — the box has NO SMTP, so the
+ *  recovery copy is an honest "contact your admin" operator-assisted path; the
+ *  admin console owns the actual reset. #1587 — distinct error lines for bad
+ *  credentials vs rate-limit vs network so the real cause isn't hidden behind
+ *  one generic message. #1606 — real labels (not placeholder-only). */
+export const LOGIN_LANGS = {
+  en: {
+    title: "Numberverse Parent Portal",
+    emailLabel: "Parent email",
+    passwordLabel: "Password",
+    signIn: "Sign in",
+    createAccount: "Create account",
+    createAccountBn: "অ্যাকাউন্ট তৈরি করুন",
+    privacy1: "Your email is used only to sign you in and keep your child's progress synced. No ads, no tracking — you can export or delete your data anytime.",
+    privacy2: "আপনার ইমেইল শুধু সাইন ইন করতে এবং বাচ্চার অগ্রগতি সিঙ্ক রাখতে ব্যবহৃত হয়। কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই — আপনি চাইলে যেকোনো সময় ডেটা এক্সপোর্ট বা মুছে ফেলতে পারেন।",
+    signedInAs: "Signed in as",
+    openDashboard: "Open dashboard →",
+    // #1587 — distinct failure lines.
+    errInvalid: "Sign in failed — check email and password.",
+    errNetwork: "Can't reach Numberverse right now — check your connection and try again.",
+    errRateLimited: "Too many sign-in attempts — wait a moment and try again.",
+    errSession: "Signed in, but we couldn't confirm the session — try again.",
+    errUnknown: "Sign in failed. Try again.",
+    // #1586 — honest, operator-assisted recovery (no email infra to fake).
+    recoveryTitle: "Forgot your password?",
+    recoveryBody:
+      "This portal can't email a reset link. Ask your school or program admin to reset your parent password in the admin console — then sign in with the temporary password they give you.",
+    demoMode: "Demo parent",
+  },
+  bn: {
+    title: "নাম্বারভার্স অভিভাবক পোর্টাল",
+    emailLabel: "অভিভাবকের ইমেইল",
+    passwordLabel: "পাসওয়ার্ড",
+    signIn: "সাইন ইন",
+    createAccount: "অ্যাকাউন্ট তৈরি করুন",
+    createAccountBn: "অ্যাকাউন্ট তৈরি করুন",
+    privacy1: "আপনার ইমেইল শুধু সাইন ইন করতে এবং বাচ্চার অগ্রগতি সিঙ্ক রাখতে ব্যবহৃত হয়। কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই — আপনি চাইলে যেকোনো সময় ডেটা এক্সপোর্ট বা মুছে ফেলতে পারেন।",
+    privacy2: "আপনার ইমেইল শুধু সাইন ইন করতে এবং বাচ্চার অগ্রগতি সিঙ্ক রাখতে ব্যবহৃত হয়। কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই — আপনি চাইলে যেকোনো সময় ডেটা এক্সপোর্ট বা মুছে ফেলতে পারেন।",
+    signedInAs: "সাইন ইন করেছেন",
+    openDashboard: "ড্যাশবোর্ড খুলুন →",
+    errInvalid: "সাইন ইন ব্যর্থ হয়েছে — ইমেইল ও পাসওয়ার্ড পরীক্ষা করুন।",
+    errNetwork: "এই মুহূর্তে নাম্বারভার্সে যাওয়া যাচ্ছে না — ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।",
+    errRateLimited: "অনেকবার সাইন ইন করার চেষ্টা হয়েছে — একটু অপেক্ষা করে আবার চেষ্টা করুন।",
+    errSession: "সাইন ইন হয়েছে, কিন্তু সেশন নিশ্চিত করা যায়নি — আবার চেষ্টা করুন।",
+    errUnknown: "সাইন ইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+    recoveryTitle: "পাসওয়ার্ড ভুলে গেছেন?",
+    recoveryBody:
+      "এই পোর্টাল থেকে রিসেট লিংক পাঠানো যায় না। আপনার স্কুল বা প্রোগ্রামের অ্যাডমিনকে বলুন অ্যাডমিন কনসোলে অভিভাবকের পাসওয়ার্ড রিসেট করতে — তারপর তারা দেওয়া অস্থায়ী পাসওয়ার্ড দিয়ে সাইন ইন করুন।",
+    demoMode: "ডেমো অভিভাবক",
+  },
+} as const;
+export type LoginLang = keyof typeof LOGIN_LANGS;
 
 /** 🧏 #250 — global accessibility toggle strings (EN + BN). Same country-pack
  *  seam as WIZARD_LANGS: a new locale = a new key, no component rewrites. */
@@ -192,6 +257,117 @@ export const THEME_LANGS = {
   },
 } as const;
 export const THEME_KEY = "nv_parent_theme";
+
+/** 🧭 portal chrome — topbar, nav, shell, empty state (#1591 #1598 #1607).
+ *  EN + BN — same country-pack seam as WIZARD_LANGS. */
+export const TOPBAR_LANGS = {
+  en: {
+    parentPortal: "Parent Portal",
+    signOut: "Sign out",
+    jumpTo: "Jump to",
+    addKid: "Add kid",
+    addYourFirstKid: "Add your first kid",
+    rerunSetup: "Re-run setup guide",
+    checkingSession: "Checking your session…",
+    signInManage: "Sign in to manage your children’s learning.",
+    signInInstead: "Sign in instead →",
+    goToLogin: "Go to login →",
+    noKidsYet: "No kids on this account yet — add one to get started.",
+    born: "born",
+  },
+  bn: {
+    parentPortal: "অভিভাবক পোর্টাল",
+    signOut: "সাইন আউট",
+    jumpTo: "যান",
+    addKid: "বাচ্চা যোগ করুন",
+    addYourFirstKid: "প্রথম বাচ্চা যোগ করুন",
+    rerunSetup: "সেটআপ গাইড আবার খুলুন",
+    checkingSession: "আপনার সেশন পরীক্ষা হচ্ছে…",
+    signInManage: "আপনার সন্তানদের শেখা পরিচালনা করতে সাইন ইন করুন।",
+    signInInstead: "পরিবর্তে সাইন ইন করুন →",
+    goToLogin: "লগইন পেজে যান →",
+    noKidsYet: "এই অ্যাকাউন্টে এখনো কোনো বাচ্চা নেই — শুরু করতে একজন যোগ করুন।",
+    born: "জন্ম",
+  },
+} as const;
+
+/** 👧 add/edit-kid form + danger-zone strings (#1589 #1595 #1608 #1610). */
+export const KID_FORM_LANGS = {
+  en: {
+    addTitle: "Add a new kid",
+    editTitle: "Edit {name}",
+    nameLabel: "Name",
+    namePlaceholder: "e.g. Aria",
+    birthLabel: "Birth year",
+    birthPlaceholder: "e.g. 2019",
+    adding: "Adding…",
+    addKid: "Add kid",
+    saving: "Saving…",
+    saveChanges: "Save changes",
+    cancel: "Cancel",
+    resetTitle: "Reset progress",
+    resetHint: "Wipes all of {name}’s mastery and history. The profile stays.",
+    confirmReset: "Yes, reset everything",
+    resetCta: "Reset progress…",
+    deleteTitle: "Delete {name}",
+    deleteHint: "Permanently removes this profile and all history. This cannot be undone.",
+    confirmDelete: "Yes, delete",
+    deleteCta: "Delete…",
+    // #1595 — inline duplicate / kid-count guard (replaces window.confirm).
+    dupTitle: "A kid named {name} already exists",
+    dupBody: "Add a second kid with the same name? Their progress stays separate, but the switcher will look identical.",
+    manyTitle: "You already have {count} kids",
+    manyBody: "Add another? Numberverse works best with a few kids at a time.",
+    confirm: "Continue",
+  },
+  bn: {
+    addTitle: "নতুন বাচ্চা যোগ করুন",
+    editTitle: "{name} সম্পাদনা করুন",
+    nameLabel: "নাম",
+    namePlaceholder: "যেমন: আরিয়া",
+    birthLabel: "জন্মসাল",
+    birthPlaceholder: "যেমন: ২০১৯",
+    adding: "যোগ হচ্ছে…",
+    addKid: "বাচ্চা যোগ করুন",
+    saving: "সংরক্ষণ হচ্ছে…",
+    saveChanges: "পরিবর্তন সংরক্ষণ করুন",
+    cancel: "বাতিল",
+    resetTitle: "অগ্রগতি রিসেট করুন",
+    resetHint: "{name}-এর সব আয়ত্ত ও ইতিহাস মুছে যায়। প্রোফাইলটি থাকে।",
+    confirmReset: "হ্যাঁ, সব রিসেট করুন",
+    resetCta: "অগ্রগতি রিসেট…",
+    deleteTitle: "{name} মুছে ফেলুন",
+    deleteHint: "এই প্রোফাইল ও সব ইতিহাস স্থায়ীভাবে মুছে যায়। এটি ফেরানো যাবে না।",
+    confirmDelete: "হ্যাঁ, মুছুন",
+    deleteCta: "মুছুন…",
+    dupTitle: "“{name}” নামে একটি বাচ্চা ইতিমধ্যে আছে",
+    dupBody: "একই নামে দ্বিতীয় বাচ্চা যোগ করবেন? তাদের অগ্রগতি আলাদা থাকবে, তবে সুইচারে একই দেখাবে।",
+    manyTitle: "আপনার ইতিমধ্যে {count} জন বাচ্চা আছে",
+    manyBody: "আরেকজন যোগ করবেন? নাম্বারভার্স একসাথে কয়েকজন বাচ্চার জন্য সবচেয়ে ভালো কাজ করে।",
+    confirm: "চালিয়ে যান",
+  },
+} as const;
+
+/** 🧒 how a kid's device joins — the kid app signs in with the SAME parent
+ *  account (email + password), no device code (#1590). */
+export const PAIR_LANGS = {
+  en: {
+    title: "🧒 How your kid's device joins",
+    step1: "On your child's device, open the Numberverse kid app.",
+    step2: "Tap “For parents” in the ⚙️ settings area.",
+    step3: "Sign in with the SAME parent email and password you use here.",
+    step4: "The kids you set up on this portal appear on that device automatically — progress syncs both ways.",
+    note: "No separate device code or PIN — the parent account is the link.",
+  },
+  bn: {
+    title: "🧒 বাচ্চার ডিভাইস যেভাবে যুক্ত হয়",
+    step1: "বাচ্চার ডিভাইসে Numberverse কিড অ্যাপ খুলুন।",
+    step2: "⚙️ সেটিংস এলাকায় “For parents” (অভিভাবক) চাপুন।",
+    step3: "আপনি এখানে যে অভিভাবক ইমেইল ও পাসওয়ার্ড ব্যবহার করেন সেটি দিয়েই সাইন ইন করুন।",
+    step4: "আপনি এই পোর্টালে যে বাচ্চাদের যোগ করেন তারা ওই ডিভাইসে নিজে থেকেই দেখা যাবে — অগ্রগতি দুই দিকেই সিঙ্ক হয়।",
+    note: "আলাদা কোনো ডিভাইস কোড বা পিন নেই — অভিভাবক অ্যাকাউন্টই হলো সংযোগ।",
+  },
+} as const;
 
 /** 🧵 #255 — session timeline strings (EN + BN). Same country-pack seam. */
 export const SESSION_LANGS = {
@@ -314,6 +490,8 @@ export const ACCOUNT_LANGS = {
  *  component rewrites. */
 export const LEARNING_LANGS = {
   en: {
+    controlsTitle: "🎛️ Learning controls",
+    subjectsTitle: "Subjects",
     subjectsHint: "Turn a subject off to hide those games from {name}.",
     subjectsAll: "All",
     subjectsNone: "None",
@@ -330,8 +508,49 @@ export const LEARNING_LANGS = {
     goalSavedHint: "↳ Saved as up to {goal} min — clamped to today's daily cap ({cap} min) if that's lower.",
     // #1513 — shown near the Save button while settings edits are unsaved.
     unsavedBadge: "Unsaved changes",
+    // #1592/#1598 — remaining LearningControls chrome (previously hardcoded EN).
+    playtimeTitle: "Playtime per day",
+    playtimeHint: "A soft limit per day of the week — the app gently stops play when {name} reaches it. Default: 45 min school days, 90 weekend.",
+    off: "Off",
+    defaultPreset: "↺ Default (45/90)",
+    noLimitPreset: "No limit",
+    dailyGoalTitle: "🎯 Daily goal",
+    dailyGoalHint: "A gentle goal {name} can aim for each day. Nova cheers it on without pressure — it never blocks play, and it always stays at or below the day's limit above.",
+    noGoalPlaceholder: "No goal",
+    minutesPerDay: "minutes / day",
+    focusTitle: "📌 Focus",
+    focusHint: "Pin a subject + world so {name}’s journey leads with those skills. Clear it anytime to go back to the normal path.",
+    clearFocus: "✕ Clear focus",
+    readingSoundTitle: "Reading & sound",
+    voiceReading: "🔊 Voice reading",
+    backgroundMusic: "🎵 Background music",
+    voiceRecording: "🎙️ Voice recording",
+    voiceRecordingHint: "Kid can record their own voice and replay. Stays on this device — never synced.",
+    volVoice: "Voice",
+    volSfx: "Sound effects",
+    volMusic: "Music",
+    volVoiceHint: "Read-aloud and spoken feedback",
+    volSfxHint: "Pops, chimes and win sounds",
+    volMusicHint: "The background music",
+    try: "🔊 Try",
+    quietTitle: "🌙 Quiet hours",
+    quietHint: "During these times the app gently lowers volume and dims the screen — play is never blocked.",
+    quietOn: "🌙 Quiet hours on",
+    gentleDim: "🕯️ Gentle dimming",
+    gentleDimHint: "Gently dims the screen during quiet hours.",
+    on: "On",
+    overnightHint: "Overnight windows cross midnight — e.g. 20:00 → 07:00. Start later than end for bedtime.",
+    softVolume: "🔉 Soft volume",
+    softVolumeHint: "How soft the app gets during quiet hours.",
+    quietVolumeLabel: "Quiet hours volume",
+    saveSettings: "Save settings",
+    saving: "Saving…",
+    saved: "✓ Saved",
+    unsavedSticky: "Unsaved changes — click Save settings so they stick.",
   },
   bn: {
+    controlsTitle: "🎛️ শেখার নিয়ন্ত্রণ",
+    subjectsTitle: "বিষয়",
     subjectsHint: "কোনো বিষয় বন্ধ করলে সেই বিষয়ের খেলাগুলো {name}-এর জন্য লুকানো থাকবে।",
     subjectsAll: "সব",
     subjectsNone: "কোনোটিই নয়",
@@ -347,6 +566,45 @@ export const LEARNING_LANGS = {
     goalSavedHint: "↳ লক্ষ্য হিসেবে সর্বোচ্চ {goal} মিনিট সংরক্ষিত — আজকের দৈনিক সীমা ({cap} মিনিট) এর চেয়ে কম হলে সেখানে আটকে যাবে।",
     // #1513 — shown near the Save button while settings edits are unsaved.
     unsavedBadge: "সংরক্ষণ করা হয়নি",
+    // #1592/#1598 — remaining LearningControls chrome (previously hardcoded EN).
+    playtimeTitle: "প্রতিদিনের খেলার সময়",
+    playtimeHint: "প্রতি সপ্তাহের দিনে একটি নরম সীমা — {name} সেই সীমায় পৌঁছালে অ্যাপ আলতোভাবে থামিয়ে দেয়। ডিফল্ট: স্কুল দিনে ৪৫ মিনিট, ছুটির দিনে ৯০।",
+    off: "বন্ধ",
+    defaultPreset: "↺ ডিফল্ট (৪৫/৯০)",
+    noLimitPreset: "সীমা নেই",
+    dailyGoalTitle: "🎯 দৈনিক লক্ষ্য",
+    dailyGoalHint: "{name} প্রতিদিন যে নরম লক্ষ্যে পৌঁছানোর চেষ্টা করতে পারে। নোভা চাপ ছাড়াই উৎসাহ দেয় — এটি কখনো খেলা আটকায় না এবং উপরের দৈনিক সীমার মধ্যে থাকে।",
+    noGoalPlaceholder: "লক্ষ্য নেই",
+    minutesPerDay: "মিনিট / দিন",
+    focusTitle: "📌 ফোকাস",
+    focusHint: "একটি বিষয় + ওয়ার্ল্ড পিন করুন যাতে {name}-এর যাত্রা সেই দক্ষতা দিয়ে শুরু হয়। যেকোনো সময় পরিষ্কার করে স্বাভাবিক পথে ফিরে যান।",
+    clearFocus: "✕ ফোকাস পরিষ্কার করুন",
+    readingSoundTitle: "পড়া ও শব্দ",
+    voiceReading: "🔊 ভয়েস পড়া",
+    backgroundMusic: "🎵 ব্যাকগ্রাউন্ড মিউজিক",
+    voiceRecording: "🎙️ ভয়েস রেকর্ডিং",
+    voiceRecordingHint: "বাচ্চা নিজের ভয়েস রেকর্ড করে শুনতে পারে। এটি ডিভাইসে থাকে — কখনো সিঙ্ক হয় না।",
+    volVoice: "ভয়েস",
+    volSfx: "সাউন্ড এফেক্ট",
+    volMusic: "মিউজিক",
+    volVoiceHint: "পড়ে শোনানো ও কথ্য ফিডব্যাক",
+    volSfxHint: "পপ, চাইম ও জেতার শব্দ",
+    volMusicHint: "ব্যাকগ্রাউন্ড মিউজিক",
+    try: "🔊 শুনুন",
+    quietTitle: "🌙 কোয়ায়েট আওয়ার",
+    quietHint: "এই সময়ে অ্যাপ আলতোভাবে ভলিউম কমিয়ে স্ক্রিন ম্লান করে — খেলা কখনো আটকানো হয় না।",
+    quietOn: "🌙 কোয়ায়েট আওয়ার চালু",
+    gentleDim: "🕯️ মৃদু ম্লান",
+    gentleDimHint: "কোয়ায়েট আওয়ারে স্ক্রিন আলতোভাবে ম্লান করে।",
+    on: "চালু",
+    overnightHint: "রাতের উইন্ডো মধ্যরাত পেরোয় — যেমন ২০:০০ → ০৭:০০। ঘুমানোর সময়ের জন্য শেষ সময় পরে রাখুন।",
+    softVolume: "🔉 মৃদু ভলিউম",
+    softVolumeHint: "কোয়ায়েট আওয়ারে অ্যাপ কতটা নরম হবে।",
+    quietVolumeLabel: "কোয়ায়েট আওয়ার ভলিউম",
+    saveSettings: "সেটিংস সংরক্ষণ করুন",
+    saving: "সংরক্ষণ হচ্ছে…",
+    saved: "✓ সংরক্ষিত",
+    unsavedSticky: "সংরক্ষণ করা হয়নি — সেটিংস সংরক্ষণ বাটনে চাপুন।",
   },
 } as const;
 
@@ -354,12 +612,26 @@ export const LEARNING_LANGS = {
  *  these inline (spinner + retry) instead of poisoning the global banner. */
 export const ARCHIVE_LANGS = {
   en: {
+    title: "🗓️ Monthly archive",
+    export: "⬇️ Export CSV",
+    hint: "The last 12 months of {name}’s learning at a glance — rounds, time and the skills that got the most play. Generated right here in your browser from the history we load once, so it works offline after that.",
+    selectMonth: "Select a month",
+    rounds: "rounds",
+    correct: "correct",
+    min: "min",
     loading: "Loading full history…",
     notLoaded: "The archive needs the full history — it loads automatically.",
     failed: "Couldn't load the full history.",
     retry: "Try again",
   },
   bn: {
+    title: "🗓️ মাসিক আর্কাইভ",
+    export: "⬇️ CSV এক্সপোর্ট",
+    hint: "{name}-এর শেখার শেষ ১২ মাস এক নজরে — রাউন্ড, সময় এবং সবচেয়ে বেশি খেলা দক্ষতা। আমরা একবার যে ইতিহাস লোড করি তা থেকেই ব্রাউজারে তৈরি হয়, তাই এরপর অফলাইনে কাজ করে।",
+    selectMonth: "মাস নির্বাচন করুন",
+    rounds: "রাউন্ড",
+    correct: "সঠিক",
+    min: "মিনিট",
     loading: "সম্পূর্ণ ইতিহাস লোড হচ্ছে…",
     notLoaded: "আর্কাইভের জন্য সম্পূর্ণ ইতিহাস দরকার — এটি নিজে নিজেই লোড হয়।",
     failed: "সম্পূর্ণ ইতিহাস লোড করা যায়নি।",
@@ -582,6 +854,19 @@ export const PAUSE_LANGS = {
     onHint: "{name}'s games are paused right now — the app blocks all play with a friendly “learning break” screen until you tap Resume.",
     pause: "⏸️ Pause games now",
     resume: "▶️ Resume games",
+    // #1593/#1602 — confirm before persisting the kill-switch, with the real
+    // resulting state shown so the parent knows exactly what they're doing.
+    confirmPauseTitle: "Pause {name}'s games?",
+    confirmPauseBody: "Every game stops right now and the app shows a friendly “learning break” screen. This stays paused on the server even after a reload — until you resume.",
+    confirmResumeTitle: "Resume {name}'s games?",
+    confirmResumeBody: "{name} can play games again on every device. You can pause again anytime.",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    pausedSaved: "{name}'s games are paused.",
+    resumedSaved: "{name}'s games are resumed.",
+    pauseFailed: "Couldn't pause {name}'s games — try again.",
+    resumeFailed: "Couldn't resume {name}'s games — try again.",
+    saving: "Saving…",
   },
   bn: {
     title: "⏸️ সাথে সাথে বিরতি",
@@ -589,6 +874,17 @@ export const PAUSE_LANGS = {
     onHint: "{name}-এর খেলা এখন থামানো আছে — আপনি Resume চাপা পর্যন্ত অ্যাপ একটি বন্ধুত্বপূর্ণ “শেখার বিরতি” স্ক্রিন দেখাবে।",
     pause: "⏸️ এখন খেলা থামান",
     resume: "▶️ খেলা চালু করুন",
+    confirmPauseTitle: "{name}-এর খেলা থামাবেন?",
+    confirmPauseBody: "সব খেলা সাথে সাথে থেমে যাবে এবং অ্যাপ একটি বন্ধুত্বপূর্ণ “শেখার বিরতি” স্ক্রিন দেখাবে। রিলোডের পরেও এটি সার্ভারে পজড থাকবে — আপনি চালু করা পর্যন্ত।",
+    confirmResumeTitle: "{name}-এর খেলা চালু করবেন?",
+    confirmResumeBody: "{name} আবার সব ডিভাইসে খেলতে পারবে। চাইলে যেকোনো সময় আবার থামাতে পারবেন।",
+    confirm: "নিশ্চিত করুন",
+    cancel: "বাতিল",
+    pausedSaved: "{name}-এর খেলা থামানো আছে।",
+    resumedSaved: "{name}-এর খেলা চালু হয়েছে।",
+    pauseFailed: "{name}-এর খেলা থামানো যায়নি — আবার চেষ্টা করুন।",
+    resumeFailed: "{name}-এর খেলা চালু করা যায়নি — আবার চেষ্টা করুন।",
+    saving: "সংরক্ষণ হচ্ছে…",
   },
 } as const;
 
@@ -609,6 +905,27 @@ export const STREAK_LANGS = {
     minutesWeek: "minutes this week",
     // #1557 — most-played game line in the weekly card
     mostPlayed: "Most played",
+    // #1594 — share-card inline feedback (EN).
+    shareBtn: "Share on WhatsApp",
+    sharePreparing: "Preparing…",
+    shareCopied: "✓ Copied",
+    shareCopy: "Copy link",
+    shareNote: "opens a private, anonymous week snapshot",
+    shareErr: "Couldn't create the share link.",
+    noRounds: "No rounds this week yet — have {name} play a game and this report comes alive.",
+    roundsLabel: "rounds",
+    correctLabel: "correct",
+    daysActiveLabel: "days active",
+    masteredWeek: "🏆 Mastered this week:",
+    // #1598 — today card strings (EN).
+    todayTitle: "☀️ Today",
+    todayEmpty: "Nothing yet today — a little playtime lights up this card. 🌱",
+    roundsWord: "round",
+    roundsWordPlural: "rounds",
+    minPlayed: "min played",
+    masteredWord: "mastered",
+    skillWord: "skill",
+    skillWordPlural: "skills",
   },
   bn: {
     streakTitle: "🔥 {name}-এর ধারাবাহিকতা",
@@ -623,6 +940,27 @@ export const STREAK_LANGS = {
     minutesWeek: "এই সপ্তাহের মিনিট",
     // #1557 — most-played game line in the weekly card
     mostPlayed: "সবচেয়ে বেশি খেলা",
+    // #1594 — share-card inline feedback (BN).
+    shareBtn: "WhatsApp-এ শেয়ার করুন",
+    sharePreparing: "প্রস্তুত হচ্ছে…",
+    shareCopied: "✓ কপি হয়েছে",
+    shareCopy: "লিংক কপি করুন",
+    shareNote: "একটি ব্যক্তিগত, বেনামি সপ্তাহের স্ন্যাপশট খোলে",
+    shareErr: "শেয়ার লিংক তৈরি করা যায়নি।",
+    noRounds: "এই সপ্তাহে এখনো কোনো রাউন্ড নেই — {name} একটা খেলা খেললে এই রিপোর্ট সাজবে।",
+    roundsLabel: "রাউন্ড",
+    correctLabel: "সঠিক",
+    daysActiveLabel: "সক্রিয় দিন",
+    masteredWeek: "🏆 এই সপ্তাহে আয়ত্ত:",
+    // #1598 — today card strings (BN).
+    todayTitle: "☀️ আজ",
+    todayEmpty: "আজ এখনো কিছু নেই — একটু খেললে এই কার্ড আলোকিত হবে। 🌱",
+    roundsWord: "রাউন্ড",
+    roundsWordPlural: "রাউন্ড",
+    minPlayed: "মিনিট খেলা হয়েছে",
+    masteredWord: "আয়ত্ত করেছে",
+    skillWord: "দক্ষতা",
+    skillWordPlural: "দক্ষতা",
   },
 } as const;
 
@@ -847,6 +1185,11 @@ export const NOTIF_LANGS = {
     passwordRequired: "Enter your password to continue.",
     unsupported: "Notifications aren't supported on this device",
     notConfigured: "Notifications aren't configured on this server yet",
+    // #1596 — "not configured" should be plain + one-time dismissible, and the
+    // copy says who fixes it (an admin adds push keys) instead of hiding behind
+    // a dead-end password prompt.
+    notConfiguredNow: "Notifications aren't configured on this server yet — an admin needs to add push keys before you can turn them on.",
+    dismiss: "Dismiss",
     enabled: "Notifications are on",
     disabled: "Notifications are off",
     enabledFailed: "Couldn't enable notifications. Try again.",
@@ -866,6 +1209,8 @@ export const NOTIF_LANGS = {
     passwordRequired: "চালিয়ে যেতে আপনার পাসওয়ার্ড লিখুন।",
     unsupported: "এই ডিভাইসে নোটিফিকেশন সাপোর্টেড নয়",
     notConfigured: "এই সার্ভারে নোটিফিকেশন এখনো কনফিগার করা হয়নি",
+    notConfiguredNow: "এই সার্ভারে নোটিফিকেশন এখনো কনফিগার করা হয়নি — চালু করতে আগে অ্যাডমিনকে পুশ কী যোগ করতে হবে।",
+    dismiss: "খারিজ করুন",
     enabled: "নোটিফিকেশন চালু আছে",
     disabled: "নোটিফিকেশন বন্ধ আছে",
     enabledFailed: "নোটিফিকেশন চালু করা যায়নি। আবার চেষ্টা করুন।",
@@ -896,6 +1241,14 @@ export const HELP_LANGS = {
     stampStep2: "If the date/version looks older than what was announced, the app hasn’t refreshed yet.",
     stampStep3: "Fully close the app and reopen it (or tap the update banner when it appears).",
     stampStep4: "Last resort: remove the home-screen icon and re-add it. Progress is safe — it lives on the server and on-device.",
+    // #1590 — how a kid's device joins (the kid app signs in with the parent
+    // account — no separate device code).
+    pairTitle: "🧒 How your kid's device joins",
+    pairStep1: "On your child's device, open the Numberverse kid app.",
+    pairStep2: "Tap “For parents” in the ⚙️ settings area.",
+    pairStep3: "Sign in with the SAME parent email and password you use here.",
+    pairStep4: "The kids you set up on this portal appear on that device automatically — progress syncs both ways.",
+    pairNote: "No separate device code or PIN — the parent account is the link.",
   },
   bn: {
     title: "❓ সাহায্য — ইনস্টল ও ভয়েস",
@@ -916,6 +1269,13 @@ export const HELP_LANGS = {
     stampStep2: "ঘোষণার চেয়ে তারিখ/ভার্সন পুরনো মনে হলে অ্যাপটি এখনও রিফ্রেশ হয়নি।",
     stampStep3: "অ্যাপ পুরোপুরি বন্ধ করে আবার খুলুন (বা আপডেট ব্যানারে চাপুন)।",
     stampStep4: "শেষ উপায়: হোম-স্ক্রিন আইকন মুছে আবার যোগ করুন। অগ্রগতি নিরাপদ — সেটা সার্ভার ও ডিভাইসে থাকে।",
+    // #1590 — বাচ্চার ডিভাইস যেভাবে যুক্ত হয়।
+    pairTitle: "🧒 বাচ্চার ডিভাইস যেভাবে যুক্ত হয়",
+    pairStep1: "বাচ্চার ডিভাইসে Numberverse কিড অ্যাপ খুলুন।",
+    pairStep2: "⚙️ সেটিংস এলাকায় “For parents” (অভিভাবক) চাপুন।",
+    pairStep3: "আপনি এখানে যে অভিভাবক ইমেইল ও পাসওয়ার্ড ব্যবহার করেন সেটি দিয়েই সাইন ইন করুন।",
+    pairStep4: "আপনি এই পোর্টালে যে বাচ্চাদের যোগ করেন তারা ওই ডিভাইসে নিজে থেকেই দেখা যাবে — অগ্রগতি দুই দিকেই সিঙ্ক হয়।",
+    pairNote: "আলাদা কোনো ডিভাইস কোড বা পিন নেই — অভিভাবক অ্যাকাউন্টই হলো সংযোগ।",
   },
 } as const;
 
@@ -1693,3 +2053,42 @@ export const NAV_GROUPS: {
     ],
   },
 ];
+
+/** 📤 #245/#1597 — public share-card page strings (EN + BN). The page is
+ *  anonymous, so ShareClient defaults to English and offers a tiny EN/বাংলা
+ *  toggle (localStorage `nv_parent_lang` when present). */
+export const SHARE_LANGS = {
+  en: {
+    expired: "This link has expired. Ask for a fresh share card — or sign in at the parent portal to make one.",
+    unavailable: "Couldn't load this week right now. Please try again later.",
+    loading: "Loading this week…",
+    intro: "A week of learning, shared by the family. No names, no personal details — just the numbers. ✨",
+    rounds: "rounds this week",
+    correct: "correct",
+    minutesPlayed: "minutes played",
+    min: "min",
+    daysActive: "days active",
+    skillsMastered: "skills mastered",
+    coinsInWallet: "coins in wallet",
+    favoriteGame: "Favorite game",
+    madeWith: "Made with 💜 by Numberverse · numberverse.org",
+    lang: "EN / বাংলা",
+  },
+  bn: {
+    expired: "এই লিংকটির মেয়াদ শেষ। একটি নতুন শেয়ার কার্ডের জন্য বলুন — অথবা একটি তৈরি করতে অভিভাবক পোর্টালে সাইন ইন করুন।",
+    unavailable: "এই মুহূর্তে এই সপ্তাহের তথ্য লোড করা যাচ্ছে না। পরে আবার চেষ্টা করুন।",
+    loading: "এই সপ্তাহের তথ্য লোড হচ্ছে…",
+    intro: "পরিবারের পক্ষ থেকে শেয়ার করা শেখার এক সপ্তাহ। কোনো নাম নেই, ব্যক্তিগত তথ্য নেই — শুধু সংখ্যা। ✨",
+    rounds: "এই সপ্তাহের রাউন্ড",
+    correct: "সঠিক",
+    minutesPlayed: "মিনিট খেলা হয়েছে",
+    min: "মিনিট",
+    daysActive: "সক্রিয় দিন",
+    skillsMastered: "আয়ত্ত করা দক্ষতা",
+    coinsInWallet: "ওয়ালেটে কয়েন",
+    favoriteGame: "প্রিয় খেলা",
+    madeWith: "💜 দিয়ে বানিয়েছে Numberverse · numberverse.org",
+    lang: "EN / বাংলা",
+  },
+} as const;
+export type ShareLang = keyof typeof SHARE_LANGS;

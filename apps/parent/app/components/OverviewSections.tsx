@@ -77,32 +77,32 @@ export function TodayCard({
   todayRounds,
   todayMinutes,
   todayMastered,
+  wizLang,
 }: {
   todayRounds: number;
   todayMinutes: number;
   todayMastered: string[];
+  wizLang: WizardLang;
 }) {
-
+  const L = STREAK_LANGS[wizLang];
   return (
 <section className="card daily-card" id="today">
   <div className="daily-head">
-    <h2>☀️ Today</h2>
+    <h2>{L.todayTitle}</h2>
     <span className="muted small">
       {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
     </span>
   </div>
   {todayRounds === 0 && todayMastered.length === 0 ? (
-    <p className="muted">
-      Nothing yet today — a little playtime lights up this card. 🌱
-    </p>
+    <p className="muted">{L.todayEmpty}</p>
   ) : (
     <p className="daily-line">
-      <b>{todayRounds}</b> round{todayRounds === 1 ? "" : "s"} ·{" "}
-      <b>{todayMinutes}</b> min played
+      <b>{todayRounds}</b> {todayRounds === 1 ? L.roundsWord : L.roundsWordPlural} ·{" "}
+      <b>{todayMinutes}</b> {L.minPlayed}
       {todayMastered.length > 0 && (
         <>
-          {" "}· 🏆 mastered <b>{todayMastered.length}</b>{" "}
-          {todayMastered.length === 1 ? "skill" : "skills"}:{" "}
+          {" "}· 🏆 {L.masteredWord} <b>{todayMastered.length}</b>{" "}
+          {todayMastered.length === 1 ? L.skillWord : L.skillWordPlural}:{" "}
           <strong>{todayMastered.map((id) => narrTitleEn(id)).join(", ")}</strong>
         </>
       )}
@@ -122,6 +122,7 @@ export function WeeklyCard({
   shareBusy,
   shareLink,
   shareCopied,
+  shareErr,
   handleShareWeekly,
   setShareCopied,
   wizLang,
@@ -135,6 +136,8 @@ export function WeeklyCard({
   shareBusy: boolean;
   shareLink: string | null;
   shareCopied: boolean;
+  /** #1594 — inline share failure (the real reason, not the global banner). */
+  shareErr: string | null;
   handleShareWeekly: () => void;
   setShareCopied: (v: boolean) => void;
   wizLang: WizardLang;
@@ -155,10 +158,15 @@ export function WeeklyCard({
         className="share-btn"
         disabled={shareBusy}
         onClick={() => void handleShareWeekly()}
-        title="Share this week on WhatsApp with a private, anonymous link"
+        title={STREAK_LANGS[wizLang].shareBtn}
       >
-        {shareBusy ? "Preparing…" : "Share on WhatsApp"}
+        {shareBusy ? STREAK_LANGS[wizLang].sharePreparing : STREAK_LANGS[wizLang].shareBtn}
       </button>
+    )}
+    {shareErr && (
+      <p className="err inline" role="alert" style={{ marginTop: 8 }}>
+        {shareErr}
+      </p>
     )}
     {shareLink && (
       <span className="share-link-note">
@@ -176,24 +184,24 @@ export function WeeklyCard({
             }
           }}
         >
-          {shareCopied ? "✓ Copied" : "Copy link"}
+          {shareCopied ? STREAK_LANGS[wizLang].shareCopied : STREAK_LANGS[wizLang].shareCopy}
         </button>
-        <span className="muted small">opens a private, anonymous week snapshot</span>
+        <span className="muted small">{STREAK_LANGS[wizLang].shareNote}</span>
       </span>
     )}
   </div>
   {activeWeekly.rounds === 0 ? (
-    <p className="muted">No rounds this week yet — have {active.name} play a game and this report comes alive.</p>
+    <p className="muted">{STREAK_LANGS[wizLang].noRounds.replace("{name}", active.name)}</p>
   ) : (
     <>
       <div className="stat-tiles">
         <div className="tile">
           <span className="tile-num">{activeWeekly.rounds}</span>
-          <span className="tile-label">rounds</span>
+          <span className="tile-label">{STREAK_LANGS[wizLang].roundsLabel}</span>
         </div>
         <div className="tile">
           <span className="tile-num">{activeWeekly.correct_pct}%</span>
-          <span className="tile-label">correct</span>
+          <span className="tile-label">{STREAK_LANGS[wizLang].correctLabel}</span>
         </div>
         <div className="tile">
           <span className="tile-num">{activeWeekly.minutes}</span>
@@ -201,7 +209,7 @@ export function WeeklyCard({
         </div>
         <div className="tile">
           <span className="tile-num">{activeWeekly.active_days}</span>
-          <span className="tile-label">days active</span>
+          <span className="tile-label">{STREAK_LANGS[wizLang].daysActiveLabel}</span>
         </div>
       </div>
       {/* #1557 — surface the server-computed most-played game (already in WeeklyReport) */}
@@ -234,7 +242,7 @@ export function WeeklyCard({
       </div>
       {activeWeekly.mastered_this_week.length > 0 && (
         <p className="muted small mt-10">
-          🏆 Mastered this week:{" "}
+          {STREAK_LANGS[wizLang].masteredWeek}{" "}
           {/* #1560 — real skill titles + Bangla variant, not dashed slugs */}
           <strong>
             {activeWeekly.mastered_this_week

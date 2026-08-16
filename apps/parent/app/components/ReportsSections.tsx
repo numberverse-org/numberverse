@@ -3,6 +3,7 @@
    Add locale keys to those maps in lib/portal and these cards follow. */
 "use client";
 
+import { useRef } from "react";
 import type { AccelerationRow, MasteryRow } from "../../lib/api";
 import {
   ACCEL_REASONS,
@@ -295,22 +296,37 @@ export function ArchiveCard({
   archiveError?: boolean;
 }) {
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
+  // #1605 — roving tabindex + arrow-key navigation on the month tablist.
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const selIndex = activeArchive.findIndex((m) => m.key === selMonth);
+  const onTabKeyDown = (e: React.KeyboardEvent, idx: number) => {
+    const last = activeArchive.length - 1;
+    let next = -1;
+    if (e.key === "ArrowRight") next = idx >= last ? 0 : idx + 1;
+    else if (e.key === "ArrowLeft") next = idx <= 0 ? last : idx - 1;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = last;
+    if (next >= 0) {
+      e.preventDefault();
+      const m = activeArchive[next];
+      if (m) setArchMonth((prev) => ({ ...prev, [activeId]: m.key }));
+      tabRefs.current[next]?.focus();
+    }
+  };
   return (
 <section className="card archive-card" id="archive">
   <div className="archive-head">
-    <h2>🗓️ Monthly archive</h2>
+    <h2>{ARCHIVE_LANGS[narrLang].title}</h2>
     <button
       className="btn ghost-btn small"
       onClick={exportArchive}
       disabled={!archiveLoaded || activeArchive.length === 0}
     >
-      ⬇️ Export CSV
+      {ARCHIVE_LANGS[narrLang].export}
     </button>
   </div>
   <p className="muted small">
-    The last 12 months of {active.name}’s learning at a glance — rounds, time and the
-    skills that got the most play. Generated right here in your browser from the
-    history we load once, so it works offline after that.
+    {ARCHIVE_LANGS[narrLang].hint.replace("{name}", active.name)}
   </p>
   {!archiveLoaded ? (
     <div className="muted archive-load">
@@ -332,23 +348,30 @@ export function ArchiveCard({
     </div>
   ) : (
     <>
-      <div className="archive-grid" role="tablist" aria-label="Select a month">
-        {activeArchive.map((m) => {
+      <div className="archive-grid" role="tablist" aria-label={ARCHIVE_LANGS[narrLang].selectMonth}>
+        {activeArchive.map((m, i) => {
           const mm = rollingMonths(12).find((x) => x.key === m.key);
           const active = m.key === selMonth;
           return (
             <button
               key={m.key}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
               className={`archive-month${active ? " on" : ""}${m.rounds === 0 ? " empty" : ""}`}
               onClick={() => setArchMonth((prev) => ({ ...prev, [activeId]: m.key }))}
               role="tab"
               aria-selected={active}
+              // #1605 — roving tabindex: only the selected tab is in the Tab
+              // order; arrows/Home/End move selection + focus.
+              tabIndex={active ? 0 : -1}
+              onKeyDown={(e) => onTabKeyDown(e, i)}
             >
               <span className="archive-month-label">
                 {narrLang === "bn" ? mm?.labelBn : mm?.labelEn}
               </span>
               <span className="archive-month-num">
-                {m.rounds === 0 ? "—" : `${m.rounds} rounds`}
+                {m.rounds === 0 ? "—" : `${m.rounds} ${ARCHIVE_LANGS[narrLang].rounds}`}
               </span>
             </button>
           );
@@ -357,9 +380,9 @@ export function ArchiveCard({
       {selSummary && (
         <div className="archive-detail">
           <div className="archive-stats">
-            <span className="archive-stat"><b>{selSummary.rounds}</b> rounds</span>
-            <span className="archive-stat"><b>{selSummary.rounds ? Math.round((selSummary.correct / selSummary.rounds) * 100) : 0}%</b> correct</span>
-            <span className="archive-stat"><b>{selSummary.minutes}</b> min</span>
+            <span className="archive-stat"><b>{selSummary.rounds}</b> {ARCHIVE_LANGS[narrLang].rounds}</span>
+            <span className="archive-stat"><b>{selSummary.rounds ? Math.round((selSummary.correct / selSummary.rounds) * 100) : 0}%</b> {ARCHIVE_LANGS[narrLang].correct}</span>
+            <span className="archive-stat"><b>{selSummary.minutes}</b> {ARCHIVE_LANGS[narrLang].min}</span>
           </div>
           {selSummary.top.length > 0 && (
             <ul className="archive-top">

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -8,7 +7,6 @@ import {
   SKILLS,
   A11Y_DEFAULTS,
   a11yStorageKey,
-  a11yToStorage,
   parseA11yPrefs,
   type A11yPrefs,
 } from "@numberverse/core";
@@ -59,22 +57,20 @@ import {
 import { worksheetFor, type WorksheetProblem } from "../../lib/worksheet";
 import {
   ACCOUNT_LANGS,
-  A11Y_LANGS,
-  AVATARS,
   BANNER_LANGS,
   DEFAULT_SETTINGS,
+  KID_FORM_LANGS,
   LOADING_LANGS,
   NAV_GROUPS,
   NOTIF_LANGS,
+  PAIR_LANGS,
   REGEN_LANGS,
   SUBJECTS,
-  SYNC_LANGS,
   THEME_KEY,
-  THEME_LANGS,
+  TOPBAR_LANGS,
   WIZARD_LANGS,
   WizardLang,
   archiveToCsv,
-  avatarName,
   buildFlaggedSkills,
   buildMissedQuestions,
   buildMonthlyArchive,
@@ -92,6 +88,13 @@ import {
 } from "../lib/portal";
 import { sanitizeDisplayName, sanitizeDownloadName } from "../sanitize";
 import LearningControls from "../components/LearningControls";
+import ConfirmDialog from "../components/ConfirmDialog";
+import PortalHeader from "../components/PortalHeader";
+import OnboardingCard from "../components/OnboardingCard";
+import EmptyState from "../components/EmptyState";
+import KidSwitcher from "../components/KidSwitcher";
+import SummaryCard from "../components/SummaryCard";
+import AuthGate from "../components/AuthGate";
 import { FamilyOverview, TodayCard, WeeklyCard, MasteryTimeline } from "../components/OverviewSections";
 import {
   StoriesCard,
@@ -325,6 +328,20 @@ export default function ParentDashboard() {
   const [shareBusy, setShareBusy] = useState<Record<string, boolean>>({});
   const [shareLink, setShareLink] = useState<Record<string, string | null>>({});
   const [shareCopied, setShareCopied] = useState<Record<string, boolean>>({});
+  // #1594 — per-kid share failure, shown INLINE in the share dialog (not the
+  // global banner). Cleared on a fresh attempt.
+  const [shareErr, setShareErr] = useState<Record<string, string | null>>({});
+
+  // #1595 — inline duplicate / kid-count guard. Replaces the previous native
+  // `window.confirm` (headless-incompatible + no a11y). The armed guard's
+  // "Continue" runs `confirmDupGuard`, which creates the payload captured in
+  // `dupGuardPayloadRef`.
+  const [dupGuard, setDupGuard] = useState<{ kind: "dup" | "many"; name: string; count: number; via: "add" | "onboard" } | null>(null);
+  const dupGuardPayloadRef = useRef<NewKid | null>(null);
+  const dupGuardBusyRef = useRef(false);
+  // #1589 — bumped after add/delete so the edit-form prefill re-syncs even when
+  // the active kid id did not change.
+  const [prefillTick, setPrefillTick] = useState(0);
 
   // #7/#85 — local diagnostics: when the dashboard data last synced (set on
   // every successful refreshAll), whether the diagnostics card is open, and the
@@ -703,13 +720,9 @@ export default function ParentDashboard() {
         return;
       }
       setPendingSwitchId(null);
-      // #1529/#1530 — never carry one kid's danger-zone confirms or half-typed
-      // edit form over to the next kid. Reset before the active id flips.
+      // #1529 — never carry one kid's danger-zone confirms over to the next kid.
       setConfirmReset(false);
       setConfirmDelete(false);
-      setEditName("");
-      setEditAvatar("🦊");
-      setEditBirthYear(defaultBirthYear());
       // #1532 — remember the selected kid across reloads (same key the kid app
       // already reads for its own launches).
       try {
@@ -767,6 +780,21 @@ export default function ParentDashboard() {
     }
     void switchKid(id, { force: true });
   }
+
+  // #1589 — the edit-kid form must open PRE-FILLED with the active kid's current
+  // values, not a blank "add" form. Track the last key we prefilled from so we
+  // never clobber the parent's in-progress typing on unrelated re-renders.
+  const editPrefillKeyRef = useRef("");
+  useEffect(() => {
+    const kid = kids.find((k) => k.id === activeId);
+    if (!kid) return;
+    const key = `${kid.id}|${kid.name}|${kid.avatar ?? ""}|${kid.birth_year ?? ""}`;
+    if (editPrefillKeyRef.current === key) return;
+    editPrefillKeyRef.current = key;
+    setEditName(kid.name);
+    setEditAvatar(kid.avatar ?? "🦊");
+    setEditBirthYear(kid.birth_year ?? defaultBirthYear());
+  }, [kids, activeId, prefillTick]);
 
   // #238 — load the kid's saved narrative draft (edit-safe: localStorage).
   useEffect(() => {
@@ -875,6 +903,29 @@ export default function ParentDashboard() {
     }));
   }
 
+  /** #1593 — the parent's pause decision is persisted SERVER-SIDE immediately
+   *  (not just local state). The kill-switch survives reloads and applies on
+   *  every device. */
+  async function handleTogglePause() {
+    if (!token || !activeId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const next = !((settings[activeId] ?? DEFAULT_SETTINGS).paused ?? false);
+      const saved = await saveKidSettings(token, activeId, {
+        ...(settings[activeId] ?? DEFAULT_SETTINGS),
+        paused: next,
+      });
+      setSettings((prev) => ({ ...prev, [activeId]: saved }));
+      setSavedSettings((prev) => ({ ...prev, [activeId]: saved }));
+      setSavedTick((t) => t + 1);
+    } catch {
+      setError("Failed to save pause state.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleReset() {
     if (!token || !activeId || !confirmReset) return;
     setBusy(true);
@@ -964,16 +1015,60 @@ export default function ParentDashboard() {
       }
       setConfirmDelete(false);
       setShowAdd(false);
-      // #1530 — a deleted kid's edit form must not linger for the next one.
-      setEditName("");
-      setEditAvatar("🦊");
-      setEditBirthYear(defaultBirthYear());
       await refreshAll(token);
+      // #1589 — re-sync the edit form to whatever kid is active now.
+      setPrefillTick((t) => t + 1);
     } catch {
       setError("Failed to delete kid.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function performCreate(payload: NewKid, via: "add" | "onboard") {
+    if (!token || dupGuardBusyRef.current) return;
+    dupGuardBusyRef.current = true;
+    if (via === "add") setBusy(true);
+    else setOnboardBusy(true);
+    setError(null);
+    setOnboardErr(null);
+    try {
+      await createKid(token, payload);
+      if (via === "onboard") {
+        // #1508 — clear the birth year so the next add starts fresh, not with
+        // the previous kid's year silently carried over.
+        setEditName("");
+        setEditAvatar("🦊");
+        setEditBirthYear(defaultBirthYear());
+      } else {
+        setShowAdd(false);
+        // #1589 — re-sync the edit form to the (now possibly switched) active kid.
+        setPrefillTick((t) => t + 1);
+      }
+      await refreshAll(token);
+      setSavedTick((t) => t + 1);
+    } catch {
+      if (via === "onboard") {
+        // Keep the form values so "Add kid" is a one-click retry once online.
+        setOnboardErr(WIZARD_LANGS[wizLang].err.replace("{name}", payload.name ?? ""));
+      } else {
+        setError("Failed to add kid.");
+      }
+    } finally {
+      dupGuardBusyRef.current = false;
+      if (via === "add") setBusy(false);
+      else setOnboardBusy(false);
+    }
+  }
+
+  /** #1595 — the inline duplicate / kid-count guard's "Continue". Creates the
+   *  kid that was captured when the guard armed, in the flow it came from. */
+  function confirmDupGuard() {
+    const via = dupGuard?.via;
+    const payload = dupGuardPayloadRef.current;
+    setDupGuard(null);
+    if (!via || !payload) return;
+    void performCreate(payload, via);
   }
 
   async function handleCreate() {
@@ -984,39 +1079,24 @@ export default function ParentDashboard() {
       setError(WIZARD_LANGS[wizLang].birthRangeErr);
       return;
     }
-    // #1510 — client-side guard: duplicates are indistinguishable in the
-    // avatar/name/year switcher, so ask before creating a second identical kid.
+    // #1510/#1595 — client-side guard: duplicates are indistinguishable in the
+    // avatar/name/year switcher, so ask BEFORE creating a second identical kid
+    // (or an 8th+). Uses the app's inline confirm dialog, never window.confirm.
     const name = editName.trim();
     const duplicate = kids.some((k) => k.name.trim().toLowerCase() === name.toLowerCase());
-    if (duplicate) {
-      // #1829 — strip control chars/newlines before interpolating into the
-      // native confirm() so a pasted/weird name can't break the dialog message.
-      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", sanitizeDisplayName(name)));
-      if (!ok) return;
-    } else if (kids.length >= 8) {
-      const ok = window.confirm(WIZARD_LANGS[wizLang].manyKidsWarn.replace("{count}", String(kids.length)));
-      if (!ok) return;
+    if (duplicate || kids.length >= 8) {
+      dupGuardPayloadRef.current = { name, avatar: editAvatar, birth_year: editBirthYear } satisfies NewKid;
+      setDupGuard({
+        kind: duplicate ? "dup" : "many",
+        // #1829 — strip control chars/newlines so a weird pasted name can't
+        // break the dialog.
+        name: sanitizeDisplayName(name),
+        count: kids.length,
+        via: "add",
+      });
+      return;
     }
-    setBusy(true);
-    setError(null);
-    try {
-      await createKid(token, {
-        name,
-        avatar: editAvatar,
-        birth_year: editBirthYear,
-      } satisfies NewKid);
-      setShowAdd(false);
-      setEditName("");
-      setEditAvatar("🦊");
-      // #1508 — don't let the previous kid's birth year pre-fill the next add.
-      setEditBirthYear(defaultBirthYear());
-      await refreshAll(token);
-      setSavedTick((t) => t + 1);
-    } catch {
-      setError("Failed to add kid.");
-    } finally {
-      setBusy(false);
-    }
+    await performCreate({ name, avatar: editAvatar, birth_year: editBirthYear } satisfies NewKid, "add");
   }
 
   /** #246 — guided-first-run add. Same server call, but the wizard STAYS open so
@@ -1030,40 +1110,21 @@ export default function ParentDashboard() {
       setOnboardErr(WIZARD_LANGS[wizLang].birthRangeErr);
       return;
     }
-    // #1510 — the wizard stays open for back-to-back adds, so duplicate names
-    // would be easy to create by accident. Confirm before creating another.
+    // #1510/#1595 — the wizard stays open for back-to-back adds, so duplicate
+    // names would be easy to create by accident. Confirm before creating.
     const name = editName.trim();
     const duplicate = kids.some((k) => k.name.trim().toLowerCase() === name.toLowerCase());
-    if (duplicate) {
-      // #1829 — strip control chars/newlines before interpolating into the
-      // native confirm() so a pasted/weird name can't break the dialog message.
-      const ok = window.confirm(WIZARD_LANGS[wizLang].dupConfirm.replace("{name}", sanitizeDisplayName(name)));
-      if (!ok) return;
-    } else if (kids.length >= 8) {
-      const ok = window.confirm(WIZARD_LANGS[wizLang].manyKidsWarn.replace("{count}", String(kids.length)));
-      if (!ok) return;
+    if (duplicate || kids.length >= 8) {
+      dupGuardPayloadRef.current = { name, avatar: editAvatar, birth_year: editBirthYear } satisfies NewKid;
+      setDupGuard({
+        kind: duplicate ? "dup" : "many",
+        name: sanitizeDisplayName(name),
+        count: kids.length,
+        via: "onboard",
+      });
+      return;
     }
-    setOnboardBusy(true);
-    setOnboardErr(null);
-    try {
-      await createKid(token, {
-        name,
-        avatar: editAvatar,
-        birth_year: editBirthYear,
-      } satisfies NewKid);
-      setEditName("");
-      setEditAvatar("🦊");
-      // #1508 — clear the birth year so the next add starts fresh, not with
-      // the previous kid's year silently carried over.
-      setEditBirthYear(defaultBirthYear());
-      await refreshAll(token);
-      setSavedTick((t) => t + 1);
-    } catch {
-      // Keep the form values so "Add kid" is a one-click retry once online.
-      setOnboardErr(WIZARD_LANGS[wizLang].err.replace("{name}", name));
-    } finally {
-      setOnboardBusy(false);
-    }
+    await performCreate({ name, avatar: editAvatar, birth_year: editBirthYear } satisfies NewKid, "onboard");
   }
 
   /** #246 — leave the wizard for the dashboard. Marks this browser done so the
@@ -1084,7 +1145,8 @@ export default function ParentDashboard() {
         avatar: editAvatar,
         birth_year: editBirthYear,
       } satisfies NewKid);
-      setEditName("");
+      // #1589 — don't blank the edit form; the prefill effect re-syncs it to
+      // the freshly-renamed kid after refreshAll.
       await refreshAll(token);
       setSavedTick((t) => t + 1);
     } catch {
@@ -1252,18 +1314,34 @@ export default function ParentDashboard() {
     }
   }
 
-  /** #1535 — the parent-facing toggle. OFF → unsubscribe. ON → open the inline
-   *  password re-confirm first (the API has no dedicated /auth/verify yet, so
-   *  the successful POST /push/subscribe is the documented reauth gate). */
+  /** #1535/#1596 — the parent-facing toggle. OFF → unsubscribe. ON → check the
+   *  feature is actually CONFIGURED (browser support + VAPID key) BEFORE asking
+   *  for a password re-confirm. If push isn't configured, say so plainly with a
+   *  one-time dismissible message — never a dead-end password prompt. */
   function handleNotifToggle() {
     if (!token || notifBusy) return;
     setNotifMsg(null);
     if (notifState === "on") {
       void turnOffNotifications();
-    } else {
-      setNotifAskPass(true);
-      setNotifPassword("");
+      return;
     }
+    // #1596 — surface "not configured" / "unsupported" BEFORE the password gate.
+    if (!browserSupportsPush()) {
+      setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].unsupported });
+      return;
+    }
+    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+      setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].notConfiguredNow });
+      return;
+    }
+    // Configured + supported → the normal parent re-confirm gate.
+    setNotifAskPass(true);
+    setNotifPassword("");
+  }
+
+  /** #1596 — dismiss the one-time "not configured" message. */
+  function dismissNotifMsg() {
+    setNotifMsg(null);
   }
 
   /** #1535 — enable after the parent re-enters their password. We only perform
@@ -1539,7 +1617,7 @@ export default function ParentDashboard() {
     if (!token || !activeId || shareBusy[activeId]) return;
     const kidId = activeId;
     setShareBusy((prev) => ({ ...prev, [kidId]: true }));
-    setError(null);
+    setShareErr((prev) => ({ ...prev, [kidId]: null }));
     try {
       const shareToken = await getShareToken(token, kidId);
       const base = (typeof window !== "undefined" ? window.location.origin : "") + (process.env.NEXT_PUBLIC_BASE_PATH ?? "");
@@ -1550,8 +1628,21 @@ export default function ParentDashboard() {
       // #1531 — store the minted link under the kid it belongs to.
       setShareLink((prev) => ({ ...prev, [kidId]: link }));
       setShareCopied((prev) => ({ ...prev, [kidId]: false }));
-    } catch {
-      setError("Couldn't create the share link.");
+    } catch (e) {
+      // #1594 — failure stays INLINE in the share dialog with the real reason
+      // (session vs network vs API detail), never the global banner.
+      const err = e as { status?: unknown; message?: unknown } | null;
+      const status = typeof err?.status === "number" ? err.status : null;
+      const detail = typeof err?.message === "string" && err.message ? err.message : null;
+      setShareErr((prev) => ({
+        ...prev,
+        [kidId]:
+          status === 401 || status === 403
+            ? ACCOUNT_LANGS[wizLang].sessionEnded
+            : detail && detail !== "Failed to create share link"
+              ? detail
+              : "Couldn't create the share link.",
+      }));
     } finally {
       setShareBusy((prev) => ({ ...prev, [kidId]: false }));
     }
@@ -1587,27 +1678,7 @@ export default function ParentDashboard() {
   // session is being checked we show a neutral shell, and any failure (invalid
   // OR unverifiable) lands on the login gate — never on parent data.
   if (authState !== "ok") {
-    return (
-      <main className="shell">
-        <div className="logo">🔢</div>
-        <h1>Parent Portal</h1>
-        {authState === "checking" ? (
-          <p className="center muted"><span className="spinner" aria-hidden />Checking your session…</p>
-        ) : (
-          <>
-            <p className="center muted">Sign in to manage your children’s learning.</p>
-            {authNote && <p className="center err mt-8">{authNote}</p>}
-          </>
-        )}
-        <div className="center mt-24">
-          {authState === "checking" ? (
-            <Link className="btn btn-small ghost" href="/login">Sign in instead →</Link>
-          ) : (
-            <Link className="btn" href="/login">Go to login →</Link>
-          )}
-        </div>
-      </main>
-    );
+    return <AuthGate authState={authState} authNote={authNote} wizLang={wizLang} />;
   }
 
   // #1505 — the load-time error string is developer-speak; render the
@@ -1629,193 +1700,40 @@ export default function ParentDashboard() {
 
   return (
     <main className={`shell${!initialLoading && kids.length > 0 ? " shell-wide" : ""}`}>
-      <header className="topbar">
-        <span className="brand">🔢 <b>Numberverse</b> <span className="muted">Parent Portal</span></span>
-        {/* 🧏 #250 — global accessibility toggles (shared with the kid app). */}
-        <span className="a11y-toggle-group" role="group" aria-label="Accessibility">
-          <button
-            className={`a11y-toggle${a11y.bigText ? " on" : ""}`}
-            onClick={() => {
-              const next = { ...a11y, bigText: !a11y.bigText };
-              setA11y(next);
-              try {
-                localStorage.setItem(a11yStorageKey(), a11yToStorage(next));
-              } catch {
-                /* ignore */
-              }
-            }}
-            aria-pressed={a11y.bigText}
-            title={A11Y_LANGS[wizLang].bigText}
-            aria-label={A11Y_LANGS[wizLang].bigText}
-          >
-            🔍 <span className="a11y-toggle-label">{A11Y_LANGS[wizLang].bigText}</span>
-          </button>
-          <button
-            className={`a11y-toggle${a11y.highContrast ? " on" : ""}`}
-            onClick={() => {
-              const next = { ...a11y, highContrast: !a11y.highContrast };
-              setA11y(next);
-              try {
-                localStorage.setItem(a11yStorageKey(), a11yToStorage(next));
-              } catch {
-                /* ignore */
-              }
-            }}
-            aria-pressed={a11y.highContrast}
-            title={A11Y_LANGS[wizLang].highContrast}
-            aria-label={A11Y_LANGS[wizLang].highContrast}
-          >
-            🎨 <span className="a11y-toggle-label">{A11Y_LANGS[wizLang].highContrast}</span>
-          </button>
-          {/* 🎨 #254 — dashboard light/dark theme toggle (portal-only, persisted). */}
-          <button
-            className={`a11y-toggle${theme === "light" ? " on" : ""}`}
-            onClick={() => {
-              const next = theme === "light" ? "dark" : "light";
-              setTheme(next);
-              try {
-                localStorage.setItem(THEME_KEY, next);
-              } catch {
-                /* ignore */
-              }
-            }}
-            aria-pressed={theme === "light"}
-            title={THEME_LANGS[wizLang][theme === "light" ? "lightOn" : "darkOn"]}
-            aria-label={THEME_LANGS[wizLang][theme === "light" ? "lightOn" : "darkOn"]}
-          >
-            {theme === "light" ? "☀️" : "🌙"} <span className="a11y-toggle-label">{THEME_LANGS[wizLang][theme]}</span>
-          </button>
-        </span>
-        {/* #85 — sync status chip + manual sync (own-API only, no analytics).
-            #1553/#1554 — label this suffix "portal" (it is the portal's own
-            refreshAll fetch, NOT the kid device's push) and hide it when the
-            roster is empty so the chip can't claim a stale "synced X ago". */}
-        <span
-          className={`sync-chip${online ? " on" : " off"}`}
-          title={
-            lastSync && kids.length > 0
-              ? `${SYNC_LANGS[wizLang].portal} ${SYNC_LANGS[wizLang].synced} ${relTime(lastSync, wizLang)} ${SYNC_LANGS[wizLang].ago}`
-              : SYNC_LANGS[wizLang].justNow
-          }
-        >
-          <span className={`sync-dot ${online ? "ok" : "bad"}`} aria-hidden />
-          {online ? SYNC_LANGS[wizLang].online : SYNC_LANGS[wizLang].offline}
-          {lastSync && online && kids.length > 0 && (
-            <span className="sync-when">
-              {" · "}
-              {SYNC_LANGS[wizLang].portal} {SYNC_LANGS[wizLang].synced} {relTime(lastSync, wizLang)}
-            </span>
-          )}
-          <button
-            className="sync-btn"
-            disabled={syncingNow}
-            onClick={() => void manualSync()}
-            aria-label={SYNC_LANGS[wizLang].syncNow}
-            title={SYNC_LANGS[wizLang].syncNow}
-          >
-            {syncingNow ? SYNC_LANGS[wizLang].syncing : SYNC_LANGS[wizLang].syncNow}
-          </button>
-        </span>
-        {/* #1553 — the kid DEVICE's sync signal (persisted by the kid app at
-            `nv_sync_signal`). Shows only when the key exists; a pending outbox
-            gets a warning badge so airplane-mode backlog is visible. */}
-        {deviceSync && (deviceSync.lastSuccessAt !== null || deviceSync.pendingCount > 0) && (
-          <span
-            className="sync-chip"
-            title={
-              deviceSync.lastSuccessAt !== null
-                ? `${SYNC_LANGS[wizLang].device} · ${SYNC_LANGS[wizLang].deviceLastSynced} ⌁ ${relTime(deviceSync.lastSuccessAt, wizLang)} ${SYNC_LANGS[wizLang].ago}`
-                : SYNC_LANGS[wizLang].device
-            }
-          >
-            <span aria-hidden>⌁</span>
-            <span className="sync-when">{SYNC_LANGS[wizLang].device}</span>
-            {deviceSync.lastSuccessAt !== null && (
-              <span className="sync-when">
-                {" · "}
-                {SYNC_LANGS[wizLang].deviceLastSynced} ⌁ {relTime(deviceSync.lastSuccessAt, wizLang)} {SYNC_LANGS[wizLang].ago}
-              </span>
-            )}
-            {deviceSync.pendingCount > 0 && (
-              <span style={{ color: "#fbbf24", fontWeight: 800 }}>
-                {" · "}⚠ {SYNC_LANGS[wizLang].pending.replace(
-                  "{n}",
-                  wizLang === "bn" ? toBnNum(deviceSync.pendingCount) : String(deviceSync.pendingCount)
-                )}
-              </span>
-            )}
-          </span>
-        )}
-        {/* #1535 — parent-gated notifications opt-in. Only the authenticated
-            dashboard branch reaches this (anon returns at the login gate above).
-            ON asks for a password re-confirm; OFF unsubscribes immediately. */}
-        <span className="notif-toggle-wrap">
-          {!notifSupported ? (
-            <span className="notif-muted">{NOTIF_LANGS[wizLang].unsupported}</span>
-          ) : notifState === "loading" ? (
-            <span className="notif-muted">{NOTIF_LANGS[wizLang].loading}</span>
-          ) : (
-            <>
-              <span className={`sync-chip${notifState === "on" ? " on" : ""}`}>
-                <span aria-hidden>🔔</span>
-                <span>{NOTIF_LANGS[wizLang].label}</span>
-                <button
-                  className="sync-btn"
-                  disabled={notifBusy}
-                  aria-pressed={notifState === "on"}
-                  onClick={handleNotifToggle}
-                  title={notifState === "on" ? NOTIF_LANGS[wizLang].enabled : NOTIF_LANGS[wizLang].needParent}
-                >
-                  {notifState === "on" ? NOTIF_LANGS[wizLang].on : NOTIF_LANGS[wizLang].off}
-                </button>
-              </span>
-              {notifAskPass && (
-                <span className="notif-prompt">
-                  <span>{NOTIF_LANGS[wizLang].needParent}</span>
-                  <span>{NOTIF_LANGS[wizLang].passwordLabel}</span>
-                  <input
-                    type="password"
-                    value={notifPassword}
-                    onChange={(e) => setNotifPassword(e.target.value)}
-                    placeholder={NOTIF_LANGS[wizLang].passwordPlaceholder}
-                    aria-label={NOTIF_LANGS[wizLang].passwordLabel}
-                    autoFocus
-                  />
-                  <button
-                    className="btn btn-small"
-                    disabled={notifBusy}
-                    onClick={() => void confirmEnableNotifications()}
-                  >
-                    {notifBusy ? NOTIF_LANGS[wizLang].verifying : NOTIF_LANGS[wizLang].confirm}
-                  </button>
-                  <button
-                    className="btn btn-small ghost"
-                    disabled={notifBusy}
-                    onClick={() => {
-                      setNotifAskPass(false);
-                      setNotifPassword("");
-                      setNotifMsg(null);
-                    }}
-                  >
-                    {NOTIF_LANGS[wizLang].cancel}
-                  </button>
-                </span>
-              )}
-              {notifMsg && (
-                <span className={`notif-msg ${notifMsg.kind === "err" ? "err" : notifMsg.kind === "ok" ? "ok" : "muted"}`} role="status">
-                  {notifMsg.text}
-                </span>
-              )}
-            </>
-          )}
-        </span>
-        <span className="topbar-user" title={profile?.email ?? "signed in"}>
-          {profile?.display_name ?? "Parent"} 👨‍👩‍👧
-        </span>
-        <button className="btn btn-small ghost" onClick={() => token && doSignout(token)}>
-          Sign out
-        </button>
-      </header>
+      <PortalHeader
+        a11y={a11y}
+        setA11y={setA11y}
+        theme={theme}
+        setTheme={(next) => {
+          setTheme(next);
+          try { localStorage.setItem(THEME_KEY, next); } catch { /* ignore */ }
+          document.documentElement.classList.toggle("theme-light", next === "light");
+        }}
+        online={online}
+        lastSync={lastSync}
+        kidsCount={kids.length}
+        syncingNow={syncingNow}
+        manualSync={() => void manualSync()}
+        deviceSync={deviceSync}
+        notifSupported={notifSupported}
+        notifState={notifState}
+        notifBusy={notifBusy}
+        notifAskPass={notifAskPass}
+        notifPassword={notifPassword}
+        setNotifPassword={setNotifPassword}
+        onToggleNotif={handleNotifToggle}
+        confirmEnableNotifications={() => void confirmEnableNotifications()}
+        cancelNotifAsk={() => {
+          setNotifAskPass(false);
+          setNotifPassword("");
+          setNotifMsg(null);
+        }}
+        notifMsg={notifMsg}
+        dismissNotifMsg={dismissNotifMsg}
+        profile={profile}
+        onSignOut={() => token && doSignout(token)}
+        wizLang={wizLang}
+      />
 
       {error && (
         <div
@@ -1841,32 +1759,43 @@ export default function ParentDashboard() {
         </div>
       )}
 
-      {/* #1558 — lightweight two-tap confirm before regeneration discards an
-          edited narrative. Rendered in page.tsx so ReportsSections stays dumb;
-          window.confirm is avoided (headless-incompatible). */}
-      {regenConfirm && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={REGEN_LANGS[wizLang].confirm}
-          style={{ position: "fixed", inset: 0, background: "rgba(0, 0, 0, 0.55)", display: "grid", placeItems: "center", zIndex: 50, padding: 16 }}
-        >
-          <div className="card" style={{ maxWidth: 440, width: "100%", margin: 0 }}>
-            <p style={{ margin: "0 0 12px" }}>{REGEN_LANGS[wizLang].confirm}</p>
-            <div className="confirm-group">
-              <button className="btn ghost" onClick={() => setRegenConfirm(false)}>
-                {REGEN_LANGS[wizLang].cancel}
-              </button>
-              <button className="btn primary" onClick={doRegenerateNarr}>
-                {REGEN_LANGS[wizLang].continue}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* #1558/#1600 — two-tap confirm before regeneration discards an edited
+          narrative. Rendered via the shared ConfirmDialog (focus trap,
+          autofocus, Escape, restore-on-close) instead of ad-hoc markup. */}
+      <ConfirmDialog
+        open={regenConfirm}
+        title={REGEN_LANGS[wizLang].confirm}
+        body=""
+        confirmLabel={REGEN_LANGS[wizLang].continue}
+        cancelLabel={REGEN_LANGS[wizLang].cancel}
+        onConfirm={doRegenerateNarr}
+        onCancel={() => setRegenConfirm(false)}
+      />
       {regenDiscarded && (
         <p className="hint center" role="status">{REGEN_LANGS[wizLang].discarded}</p>
       )}
+
+      {/* #1595 — inline duplicate / kid-count guard (replaces window.confirm). */}
+      <ConfirmDialog
+        open={dupGuard !== null}
+        title={
+          dupGuard?.kind === "dup"
+            ? KID_FORM_LANGS[wizLang].dupTitle.replace("{name}", dupGuard?.name ?? "")
+            : KID_FORM_LANGS[wizLang].manyTitle.replace("{count}", String(dupGuard?.count ?? 0))
+        }
+        body={
+          dupGuard?.kind === "dup"
+            ? KID_FORM_LANGS[wizLang].dupBody.replace("{name}", dupGuard?.name ?? "")
+            : KID_FORM_LANGS[wizLang].manyBody.replace("{count}", String(dupGuard?.count ?? 0))
+        }
+        confirmLabel={KID_FORM_LANGS[wizLang].confirm}
+        cancelLabel={KID_FORM_LANGS[wizLang].cancel}
+        onConfirm={confirmDupGuard}
+        onCancel={() => {
+          setDupGuard(null);
+          dupGuardPayloadRef.current = null;
+        }}
+      />
 
       {/* #1516 — first data load: a neutral skeleton over the overview area
           instead of every card flashing its misleading "nothing yet" empty
@@ -1880,117 +1809,44 @@ export default function ParentDashboard() {
 
       {/* #246 — guided multi-kid onboarding (first run with no kids) */}
       {onboarding === "open" && !error && (
-        <section className="card onboarding-card">
-          <div className="onboard-head">
-            <h2>{WIZARD_LANGS[wizLang].title}</h2>
-            <button
-              className="onboard-lang"
-              onClick={() => {
-                const next: WizardLang = wizLang === "en" ? "bn" : "en";
-                setWizLang(next);
-                localStorage.setItem("nv_parent_lang", next);
-              }}
-              title="EN / বাংলা"
-            >
-              {WIZARD_LANGS[wizLang].lang}
-            </button>
-          </div>
-          <p className="onboard-step">
-            {kids.length === 0 ? WIZARD_LANGS[wizLang].step0 : WIZARD_LANGS[wizLang].stepN}
-          </p>
-
-          <div className="avatar-row">
-            {AVATARS.map((a) => (
-              <button
-                key={a}
-                className={`avatar-pick${editAvatar === a ? " on" : ""}`}
-                onClick={() => setEditAvatar(a)}
-                aria-label={avatarName(a, wizLang)}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-          <div className="form-grid">
-            <label>
-              {WIZARD_LANGS[wizLang].nameLabel}
-              <input
-                id="onboard-name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder={wizLang === "en" ? "e.g. Aria" : "যেমন: আরিয়া"}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && editName.trim() && !onboardBusy) void handleOnboardCreate();
-                }}
-              />
-            </label>
-            <label>
-              {WIZARD_LANGS[wizLang].birthLabel}
-              <input
-                type="number"
-                min={2010}
-                max={2030}
-                value={editBirthYear}
-                onChange={(e) => {
-                  // #1539 — ignore out-of-range / empty input rather than
-                  // silently snapping it to a wrong default.
-                  if (e.target.value === "") return;
-                  const v = Number(e.target.value);
-                  if (v >= 2010 && v <= 2030) setEditBirthYear(v);
-                }}
-              />
-              {/* #1540 — keep the WHY visible right at the field. */}
-              {editBirthYear >= 2010 && editBirthYear <= 2030 && (
-                <span className="hint">{WIZARD_LANGS[wizLang].birthHint}</span>
-              )}
-            </label>
-          </div>
-          <div className="row-buttons">
-            <button className="btn primary" disabled={onboardBusy || !editName.trim()} onClick={handleOnboardCreate}>
-              {onboardBusy ? WIZARD_LANGS[wizLang].adding : WIZARD_LANGS[wizLang].add}
-            </button>
-          </div>
-
-          {onboardErr && <p className="err inline">{onboardErr}</p>}
-
-          {kids.length >= 1 && (
-            <div className="onboard-added">
-              <div className="onboard-chips">
-                {kids.map((k) => (
-                  <span className="onboard-chip" key={k.id}>
-                    {k.avatar ?? "🧒"} {k.name}
-                  </span>
-                ))}
-              </div>
-              <p className="onboard-ok">{WIZARD_LANGS[wizLang].addedAll}</p>
-            </div>
-          )}
-
-          <div className="onboard-actions">
-            <button
-              className="btn ghost"
-              disabled={onboardBusy}
-              onClick={() => document.getElementById("onboard-name")?.focus()}
-            >
-              {WIZARD_LANGS[wizLang].addAnother}
-            </button>
-            <button className="btn primary" disabled={onboardBusy} onClick={finishOnboarding}>
-              {kids.length === 0 ? WIZARD_LANGS[wizLang].notNow : WIZARD_LANGS[wizLang].finish}
-            </button>
-          </div>
-        </section>
+        <OnboardingCard
+          wizLang={wizLang}
+          onChangeLang={(next) => {
+            setWizLang(next);
+            localStorage.setItem("nv_parent_lang", next);
+          }}
+          kids={kids}
+          editName={editName}
+          setEditName={setEditName}
+          editAvatar={editAvatar}
+          setEditAvatar={setEditAvatar}
+          editBirthYear={editBirthYear}
+          setEditBirthYear={setEditBirthYear}
+          onboardBusy={onboardBusy}
+          onboardErr={onboardErr}
+          onSubmit={() => void handleOnboardCreate()}
+          onAddAnother={() => document.getElementById("onboard-name")?.focus()}
+          onFinish={finishOnboarding}
+        />
       )}
 
-      {/* After onboarding (or skipped): a plain empty state with a fast path in */}
+      {/* After onboarding (or skipped): a plain empty state with a fast path in.
+          #1591 — "Not now" never permanently dismisses: a "Re-run setup guide"
+          affordance keeps the wizard reachable. */}
       {kids.length === 0 && onboarding === "done" && !error && (
-        <div className="empty-state">
-          <p className="hint center">{WIZARD_LANGS[wizLang].noKidsDone}</p>
-          <div className="row-buttons center">
-            <button className="btn primary" onClick={() => { setShowAdd(true); setEditName(""); setEditAvatar("🦊"); }}>
-              ＋ {wizLang === "en" ? "Add your first kid" : "প্রথম বাচ্চা যোগ করুন"}
-            </button>
-          </div>
-        </div>
+        <EmptyState
+          wizLang={wizLang}
+          onAddFirst={() => {
+            setShowAdd(true);
+            setEditName("");
+            setEditAvatar("🦊");
+            setEditBirthYear(defaultBirthYear());
+          }}
+          onRerunSetup={() => {
+            setOnboarding("open");
+            setShowAdd(false);
+          }}
+        />
       )}
 
       {/* #619 — persistent section navigation (sticky sidebar on desktop,
@@ -1998,8 +1854,8 @@ export default function ParentDashboard() {
           from NAV_GROUPS. */}
       {!initialLoading && kids.length > 0 && (
         <div className="portal-layout">
-          <aside className="portal-nav" aria-label="Portal sections">
-            <p className="portal-nav-title">Jump to</p>
+          <aside className="portal-nav" aria-label={TOPBAR_LANGS[wizLang].jumpTo}>
+            <p className="portal-nav-title">{TOPBAR_LANGS[wizLang].jumpTo}</p>
             {NAV_GROUPS.map((g) => {
               // #1527 — omit pills whose section lives inside the `active &&`
               // block when no kid is selected; those anchors would scroll to
@@ -2016,6 +1872,18 @@ export default function ParentDashboard() {
                           href={`#${it.id}`}
                           className={activeNav === it.id ? "active" : undefined}
                           aria-current={activeNav === it.id ? "true" : undefined}
+                          // #1607 — hash anchors scroll but never move focus;
+                          // keyboard/SR users would be left at the old position.
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const el = document.getElementById(it.id);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              el.setAttribute("tabindex", "-1");
+                              el.focus({ preventScroll: true });
+                            }
+                            window.history.replaceState(null, "", `#${it.id}`);
+                          }}
                         >
                           {wizLang === "bn" && it.bn ? it.bn : it.label}
                         </a>
@@ -2041,29 +1909,26 @@ export default function ParentDashboard() {
         famRounds={famRounds}
         famMinutes={famMinutes}
         famActive={famActive}
+        wizLang={wizLang}
       />
 
       {/* ── kid switcher ── */}
-      <section className="kids-row">
-        {kids.map((k) => {
-          const isActive = k.id === activeId;
-          return (
-            <button
-              key={k.id}
-              className={`kid-chip${isActive ? " on" : ""}`}
-              onClick={() => switchKid(k.id)}
-            >
-              <span className="kid-avatar">{k.avatar ?? "🧒"}</span>
-              <span className="kid-name">{k.name}</span>
-              <span className="kid-year">{k.birth_year ?? "—"}</span>
-            </button>
-          );
-        })}
-        <button className="kid-chip add" onClick={() => { setShowAdd((s) => !s); setConfirmReset(false); setConfirmDelete(false); }}>
-          <span className="kid-avatar">＋</span>
-          <span className="kid-name">Add kid</span>
-        </button>
-      </section>
+      <KidSwitcher
+        kids={kids}
+        activeId={activeId}
+        onSwitch={(id) => void switchKid(id)}
+        onToggleAdd={() => {
+          setShowAdd((s) => !s);
+          setConfirmReset(false);
+          setConfirmDelete(false);
+          // #1589 — opening the ADD form always starts blank, never with the
+          // active kid's pre-filled edit values.
+          setEditName("");
+          setEditAvatar("🦊");
+          setEditBirthYear(defaultBirthYear());
+        }}
+        wizLang={wizLang}
+      />
 
       {/* ── add-kid form ── */}
       <AddKidCard
@@ -2080,52 +1945,40 @@ export default function ParentDashboard() {
         setShowAdd={setShowAdd}
       />
 
+      {/* #1590 — how the kid's device joins (the kid app signs in with the
+          same parent account — verified flow, no device code). */}
+      {!initialLoading && kids.length > 0 && (
+        <section className="card pair-card" id="device-join">
+          <h2>{PAIR_LANGS[wizLang].title}</h2>
+          <ol className="help-steps">
+            {[1, 2, 3, 4].map((i) => (
+              <li key={i}>{PAIR_LANGS[wizLang][`step${i}` as keyof typeof PAIR_LANGS.en]}</li>
+            ))}
+          </ol>
+          <p className="hint">{PAIR_LANGS[wizLang].note}</p>
+        </section>
+      )}
+
       {active && (
         <>
           {/* ── progress summary ── */}
-          <section className="card summary">
-            {pendingSwitchId && (
-              <div className="confirm-group unsaved-confirm" role="alert">
-                <span className="muted">{ACCOUNT_LANGS[wizLang].unsavedConfirm}</span>
-                <button className="btn btn-small primary" onClick={confirmSwitchKid}>
-                  {ACCOUNT_LANGS[wizLang].unsavedContinue}
-                </button>
-                <button className="btn btn-small ghost" onClick={() => setPendingSwitchId(null)}>
-                  {ACCOUNT_LANGS[wizLang].unsavedCancel}
-                </button>
-              </div>
-            )}
-            <div className="summary-head">
-              <span className="big-avatar">{active.avatar ?? "🧒"}</span>
-              <div className="summary-meta">
-                <h2>{active.name} <small>(born {active.birth_year ?? "—"})</small></h2>
-                {/* #1523 — in-progress = attempted-but-not-mastered, and the fill
-                    bar + coverage line use the full catalog, not attempted-only. */}
-                <p className="muted">
-                  {ACCOUNT_LANGS[wizLang].summaryMastered.replace("{n}", String(masteredCount))} ·{" "}
-                  {ACCOUNT_LANGS[wizLang].summaryInProgress.replace(
-                    "{n}",
-                    String(activeMastery.filter((m) => m.mastery < 0.8 && m.attempts > 0).length)
-                  )}
-                </p>
-                <p className="muted small">
-                  {ACCOUNT_LANGS[wizLang].summaryCoverage
-                    .replace("{pct}", String(SKILLS.length ? Math.round((masteredCount / SKILLS.length) * 100) : 0))
-                    .replace("{mastered}", String(masteredCount))
-                    .replace("{total}", String(SKILLS.length))}
-                </p>
-              </div>
-            </div>
-            <div className="overall-bar">
-              <div className="overall-fill" style={{ width: `${SKILLS.length ? Math.round((masteredCount / SKILLS.length) * 100) : 0}%` }} />
-            </div>
-          </section>
+          <SummaryCard
+            active={active}
+            masteredCount={masteredCount}
+            inProgressCount={activeMastery.filter((m) => m.mastery < 0.8 && m.attempts > 0).length}
+            catalogCount={SKILLS.length}
+            wizLang={wizLang}
+            pendingSwitchId={pendingSwitchId}
+            onConfirmSwitch={confirmSwitchKid}
+            onCancelSwitch={() => setPendingSwitchId(null)}
+          />
 
           {/* #244 — daily play summary: today's headline on open */}
           <TodayCard
             todayRounds={todayRounds}
             todayMinutes={todayMinutes}
             todayMastered={todayMastered}
+            wizLang={wizLang}
           />
 
           {/* ── this week (the "show me my kid learned" card) ── */}
@@ -2139,6 +1992,7 @@ export default function ParentDashboard() {
             shareBusy={shareBusy[active.id] ?? false}
             shareLink={shareLink[active.id] ?? null}
             shareCopied={shareCopied[active.id] ?? false}
+            shareErr={shareErr[active.id] ?? null}
             handleShareWeekly={handleShareWeekly}
             setShareCopied={(v) => setShareCopied((prev) => ({ ...prev, [active.id]: v }))}
             wizLang={wizLang}
@@ -2265,6 +2119,7 @@ export default function ParentDashboard() {
             busy={busy}
             handleSaveSettings={handleSaveSettings}
             savedTick={savedTick}
+            onTogglePause={() => void handleTogglePause()}
           />
 
           {/* ── activity feed ── */}

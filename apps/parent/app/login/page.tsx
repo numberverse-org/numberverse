@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { login, validateToken, type LoginResponse } from "../../lib/api";
+import { LOGIN_LANGS, type LoginLang } from "../lib/portal";
 
 // Demo-mode only: the seeded demo@numberverse.dev account is REAL on the box
 // (a live kid + plus subscription). Advertising its credentials on a production
@@ -14,10 +15,18 @@ const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
 const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "demo1234";
 
 export default function LoginPage() {
+  const [lang, setLang] = useState<LoginLang>("en");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<LoginResponse | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("nv_parent_lang");
+    if (saved === "en" || saved === "bn") setLang(saved);
+  }, []);
+
+  const t = LOGIN_LANGS[lang];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,63 +40,98 @@ export default function LoginPage() {
       const verdict = await validateToken(res.token);
       if (verdict !== "ok") {
         localStorage.removeItem("nv_parent_token");
-        setError("Signed in, but we couldn't confirm the session — try again.");
+        setError(t.errSession);
         return;
       }
       localStorage.setItem("nv_parent_token", res.token);
       setOk(res);
-    } catch {
-      setError("Sign in failed — check email and password.");
+    } catch (e) {
+      // #1587 — surface the real cause: bad credentials (401), rate limit
+      // (429), network failure, or unknown server error.
+      const err = e as { status?: unknown; message?: unknown } | null;
+      const status = typeof err?.status === "number" ? err.status : null;
+      const msg = typeof err?.message === "string" && err.message ? err.message : null;
+      if (status === 401) {
+        setError(t.errInvalid);
+      } else if (status === 429) {
+        setError(t.errRateLimited);
+      } else if (msg && /fetch|network/i.test(msg)) {
+        setError(t.errNetwork);
+      } else {
+        setError(t.errUnknown);
+      }
     }
   }
 
   return (
     <main className="shell">
       <div className="logo">🔢</div>
-      <h1>Numberverse Parent Portal</h1>
+      <h1>{t.title}</h1>
       {ok ? (
         <div className="card">
-          <p>✅ Signed in as <strong>{ok.profile.display_name}</strong></p>
+          <p>
+            ✅ {t.signedInAs} <strong>{ok.profile.display_name}</strong>
+          </p>
           {/* #1538 — a browser that never finished onboarding is the cheap
               first-run signal: route login through the welcome anchor. */}
           <Link className="btn" href={localStorage.getItem("nv_parent_onboarded") ? "/" : "/?welcome=1"}>
-            Open dashboard →
+            {t.openDashboard}
           </Link>
         </div>
       ) : (
         <form className="card" onSubmit={submit}>
-          <input
-            type="email"
-            placeholder="Parent email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {error && <p className="err">{error}</p>}
-          <button className="btn" type="submit">Sign in</button>
-          {/* #1537 — self-onboarding entry point for brand-new parents. */}
+          {/* #1606 — real accessible labels AND placeholders (kept so existing
+              selectors / visual hints still work), never placeholder-only. */}
+          <label>
+            {t.emailLabel}
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder={t.emailLabel}
+            />
+          </label>
+          <label>
+            {t.passwordLabel}
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder={t.passwordLabel}
+            />
+          </label>
+          {error && <p className="err" role="alert">{error}</p>}
+          <button className="btn" type="submit">{t.signIn}</button>
+          {/* #1537 — self-onboarding entry point. */}
           <p className="hint">
-            <Link href="/signup">Create account</Link> · <span>অ্যাকাউন্ট তৈরি করুন</span>
+            <Link href="/signup">{t.createAccount}</Link> · <span>{t.createAccountBn}</span>
           </p>
-          {/* #1542 — privacy context at the exact moment a parent types PII.
-              No lang toggle on this page, so English + a short Bangla sibling. */}
+          {/* #1586 — honest recovery message: no SMTP, so no self-serve reset.
+              The admin console is the only path. */}
           <p className="hint">
-            Your email is used only to sign you in and keep your child&apos;s progress synced.
-            No ads, no tracking — you can export or delete your{" "}
-            <Link href="/#on-device">data</Link> anytime.
+            <strong>{t.recoveryTitle}</strong> {t.recoveryBody}
           </p>
-          <p className="hint">
-            আপনার ইমেইল শুধু সাইন ইন করতে এবং বাচ্চার অগ্রগতি সিঙ্ক রাখতে ব্যবহৃত হয়।
-            কোনো বিজ্ঞাপন নেই, ট্র্যাকিং নেই — আপনি চাইলে যেকোনো সময় ডেটা এক্সপোর্ট বা মুছে ফেলতে পারেন।
+          {/* #1598 — privacy context (EN + BN sibling). */}
+          <p className="hint">{t.privacy1}</p>
+          <p className="hint">{t.privacy2}</p>
+          {DEMO_MODE && (
+            <p className="hint">
+              {t.demoMode}: demo@numberverse.dev / {DEMO_PASSWORD}
+            </p>
+          )}
+          <p className="hint center" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="ghost-btn small"
+              onClick={() => setLang((prev) => (prev === "en" ? "bn" : "en"))}
+            >
+              EN / বাংলা
+            </button>
           </p>
-          {DEMO_MODE && <p className="hint">Demo parent: demo@numberverse.dev / {DEMO_PASSWORD}</p>}
         </form>
       )}
     </main>

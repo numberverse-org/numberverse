@@ -61,7 +61,7 @@ export function ActivityFeed({ active, activity, wizLang }: {
     <p className="muted">Nothing yet — have {active.name} play a round to see it here.</p>
   ) : (
     <>
-      <ul className="activity-list">
+      <ul className="activity-list" id="activity-list">
         {visible.map((a) => (
           <li key={a.id} className={`activity-item ${a.correct ? "ok" : "no"}`}>
             <span className="activity-badge">{a.correct ? "✓" : "✗"}</span>
@@ -84,6 +84,7 @@ export function ActivityFeed({ active, activity, wizLang }: {
             className="btn ghost-btn small"
             onClick={() => setLimit((v) => (v >= activity.length ? PAGE : Math.min(v + PAGE, activity.length)))}
             aria-expanded={isExpanded}
+            aria-controls="activity-list"
           >
             {isExpanded ? ACTIVITY_LANGS[wizLang].showLess : ACTIVITY_LANGS[wizLang].showMore}
           </button>

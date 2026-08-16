@@ -1317,6 +1317,22 @@ label { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
 .row-buttons { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
 .save-row { margin-top: 18px; }
 .saved-note { color: var(--nv-brand); font-weight: 800; }
+/* #1592 — the save row sticks to the viewport bottom while there are unsaved
+   settings edits, so a parent who changed difficulty / screen-time never misses
+   that it isn't persisted yet (previously the Save button sat below the fold). */
+.save-row-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: 10px 12px;
+  margin-top: 18px;
+  background: var(--nv-bg-card, #fff);
+  border: 1px solid var(--nv-border-soft);
+  border-radius: 12px;
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.08);
+}
+.pair-card ol.help-steps { margin: 8px 0 0; padding-left: 22px; }
+.pair-card .hint { margin-top: 8px; }
 
 /* activity feed */
 .activity-list { list-style: none; }

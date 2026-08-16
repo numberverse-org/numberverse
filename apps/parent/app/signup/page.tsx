@@ -39,8 +39,21 @@ export default function SignupPage() {
       const res = await signup(email.trim(), password, name.trim());
       localStorage.setItem("nv_parent_token", res.token);
       setOk(res);
-    } catch {
-      setError(t.err);
+    } catch (e) {
+      // #1587 — surface the real cause: already-registered email (409), rate
+      // limit (429), network failure, or unknown server error.
+      const err = e as { status?: unknown; message?: unknown } | null;
+      const status = typeof err?.status === "number" ? err.status : null;
+      const msg = typeof err?.message === "string" && err.message ? err.message : null;
+      if (status === 409) {
+        setError(t.errConflict);
+      } else if (status === 429) {
+        setError(t.errRateLimited);
+      } else if (msg && /fetch|network/i.test(msg)) {
+        setError(t.errNetwork);
+      } else {
+        setError(t.err);
+      }
     }
   }
 
@@ -61,33 +74,56 @@ export default function SignupPage() {
       ) : (
         <form className="card" onSubmit={submit}>
           <h2>{t.title}</h2>
-          <input
-            type="text"
-            placeholder={t.namePlaceholder}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <input
-            type="email"
-            placeholder={t.emailPlaceholder}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder={t.passwordPlaceholder}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {error && <p className="err">{error}</p>}
+          {/* #1606 — real accessible labels AND placeholders (kept so existing
+              selectors / visual hints still work), never placeholder-only. */}
+          <label>
+            {t.nameLabel}
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+              placeholder={t.namePlaceholder}
+            />
+          </label>
+          <label>
+            {t.emailLabel}
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder={t.emailPlaceholder}
+            />
+          </label>
+          <label>
+            {t.passwordLabel}
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              placeholder={t.passwordPlaceholder}
+            />
+          </label>
+          {error && <p className="err" role="alert">{error}</p>}
           <button className="btn" type="submit" disabled={!name.trim() || !email.trim() || !password}>
             {t.submit}
           </button>
           <p className="hint">
             <Link href="/login">{t.signInLink}</Link>
+          </p>
+          <p className="hint center" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="ghost-btn small"
+              onClick={() => setLang((prev) => (prev === "en" ? "bn" : "en"))}
+            >
+              EN / বাংলা
+            </button>
           </p>
         </form>
       )}
