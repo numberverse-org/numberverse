@@ -1,6 +1,15 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 17 Aug 2026
 
+## 🔒 SECRET-MGMT + IP-BUCKET WAVE (#1763, #1778, #1779, #1780) 17 Aug 2026 ✅ → 0.93.0 (3 fan-out subagents)
+- **All 3 tasks complete + verified on the merged tree:** 26 standalone api test files green (incl new test_ip_ratelimit_tags), kid/parent/admin tsc 0, vitest ✓, locale parity ✓, png-metadata ✓, audit 0 errors, `node scripts/secret-scan.mjs` exits 0 on the clean tree, `git grep numberverse_dev -- infra/` EMPTY.
+- **#1778** dev-defaults reachability gate — dev secrets are only legal when every CORS origin is loopback (`_is_local_origin`) AND the bind is loopback; an unset NV_ENVIRONMENT on an exposed box (non-localhost CORS) now refuses to boot. `bind_host` setting + loud stderr warning when dev runs on a non-loopback bind (dev compose still works).
+- **#1780** dev DB password `numberverse_dev` moved out of version control — `infra/docker-compose.yml` uses `${NV_DEV_DB_PASSWORD:?}` (POSTGRES_PASSWORD + NV_DATABASE_URL), tracked `infra/.env.docker.example` ships a `CHANGE_ME` placeholder, the real value lives in gitignored `infra/.env`; the API guard now rejects the dev DB password on any non-dev boot (`urlsplit(...).password` vs `_DB_PASSWORD_PLACEHOLDERS`).
+- **#1779** secret-scan now scans the WORKING TREE (tracked files read from disk + untracked via `git ls-files --others --exclude-standard`, skipping node_modules/.venv/__pycache__), adds an env-var-adjacent high-entropy rule (flags `NV_FOO=<40+ chars>` with no inline keyword) with a `CHANGE_ME` guard, and an opt-in `--history` sweep (`git log -p --all`, bounded, `HISTORY:` lines never fail CI) with a `--root` for hermetic tests. New `scripts/test-secret-scan.mjs` covers tracked/untracked/env-adjacent/CHANGE_ME/history/clean.
+- **#1763** `ip_rate_limit` gets an optional endpoint `tag` — signup (10/min), refresh (60/min) and the public share snapshot (30/min) each get their own per-IP bucket; opening 10 share links can no longer burn the signup allowance. Legacy `ip:{ip}` key untouched for non-tagged callers.
+- Released **0.93.0**, deployed + smoke-tested live. 4 issues closed (#1763, #1778, #1779, #1780).
+
+
 ## 🚦 RATELIMIT/KEYMGMT WAVE (#1765, #1766, #1767/#1769/#1770, #1768, #1774, #1775, #1777) 17 Aug 2026 ✅ → 0.92.0 (7 fan-out subagents)
 - **All 7 tasks complete + verified on the merged tree:** 25 standalone api test files green (incl 3 new: jwt-rotation 13, push, shares-token-hash 27), kid/parent/admin tsc 0, vitest 230/230, locale parity ✓, png-metadata ✓, audit 0 errors (one console.warn from the #1775 subagent caught by the audit gate and removed before commit).
 - **#1765** admin semantic-search + embed endpoints get their own budgets — `ADMIN_SEARCH_RATE_LIMIT` 20/min, `ADMIN_EMBED_RATE_LIMIT` 10/min (an embedding model + pgvector scan per call is no longer on the 120/min read tier). `_limiter` deps via `Annotated[Profile, Depends(...)] = None` so FastAPI injects while `inspect.signature` stays clean.
