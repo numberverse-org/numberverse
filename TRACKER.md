@@ -1,6 +1,12 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🧪 V50 TEST-COVERAGE-KID FEED (15 findings) 16 Aug 2026 ✅ → 0.87.0
+- **11 vitest files / 208 tests** for `apps/kid` (6 fan-out subagent waves, disjoint filesets, all green): api (25, outbox sync-drain + daily-limit/quiet-hours), columnMath/difficulty/speechSafety (110, property-style columnar + BKT + TTS safety), roundLearning/roundStory/pinHash (20, BKT mastery + story builders + PBKDF2 150k), store (23, anti-grind caps + restoreSnapshot + persisted-store durability #1374), i18n-core/engine (23, bnNum/digit/t() contract + key-set parity gate + scene-key scan), scenes (7, 171-scene structural scan: key catalog / onRoundDone wiring / difficulty 1-based / i18n hygiene / lang:bn redundancy).
+- **6 real i18n bugs found by the waves + fixed:** (1) BN round-HUD rendered Latin digits ("রাউন্ড 3") — `round` key is now a digit-aware function entry (রাউন্ড ৩, same convention as exploreGardenCounter/petBirthdayCoins); (2) five scenes hardcoded English `Round ${n}` bypassing `t()` — CodeLogic/MathSolve/NegativeNumber/ScienceFacts/Trace now route through `t("round")`; (3) PercentScene hardcoded `% of … = ?` — new `pctFact` i18n key (EN+BN, digit-aware).
+- **scenes.test.ts pin updated:** known-i18n-bugs set now EMPTY (the 6 pinned bugs are fixed); suite fails if a new hardcoded EN/BN UI phrase appears.
+- Verified: `npx vitest run tests/` → **208/208 green** (11 files), `tsc --noEmit` clean, `scripts/test-locale.mjs` parity ✓. Commit 261c56c → 0.87.0.
+
 ## 🧪 V50 E2E-SCENARIO-COVERAGE FEED (13 spec pairs + vitest foundation) 16 Aug 2026 ✅ → 0.86.0
 - **13 new mock-backed e2e specs** (no live accounts, catch-all `**/api/v1/**` in `e2e/lib/apiMocks.ts`):
   gameplay (CountPop 5 rounds → done → progress POST), pin-gate (#86 PIN setup/unlock/3-try lockout/offline Q&A recovery), age-band (birth-year → band surfaces), parent-guardrails (band lock + daily time limit + quiet hours survive reload + danger-zone delete), session-management (revoke → re-login → rejected token; sign-out-all), qr-cards (QR card print → scan → launch), share-card (public privacy contract — aggregate tiles, no name/avatar/id leak), push-consent (#1535 password-reconfirm + subscribe POST with endpoint+p256dh+auth), bangla-surface (nv_lang=bn home/settings/lesson/done all বাংলা + bnNum digits), guest-upgrade (guest → account, local progress kept), admin (mock profile list + edit), retention (7-day calendar claim + mystery-box pay persist to nv_store_v1), google-signin (Continue-with-Google button + id-token POST).
