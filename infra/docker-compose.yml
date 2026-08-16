@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: numberverse
-      POSTGRES_PASSWORD: numberverse_dev
+      POSTGRES_PASSWORD: ${NV_DEV_DB_PASSWORD:?NV_DEV_DB_PASSWORD must be set in infra/.env}
       POSTGRES_DB: numberverse
     ports:
       - "5434:5432"
@@ -70,7 +70,7 @@ services:
     restart: unless-stopped
     environment:
       NV_ENVIRONMENT: dev
-      NV_DATABASE_URL: postgresql+psycopg://numberverse:numberverse_dev@postgres:5432/numberverse
+      NV_DATABASE_URL: postgresql+psycopg://numberverse:${NV_DEV_DB_PASSWORD:?NV_DEV_DB_PASSWORD must be set in infra/.env}@postgres:5432/numberverse
     ports:
       - "8000:8000"
     depends_on:

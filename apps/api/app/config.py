@@ -1,3 +1,6 @@
+import sys
+from urllib.parse import urlsplit
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,6 +31,12 @@ _ADMIN_PASSWORD_PLACEHOLDERS = {DEFAULT_ADMIN_PASSWORD, "change-me"}
 # #800 — the demo parent is a real seeded account, so its password must be
 # operator-owned in non-dev environments exactly like the admin password.
 _DEMO_PASSWORD_PLACEHOLDERS = {DEFAULT_DEMO_PASSWORD, "demo", "demo-password"}
+# #1780 — the dev DB password (shipped in the built-in dev database_url and in
+# the gitignored infra/.env as NV_DEV_DB_PASSWORD) is a local-only secret. A
+# non-dev boot with it in the URL would reach a live DB with a publicly-known
+# password, so the guard refuses it outside dev.
+DEFAULT_DB_PASSWORD = "numberverse_dev"
+_DB_PASSWORD_PLACEHOLDERS = {DEFAULT_DB_PASSWORD}
 
 # #1771 — minimum acceptable entropy for non-dev secrets.
 _JWT_SECRET_MIN_LENGTH = 32
@@ -84,6 +93,10 @@ class Settings(BaseSettings):
     # built-in dev secret/password above; any other value is treated as a real
     # deployment and requires NV_JWT_SECRET and NV_ADMIN_PASSWORD to be set.
     environment: str = DEV_ENVIRONMENT
+    # #1778 — interface uvicorn binds (NV_BIND_HOST). Loopback-only by default;
+    # a non-loopback bind in dev is a loud warning (not a refusal) because the
+    # dev compose container legitimately binds 0.0.0.0 on a local box.
+    bind_host: str = "127.0.0.1"
     # Google sign-in (optional): the OAuth 2.0 Client ID for this origin
     # (Google Cloud Console → Credentials → Web application). When set, the
     # kid app shows "Continue with Google" and /auth/google verifies the ID
@@ -140,11 +153,28 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# #842/#800/#921 — fail fast before any tables are created or routers are
+
+def _is_local_origin(origin: str) -> bool:
+    """#1778 — True when a CORS origin only ever reaches this machine.
+
+    `0.0.0.0` is included because dev tooling commonly uses it as a
+    single-host CORS origin; it is not a real non-local origin.
+    """
+    return (
+        "localhost" in origin
+        or "127.0.0.1" in origin
+        or "::1" in origin
+        or origin == "http://0.0.0.0"
+    )
+
+
+# #842/#800/#921/#1778 — fail fast before any tables are created or routers are
 # served. A non-dev deploy with the built-in dev JWT secret (forgeable tokens),
-# a public admin or demo password (guessable seeded logins), or wildcard CORS
-# is wide open; make the operator set explicit values instead of booting with a
-# security hole.
+# a public admin or demo password (guessable seeded logins), wildcard CORS, or
+# the dev DB password is wide open; make the operator set explicit values
+# instead of booting with a security hole. A dev boot with a non-loopback CORS
+# origin is equally exposed (the built-in dev credentials are public), so it is
+# refused too.
 if settings.environment.strip().lower() != DEV_ENVIRONMENT:
     _problems = []
     _jwt = settings.jwt_secret
@@ -176,6 +206,11 @@ if settings.environment.strip().lower() != DEV_ENVIRONMENT:
         _problems.append("NV_DEMO_PASSWORD (set a strong, non-default value)")
     if "*" in settings.origins:
         _problems.append("NV_CORS_ORIGINS (wildcard '*' is not allowed outside dev)")
+    # #1780 — the dev DB password is local-only; a non-dev boot with it in the
+    # URL would connect to a reachable DB with a publicly-known password.
+    _db_password = urlsplit(settings.database_url).password
+    if _db_password in _DB_PASSWORD_PLACEHOLDERS:
+        _problems.append("NV_DATABASE_URL (dev DB password in a non-dev boot)")
     if _problems:
         raise RuntimeError(
             f"Refusing to start: NV_ENVIRONMENT={settings.environment!r} is not a "
@@ -183,4 +218,32 @@ if settings.environment.strip().lower() != DEV_ENVIRONMENT:
             f"{', '.join(_problems)}. Set them to strong, non-default values. "
             "Local dev/test runs only: set NV_ENVIRONMENT=dev to keep the "
             "built-in defaults."
+        )
+else:
+    # #1778 — dev is only safe when the box is loopback-only: the built-in dev
+    # JWT secret and admin/demo passwords ship in the code and are public, so a
+    # non-loopback CORS origin means the API is meant to be reached from outside
+    # → refuse to boot with the known credentials live.
+    _problems = []
+    if any(not _is_local_origin(origin) for origin in settings.origins):
+        _problems.append(
+            "NV_CORS_ORIGINS (dev default secrets exposed to a non-loopback origin)"
+        )
+    if _problems:
+        raise RuntimeError(
+            f"Refusing to start: NV_ENVIRONMENT={settings.environment!r} is a dev "
+            "environment, but it is reachable from a non-loopback origin: "
+            f"{', '.join(_problems)}. Bind the API to a loopback host, or set "
+            "NV_ENVIRONMENT=production with strong secrets on any reachable box."
+        )
+    # #1778 — a non-loopback bind in dev is a warn, not a refuse: the dev
+    # compose container binds 0.0.0.0 and is reachable only from the host. Make
+    # the exposure loud for anyone who copies that into a real deployment.
+    if settings.bind_host not in {"127.0.0.1", "localhost", "::1"}:
+        print(
+            "WARNING: NV_ENVIRONMENT=dev with a non-loopback bind (%s) — dev JWT "
+            "secret and default admin/demo passwords are LIVE. Use strong secrets "
+            "+ NV_ENVIRONMENT=production on any reachable box."
+            % settings.bind_host,
+            file=sys.stderr,
         )
