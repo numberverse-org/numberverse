@@ -1,3 +1,11 @@
+## 17 Aug 2026 — 0.95.0 (Auth-hardening + scene-lifecycle wave: #1669/#1676 google+set-password rate limits, #1672 same-origin middleware, #1673 CORS tighten, #1675 72-byte password cap, #1739-#1747 scene timer/listener/tween teardown)
+
+ff1425f docs: TRACKER wave entry — auth-hardening + scene-lifecycle wave → 0.95.0 (#1669 #1672 #1673 #1675 #1676, #1739 #1740 #1741 #1742 #1743 #1744 #1745 #1746 #1747)
+748fdd6 fix(kid): NovaScene teardown removes idle schedulers + wallet pulse kill-before-add
+e5dfbae fix(kid): blobCache/failed-set lifecycle + SHUTDOWN+DESTROY listener teardown
+82ed1de fix(kid): scene teardown — SHUTDOWN+DESTROY removes every loop/repeat timer and delayedCall handle
+54fd3b8 feat(api): auth hardening — google/set-password rate limits, 72-byte password cap, CORS tighten, same-origin middleware
+
 ## 17 Aug 2026 — 0.94.0 (API-logging + asset-budget + SEO wave: #1752-#1758 access/error logging, #1732-#1738 kid asset budgets + favicon.svg, #1783-#1792 SEO metadata + dashboard noindex)
 
 7eafdb5 fix(oracle): Asset Librarian accepts WebP manifest icons (icon-*.webp) + favicon.svg

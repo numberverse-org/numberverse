@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "17 Aug 2026 · 0.94.0 (API-logging + asset-budget + SEO wave: #1752-#1758 access/error logging, #1732-#1738 kid asset budgets + favicon.svg, #1783-#1792 SEO metadata + dashboard noindex)";
-export const APP_VERSION = "0.94.0";
+export const APP_BUILD = "17 Aug 2026 · 0.95.0 (Auth-hardening + scene-lifecycle wave: #1669/#1676 google+set-password rate limits, #1672 same-origin middleware, #1673 CORS tighten, #1675 72-byte password cap, #1739-#1747 scene timer/listener/tween teardown)";
+export const APP_VERSION = "0.95.0";
