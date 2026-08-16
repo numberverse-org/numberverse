@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..deps import get_current_profile
 from ..models import ContentItem, Kid, KidSettings, Profile, ProgressEvent, SkillMastery
-from ..ratelimit import ip_rate_limit
+from ..ratelimit import ip_rate_limit, read_rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["share"])
 
@@ -34,6 +34,11 @@ router = APIRouter(prefix="/api/v1", tags=["share"])
 # no account to key on). 30 req/min is far more than a shared link gets opened
 # while still blunting token-guessing hammering.
 SHARE_SNAPSHOT_RATE_LIMIT = ip_rate_limit(limit=30)
+
+# #1764 — the authenticated share-token GET joins the read tier: minting/reading
+# the opaque token is a read (no DB write), so it shares the higher read budget
+# rather than the 120/min write budget.
+SHARE_READ_RATE_LIMIT = read_rate_limit()
 
 # Small fixed floor for public 404s so a guessed link isn't distinguishable from
 # a valid-but-paused link by response time alone (approximate, not exact).
@@ -108,6 +113,7 @@ async def get_share_token(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(SHARE_READ_RATE_LIMIT),
 ):
     """Mint (or return) the kid's share token. Auth-protected + ownership-checked:
     only the parent can read their own kid's token, so the unguessable string

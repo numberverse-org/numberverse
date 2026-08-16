@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..deps import get_current_profile, org_scoped, resolve_org_id
 from ..models import AccelerationLog, Kid, KidSettings, LearningStory, Profile, ProgressEvent, Skill, SkillMastery
-from ..ratelimit import rate_limit
+from ..ratelimit import read_rate_limit, rate_limit
 from ..schemas import (
     ActivityOut,
     KidIn,
@@ -41,6 +41,11 @@ router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 # limiter (same as progress/stories/acceleration), so a breached token can't
 # script profile-mutating calls. Reads stay auth-only (get_current_profile).
 KID_WRITE_RATE_LIMIT = rate_limit()
+
+# #1764 — expensive read endpoints in this router (activity up to 2000 rows,
+# weekly aggregates + streak walk) get their OWN read-tier budget so a heavy
+# reader can't starve the write tier or the DB pool.
+KID_READ_RATE_LIMIT = read_rate_limit()
 
 
 async def _get_owned_kid(
@@ -307,6 +312,7 @@ async def get_kid_activity(
     limit: int = 50,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(KID_READ_RATE_LIMIT),
 ):
     """Recent rounds for a kid — newest first. The parent portal renders this
     as an activity feed ("played Fruit Tree, got it right") and, with a large
@@ -347,6 +353,7 @@ async def get_kid_weekly(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(KID_READ_RATE_LIMIT),
 ):
     """7-day learning report for a parent — the "show me my kid actually
     learned this week" card. Aggregates round events + mastery crossings.

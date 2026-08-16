@@ -11,7 +11,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile, org_scoped, resolve_org_id
 from ..models import AccelerationLog, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
-from ..ratelimit import rate_limit
+from ..ratelimit import read_rate_limit, rate_limit
 from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn, StoryStatsOut
 from ..scrub import redact_context
 from ..seed import SKILLS_SEED
@@ -19,6 +19,12 @@ from ..seed import SKILLS_SEED
 # #274 — write endpoints are the abuse surface (bulk story/progress replay). The
 # limiter keys on account+IP and is far above real sync cadence (see ratelimit.py).
 WRITE_RATE_LIMIT = rate_limit()
+
+# #1764 — expensive read/sync endpoints (snapshot, mastery, stories, stats,
+# acceleration, aggregates) get their OWN read-tier budget (higher per-minute
+# cap, distinct `:read` key namespace) so a heavy reader can never starve the
+# write tier or the DB pool while normal reads stay uncramped.
+READ_RATE_LIMIT = read_rate_limit()
 
 # #834 — bulk story/acceleration endpoints take a raw list body, so the schema
 # has no place to cap length. The client documents ~40 per sync; 100 keeps >2x
@@ -297,6 +303,7 @@ async def get_mastery(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(READ_RATE_LIMIT),
 ):
     owned = await _get_owned_kid(kid_id, profile, db)
     if not owned:
@@ -322,6 +329,7 @@ async def get_kid_snapshot(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(READ_RATE_LIMIT),
 ):
     """#9 — multi-device sync: the aggregate profile a SECOND device restores a
     kid from after the parent signs in. E2E-friendly by construction — mastery
@@ -527,6 +535,7 @@ async def get_stories(
     offset: int = 0,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(READ_RATE_LIMIT),
 ):
     """Read a kid's Kotha stories (newest first). Filterable by skill, error
     kind, action and misconception code — the RAG search hook. Pass
@@ -549,6 +558,7 @@ async def story_stats(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(READ_RATE_LIMIT),
 ):
     """Kotha counts — the shape of a kid's learning. Returns total stories plus
     counts grouped by skill, error kind and misconception code, so the app can
@@ -584,6 +594,7 @@ async def get_acceleration(
     kid_id: uuid.UUID,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(READ_RATE_LIMIT),
 ):
     """🚀 #249 — the kid's acceleration plan: every "skipped ahead" entry (newest
     first), with the reason and the band jump. The parent portal renders this
@@ -599,6 +610,7 @@ async def get_acceleration(
 async def story_aggregates(
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(READ_RATE_LIMIT),
 ):
     """📚 KOTHA cross-kid aggregates (#330) — 'what's everyone getting stuck on'.
 

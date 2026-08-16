@@ -29,6 +29,12 @@ from .models import Profile, RateLimitBucket
 
 _WINDOW_SECONDS = 60
 _REQUESTS_PER_MIN = 120
+# #1764 — expensive read/sync endpoints (snapshot, activity, weekly, stories,
+# aggregates) get their OWN higher per-minute budget. Reads are more frequent
+# than writes but must still be bounded so a breached/busy token can't hammer
+# the DB pool. The `:read` key suffix keeps every read bucket distinct from the
+# corresponding write bucket for the same account+IP+endpoint.
+READ_REQUESTS_PER_MIN = 600
 
 logger = logging.getLogger("numberverse")
 
@@ -189,6 +195,34 @@ def rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
         key = f"{profile.id}:{ip}:{endpoint}"
         if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
             _log_429("account", key, limit, _WINDOW_SECONDS)
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Too many requests — try again in a moment",
+            )
+        return profile
+
+    return dep
+
+
+def read_rate_limit(limit: int = READ_REQUESTS_PER_MIN) -> Callable:
+    """#1764 — read-tier budget for expensive sync/read endpoints.
+
+    Same durable fixed-window mechanism and same per-endpoint key shape as
+    `rate_limit`, but under its own `:read` namespace and a higher budget —
+    so a heavy reader (snapshot/activity/weekly/stories/aggregates) can never
+    starve the write tier or the DB pool, while normal reads stay uncramped.
+    """
+
+    async def dep(
+        request: Request,
+        profile: Profile = Depends(get_current_profile),
+        db: AsyncSession = Depends(get_db),
+    ) -> Profile:
+        ip = _request_ip(request)
+        endpoint = _endpoint_tag(request)
+        key = f"{profile.id}:{ip}:{endpoint}:read"
+        if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
+            _log_429("read", key, limit, _WINDOW_SECONDS)
             raise HTTPException(
                 status.HTTP_429_TOO_MANY_REQUESTS,
                 "Too many requests — try again in a moment",
