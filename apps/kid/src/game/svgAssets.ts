@@ -22,9 +22,31 @@ const inFlight = new Set<string>(); // asset keys whose <img> is still loading
 const failed = new Set<string>(); // SVGs that refused to rasterize → keep emoji
 const waiters = new Map<string, (() => void)[]>(); // asset key → upgrade callbacks
 
+/** How many SVGs to kick off per frame. The full library (~79 SVGs) is spread
+ *  across ~13 frames instead of one long synchronous main-thread block, so boot
+ *  stays responsive while every texture still ends up in the same final set. */
+const SVG_BATCH = 6;
+
 function dataUri(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
+
+/** Yields to the browser's paint loop so a chunk of SVG work can't stall the
+ *  game thread. Falls back to a macrotask outside the browser (jsdom/Node). */
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
+/** Monotonic run id. Bumped on every ensureAssets() call so an older, still-
+ *  yielding loop stops at its next batch boundary the moment a newer boot (or a
+ *  fresh game after App destroyed + recreated Phaser) takes over. */
+let runGen = 0;
 
 function fireWaiters(key: string) {
   const list = waiters.get(key);
@@ -47,47 +69,66 @@ function fireWaiters(key: string) {
  * re-rasterized when the old texture is gone.
  */
 export function ensureAssets(scene: Phaser.Scene): void {
+  // Kick off a chunked run. The old loop rasterized all ~79 SVGs in one
+  // synchronous block; now we process a small batch per frame and yield in
+  // between, so boot's main thread stays free for the first scene to paint.
+  const gen = ++runGen;
+  void runEnsureAssets(scene, gen).catch(() => {
+    /* a dead game's texture manager can throw mid-run — never crash the thread */
+  });
+}
+
+async function runEnsureAssets(scene: Phaser.Scene, gen: number): Promise<void> {
+  const keys = Object.keys(ASSETS);
   // Brand-new game? (App destroys + recreates the game when leaving play.)
   // Drop any in-flight loads aimed at the old game's dead textures.
-  const first = Object.keys(ASSETS)[0];
+  const first = keys[0];
   if (!scene.textures.exists(textureKey(first)) && inFlight.size > 0) {
     inFlight.clear();
     waiters.clear();
   }
-  for (const key of Object.keys(ASSETS)) {
-    if (failed.has(key)) continue;
-    if (!ASSETS[key].svg) continue; // static PNG sprites are not SVG-rasterizable
-    const cached = loaded.get(key);
-    if (cached) {
-      if (scene.textures.exists(cached)) continue;
-      loaded.delete(key); // texture died with a previous game → reload below
+  for (let i = 0; i < keys.length; i += SVG_BATCH) {
+    if (gen !== runGen) return; // superseded by a newer boot/game
+    for (let j = i; j < keys.length && j < i + SVG_BATCH; j++) {
+      startOne(scene, keys[j]);
     }
-    if (inFlight.has(key)) continue;
-    const tex = scene.textures.createCanvas(textureKey(key), TEXTURE_SIZE, TEXTURE_SIZE);
-    if (!tex) continue;
-    const ctx = tex.getContext();
-    inFlight.add(key);
-    const img = new Image();
-    img.onload = () => {
-      try {
-        ctx.clearRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
-        ctx.drawImage(img, 0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
-        tex.refresh();
-        loaded.set(key, textureKey(key));
-        failed.delete(key);
-      } catch {
-        /* SVG that failed to rasterize → keep the emoji fallback */
-      }
-      inFlight.delete(key);
-      fireWaiters(key);
-    };
-    img.onerror = () => {
-      inFlight.delete(key);
-      failed.add(key);
-      fireWaiters(key);
-    };
-    img.src = dataUri(ASSETS[key].svg);
+    if (i + SVG_BATCH < keys.length) await nextFrame();
   }
+}
+
+function startOne(scene: Phaser.Scene, key: string): void {
+  if (failed.has(key)) return; // keep emoji fallback
+  if (!ASSETS[key].svg) return; // static PNG sprites are not SVG-rasterizable
+  const cached = loaded.get(key);
+  if (cached) {
+    if (scene.textures.exists(cached)) return;
+    loaded.delete(key); // texture died with a previous game → reload below
+  }
+  if (inFlight.has(key)) return;
+  const tex = scene.textures.createCanvas(textureKey(key), TEXTURE_SIZE, TEXTURE_SIZE);
+  if (!tex) return;
+  const ctx = tex.getContext();
+  inFlight.add(key);
+  const img = new Image();
+  img.onload = () => {
+    try {
+      ctx.clearRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+      ctx.drawImage(img, 0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+      tex.refresh();
+      loaded.set(key, textureKey(key));
+      failed.delete(key);
+    } catch {
+      /* SVG that failed to rasterize → keep the emoji fallback */
+    }
+    inFlight.delete(key);
+    fireWaiters(key);
+  };
+  img.onerror = () => {
+    inFlight.delete(key);
+    failed.add(key);
+    fireWaiters(key);
+  };
+  img.src = dataUri(ASSETS[key].svg);
 }
 
 export interface IconOpts {

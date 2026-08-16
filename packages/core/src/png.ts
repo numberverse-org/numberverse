@@ -21,7 +21,10 @@ export function stripPngMetadata(buf: ArrayBuffer | Uint8Array): ArrayBuffer {
   if (bytes.length < 8 || !PNG_SIG.every((b, i) => bytes[i] === b)) {
     return new Uint8Array(bytes).buffer;
   }
-  const out: number[] = [...PNG_SIG];
+  // Collect the kept chunk ranges as Uint8Array slices (views, zero copies),
+  // then allocate the exact output size once and bulk-copy with .set() — no
+  // per-byte push into a GC'd number[] (IDAT alone can be ~1-2 MB).
+  const kept: Uint8Array[] = [];
   let off = 8;
   while (off + 12 <= bytes.length) {
     const len =
@@ -34,10 +37,17 @@ export function stripPngMetadata(buf: ArrayBuffer | Uint8Array): ArrayBuffer {
       // image with none): stripping is only safe on an intact chunk stream.
       return new Uint8Array(bytes).buffer;
     }
-    if (KEEP.has(type)) {
-      for (let i = off; i < chunkEnd; i++) out.push(bytes[i]);
-    }
+    if (KEEP.has(type)) kept.push(bytes.subarray(off, chunkEnd));
     off = chunkEnd;
   }
-  return new Uint8Array(out).buffer;
+  let total = 8;
+  for (const seg of kept) total += seg.length;
+  const out = new Uint8Array(total);
+  out.set(PNG_SIG);
+  let outOff = 8;
+  for (const seg of kept) {
+    out.set(seg, outOff);
+    outOff += seg.length;
+  }
+  return out.buffer;
 }

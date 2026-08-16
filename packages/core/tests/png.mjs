@@ -38,7 +38,7 @@ function chunk(type, data) {
   return bytes;
 }
 
-function buildPng(extraChunks = []) {
+function buildPng(extraChunks = [], idatData = new Uint8Array([0x78, 0x9c, 0x01, 0x00, 0x00, 0xff])) {
   const bytes = [];
   // 1x1 RGBA IHDR (13-byte data: width, height, bit-depth, color-type, ...)
   const ihdrData = new Uint8Array(13);
@@ -48,7 +48,6 @@ function buildPng(extraChunks = []) {
   ihdrData[9] = 6;  // color type = RGBA
   bytes.push(...SIG, ...chunk("IHDR", ihdrData));
   for (const c of extraChunks) bytes.push(...c); // insert metadata after IHDR
-  const idatData = new Uint8Array([0x78, 0x9c, 0x01, 0x00, 0x00, 0xff]);
   bytes.push(...chunk("IDAT", idatData), ...chunk("IEND", new Uint8Array(0)));
   return new Uint8Array(bytes);
 }
@@ -97,6 +96,21 @@ check("truncated PNG (ends inside IDAT) returned unchanged", bytesEqual(stripped
 const nonPng = ascii("not a png");
 const strippedNon = new Uint8Array(stripPngMetadata(nonPng));
 check("non-PNG input returned unchanged (identity)", bytesEqual(strippedNon, nonPng), true);
+
+/* ── 5. large-IDAT perf path: metadata stripped with identical bytes; truncation safe ── */
+// The optimised stripper bulk-copies chunk ranges with Uint8Array.set() instead
+// of per-byte number[] pushes. A ~100 KB IDAT exercises that path and must still
+// produce byte-identical output for a metadata-bearing PNG, and must still hand
+// back the ORIGINAL input unchanged when the stream is cut off inside IDAT.
+const bigIdat = new Uint8Array(100 * 1024);
+for (let i = 0; i < bigIdat.length; i++) bigIdat[i] = i & 0xff;
+const cleanBig = buildPng([], bigIdat);
+const dirtyBig = buildPng([chunk("tEXt", ascii("Software\x00Big"))], bigIdat);
+const strippedBig = new Uint8Array(stripPngMetadata(dirtyBig));
+check("large-IDAT tEXt PNG strips to the identical clean bytes", bytesEqual(strippedBig, cleanBig), true);
+const truncatedBig = cleanBig.subarray(0, cleanBig.length - 1000); // cut inside IDAT payload
+const strippedTruncBig = new Uint8Array(stripPngMetadata(truncatedBig));
+check("truncated large-IDAT PNG returned unchanged", bytesEqual(strippedTruncBig, truncatedBig), true);
 
 console.log("─".repeat(30));
 if (fails) { console.log(`✖ ${fails} failed`); process.exit(1); }
