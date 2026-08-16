@@ -1,6 +1,15 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🛡️ SYNC/SECURITY/OBSERVABILITY WAVE (#1771–#1814) 16 Aug 2026 ⏳ in-flight → next release (5 fan-out subagents)
+- **Dispatched 5 disjoint fan-out subagents** (pairwise-disjoint file sets):
+  - sync-persist #1803+#1804+#1814 — mastery atomicity (advisory xact lock), wallet spend sync (LWW on monotonic wallet_seq, no more GREATEST resurrection), persist JSON.stringify off main thread (dedicated worker, pagehide stays synchronous). NOTE: #1802 (progress uid dedup) verified ALREADY SHIPPED — model has `uid` + `UniqueConstraint(kid_id,uid)`, record_progress uses `on_conflict_do_nothing`, client sends `uid`. Will close as done, not re-implement.
+  - share-og #1781+#1782 — server-component split of /share page + OG/Twitter card metadata + static 1200x630 og image.
+  - secrets #1771 — non-dev guard enforces min-length (32 jwt / 12 pw) + entropy + adds `numberverse-dev-secret-change-me` to placeholder sets.
+  - ratelimit-nginx #1760+#1761+#1762+#1772+#1751 — trusted-proxy IP (nginx replaces XFF, uvicorn allow-list), per-endpoint keys, CSP/HSTS/XFO/Referrer/nosniff headers, WARNING logs on 429/401.
+  - obs #1749+#1750 — RequestIDMiddleware (X-Request-ID echo + contextvar), _JsonFormatter adds request_id, Exception/HTTPException handlers log method/path/status/request_id.
+- Deferred to next batch (overlapping file ownership): #1764 (read-tier rate limits — needs #1762 per-endpoint keys first) and #1773 (JWT httpOnly architecture — needs exclusive ownership of kid api.ts).
+
 ## 🔐 XSS-PREVENTION + MAIN-THREAD-PERF WAVE (#1823–#1830) 16 Aug 2026 ✅ → 0.89.0 (8 fan-out subagents)
 - **All 8 waves complete + verified on the merged tree:** kid tsc 0, parent tsc 0, core build+links 30, png-metadata ✓, vitest 220/220 (incl new sanitize.test.ts 12), all 15 standalone api test files green (incl new test_schemas_validation 172), locale parity ✓, audit 0 errors.
 - **#1823** external-URL allowlist drops `data:`/`about:` (data:text/html XSS via window.open); core links test 30 checks.
