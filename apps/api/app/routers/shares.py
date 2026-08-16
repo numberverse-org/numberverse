@@ -13,6 +13,7 @@ Four routes:
   · GET    /share/{token}                      (public) — the anonymized weekly snapshot
 """
 import asyncio
+import hashlib
 import secrets
 import uuid
 from collections import Counter
@@ -48,6 +49,39 @@ _SHARE_404_DELAY_SECONDS = 0.02
 async def _share_not_found() -> None:
     await asyncio.sleep(_SHARE_404_DELAY_SECONDS)
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
+
+
+def _share_token_hash(token: str) -> str:
+    """#1777 — one-way fingerprint of a share token. The DB stores only this;
+    the url-safe token lives solely in the minting response."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _is_legacy_raw(v: str | None) -> bool:
+    """#1777 — legacy-plaintext detection. Before the hash migration, rows
+    stored `secrets.token_urlsafe(24)` VERBATIM: exactly 32 url-safe chars. The
+    new form is a 64-char lowercase sha256 hex digest, so any 32-char value is
+    a legacy raw token; None/short/64-hex values are not."""
+    return bool(v) and len(v) == 32
+
+
+def resolve_share_token(stored: str | None, inbound: str) -> tuple[str | None, bool]:
+    """#1777 — pure matcher for the public share-link lookup.
+
+    Given what the DB stores (`stored` — either the new sha256 fingerprint or a
+    legacy plaintext url-safe token) and the inbound link token, return
+    `(matching_stored_value, needs_migration)`: the stored value that matches
+    the inbound token, or `(None, False)` when nothing does. `needs_migration`
+    is True only for a legacy plaintext row that the caller should lazily
+    rewrite to its sha256 fingerprint (Done-when #2: old links keep resolving).
+    """
+    if not stored:
+        return None, False
+    if stored == _share_token_hash(inbound):
+        return stored, False
+    if _is_legacy_raw(stored) and stored == inbound:
+        return stored, True
+    return None, False
 
 
 # #1552 — ProgressEvent has no session/duration column; `response_ms` is
@@ -117,12 +151,21 @@ async def get_share_token(
 ):
     """Mint (or return) the kid's share token. Auth-protected + ownership-checked:
     only the parent can read their own kid's token, so the unguessable string
-    never leaks through a guessed URL."""
+    never leaks through a guessed URL.
+
+    #1777 — the DB stores ONLY the sha256 fingerprint of the url-safe token;
+    the raw token lives solely in this response. A pre-migration plaintext row
+    is migrated in place so the parent keeps the SAME link. A row that already
+    stores only a hash cannot recover the raw token, so re-reading it re-mints
+    (rotates) a fresh link — the same semantics as an explicit /rotate. The
+    parent portal calls this only on a user "share" tap, so this is safe."""
     owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     if not owned.share_token:
-        owned.share_token = secrets.token_urlsafe(24)
+        # Fresh mint: persist only the fingerprint.
+        raw = secrets.token_urlsafe(24)
+        owned.share_token = _share_token_hash(raw)
         # #1550 — audit when this token was minted (stored via migrations.py;
         # kept off the ORM model so another wave can own the column addition).
         await db.execute(
@@ -134,7 +177,27 @@ async def get_share_token(
         )
         await db.commit()
         await db.refresh(owned)
-    return ShareTokenOut(token=owned.share_token)
+    elif _is_legacy_raw(owned.share_token):
+        # #1777 — pre-migration plaintext row: migrate it in place and hand back
+        # the SAME raw token, so the previously-minted link keeps resolving.
+        raw = owned.share_token
+        owned.share_token = _share_token_hash(raw)
+        await db.commit()
+    else:
+        # #1777 — only a hash is stored; the raw is unrecoverable, so re-reading
+        # re-mints (rotates) exactly like the /rotate endpoint.
+        raw = secrets.token_urlsafe(24)
+        owned.share_token = _share_token_hash(raw)
+        await db.execute(
+            text(
+                "UPDATE kids SET share_token_created_at = now(), "
+                "share_token_revoked_at = NULL WHERE id = CAST(:kid_id AS uuid)"
+            ),
+            {"kid_id": str(kid_id)},
+        )
+        await db.commit()
+        await db.refresh(owned)
+    return ShareTokenOut(token=raw)
 
 
 # #1550 — rotate a leaked/outdated share link: regenerate the token so every
@@ -149,7 +212,10 @@ async def rotate_share_token(
     owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
-    owned.share_token = secrets.token_urlsafe(24)
+    raw = secrets.token_urlsafe(24)
+    # #1777 — the DB stores only the sha256 fingerprint; the raw token is
+    # returned exactly once, in this response.
+    owned.share_token = _share_token_hash(raw)
     await db.execute(
         text(
             "UPDATE kids SET share_token_created_at = now(), "
@@ -159,7 +225,7 @@ async def rotate_share_token(
     )
     await db.commit()
     await db.refresh(owned)
-    return ShareTokenOut(token=owned.share_token)
+    return ShareTokenOut(token=raw)
 
 
 # #852 — same UUID path-param typing as GET above: malformed ids 422 before the
@@ -195,7 +261,21 @@ async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
     Unknown/revoked/paused tokens → 404 (a guessed link finds nothing)."""
     if not token:
         await _share_not_found()
-    kid = await db.scalar(select(Kid).where(Kid.share_token == token))
+    # #1777 — new-form lookup: the DB stores only the sha256 fingerprint, so
+    # hash the inbound token before comparing.
+    token_hash = _share_token_hash(token)
+    kid = await db.scalar(select(Kid).where(Kid.share_token == token_hash))
+    if not kid:
+        # #1777 — legacy fallback: a pre-migration row stores the url-safe raw
+        # verbatim. Match it directly and lazily migrate it to the fingerprint
+        # so previously-minted plaintext links keep resolving (Done-when #2).
+        legacy = await db.scalar(select(Kid).where(Kid.share_token == token))
+        if legacy:
+            _, needs_migration = resolve_share_token(legacy.share_token, token)
+            if needs_migration:
+                kid = legacy
+                legacy.share_token = token_hash
+                await db.commit()
     if not kid:
         await _share_not_found()
 
