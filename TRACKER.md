@@ -1,6 +1,20 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 16 Aug 2026
 
+## 🔐 XSS-PREVENTION + MAIN-THREAD-PERF WAVE (#1823–#1830) 16 Aug 2026 🚧 IN FLIGHT (8 fan-out subagents)
+- **Backlog sweep:** all 269 v50/v40/deepthink feed audit tasks confirmed complete (every task file has a feed result); the 13 stale task files (nv-997/nv-1000–1004, nv-b9–b15) verified as ALREADY SHIPPED (batch-3 #942–999 in 0.72.0, scene-patterns #997–1004 in 0.83.0) — their work was done; only the task files remained. 183 consumed task files archived to `~/.tresha/dispatch/consumed/`.
+- **Next-ranked genuine backlog:** 299 `status: todo` GitHub issues the pipeline hasn't dispatched. Top cluster = #1816–#1830 (xss-prevention + main-thread perf), all confirmed OPEN in code.
+- **Dispatched 8 disjoint fan-out subagents** (pairwise-disjoint file sets):
+  - xss-1 #1823 external-URL allowlist data:/about: (packages/core/src/links.ts + core tests)
+  - xss-2 #1824/#1828 name+avatar charset/length validation (apps/api schemas + new test)
+  - xss-3 #1826 CSV formula-injection guard (apps/api export_format + test_export)
+  - xss-4 #1825/#1830/#1820 kid-app sanitize (download names, TTS control/RTL strip, parentHeatmap memo; App.tsx + speech.ts + Nova3DHome)
+  - perf-5 #1816/#1819 SVG rasterize off-main-thread + PNG strip w/o per-byte array (svgAssets + png.ts)
+  - perf-6 #1817/#1818/#1827 share-card paint off game thread + name cap (shareImage + PhotoBoothScene)
+  - perf-7 #1821 room/background textures off main thread (rooms.ts + backgrounds.ts)
+  - perf-8 #1822/#1829/#1825-parent dashboard aggregation off main thread + parent sanitize (parent portal)
+- CI housekeeping from 0.88.0 also closed this pass: api-job install line now has bcrypt+email-validator, and the 5 new coverage test files are wired into CI (commit 8742890).
+
 ## 🧪 V50 TEST-COVERAGE-API FEED (12 findings) 16 Aug 2026 ✅ → 0.88.0
 - **5 standalone Python test files / 480+ checks** for `apps/api` (5 fan-out subagent waves, disjoint filesets, all green via the existing no-Postgres pattern): auth (66 — signup/login/sessions/#773 bearer-fingerprint/#865 legacy cutoff), admin (89 — generic CRUD, mass-assignment guard, rate limiter, AuthAttemptGuard, size middleware), progress (62 — BKT mastery/upsert/mastered_at/#1026 band-skip uid), kids (50 — _age_band_cap/update_kid birth_year/#10 weekly-trigger+goal clamp), import (65 — restore matrix/#12 round-trip).
 - **4 REAL bugs found + fixed this session:**
