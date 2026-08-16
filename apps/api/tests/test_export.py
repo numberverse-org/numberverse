@@ -12,6 +12,7 @@ fastapi imports) so this runs in CI with zero Postgres — the same pattern as
 
 Run:  python3 apps/api/tests/test_export.py
 """
+import csv
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.export_format import (  # noqa: E402
     VERSION,
+    _guard_csv_cell,
     iso,
     profile_meta,
     round_rows,
@@ -165,6 +167,47 @@ check("csv row 1", "তারা," in text.splitlines()[1], True)
 
 print("⑤  Format version constant (v2 adds acceleration + coins + consent)…")
 check("VERSION", VERSION, 2)
+
+print("⑥  CSV formula-injection guard (#1826)…")
+_guard_cases = [
+    # (raw cell, expected guarded cell)
+    ("=HYPERLINK(\"http://evil.example\")", "'=HYPERLINK(\"http://evil.example\")"),
+    ("+2+3", "'+2+3"),
+    ("@SUM(A1:B1)", "'@SUM(A1:B1)"),
+    ("-5", "'-5"),
+    ("\t=tab", "'\t=tab"),
+    ("\r=cr", "'\r=cr"),
+    ("Aarif", "Aarif"),
+    ("আরিফ", "আরিফ"),
+    (1500, 1500),  # non-string cells keep their type
+    (True, True),
+    (None, None),
+]
+for raw, want in _guard_cases:
+    check(f"guard {raw!r}", _guard_csv_cell(raw), want)
+
+# End-to-end through to_csv: dangerous kid names are neutralized in the file.
+# Values containing quotes get quoted by the writer, so parse the row back
+# with csv.reader and assert on the actual cell value.
+_e2e_fields = ["kid", "kid_id", "date", "skill_id", "game_id", "correct", "response_ms", "difficulty"]
+for _danger in ("=HYPERLINK(\"http://evil.example\")", "+2+3", "@SUM", "-5"):
+    _evil = kid(name=_danger)
+    _evil_csv = to_csv(
+        round_rows([_evil], [event(kid_id=_evil.id, created_at=datetime(2026, 8, 10, 8, 0, 0))]),
+        _e2e_fields,
+    ).decode("utf-8-sig")
+    _evil_cell = next(iter(csv.reader([_evil_csv.splitlines()[1]])))[0]
+    check(f"csv neutralizes {_danger!r} kid", _evil_cell, "'" + _danger)
+
+# Normal names pass through the CSV unchanged.
+for _plain in ("Aarif", "আরিফ"):
+    _pk = kid(name=_plain)
+    _plain_csv = to_csv(
+        round_rows([_pk], [event(kid_id=_pk.id, created_at=datetime(2026, 8, 10, 8, 0, 0))]),
+        _e2e_fields,
+    ).decode("utf-8-sig")
+    _plain_cell = next(iter(csv.reader([_plain_csv.splitlines()[1]])))[0]
+    check(f"csv keeps {_plain!r} unchanged", _plain_cell, _plain)
 
 print()
 print(f"✓ export format matrix: {passes} passed, {fails} failed")

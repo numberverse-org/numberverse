@@ -146,11 +146,37 @@ def round_rows(kids, events) -> list[dict]:
     return sorted(rows, key=lambda r: r["date"] or "")
 
 
+# #1826 — the export is opened straight in Excel/Numbers, so any cell whose
+# text starts with a formula metacharacter is evaluated as a spreadsheet
+# formula. The kid name is user-controlled (a `=HYPERLINK(...)` name would be
+# a CSV injection), but we guard EVERY cell: `-`, `+`, `=` and `@` prefixes
+# are the classic injection set, and Excel also treats leading tab/CR as
+# formula-adjacent. Neutralize by prefixing a single quote so the cell reads
+# as plain text.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _guard_csv_cell(value):
+    """Neutralize spreadsheet formula injection for a single CSV cell.
+
+    Only cells that actually start with a metacharacter are touched — normal
+    text ("Aarif", "আরিফ") passes through byte-for-byte. Non-dangerous values
+    keep their original type (int/float/bool/None) so the csv module renders
+    them exactly as before; dangerous values become a `'`-prefixed string.
+    """
+    if value is None:
+        return value
+    text = value if isinstance(value, str) else str(value)
+    if text.startswith(_FORMULA_PREFIXES):
+        return "'" + text
+    return value
+
+
 def to_csv(rows: list[dict], fieldnames: list[str]) -> bytes:
     """Serialize round rows to UTF-8 (BOM so Excel renders Bangla names)."""
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()
     for r in rows:
-        writer.writerow(r)
+        writer.writerow({k: _guard_csv_cell(v) for k, v in r.items()})
     return ("﻿" + buf.getvalue()).encode("utf-8")
