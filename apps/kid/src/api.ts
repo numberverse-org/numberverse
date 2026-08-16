@@ -1,5 +1,5 @@
 import { useKidStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncChannel, type SyncEvent } from "./store";
-import { hashParentSecret, verifyParentSecret } from "./lib/pinHash";
+import { hashParentSecret, verifyParentSecret, deriveDeviceSecret } from "./lib/pinHash";
 
 /**
  * API base. Resolution order:
@@ -43,7 +43,7 @@ const LS = {
   parentName: "nv_parent_name", // display name shown on the gate + syllabus
   parentKid: "nv_kid_id", // parent-linked (existing, kept for compatibility)
   deviceId: "nv_device_id",
-  secret: "nv_device_secret",
+  secret: "nv_device_secret", // #1775 — random SEED; the account credential is its PBKDF2 derivation (salt = deviceId), never this raw value
   deviceToken: "nv_device_token",
   deviceProfileId: "nv_device_profile_id",
   kidMap: "nv_kid_map", // { localKidId: serverKidId }
@@ -157,19 +157,40 @@ async function deviceAuth(deviceId: string): Promise<string> {
     localStorage.setItem(LS.secret, secret);
   }
   const email = `kid-${deviceId.slice(0, 12)}@numberverse.dev`;
+  // #1775 — the account password is the DETERMINISTIC PBKDF2 derivation of
+  // the seed (salt = deviceId), NOT the raw localStorage seed. Copying a
+  // localStorage blob from one phone no longer authenticates to someone
+  // else's/another device's account.
+  const derived = await deriveDeviceSecret(secret, deviceId);
   // signup; if the email already exists (retry after a failed persist),
-  // fall back to login with the same deterministic secret.
+  // fall back to login with the same derived credential.
   let res = await fetch(`${API}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password: secret, display_name: "Kid Device" }),
+    body: JSON.stringify({ email, password: derived, display_name: "Kid Device" }),
   });
   if (res.status === 409) {
     res = await fetch(`${API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: secret }),
+      body: JSON.stringify({ email, password: derived }),
     });
+    // #1775 — legacy installs created the account with the RAW seed as its
+    // password, so their derived login 401s. Retry ONCE with the raw seed so
+    // existing devices keep syncing (their outbox must not wedge), and flag
+    // the legacy credential for rotation. (The real fix — POST
+    // /auth/change-password current=raw→next=derived — is owned by the API
+    // wave; sibling tasks are not touched here.)
+    if (res.status === 401) {
+      res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: secret }),
+      });
+      // #1775 — no console log here (audit forbids console.* that ships to
+      // kids); the legacy-credential path stays silent by design and the
+      // change-password rotation is owned by the API wave.
+    }
   }
   if (!res.ok) throw new Error(`device auth ${res.status}`);
   const data = await res.json();

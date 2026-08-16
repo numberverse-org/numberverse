@@ -81,6 +81,34 @@ function timingSafeEqualHex(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * #1775 — DETERMINISTIC derivation of the device-account credential from the
+ * stored random seed. Salt = the device id, so the SAME seed produces a
+ * DIFFERENT credential on another device: copying a localStorage blob from
+ * one phone does not authenticate to a different device's account. The raw
+ * seed in localStorage is no longer itself the account password.
+ * Iterations are deliberately high (same PBKDF2-SHA-256 as the PIN gate) and
+ * the result is hex-encoded.
+ */
+export const DEVICE_DERIVE_ITERATIONS = 150_000;
+
+export async function deriveDeviceSecret(seed: string, deviceId: string): Promise<string> {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw", enc.encode(seed), "PBKDF2", false, ["deriveBits"],
+    );
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt: enc.encode(deviceId), iterations: DEVICE_DERIVE_ITERATIONS, hash: "SHA-256" },
+      keyMaterial, 256,
+    );
+    return bytesToHex(new Uint8Array(bits));
+  }
+  // Insecure context (LAN http dev): crypto.subtle is unavailable — fall back
+  // to the raw seed so the on-LAN kid flow keeps working. Prod is always https.
+  return seed;
+}
+
 /** Verify a PIN/answer against a stored hash (legacy or PBKDF2). */
 export async function verifyParentSecret(value: string, stored: string): Promise<boolean> {
   if (!stored) return false;
