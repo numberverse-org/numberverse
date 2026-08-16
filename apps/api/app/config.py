@@ -10,10 +10,16 @@ DEFAULT_ADMIN_PASSWORD = "change-me-admin"
 DEFAULT_DEMO_PASSWORD = "demo1234"
 DEV_ENVIRONMENT = "dev"
 
+# #1771 — the dev .env ships with this value; it is the single source of truth
+# so the guard and the dev env can never drift apart.  Both the placeholder
+# set and .env.example reference the same constant.
+DEV_JWT_SECRET = "numberverse-dev-secret-change-me"
+
 # #921 — placeholder secrets that used to ship in the example env files must
 # never be accepted on a non-dev boot (they are public and forgeable).
 _JWT_SECRET_PLACEHOLDERS = {
     DEFAULT_JWT_SECRET,
+    DEV_JWT_SECRET,
     "change-me",
     "change-me-32-chars-minimum-random-secret",
 }
@@ -21,6 +27,20 @@ _ADMIN_PASSWORD_PLACEHOLDERS = {DEFAULT_ADMIN_PASSWORD, "change-me"}
 # #800 — the demo parent is a real seeded account, so its password must be
 # operator-owned in non-dev environments exactly like the admin password.
 _DEMO_PASSWORD_PLACEHOLDERS = {DEFAULT_DEMO_PASSWORD, "demo", "demo-password"}
+
+# #1771 — minimum acceptable entropy for non-dev secrets.
+_JWT_SECRET_MIN_LENGTH = 32
+_PASSWORD_MIN_LENGTH = 12
+
+
+def _character_classes(value: str) -> int:
+    """Count how many of {lowercase, uppercase, digit, symbol} appear."""
+    return sum((
+        any(c.islower() for c in value),
+        any(c.isupper() for c in value),
+        any(c.isdigit() for c in value),
+        any(not c.isalnum() for c in value),
+    ))
 
 
 class Settings(BaseSettings):
@@ -82,22 +102,31 @@ settings = Settings()
 # security hole.
 if settings.environment.strip().lower() != DEV_ENVIRONMENT:
     _problems = []
+    _jwt = settings.jwt_secret
     if (
-        not settings.jwt_secret
-        or not settings.jwt_secret.strip()
-        or settings.jwt_secret in _JWT_SECRET_PLACEHOLDERS
+        not _jwt
+        or not _jwt.strip()
+        or _jwt in _JWT_SECRET_PLACEHOLDERS
+        or len(_jwt) < _JWT_SECRET_MIN_LENGTH
+        or _character_classes(_jwt) < 3
     ):
         _problems.append("NV_JWT_SECRET (set a strong, non-default value)")
+    _admin = settings.admin_password
     if (
-        not settings.admin_password
-        or not settings.admin_password.strip()
-        or settings.admin_password in _ADMIN_PASSWORD_PLACEHOLDERS
+        not _admin
+        or not _admin.strip()
+        or _admin in _ADMIN_PASSWORD_PLACEHOLDERS
+        or len(_admin) < _PASSWORD_MIN_LENGTH
+        or _character_classes(_admin) < 3
     ):
         _problems.append("NV_ADMIN_PASSWORD (set a strong, non-default value)")
+    _demo = settings.demo_password
     if (
-        not settings.demo_password
-        or not settings.demo_password.strip()
-        or settings.demo_password in _DEMO_PASSWORD_PLACEHOLDERS
+        not _demo
+        or not _demo.strip()
+        or _demo in _DEMO_PASSWORD_PLACEHOLDERS
+        or len(_demo) < _PASSWORD_MIN_LENGTH
+        or _character_classes(_demo) < 3
     ):
         _problems.append("NV_DEMO_PASSWORD (set a strong, non-default value)")
     if "*" in settings.origins:
