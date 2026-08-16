@@ -39,6 +39,11 @@ _PHONE = re.compile(r"\b(?:\+?880|0)[\d\s\-]{5,13}\d\b|\b\d{16,19}\b")
 _LONG_DIGITS = re.compile(r"\b\d{15}\b|\b\d{19}\b")
 # MAC addresses
 _MAC = re.compile(r"\b(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\b")
+# #1776 — credential-bearing URL (scheme://user:password@host) and an
+# Authorization: Bearer <token> header. The scheme+user stay visible (needed
+# to debug a connection target); ONLY the secret is replaced.
+_CONN_URI = re.compile(r"([a-z][a-z0-9+.\-]*://[^/@\s:]+:)([^@\s]+)@", re.IGNORECASE)
+_BEARER = re.compile(r"(\bauthorization\s*[:=]\s*bearer\s+)[^\s,;]+", re.IGNORECASE)
 
 REDACTION = "[REDACTED]"
 
@@ -58,11 +63,19 @@ def redact_text(s: str) -> str:
     """Return `s` with every PII-shaped token replaced. Idempotent."""
     if not s:
         return s
-    out = _EMAIL.sub(REDACTION, s)
+    # #1776 — credential-bearing URL secrets are scrubbed FIRST so the later
+    # _EMAIL pass can't swallow `password@host` (which would lose the host a
+    # debugger needs AND leave the URL in a half-mangled state). Only the
+    # password is replaced; scheme/user/host stay visible.
+    out = _CONN_URI.sub(r"\1[REDACTED]@", s)
+    out = _EMAIL.sub(REDACTION, out)
     out = _MAC.sub(REDACTION, out)
     out = _IPV6.sub(REDACTION, out)
     out = _IPV4.sub(REDACTION, out)
     out = _PHONE.sub(REDACTION, out)
+    # #1776 — Bearer-token header secrets run LAST (no PII shape overlaps a
+    # JWT, so nothing earlier needs the raw token).
+    out = _BEARER.sub(r"\1[REDACTED]", out)
     return out
 
 

@@ -33,6 +33,37 @@ check("plain", redact_text("just words"), "just words")
 check("empty", redact_text(""), "")
 check("idempotent", redact_text(redact_text("a@b.com")), "[REDACTED]")
 
+# ── #1776 — DB connection-string passwords and Bearer tokens ──
+check(
+    "conn uri password redacted",
+    redact_text("postgresql+psycopg://numberverse:numberverse_dev@localhost:5434/numberverse"),
+    "postgresql+psycopg://numberverse:[REDACTED]@localhost:5434/numberverse",
+)
+check(
+    "conn uri host preserved",
+    redact_text("postgresql://alice:s3cr3t@db.example.com:5432/app"),
+    "postgresql://alice:[REDACTED]@db.example.com:5432/app",
+)
+check(
+    "bearer header redacted",
+    redact_text("Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.token.sig"),
+    "Authorization: Bearer [REDACTED]",
+)
+check(
+    "bearer equals form redacted",
+    redact_text("authorization=bearer abc123.def456"),
+    "authorization=bearer [REDACTED]",
+)
+check(
+    "plain url unchanged",
+    redact_text("https://example.com/path?x=1"),
+    "https://example.com/path?x=1",
+)
+db_url = "postgresql+psycopg://numberverse:numberverse_dev@localhost:5434/numberverse"
+bearer_line = "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.token.sig"
+check("conn uri idempotent", redact_text(redact_text(db_url)), redact_text(db_url))
+check("bearer idempotent", redact_text(redact_text(bearer_line)), redact_text(bearer_line))
+
 # ── redact_context (deep walk, no mutation) ──
 ctx = {"reason": "call 01712345678", "meta": {"email": "x@y.io", "ok": 42}, "tags": ["ip 10.0.0.1"]}
 out = redact_context(ctx)
@@ -75,6 +106,23 @@ check("deep nesting truncates", node, "[CONTEXT_TRUNCATED]")
 rec = logging.LogRecord("n", logging.INFO, "f", 1, "mail %s arrived", ("a@b.io",), None)
 ScrubFilter().filter(rec)
 check("log msg arg", rec.args, ("[REDACTED]",))
+
+# #1776 — a rendered log line (msg + args through ScrubFilter) must no longer
+# contain the plaintext DB password or the raw JWT, and must show [REDACTED].
+jwt = "eyJhbGciOiJIUzI1NiJ9.token.sig"
+rec = logging.LogRecord(
+    "n", logging.ERROR, "f", 1,
+    "db connect %s; %s",
+    (db_url, f"Authorization: Bearer {jwt}"),
+    None,
+)
+ScrubFilter().filter(rec)
+formatted = rec.getMessage()
+check(
+    "log path redacts db+jwt",
+    ("numberverse_dev" not in formatted and jwt not in formatted and "[REDACTED]" in formatted),
+    True,
+)
 
 print("─" * 30)
 if fails:
