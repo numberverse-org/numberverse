@@ -1,3 +1,12 @@
+## 17 Aug 2026 — 0.91.0 (auth/ratelimit/ddl wave: #1773 JWT httpOnly refresh rotation, #1764 read-tier rate limits, #1801 admin IN-clause cap, #1793-#1798 migrations DDL hardening, #1776 DB-password+Bearer log redaction)
+
+3816205 docs: TRACKER wave entry — auth/ratelimit/ddl wave → 0.91.0
+aece04f #1776 scrub: redact DB conn-string passwords (scheme://user:pass@) and Authorization: Bearer tokens from every log path.
+fcfe8f1 #1793-#1798 migrations DDL hardening: _q() quoting everywhere, _constraint_name ≤63 stable hash, CreateIndex(if_not_exists=True), unified CreateColumn ADD COLUMN, CHECK-sqltext allowlist, share-token ALTERs quoted.
+ce9ee31 #1801 admin IN-clause: MAX_FILTER_LIST_LEN=200 — oversized filter list → 400 before col.in_(val).
+0aa8e93 #1764 read-tier rate limits: READ_REQUESTS_PER_MIN=600 + read_rate_limit() (:read key namespace) on snapshot/mastery/stories/stats/acceleration/aggregates/activity/weekly/share-token — expensive reads bounded, writes untouched.
+768c07d #1773 JWT httpOnly: short-lived access (15min parent/10min admin) + rotating nv_refresh httpOnly cookie — POST /auth/refresh rotation, Session.refresh_hash columns, CORS credentials toggle, parent refresh-on-load, admin checkAuth refresh, kid 401 retry. No full-week JWT reachable from JS on parent/admin origin.
+
 ## 17 Aug 2026 — 0.90.2 (fix: nginx pins /parent/share/ (trailing-slash minted link) to share.html so the OG share card renders instead of the dashboard)
 
 bcc8a16 🔗 nginx #1782: pin trailing-slash share link (/parent/share/) to share.html — minted links were falling through to the dashboard (static export has no share/ dir, so $uri/ never matched); ?t= query preserved, OG card now renders for old + new links

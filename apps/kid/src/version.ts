@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "17 Aug 2026 · 0.90.2 (fix: nginx pins /parent/share/ (trailing-slash minted link) to share.html so the OG share card renders instead of the dashboard)";
-export const APP_VERSION = "0.90.2";
+export const APP_BUILD = "17 Aug 2026 · 0.91.0 (auth/ratelimit/ddl wave: #1773 JWT httpOnly refresh rotation, #1764 read-tier rate limits, #1801 admin IN-clause cap, #1793-#1798 migrations DDL hardening, #1776 DB-password+Bearer log redaction)";
+export const APP_VERSION = "0.91.0";
