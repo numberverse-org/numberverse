@@ -404,10 +404,10 @@ export function isBirthday(kid: Kid | null | undefined): boolean {
 
 /* #1162 — age-graded reward surfaces. The nursery pet is perfect for the
  * youngest bands, but the same caring ritual reads as patronising to older
- * learners. Map age (currentYear - birthYear) onto the curriculum bands in
- * packages/core skills.ts BANDS (1 = 2–4, 2 = 4–6, 3 = 6–8, 4 = 8–10,
- * 5 = 10–13, 6 = 11–14, 7 = 12–15) so the home screen can swap the pet for a
- * streak/badge/achievement mission bar on bands 5–7. */
+ * learners. Map age onto the curriculum bands in packages/core skills.ts BANDS
+ * (1 = 2–4, 2 = 4–6, 3 = 6–8, 4 = 8–10, 5 = 10–13, 6 = 11–14, 7 = 12–15,
+ * 8 = 13–16) so the home screen can swap the pet for a streak/badge/achievement
+ * mission bar on bands 5–8. */
 export function bandForAge(age: number): number {
   if (!Number.isFinite(age) || age < 4) return 1;
   if (age < 6) return 2;
@@ -415,16 +415,30 @@ export function bandForAge(age: number): number {
   if (age < 10) return 4;
   if (age < 13) return 5;
   if (age < 14) return 6;
-  return 7;
+  // 14+ → Summit Peaks (band 8, ages 13–16) so the oldest cohort reaches the
+  // band-8 surface by placement, not only by journey progress. Band 7 (Polar
+  // Peaks, 12–15) overlaps heavily and stays reachable via progression.
+  // Clamp against the catalog so a future band added to BANDS is covered
+  // automatically instead of silently capping here.
+  return Math.min(8, BANDS.length);
 }
 
-/** The band a kid is in, from their stored birth year. A missing/zero/future
- *  birth year falls back to band 1 (youngest surface) so an incomplete profile
- *  keeps the nursery pet instead of losing the caring ritual entirely. */
+/** The band a kid is in, from their stored birth year + optional birthday.
+ *  A missing/zero/future birth year falls back to band 1 (youngest surface) so
+ *  an incomplete profile keeps the nursery pet instead of losing the caring
+ *  ritual entirely. */
 export function kidBand(kid: Kid | null | undefined, now: Date = new Date()): number {
   const birthYear = kid?.birthYear;
   if (typeof birthYear !== "number" || birthYear <= 0) return 1;
-  const age = now.getFullYear() - birthYear;
+  // #13 — full-date age when the birthday is known: a Dec-31-born kid isn't a
+  // year older on Jan 1. Fall back to year-only for legacy profiles (graceful).
+  let age = now.getFullYear() - birthYear;
+  if (typeof kid?.birthMonth === "number" && typeof kid?.birthDay === "number") {
+    const beforeBirthday =
+      now.getMonth() + 1 < kid.birthMonth ||
+      (now.getMonth() + 1 === kid.birthMonth && now.getDate() < kid.birthDay);
+    if (beforeBirthday) age -= 1;
+  }
   if (age < 0) return 1;
   return bandForAge(age);
 }
@@ -748,10 +762,14 @@ function unitKey(s: Skill): string {
   return `${s.band}:${s.family ?? `__${s.id}`}`;
 }
 
-/** True when ANY member of a cached unit is mastered (#1120 — O(members) on the
- *  cached group, no catalog re-scan). */
+/** True when a cached unit is mastered (#1120 — O(members) on the cached group,
+ *  no catalog re-scan). A multi-tier FAMILY is ONE concept: it counts as
+ *  mastered only when the family's HARDEST tier (top `tier`) is mastered, so a
+ *  kid who can count to 10 doesn't unlock River Town without ever counting to
+ *  20 (#1044-audit). A unit with a single member behaves exactly as before. */
 function unitMasteredFrom(skills: SkillMap, kidId: string, u: { members: Skill[] }): boolean {
-  return u.members.some((m) => skillMastered(skills, kidId, m.id));
+  const top = u.members.reduce((a, b) => ((b.tier ?? 1) > (a.tier ?? 1) ? b : a), u.members[0]);
+  return !!top && skillMastered(skills, kidId, top.id);
 }
 
 export function worldProgress(skills: SkillMap, kidId: string, band: number): { mastered: number; total: number; pct: number } {
