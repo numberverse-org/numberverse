@@ -13,7 +13,7 @@ import {
   type A11yPrefs,
 } from "@numberverse/core";
 import QRCode from "qrcode";
-import OnDeviceData from "./OnDeviceData";
+import OnDeviceData from "../OnDeviceData";
 import {
   getProfile,
   getKids,
@@ -55,8 +55,8 @@ import {
   type NewKid,
   type SessionRow,
   type AccelerationRow,
-} from "../lib/api";
-import { worksheetFor, type WorksheetProblem } from "../lib/worksheet";
+} from "../../lib/api";
+import { worksheetFor, type WorksheetProblem } from "../../lib/worksheet";
 import {
   ACCOUNT_LANGS,
   A11Y_LANGS,
@@ -89,10 +89,10 @@ import {
   weeklyShareText,
   type MissedSkill,
   type MonthSummary,
-} from "./lib/portal";
-import { sanitizeDisplayName, sanitizeDownloadName } from "./sanitize";
-import LearningControls from "./components/LearningControls";
-import { FamilyOverview, TodayCard, WeeklyCard, MasteryTimeline } from "./components/OverviewSections";
+} from "../lib/portal";
+import { sanitizeDisplayName, sanitizeDownloadName } from "../sanitize";
+import LearningControls from "../components/LearningControls";
+import { FamilyOverview, TodayCard, WeeklyCard, MasteryTimeline } from "../components/OverviewSections";
 import {
   StoriesCard,
   WeekWordsCard,
@@ -100,21 +100,21 @@ import {
   AccelCard,
   ArchiveCard,
   SessionsCard,
-} from "./components/ReportsSections";
+} from "../components/ReportsSections";
 import {
   GamesCard,
   CompareCard,
   WorksheetCard,
   FlashcardsCard,
-} from "./components/ExploreSections";
-import { ActivityFeed, MissedCard, MasteryCard } from "./components/ActivitySections";
+} from "../components/ExploreSections";
+import { ActivityFeed, MissedCard, MasteryCard } from "../components/ActivitySections";
 import {
   AddKidCard,
   AccountCard,
   EditKidCard,
   DiagnosticsCard,
   HelpCard,
-} from "./components/AccountSections";
+} from "../components/AccountSections";
 
 // #1530/#1508 — single source of truth for the "new kid" birth-year default.
 function defaultBirthYear(): number {

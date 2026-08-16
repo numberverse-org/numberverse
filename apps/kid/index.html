@@ -3,9 +3,59 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0" />
-    <!-- PWA manifest (generated: name/icons/theme) + favicon -->
+    <script>
+      // #1787 + #1789 — single operator-configurable sources for the production
+      // origin and the brand's X/Twitter handle. Change THESE two constants and
+      // the DOM-ready block below rewrites every origin/twitter-bearing tag so
+      // the hardcoded copies can never drift. The static attribute values in
+      // this file keep the same defaults so non-JS crawlers still read the
+      // correct canonical/og/twitter/hreflang URLs.
+      const SITE_URL = "https://kids.munna-khan.xyz";
+      // #1789 — PLACEHOLDER brand handle: the operator must set the real
+      // @handle here (there is no known brand handle in the repo yet).
+      const BRAND_TWITTER = "@numberverse";
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var origin = SITE_URL.replace(/\/+$/, "");
+        function setContent(sel, val) {
+          var el = document.querySelector(sel);
+          if (el) el.setAttribute("content", val);
+        }
+        function setHref(sel, val) {
+          var el = document.querySelector(sel);
+          if (el) el.setAttribute("href", val);
+        }
+        setContent('meta[property="og:url"]', origin + "/");
+        setContent('meta[property="og:image"]', origin + "/og-card.png");
+        setContent('meta[name="twitter:image"]', origin + "/og-card.png");
+        setContent('meta[name="twitter:site"]', BRAND_TWITTER);
+        setContent('meta[name="twitter:creator"]', BRAND_TWITTER);
+        setHref('link[rel="canonical"]', origin + "/");
+        // #1790 — self-referencing hreflang alternates (same canonical URL:
+        // the PWA localizes in-app, there is no separate bn URL).
+        setHref('link[rel="alternate"][hreflang="en"]', origin + "/");
+        setHref('link[rel="alternate"][hreflang="bn"]', origin + "/");
+        setHref('link[rel="alternate"][hreflang="x-default"]', origin + "/");
+        // #1787 — the WebApplication JSON-LD url.
+        var jsonLd = document.querySelector('script[type="application/ld+json"]');
+        if (jsonLd) {
+          try {
+            var data = JSON.parse(jsonLd.textContent);
+            data.url = origin + "/";
+            jsonLd.textContent = JSON.stringify(data, null, 2);
+          } catch (_) { /* never break the page over a meta rewrite */ }
+        }
+      });
+    </script>
+    <!-- PWA manifest (generated: name/icons/theme) + favicon.
+         #1736 — the NEW favicon.svg + 32×32 PNG fallback (files owned by the
+         sibling kid-assets task; this HTML only wires the links). -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- #1736 — favicon.png IS the 32×32 fallback now (re-exported 32×32 by the
+         kid-assets task; there is no separate favicon-32.png). -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <meta name="theme-color" content="#0b2545" />
     <!-- #349 first-paint priority: preload the two fonts the FIRST screen uses
          (title face + body face). With font-display:swap this shrinks the
@@ -50,9 +100,12 @@
     <title>Numberverse — kids learn math &amp; Bangla, offline &amp; no ads</title>
 
     <!-- ── Social sharing preview (WhatsApp / Facebook / Twitter / LinkedIn) ──
-         The app is a PWA; the stable home is https://kids.munna-khan.xyz. These
-         tags make any shared link render a proper card. og:image is the static
-         1200×630 card in public/ (served at /og-card.png). -->
+         The app is a PWA; the production origin is kids.munna-khan.xyz. The
+         SITE_URL constant at the top of <head> is the single source of truth
+         for ALL origin-bearing attributes (og:url, og:image, twitter:image,
+         canonical, JSON-LD, hreflang); the static values below are the crawl-
+         safe default. Change SITE_URL only, and the inline script rewrites
+         every tag at load. -->
     <meta name="description" content="Numberverse — the fun offline learning world for ages 2–13. Kids learn math & Bangla, no ads, no tracking. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
 
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn, iMessage) -->
@@ -79,9 +132,21 @@
     <meta name="twitter:description" content="The fun offline learning world for ages 2–13 — math & Bangla, adaptive, private. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
     <meta name="twitter:image" content="https://kids.munna-khan.xyz/og-card.png" />
     <meta name="twitter:image:alt" content="Numberverse — kids learn math and Bangla, offline, no ads" />
+    <!-- #1789 — brand attribution: twitter:site (the card's account) and
+         twitter:creator (the author). Both are driven by the BRAND_TWITTER
+         constant at the top of <head>; the value here is the crawl-safe
+         placeholder the operator must replace with the real @handle. -->
+    <meta name="twitter:site" content="@numberverse" />
+    <meta name="twitter:creator" content="@numberverse" />
 
     <!-- Canonical + structured data (honest: free PWA, no fake ratings) -->
     <link rel="canonical" href="https://kids.munna-khan.xyz/" />
+    <!-- #1790 — self-referencing hreflang alternates: the PWA localizes in-app
+         (no separate bn URL), so all three point at the same canonical URL.
+         Standards-valid for a multilingual single-URL document. -->
+    <link rel="alternate" hreflang="en" href="https://kids.munna-khan.xyz/" />
+    <link rel="alternate" hreflang="bn" href="https://kids.munna-khan.xyz/" />
+    <link rel="alternate" hreflang="x-default" href="https://kids.munna-khan.xyz/" />
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",

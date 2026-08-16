@@ -1,0 +1,5 @@
+# #1786 — the kid app is a fully public PWA landing page: allow all crawlers.
+User-agent: *
+Allow: /
+
+Sitemap: https://kids.munna-khan.xyz/sitemap.xml
