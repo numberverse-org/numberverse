@@ -36,6 +36,7 @@ the current source and are listed in the SUMMARY):
     (a real Postgres NOT NULL violation on flush).
 """
 import asyncio
+import json
 import sys
 import uuid
 from datetime import datetime
@@ -476,6 +477,17 @@ async def _run_admin_crud():
     st, _ = await aexc_status(admin_router.list_resource(
         "content_items", _request(), None, None, '{"title":{"x":1}}', prof, db))
     check("list nested filter payload → 400", st, 400)
+
+    # #1801 — an IN-clause value list is bounded like the other guards
+    st, _ = await aexc_status(admin_router.list_resource(
+        "content_items", _request(), None, None,
+        json.dumps({"id": ["x"] * 201}), prof, db))
+    check("list oversized IN-list filter → 400", st, 400)
+
+    ok = await admin_router.list_resource(
+        "content_items", _request(), None, None,
+        json.dumps({"id": ["c1", "c2"]}), prof, db)
+    check("list short IN-list filter accepted", [r["id"] for r in ok], ["c1", "c2"])
 
     st, _ = await aexc_status(admin_router.list_resource(
         "content_items", _request(), None, "[0,999]", None, prof, db))

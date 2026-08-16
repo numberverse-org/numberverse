@@ -746,6 +746,7 @@ async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncS
 # unbounded work / a full-table pull.
 MAX_RANGE_ROWS = 500
 MAX_FILTER_KEYS = 10
+MAX_FILTER_LIST_LEN = 200  # #1801 — an IN-clause value list is bounded too
 MAX_SORT_COLUMNS = 1
 
 
@@ -877,6 +878,13 @@ async def list_resource(
         if isinstance(val, str) and val.startswith("~"):
             stmt = stmt.where(col.ilike(f"%{val[1:]}%"))
         elif isinstance(val, list):
+            # #1801 — an arbitrary-length list becomes an unbounded parameterized
+            # IN clause; cap it like the other resource-exhaustion guards.
+            if len(val) > MAX_FILTER_LIST_LEN:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Filter list too long (max {MAX_FILTER_LIST_LEN} values)",
+                )
             stmt = stmt.where(col.in_(val))
         else:
             stmt = stmt.where(col == val)
