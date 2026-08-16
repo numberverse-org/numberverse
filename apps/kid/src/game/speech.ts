@@ -332,7 +332,15 @@ function naturalize(text: string, lang: "en" | "bn"): string {
   const over = lang === "bn" ? " ভাগ " : " divided by ";
   const percent = lang === "bn" ? " শতাংশ " : " percent ";
   const equals = lang === "bn" ? " সমান " : " equals ";
-  let s = text;
+  // #1830 — strip control chars, line/paragraph separators and bidi/RTL
+  // overrides (U+202A-202E, U+200E/U+200F, U+2066-2069) from ANY utterance
+  // BEFORE symbol expansion. Kid names and interpolated titles can carry
+  // invisible format chars that reorder or hide words in a spoken line — no
+  // utterance should ever pass them through to a synthesis engine.
+  let s = text.replace(
+    /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/gu,
+    ""
+  );
   // A leading minus on a negative number ("-5"/"−5", or "-five") says the
   // full word "minus five" — never leave a bare "-"/"−" that some engines
   // silently skip. Run this BEFORE the operator rules below (the digit-minus-

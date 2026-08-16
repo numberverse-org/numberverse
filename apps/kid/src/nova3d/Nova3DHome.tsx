@@ -14,6 +14,7 @@ import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode 
 import { getAppLang } from "../game/locale";
 import { speak } from "../game/speech";
 import { STR } from "../i18n";
+import { sanitizeDisplayName } from "../sanitize"; // #1830 — clean the kid name before it reaches the utterance
 import { webglAvailable } from "./webgl";
 
 const Nova3D = lazy(() => import("./Nova3D"));
@@ -56,7 +57,7 @@ export default function Nova3DHome({ kidName, kidId, onBack2d, onExit }: Props) 
     if (noWebgl || spokeRef.current) return;
     spokeRef.current = true;
     const id = window.setTimeout(() => {
-      speak(`${kidName ? `${kidName}, ` : ""}${t.islandTitle}`, { lang });
+      speak(`${kidName ? `${sanitizeDisplayName(kidName, { forSpeech: true })}, ` : ""}${t.islandTitle}`, { lang });
     }, 600);
     return () => window.clearTimeout(id);
   }, [noWebgl, kidName, t.islandTitle, lang]);

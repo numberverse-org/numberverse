@@ -37,6 +37,7 @@ import { neuralSpeak, getNeuralSpeaker, setNeuralSpeaker, isNeuralReady, retryNe
 import { renderShareCard, renderCertCard, canvasToBlob, sharePng, waTextUrl, type ShareCardData, type ShareCertData } from "./game/shareImage";
 import { clearRecording, startRecording, stopRecording } from "./game/voiceRecorder";
 import { NV_GOLD, NV_ORANGE, NV_PINK, NV_SKY } from "./game/ui"; // tokenized #591
+import { sanitizeDisplayName } from "./sanitize"; // #1825/#1830 — render/use-time kid-name cleanup (never mutates stored name)
 import { setRenderBand } from "./game/renderBand"; // #1040 — mirror age band into Phaser render helpers
 import { STR, ensureStrings, bnNum, BN_MONTHS, type Lang, type Strings } from "./i18n";
 import VoiceCheck from "./components/VoiceCheck";
@@ -553,15 +554,35 @@ export default function App() {
   const gardenMastery = useKidStore((s) => s.gardenMastery);
   const skillsMap = useKidStore((s) => s.skills);
   const mistakes = useKidStore((s) => s.mistakes);
-  // #1124 — parent-panel wrong-answer heatmap: pre-aggregate the (unbounded,
-  // growing) mistakes ledger ONCE per [mistakes, active parent kid] into
-  // per-day skill buckets + day totals. Previously the parent-panel render
-  // re-folded Object.entries(mistakes) with nested byDay loops + a reduce over
-  // every value + a sort — and the panel re-renders on the 30s settings poll
-  // and any store tick while open.
+  // #1124/#1820 — parent-panel wrong-answer heatmap: pre-aggregate the
+  // (unbounded, growing) mistakes ledger into per-day skill buckets + day
+  // totals. The STORE's mistakes object is a fresh reference on every
+  // addEvent/recordWrong (and some unrelated store writes), so keying the fold
+  // directly on `mistakes` re-ran the FULL ledger fold on the main thread while
+  // the parent panel was open (a 30s settings poll or any store tick re-renders
+  // the panel). Instead we key the fold on a STABLE SIGNATURE of the active
+  // parent kid's byDay slice — a string that changes ONLY when that kid's
+  // wrong-answer ledger actually changes. An unrelated store tick or an
+  // addEvent for a DIFFERENT kid keeps the same signature → the heavy fold
+  // stays cached. Identical output.
+  const activeParentId =
+    parentKidId && kids.some((k) => k.id === parentKidId) ? parentKidId : (kid?.id ?? kids[0]?.id ?? null);
+  const heatmapSig = useMemo(() => {
+    if (!activeParentId) return "";
+    const kidPrefix = `${activeParentId}:`;
+    const parts: string[] = [];
+    for (const [key, m] of Object.entries(mistakes)) {
+      if (!key.startsWith(kidPrefix)) continue;
+      const skillId = key.slice(kidPrefix.length);
+      const dayEntries = Object.entries(m.byDay ?? {})
+        .filter(([, n]) => n > 0)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+      if (dayEntries.length === 0) continue;
+      parts.push(`${skillId}:${dayEntries.map(([d, n]) => `${d}=${n}`).join(",")}`);
+    }
+    return parts.sort().join("|");
+  }, [mistakes, activeParentId]);
   const parentHeatmap = useMemo(() => {
-    const activeParentId =
-      parentKidId && kids.some((k) => k.id === parentKidId) ? parentKidId : (kid?.id ?? kids[0]?.id ?? null);
     const days: string[] = [];
     for (let i = 27; i >= 0; i--) days.push(dayIsoAgo(i));
     // day → skillId → wrong taps, for the active parent kid only
@@ -592,7 +613,9 @@ export default function App() {
       dayTotal.set(day, sum);
     }
     return { days, daySkills, dayTotal, anyWrongs };
-  }, [mistakes, parentKidId, kid?.id, kids]);
+    // Keyed on the STABLE signature — not the `mistakes` reference — so a 30s
+    // settings poll or unrelated store tick does NOT re-run the full fold.
+  }, [heatmapSig, activeParentId]);
   const kothaStories = useKidStore((s) => s.stories);
   const novaCoins = useKidStore((s) => (kid ? s.nova[kid.id]?.coins ?? 0 : 0));
   // #1126 — today's ISO date (cached in store.ts, so this is a string lookup,
@@ -700,7 +723,8 @@ export default function App() {
         const b = BADGES.find((x) => x.id === id);
         if (!b) return;
         tada();
-        speak(lang === "bn" ? t.badgeNewSpeak(kid.name, b.nameBn) : t.badgeNewSpeak(kid.name, b.name));
+        const safeKidName = sanitizeDisplayName(kid.name, { forSpeech: true }); // #1830
+        speak(lang === "bn" ? t.badgeNewSpeak(safeKidName, b.nameBn) : t.badgeNewSpeak(safeKidName, b.name));
       });
     }
   }, [kid?.id, earnedBadgeKey, storedBadges.join(",")]);
@@ -750,7 +774,8 @@ export default function App() {
         const a = ACHIEVEMENTS.find((x) => x.id === id);
         if (!a) return;
         tada();
-        speak(lang === "bn" ? t.achNewSpeak(kid.name, a.nameBn) : t.achNewSpeak(kid.name, a.name));
+        const safeKidName = sanitizeDisplayName(kid.name, { forSpeech: true }); // #1830
+        speak(lang === "bn" ? t.achNewSpeak(safeKidName, a.nameBn) : t.achNewSpeak(safeKidName, a.name));
       });
     }
   }, [kid?.id, earnedAchKey, storedAchs.join(",")]);
@@ -784,7 +809,8 @@ export default function App() {
         const b = BANDS.find((x) => x.id === bandId);
         if (!b) return;
         tada();
-        speak(lang === "bn" ? t.trNewSpeak(kid.name, b.titleBn ?? b.title) : t.trNewSpeak(kid.name, b.title));
+        const safeKidName = sanitizeDisplayName(kid.name, { forSpeech: true }); // #1830
+        speak(lang === "bn" ? t.trNewSpeak(safeKidName, b.titleBn ?? b.title) : t.trNewSpeak(safeKidName, b.title));
       });
     }
   }, [kid?.id, earnedTrophyKey]);
@@ -1895,7 +1921,7 @@ export default function App() {
     tada();
     // Speak the REAL Bangla world name (কুঁড়ির বাগান …), not an English one
     // or a phonetic transliteration — the parent/certificate hears proper Bangla.
-    speak(t.certSpeak(kid.name, lang === "bn" ? b.titleBn ?? b.title : b.title));
+    speak(t.certSpeak(sanitizeDisplayName(kid.name, { forSpeech: true }), lang === "bn" ? b.titleBn ?? b.title : b.title));
   };
 
   /** Transient "✓ Shared" / error feedback next to the share buttons. */
@@ -1927,10 +1953,11 @@ export default function App() {
         worldsTitle: t.shareWorldsTitle,
         footer: t.shareCardFooter,
       };
-      const canvas = renderShareCard(document.createElement("canvas"), data);
+      const canvas = await renderShareCard(document.createElement("canvas"), data);
       const blob = await canvasToBlob(canvas);
       const caption = t.shareProgressCaption(k.name);
-      const res = await sharePng(blob, `numberverse-${k.name.replace(/\s+/g, "-")}-progress.png`, caption, waTextUrl(caption));
+      const safeDownloadName = sanitizeDisplayName(k.name, { forDownload: true, maxLen: 60 }).replace(/\s+/g, "-");
+      const res = await sharePng(blob, `numberverse-${safeDownloadName}-progress.png`, caption, waTextUrl(caption));
       if (res === "unsupported") {
         flashShare(t.shareFail);
         return;
@@ -1939,7 +1966,7 @@ export default function App() {
       if (useKidStore.getState().novaShareReward(k.id)) {
         tada();
         cancelSpeech();
-        speak(t.shareRewardSpeak(k.name), { lang: lang === "bn" ? "bn" : "en" });
+        speak(t.shareRewardSpeak(sanitizeDisplayName(k.name, { forSpeech: true })), { lang: lang === "bn" ? "bn" : "en" });
       }
       flashShare(res === "downloaded" ? t.shareDownloaded : t.shareDone);
     } catch {
@@ -1985,7 +2012,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `numberverse-${k.name.replace(/\s+/g, "-")}-digest.txt`;
+    a.download = `numberverse-${sanitizeDisplayName(k.name, { forDownload: true, maxLen: 60 }).replace(/\s+/g, "-")}-digest.txt`;
     a.click();
     URL.revokeObjectURL(url);
     flashShare(t.digestDone);
@@ -2014,10 +2041,11 @@ export default function App() {
         skills: cSkills.slice(0, 6).map((sk) => ({ title: sk.title, titleBn: sk.titleBn })),
         footer: t.certShareFooter,
       };
-      const canvas = renderCertCard(document.createElement("canvas"), data);
+      const canvas = await renderCertCard(document.createElement("canvas"), data);
       const blob = await canvasToBlob(canvas);
       const caption = t.certShareCaption(kid.name, lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title);
-      const res = await sharePng(blob, `numberverse-${kid.name.replace(/\s+/g, "-")}-certificate.png`, caption, waTextUrl(caption));
+      const safeDownloadName = sanitizeDisplayName(kid.name, { forDownload: true, maxLen: 60 }).replace(/\s+/g, "-");
+      const res = await sharePng(blob, `numberverse-${safeDownloadName}-certificate.png`, caption, waTextUrl(caption));
       flashShare(res === "unsupported" ? t.shareFail : res === "downloaded" ? t.shareDownloaded : t.shareDone);
     } catch {
       flashShare(t.shareFail);
