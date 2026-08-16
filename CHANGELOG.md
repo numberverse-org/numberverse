@@ -1,3 +1,11 @@
+## 17 Aug 2026 — 0.97.0 (Telemetry + SW/offline + deps/CI wave: #1611-#1620 event accuracy, #1651-#1664 SW cache correctness + shared safety table, #1691-#1702 python vuln scan + Dependabot + Vite 7)
+
+6b9e36c docs: TRACKER wave entry — telemetry + SW/offline + deps/CI wave → 0.97.0 (36 issues: #1611-#1620, #1651-#1664, #1691-#1702)
+82395e2 fix(kid): t() never leaks a literal {n} to a kid (#268) + findLetter whitespace
+c20221e chore(deps): python vuln scan + lockfile guard, Dependabot, Vite 7, deduped majors, hashed pip
+162adf7 fix(sw): offline-cache correctness + shared content-safety table
+1571b84 feat(telemetry): event accuracy — client_ts bucketing, wrong-tap events, engagement events, session-start
+
 ## 17 Aug 2026 — 0.96.0 (Parent UX + a11y wave: #1586 admin reset, #1587 honest errors, #1588 dashboard extract, #1590-#1596 parent UX fixes, #1597-#1598 share/BN parity, #1600-#1610 a11y focus management)
 
 7b424a3 docs: TRACKER wave entry — parent UX + a11y wave → 0.96.0 (21 closed: #1586-#1598, #1600, #1602, #1605-#1610; 3 left open: #1601/#1603/#1604 kid-app a11y follow-up)
