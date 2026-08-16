@@ -1,3 +1,9 @@
+## 17 Aug 2026 — 0.96.0 (Parent UX + a11y wave: #1586 admin reset, #1587 honest errors, #1588 dashboard extract, #1590-#1596 parent UX fixes, #1597-#1598 share/BN parity, #1600-#1610 a11y focus management)
+
+7b424a3 docs: TRACKER wave entry — parent UX + a11y wave → 0.96.0 (21 closed: #1586-#1598, #1600, #1602, #1605-#1610; 3 left open: #1601/#1603/#1604 kid-app a11y follow-up)
+ac02393 feat(api): admin-only parent-password reset endpoint (#1586)
+63f8de8 feat(parent): UX + a11y pass — monolith extract, honest errors, focus-managed dialogs, EN+BN parity
+
 ## 17 Aug 2026 — 0.95.0 (Auth-hardening + scene-lifecycle wave: #1669/#1676 google+set-password rate limits, #1672 same-origin middleware, #1673 CORS tighten, #1675 72-byte password cap, #1739-#1747 scene timer/listener/tween teardown)
 
 ff1425f docs: TRACKER wave entry — auth-hardening + scene-lifecycle wave → 0.95.0 (#1669 #1672 #1673 #1675 #1676, #1739 #1740 #1741 #1742 #1743 #1744 #1745 #1746 #1747)
