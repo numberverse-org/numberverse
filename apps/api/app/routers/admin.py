@@ -910,6 +910,7 @@ async def list_resource(
 async def get_resource(
     resource: str,
     item_id: str,
+    request: Request,
     _: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -945,6 +946,7 @@ async def get_resource(
 async def create_resource(
     resource: str,
     body: dict,
+    request: Request,
     profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -969,6 +971,13 @@ async def create_resource(
         return _row_to_dict(obj)
 
     payload = _writable_payload(resource, body)
+    # #967 — string-PK catalog rows (skills, content_items) carry a
+    # CLIENT-supplied natural key: `id` is the catalog id, not a server-assigned
+    # surrogate. `_writable_payload`'s mass-assignment guard strips `id`, so
+    # restore it here for models whose PK is a client string (anything not in
+    # UUID_MODELS) — otherwise every create would flush a NULL PK and fail.
+    if model not in UUID_MODELS and body.get("id") is not None:
+        payload["id"] = body["id"]
     # #968 — org-scoped create: for ORG_SCOPED_MODELS, force-bind org_id from
     # the request context and reject a caller-supplied org_id that differs.
     if model in ORG_SCOPED_MODELS:

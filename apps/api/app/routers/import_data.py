@@ -164,6 +164,11 @@ _SETTINGS_FIELDS = (
     "voice_tone",
     "voice_speed",
     "paused",
+    # #12 — a backup restore must carry the settings row's timestamp too,
+    # otherwise the round-trip silently resets the parent-controls "last edit"
+    # stamp to import-time. Export already ships it (export.py _SETTINGS_FIELDS
+    # + _serialize_settings) — the import side now mirrors that.
+    "updated_at",
 )
 
 _MASTERY_FIELDS = ("mastery", "correct", "attempts", "streak", "last_practice", "last_decay")
@@ -208,6 +213,11 @@ def _upsert_settings(db: AsyncSession, item: ImportSettingsIn | None, kid_uuid: 
     if item is None:
         return 0, 0, 0
     fields = {name: getattr(item, name) for name in _SETTINGS_FIELDS}
+    # #12 — updated_at is a timezone-aware column; normalize the parsed ISO
+    # value to aware UTC so the round-trip matches /export and Postgres
+    # (mirrors _mastery_fields' handling of last_practice/last_decay).
+    if fields.get("updated_at") is not None:
+        fields["updated_at"] = _utc(fields["updated_at"])
     if existing is None:
         db.add(KidSettings(kid_id=kid_uuid, **fields))
         return 1, 0, 0
