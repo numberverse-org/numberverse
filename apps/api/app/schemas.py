@@ -171,6 +171,15 @@ class TokenOut(BaseModel):
     profile: ProfileOut
 
 
+class RefreshOut(BaseModel):
+    """#1773 — POST /auth/refresh rotates the httpOnly refresh cookie into a
+    fresh short-lived access token. The new refresh cookie rides the same
+    response; the old refresh dies the moment this one is issued."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
 class ChangePasswordIn(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)

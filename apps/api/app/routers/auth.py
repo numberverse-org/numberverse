@@ -1,9 +1,10 @@
 import logging
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,12 +20,22 @@ from ..schemas import (
     LoginIn,
     ProfileOut,
     ProfileUpdateIn,
+    RefreshOut,
     SessionOut,
     SetPasswordIn,
     SignupIn,
     TokenOut,
 )
-from ..security import create_access_token, hash_password, sha256_token, verify_password
+from ..security import (
+    REFRESH_COOKIE_NAME,
+    clear_refresh_cookie,
+    create_access_token,
+    generate_refresh_token,
+    hash_password,
+    set_refresh_cookie,
+    sha256_token,
+    verify_password,
+)
 from ..session_guard import revoke_other_sessions  # #265 — password change kills every OTHER session
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -40,6 +51,10 @@ _PASSWORD_GUARD = AuthAttemptGuard()
 # (rather than the failure-aware guard above) to stop email enumeration and
 # mass account creation. Signup is a rare one-time action; 10/min is generous.
 _SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10)
+# #1773 — refresh-rotation is an unauthenticated endpoint (the cookie is the
+# credential), so it gets a throughput cap per IP to stop cookie-replay brute
+# force and endpoint abuse. 60/min is far above a real browser's refresh cadence.
+_REFRESH_RATE_LIMIT = ip_rate_limit(limit=60)
 
 
 def _verify_google_token(id_token: str) -> dict:
@@ -68,26 +83,54 @@ def _google_email(info: dict) -> str:
     return email
 
 
-async def _issue_session(profile: Profile, request: Request, db: AsyncSession) -> str:
-    """Mint a signed token + its revocable sessions row. The JWT carries `sid`
-    and `role`; logout/revocation kill the row, which kills the token
-    server-side."""
+async def _issue_session(profile: Profile, request: Request, db: AsyncSession) -> tuple[str, str]:
+    """Mint a signed short-lived access token + its revocable sessions row AND
+    an opaque rotating refresh token. The access JWT carries `sid` + `role`; the
+    refresh token's SHA-256 fingerprint lives in the same row (rotation swaps it
+    in place). logout/revocation kill the row, which kills both credentials."""
     sid = uuid.uuid4()
     # #868 — mint the role claim (not the legacy is_admin flag). `require_role`
     # still re-checks the DB via `get_current_profile`, so the claim is
     # informational/forward-compatible only.
     token = create_access_token(str(profile.id), profile.role, session_id=str(sid))
+    refresh_token = generate_refresh_token()
     db.add(
         Session(
             id=sid,
             profile_id=profile.id,
             token_hash=sha256_token(token),
+            refresh_hash=sha256_token(refresh_token),
+            refresh_expires_at=datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_days),
             user_agent=(request.headers.get("user-agent") or "")[:200] or None,
             ip=request.client.host if request.client else None,
         )
     )
     await db.commit()
-    return token
+    return token, refresh_token
+
+
+async def _rotate_refresh_session(db: AsyncSession, refresh_token: str) -> tuple[str, str]:
+    """#1773 — validate the refresh cookie and ROTATE: mint a new short-lived
+    access token, swap the stored refresh hash (the OLD refresh dies
+    immediately — it can no longer match any row), extend the refresh expiry.
+    The access token's `sid` still names the same row, so it stays valid for
+    its short lifetime after a rotation — the standard 15-min grace window."""
+    now = datetime.now(timezone.utc)
+    h = sha256_token(refresh_token)
+    row = await db.scalar(select(Session).where(Session.refresh_hash == h))
+    if row is None or row.revoked_at is not None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
+    if row.refresh_expires_at is None or row.refresh_expires_at.replace(tzinfo=timezone.utc) < now:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
+    profile = await db.scalar(select(Profile).where(Profile.id == row.profile_id))
+    if profile is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Profile not found")
+    new_refresh = generate_refresh_token()
+    row.refresh_hash = sha256_token(new_refresh)
+    row.refresh_expires_at = now + timedelta(days=settings.jwt_refresh_days)
+    row.last_seen_at = now
+    await db.commit()
+    return create_access_token(str(profile.id), profile.role, session_id=str(row.id)), new_refresh
 
 
 @router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
@@ -96,6 +139,7 @@ async def signup(
     request: Request,
     db: AsyncSession = Depends(get_db),
     _signup_limit: None = Depends(_SIGNUP_RATE_LIMIT),
+    response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
 ):
     existing = await db.scalar(select(Profile).where(Profile.email == body.email.lower()))
     if existing:
@@ -112,13 +156,20 @@ async def signup(
     )
     db.add(profile)
     await db.flush()  # assign profile.id before minting its session
-    token = await _issue_session(profile, request, db)
+    token, refresh_token = await _issue_session(profile, request, db)
+    if response is not None:
+        set_refresh_cookie(response, request, refresh_token)
     await db.refresh(profile)
     return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
 
 
 @router.post("/login", response_model=TokenOut)
-async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
+):
     email = body.email.lower()
     ip = _request_ip(request)
     # #1489 — fail fast on a locked account/IP BEFORE the profile lookup and bcrypt.
@@ -134,7 +185,9 @@ async def login(body: LoginIn, request: Request, db: AsyncSession = Depends(get_
         )
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     await _LOGIN_GUARD.reset(db, f"login:email:{email}", f"login:ip:{ip}")
-    token = await _issue_session(profile, request, db)
+    token, refresh_token = await _issue_session(profile, request, db)
+    if response is not None:
+        set_refresh_cookie(response, request, refresh_token)
     return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
 
 
@@ -148,7 +201,12 @@ async def google_status():
 
 
 @router.post("/google", response_model=TokenOut)
-async def google_auth(body: GoogleAuthIn, request: Request, db: AsyncSession = Depends(get_db)):
+async def google_auth(
+    body: GoogleAuthIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
+):
     """Sign in / create an account with a Google ID token (Google Identity
     Services, client-side). The ID token is verified server-side against the
     configured OAuth client id — the client is never trusted. An email that
@@ -178,7 +236,9 @@ async def google_auth(body: GoogleAuthIn, request: Request, db: AsyncSession = D
         )
         db.add(profile)
         await db.flush()  # assign profile.id before minting its session
-    token = await _issue_session(profile, request, db)
+    token, refresh_token = await _issue_session(profile, request, db)
+    if response is not None:
+        set_refresh_cookie(response, request, refresh_token)
     return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
 
 
@@ -208,19 +268,43 @@ async def update_me(
     return profile
 
 
+@router.post("/refresh", response_model=RefreshOut)
+async def refresh(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    _limiter: None = Depends(_REFRESH_RATE_LIMIT),
+):
+    """#1773 — rotate the httpOnly refresh cookie into a fresh short-lived
+    access token. The cookie is the credential (no bearer token required). Each
+    call issues a NEW refresh cookie and revokes the old one, so a stolen cookie
+    is one-shot. A missing/invalid/expired refresh is a 401 → the client falls
+    back to a full sign-in."""
+    token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No refresh session")
+    access, new_refresh = await _rotate_refresh_session(db, token)
+    set_refresh_cookie(response, request, new_refresh)
+    return RefreshOut(access_token=access)
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
 ):
     """Revoke THIS session — the exact token that called. A stateless JWT can't
     be killed on its own; the sessions row is the kill-switch. Legacy no-sid
-    tokens are materialized into a row by auth, so they are revocable here too."""
+    tokens are materialized into a row by auth, so they are revocable here too.
+    Also clears the httpOnly refresh cookie (when running as a real route)."""
     session: Session | None = getattr(request.state, "session", None)
     if session is not None and session.revoked_at is None:
         session.revoked_at = datetime.now(timezone.utc)
         await db.commit()
+    if response is not None:
+        clear_refresh_cookie(response, request)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)

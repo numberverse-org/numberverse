@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # #842 — built-in dev credentials. Outside of NV_ENVIRONMENT=dev these MUST be
@@ -59,7 +60,13 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://numberverse:numberverse_dev@localhost:5434/numberverse"
     jwt_secret: str = DEFAULT_JWT_SECRET
-    jwt_expires_minutes: int = 60 * 24 * 7
+    # #1773 — short-lived access tokens (minutes) + a long-lived ROTATING
+    # refresh cookie (days). The old single week-long JWT in localStorage is
+    # gone: the access token is now short-lived, and the week-long credential
+    # lives only in an httpOnly+Secure+SameSite=strict cookie.
+    jwt_access_minutes: int = 15  # short-lived parent access token
+    admin_access_minutes: int = 10  # admin console shortest window
+    jwt_refresh_days: int = 7  # refresh cookie lifetime (rotating)
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175"
     admin_email: str = "admin@numberverse.dev"
     admin_password: str = DEFAULT_ADMIN_PASSWORD
@@ -96,9 +103,31 @@ class Settings(BaseSettings):
     # #984 — hard-delete revoked sessions older than this many days.
     session_purge_days: int = 30
 
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_legacy_jwt_expiry_env(cls, data):
+        """#1773 — the old single-lifetime `NV_JWT_EXPIRES_MINUTES` env var no
+        longer maps to a field. Pop it so pydantic-settings' extra-forbid can't
+        reject a .env/.env.example that still ships it; the new short-lived
+        access + rotating-refresh defaults apply instead. The dotenv source
+        passes the key WITH the nv_ prefix (lowercased), so both forms are
+        dropped."""
+        if isinstance(data, dict):
+            data.pop("nv_jwt_expires_minutes", None)
+            data.pop("jwt_expires_minutes", None)
+        return data
+
     @property
     def origins(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def jwt_expires_minutes(self) -> int:
+        """#1773 — backward-compat alias for the REMOVED single-lifetime
+        setting. Legacy callers (e.g. the pre-#1773 test helper in
+        test_auth.py) that still read the old name now get the short-lived
+        parent access window instead of the old week-long lifetime."""
+        return self.jwt_access_minutes
 
 
 settings = Settings()

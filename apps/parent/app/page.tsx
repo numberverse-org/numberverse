@@ -39,6 +39,7 @@ import {
   setPassword,
   updateProfile,
   validateToken,
+  refreshSession,
   listPushSubscriptions,
   subscribePush,
   unsubscribePush,
@@ -567,14 +568,13 @@ export default function ParentDashboard() {
 
   useEffect(() => {
     const tok = localStorage.getItem("nv_parent_token");
-    if (!tok) {
-      setToken(null);
-      setAuthState("anon");
-      return;
-    }
     setAuthState("checking");
-    validateToken(tok).then((verdict) => {
-      if (verdict === "ok") {
+    // #1773 — FIRST try rotating the httpOnly refresh cookie into a fresh
+    // short-lived access token. A real session's week-long credential never
+    // touches localStorage/JS — the access token stored here is ≤15 min.
+    refreshSession().then((fresh) => {
+      if (fresh) {
+        localStorage.setItem("nv_parent_token", fresh);
         // #1538 — ?welcome=1 (from signup or first-run login) opens the #246
         // onboarding wizard once, then cleans the URL so a reload doesn't
         // re-trigger it. Matches the empty-kids onboarding logic in refreshAll.
@@ -587,9 +587,9 @@ export default function ParentDashboard() {
         // Only a token the API accepts unlocks the dashboard. This is the real
         // gate: presence of ANY string in nv_parent_token (shared, stale, or
         // forged — the kid app writes the same key) no longer grants access.
-        setToken(tok);
+        setToken(fresh);
         setAuthState("ok");
-        refreshAll(tok).catch((e) => {
+        refreshAll(fresh).catch((e) => {
           const status = (e as { status?: unknown } | null)?.status;
           setError(
             status === 401 || status === 403
@@ -597,7 +597,7 @@ export default function ParentDashboard() {
               : "Could not load progress. Is the API running?"
           );
         });
-        reloadAccount(tok).catch((e) => {
+        reloadAccount(fresh).catch((e) => {
           const status = (e as { status?: unknown } | null)?.status;
           setError(
             status === 401 || status === 403
@@ -605,22 +605,61 @@ export default function ParentDashboard() {
               : "Could not load account details."
           );
         });
-      } else if (verdict === "invalid") {
-        localStorage.removeItem("nv_parent_token");
-        localStorage.removeItem("nv_parent_name");
-        localStorage.removeItem("nv_kid_id");
-        localStorage.removeItem("nv_kid_map");
-        setToken(null);
-        setAuthState("anon");
-        setAuthNote("Your session ended. Sign in again to view the portal.");
-      } else {
-        // Offline / API down — we cannot PROVE the session, so we never render
-        // the dashboard with an unvalidated token. The stored token survives so
-        // a reload (when back online) re-validates and re-enters.
-        setToken(null);
-        setAuthState("anon");
-        setAuthNote("Can't check your session right now — make sure you're online, then sign in.");
+        return;
       }
+      // No refresh cookie (or offline) — fall back to the stored-token path
+      // unchanged (offline / no cookie keeps today's behavior, token survives).
+      if (!tok) {
+        setToken(null);
+        setAuthState("anon");
+        return;
+      }
+      validateToken(tok).then((verdict) => {
+        if (verdict === "ok") {
+          // #1538 — ?welcome=1 (from signup or first-run login) opens the #246
+          // onboarding wizard once, then cleans the URL so a reload doesn't
+          // re-trigger it. Matches the empty-kids onboarding logic in refreshAll.
+          if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("welcome") === "1") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("welcome");
+            window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+            if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
+          }
+          setToken(tok);
+          setAuthState("ok");
+          refreshAll(tok).catch((e) => {
+            const status = (e as { status?: unknown } | null)?.status;
+            setError(
+              status === 401 || status === 403
+                ? ACCOUNT_LANGS[wizLang].sessionEnded
+                : "Could not load progress. Is the API running?"
+            );
+          });
+          reloadAccount(tok).catch((e) => {
+            const status = (e as { status?: unknown } | null)?.status;
+            setError(
+              status === 401 || status === 403
+                ? ACCOUNT_LANGS[wizLang].sessionEnded
+                : "Could not load account details."
+            );
+          });
+        } else if (verdict === "invalid") {
+          localStorage.removeItem("nv_parent_token");
+          localStorage.removeItem("nv_parent_name");
+          localStorage.removeItem("nv_kid_id");
+          localStorage.removeItem("nv_kid_map");
+          setToken(null);
+          setAuthState("anon");
+          setAuthNote("Your session ended. Sign in again to view the portal.");
+        } else {
+          // Offline / API down — we cannot PROVE the session, so we never render
+          // the dashboard with an unvalidated token. The stored token survives so
+          // a reload (when back online) re-validates and re-enters.
+          setToken(null);
+          setAuthState("anon");
+          setAuthNote("Can't check your session right now — make sure you're online, then sign in.");
+        }
+      });
     });
   }, [refreshAll, reloadAccount]);
 

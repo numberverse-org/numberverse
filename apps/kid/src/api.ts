@@ -265,6 +265,23 @@ export function parentName(): string | null {
   return localStorage.getItem(LS.parentName);
 }
 
+/** #1773 — refresh the httpOnly cookie into a fresh short-lived access token
+ *  (same-origin). Never lets the week-long credential touch JS/localStorage. */
+async function tryRefreshParentSession(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API}/auth/refresh`, { method: "POST", credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data?.access_token === "string") {
+      localStorage.setItem(LS.parentToken, data.access_token);
+      return data.access_token;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Validate the stored parent token against /auth/me. Clears it when invalid. */
 export async function validateParentSession(): Promise<boolean> {
   const token = localStorage.getItem(LS.parentToken);
@@ -276,6 +293,11 @@ export async function validateParentSession(): Promise<boolean> {
     // (or any server-side hiccup): NOT proof the token is invalid, so keep the
     // parent session. Only a genuine 401/403 (rejected by the API) logs out.
     if (res.status === 401 || res.status === 403) {
+      // #1773 — the stored access token is short-lived (≤15 min), so a genuine
+      // 401/403 may just mean it expired while the httpOnly refresh cookie is
+      // still valid. Try ONE refresh before clearing the parent session.
+      const fresh = await tryRefreshParentSession();
+      if (fresh) return true;
       clearParentSession();
       return false;
     }

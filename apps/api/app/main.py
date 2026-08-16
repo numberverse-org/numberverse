@@ -292,7 +292,11 @@ app.add_middleware(
     # (phone/tablet on the same Wi-Fi) can reach the API on this machine.
     # Tighten to an explicit origin allow-list for production.
     allow_origins=settings.origins if settings.origins != ["*"] else ["*"],
-    allow_credentials=False,
+    # #1773 — allow_credentials must be False when allow_origins is "*"
+    # (browsers reject credentials+wildcard). When origins are explicit — the
+    # dev default and prod — credentials ARE allowed so the LAN portal (:3000
+    # → :8000) can send/receive the httpOnly refresh cookie cross-origin.
+    allow_credentials=("*" not in settings.origins),
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Range", "X-Total-Count"],

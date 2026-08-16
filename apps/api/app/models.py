@@ -223,6 +223,11 @@ class Session(Base):
     # SHA-256 of the signed token — the raw JWT is never stored, only a
     # one-way fingerprint so a DB leak can't be replayed as credentials.
     token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
+    # #1773 — rotating refresh credential: SHA-256 of the opaque refresh token
+    # (raw token never stored). Rotation replaces this hash in place; the old
+    # refresh can no longer be replayed. Null for pre-#1773 sessions.
+    refresh_hash: Mapped[str | None] = mapped_column(String, unique=True, index=True, nullable=True)
+    refresh_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
     ip: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

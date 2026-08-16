@@ -207,6 +207,9 @@ export async function login(email: string, password: string): Promise<LoginRespo
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+    // #1773 — accept/store the httpOnly refresh cookie the API sets (cross-origin
+    // LAN dev via CORS credentials; same-origin prod).
+    credentials: "include",
   });
   if (!res.ok) throw new Error("Invalid credentials");
   return res.json();
@@ -219,6 +222,8 @@ export async function signup(email: string, password: string, displayName: strin
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, display_name: displayName }),
+    // #1773 — accept/store the httpOnly refresh cookie the API sets.
+    credentials: "include",
   });
   if (!res.ok) throw new Error("Signup failed");
   return res.json();
@@ -226,10 +231,11 @@ export async function signup(email: string, password: string, displayName: strin
 
 /** Revoke the current session server-side (real logout — the token dies on
  *  the API, not just in this browser). Best-effort: fine if the network fails,
- *  the local clear below still ends the session here. */
+ *  the local clear below still ends the session here. #1773 — credentials:
+ *  "include" so the API logout clears the httpOnly refresh cookie. */
 export async function signout(token: string): Promise<void> {
   try {
-    await authFetch(token, `${API}/auth/logout`, { method: "POST" });
+    await authFetch(token, `${API}/auth/logout`, { method: "POST", credentials: "include" });
   } catch {
     /* offline — local clear still wins */
   }
@@ -308,6 +314,23 @@ export async function validateToken(token: string): Promise<"ok" | "invalid" | "
     return "offline";
   } catch {
     return "offline";
+  }
+}
+
+/** #1773 — rotate the httpOnly refresh cookie into a fresh short-lived access
+ *  token. Returns null when there's no cookie / it's invalid / offline — the
+ *  caller then falls back to the stored (≤15-min) access token path. */
+export async function refreshSession(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.access_token === "string" ? data.access_token : null;
+  } catch {
+    return null; // offline — caller falls back to the stored token
   }
 }
 
