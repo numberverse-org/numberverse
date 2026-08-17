@@ -1,3 +1,8 @@
+## 18 Aug 2026 — 1.1.0 (App screen extraction + quality gates + 8-land palette sync (wave-13))
+
+edf9ad6 refactor+fix: App screen extraction + quality gates + 8-land palette oracle sync
+7baa33b fix(kid): add band-8 Summit Peaks palette + emblem (fixes premium-path crash)
+
 ## 18 Aug 2026 — 1.0.1 (Fix pgvector boot crash (story_embeddings off Base.metadata))
 
 72fb9e8 fix(api): stop pgvector table from crashing API boot on postgres without vector ext
