@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "18 Aug 2026 · 1.0.0 (Docs consistency + infra ops + data-model indexes + frontend quality (wave-12))";
-export const APP_VERSION = "1.0.0";
+export const APP_BUILD = "18 Aug 2026 · 1.0.1 (Fix pgvector boot crash (story_embeddings off Base.metadata))";
+export const APP_VERSION = "1.0.1";

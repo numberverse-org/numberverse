@@ -1,3 +1,7 @@
+## 18 Aug 2026 — 1.0.1 (Fix pgvector boot crash (story_embeddings off Base.metadata))
+
+72fb9e8 fix(api): stop pgvector table from crashing API boot on postgres without vector ext
+
 ## 18 Aug 2026 — 1.0.0 (Docs consistency + infra ops + data-model indexes + frontend quality (wave-12))
 
 90c2192 feat+fix: docs consistency, infra ops correctness, data-model indexes, frontend quality
