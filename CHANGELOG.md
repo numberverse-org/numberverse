@@ -1,3 +1,9 @@
+## 17 Aug 2026 — 0.98.0 (Admin correctness + schema caps + router validation + kid a11y + SW query-key + parent usage + Explore Garden gameplay)
+
+fa5443a feat(kid): Explore Garden guided counting gameplay (#1143)
+efe6c11 fix(api): admin/router correctness + schema caps + a11y focus + SW query-key + parent usage
+8e70d49 feat(billing): freemium gate + Parent Plus entitlement + bKash rails
+
 ## 17 Aug 2026 — 0.97.0 (Telemetry + SW/offline + deps/CI wave: #1611-#1620 event accuracy, #1651-#1664 SW cache correctness + shared safety table, #1691-#1702 python vuln scan + Dependabot + Vite 7)
 
 6b9e36c docs: TRACKER wave entry — telemetry + SW/offline + deps/CI wave → 0.97.0 (36 issues: #1611-#1620, #1651-#1664, #1691-#1702)
