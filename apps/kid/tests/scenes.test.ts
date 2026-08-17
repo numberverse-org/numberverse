@@ -67,8 +67,9 @@ const SCENE_FILE_COUNT = 171;
  *  + the 2 non-gameplay hub scenes (Nova, Garden) launched directly. */
 const CATALOG_ORPHAN_COUNT = 21;
 /** Scenes that intentionally never call onRoundDone — pet mini-games (#104,
- *  launched with onBack), the no-pressure ExploreGarden (#1143), and the two
- *  hub scenes. All are allowlisted below; the repo documents each. */
+ *  launched with onBack) and the two hub scenes. All are allowlisted below; the
+ *  repo documents each. (ExploreGarden #1143 now reports onRoundDone: it was
+ *  promoted from free-play to a guided counting game, K.CC.1.) */
 const NO_ROUND_ALLOWLIST = new Set([
   // 19 pet mini-games — activities.ts `scene:` entries, `#104 pet-minigames`
   "BathNovaScene.ts", "BubblePopScene.ts", "CatchFruitScene.ts", "DressUpScene.ts",
@@ -78,8 +79,6 @@ const NO_ROUND_ALLOWLIST = new Set([
   "SpeciesGalleryScene.ts", "TreatSortScene.ts", "TuckInScene.ts",
   // 2 non-gameplay hub scenes, launched by the app directly (not a difficulty round)
   "NovaScene.ts", "GardenScene.ts",
-  // #1143 — no-pressure free-play break: deliberately no score / no round end
-  "ExploreGardenScene.ts",
 ]);
 /** The taka ৳ glyph printed on money tiles in the three money scenes — a
  *  legitimate currency symbol (Bangladesh's ৳), never a user-facing phrase. */
@@ -164,7 +163,7 @@ describe("round-done wiring (adaptive-difficulty honesty contract)", () => {
       const src = read(f);
       return !src.includes("this.onRoundDone?.(") && !ROUND_DONE_BASES.has(baseClass(f));
     });
-    expect(nonReporting.length).toBe(NO_ROUND_ALLOWLIST.size); // pin: 22
+    expect(nonReporting.length).toBe(NO_ROUND_ALLOWLIST.size); // pin: 21
     const unexpected = nonReporting.filter((f) => !NO_ROUND_ALLOWLIST.has(f));
     expect(unexpected, "scene with no onRoundDone and no documented exemption").toEqual([]);
   });
@@ -271,7 +270,7 @@ describe("no lang:'bn' redundancy in speech calls", () => {
 /* ───────────────────────── summary (Wave F feed) ───────────────────────── */
 afterAll(() => {
   // Unique files allowlisted for a documented/legitimate reason across the
-  // invariants: the 22 non-round scenes (pet #104 + hubs + #1143 free-play) and
+  // invariants: the 21 non-round scenes (pet #104 + hubs) and
   // the 3 money scenes printing the taka glyph. The i18n known-bugs are NOT
   // allowlisted — they are real findings reported below.
   const allowlistedFiles = new Set([...NO_ROUND_ALLOWLIST, ...TAKA_SYMBOL_SCENES]);

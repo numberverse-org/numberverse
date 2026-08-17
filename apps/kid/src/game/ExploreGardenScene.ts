@@ -1,39 +1,83 @@
 import Phaser from "phaser";
 import { onSceneResize } from "./sceneLifecycle";
 import { gameBackground } from "./backgrounds";
-import { pop, click } from "./audio";
-import { speak } from "./speech";
+import { pop, bad, click, win } from "./audio";
+import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
-import { t as tr } from "./i18n";
-import { txt, promptTxt, NV_GOLD } from "./ui";
-const EXPLORE_PROMPTS = ["exploreGardenPrompt0", "exploreGardenPrompt1", "exploreGardenPrompt2", "exploreGardenPrompt3", "exploreGardenPrompt4", "exploreGardenPrompt5"];
+import { t as tr, digit } from "./i18n";
+import { txt, promptTxt, NV_GOLD, roundMeter, type RoundMeterApi } from "./ui";
+import { correctCelebrate } from "./celebrate";
 import { SAT, SAB } from "./safeArea";
-
-/**
- * 🌸 EXPLORE GARDEN — a NO-PRESSURE free-play break scene (#1143).
- *
- * There is deliberately no judgment: no score, no progress gating, and no
- * lesson-end feedback. A kid picks an emoji from the bottom palette and
- * plants it anywhere on the canvas; each plant pops, sparkles, and bobs
- * gently. A 💬 button speaks open-ended invitations ("How many flowers did
- * you plant?") — any placement is fine. The tiny top-left counter is
- * informational only.
- */
 
 const PALETTE = ["🌸", "🐝", "🦋", "🪨", "🌱", "☀️", "🍄"] as const;
 
+/** Spoken names per emoji (TTS cannot read the glyphs). Displayed text uses the
+ *  emoji itself; these names only feed `speak()`. */
+const ITEM_NAMES: Record<string, { en: string; bn: string }> = {
+  "🌸": { en: "flower", bn: "ফুল" },
+  "🐝": { en: "bee", bn: "মৌমাছি" },
+  "🦋": { en: "butterfly", bn: "প্রজাপতি" },
+  "🪨": { en: "rock", bn: "পাথর" },
+  "🌱": { en: "sprout", bn: "চারা" },
+  "☀️": { en: "sun", bn: "সূর্য" },
+  "🍄": { en: "mushroom", bn: "মাশরুম" },
+};
 
+/** A quest = one round. `emoji` undefined means "plant anything" (free count). */
+interface Quest {
+  emoji?: string;
+  n: number;
+}
+
+/** Counting quests, ramping from 1 → 6 and alternating specific/free targets.
+ *  The parent advances the session after ROUNDS_TO_FINISH rounds, so a kid
+ *  typically sees ~3 of these per visit. */
+const QUESTS: Quest[] = [
+  { emoji: "🌸", n: 1 },
+  { emoji: "🐝", n: 2 },
+  { emoji: "🌸", n: 3 },
+  { emoji: undefined, n: 4 },
+  { emoji: "🦋", n: 5 },
+  { emoji: undefined, n: 6 },
+  { emoji: "🌱", n: 4 },
+  { emoji: "☀️", n: 5 },
+];
+
+/**
+ * 🌸 EXPLORE GARDEN — a guided counting garden (#1143, K.CC.1).
+ *
+ * The kid is handed ONE clear goal at a time — "Plant 3 🌸" — shown large and
+ * spoken aloud. The target emoji is pre-selected and highlighted, a "2 / 3"
+ * progress line sits right under the goal, and a 💬 button re-speaks the goal
+ * for pre-readers. The right plant pops and counts up; a wrong plant plants
+ * anyway (no penalty) but nudges the kid back to the target. Finishing a goal
+ * celebrates, completes the round (onRoundDone), and hands over the next goal.
+ * It stays no-pressure — there is no fail state — but it is a real game with a
+ * real, visible "here's what to do."
+ */
 
 export class ExploreGardenScene extends Phaser.Scene {
   private lang: "en" | "bn" = "en";
+  private onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void;
+
+  private levelIndex = 0;
+  private quest: Quest = QUESTS[0];
+  private target = 1;
+  private placed = 0;
+  private totalPlaced = 0;
+  private startedAt = 0;
+
   private selectedIndex = 0;
   private selectedEmoji: string = PALETTE[0];
-  private placedCount = 0;
   private plants: Phaser.GameObjects.Text[] = [];
-  private paletteButtons: { btn: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Arc }[] = [];
+  private paletteButtons: { btn: Phaser.GameObjects.Container; disc: Phaser.GameObjects.Arc; emoji: string }[] = [];
+
   private title!: Phaser.GameObjects.Text;
-  private subtitle!: Phaser.GameObjects.Text;
+  private goal!: Phaser.GameObjects.Text;
+  private howTo!: Phaser.GameObjects.Text;
+  private progress!: Phaser.GameObjects.Text;
   private counter!: Phaser.GameObjects.Text;
+  private meter!: RoundMeterApi;
   private plantZone!: Phaser.GameObjects.Rectangle;
   private clearBtn!: Phaser.GameObjects.Container;
   private speakBtn!: Phaser.GameObjects.Container;
@@ -43,34 +87,48 @@ export class ExploreGardenScene extends Phaser.Scene {
     super("ExploreGarden");
   }
 
-  create(_data?: unknown) {
+  create(data?: { onRoundDone?: (correct: boolean, ms: number, difficulty: number) => void; startLevelIndex?: number }) {
     this.lang = getAppLang() === "bn" ? "bn" : "en";
+    this.onRoundDone = data?.onRoundDone;
+    // The skill ladder for math-explore-garden is flat (all 1s), so startLevelIndex
+    // only nudges which quest we open on; the count itself is the hardness.
+    this.levelIndex = Math.max(0, Math.min(QUESTS.length - 1, (data?.startLevelIndex ?? 0) % QUESTS.length));
     this.selectedIndex = 0;
     this.selectedEmoji = PALETTE[0];
-    this.placedCount = 0;
+    this.placed = 0;
+    this.totalPlaced = 0;
     this.plants = [];
     this.paletteButtons = [];
 
     gameBackground(this, "forest");
     this.drawHeader();
+    this.meter = roundMeter(this);
     this.layout();
     onSceneResize(this, () => this.layout());
+    this.startQuest();
   }
 
-
-
   private drawHeader() {
-    const copy = tr;
+    const T = tr;
     this.title = this.add
-      .text(this.scale.width / 2, 30 + SAT(), copy("exploreGardenTitle"), txt(28, "#ffffff", { bold: true }))
+      .text(this.scale.width / 2, 30 + SAT(), T("exploreGardenTitle"), txt(22, "#ffffff", { bold: true }))
       .setOrigin(0.5)
       .setDepth(70);
-    this.subtitle = this.add
-      .text(this.scale.width / 2, 72 + SAT(), copy("exploreGardenSubtitle"), promptTxt(15))
+    // The GOAL is the headline — big and always visible.
+    this.goal = this.add
+      .text(this.scale.width / 2, 66 + SAT(), "", txt(30, "#ffffff", { bold: true }))
+      .setOrigin(0.5)
+      .setDepth(70);
+    this.howTo = this.add
+      .text(this.scale.width / 2, 100 + SAT(), T("exploreGardenHowTo"), promptTxt(15))
+      .setOrigin(0.5)
+      .setDepth(70);
+    this.progress = this.add
+      .text(this.scale.width / 2, 124 + SAT(), "", txt(20, NV_GOLD, { bold: true, shadow: false }))
       .setOrigin(0.5)
       .setDepth(70);
     this.counter = this.add
-      .text(14, 104 + SAT(), this.counterText(), txt(15, NV_GOLD, { bold: true, shadow: false }))
+      .text(14, 30 + SAT(), this.counterText(), txt(14, NV_GOLD, { bold: true, shadow: false }))
       .setOrigin(0, 0.5)
       .setDepth(70);
   }
@@ -81,21 +139,26 @@ export class ExploreGardenScene extends Phaser.Scene {
     const sab = SAB();
 
     this.title.setPosition(width / 2, 30 + sat);
-    this.subtitle.setPosition(width / 2, 72 + sat);
-    this.counter.setPosition(14, 104 + sat);
+    this.goal.setPosition(width / 2, 66 + sat);
+    this.howTo.setPosition(width / 2, 100 + sat);
+    this.progress.setPosition(width / 2, 124 + sat);
+    this.counter.setPosition(14, 30 + sat);
+    this.meter.setPosition(width / 2, 148 + sat);
 
     this.renderControls(width, sat);
     this.renderPalette(width, height, sab);
     this.renderPlantZone(width, sat);
+    this.applyGoalText();
   }
 
   private renderControls(width: number, sat: number) {
     this.clearBtn?.destroy();
     this.speakBtn?.destroy();
-    const y = 104 + sat;
+    const y = 30 + sat;
     const r = 22;
+    // 💬 re-speaks the CURRENT goal (pre-reader support) — not a random prompt.
+    this.speakBtn = this.makeRoundButton("💬", width - 34 - r * 3 - 10, y, () => this.speakGoal(), r);
     this.clearBtn = this.makeRoundButton("🗑", width - 34 - r, y, () => this.clearGarden(), r);
-    this.speakBtn = this.makeRoundButton("💬", width - 34 - r * 3 - 10, y, () => this.speakPrompt(), r);
   }
 
   private makeRoundButton(
@@ -151,13 +214,14 @@ export class ExploreGardenScene extends Phaser.Scene {
       btn.setInteractive({ useHandCursor: true });
       btn.on("pointerdown", () => this.selectPalette(i));
       if (i === this.selectedIndex) btn.setScale(1.1);
-      this.paletteButtons.push({ btn, disc });
+      this.paletteButtons.push({ btn, disc, emoji });
     });
+    this.applyPaletteHighlight();
   }
 
   private renderPlantZone(width: number, sat: number) {
     this.plantZone?.destroy();
-    const top = 128 + sat;
+    const top = 170 + sat;
     const bottom = this.paletteTop - 10;
     const h = Math.max(24, bottom - top);
     this.plantZone = this.add
@@ -169,34 +233,147 @@ export class ExploreGardenScene extends Phaser.Scene {
     });
   }
 
-  private selectPalette(index: number) {
-    this.selectedIndex = index;
-    this.selectedEmoji = PALETTE[index];
+  // ── quest lifecycle ──────────────────────────────────────────────────────
+
+  private startQuest() {
+    this.quest = QUESTS[this.levelIndex % QUESTS.length];
+    this.target = this.quest.n;
+    this.placed = 0;
+    this.startedAt = this.time.now;
+    this.clearGarden(); // fresh canvas per goal
+    // Auto-select the target so a pre-reader never has to find it.
+    if (this.quest.emoji) {
+      const idx = PALETTE.indexOf(this.quest.emoji as (typeof PALETTE)[number]);
+      if (idx >= 0) {
+        this.selectedIndex = idx;
+        this.selectedEmoji = PALETTE[idx];
+      }
+    }
+    this.applyGoalText();
+    this.applyPaletteHighlight();
+    this.meter.set(0, this.target);
+    this.updateProgress();
+    this.speakGoal();
+  }
+
+  private applyGoalText() {
+    if (!this.goal || !this.howTo || !this.progress) return;
+    const T = tr;
+    const n = digit(this.target);
+    this.goal.setText(this.quest.emoji ? T("exploreGardenGoal", { n, emoji: this.quest.emoji }) : T("exploreGardenGoalAny", { n }));
+    // The how-to line shows until the kid has planted their first item — after
+    // that they know "tap the garden". It stays mounted (layout needs it) but
+    // hides once a plant has been placed.
+    this.howTo.setAlpha(this.totalPlaced === 0 ? 1 : 0);
+    this.updateProgress();
+  }
+
+  private updateProgress() {
+    if (!this.progress) return;
+    this.progress.setText(tr("exploreGardenProgress", { n: digit(this.placed), target: digit(this.target) }));
+  }
+
+  private applyPaletteHighlight() {
+    const isTarget = (emoji: string) => !this.quest?.emoji || emoji === this.quest.emoji;
     this.paletteButtons.forEach((entry, i) => {
-      const selected = i === index;
-      entry.disc.setStrokeStyle(selected ? 3 : 2, selected ? 0xffd166 : 0xffffff, selected ? 1 : 0.55);
+      const selected = i === this.selectedIndex;
+      const target = isTarget(entry.emoji);
+      entry.disc.setStrokeStyle(
+        target ? 3 : 2,
+        target ? 0xffd166 : selected ? 0xffffff : 0xffffff,
+        target ? 1 : selected ? 0.85 : 0.5
+      );
+      // A non-target item in a specific quest is dimmed so the goal item pops.
+      entry.btn.setAlpha(this.quest?.emoji && !target ? 0.45 : 1);
       this.tweens.killTweensOf(entry.btn);
-      this.tweens.add({ targets: entry.btn, scale: selected ? 1.1 : 1, duration: 120, ease: "Back.easeOut" });
+      entry.btn.setScale(selected ? 1.1 : 1);
+      // The target pulses gently so the eye lands on it.
+      if (target && !this.isPlantingDone()) {
+        this.tweens.add({ targets: entry.btn, scale: selected ? 1.16 : 1.06, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      }
     });
   }
 
+  private isPlantingDone(): boolean {
+    return this.placed >= this.target;
+  }
+
+  private selectPalette(index: number) {
+    this.selectedIndex = index;
+    this.selectedEmoji = PALETTE[index];
+    this.applyPaletteHighlight();
+  }
+
+  private speakGoal() {
+    const bn = this.lang === "bn";
+    if (this.quest.emoji) {
+      const name = ITEM_NAMES[this.quest.emoji];
+      speak(bn ? `${bnNumber(this.target)}টা ${name?.bn ?? ""} লাগাও` : `Plant ${this.target} ${name?.en ?? ""}`);
+    } else {
+      speak(bn ? `${bnNumber(this.target)}টা যা খুশি লাগাও` : `Plant ${this.target} of anything`);
+    }
+  }
+
   private plant(x: number, y: number) {
-    const top = 128 + SAT();
+    if (this.isPlantingDone()) return; // goal reached — wait for the next quest
+    const top = 170 + SAT();
     const bottom = this.paletteTop - 10;
     const px = Phaser.Math.Clamp(x, 18, this.scale.width - 18);
     const py = Phaser.Math.Clamp(y, top + 12, bottom - 6);
-    const emoji = this.add
-      .text(px, py, this.selectedEmoji, txt(44, "#ffffff", { shadow: false }))
+    const emoji = this.selectedEmoji;
+    const onTarget = !this.quest.emoji || emoji === this.quest.emoji;
+
+    this.spawnPlant(px, py, emoji);
+    this.totalPlaced += 1;
+    this.counter.setText(this.counterText());
+
+    if (onTarget) {
+      this.placed += 1;
+      pop();
+      speak(this.lang === "bn" ? bnNumber(this.placed) : String(this.placed), { cancel: false });
+      this.updateProgress();
+      if (this.placed >= this.target) this.finishQuest();
+    } else {
+      // Not the goal item — plant it anyway (no pressure) but nudge them back.
+      bad();
+      const name = ITEM_NAMES[emoji];
+      const targetName = ITEM_NAMES[this.quest.emoji as string];
+      speak(
+        this.lang === "bn"
+          ? `এটা ${name?.bn ?? ""} — ${targetName?.bn ?? ""} লাগাই!`
+          : `That's a ${name?.en ?? ""} — let's plant ${targetName?.en ?? ""}!`,
+        { cancel: true }
+      );
+    }
+  }
+
+  private spawnPlant(px: number, py: number, emoji: string) {
+    const plant = this.add
+      .text(px, py, emoji, txt(44, "#ffffff", { shadow: false }))
       .setOrigin(0.5)
       .setDepth(10)
       .setScale(0.4);
-    this.tweens.add({ targets: emoji, scale: 1, duration: 220, ease: "Back.easeOut" });
-    pop();
+    this.tweens.add({ targets: plant, scale: 1, duration: 220, ease: "Back.easeOut" });
     this.sparkle(px, py - 12);
-    this.bob(emoji, py);
-    this.plants.push(emoji);
-    this.placedCount += 1;
-    this.counter.setText(this.counterText());
+    this.bob(plant, py);
+    this.plants.push(plant);
+  }
+
+  private finishQuest() {
+    const ms = Math.max(1, this.time.now - this.startedAt);
+    win();
+    const doneText = this.quest.emoji
+      ? tr("exploreGardenDone", { n: digit(this.target), emoji: this.quest.emoji })
+      : tr("exploreGardenDoneAny", { n: digit(this.target) });
+    speak(doneText);
+    correctCelebrate(this, this.scale.width / 2, 200 + SAT());
+    // #1061 — reward engine reads round hardness from the scene data registry.
+    this.data.set("nv:difficulty", this.target);
+    this.onRoundDone?.(true, ms, this.levelIndex + 1);
+    this.time.delayedCall(1500, () => {
+      this.levelIndex += 1;
+      this.startQuest();
+    });
   }
 
   private bob(target: Phaser.GameObjects.Text, baseY: number) {
@@ -233,15 +410,11 @@ export class ExploreGardenScene extends Phaser.Scene {
       plant.destroy();
     });
     this.plants = [];
-    this.placedCount = 0;
-    this.counter.setText(this.counterText());
-  }
-
-  private speakPrompt() {
-    speak(tr(Phaser.Math.RND.pick(EXPLORE_PROMPTS)));
+    if (this.quest) this.placed = 0;
+    this.updateProgress();
   }
 
   private counterText(): string {
-    return tr("exploreGardenCounter", { n: this.placedCount });
+    return tr("exploreGardenCounter", { n: digit(this.totalPlaced) });
   }
 }
