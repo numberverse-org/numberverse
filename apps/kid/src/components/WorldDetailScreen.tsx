@@ -1,8 +1,12 @@
 import type React from "react";
+import { useState } from "react";
 import { BANDS, type Band, type Skill } from "@numberverse/core";
 import { worldProgress, filterSkills, nextUnmasteredSkill, challengeEligible, unlockGap, UNLOCK_THRESHOLD, worldUnlocked, filterMaxBand, WORLD_LANDS, masteryDisplayPct, masteryThresholdFor, skillTitle, skillDesc, type SkillMap, type Kid } from "../lib/journey";
 import { type Lang, type Strings } from "../i18n";
 import { Icon } from "./Icon";
+
+/** #1075 — the catalog's subject chips (all six subjects a parent can filter by). */
+const CATALOG_SUBJECTS = ["math", "bangla", "english", "science", "bgs", "ict"] as const;
 
 export interface WorldDetailScreenProps {
   world: Band;
@@ -35,6 +39,24 @@ export default function WorldDetailScreen({
   const nextUnlocked = nextWorld ? worldUnlocked(skillsMap, kid.id, nextWorld.id) : false;
   const nextCapped = nextWorld != null && filterMaxBand != null && nextWorld.id > filterMaxBand;
   const land = WORLD_LANDS[world.id];
+  // #1075 — catalog search + subject filter (parent-facing surfaces only; the
+  // kid's home journey stays linear). The PLAY button / skip-ahead keep using
+  // the FULL band list; only the skill TREE is filtered.
+  const [q, setQ] = useState("");
+  const [subject, setSubject] = useState("");
+  const query = q.trim().toLowerCase();
+  const visibleSkills = bandSkills.filter((s) => {
+    if (subject && s.subject !== subject) return false;
+    if (!query) return true;
+    const hay = `${s.title} ${s.titleBn ?? ""} ${s.description ?? ""} ${s.descriptionBn ?? ""}`.toLowerCase();
+    return hay.includes(query);
+  });
+  const activeChip: React.CSSProperties = {
+    background: "var(--nv-sky, #4cc9f0)",
+    borderColor: "var(--nv-sky, #4cc9f0)",
+    color: "#06283d",
+    textShadow: "none",
+  };
   return (
     <div className="app">
       <main className="screen worlds">
@@ -97,6 +119,41 @@ export default function WorldDetailScreen({
           </div>
         )}
 
+        {/* #1075 — catalog search + subject filter. Parent-facing helper on the
+            world-detail tree: a text match on title/titleBn/description plus six
+            subject chips. The tree itself stays fully tappable when filtered. */}
+        <div className="catalog-filter" role="group" aria-label={t.catalogSubject} style={{ display: "flex", flexDirection: "column", gap: 10, margin: "0 0 14px" }}>
+          <input
+            className="input-field"
+            type="search"
+            placeholder={t.catalogSearch}
+            aria-label={t.catalogSearch}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <div className="catalog-filter-chips" role="group" aria-label={t.catalogSubject} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              className={`syllabus-chip${subject === "" ? " on" : ""}`}
+              onClick={() => setSubject("")}
+              style={subject === "" ? activeChip : undefined}
+            >
+              {t.catalogAll}
+            </button>
+            {CATALOG_SUBJECTS.map((sub) => (
+              <button
+                type="button"
+                key={sub}
+                className={`syllabus-chip${subject === sub ? " on" : ""}`}
+                onClick={() => setSubject(subject === sub ? "" : sub)}
+                style={subject === sub ? activeChip : undefined}
+              >
+                {t.catalogSubjects[sub]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* #276 — per-land SKILL TREE: every skill is a leaf on the trunk,
             mastered leaves GLOW, the next lesson pulses, and tapping any leaf
             jumps straight into that lesson. Locale-packed (#131), offline. */}
@@ -107,7 +164,7 @@ export default function WorldDetailScreen({
           </div>
           <div className="skill-tree">
             <div className="tree-trunk" aria-hidden="true" />
-            {bandSkills.map((skill, i) => {
+            {visibleSkills.map((skill, i) => {
               const st = skillsMap[`${kid.id}:${skill.id}`];
               const pct = masteryDisplayPct(st, skill.id);
               const mastered = !!st && st.pMastered >= masteryThresholdFor(skill.id);
@@ -139,6 +196,9 @@ export default function WorldDetailScreen({
               );
             })}
           </div>
+          {visibleSkills.length === 0 && (
+            <p className="catalog-no-match" role="status" style={{ textAlign: "center", opacity: 0.85, margin: "12px 0" }}>{t.catalogNoMatch}</p>
+          )}
         </div>
       </main>
     </div>

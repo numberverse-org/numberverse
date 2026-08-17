@@ -568,6 +568,12 @@ export interface Strings {
   syllabusNotStarted: string;
   syllabusDone: string;
   syllabusOpen: string;
+  /* #1075 — catalog search + subject filter (world-detail tree + syllabus grid) */
+  catalogSearch: string;
+  catalogAll: string;
+  catalogNoMatch: string;
+  catalogSubject: string;
+  catalogSubjects: Record<string, string>;
   /* settings screen */
   settingsTitle: string;
   settingsSub: string;

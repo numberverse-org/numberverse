@@ -90,10 +90,12 @@ import { KidAvatar, AvatarBuilder, QuietChrome } from "./components/Avatar";
 // the wrapper is only fetched/parsed the first time a kid actually opens the
 // 3D screen, keeping the probe + wrapper code out of the main bundle.
 const Nova3DHome = lazy(() => import("./nova3d/Nova3DHome"));
-// #1178 — the heaviest non-initial screens are lazy chunks too: only fetched
-// + parsed the first time the kid actually routes to them. Keeps the App chunk
-// (the boot→splash→interactive path) to the screens a first visitor can reach
-// (welcome, parent gate, kidpick, worlds) and defers home/avatar/addkid.
+// #1178/#883 — the heaviest non-initial screens are lazy chunks too: only
+// fetched + parsed the first time the kid actually routes to them. Keeps the
+// App chunk (the boot→splash→interactive path) to the screens a first visitor
+// can reach (welcome, parent gate, kidpick) and defers every journey-heavy
+// screen (home, worlds, world-detail, syllabus, done, badges, …) — and the
+// journey CONFIG they render — to first use.
 const HomeScreen = lazy(() => import("./components/HomeScreen"));
 const AddKidForm = lazy(() => import("./components/AddKidForm"));
 // #885 — Google sign-in is a parent-gate-only feature: the GIS script-loader
@@ -1833,7 +1835,7 @@ export default function App() {
     // (O(1) per tap) instead of scanning Object.entries(st.skills) on every tap.
     const mine = kidMasteryStats(kid.id);
     const avg = mine.count ? mine.sum / mine.count : 0.25;
-    const base = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, Math.round(avg * 10)));
+    const base = Math.min(journeyCfg?.CHALLENGE_MAX_LEVEL ?? 10, Math.max(journeyCfg?.CHALLENGE_MIN_LEVEL ?? 1, Math.round(avg * 10)));
     setChallenge({
       round: 1, myScore: 0, novaScore: 0, level: base,
       q: challengeQ(base, lang), pick: null, correct: false, novaGot: false, won: null, coins: 0,
@@ -1851,7 +1853,7 @@ export default function App() {
     challengeTimerRef.current = window.setTimeout(() => {
       setChallenge((prev) => {
         if (!prev || prev.pick === null) return prev;
-        if (prev.round >= CHALLENGE_ROUNDS) {
+        if (prev.round >= (journeyCfg?.CHALLENGE_ROUNDS ?? 5)) {
           const won = prev.myScore > prev.novaScore ? "win" : prev.myScore < prev.novaScore ? "lose" : "tie";
           const grant = useKidStore.getState().novaChallengeReward(kid.id, won === "win" ? 3 : won === "tie" ? 2 : 1);
           if (won === "win") {
@@ -1865,7 +1867,7 @@ export default function App() {
           return { ...prev, won, coins: grant };
         }
         // Fair difficulty ramp: +1 after a hit (up to max), −1 after a miss.
-        const level = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, prev.level + (prev.correct ? 1 : -1)));
+        const level = Math.min(journeyCfg?.CHALLENGE_MAX_LEVEL ?? 10, Math.max(journeyCfg?.CHALLENGE_MIN_LEVEL ?? 1, prev.level + (prev.correct ? 1 : -1)));
         return { ...prev, round: prev.round + 1, pick: null, correct: false, novaGot: false, level, q: challengeQ(level, lang) };
       });
     }, 1800);
@@ -1900,7 +1902,7 @@ export default function App() {
     const mine = kidMasteryStats(kid.id);
     const avg = mine.count ? mine.sum / mine.count : 0.25;
     // A boss is HARDER than the kid's average: one notch above their level.
-    const base = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, Math.round(avg * 10) + 1));
+    const base = Math.min(journeyCfg?.CHALLENGE_MAX_LEVEL ?? 10, Math.max(journeyCfg?.CHALLENGE_MIN_LEVEL ?? 1, Math.round(avg * 10) + 1));
     setLandBoss({
       band, round: 1, myScore: 0, novaScore: 0, level: base,
       q: challengeQ(base, lang), pick: null, correct: false, novaGot: false, won: null, coins: 0,
@@ -1930,7 +1932,7 @@ export default function App() {
           return { ...prev, won };
         }
         // Fair difficulty ramp: +1 after a hit (up to max), −1 after a miss.
-        const level = Math.min(CHALLENGE_MAX_LEVEL, Math.max(CHALLENGE_MIN_LEVEL, prev.level + (prev.correct ? 1 : -1)));
+        const level = Math.min(journeyCfg?.CHALLENGE_MAX_LEVEL ?? 10, Math.max(journeyCfg?.CHALLENGE_MIN_LEVEL ?? 1, prev.level + (prev.correct ? 1 : -1)));
         return { ...prev, round: prev.round + 1, pick: null, correct: false, novaGot: false, level, q: challengeQ(level, lang) };
       });
     }, 1800);
@@ -3031,7 +3033,7 @@ export default function App() {
    *  match). Warm sound, then the side-by-side quiz. */
   const startContrastDrill = (code: string, skillId: string) => {
     if (!kid) return;
-    const template = CONTRAST_TEMPLATES[code];
+    const template = journeyCfg?.CONTRAST_TEMPLATES[code];
     if (!template) return;
     click();
     setContrastJob({ template, skillId });
@@ -5079,7 +5081,7 @@ export default function App() {
                           <span className="card-inner">
                             <span
                               className="card-face card-front"
-                              style={c.mastered ? { background: `linear-gradient(165deg, ${SUBJECT_CARD[c.skill.subject][0]}, ${SUBJECT_CARD[c.skill.subject][1]})` } : undefined}
+                              style={c.mastered ? { background: `linear-gradient(165deg, ${journeyCfg?.SUBJECT_CARD[c.skill.subject]?.[0] ?? "#2f6fd0"}, ${journeyCfg?.SUBJECT_CARD[c.skill.subject]?.[1] ?? "#6ec6ff"})` } : undefined}
                             >
                               <span className="card-emoji"><Icon name={c.skill.subject} size={38} /></span>
                               <span className="card-title">{title}</span>

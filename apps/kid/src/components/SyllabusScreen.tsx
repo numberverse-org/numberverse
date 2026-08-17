@@ -1,10 +1,14 @@
 import type React from "react";
+import { useState } from "react";
 import { BANDS, SKILLS, type Band, type Skill } from "@numberverse/core";
 import { parentName, hasParentSession } from "../api";
 import { totalMastered, progressUnitCount, worldProgress, progressUnitsInBand, WORLD_LANDS, masteryDisplayPct, masteryThresholdFor, loadKids, type SkillMap, type Kid } from "../lib/journey";
 import { type Lang, type Strings } from "../i18n";
 import type { Screen } from "../App";
 import { Icon } from "./Icon";
+
+/** #1075 — the catalog's subject chips (all six subjects a parent can filter by). */
+const CATALOG_SUBJECTS = ["math", "bangla", "english", "science", "bgs", "ict"] as const;
 
 export interface SyllabusScreenProps {
   kid: Kid | null;
@@ -43,6 +47,25 @@ export default function SyllabusScreen({
   const bandName = (b: Band) => (lang === "bn" ? b.titleBn ?? b.title : b.title);
   const subjectEmoji = (sub: string) =>
     sub === "math" ? "🧮" : sub === "bangla" ? "📗" : sub === "english" ? "🔤" : sub === "science" ? "🔬" : "🌏";
+  // #1075 — catalog search + subject filter (parent-facing syllabus grid). A
+  // text match on title/titleBn/description plus six subject chips; band
+  // progress bars stay unfiltered so the plan never lies about the band.
+  const [q, setQ] = useState("");
+  const [subject, setSubject] = useState("");
+  const query = q.trim().toLowerCase();
+  const matchesFilter = (s: Skill) => {
+    if (subject && s.subject !== subject) return false;
+    if (!query) return true;
+    const hay = `${s.title} ${s.titleBn ?? ""} ${s.description ?? ""} ${s.descriptionBn ?? ""}`.toLowerCase();
+    return hay.includes(query);
+  };
+  const filteredTotal = SKILLS.filter((s) => matchesFilter(s)).length;
+  const activeChip: React.CSSProperties = {
+    background: "var(--nv-sky, #4cc9f0)",
+    borderColor: "var(--nv-sky, #4cc9f0)",
+    color: "#06283d",
+    textShadow: "none",
+  };
   return (
     <div className="app">
       <main className="screen worlds parent-screen">
@@ -87,10 +110,47 @@ export default function SyllabusScreen({
             </ol>
           </div>
 
+          {/* #1075 — catalog search + subject filter bar (parent-facing) */}
+          <div className="catalog-filter" role="group" aria-label={t.catalogSubject} style={{ display: "flex", flexDirection: "column", gap: 10, margin: "0 0 14px" }}>
+            <input
+              className="input-field"
+              type="search"
+              placeholder={t.catalogSearch}
+              aria-label={t.catalogSearch}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            <div className="catalog-filter-chips" role="group" aria-label={t.catalogSubject} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <button
+                type="button"
+                className={`syllabus-chip${subject === "" ? " on" : ""}`}
+                onClick={() => setSubject("")}
+                style={subject === "" ? activeChip : undefined}
+              >
+                {t.catalogAll}
+              </button>
+              {CATALOG_SUBJECTS.map((sub) => (
+                <button
+                  type="button"
+                  key={sub}
+                  className={`syllabus-chip${subject === sub ? " on" : ""}`}
+                  onClick={() => setSubject(subject === sub ? "" : sub)}
+                  style={subject === sub ? activeChip : undefined}
+                >
+                  {t.catalogSubjects[sub]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── EYE-CATCHING WORLD GRID ── each world is a card tinted with
                its own land colors; lessons are a grid of tappable tiles. */}
+          {filteredTotal === 0 && (
+            <p className="catalog-no-match" role="status" style={{ textAlign: "center", opacity: 0.85, margin: "12px 0" }}>{t.catalogNoMatch}</p>
+          )}
           {BANDS.map((b) => {
-            const skills = SKILLS.filter((s) => s.band === b.id);
+            const skills = SKILLS.filter((s) => s.band === b.id && matchesFilter(s));
+            if (!skills.length) return null;
             const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: progressUnitsInBand(b.id), pct: 0 };
             const palette = WORLD_LANDS[b.id] ?? { c1: "#0b3d2e", c2: "#2f9e6e", c3: "#c8f2c9", c2_22: "rgba(47,158,110,0.16)", deco: ["🌱"] };
             return (
