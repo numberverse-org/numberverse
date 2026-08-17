@@ -17,7 +17,14 @@ Proves:
      OTHER session, and old-password logins die;
   ⑤ delete-account removes the profile and its sessions;
   ⑥ deps.get_current_profile: happy path, revoked/missing/invalid-token
-     rejection, and the legacy branch.
+     rejection, and the legacy branch;
+  ⑦ the /sessions + logout router surface;
+  ⑧ #801 — /auth/google verification pins the audience EXPLICITLY to our OAuth
+     client id and rejects an unverified email / wrong-audience token (401,
+     never 500);
+  ⑨ #773 — a forged token carrying a known sid but the wrong bearer fingerprint
+     is rejected, and refresh rotation re-stamps the row's fingerprint so the
+     access token /refresh mints is accepted by get_current_profile.
 
 Run:  cd apps/api && python3 tests/test_auth.py   (no pytest, no Postgres)
 
@@ -45,6 +52,13 @@ from app.config import settings  # noqa: E402
 from app.models import Kid, Profile, Session  # noqa: E402
 from app.routers import auth  # noqa: E402
 from app.schemas import ChangePasswordIn, DeleteAccountIn, LoginIn, SignupIn  # noqa: E402
+
+# The real Google module — test_auth monkeypatches verify_oauth2_token on it
+# (that is exactly where the auth router's lazy import points).
+try:  # pragma: no cover — google-auth is a test-time dep of this suite
+    from google.oauth2 import id_token as google_id_token  # noqa: E402
+except ImportError:  # pragma: no cover
+    google_id_token = None
 from app.security import (  # noqa: E402
     create_access_token,
     hash_password,
@@ -699,6 +713,49 @@ async def _run():
         401,
     )
 
+    print("⑧  #801 — Google token aud pinned + email_verified enforced…")
+    if google_id_token is None:
+        check("google-auth installed (for #801 tests)", False, True)
+    else:
+        orig_client_id = settings.google_client_id
+        settings.google_client_id = "test-client.apps.googleusercontent.com"
+        orig_verify = google_id_token.verify_oauth2_token
+        calls = []
+
+        def _fake_verify_ok(token, request, audience):
+            calls.append(audience)
+            return {"email": "g@test.com", "email_verified": True}
+
+        def _fake_verify_unverified(token, request, audience):
+            calls.append(audience)
+            return {"email": "g@test.com", "email_verified": False}
+
+        def _fake_verify_wrong_aud(token, request, audience):
+            # google-auth raises ValueError on an aud mismatch — the router's
+            # except-path must surface it as a 401, never a 500.
+            raise ValueError("Token has wrong audience.")
+
+        await _google_token_checks(orig_verify, _fake_verify_ok,
+                                   _fake_verify_unverified, _fake_verify_wrong_aud,
+                                   calls, orig_client_id)
+
+    print("⑨  #773 — refresh rotation keeps the session fingerprint in sync…")
+    db_rot = FakeDB()
+    p_rot = add_profile(db_rot, email="rot@test.com", password="password123")
+    old_refresh = "old-refresh-rot"
+    sess_rot = add_session(
+        db_rot, p_rot,
+        token_hash=f"hash-{uuid.uuid4().hex}",
+        refresh_hash=sha256_token(old_refresh),
+        refresh_expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+    )
+    t_rot, _new_refresh = await auth._rotate_refresh_session(db_rot, old_refresh)
+    check("rotation adopts the new access fingerprint", sess_rot.token_hash, sha256_token(t_rot))
+    got_rot = await deps.get_current_profile(
+        make_request(), SimpleNamespace(credentials=t_rot), db_rot,
+    )
+    check("rotated access token accepted by get_current_profile", got_rot.id, p_rot.id)
+
     print()
     print(f"✓ {passes} checks passed")
     if fails:
@@ -725,6 +782,39 @@ def _mint_with_sid(subject, sid, *, iat=None):
         "sid": sid,
     }
     return pyjwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+
+
+# ── #801 — Google token audience + email_verified (no network needed) ─────
+
+async def _verify_google_async(fake_token="fake.id.token"):
+    """Coroutine wrapper so expect_http can await the sync router helper."""
+    return auth._verify_google_token(fake_token)
+
+
+async def _google_token_checks(orig_verify, fake_ok, fake_unverified, fake_wrong_aud, calls, orig_client_id):
+    """Drive the #801 assertions against the REAL `_verify_google_token` with
+    google-auth's verify_oauth2_token swapped for offline fixtures.
+
+    ① the audience reaches the verifier EXPLICITLY as [client_id] (the real
+       library then rejects any other aud) — proven by capturing the kwarg;
+    ② a claims dict with email_verified absent/false is a 401, not a login;
+    ③ a verifier-level ValueError (exactly what google-auth raises on an aud
+       mismatch) is surfaced as a 401, never a 500.
+    """
+    try:
+        google_id_token.verify_oauth2_token = fake_ok
+        info = auth._verify_google_token("fake.id.token")
+        check("audience pinned to [client_id]", calls and calls[-1], [settings.google_client_id])
+        check("verified claims returned", info.get("email_verified"), True)
+
+        google_id_token.verify_oauth2_token = fake_unverified
+        await expect_http("email_verified false → 401", _verify_google_async(), 401)
+
+        google_id_token.verify_oauth2_token = fake_wrong_aud
+        await expect_http("wrong audience → 401", _verify_google_async(), 401)
+    finally:
+        google_id_token.verify_oauth2_token = orig_verify
+        settings.google_client_id = orig_client_id
 
 
 if __name__ == "__main__":

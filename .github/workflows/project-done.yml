@@ -16,12 +16,21 @@ jobs:
       - uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PROJECT_PAT }}
+          # #893 — project/status-field/option coordinates come from repository
+          # variables (NV_PROJECT_ID / NV_STATUS_FIELD_ID / NV_DONE_OPTION_ID),
+          # so a board rename or migration is a settings change, not a workflow
+          # edit. The literals below stay as documented fallbacks so the job
+          # still works before the variables exist.
+          env:
+            NV_PROJECT_ID: ${{ vars.NV_PROJECT_ID || 'PVT_kwDOEs9Wkc4Bf_Mz' }}
+            NV_STATUS_FIELD_ID: ${{ vars.NV_STATUS_FIELD_ID || 'PVTSSF_lADOEs9Wkc4Bf_MzzhaOGQo' }}
+            NV_DONE_OPTION_ID: ${{ vars.NV_DONE_OPTION_ID || '4923709d' }}
           script: |
             const owner = "numberverse-org";
             const repo = "numberverse";
-            const projectId = "PVT_kwDOEs9Wkc4Bf_Mz";
-            const statusFieldId = "PVTSSF_lADOEs9Wkc4Bf_MzzhaOGQo";
-            const doneOptionId = "4923709d";
+            const projectId = process.env.NV_PROJECT_ID;
+            const statusFieldId = process.env.NV_STATUS_FIELD_ID;
+            const doneOptionId = process.env.NV_DONE_OPTION_ID;
             const number = context.issue.number;
 
             const q = `query($owner:String!, $repo:String!, $number:Int!) {
@@ -34,6 +43,17 @@ jobs:
             const res = await github.graphql(q, { owner, repo, number });
             const cards = (res?.repository?.issue?.projectItems?.nodes || [])
               .filter(n => n?.project?.id === projectId);
+            // #893 — a closed issue that is tracked on the board MUST have a
+            // card. An empty result means the board was renamed/migrated, the
+            // PAT lost access, or the issue isn't on the project — fail loudly
+            // instead of silently reporting "moved 0 cards".
+            if (cards.length === 0) {
+              throw new Error(
+                `No project card found for issue #${number} (project ${projectId}) — ` +
+                `check repository variables NV_PROJECT_ID / NV_STATUS_FIELD_ID / ` +
+                `NV_DONE_OPTION_ID and confirm the issue is on the board.`
+              );
+            }
             for (const card of cards) {
               const m = `mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!) {
                 updateProjectV2ItemFieldValue(input: {

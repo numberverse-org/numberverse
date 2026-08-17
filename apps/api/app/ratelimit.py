@@ -5,6 +5,13 @@ extra uvicorn worker) silently reset the windows and lockouts. The API now keeps
 each bucket in Postgres (`rate_limit_buckets`) so limits are shared across
 workers and survive restarts.
 
+#772 contract — this limiter does NOT depend on a single-worker deploy. Every
+window count and lockout lives in the DB, so multiple uvicorn workers (or two
+processes) sharing one Postgres all enforce ONE set of buckets, and a restart
+never resets a window. The only process-local state in this module is
+`_logged_throttle_windows` (a bounded dedup cache for 429 LOG lines); it is
+redaction bookkeeping, never window/lockout state.
+
 `rate_limit` keys on the authenticated account + client IP (write endpoints);
 `ip_rate_limit` keys only on client IP for auth-free public reads. Both use a
 fixed window — simpler to make atomic with an upsert than the old in-memory
@@ -54,6 +61,10 @@ _TRUSTED_PROXY_PREFIXES = (
 )
 
 # #1751 — 429 log-flood guard: (kind, key) -> coarse window id already logged.
+# #772 — this is the ONLY in-process state in the limiter and it is pure log
+# dedup (redaction bookkeeping), NEVER window/lockout state. The buckets live
+# in `rate_limit_buckets` (Postgres), so a multi-worker or restarted API keeps
+# its limits intact — no single-worker contract is being relied on.
 _logged_throttle_windows: dict[tuple[str, str], int] = {}
 
 

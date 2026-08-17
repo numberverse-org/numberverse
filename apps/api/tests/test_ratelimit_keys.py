@@ -16,7 +16,10 @@ Asserts:
       422/413-flood on /progress can never burn the /export bucket (#1770);
   (f) when request.client is None, rate_limit/read_rate_limit drop the ip
       component (per-account granularity) and ip_rate_limit falls back to the
-      rightmost XFF hop, so no-IP clients no longer share one bucket (#1769).
+      rightmost XFF hop, so no-IP clients no longer share one bucket (#1769);
+  (g) #772 — two limiter instances sharing one bucket store (the DB-backed
+      contract behind every limit) enforce a SINGLE bucket: a lockout armed by
+      one instance is seen by the other, and a reset via one clears it for both.
 """
 import asyncio
 import logging
@@ -192,6 +195,54 @@ async def _call_login_401():
         auth._LOGIN_GUARD = orig_guard
 
 
+# ── #772 — a SHARED bucket store (two limiter instances, one bucket) ───────
+
+def _bucket_key(stmt):
+    """Pull the key out of select(RateLimitBucket).where(key == <param>)."""
+    wc = stmt.whereclause
+    clauses = list(wc.clauses) if hasattr(wc, "clauses") else [wc]
+    for c in clauses:
+        left = getattr(c, "left", None)
+        right = getattr(c, "right", None)
+        if getattr(left, "key", None) == "key":
+            return getattr(right, "value", None)
+    return None
+
+
+class _SharedStoreDB:
+    """Fake AsyncSession whose buckets live in ONE caller-owned dict.
+
+    Two independent limiter instances (`AuthAttemptGuard`s) driven against the
+    SAME store through this fake behave exactly like two uvicorn workers
+    sharing one Postgres `rate_limit_buckets` table (#772): the lockout written
+    by one must be seen and enforced by the other.
+    """
+
+    def __init__(self, store):
+        self._store = store  # {bucket_key: RateLimitBucket}
+        self._pending = []
+
+    async def scalar(self, stmt):
+        return self._store.get(_bucket_key(stmt))
+
+    def add(self, obj):
+        self._pending.append(obj)
+
+    async def flush(self):
+        for obj in self._pending:
+            self._store[obj.key] = obj
+        self._pending = []
+
+    async def commit(self):
+        pass
+
+
+def _guard(store, max_attempts=5):
+    """One limiter instance over a shared store — `rl.AuthAttemptGuard` is the
+    same class the auth routes use for login/change-password lockout."""
+    return rl.AuthAttemptGuard(max_attempts=max_attempts), _SharedStoreDB(store)
+
+
 def _run():
     print("①  _request_ip — rightmost TRUSTED XFF hop, never leftmost (#1760/#1761)…")
     check("trusted peer + chain → rightmost hop", rl._request_ip(req(xff="6.6.6.6, 1.2.3.4")), "1.2.3.4")
@@ -259,6 +310,38 @@ def _run():
     check("read_rate_limit no-ip key keeps :read", captured[1], "p123:progress:read")
     check("ip_rate_limit no-ip + XFF → rightmost hop", captured[2], "ip:1.2.3.4")
     check("ip_rate_limit no-ip, no XFF → ip:unknown residual", captured[3], "ip:unknown")
+
+    print("⑦  #772 — two limiter instances sharing a store key enforce ONE bucket…")
+    store = {}
+    g1, db1 = _guard(store)
+    g2, db2 = _guard(store)  # a DIFFERENT instance over the SAME store
+
+    async def _drive_lockout():
+        # g1 (worker 1) records 5 failures against the shared key → arms lockout.
+        for _ in range(5):
+            await g1.record_failure(db1, "login:email:parent@test.com")
+        # g2 (worker 2) must SEE that lockout — it cannot replay from a fresh
+        # per-process slate (#772).
+        try:
+            await g2.raise_if_locked(db2, "login:email:parent@test.com")
+            return None
+        except HTTPException as e:
+            return e.status_code
+
+    locked = asyncio.run(_drive_lockout())
+    check("g2 sees g1's lockout (shared store)", locked, 429)
+    check("bucket lives in the shared store", store.get("login:email:parent@test.com") is not None, True)
+
+    async def _drive_reset():
+        # Resetting through g1 must clear g2's view too — same underlying bucket.
+        await g1.reset(db1, "login:email:parent@test.com")
+        try:
+            await g2.raise_if_locked(db2, "login:email:parent@test.com")
+            return "ok"
+        except HTTPException:
+            return "locked"
+
+    check("reset via g1 clears g2's view", asyncio.run(_drive_reset()), "ok")
 
     print()
     if fails:

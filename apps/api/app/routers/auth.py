@@ -101,7 +101,13 @@ def _verify_google_token(id_token: str) -> dict:
 
     Shared by /google (login/signup) and /set-password (recovery). A missing
     NV_GOOGLE_CLIENT_ID is a 501 so the kid app can hide the button instead of
-    surfacing a dead-end error (#382)."""
+    surfacing a dead-end error (#382).
+
+    #801 — the audience is pinned EXPLICITLY to our OAuth client id so a token
+    minted for a different Google client can never authenticate, and
+    `email_verified` must be true — Google only sets it for a confirmed
+    account email, so an unverified address cannot sign up / recover / log in.
+    """
     client_id = settings.google_client_id
     if not client_id:
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Google sign-in not configured")
@@ -110,9 +116,15 @@ def _verify_google_token(id_token: str) -> dict:
         from google.auth.transport import requests as google_requests
         from google.oauth2 import id_token as google_id_token
 
-        return google_id_token.verify_oauth2_token(id_token, google_requests.Request(), client_id)
+        info = google_id_token.verify_oauth2_token(
+            id_token, google_requests.Request(), audience=[client_id]
+        )
     except (ValueError, GoogleAuthError) as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google credential") from e
+    # #801 — absent/false `email_verified` is a rejected auth (401), never a 500.
+    if not info.get("email_verified"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Google email not verified")
+    return info
 
 
 def _google_email(info: dict) -> str:
@@ -152,8 +164,9 @@ async def _rotate_refresh_session(db: AsyncSession, refresh_token: str) -> tuple
     """#1773 — validate the refresh cookie and ROTATE: mint a new short-lived
     access token, swap the stored refresh hash (the OLD refresh dies
     immediately — it can no longer match any row), extend the refresh expiry.
-    The access token's `sid` still names the same row, so it stays valid for
-    its short lifetime after a rotation — the standard 15-min grace window."""
+    The new access token's `sid` still names the same row, and its fingerprint
+    replaces the row's stored one (#773), so the token /refresh just issued is
+    the valid bearer for this session's short remaining lifetime."""
     now = datetime.now(timezone.utc)
     h = sha256_token(refresh_token)
     row = await db.scalar(select(Session).where(Session.refresh_hash == h))
@@ -164,12 +177,19 @@ async def _rotate_refresh_session(db: AsyncSession, refresh_token: str) -> tuple
     profile = await db.scalar(select(Profile).where(Profile.id == row.profile_id))
     if profile is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Profile not found")
+    new_access = create_access_token(str(profile.id), profile.role, session_id=str(row.id))
     new_refresh = generate_refresh_token()
     row.refresh_hash = sha256_token(new_refresh)
+    # #773 — the row's fingerprint tracks the access token the server MOST
+    # recently issued for this session. Rotation issues a NEW access token
+    # (fresh iat/exp ⇒ a fresh fingerprint), so it must be stored in place:
+    # deps.py rejects a bearer whose sha256 does not match the row, and an
+    # un-rotated hash would 401 the very token /refresh just minted.
+    row.token_hash = sha256_token(new_access)
     row.refresh_expires_at = now + timedelta(days=settings.jwt_refresh_days)
     row.last_seen_at = now
     await db.commit()
-    return create_access_token(str(profile.id), profile.role, session_id=str(row.id)), new_refresh
+    return new_access, new_refresh
 
 
 @router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)

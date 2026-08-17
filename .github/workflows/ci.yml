@@ -25,6 +25,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # #891 — cache the pnpm content-addressable store keyed on the lockfile
+      # hash (prefix fallback restores the previous store on a bump, so only
+      # changed packages re-download) instead of letting a lockfile change
+      # invalidate the whole install in lockstep.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - name: Build @numberverse/core
         run: pnpm --filter @numberverse/core build
@@ -49,6 +59,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # #891 — cache the pnpm content-addressable store keyed on the lockfile
+      # hash (prefix fallback restores the previous store on a bump, so only
+      # changed packages re-download) instead of letting a lockfile change
+      # invalidate the whole install in lockstep.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
@@ -70,6 +90,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # #891 — cache the pnpm content-addressable store keyed on the lockfile
+      # hash (prefix fallback restores the previous store on a bump, so only
+      # changed packages re-download) instead of letting a lockfile change
+      # invalidate the whole install in lockstep.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
@@ -111,35 +141,32 @@ jobs:
         run: echo "apps/api/.venv/bin" >> "$GITHUB_PATH"
       - name: API app compiles
         run: python3 -m compileall -q apps/api/app
-      - name: API unit tests (PII scrubber)
-        run: python3 apps/api/tests/test_scrub.py
-      - name: API unit tests (structured error log #124)
-        run: python3 apps/api/tests/test_errorlog.py
-      - name: API unit tests (age-band lock matrix #275)
-        run: python3 apps/api/tests/test_band_lock.py
-      - name: API unit tests (parent data export format #273)
-        run: python3 apps/api/tests/test_export.py
-      - name: API unit tests (session revocation #265)
-        run: python3 apps/api/tests/test_session_guard.py
-      - name: API unit tests (multi-tenant org isolation #963)
-        run: python3 apps/api/tests/test_org_isolation.py
-      - name: API unit tests (retention/prune policy #983 #984)
-        run: python3 apps/api/tests/test_retention.py
-      - name: API unit tests (Moni per-subject deltas #1044)
-        run: python3 apps/api/tests/test_moni_subject_deltas.py
-      - name: API unit tests (auth/session coverage 66 #773 #865 #868)
-        run: python3 apps/api/tests/test_auth.py
-      - name: API unit tests (admin generic CRUD coverage 89 #2 #5 #6 #967 #968)
-        run: python3 apps/api/tests/test_admin.py
-      - name: API unit tests (progress/BKT coverage 62 #7 #8 #1026)
-        run: python3 apps/api/tests/test_progress.py
-      - name: API unit tests (kids/age-band coverage 50 #9 #10)
-        run: python3 apps/api/tests/test_kids.py
-      - name: API unit tests (backup import round-trip 65 #11 #12)
-        run: python3 apps/api/tests/test_import.py
+      # #892 — Discovery loop: every apps/api/tests/test_*.py is a STANDALONE
+      # subprocess script (not pytest), so instead of hand-listing each module
+      # here (a new test_*.py used to run uncounted) we glob them all and run
+      # each on the synced venv python already on PATH. Any non-zero exit aborts
+      # the loop (`|| exit 1`), failing the whole job.
+      # Modules (documentation): accesslog adaptive_model admin auth_hardening
+      # auth band_lock bkash config_guard embedding_metadata errorlog export
+      # import ip_ratelimit_tags jwt_rotation kids migrations_ddl
+      # moni_subject_deltas org_isolation premium_gate progress_sync progress
+      # push ratelimit_keys read_tier_ratelimit refresh_rotation request_id
+      # retention schemas_validation scrub session_guard shares_token_hash
+      # telemetry
+      - name: API unit tests (discovery loop over test_*.py)
+        run: |
+          for t in apps/api/tests/test_*.py; do
+            echo "== $t =="
+            python3 "$t" || exit 1
+          done
 
-  license-audit:
-    name: license-audit
+  # #890 — Consolidate the pure node gate scripts (no built core-dist, no
+  # Python) into ONE job with a SINGLE `pnpm install` + shared pnpm store
+  # cache. Jobs that genuinely need the core-dist artifact (typecheck-kid,
+  # audit, bundle-size, offline-e2e) or Python (api, python-audit, oracle)
+  # stay separate parallel jobs.
+  node-gates:
+    name: node-gates (license·dep·secret·content·tracker)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -150,22 +177,15 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Dependency license gate (#271)
-        run: node scripts/license-audit.mjs
-
-  dep-audit:
-    name: dep-audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # #891 — one pnpm store cache for the whole consolidated job (same shape
+      # as the cache step on the other pnpm jobs): lockfile-keyed primary,
+      # prefix-restore fallback so a bump only re-downloads the changed delta.
+      - uses: actions/cache@v4
         with:
-          version: 11.20.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - name: Dependency vulnerability gate (#308)
         run: node scripts/audit-deps.mjs
@@ -182,6 +202,14 @@ jobs:
             exit 1
           fi
           echo "✓ react-is resolved to a single major"
+      - name: Dependency license gate (#271)
+        run: node scripts/license-audit.mjs
+      - name: Secrets hygiene gate (#126)
+        run: node scripts/secret-scan.mjs
+      - name: Child-safety content gate (#91)
+        run: node scripts/content-safety.mjs
+      - name: No-ads tracker gate (#92)
+        run: node scripts/tracker-scan.mjs
 
   python-audit:
     name: python-audit
@@ -220,6 +248,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # #891 — cache the pnpm content-addressable store keyed on the lockfile
+      # hash (prefix fallback restores the previous store on a bump, so only
+      # changed packages re-download) instead of letting a lockfile change
+      # invalidate the whole install in lockstep.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
@@ -234,39 +272,6 @@ jobs:
       - name: Bundle-size regression gate (#305)
         run: node scripts/bundle-size.mjs
 
-  content-safety:
-    name: content-safety
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Child-safety content gate (#91)
-        run: node scripts/content-safety.mjs
-
-  tracker-scan:
-    name: tracker-scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: No-ads tracker gate (#92)
-        run: node scripts/tracker-scan.mjs
-
-  secret-scan:
-    name: secret-scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Secrets hygiene gate (#126)
-        run: node scripts/secret-scan.mjs
-
   offline-e2e:
     name: e2e
     needs: build-core
@@ -280,6 +285,16 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # #891 — cache the pnpm content-addressable store keyed on the lockfile
+      # hash (prefix fallback restores the previous store on a bump, so only
+      # changed packages re-download) instead of letting a lockfile change
+      # invalidate the whole install in lockstep.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:
@@ -333,6 +348,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # #891 — pnpm content-addressable store cache (lockfile-keyed primary,
+      # prefix-restore fallback so a lockfile bump only re-downloads the delta).
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v4
         with:

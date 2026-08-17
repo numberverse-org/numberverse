@@ -42,12 +42,13 @@ jobs:
               });
               commits = data.commits;
             } else {
-              const { data } = await github.rest.repos.listCommits({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 60,
-              });
-              commits = data;
+              // #894 — first tag with no prior tag: a flat
+              // listCommits(per_page:60) dump would misrepresent "everything
+              // since the repo started" as "the last 60 commits". Skip the
+              // hand-built changelog entirely and let the release action's
+              // generate_release_notes (below) produce the first release's
+              // notes from its merged PRs.
+              commits = [];
             }
             return (commits || [])
               .map(c => `- ${c.commit.message.split("\n")[0]}`)
