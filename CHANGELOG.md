@@ -1,3 +1,8 @@
+## 18 Aug 2026 — 1.2.1 (Fix iOS fullscreen layout apps)
+
+3973912 Fix iOS fullscreen layout apps
+3746f3a fix(api): real /health probe (DB + background loop) (#1748) + bkash tunnel ownership fix
+
 ## 18 Aug 2026 — 1.2.0 (CI hardening + security/authz (wave-14))
 
 d557aa3 fix+chore: CI hardening + security/authz (wave-14)
