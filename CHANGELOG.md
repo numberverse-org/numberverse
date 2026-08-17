@@ -1,3 +1,7 @@
+## 18 Aug 2026 — 1.2.0 (CI hardening + security/authz (wave-14))
+
+d557aa3 fix+chore: CI hardening + security/authz (wave-14)
+
 ## 18 Aug 2026 — 1.1.0 (App screen extraction + quality gates + 8-land palette sync (wave-13))
 
 edf9ad6 refactor+fix: App screen extraction + quality gates + 8-land palette oracle sync

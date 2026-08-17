@@ -1,10 +1,24 @@
 # 🎮 Numberverse — Product Tracker
 > Last updated: 18 Aug 2026
 
-## 🛡️ ADMIN-CORRECTNESS + ROUTER/VALIDATION WAVE (#1622–#1649) + FOLLOW-UPS (#1601/#1603/#1604/#1617/#1650) 17 Aug 2026 ⏳ → 0.98.0 (7 fan-out subagents dispatched)
+## 🩹 PGVECTOR BOOT-CRASH FIX 18 Aug 2026 ✅ → 1.0.1 (0 fan-out, direct fix)
+- **#live-incident** the deployed 1.0.0 API crash-looped at boot: `StoryEmbedding` sat on `Base.metadata`, so startup `create_all` tried `CREATE TABLE story_embeddings … VECTOR(384)` on `postgres:16-alpine` (no `vector` extension) → `type "vector" does not exist` → 502 on `/health` + tunnel. `72fb9e8` moves the model onto its own `embed_metadata` (startup `create_all` never touches it; the lazy embed job creates the table only after `CREATE EXTENSION IF NOT EXISTS vector` succeeds) + NEW `test_embedding_metadata.py`. Embed job degrades gracefully (`skipped` when pgvector/ML stack absent).
+- Released **1.0.1**, deployed + smoke-tested live — `/health` ok on LAN origin + Cloudflare tunnel, API container healthy.
+
+## 📚 DOCS-CONSISTENCY + INFRA-OPS + DATA-MODEL + FRONTEND-QUALITY WAVE (#803–#808, #809–#814, #865/#906/#907/#908, #762/#818/#819) 18 Aug 2026 ✅ → 1.0.0 (wave-12, 1 fan-out subagent)
+- **All work verified on the merged tree:** docs consistency (unified team-model docs + `docs/work-orders/INDEX.md`, 265 lines); infra ops correctness (blocking release gates, `/health` probe + post-deploy smoke, backup retention prune fix, secret guard, edge/up alerting in `uptime_monitor.sh`); data-model (tz-aware timestamp migration test, composite indexes on ProgressEvent/LearningStory, no-sid revocation tests); frontend quality (unsaved-changes guard, safe localStorage reads with NEW `test-api-safe-reads`, PBKDF2 PIN upgrade, learning-controls UI).
+- Released **1.0.0**, deployed + smoke-tested live.
+
+## 🌱 EXPLORE GARDEN SHAPE QUESTS (K.G.2) + FIRST-PLAY TAP DEMO 18 Aug 2026 ✅ → 0.99.0 (0 fan-out, direct commit)
+- **#K.G.2 shape quests:** ⬤🔺⬛⭐ shape-recognition quests interleave with the counting quests via a `shapes` flag that swaps the palette (`ExploreGardenScene.ts`, +207 lines); EN+BN shape keys in `i18n.ts`.
+- **First-visit tap demo:** pointer tap-to-plant shown once (`nv_explore_garden_demo`, interruptible, reduced-motion aware).
+- Released **0.99.0**, deployed + smoke-tested live.
+
+## 🛡️ ADMIN-CORRECTNESS + ROUTER/VALIDATION WAVE (#1622–#1649) + FOLLOW-UPS (#1601/#1603/#1604/#1617/#1650) 17 Aug 2026 ✅ → 0.98.0 (7 fan-out subagents)
 - **Wave-10 (API hardening, 28 issues, 4 tasks):** admin-CRUD (#1622/#1623/#1624/#1625/#1627/#1628/#1629/#1630/#1631/#1635/#1636/#1637/#1647 — undeclared `request` NameErrors on org-scoped GET/POST, unguarded uuid.UUID → 400, IntegrityError → 409, shared parse helpers, generic role/org errors, soft-fail verify_password, token decode logging, WRITABLE_FIELDS profile_id removal, filter-list cap); error/import (#1626/#1632/#1633/#1634/#1638/#1639 — request_id in 500/422 bodies, 1 MiB guard alignment, hard-400 non-numeric Content-Length, neutral conflict reason, import context validators, list caps); schema caps (#1641/#1642/#1643/#1649 — bounded error_kind/game_id/enabled_subjects/coins); router validation (#1640/#1644/#1645/#1646/#1648 — uid synthesis, threshold range, token length, UTC share window, PATCH null-clear).
 - **Wave-11 (follow-ups, 5 issues, 3 tasks):** kid-a11y dialogs (#1601/#1603/#1604 useDialogFocus); SW offline query-key (#1650 drop ignoreSearch + e2e/offline.spec.ts); parent local-only usage ring (#1617, nothing leaves the device).
-- ⏳ in flight — verify merged tree → release 0.98.0.
+- **Also in this release:** Explore Garden guided counting gameplay (#1143, `fa5443a`) + freemium gate / Parent Plus entitlement / bKash rails (`8e70d49`).
+- Released **0.98.0**, deployed + smoke-tested live.
 
 ## 🎯 TELEMETRY + SW/OFFLINE + DEPS/CI WAVE (#1611–#1621, #1651–#1664, #1691–#1702) 17 Aug 2026 ✅ → 0.97.0 (3 fan-out subagents)
 - **All 3 tasks complete + verified on the merged tree:** 28 standalone api test files green (incl NEW test_telemetry.py), kid/parent/admin tsc 0, vitest **289/289** (was 280 — +9 from sw-offline), locale parity ✓, png-metadata ✓, audit 0 errors, secret-scan clean, content-safety ✓ (i18n corpus now scanned), safety-scan ✓ (hermetic), audit-deps ✓ (19 justified entries), oracle SHIP-OK. One drive-by fix committed separately: `t()` no longer leaks a literal `{n}` to a kid (#268, DEV-only console.error).
