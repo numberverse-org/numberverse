@@ -43,20 +43,33 @@ import { STR, ensureStrings, bnNum, BN_MONTHS, type Lang, type Strings } from ".
 import VoiceCheck from "./components/VoiceCheck";
 import StoryInspector from "./components/StoryInspector";
 import CountUp from "./components/CountUp";
-import { WorksheetScreen, FlashcardsScreen } from "./components/PrintSheets"; // #1338 #1345
-import SyllabusScreen from "./components/SyllabusScreen";
-import WorldsScreen from "./components/WorldsScreen";
-import WorldDetailScreen from "./components/WorldDetailScreen";
-import DoneScreen from "./components/DoneScreen";
-import BreakScreen from "./components/BreakScreen";
-import ContrastScreen from "./components/ContrastScreen";
-import BadgesScreen from "./components/BadgesScreen";
-import TrophyRoomScreen from "./components/TrophyRoomScreen";
-import AchievementsScreen from "./components/AchievementsScreen";
-import CastleScreen from "./components/CastleScreen";
-import CertScreen from "./components/CertScreen";
+// #883 — every journey-heavy screen is a lazy chunk: the world/syllabus/done/
+// badge/achievement/cert/castle/worksheet/flashcard code (and the config tables
+// they render) is fetched + parsed only the first time a kid (or parent) routes
+// to it — never at first paint. HomeScreen/AddKidForm above are already lazy.
+const SyllabusScreen = lazy(() => import("./components/SyllabusScreen"));
+const WorldsScreen = lazy(() => import("./components/WorldsScreen"));
+const WorldDetailScreen = lazy(() => import("./components/WorldDetailScreen"));
+const DoneScreen = lazy(() => import("./components/DoneScreen"));
+const BreakScreen = lazy(() => import("./components/BreakScreen"));
+const ContrastScreen = lazy(() => import("./components/ContrastScreen"));
+const BadgesScreen = lazy(() => import("./components/BadgesScreen"));
+const TrophyRoomScreen = lazy(() => import("./components/TrophyRoomScreen"));
+const AchievementsScreen = lazy(() => import("./components/AchievementsScreen"));
+const CastleScreen = lazy(() => import("./components/CastleScreen"));
+const CertScreen = lazy(() => import("./components/CertScreen"));
+// #1338 #1345 — the print sheets are two named exports from one module; keep
+// each as its own lazy component (Vite shares the chunk).
+const WorksheetScreen = lazy(() => import("./components/PrintSheets").then((m) => ({ default: m.WorksheetScreen })));
+const FlashcardsScreen = lazy(() => import("./components/PrintSheets").then((m) => ({ default: m.FlashcardsScreen })));
+// #883 — the heavy journey CONFIG tables (BADGES/ACHIEVEMENTS/CHALLENGE_ROUNDS/
+// WORLD_LANDS/RANKS/SEASON_*/DONE_CONFETTI/SUBJECT_CARD/CONTRAST_TEMPLATES) are
+// NOT statically imported here: they live in ./lib/journeyConfig (loaded on
+// demand above) and are consumed by the lazy screen chunks. The shell keeps the
+// pure helpers + the two boot-required tables (SECURITY_QUESTIONS for the parent
+// gate, NOVA_REACTIONS for gameplay).
 import {
-  currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
+  fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
   applyKidControls, subjectForSkill, skillMastered, strugglingSkills, kidMasteryStats, worldProgress, worldEmoji,
   worldUnlocked, unlockGap, landBossUnlocked, landBossBeaten, totalMastered, masteredCounts, progressUnitCount, progressUnitsInBand, journeyStops, journeyState, journeyCurrentIndex, cardDate,
@@ -65,10 +78,9 @@ import {
   kidBand,
   MAX_KIDS_PER_FAMILY,
   challengeEligible, challengeStartLevelIndex,
-  MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS, TOUR_STEPS, RANKS,
-  BADGES, ACHIEVEMENTS, NOVA_REACTIONS, novaReactionLine, CONTRAST_TEMPLATES, CHALLENGE_ROUNDS, CHALLENGE_MIN_LEVEL,
-  CHALLENGE_MAX_LEVEL, WORLD_LANDS, FOCUS_SUBJECT_LABELS, SEASON_EMOJI, SEASON_PARTICLES,
-  DONE_CONFETTI, filterMaxBand, filterFocusSubject, filterFocusBand, SUBJECT_CARD,
+  MASTERY_THRESHOLD, masteryThresholdFor, UNLOCK_THRESHOLD, SESSION_LEN, SECURITY_QUESTIONS,
+  NOVA_REACTIONS, novaReactionLine,
+  filterMaxBand, filterFocusSubject, filterFocusBand,
   type SessionStep, type SavedSession, type Kid, type SkillMap, type SkillMapEntry, type JourneyStop, type CardSkill,
   type BadgeCtx, type BadgeDef, type AchCtx, type AchDef, type NovaReaction, type NovaReactionDef,
   type ChallengeQ, type ContrastTemplate, type ContrastRound, type AvatarParts, type SeasonKey,
@@ -301,6 +313,23 @@ export default function App() {
     const id = readLS("nv_kid_id"); // #1219 — guarded (private-browsing safe)
     return list.find((k) => k.id === id) ?? null;
   });
+  // #883 — the heavy journey CONFIG tables (BADGES/ACHIEVEMENTS/CHALLENGE_ROUNDS/
+  // CONTRAST_TEMPLATES/SUBJECT_CARD) are deferred: journeyConfig.ts is fetched
+  // only after a kid selects a profile (never at first paint). The badge/
+  // achievement celebration memos + the challenge/contrast/cards logic read it
+  // via journeyCfg; the screens that render the config are lazy chunks.
+  type JourneyCfg = typeof import("./lib/journeyConfig");
+  const [journeyCfg, setJourneyCfg] = useState<JourneyCfg | null>(null);
+  useEffect(() => {
+    if (!kid) return;
+    let alive = true;
+    import("./lib/journeyConfig").then((m) => {
+      if (alive) setJourneyCfg(m);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [kid?.id]);
   // #22 — sibling co-op: "pass the device" overlay + "now playing" toast.
   const [coopOpen, setCoopOpen] = useState(false);
   const [coopToast, setCoopToast] = useState<string | null>(null);
@@ -717,29 +746,29 @@ export default function App() {
   const kidWorlds = useMemo(() => (kid ? fullyMasteredWorlds(skillsMap, kid.id) : 0), [skillsMap, kid?.id]);
   const earnedBadgeKey = useMemo(
     () =>
-      kid
-        ? BADGES.filter((b) =>
+      kid && journeyCfg
+        ? journeyCfg.BADGES.filter((b) =>
             b.earned({ sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: kidWorlds, weekDone })
           )
             .map((b) => b.id)
             .join(",")
         : "",
-    [kid?.id, badgeStats.sessions, badgeStats.stars, badgeStreak, kidWorlds, weekDone]
+    [kid?.id, journeyCfg, badgeStats.sessions, badgeStats.stars, badgeStreak, kidWorlds, weekDone]
   );
   useEffect(() => {
-    if (!kid || !earnedBadgeKey) return;
+    if (!journeyCfg || !kid || !earnedBadgeKey) return;
     const earned = earnedBadgeKey.split(",").filter(Boolean);
     const newly = useKidStore.getState().novaSyncBadges(kid.id, earned);
     if (newly.length) {
       newly.forEach((id) => {
-        const b = BADGES.find((x) => x.id === id);
+        const b = journeyCfg.BADGES.find((x) => x.id === id);
         if (!b) return;
         tada();
         const safeKidName = sanitizeDisplayName(kid.name, { forSpeech: true }); // #1830
         speak(lang === "bn" ? t.badgeNewSpeak(safeKidName, b.nameBn) : t.badgeNewSpeak(safeKidName, b.name));
       });
     }
-  }, [kid?.id, earnedBadgeKey, storedBadges.join(",")]);
+  }, [kid?.id, journeyCfg, earnedBadgeKey, storedBadges.join(",")]);
   // #289 — long-term achievements: celebrating each NEWLY-unlocked milestone
   // exactly once (the album grid shows the pop animation; home fires the cheer).
   const achStats = useKidStore((s) => s.stats[kid?.id ?? ""] ?? { stars: 0, score: 0, sessions: 0 });
@@ -750,8 +779,8 @@ export default function App() {
   const storedAchs = useKidStore((s) => (kid ? s.nova[kid.id]?.achievements ?? [] : []));
   const earnedAchKey = useMemo(
     () =>
-      kid
-        ? ACHIEVEMENTS.filter((a) =>
+      kid && journeyCfg
+        ? journeyCfg.ACHIEVEMENTS.filter((a) =>
             a.earned({
               sessions: achStats.sessions,
               stars: achStats.stars,
@@ -766,7 +795,7 @@ export default function App() {
             .map((a) => a.id)
             .join(",")
         : "",
-    [kid?.id, achStats.sessions, achStats.stars, kidMasteredCount, achStreak, achCoins, kidWorlds, achPets, achPetStage]
+    [kid?.id, journeyCfg, achStats.sessions, achStats.stars, kidMasteredCount, achStreak, achCoins, kidWorlds, achPets, achPetStage]
   );
   // #1354 — when the active kid changes, drop any previous kid's pop ids
   // BEFORE the sync effect below can add the new kid's newly-synced ones.
@@ -777,20 +806,20 @@ export default function App() {
     }
   }, [kid?.id]);
   useEffect(() => {
-    if (!kid || !earnedAchKey) return;
+    if (!journeyCfg || !kid || !earnedAchKey) return;
     const earned = earnedAchKey.split(",").filter(Boolean);
     const newly = useKidStore.getState().novaSyncAchievements(kid.id, earned);
     if (newly.length) {
       setAchPopupIds((prev) => Array.from(new Set([...prev, ...newly])));
       newly.forEach((id) => {
-        const a = ACHIEVEMENTS.find((x) => x.id === id);
+        const a = journeyCfg.ACHIEVEMENTS.find((x) => x.id === id);
         if (!a) return;
         tada();
         const safeKidName = sanitizeDisplayName(kid.name, { forSpeech: true }); // #1830
         speak(lang === "bn" ? t.achNewSpeak(safeKidName, a.nameBn) : t.achNewSpeak(safeKidName, a.name));
       });
     }
-  }, [kid?.id, earnedAchKey, storedAchs.join(",")]);
+  }, [kid?.id, journeyCfg, earnedAchKey, storedAchs.join(",")]);
   // #1354 — the glow is a one-time reveal: clear it once the kid leaves the
   // achievement album so revisiting later doesn't replay the unlock animation.
   useEffect(() => {
@@ -3241,17 +3270,19 @@ export default function App() {
    *  Bands expand/collapse; each lesson shows the game + the idea it teaches. */
   if (screen === "syllabus") {
     return (
-      <SyllabusScreen
-        kid={kid}
-        skillsMap={skillsMap}
-        lang={lang}
-        t={t}
-        onGoAddKid={goAddKid}
-        onBack={goBack}
-        setScreen={setScreen}
-        gateReturn={gateReturn}
-        startSingleSkill={startSingleSkill}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <SyllabusScreen
+          kid={kid}
+          skillsMap={skillsMap}
+          lang={lang}
+          t={t}
+          onGoAddKid={goAddKid}
+          onBack={goBack}
+          setScreen={setScreen}
+          gateReturn={gateReturn}
+          startSingleSkill={startSingleSkill}
+        />
+      </Suspense>
     );
   }
 
@@ -5105,83 +5136,89 @@ export default function App() {
 
   if (screen === "worlds") {
     return (
-      <WorldsScreen
-        kid={kid}
-        skillsMap={skillsMap}
-        stops={kidJourney}
-        hereIdx={kidJourneyIdx}
-        quietChrome={quietChrome}
-        onBack={goBack}
-        t={t}
-        lang={lang}
-        mapView={mapView}
-        setMapView={setMapView}
-        journeyView={journeyView}
-        setJourneyView={setJourneyView}
-        viewTabRefs={viewTabRefs}
-        openWorld={openWorld}
-        tapPremiumWorld={tapPremiumWorld}
-        tapLockedWorld={tapLockedWorld}
-        startSingleSkill={startSingleSkill}
-        startPlayWorld={startPlayWorld}
-        plan={plan}
-        settings={settings}
-        goTrophyRoom={goTrophyRoom}
-        goNova={goNova}
-        landBoss={landBoss}
-        bossRef={bossRef}
-        startBoss={startBoss}
-        pickBoss={pickBoss}
-        closeBoss={closeBoss}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <WorldsScreen
+          kid={kid}
+          skillsMap={skillsMap}
+          stops={kidJourney}
+          hereIdx={kidJourneyIdx}
+          quietChrome={quietChrome}
+          onBack={goBack}
+          t={t}
+          lang={lang}
+          mapView={mapView}
+          setMapView={setMapView}
+          journeyView={journeyView}
+          setJourneyView={setJourneyView}
+          viewTabRefs={viewTabRefs}
+          openWorld={openWorld}
+          tapPremiumWorld={tapPremiumWorld}
+          tapLockedWorld={tapLockedWorld}
+          startSingleSkill={startSingleSkill}
+          startPlayWorld={startPlayWorld}
+          plan={plan}
+          settings={settings}
+          goTrophyRoom={goTrophyRoom}
+          goNova={goNova}
+          landBoss={landBoss}
+          bossRef={bossRef}
+          startBoss={startBoss}
+          pickBoss={pickBoss}
+          closeBoss={closeBoss}
+        />
+      </Suspense>
     );
   }
 
   if (screen === "worlddetail" && world && kid) {
     return (
-      <WorldDetailScreen
-        world={world}
-        kid={kid}
-        skillsMap={skillsMap}
-        onBack={goBack}
-        t={t}
-        lang={lang}
-        startPlayWorld={startPlayWorld}
-        startSingleSkill={startSingleSkill}
-        skipAhead={skipAhead}
-        skipNotice={skipNotice}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <WorldDetailScreen
+          world={world}
+          kid={kid}
+          skillsMap={skillsMap}
+          onBack={goBack}
+          t={t}
+          lang={lang}
+          startPlayWorld={startPlayWorld}
+          startSingleSkill={startSingleSkill}
+          skipAhead={skipAhead}
+          skipNotice={skipNotice}
+        />
+      </Suspense>
     );
   }
 
   if (screen === "done" && world && kid) {
     return (
-      <DoneScreen
-        world={world}
-        kid={kid}
-        skillsMap={skillsMap}
-        lang={lang}
-        stops={kidJourney}
-        hereIdx={kidJourneyIdx}
-        sessionRef={sessionRef}
-        masteredBeforeRef={masteredBeforeRef}
-        petStageBeforeRef={petStageBeforeRef}
-        sessionIdx={sessionIdx}
-        moniFb={moniFb}
-        setMoniFb={setMoniFb}
-        stars={stars}
-        score={score}
-        petStage={petStage}
-        petSpecies={petSpecies}
-        quietChrome={quietChrome}
-        t={t}
-        novaCoins={novaCoins}
-        startNextRound={startNextRound}
-        replaySession={replaySession}
-        openCert={openCert}
-        goNova={goNova}
-        setScreen={setScreen}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <DoneScreen
+          world={world}
+          kid={kid}
+          skillsMap={skillsMap}
+          lang={lang}
+          stops={kidJourney}
+          hereIdx={kidJourneyIdx}
+          sessionRef={sessionRef}
+          masteredBeforeRef={masteredBeforeRef}
+          petStageBeforeRef={petStageBeforeRef}
+          sessionIdx={sessionIdx}
+          moniFb={moniFb}
+          setMoniFb={setMoniFb}
+          stars={stars}
+          score={score}
+          petStage={petStage}
+          petSpecies={petSpecies}
+          quietChrome={quietChrome}
+          t={t}
+          novaCoins={novaCoins}
+          startNextRound={startNextRound}
+          replaySession={replaySession}
+          openCert={openCert}
+          goNova={goNova}
+          setScreen={setScreen}
+        />
+      </Suspense>
     );
   }
 
@@ -5192,13 +5229,15 @@ export default function App() {
      + next-round button are still there. */
   if (screen === "break" && kid) {
     return (
-      <BreakScreen
-        kid={kid}
-        t={t}
-        breakPendingRef={breakPendingRef}
-        breakReturnRef={breakReturnRef}
-        setScreen={setScreen}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <BreakScreen
+          kid={kid}
+          t={t}
+          breakPendingRef={breakPendingRef}
+          breakReturnRef={breakReturnRef}
+          setScreen={setScreen}
+        />
+      </Suspense>
     );
   }
 
@@ -5209,17 +5248,19 @@ export default function App() {
      works; a kid can never get stuck. */
   if (screen === "contrast" && kid && contrastJob) {
     return (
-      <ContrastScreen
-        template={contrastJob.template}
-        skillId={contrastJob.skillId}
-        kid={kid}
-        t={t}
-        lang={lang}
-        contrastIdx={contrastIdx}
-        setContrastIdx={setContrastIdx}
-        setContrastJob={setContrastJob}
-        setScreen={setScreen}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <ContrastScreen
+          template={contrastJob.template}
+          skillId={contrastJob.skillId}
+          kid={kid}
+          t={t}
+          lang={lang}
+          contrastIdx={contrastIdx}
+          setContrastIdx={setContrastIdx}
+          setContrastJob={setContrastJob}
+          setScreen={setScreen}
+        />
+      </Suspense>
     );
   }
 
@@ -5227,17 +5268,19 @@ export default function App() {
      streak, full-land mastery). Conditions read only local state — offline. */
   if (screen === "badges" && kid) {
     return (
-      <BadgesScreen
-        kid={kid}
-        skillsMap={skillsMap}
-        lang={lang}
-        t={t}
-        weekSkill={weekSkill}
-        badgeStats={badgeStats}
-        badgeStreak={badgeStreak}
-        onBack={goBack}
-        goNova={goNova}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <BadgesScreen
+          kid={kid}
+          skillsMap={skillsMap}
+          lang={lang}
+          t={t}
+          weekSkill={weekSkill}
+          badgeStats={badgeStats}
+          badgeStreak={badgeStreak}
+          onBack={goBack}
+          goNova={goNova}
+        />
+      </Suspense>
     );
   }
 
@@ -5246,14 +5289,16 @@ export default function App() {
      gets a confetti + spoken cheer exactly once (via the store's sync). */
   if (screen === "trophyroom" && kid) {
     return (
-      <TrophyRoomScreen
-        kid={kid}
-        skillsMap={skillsMap}
-        lang={lang}
-        t={t}
-        onBack={goBack}
-        goNova={goNova}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <TrophyRoomScreen
+          kid={kid}
+          skillsMap={skillsMap}
+          lang={lang}
+          t={t}
+          onBack={goBack}
+          goNova={goNova}
+        />
+      </Suspense>
     );
   }
 
@@ -5262,21 +5307,23 @@ export default function App() {
      unlocks — the unlock animation. All offline (local stats only). */
   if (screen === "achievements" && kid) {
     return (
-      <AchievementsScreen
-        kid={kid}
-        skillsMap={skillsMap}
-        lang={lang}
-        t={t}
-        achStats={achStats}
-        achStreak={achStreak}
-        achCoins={achCoins}
-        achPets={achPets}
-        achPetStage={achPetStage}
-        storedAchs={storedAchs}
-        achPopupIds={achPopupIds}
-        onBack={goBack}
-        goNova={goNova}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <AchievementsScreen
+          kid={kid}
+          skillsMap={skillsMap}
+          lang={lang}
+          t={t}
+          achStats={achStats}
+          achStreak={achStreak}
+          achCoins={achCoins}
+          achPets={achPets}
+          achPetStage={achPetStage}
+          storedAchs={storedAchs}
+          achPopupIds={achPopupIds}
+          onBack={goBack}
+          goNova={goNova}
+        />
+      </Suspense>
     );
   }
 
@@ -5284,14 +5331,16 @@ export default function App() {
      The final tower carries a crown flag; the whole castle is the long-game trophy. */
   if (screen === "castle" && kid) {
     return (
-      <CastleScreen
-        kid={kid}
-        skillsMap={skillsMap}
-        t={t}
-        onBack={goBack}
-        goNova={goNova}
-        openCert={openCert}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <CastleScreen
+          kid={kid}
+          skillsMap={skillsMap}
+          t={t}
+          onBack={goBack}
+          goNova={goNova}
+          openCert={openCert}
+        />
+      </Suspense>
     );
   }
 
@@ -5299,16 +5348,18 @@ export default function App() {
      PDF. Only complete worlds can be celebrated this way. */
   if (screen === "cert" && kid && certWorld) {
     return (
-      <CertScreen
-        certWorld={certWorld}
-        kid={kid}
-        skillsMap={skillsMap}
-        t={t}
-        lang={lang}
-        shareMsg={shareMsg}
-        onBack={goBack}
-        shareCert={shareCert}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <CertScreen
+          certWorld={certWorld}
+          kid={kid}
+          skillsMap={skillsMap}
+          t={t}
+          lang={lang}
+          shareMsg={shareMsg}
+          onBack={goBack}
+          shareCert={shareCert}
+        />
+      </Suspense>
     );
   }
 
@@ -5319,14 +5370,16 @@ export default function App() {
     const wsKid = kids.find((k) => k.id === parentKidId) ?? kid ?? kids[0];
     if (!wsKid) return null;
     return (
-      <WorksheetScreen
-        kid={wsKid}
-        skillsMap={skillsMap}
-        mistakes={mistakes}
-        t={t}
-        lang={lang}
-        onBack={() => setScreen("parent")}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <WorksheetScreen
+          kid={wsKid}
+          skillsMap={skillsMap}
+          mistakes={mistakes}
+          t={t}
+          lang={lang}
+          onBack={() => setScreen("parent")}
+        />
+      </Suspense>
     );
   }
 
@@ -5338,13 +5391,15 @@ export default function App() {
     const fcKid = kids.find((k) => k.id === parentKidId) ?? kid ?? kids[0];
     if (!fcKid) return null;
     return (
-      <FlashcardsScreen
-        kid={fcKid}
-        skillsMap={skillsMap}
-        t={t}
-        lang={lang}
-        onBack={() => setScreen("parent")}
-      />
+      <Suspense fallback={<ScreenFallback />}>
+        <FlashcardsScreen
+          kid={fcKid}
+          skillsMap={skillsMap}
+          t={t}
+          lang={lang}
+          onBack={() => setScreen("parent")}
+        />
+      </Suspense>
     );
   }
 

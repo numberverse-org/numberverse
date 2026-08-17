@@ -373,7 +373,11 @@ export function modernAnswerButton(
   const api: ModernBtnApi = {
     setCorrect() {
       face.setTexture(faceTex(scene, r, BTN_CORRECT.top, BTN_CORRECT.bottom)).setDisplaySize(r * 2, r * 2);
-      scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
+      // #783 — the correct-answer pop honours reduced motion: the button still
+      // recolors (and flashes) instantly, it just doesn't bounce.
+      if (!prefersReducedMotion()) {
+        scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
+      }
       scene.tweens.add({ targets: face, alpha: 0.35, duration: 60, yoyo: true, repeat: 1 });
       addCorrectBadge(scene, c, Math.round(r * 0.7), -Math.round(r * 0.7), Math.max(9, Math.round(r * 0.3)));
     },
@@ -428,7 +432,10 @@ export function modernCardButton(
   const api: ModernBtnApi = {
     setCorrect() {
       face.setTexture(cardFaceTex(scene, w, h, BTN_CORRECT.top, BTN_CORRECT.bottom)).setDisplaySize(w, h);
-      scene.tweens.add({ targets: c, scale: 1.08, duration: 130, yoyo: true, ease: "Back.easeOut" });
+      // #783 — reduced motion: recolors to green instantly, doesn't bounce.
+      if (!prefersReducedMotion()) {
+        scene.tweens.add({ targets: c, scale: 1.08, duration: 130, yoyo: true, ease: "Back.easeOut" });
+      }
       const badgeR = Math.max(10, Math.round(Math.min(w, h) * 0.16));
       addCorrectBadge(scene, c, Math.round(w / 2 - badgeR - 2), Math.round(-h / 2 + badgeR + 2), badgeR);
     },

@@ -962,34 +962,64 @@ export function serializeSnapshot(state: PersistedKidState): string {
   return JSON.stringify(state);
 }
 
-/** #789 — nv_store_v1 now carries an explicit persist version. The original
- * blob had no version, so zustand sees it as v0 and routes it through this
- * migration on rehydrate. Future breaking shape changes bump `version` and
- * add their own branch here — the seam is now real instead of implicit. */
-function migrateKidState(persisted: unknown, _version: number): PersistedKidState {
+/**
+ * #789 — nv_store_v1 persist migration HOOK. `version: 1` lives in the persist
+ * config below; zustand routes ANY stored blob whose `version` differs through
+ * this function on rehydrate. A blob WITHOUT a version key is the original v0
+ * release — zustand passes `undefined`, normalized to 0 here, and it upgrades
+ * through the same path as an explicit `version: 0` blob.
+ *
+ * HOW TO BUMP THE VERSION on a future breaking schema change (a new/renamed/
+ * removed field on the persisted `partialize` shape):
+ *   1. Increment `version` in the persist config (1 → 2 → 3 …) in the SAME
+ *      deploy that changes the shape. Without the bump zustand silently loads
+ *      the old shape and drops or ghost-writes the new field — quietly
+ *      corrupting a real kid's learning history on upgrade.
+ *   2. Add a `case <prior-version>` branch below that maps the prior shape to
+ *      THIS shape, chained front-to-back (v0→v1, v1→v2, …). Old blobs walk
+ *      every step on first load; a freshly-created store never sees a migrate.
+ *   3. Any field that THIS version ADDS defaults to its safe initial value in
+ *      the new case (see the v0→v1 backfills below), so a legacy read never
+ *      hits `undefined`. A RENAMED field copies the old value over; a REMOVED
+ *      field is simply dropped.
+ * Whatever version is "current" passes through untouched — zustand's shallow
+ * merge backfills anything missing from the store's initializer defaults.
+ */
+function migrateKidState(persisted: unknown, version: number): PersistedKidState {
   if (!persisted || typeof persisted !== "object" || Array.isArray(persisted)) {
     // zustand's shallow merge backfills every missing key with the defaults
     // declared in the store initializer above.
     return {} as PersistedKidState;
   }
   const s = persisted as Record<string, unknown>;
-  // v0 → v1: legacy blobs predate syncSignal (#1556) and moniStrictness (#333).
-  // Default the new top-level maps so a later read never hits undefined.
-  return {
-    skills: (s.skills as PersistedKidState["skills"]) ?? {},
-    mistakes: (s.mistakes as PersistedKidState["mistakes"]) ?? {},
-    stats: (s.stats as PersistedKidState["stats"]) ?? {},
-    nova: (s.nova as PersistedKidState["nova"]) ?? {},
-    garden: (s.garden as PersistedKidState["garden"]) ?? {},
-    pending: (s.pending as PersistedKidState["pending"]) ?? [],
-    stories: (s.stories as PersistedKidState["stories"]) ?? [],
-    accel: (s.accel as PersistedKidState["accel"]) ?? [],
-    moni: (s.moni as PersistedKidState["moni"]) ?? {},
-    moniWrongStreak: (s.moniWrongStreak as PersistedKidState["moniWrongStreak"]) ?? {},
-    moniStrictness: (s.moniStrictness as PersistedKidState["moniStrictness"]) ?? {},
-    moniSkillDeltas: (s.moniSkillDeltas as PersistedKidState["moniSkillDeltas"]) ?? {},
-    syncSignal: (s.syncSignal as PersistedKidState["syncSignal"]) ?? DEFAULT_SYNC_SIGNAL,
-  };
+  // A missing `version` key deserializes as `undefined` → treat as v0 (the
+  // original release never wrote one).
+  const from = typeof version === "number" ? version : 0;
+  switch (from) {
+    case 0:
+      // v0 → v1: legacy blobs predate syncSignal (#1556) and moniStrictness
+      // (#333). Default the new top-level maps so a later read never hits
+      // undefined.
+      return {
+        skills: (s.skills as PersistedKidState["skills"]) ?? {},
+        mistakes: (s.mistakes as PersistedKidState["mistakes"]) ?? {},
+        stats: (s.stats as PersistedKidState["stats"]) ?? {},
+        nova: (s.nova as PersistedKidState["nova"]) ?? {},
+        garden: (s.garden as PersistedKidState["garden"]) ?? {},
+        pending: (s.pending as PersistedKidState["pending"]) ?? [],
+        stories: (s.stories as PersistedKidState["stories"]) ?? [],
+        accel: (s.accel as PersistedKidState["accel"]) ?? [],
+        moni: (s.moni as PersistedKidState["moni"]) ?? {},
+        moniWrongStreak: (s.moniWrongStreak as PersistedKidState["moniWrongStreak"]) ?? {},
+        moniStrictness: (s.moniStrictness as PersistedKidState["moniStrictness"]) ?? {},
+        moniSkillDeltas: (s.moniSkillDeltas as PersistedKidState["moniSkillDeltas"]) ?? {},
+        syncSignal: (s.syncSignal as PersistedKidState["syncSignal"]) ?? DEFAULT_SYNC_SIGNAL,
+      };
+    default:
+      // Already current (or a newer shape this build doesn't know — a
+      // downgrade); pass through untouched and let the shallow merge heal it.
+      return s as PersistedKidState;
+  }
 }
 
 /**
@@ -2002,6 +2032,8 @@ export const useKidStore = create<KidState>()(
     }),
     {
       name: "nv_store_v1",
+      // #789 — any future breaking change to the persisted shape bumps this
+      // AND adds a `case` in migrateKidState above (see its doc: how-to-bump).
       version: 1,
       migrate: migrateKidState,
       storage: debouncedPersistStorage(),

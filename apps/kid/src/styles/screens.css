@@ -632,9 +632,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 100vh;                   /* fallback */
-  height: -webkit-fill-available;  /* fallback: older iOS */
-  height: 100dvh;                  /* modern dynamic (wins) */
+  bottom: 0;
   display: flex;
   flex-direction: column;
   /* if the Phaser canvas is ever a hair shorter than the screen (HUD, safe
@@ -6229,7 +6227,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   margin-left: 6px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #ffd166;
+  background: var(--nv-gold);
   color: #23203f;
   font-size: 12px;
   font-weight: 800;
@@ -6287,7 +6285,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   border: 0;
   border-radius: 999px;
   padding: 10px 16px;
-  background: #ffd166;
+  background: var(--nv-gold);
   color: #23203f;
   font: 800 14px/1 var(--nv-font, system-ui, sans-serif);
   cursor: pointer;
@@ -6306,7 +6304,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   border: 0;
   border-radius: 999px;
   padding: 12px 22px;
-  background: #ffd166;
+  background: var(--nv-gold);
   color: #23203f;
   font: 800 15px/1 var(--nv-font, system-ui, sans-serif);
   cursor: pointer;
@@ -6625,7 +6623,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   height: 44px;
   border-radius: 50%;
   border: 5px solid rgba(255, 255, 255, 0.55);
-  border-top-color: #ffd166;
+  border-top-color: var(--nv-gold);
   animation: nv-spin 0.9s linear infinite;
 }
 @keyframes nv-spin {
@@ -6634,7 +6632,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 .game-boot-error {
   flex-direction: column;
   gap: 12px;
-  color: #0b2545;
+  color: var(--nv-navy);
   font-weight: 700;
   text-align: center;
   padding: 20px;
@@ -6650,8 +6648,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   min-height: 52px;
   border-radius: 999px;
   border: none;
-  background: #ffd166;
-  color: #0b2545;
+  background: var(--nv-gold);
+  color: var(--nv-navy);
   font-size: 1.05rem;
   font-weight: 800;
   padding: 10px 22px;
@@ -6672,7 +6670,7 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 }
 /* #346 — friendly copy under the spinners (never a bare blank loading state) */
 .screen-suspense-txt {
-  color: #0b2545;
+  color: var(--nv-navy);
   font-weight: 700;
   font-size: 1.05rem;
 }

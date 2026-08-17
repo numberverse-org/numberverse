@@ -401,6 +401,34 @@ describe("persisted-store durability", () => {
     expect(s.pending).toHaveLength(1);
   });
 
+  it("legacy blob WITHOUT a version key migrates to the current shape (#789)", async () => {
+    // The original nv_store_v1 release never wrote a `version` key — zustand
+    // sees it as v0 and routes it through the SAME migration as an explicit
+    // version: 0 blob, so a no-key install upgrades deterministically.
+    localStorage.setItem(
+      STORE_KEY,
+      JSON.stringify({
+        state: {
+          skills: {
+            "k1:s1": { kidId: "k1", skillId: "s1", pMastered: 0.5, correct: 6, attempts: 7, streak: 2, lastPractice: 100, lastDecay: 100 },
+          },
+          nova: { k1: { ...defaultNova(), coins: 7 } },
+        },
+        // deliberately no `version` field
+      })
+    );
+    await useKidStore.persist.rehydrate();
+    const s = useKidStore.getState();
+    // seeded data survived the migration untouched
+    expect(s.skills["k1:s1"]!.correct).toBe(6);
+    expect(s.nova.k1!.coins).toBe(7);
+    // same backfill an explicit version: 0 blob gets — never hits undefined
+    expect(s.syncSignal).toEqual({ lastSuccessAt: null, pendingCount: 0, lastError: null });
+    expect(s.moniStrictness).toEqual({});
+    expect(s.moniSkillDeltas).toEqual({});
+    expect(s.moniWrongStreak).toEqual({});
+  });
+
   it("debounced persist writes the LATEST snapshot once after rapid churn (#1227)", () => {
     vi.useFakeTimers();
     const writes = vi.spyOn(memStorage, "setItem");
