@@ -551,12 +551,14 @@ def _world_lands_block():
 def l7_palette():
     m = _world_lands_block()
     if not m:
-        return False, "WORLD_LANDS missing from App.tsx"
+        return False, "WORLD_LANDS missing from the kid src tree"
     lands = re.findall(r"(\d+):\s*\{\s*c1:\s*\"[^\"]+\",\s*c2:\s*\"[^\"]+\",\s*c3:\s*\"[^\"]+\",\s*c2_22:\s*\"[^\"]+\",\s*deco:\s*\[[^\]]*\]", m.group(0))
     ids = sorted(int(x) for x in lands)
-    ok = ids == [1, 2, 3, 4, 5, 6, 7]
+    # #1164 — Summit Peaks added past Polar Peaks → 8 lands (kept in sync with
+    # l2_core's 8 world keys).
+    ok = ids == [1, 2, 3, 4, 5, 6, 7, 8]
     return ok, (f"{len(lands)} lands {ids} — each c1/c2/c3/c2_22/deco present" if ok
-                else f"lands {ids} — expected [1,2,3,4,5,6,7]")
+                else f"lands {ids} — expected [1,2,3,4,5,6,7,8]")
 
 def _rel_lum(hexc):
     c = hexc.lstrip("#")

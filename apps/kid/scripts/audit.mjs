@@ -14,8 +14,9 @@
  *   4. header titles — flags hardcoded English scene headers (not via t()).
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 const ROOT = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))); // repo root
 const KID = join(ROOT, "apps", "kid");
@@ -313,6 +314,212 @@ if (bankSrc) {
   if (!overlap.length) console.log("  ✓ no sight-word / CVC / grammar lexical overlap");
 } else {
   warn("wordBanks.ts not found — ⑥ cross-bank lint skipped");
+}
+
+/* ── 7. AST no-unused-export scan (#820) ── */
+console.log("⑦  AST no-unused-export scan (dead exports in kid src/ — TS AST, not regex)…");
+{
+  // #820 — the checks above are regex/string-slicing; they cannot see dead
+  // symbols. This pass parses every kid src file with the REAL TypeScript
+  // compiler (apps/kid/node_modules/typescript — already installed, do NOT
+  // install eslint/typescript-eslint) and resolves exports against the whole
+  // app's import graph instead of matching source lines. A symbol that no
+  // module imports and that the exporting file never uses internally fails
+  // with the FILE + SYMBOL named.
+  const require = createRequire(import.meta.url);
+  const ts = require("typescript");
+  const SRC = join(KID, "src");
+  const KID_APP = join(KID, "tests"); // tests are real consumers of src exports
+
+  // every importable file the scan resolves against (kid src + tests only —
+  // build/generated/packages are not consumers of kid src symbols)
+  const appFiles = [];
+  const scanDir = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) { scanDir(p); continue; }
+      if (e.name.endsWith(".d.ts") || !/\.tsx?$/.test(e.name)) continue;
+      appFiles.push(p);
+    }
+  };
+  scanDir(SRC);
+  if (existsSync(KID_APP)) scanDir(KID_APP);
+
+  const relP = (p) => p.replace(ROOT + "/", "");
+
+  // resolve a relative module specifier to a scanned file (try both extensions
+  // + index/ dir form, matching `moduleResolution: bundler`)
+  const resolveLocal = (fromDir, spec) => {
+    if (!spec.startsWith(".")) return null; // package / node builtin — not ours
+    const base = join(fromDir, spec);
+    for (const cand of [base + ".ts", base + ".tsx", join(base, "index.ts"), join(base, "index.tsx")]) {
+      if (appFiles.includes(cand)) return cand;
+    }
+    return null;
+  };
+
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const occurrences = (text, name) => (text.match(new RegExp(`\\b${escapeRe(name)}\\b`, "g")) || []).length;
+
+  // ── coarse pass: parse every file, collect (a) every import binding name in
+  // the app (tests included — a test importing a src symbol proves it lives),
+  // (b) every relative dynamic import() target (lazy chunks, e.g. i18n dicts),
+  // (c) every named re-export source so barrels don't look dead.
+  const importedNames = new Set();     // any `import { X }` anywhere in the app
+  const dynamicTargets = new Set();    // abs path of a relative import("...") target
+  const reExportUsed = new Map();      // abs path -> Set(symbol) via `export { S } from ...`
+  const sources = [];
+  for (const p of appFiles) {
+    const text = readFileSync(p, "utf8");
+    const sf = ts.createSourceFile(p, text, ts.ScriptTarget.Latest, true, p.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    sources.push({ p, rel: relP(p), text, sf, exports: new Map() });
+    const walk = (n) => {
+      if (ts.isImportDeclaration(n)) {
+        const clause = n.importClause;
+        if (clause) {
+          if (clause.name) importedNames.add(clause.name.text); // default import
+          const nb = clause.namedBindings;
+          if (nb) {
+            if (ts.isNamespaceImport(nb)) importedNames.add(nb.name.text);
+            else for (const el of nb.elements) {
+              importedNames.add(el.name.text); // local binding
+              if (el.propertyName) importedNames.add(el.propertyName.text); // `X as Y` — the EXPORTED name counts too
+            }
+          }
+        }
+        return; // an import clause's own specifiers are not usages *inside* this file
+      }
+      if (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword && n.arguments.length > 0 && ts.isStringLiteral(n.arguments[0])) {
+        const tgt = resolveLocal(dirname(p), n.arguments[0].text);
+        if (tgt) dynamicTargets.add(tgt);
+        return;
+      }
+      ts.forEachChild(n, walk);
+    };
+    for (const s of sf.statements) walk(s);
+  }
+
+  // named re-export `export { S } from "./src"` — marks S used at the source so
+  // a barrel (e.g. i18n.ts re-exporting i18n-core) never looks dead.
+  const exportKw = ts.SyntaxKind.ExportKeyword;
+  const hasMod = (node, kind) => !!node.modifiers && node.modifiers.some((m) => m.kind === kind);
+  for (const { p, sf, exports, text } of sources) {
+    const bindingNames = (bn) => {
+      const names = [];
+      if (ts.isIdentifier(bn)) return [bn.text];
+      const f = (n) => { if (ts.isIdentifier(n)) names.push(n.text); else ts.forEachChild(n, f); };
+      ts.forEachChild(bn, f);
+      return names;
+    };
+    const addDecl = (name, stmt) => {
+      exports.set(name, (exports.get(name) ?? 0) + occurrences(stmt.getText(sf), name));
+    };
+    for (const s of sf.statements) {
+      if (hasMod(s, exportKw) && !hasMod(s, ts.SyntaxKind.DefaultKeyword)) {
+        // export const/let/var/function/class/interface/type/enum — the value
+        // or type name (and the destructured names) become symbols of this file
+        if (ts.isVariableStatement(s)) {
+          for (const d of s.declarationList.declarations) for (const n of bindingNames(d.name)) addDecl(n, s);
+        } else if (s.name && ts.isIdentifier(s.name)) {
+          addDecl(s.name.text, s);
+        }
+      } else if (ts.isExportDeclaration(s) && s.exportClause && ts.isNamedExports(s.exportClause)) {
+        for (const el of s.exportClause.elements) {
+          const nm = el.propertyName ? el.propertyName.text : el.name.text;
+          addDecl(nm, s);
+          if (s.moduleSpecifier) {
+            const tgt = resolveLocal(dirname(p), s.moduleSpecifier.text);
+            if (tgt) {
+              if (!reExportUsed.has(tgt)) reExportUsed.set(tgt, new Set());
+              reExportUsed.get(tgt).add(nm);
+            }
+          }
+        }
+      }
+      // `export default …` — entry/lazy-chunk modules are consumed by value
+      // post-`import()`, never by name; skip them entirely (App.tsx etc).
+    }
+  }
+
+  // ── flag: a symbol is dead iff no import binds its name anywhere, no named
+  // re-export source claims it, it is not a relative-dynamic-import target and
+  // its own file never references it outside the exporting statement. Scene
+  // modules are excluded: engine.ts consumes them via `import.meta.glob`
+  // (string-keyed, untrackable at the AST level) — the audit's ② section
+  // already enforces the discovery contract for those.
+  // Denylist of exports that exist TODAY but have no consumer. Each is a real
+  // dead export surfaced by the AST pass on the clean tree (verified repo-wide
+  // via grep — every one appears only in its own file, or as a string literal
+  // in a test/lint script, never as an import). They predate this gate and are
+  // not ours to remove in this wave, so they are pinned here to keep the gate
+  // green. If a symbol below ever gains a real importer, DELETE its line —
+  // the allowlist would then be hiding a genuinely-and-newly-dead export.
+  const DEAD_ALLOW = new Set([
+    // audio.ts — mute/music state accessors kept as API but not yet wired to a
+    // settings surface (paired setters getRenderBand-style live; these don't).
+    "apps/kid/src/game/audio.ts#isSfxMuted",
+    "apps/kid/src/game/audio.ts#setKidSfxMuted",
+    "apps/kid/src/game/audio.ts#isKidSfxMuted",
+    "apps/kid/src/game/audio.ts#musicThemeName",
+    "apps/kid/src/game/audio.ts#stopMusic",
+    "apps/kid/src/game/audio.ts#isMusicOn",
+    // game/i18n.ts — locale-inspection helpers orphaned by the #881 split
+    // (STR/ensureStrings live on; these two have no caller).
+    "apps/kid/src/game/i18n.ts#langOf",
+    "apps/kid/src/game/i18n.ts#shippedLocaleCodes",
+    // neuralVoice.ts — deliberate test-injection cache (seeded via
+    // globalThis by the TTS harness; read here). Keep.
+    "apps/kid/src/game/neuralVoice.ts#__nvTestCache",
+    // renderBand.ts — read side of setRenderBand(++)/matureRender(); unused
+    // until a UI reads the band off the module.
+    "apps/kid/src/game/renderBand.ts#getRenderBand",
+    // sceneArchetypes.ts — SCENE_ARCHETYPES table + isArchetype live; the
+    // key->type helper wrapper has no caller.
+    "apps/kid/src/game/sceneArchetypes.ts#sceneArchetype",
+    // speech.ts — control/type surface kept for a future voice-settings sheet.
+    "apps/kid/src/game/speech.ts#isSpeechEnabled",
+    "apps/kid/src/game/speech.ts#VoiceTone",
+    // svgAssets.ts — hasAssetTexture() is a debug/verify helper.
+    "apps/kid/src/game/svgAssets.ts#hasAssetTexture",
+    // tapChoice.ts — reusable tap-selection scene BASE; consumed by string in
+    // tests/scenes.test.ts + scripts/lint-scene-reward.mjs, never by import.
+    "apps/kid/src/game/tapChoice.ts#TapChoiceScene",
+    // ui.ts — text/colour helpers kept as shared toolkit for future scenes.
+    "apps/kid/src/game/ui.ts#questionTxt",
+    "apps/kid/src/game/ui.ts#NV_BROWN",
+    "apps/kid/src/game/ui.ts#NV_GRAY",
+    "apps/kid/src/game/ui.ts#NV_INK",
+    "apps/kid/src/game/ui.ts#wrapPrompt",
+    "apps/kid/src/game/ui.ts#promptPill",
+    // voiceRecorder.ts — paired with stop/start; the explicit cancel shim is
+    // unreferenced (stop already serves).
+    "apps/kid/src/game/voiceRecorder.ts#cancelRecording",
+    // lib/journey.ts — family-title helper for a not-yet-shipped parent card.
+    "apps/kid/src/lib/journey.ts#familyTitle",
+    // nova3d/OwlRig.ts — export used when the 2D fallback owl rig is reused in
+    // another surface; currently only the 3D rig path runs.
+    "apps/kid/src/nova3d/OwlRig.ts#RIG_FOR_2D",
+    // nova3d/Room.tsx — room-ids table kept for room switching/teleport (Garden
+    // navigates by geometry today).
+    "apps/kid/src/nova3d/Room.tsx#ROOM_IDS",
+  ]);
+  let deadCount = 0;
+  for (const { p, rel, text, exports } of sources) {
+    if (!p.startsWith(SRC + "/")) continue; // flag only src, not tests
+    if (dynamicTargets.has(p)) continue;    // lazy import() target — exports consumed post-import
+    if (/^.*Scene\.tsx?$/.test(basename(p))) continue; // import.meta.glob discovery (see ②)
+    const reExportSet = reExportUsed.get(p);
+    for (const [name, declCount] of exports) {
+      if (DEAD_ALLOW.has(`${rel}#${name}`)) continue;
+      if (importedNames.has(name)) continue;              // imported by ANY app file (tests count)
+      if (reExportSet && reExportSet.has(name)) continue; // re-exported by a barrel
+      if (occurrences(text, name) > declCount) continue;  // self-used outside the export
+      deadCount++;
+      fail(`unused export ${rel} → ${name} — no importer anywhere and never used internally`);
+    }
+  }
+  if (deadCount === 0) console.log(`  ✓ no unused exports across ${sources.filter((s) => s.p.startsWith(SRC + "/")).length} src files (AST no-unused-export scan)`);
+  else console.log(`  ✖ ${deadCount} dead export(s) — see above`);
 }
 
 console.log("\n──────────────────────────────");

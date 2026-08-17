@@ -44,6 +44,17 @@ import VoiceCheck from "./components/VoiceCheck";
 import StoryInspector from "./components/StoryInspector";
 import CountUp from "./components/CountUp";
 import { WorksheetScreen, FlashcardsScreen } from "./components/PrintSheets"; // #1338 #1345
+import SyllabusScreen from "./components/SyllabusScreen";
+import WorldsScreen from "./components/WorldsScreen";
+import WorldDetailScreen from "./components/WorldDetailScreen";
+import DoneScreen from "./components/DoneScreen";
+import BreakScreen from "./components/BreakScreen";
+import ContrastScreen from "./components/ContrastScreen";
+import BadgesScreen from "./components/BadgesScreen";
+import TrophyRoomScreen from "./components/TrophyRoomScreen";
+import AchievementsScreen from "./components/AchievementsScreen";
+import CastleScreen from "./components/CastleScreen";
+import CertScreen from "./components/CertScreen";
 import {
   currentSeason, fsSupported, requestFullscreen, exitFullscreen, challengeQ, challengeNovaChance,
   rankFor, isBirthday, masteredSkillIds, sessionStreak, fullyMasteredWorlds, genId, filterSkills,
@@ -3229,151 +3240,18 @@ export default function App() {
    *  index that drives the course, so what a parent sees IS what the kid plays.
    *  Bands expand/collapse; each lesson shows the game + the idea it teaches. */
   if (screen === "syllabus") {
-    const pName = parentName();
-    const masteredCount = kid ? totalMastered(skillsMap, kid.id) : 0;
-    // #1207-#1216 — skills that are tiers of ONE family count once, so the
-    // syllabus's "X mastered / Y" matches the one-concept number the kid sees.
-    const totalCount = progressUnitCount();
-    const goStart = () => {
-      const list = loadKids();
-      if (list.length === 0) {
-        goAddKid("syllabus");
-        return;
-      }
-      setScreen(kid ? "home" : "kidpick");
-    };
-    // No English/Bengali mixing — every label picks the CURRENT language:
-    //   en → English title + description · bn → Bangla title + description.
-    const L = (s: Skill) => ({
-      title: lang === "bn" ? s.titleBn ?? s.title : s.title,
-      desc: lang === "bn" ? s.descriptionBn ?? s.description ?? "" : s.description ?? "",
-    });
-    const bandName = (b: Band) => (lang === "bn" ? b.titleBn ?? b.title : b.title);
-    const subjectEmoji = (sub: string) =>
-      sub === "math" ? "🧮" : sub === "bangla" ? "📗" : sub === "english" ? "🔤" : sub === "science" ? "🔬" : "🌏";
     return (
-      <div className="app">
-        <main className="screen worlds parent-screen">
-          <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.welcomeTitle)}>‹</button>
-            <div className="head-title">
-              <h2>{t.syllabusTitle}</h2>
-              <p className="head-sub">{t.syllabusSub}</p>
-            </div>
-          </header>
-
-          {/* Browsing the syllabus BEFORE signing in — invite, never block. */}
-          {!hasParentSession() && (
-            <div className="syllabus-guest-banner">
-              <span className="syllabus-guest-emoji" aria-hidden>👀</span>
-              <p className="syllabus-guest-text">
-                {t.syllabusGuestNote}{" "}
-                <button className="syllabus-banner-link" onClick={() => { gateReturn.current = "syllabus"; setScreen("parent"); }}>
-                  {t.gateSignin}
-                </button>
-              </p>
-            </div>
-          )}
-
-          <div className="syllabus-wrap">
-            <div className="syllabus-hello">
-              <span className="syllabus-hello-emoji" aria-hidden>👨‍👩‍👧</span>
-              <div>
-                <p className="syllabus-hello-title">{pName ? t.gateWelcome(pName) : t.syllabusTitle}</p>
-                <p className="syllabus-hello-sub">{t.syllabusWhat}</p>
-                {kid && <p className="syllabus-hello-progress">{t.syllabusProgress(masteredCount, totalCount)} · {kid.name}</p>}
-              </div>
-            </div>
-
-            {/* the learning ladder — why the order is the way it is */}
-            <div className="syllabus-ladder">
-              <p className="syllabus-ladder-title">{t.syllabusHow}</p>
-              <ol className="syllabus-ladder-list">
-                <li>{t.syllabusHow1}</li>
-                <li>{t.syllabusHow2}</li>
-                <li>{t.syllabusHow3}</li>
-              </ol>
-            </div>
-
-            {/* ── EYE-CATCHING WORLD GRID ── each world is a card tinted with
-                 its own land colors; lessons are a grid of tappable tiles. */}
-            {BANDS.map((b) => {
-              const skills = SKILLS.filter((s) => s.band === b.id);
-              const p = kid ? worldProgress(skillsMap, kid.id, b.id) : { mastered: 0, total: progressUnitsInBand(b.id), pct: 0 };
-              const palette = WORLD_LANDS[b.id] ?? { c1: "#0b3d2e", c2: "#2f9e6e", c3: "#c8f2c9", c2_22: "rgba(47,158,110,0.16)", deco: ["🌱"] };
-              return (
-                <section
-                  key={b.key}
-                  className="syllabus-world"
-                  style={{ "--w1": palette.c1, "--w2": palette.c2, "--w3": palette.c3, "--w2a": palette.c2_22 } as React.CSSProperties}
-                >
-                  {/* world header — name, age, live progress */}
-                  <div className="syllabus-world-head">
-                    <span className="syllabus-world-emoji"><Icon name={b.key} size={40} /></span>
-                    <span className="syllabus-world-meta">
-                      <span className="syllabus-world-name">{bandName(b)}</span>
-                      <span className="syllabus-world-tags">
-                        <span className="syllabus-chip">{t.syllabusBadge(b.id)}</span>
-                        <span className="syllabus-chip">🎂 {b.ageRange}</span>
-                      </span>
-                    </span>
-                    <span className="syllabus-world-progress">
-                      <span className="syllabus-world-pct">{t.syllabusProgress(p.mastered, p.total)}</span>
-                      <span className="syllabus-world-bar"><span style={{ width: `${p.pct}%` }} /></span>
-                    </span>
-                  </div>
-
-                  {/* lesson tiles — one per skill, in course order */}
-                  <div className="syllabus-grid">
-                    {skills.map((s) => {
-                      const { title, desc } = L(s);
-                      const ms = kid ? skillsMap[`${kid.id}:${s.id}`] : undefined;
-                      const pct = masteryDisplayPct(ms, s.id);
-                      const mastered = !!ms && ms.pMastered >= masteryThresholdFor(s.id);
-                      const tappable = !!kid && !!s.game;
-                      return (
-                        <button
-                          key={s.id}
-                          className={`syllabus-tile${mastered ? " done" : ""}${pct > 0 && !mastered ? " started" : ""}`}
-                          onClick={() => tappable && startSingleSkill(s)}
-                          disabled={!tappable}
-                          title={tappable ? t.syllabusGame : undefined}
-                        >
-                          <span className="syllabus-tile-top">
-                            <span className="syllabus-tile-emoji"><Icon name={s.subject} size={32} fallbackEmoji={subjectEmoji(s.subject)} /></span>
-                            <span className={`syllabus-tile-badge${mastered ? " done" : ""}`}>
-                              {mastered ? "✓" : pct > 0 ? `${pct}%` : "•"}
-                            </span>
-                          </span>
-                          <span className="syllabus-tile-name">{title}</span>
-                          <span className="syllabus-tile-class">{t.classLabel(s.classNumber ?? s.band)}</span>
-                          {desc && <span className="syllabus-tile-desc">{desc}</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
-
-            <button className="big-btn syllabus-start" onClick={goStart}>
-              {t.syllabusStart}
-            </button>
-            <p className="gate-privacy">{t.gatePower}</p>
-          </div>
-
-          {/* Floating action button — the signed-in parent just finished the
-              gate; one thumb-tap jumps straight into the kid's learning instead
-              of scrolling the whole syllabus again. Guests browsing the
-              syllabus don't get it (they're not logged in yet). */}
-          {hasParentSession() && (
-            <button className="syllabus-fab" onClick={goStart} aria-label={t.syllabusStart}>
-              <span className="syllabus-fab-icon">▶</span>
-              <span className="syllabus-fab-label">{t.syllabusFab}</span>
-            </button>
-          )}
-        </main>
-      </div>
+      <SyllabusScreen
+        kid={kid}
+        skillsMap={skillsMap}
+        lang={lang}
+        t={t}
+        onGoAddKid={goAddKid}
+        onBack={goBack}
+        setScreen={setScreen}
+        gateReturn={gateReturn}
+        startSingleSkill={startSingleSkill}
+      />
     );
   }
 
@@ -5226,733 +5104,84 @@ export default function App() {
   }
 
   if (screen === "worlds") {
-    const allComplete = BANDS.every((b) => worldUnlocked(skillsMap, kid!.id, b.id));
-    const stops = kidJourney; // #1122 — shared selector (computed once above)
-    const doneCount = stops.filter((s) => s.done).length;
-    const journeyDone = doneCount === stops.length;
-    const hereIdx = kidJourneyIdx;
-    const curStop = stops.find((s) => s.current);
-    const novaNow = kid ? useKidStore.getState().nova[kid.id] : undefined;
     return (
-      <div className="app">
-        <main className="screen worlds">
-          {/* #248 — quiet-hours dim + 🌙 badge */}
-          {quietChrome}
-          <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
-            <div className="head-title">
-              <h2>{kid ? <AvatarIcon emoji={kid.avatar} size={26} /> : null} {kid?.name ? t.worldsOf(kid.name) : t.worldsOf("")}</h2>
-              <p className="head-sub">{mapView ? t.mapSub : journeyView ? t.journeySub : t.masterSkillsSub}</p>
-            </div>
-            <span className="rank-chip" title={t.rankLabel}>
-              {rankFor(totalMastered(skillsMap, kid!.id), lang).title}
-            </span>
-            <button className="icon-btn" onClick={goTrophyRoom} aria-label={t.trTitle} title={t.trTitle}>🏆</button>
-            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
-          </header>
-
-          {curStop ? (
-            <button className="big-btn play-now" onClick={() => startSingleSkill(curStop.skill)}>
-              {t.playNext(lang === "bn" ? curStop.skill.titleBn ?? curStop.skill.title : curStop.skill.title)}
-            </button>
-          ) : journeyDone ? (
-            (() => {
-              const rec = recommendedSkill(skillsMap, kid!.id);
-              return rec ? (
-                <button className="big-btn play-now" onClick={() => startSingleSkill(rec)}>
-                  {t.beatYourBest ?? t.playNext(lang === "bn" ? rec.titleBn ?? rec.title : rec.title)}
-                </button>
-              ) : (
-                <button className="big-btn play-now" onClick={() => startPlayWorld(BANDS[0])}>
-                  {t.practiceAgain}
-                </button>
-              );
-            })()
-          ) : null}
-
-          <div
-            className="view-toggle"
-            role="tablist"
-            aria-label={t.viewTabs}
-            onKeyDown={(e) => {
-              const order = ["map", "journey", "worlds"];
-              const idx = mapView ? 0 : journeyView ? 1 : 2;
-              const move = (nextIdx: number) => {
-                const key = order[(nextIdx + order.length) % order.length];
-                viewTabRefs.current.get(key)?.click();
-                viewTabRefs.current.get(key)?.focus();
-              };
-              switch (e.key) {
-                case "ArrowRight":
-                case "ArrowDown":
-                  e.preventDefault();
-                  move(idx + 1);
-                  break;
-                case "ArrowLeft":
-                case "ArrowUp":
-                  e.preventDefault();
-                  move(idx - 1);
-                  break;
-                case "Home":
-                  e.preventDefault();
-                  move(0);
-                  break;
-                case "End":
-                  e.preventDefault();
-                  move(order.length - 1);
-                  break;
-              }
-            }}
-          >
-            <button
-              role="tab"
-              aria-selected={mapView}
-              aria-controls="view-panel-map"
-              tabIndex={mapView ? 0 : -1}
-              ref={(el) => {
-                if (el) viewTabRefs.current.set("map", el);
-                else viewTabRefs.current.delete("map");
-              }}
-              className={`view-toggle-btn${mapView ? " on" : ""}`}
-              onClick={() => { setMapView(true); setJourneyView(false); }}
-            >
-              🗺️ {t.mapTab}
-            </button>
-            <button
-              role="tab"
-              aria-selected={!mapView && journeyView}
-              aria-controls="view-panel-journey"
-              tabIndex={!mapView && journeyView ? 0 : -1}
-              ref={(el) => {
-                if (el) viewTabRefs.current.set("journey", el);
-                else viewTabRefs.current.delete("journey");
-              }}
-              className={`view-toggle-btn${!mapView && journeyView ? " on" : ""}`}
-              onClick={() => { setJourneyView(true); setMapView(false); }}
-            >
-              🛣️ {t.journey}
-            </button>
-            <button
-              role="tab"
-              aria-selected={!mapView && !journeyView}
-              aria-controls="view-panel-worlds"
-              tabIndex={!mapView && !journeyView ? 0 : -1}
-              ref={(el) => {
-                if (el) viewTabRefs.current.set("worlds", el);
-                else viewTabRefs.current.delete("worlds");
-              }}
-              className={`view-toggle-btn${!mapView && !journeyView ? " on" : ""}`}
-              onClick={() => { setJourneyView(false); setMapView(false); }}
-            >
-              🏘️ {t.worldsLabel}
-            </button>
-          </div>
-
-          {mapView ? (
-            <div id="view-panel-map" role="tabpanel" aria-label={t.mapTab} className="world-map">
-              {/* A winding road through all five lands — the kid's avatar sits
-                  on the current land, mastered lands glow, locked ones await. */}
-              <div className="map-road" aria-hidden="true">
-                <span className="map-road-dot" />
-                <span className="map-road-dot" />
-                <span className="map-road-dot" />
-                <span className="map-road-dot" />
-                <span className="map-road-dot" />
-              </div>
-              {BANDS.map((b, i) => {
-                const prog = worldProgress(skillsMap, kid!.id, b.id);
-                const premiumLocked = plan !== "plus" && b.id > 2;
-                const unlocked = worldUnlocked(skillsMap, kid!.id, b.id) && !premiumLocked;
-                const prev = BANDS.find((x) => x.id === b.id - 1);
-                const prevProg = prev ? worldProgress(skillsMap, kid!.id, prev.id) : null;
-                // #1485 — the SAME unlockGap helper as land-detail: honest
-                // remaining (0 allowed) instead of map clamping to "1 more".
-                const gate = prev ? unlockGap(prevProg!, UNLOCK_THRESHOLD) : { needed: 0, more: 0, ready: true };
-                const more = unlocked ? 0 : gate.more;
-                const capped = filterMaxBand != null && b.id > filterMaxBand;
-                const complete = prog.total > 0 && prog.mastered === prog.total;
-                const isHere = curStop?.skill.band === b.id;
-                const land = WORLD_LANDS[b.id];
-                const prevTitle = prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : "";
-                return (
-                  <div key={b.key} className={`map-island-wrap${isHere ? " here" : ""}`}>
-                    <span className="map-island-deco" aria-hidden="true">
-                      {land.deco.map((d, di) => (
-                        <span key={di} className={`map-deco d${di}`} style={{ animationDelay: `${di * 0.6}s` }}>{d}</span>
-                      ))}
-                    </span>
-                    <button
-                      className={`map-island${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
-                      aria-disabled={!unlocked}
-                      onClick={(e) => {
-                        if (unlocked) {
-                          openWorld(b);
-                          return;
-                        }
-                        if (premiumLocked) {
-                          tapPremiumWorld(b, e);
-                          return;
-                        }
-                        tapLockedWorld(b, more, prevTitle, e);
-                      }}
-                      aria-label={b.title}
-                      style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3 }}
-                    >
-                      <span className="map-island-badge">
-                        {complete ? <Icon name="trophy" size={30} /> : unlocked ? <Icon name={b.key} size={30} /> : "🔒"}
-                      </span>
-                      <span className="map-island-meta">
-                        <span className="map-island-name">
-                          {lang === "bn" ? b.titleBn ?? b.title : b.title}
-                          {isHere && <span className="map-here-chip">📍 {t.mapHere}</span>}
-                          {settings.focus_subject && settings.focus_band === b.id && (
-                            <span
-                              className="map-focus-pin"
-                              title={t.focusChip(
-                                FOCUS_SUBJECT_LABELS[settings.focus_subject]?.[lang === "bn" ? "bn" : "en"] ?? settings.focus_subject,
-                                b.id
-                              )}
-                            >
-                              📌
-                            </span>
-                          )}
-                        </span>
-                        <span className="map-island-age">{t.worldAges(b.ageRange, prog.mastered, prog.total)}</span>
-                        <div className="progress-bar">
-                          <div className="progress-fill" style={{ width: `${prog.pct}%`, background: `linear-gradient(90deg, ${land.c2}, ${land.c3})` }} />
-                        </div>
-                        <span className="map-island-sub">
-                          {unlocked
-                            ? prog.total === 0
-                              ? t.worldNoLessons
-                              : complete
-                                ? t.worldComplete
-                                : t.mapLandProg(prog.mastered, prog.total)
-                            : premiumLocked
-                              ? t.premiumLockedSub
-                              : capped
-                                ? t.worldLockedCap
-                                : gate.ready
-                                  ? t.readyFor(lang === "bn" ? b.titleBn ?? b.title : b.title)
-                                  : t.masterMoreIn(gate.more, prevTitle)}
-                        </span>
-                      </span>
-                      <span className="map-island-num">{i + 1}</span>
-                      <span className="map-island-go">{unlocked ? "▶" : "🔒"}</span>
-                    </button>
-                  </div>
-                );
-              })}
-              {allComplete && <div className="badge">{t.champion}</div>}
-            </div>
-          ) : journeyView ? (
-            <div id="view-panel-journey" role="tabpanel" aria-label={t.journey} className="journey-scroll">
-              {/* Nova's position on the road */}
-              <div className="journey-progress">
-                <span className="journey-nova">{journeyDone ? <Icon name="trophy" size={26} /> : <Icon name="nova" size={26} />}</span>
-                <span className="journey-progress-txt">
-                  {journeyDone ? t.journeyDone : t.journeyProgress(doneCount, stops.length)}
-                </span>
-                <div className="progress-bar big">
-                  <div className="progress-fill" style={{ width: `${Math.round((doneCount / stops.length) * 100)}%` }} />
-                </div>
-              </div>
-              {journeyDone && <div className="badge">{t.champion}</div>}
-
-              {BANDS.map((band) => {
-                const bandStops = stops.filter((s) => s.skill.band === band.id);
-                if (!bandStops.length) return null;
-                const bandProg = worldProgress(skillsMap, kid!.id, band.id);
-                const land = WORLD_LANDS[band.id];
-                const bandComplete = bandProg.total > 0 && bandProg.mastered === bandProg.total;
-                const nextBand = BANDS.find((x) => x.id === band.id + 1);
-                const bossBeaten = landBossBeaten(novaNow, band.id);
-                const bossReady = !bossBeaten && landBossUnlocked(skillsMap, kid!.id, band.id);
-                return (
-                  <section key={band.key} className="journey-region">
-                    <div
-                      className="journey-region-head"
-                      style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
-                    >
-                      <span className="journey-region-emoji">{bandComplete ? <Icon name="trophy" size={20} /> : <Icon name={band.key} size={20} />}</span>
-                      <span className="journey-region-name">{band.title}</span>
-                      <span className="journey-region-count">{bandProg.total === 0 ? t.worldNoLessons : t.skillsProg(bandProg.mastered, bandProg.total)}</span>
-                      {bossBeaten ? (
-                        <span className="boss-beaten" title={lang === "bn" ? t.bossBeatenBn : t.bossBeaten}>
-                          {lang === "bn" ? t.bossBeatenBn : t.bossBeaten}
-                        </span>
-                      ) : bossReady ? (
-                        <button className="boss-btn" onClick={() => startBoss(band.id)} aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn}>
-                          {lang === "bn" ? t.bossBtnBn : t.bossBtn}
-                        </button>
-                      ) : null}
-                    </div>
-                    {bandComplete && nextBand && !journeyDone && (
-                      <div className="journey-road-open">
-                        <span className="journey-road-open-txt">{t.mapRoadOpen(nextBand.title)}</span>
-                        <span className="journey-road-open-ico"><Icon name={nextBand.key} size={20} /></span>
-                      </div>
-                    )}
-                    <div className="journey-path">
-                      {bandStops.map((st) => {
-                        const cls = st.done ? "done" : st.current ? "current" : st.unlocked ? "open" : "locked";
-                        return (
-                          <button
-                            key={st.skill.id}
-                            className={`j-stop ${cls}`}
-                            disabled={!st.unlocked}
-                            onClick={() => startSingleSkill(st.skill)}
-                            aria-label={skillTitle(st.skill, lang)}
-                          >
-                            <span className="j-node">
-                              {st.done ? "✓" : st.current ? <Icon name="nova" size={18} /> : st.unlocked ? "▶" : "🔒"}
-                            </span>
-                            <span className="j-card">
-                              <span className="j-emoji"><Icon name={st.skill.subject} size={26} /></span>
-                              <span className="j-meta">
-                                <span className="j-title">{skillTitle(st.skill, lang)}</span>
-                                <span className="j-desc">{skillDesc(st.skill, lang)}</span>
-                                <span className="j-sub">
-                                  {st.done
-                                    ? t.mastered
-                                    : st.current
-                                      ? t.journeyTapHint
-                                      : st.unlocked
-                                        ? t.classLabel(st.skill.classNumber ?? st.skill.band)
-                                        : t.journeyLocked}
-                                </span>
-                              </span>
-                              {st.current && <span className="j-play-chip">▶</span>}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-              <p className="journey-mile">{t.journeyProgress(doneCount, stops.length)} · {hereIdx + 1}/{stops.length}</p>
-            </div>
-          ) : (
-            <>
-              <div id="view-panel-worlds" role="tabpanel" aria-label={t.worldsLabel} className="world-list">
-                {BANDS.map((b) => {
-                  const prog = worldProgress(skillsMap, kid!.id, b.id);
-                  const unlocked = worldUnlocked(skillsMap, kid!.id, b.id);
-                  const prev = BANDS.find((x) => x.id === b.id - 1);
-                  // To unlock THIS world, the kid must master skills in the PREVIOUS world.
-                  // So the "more needed" count comes from prev's progress, not this world's.
-                  const prevProg = prev ? worldProgress(skillsMap, kid!.id, prev.id) : null;
-                  // #1485 — one gate helper, honest remaining (0 allowed).
-                  const gate = prev ? unlockGap(prevProg!, UNLOCK_THRESHOLD) : { needed: 0, more: 0, ready: true };
-                  const more = unlocked ? 0 : gate.more;
-                  const capped = filterMaxBand != null && b.id > filterMaxBand;
-                  const complete = prog.total > 0 && prog.mastered === prog.total;
-                  const land = WORLD_LANDS[b.id];
-                  const bossBeaten = landBossBeaten(novaNow, b.id);
-                  const bossReady = !bossBeaten && landBossUnlocked(skillsMap, kid!.id, b.id);
-                  return (
-                    <div key={b.key} className="world-card-wrap">
-                      <button
-                        className={`world-card${unlocked ? "" : " locked"}${complete ? " complete" : ""}`}
-                        disabled={!unlocked}
-                        onClick={() => openWorld(b)}
-                        style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2 }}
-                      >
-                        <span className="world-emoji">{complete ? <Icon name="trophy" size={40} /> : <Icon name={b.key} size={40} />}</span>
-                        <span className="world-meta">
-                          <span className="world-name">{lang === "bn" ? b.titleBn ?? b.title : b.title}</span>
-                          <span className="world-age">
-                            {unlocked
-                              ? prog.total === 0
-                                ? t.worldNoLessons
-                                : complete
-                                  ? t.worldComplete
-                                  : t.skillsProg(prog.mastered, prog.total)
-                              : capped
-                                ? t.worldLockedCap
-                                : gate.ready
-                                  ? t.readyFor(lang === "bn" ? b.titleBn ?? b.title : b.title)
-                                  : t.masterMoreIn(gate.more, prev ? (lang === "bn" ? prev.titleBn ?? prev.title : prev.title) : (lang === "bn" ? "আগের জগৎ" : "the last world"))}
-                          </span>
-                          <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${prog.pct}%`, background: `linear-gradient(90deg, ${land.c2}, ${land.c3})` }} />
-                          </div>
-                        </span>
-                        <span className="world-state">{unlocked ? "▶" : "🔒"}</span>
-                      </button>
-                      {bossBeaten ? (
-                        <span className="boss-beaten" title={lang === "bn" ? t.bossBeatenBn : t.bossBeaten}>
-                          {lang === "bn" ? t.bossBeatenBn : t.bossBeaten}
-                        </span>
-                      ) : bossReady ? (
-                        <button className="boss-btn" onClick={() => startBoss(b.id)} aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn}>
-                          {lang === "bn" ? t.bossBtnBn : t.bossBtn}
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-              {allComplete && <div className="badge">{t.champion}</div>}
-            </>
-          )}
-        </main>
-
-        {/* #1164 — intermediate land-boss duel sheet (fixed overlay, same
-            DOM/celebration language as the owl challenge but its own state). */}
-        {landBoss && (
-          <div className="challenge-overlay" onClick={closeBoss}>
-            <div className="challenge-sheet boss-sheet" role="dialog" aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn} onClick={(e) => e.stopPropagation()} ref={bossRef}>
-              {landBoss.won ? (
-                <>
-                  <div className="challenge-result" role="status">
-                    <span className="challenge-result-emoji" aria-hidden="true">
-                      {landBoss.won === "win" ? "🏆" : landBoss.won === "tie" ? "🤝" : "💪"}
-                    </span>
-                    <span className="challenge-result-line">
-                      {landBoss.won === "win"
-                        ? lang === "bn" ? t.bossWinBn : t.bossWin
-                        : landBoss.won === "tie"
-                          ? t.bossTie
-                          : t.bossLose}
-                    </span>
-                    <span className="challenge-scoreline">
-                      {t.chYou} {bnNum(landBoss.myScore)} · {t.chNova} {bnNum(landBoss.novaScore)}
-                    </span>
-                    {landBoss.coins > 0 && (
-                      <span className="challenge-coins">{t.chCoins(landBoss.coins)}</span>
-                    )}
-                  </div>
-                  <div className="challenge-btns">
-                    <button className="big-btn" onClick={() => startBoss(landBoss.band)}>{t.chAgain}</button>
-                    <button className="ghost-btn" onClick={closeBoss}>{t.chClose}</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="challenge-top">
-                    <span className="challenge-round">{t.chRound(landBoss.round, BOSS_ROUNDS)}</span>
-                    <span className="challenge-level">{t.chLevel(landBoss.level)}</span>
-                  </div>
-                  <div className="challenge-score" role="status" aria-label={`${t.chYou} ${landBoss.myScore}, ${t.chNova} ${landBoss.novaScore}`}>
-                    <span className="challenge-score-you"><Icon name="nova" size={20} /> <b>{t.chYou}</b> {bnNum(landBoss.myScore)}</span>
-                    <span className="challenge-vs">VS</span>
-                    <span className="challenge-score-nova"><Icon name="nova" size={20} /> <b>{t.chNova}</b> {bnNum(landBoss.novaScore)}</span>
-                  </div>
-                  <div className="challenge-q" aria-label={t.chQuestion}>{landBoss.q.text}</div>
-                  <div className="challenge-options">
-                    {landBoss.q.options.map((opt, i) => {
-                      const picked = landBoss.pick === i;
-                      const reveal = landBoss.pick !== null;
-                      let cls = "challenge-option";
-                      if (reveal) {
-                        if (i === landBoss.q.answer) cls += " reveal";
-                        if (picked && landBoss.correct) cls += " correct";
-                        else if (picked) cls += " wrong";
-                      }
-                      return (
-                        <button
-                          key={`${landBoss.round}-${i}`}
-                          className={cls}
-                          disabled={reveal}
-                          onClick={() => pickBoss(i)}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {landBoss.pick !== null && (
-                    <div className="challenge-feedback" role="status">
-                      <span>{landBoss.correct ? t.chCorrect : t.chWrong}</span>
-                      <span className="challenge-nova-line">{landBoss.novaGot ? t.chNovaGot : t.chNovaMiss}</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      <WorldsScreen
+        kid={kid}
+        skillsMap={skillsMap}
+        stops={kidJourney}
+        hereIdx={kidJourneyIdx}
+        quietChrome={quietChrome}
+        onBack={goBack}
+        t={t}
+        lang={lang}
+        mapView={mapView}
+        setMapView={setMapView}
+        journeyView={journeyView}
+        setJourneyView={setJourneyView}
+        viewTabRefs={viewTabRefs}
+        openWorld={openWorld}
+        tapPremiumWorld={tapPremiumWorld}
+        tapLockedWorld={tapLockedWorld}
+        startSingleSkill={startSingleSkill}
+        startPlayWorld={startPlayWorld}
+        plan={plan}
+        settings={settings}
+        goTrophyRoom={goTrophyRoom}
+        goNova={goNova}
+        landBoss={landBoss}
+        bossRef={bossRef}
+        startBoss={startBoss}
+        pickBoss={pickBoss}
+        closeBoss={closeBoss}
+      />
     );
   }
 
   if (screen === "worlddetail" && world && kid) {
-    const prog = worldProgress(skillsMap, kid.id, world.id);
-    const bandSkills = filterSkills.filter((s) => s.band === world.id && s.game);
-    const nextSkill = nextUnmasteredSkill(skillsMap, kid.id, world.id);
-    const complete = prog.total > 0 && prog.mastered === prog.total;
-    // #1400 — a completed world offers 'beat your best' when it has any EXPERT
-    // skill (pMastered ≥ 0.92). sessionForWorld turns that into a pure
-    // challenge-replay session instead of re-sweeping the whole land.
-    const hasChallengeReplay = complete && bandSkills.some((s) => challengeEligible(skillsMap, kid.id, s.id));
-    const nextWorld = BANDS.find((b) => b.id === world.id + 1);
-    // #1485 — same unlockGap helper as the map; #1486 — gate the "ready" text
-    // on worldUnlocked so a parent difficulty cap never promises a locked land.
-    const gap = unlockGap(prog, UNLOCK_THRESHOLD);
-    const nextUnlocked = nextWorld ? worldUnlocked(skillsMap, kid.id, nextWorld.id) : false;
-    const nextCapped = nextWorld != null && filterMaxBand != null && nextWorld.id > filterMaxBand;
-    const land = WORLD_LANDS[world.id];
     return (
-      <div className="app">
-        <main className="screen worlds">
-          <header
-            className="screen-head worlddetail-head"
-            style={{ ["--c1" as string]: land.c1, ["--c2" as string]: land.c2, ["--c3" as string]: land.c3, ["--c2-22" as string]: land.c2_22 }}
-          >
-            <span className="worlddetail-deco" aria-hidden="true">
-              {land.deco.map((d, di) => (
-                <span key={di} className={`worlddetail-deco-item d${di}`} style={{ animationDelay: `${di * 0.6}s` }}>{d}</span>
-              ))}
-            </span>
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.worldsLabel)}>‹</button>
-            <div className="head-title">
-              <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
-              <p className="head-sub">{prog.total === 0 ? t.worldNoLessons : t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>
-            </div>
-          </header>
-
-          <div className="world-progress-card">
-            <div className="progress-bar big">
-              <div className="progress-fill" style={{ width: `${prog.pct}%` }} />
-            </div>
-            {prog.total === 0 ? (
-              <div className="badge">{t.worldNoLessons}</div>
-            ) : prog.mastered === prog.total ? (
-              <div className="badge">{t.worldComplete}</div>
-            ) : nextWorld ? (
-              <p className="unlock-hint">
-                {nextUnlocked ? (
-                  <>{t.readyFor(nextWorld.title)} <Icon name={nextWorld.key} size={18} /></>
-                ) : nextCapped ? (
-                  t.worldLockedCap
-                ) : gap.more > 0 ? (
-                  <>{t.masterMoreToUnlock(gap.more, nextWorld.title)} <Icon name={nextWorld.key} size={18} /></>
-                ) : (
-                  t.worldLockedCap
-                )}
-              </p>
-            ) : null}
-          </div>
-
-          <button className="big-btn" onClick={() => startPlayWorld(world)}>
-            {nextSkill ? t.playNext(nextSkill.title) : hasChallengeReplay ? t.beatYourBest : t.practiceAgain}
-          </button>
-
-          {/* 🚀 #249 — skip-ahead: "I already know this". Logs an acceleration
-              entry (band jump) so the parent portal's plan shows the skip. */}
-          {nextSkill && (
-            <div className="skip-row">
-              <button
-                className="skip-chip"
-                onClick={() => skipAhead(nextSkill)}
-                aria-label={t.skipAheadHint(nextSkill.title)}
-              >
-                <span className="skip-chip-ico">⏭</span>
-                <span className="skip-chip-txt">{t.skipAhead}</span>
-              </button>
-              {skipNotice && <span className="skip-toast" role="status">{skipNotice}</span>}
-            </div>
-          )}
-
-          {/* #276 — per-land SKILL TREE: every skill is a leaf on the trunk,
-              mastered leaves GLOW, the next lesson pulses, and tapping any leaf
-              jumps straight into that lesson. Locale-packed (#131), offline. */}
-          <div className="tree-wrap" role="status" aria-label={t.treeTitle}>
-            <div className="tree-head">
-              <span className="tree-title">{t.treeTitle}</span>
-              <span className="tree-hint">{t.treeHint}</span>
-            </div>
-            <div className="skill-tree">
-              <div className="tree-trunk" aria-hidden="true" />
-              {bandSkills.map((skill, i) => {
-                const st = skillsMap[`${kid.id}:${skill.id}`];
-                const pct = masteryDisplayPct(st, skill.id);
-                const mastered = !!st && st.pMastered >= masteryThresholdFor(skill.id);
-                const isNext = nextSkill?.id === skill.id;
-                const side = i % 2 === 0 ? "left" : "right";
-                const title = skillTitle(skill, lang);
-                return (
-                  <div key={skill.id} className={`tree-row ${side}`}>
-                    <button
-                      className={`tree-node${mastered ? " done" : isNext ? " next" : " open"}${isNext ? " is-next" : ""}`}
-                      onClick={() => startSingleSkill(skill)}
-                      aria-label={`${title} · ${t.classLabel(skill.classNumber ?? skill.band)} · ${mastered ? pct + "%" : isNext ? t.nextBadge : pct + "%"}`}
-                    >
-                      <span className="tree-node-emoji"><Icon name={skill.subject} size={26} /></span>
-                      <span className="tree-node-meta">
-                        <span className="tree-node-title">{title}</span>
-                        {skill.titleBn ? <span className="tree-node-bn">{skill.titleBn}</span> : null}
-                        <span className="tree-node-desc">{skillDesc(skill, lang)}</span>
-                        <span className="tree-node-class">{t.classLabel(skill.classNumber ?? skill.band)}</span>
-                        <span className="tree-node-bar"><span className={`tree-node-fill${mastered ? " done" : ""}`} style={{ width: `${pct}%` }} /></span>
-                      </span>
-                      <span className="tree-node-state">
-                        {mastered ? "✓" : isNext ? "▶" : `${pct}%`}
-                      </span>
-                      {isNext && <span className="next-badge">{t.nextBadge}</span>}
-                    </button>
-                    <span className="tree-spacer" aria-hidden="true" />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </main>
-      </div>
+      <WorldDetailScreen
+        world={world}
+        kid={kid}
+        skillsMap={skillsMap}
+        onBack={goBack}
+        t={t}
+        lang={lang}
+        startPlayWorld={startPlayWorld}
+        startSingleSkill={startSingleSkill}
+        skipAhead={skipAhead}
+        skipNotice={skipNotice}
+      />
     );
   }
 
   if (screen === "done" && world && kid) {
-    const prog = worldProgress(skillsMap, kid.id, world.id);
-    const complete = prog.mastered === prog.total;
-    const nextWorld = BANDS.find((b) => b.id === world.id + 1);
-    const rank = rankFor(totalMastered(skillsMap, kid.id), lang);
-    // The "Next round" target — the journey's current stop after this session.
-    // If the kid just mastered their skill, this is the NEW skill ahead of them;
-    // if not, it's the same one (keep practicing). undefined = journey done.
-    const nextStop = (() => {
-      const stops = kidJourney; // #1122 — shared selector (computed once above)
-      const idx = kidJourneyIdx;
-      return idx < stops.length ? stops[idx] : undefined;
-    })();
-    // skills that crossed the mastery bar DURING this session → a special cheer
-    const newMastered = sessionRef.current.filter(
-      (s) => !masteredBeforeRef.current.has(s.skillId) && (skillsMap[`${kid.id}:${s.skillId}`]?.pMastered ?? 0) >= masteryThresholdFor(s.skillId)
-    ).length;
-    // 🧠 MONI soft session hint — a measured attention dip or a sensible default.
-    // Soft by design: the keep-going / play-again / home buttons stay available.
-    const moniDone = useKidStore.getState().moni?.[kid.id];
-    const sessionHint =
-      moniPlanFor(kid.id)?.sessionLengthHint ?? moniDone?.attention.fatigueThreshold ?? 12;
-    // a field of falling confetti — each piece is pure CSS, runs forever.
-    // Module-level (not a hook) — see DONE_CONFETTI above.
-    const confetti = DONE_CONFETTI;
     return (
-      <div className="app">
-        <main className="screen done-screen">
-          {/* #248 — quiet-hours dim + 🌙 badge */}
-          {quietChrome}
-          <div className="confetti" aria-hidden="true">
-            {confetti.map((p, i) => (
-              <span
-                key={i}
-                className="confetti-piece"
-                style={{
-                  left: `${p.left}%`,
-                  animationDuration: `${p.dur}s`,
-                  animationDelay: `${p.delay}s`,
-                  background: p.color,
-                  ["--drift" as string]: `${p.drift}px`,
-                  ["--rot" as string]: `${p.rot}deg`,
-                }}
-              />
-            ))}
-          </div>
-          <div className="mascot" role="img" aria-label="Nova celebrating">
-            <Icon name="nova" size={88} />
-          </div>
-          <h1 className="title">{t.amazing}</h1>
-          <div className="done-stars" role="img" aria-label={t.doneStars(stars)}>
-            <CountUp value={stars} />
-            <span className="gold"> ⭐</span>
-          </div>
-          <p className="subtitle">{t.earned(kid.avatar, kid.name, stars, score, lang === "bn" ? world.titleBn ?? world.title : world.title)}</p>
-          {newMastered > 0 && (
-            <div className="mastered-badge" key={newMastered}>
-              <Icon name="trophy" size={24} />
-              {t.newSkill(newMastered)}
-            </div>
-          )}
-          {petStage > petStageBeforeRef.current && (
-            <div className="pet-badge" key={`pet-${petStage}`}>
-              <span className="pet-badge-emoji">{speciesEmoji(petSpecies, petStage)}{petStage >= 3 ? "✨" : ""}</span>
-              <span>{t.petGrewInto(speciesById(petSpecies)[lang === "bn" ? "nameBn" : "name"])}</span>
-            </div>
-          )}
-          {complete && newMastered > 0 && (
-            <div className="gold-badge" key={`gold-${world.id}-${newMastered}`}>
-              <span className="gold-badge-icon">👑</span>
-              <span>{t.worldChampDone(lang === "bn" ? world.titleBn ?? world.title : world.title)}</span>
-            </div>
-          )}
-          <div className="rank-badge">
-            <span className="rank-badge-label">{t.rankLabel}</span>
-            <span className="rank-badge-title">{rank.title}</span>
-            {rank.nextTitle && <span className="rank-badge-next">{t.rankNextNeed(rank.nextTitle, rank.need)}</span>}
-          </div>
-          {moniDone && moniDone.totalRounds >= 4 && (
-            <div className="moni-session-note">
-              <Icon name="nova" size={18} /> {t.moniSessionHint(sessionHint)}
-            </div>
-          )}
-          {/* #1048 — kid's own "too easy / too hard" voice. Bumps the signed
-              per-skill difficulty delta (±1, clamped ±2) that Moni's planner
-              layers on top of the parent strictness. Soft by design: one warm
-              confirmation, then the row turns into a "Got it" so it never
-              nags. */}
-          {(() => {
-            const focusSkill = moniPlanFor(kid.id)?.focusSkillId ?? sessionRef.current[sessionIdx]?.skillId;
-            if (!focusSkill) return null;
-            if (moniFb) {
-              return (
-                <div className="moni-feedback moni-feedback-ok" role="status">
-                  {moniFb === "easy" ? "😌 " : "🔥 "}{t.moniFbOk}
-                </div>
-              );
-            }
-            return (
-              <div className="moni-feedback" role="group" aria-label={t.moniFbQ}>
-                <span className="moni-feedback-q">{t.moniFbQ}</span>
-                <div className="moni-feedback-btns">
-                  <button
-                    className="ghost-btn"
-                    onClick={() => { click(); useKidStore.getState().bumpSkillDelta(kid.id, focusSkill, 1); setMoniFb("easy"); }}
-                  >
-                    😌 {t.moniFbEasy}
-                  </button>
-                  <button
-                    className="ghost-btn"
-                    onClick={() => { click(); useKidStore.getState().bumpSkillDelta(kid.id, focusSkill, -1); setMoniFb("hard"); }}
-                  >
-                    🔥 {t.moniFbHard}
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
-          <div className="badge">
-            {complete
-              ? nextWorld
-                ? t.completeUnlocked(world.title, nextWorld.title)
-                : t.champion
-              : nextWorld
-                ? t.keepGoing(prog.total - prog.mastered, world.title)
-                : t.greatSession}
-          </div>
-          {nextStop ? (
-            <button className="big-btn next-btn" onClick={startNextRound}>
-              <span className="play-btn-main">▶ {t.nextRound}</span>
-              <span className="play-btn-sub">
-                {nextStop.skill.title}
-                {(() => { const b = BANDS.find((bb) => bb.id === nextStop.skill.band); return b ? ` · ${b.title}` : ""; })()}
-              </span>
-            </button>
-          ) : (
-            <button className="big-btn" onClick={replaySession}>{t.playAgain}</button>
-          )}
-          {nextStop && (
-            <button className="ghost-btn" onClick={replaySession}>{t.playAgain}</button>
-          )}
-          {complete && (
-            <button className="cert-btn" onClick={() => openCert(world)}>{t.certBtn}</button>
-          )}
-          <button className="ghost-btn nova-home-btn" onClick={goNova}><Icon name="nova" size={20} /> {t.novaMeet} · 🪙 {novaCoins}</button>
-          <button className="ghost-btn" onClick={() => setScreen("worlds")}>{t.worldsBtn}</button>
-          <button className="ghost-btn" onClick={() => setScreen("home")}>{t.homeBtn}</button>
-        </main>
-      </div>
+      <DoneScreen
+        world={world}
+        kid={kid}
+        skillsMap={skillsMap}
+        lang={lang}
+        stops={kidJourney}
+        hereIdx={kidJourneyIdx}
+        sessionRef={sessionRef}
+        masteredBeforeRef={masteredBeforeRef}
+        petStageBeforeRef={petStageBeforeRef}
+        sessionIdx={sessionIdx}
+        moniFb={moniFb}
+        setMoniFb={setMoniFb}
+        stars={stars}
+        score={score}
+        petStage={petStage}
+        petSpecies={petSpecies}
+        quietChrome={quietChrome}
+        t={t}
+        novaCoins={novaCoins}
+        startNextRound={startNextRound}
+        replaySession={replaySession}
+        openCert={openCert}
+        goNova={goNova}
+        setScreen={setScreen}
+      />
     );
   }
 
@@ -5962,41 +5191,14 @@ export default function App() {
      Choosing "keep going" lands on the regular done screen so the celebration
      + next-round button are still there. */
   if (screen === "break" && kid) {
-    const takeBreak = () => {
-      breakPendingRef.current = false;
-      breakReturnRef.current = "done";
-      cancelSpeech();
-      setScreen("home");
-    };
-    const keepGoing = () => {
-      breakPendingRef.current = false;
-      // #1368 — a break taken from the goal nudge returns home; a post-session
-      // break returns to the done screen so the celebration is still there.
-      setScreen(breakReturnRef.current);
-      breakReturnRef.current = "done";
-    };
     return (
-      <div className="app">
-        <main className="screen break-screen">
-          <div className="break-sky" aria-hidden="true">
-            {["☁️", "☁️", "⭐", "🌤️", "🕊️", "☁️"].map((e, i) => (
-              <span key={i} className={`break-sky-float f${i}`}>{e}</span>
-            ))}
-          </div>
-          <div className="break-mascot" role="img" aria-label="Nova suggesting a break">
-            <Icon name="nova" size={96} />
-          </div>
-          <h1 className="title">{t.breakTitle(kid.name)}</h1>
-          <p className="break-body">{t.breakBody}</p>
-          <div className="break-stretch" aria-hidden="true">🧘</div>
-          <button className="big-btn break-rest-btn" onClick={takeBreak}>
-            🦉 {t.breakRest}
-          </button>
-          <button className="ghost-btn break-go-btn" onClick={keepGoing}>
-            {t.breakKeepGoing}
-          </button>
-        </main>
-      </div>
+      <BreakScreen
+        kid={kid}
+        t={t}
+        breakPendingRef={breakPendingRef}
+        breakReturnRef={breakReturnRef}
+        setScreen={setScreen}
+      />
     );
   }
 
@@ -6006,122 +5208,36 @@ export default function App() {
      in Moni's ledger (warm resolution — the pattern is beaten). Back always
      works; a kid can never get stuck. */
   if (screen === "contrast" && kid && contrastJob) {
-    const { template, skillId } = contrastJob;
-    const round = template.rounds[Math.min(contrastIdx, template.rounds.length - 1)];
-    const done = contrastIdx >= template.rounds.length;
-    const [optA, optB] = Math.random() < 0.5 ? [round.correct, round.trap] : [round.trap, round.correct];
-    const answer = (picked: string) => {
-      if (picked === round.correct) {
-        tada();
-        speak(t.contrastRight);
-        setContrastIdx((i) => i + 1);
-      } else {
-        // Wrong pick — a soft nudge and the same round re-asks (never advances).
-        click();
-        speak(t.contrastOops(round.correct));
-      }
-    };
-    const finishDrill = () => {
-      useKidStore.getState().moniResolveMisconception(kid.id, skillId, template.code);
-      setContrastJob(null);
-      setContrastIdx(0);
-      tada();
-      setScreen("home");
-    };
     return (
-      <div className="app">
-        <main className="screen contrast-screen">
-          <div className="contrast-mascot" role="img" aria-label="Nova helping with the pattern">
-            <Icon name="nova" size={kidBand(kid) >= 5 ? 56 : 72} />
-          </div>
-          {done ? (
-            <>
-              <h1 className="title">{t.contrastDoneTitle}</h1>
-              <p className="contrast-done-body">{t.contrastDoneBody}</p>
-              <button className="big-btn contrast-done-btn" onClick={finishDrill}>
-                🌟 {t.contrastDoneBtn}
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="contrast-kicker">{template.intro[lang === "bn" ? "bn" : "en"]}</p>
-              <div className="contrast-round" key={contrastIdx}>
-                <p className="contrast-prompt">{round.prompt[lang === "bn" ? "bn" : "en"]}</p>
-                <div className="contrast-options">
-                  <button className="contrast-opt" onClick={() => answer(optA)}>{optA}</button>
-                  <button className="contrast-opt" onClick={() => answer(optB)}>{optB}</button>
-                </div>
-                <p className="contrast-tip">{round.tip[lang === "bn" ? "bn" : "en"]}</p>
-              </div>
-              <span className="contrast-progress">{t.contrastProgress(Math.min(contrastIdx + 1, template.rounds.length), template.rounds.length)}</span>
-            </>
-          )}
-          <button className="ghost-btn" onClick={() => { setContrastJob(null); setContrastIdx(0); setScreen("home"); }}>
-            {t.homeBtn}
-          </button>
-        </main>
-      </div>
+      <ContrastScreen
+        template={contrastJob.template}
+        skillId={contrastJob.skillId}
+        kid={kid}
+        t={t}
+        lang={lang}
+        contrastIdx={contrastIdx}
+        setContrastIdx={setContrastIdx}
+        setContrastJob={setContrastJob}
+        setScreen={setScreen}
+      />
     );
   }
 
   /* #283 — Badge Book: small trophies for real learning wins (sessions, stars,
      streak, full-land mastery). Conditions read only local state — offline. */
   if (screen === "badges" && kid) {
-    const wk = weekSkill; // #1122 — reuse the shared memoized week skill
-    const ctx: BadgeCtx = { sessions: badgeStats.sessions, stars: badgeStats.stars, streak: badgeStreak, worlds: fullyMasteredWorlds(skillsMap, kid.id), weekDone: !!wk && skillMastered(skillsMap, kid.id, wk.id) };
-    const rows = BADGES.map((b) => ({ b, earned: b.earned(ctx), prog: b.progress(ctx) }));
-    const earnedCount = rows.filter((r) => r.earned).length;
-    // #1371 — when nothing is earned yet, pick the closest locked badge so the
-    // book opens with one concrete next step instead of a wall of padlocks.
-    const nextBadge = rows.reduce<{ b: BadgeDef; prog: { current: number; target: number }; ratio: number } | null>((best, r) => {
-      if (r.earned) return best;
-      const ratio = r.prog.target > 0 ? r.prog.current / r.prog.target : (r.prog.current > 0 ? 1 : 0);
-      if (!best || ratio > best.ratio) return { b: r.b, prog: r.prog, ratio };
-      return best;
-    }, null);
     return (
-      <div className="app">
-        <main className="screen badges-screen">
-          <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
-            <div className="head-title">
-              <h2>{t.badgeTitle}</h2>
-              <p className="head-sub">{t.badgeSub(earnedCount, BADGES.length)}</p>
-            </div>
-            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
-          </header>
-
-          {earnedCount === 0 && nextBadge && (
-            <div className="badge-first" role="status">
-              <span className="badge-first-emoji" aria-hidden="true">{nextBadge.b.emoji}</span>
-              <div className="badge-first-body">
-                <span className="badge-first-title">{t.badgeFirstTitle}</span>
-                <span className="badge-first-name">{lang === "bn" ? nextBadge.b.nameBn : nextBadge.b.name}</span>
-                <span className="badge-first-hint">{lang === "bn" ? nextBadge.b.hintBn : nextBadge.b.hint}</span>
-                <span className="badge-first-progress">{t.badgeProgress(nextBadge.prog.current, nextBadge.prog.target)}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="badge-grid">
-            {rows.map(({ b, earned, prog }) => {
-              return (
-                <button
-                  key={b.id}
-                  className={`badge-card${earned ? " earned" : " locked"}`}
-                  onClick={() => speak(earned ? (lang === "bn" ? t.badgeNewSpeak(kid.name, b.nameBn) : t.badgeNewSpeak(kid.name, b.name)) : t.badgeLocked)}
-                  aria-label={earned ? t.badgeEarned : `${t.badgeLocked} · ${t.badgeProgress(prog.current, prog.target)}`}
-                >
-                  <span className="badge-emoji" aria-hidden="true">{earned ? b.emoji : "🔒"}</span>
-                  <span className="badge-name">{lang === "bn" ? b.nameBn : b.name}</span>
-                  <span className="badge-hint">{lang === "bn" ? b.hintBn : b.hint}</span>
-                  <span className={`badge-state${earned ? " earned" : ""}`}>{earned ? t.badgeEarned : t.badgeProgress(prog.current, prog.target)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </main>
-      </div>
+      <BadgesScreen
+        kid={kid}
+        skillsMap={skillsMap}
+        lang={lang}
+        t={t}
+        weekSkill={weekSkill}
+        badgeStats={badgeStats}
+        badgeStreak={badgeStreak}
+        onBack={goBack}
+        goNova={goNova}
+      />
     );
   }
 
@@ -6129,46 +5245,15 @@ export default function App() {
      sits on a shelf. Offline (reads local mastery only); a newly-earned trophy
      gets a confetti + spoken cheer exactly once (via the store's sync). */
   if (screen === "trophyroom" && kid) {
-    const rows = BANDS.map((b) => {
-      const p = worldProgress(skillsMap, kid.id, b.id);
-      return { band: b, earned: p.total > 0 && p.mastered === p.total, mastered: p.mastered, total: p.total };
-    });
-    const trophyCount = rows.filter((r) => r.earned).length;
     return (
-      <div className="app">
-        <main className="screen tr-screen">
-          <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
-            <div className="head-title">
-              <h2>{t.trTitle}</h2>
-              <p className="head-sub">{t.trSub(trophyCount, rows.length)}</p>
-            </div>
-            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
-          </header>
-
-          {trophyCount === 0 ? (
-            <div className="tr-empty">
-              <span className="tr-empty-emoji" aria-hidden="true">🏆</span>
-              <span className="tr-empty-text">{t.trEmpty}</span>
-            </div>
-          ) : null}
-
-          <div className="tr-shelf">
-            {rows.map((r) => {
-              const title = lang === "bn" ? r.band.titleBn ?? r.band.title : r.band.title;
-              return (
-                <div key={r.band.id} className={`tr-slot${r.earned ? " earned" : " locked"}`} role="status" aria-label={r.earned ? t.trEarned : t.trLocked}>
-                  <span className="tr-shelf-top" aria-hidden="true" />
-                  <span className="tr-trophy" aria-hidden="true">{r.earned ? "🏆" : "🔒"}</span>
-                  <span className="tr-band-name">{title}</span>
-                  <span className="tr-band-prog">{t.skillsProg(r.mastered, r.total)}</span>
-                  <span className="tr-state">{r.earned ? t.trEarned : t.trLocked}</span>
-                </div>
-              );
-            })}
-          </div>
-        </main>
-      </div>
+      <TrophyRoomScreen
+        kid={kid}
+        skillsMap={skillsMap}
+        lang={lang}
+        t={t}
+        onBack={goBack}
+        goNova={goNova}
+      />
     );
   }
 
@@ -6176,166 +5261,54 @@ export default function App() {
      10 skills, streaks, lands, coins, pets). A card pops with a glow when it
      unlocks — the unlock animation. All offline (local stats only). */
   if (screen === "achievements" && kid) {
-    const ctx: AchCtx = {
-      sessions: achStats.sessions,
-      stars: achStats.stars,
-      mastered: totalMastered(skillsMap, kid.id),
-      streak: achStreak,
-      coins: achCoins,
-      worlds: fullyMasteredWorlds(skillsMap, kid.id),
-      pets: achPets,
-      petStage: achPetStage,
-    };
-    const unlocked = storedAchs;
-    const justNew = achPopupIds;
-    const unlockedCount = ACHIEVEMENTS.filter((a) => a.earned(ctx)).length;
     return (
-      <div className="app">
-        <main className="screen ach-screen">
-          <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
-            <div className="head-title">
-              <h2>{t.achTitle}</h2>
-              <p className="head-sub">{t.achSub(unlockedCount, ACHIEVEMENTS.length)}</p>
-            </div>
-            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
-          </header>
-
-          <div className="ach-grid">
-            {ACHIEVEMENTS.map((a) => {
-              const earned = a.earned(ctx);
-              const isNew = earned && justNew.includes(a.id);
-              return (
-                <button
-                  key={a.id}
-                  className={`ach-card${earned ? " earned" : " locked"}${isNew ? " pop" : ""}`}
-                  onClick={() => speak(earned ? (lang === "bn" ? t.achNewSpeak(kid.name, a.nameBn) : t.achNewSpeak(kid.name, a.name)) : t.achLocked)}
-                  aria-label={earned ? t.achUnlocked : t.achLocked}
-                >
-                  <span className="ach-emoji" aria-hidden="true">{earned ? a.emoji : "🔒"}</span>
-                  <span className="ach-name">{lang === "bn" ? a.nameBn : a.name}</span>
-                  <span className="ach-hint">{lang === "bn" ? a.hintBn : a.hint}</span>
-                  <span className={`ach-state${earned ? " earned" : ""}`}>{earned ? t.achUnlocked : t.achLocked}</span>
-                </button>
-              );
-            })}
-          </div>
-        </main>
-      </div>
+      <AchievementsScreen
+        kid={kid}
+        skillsMap={skillsMap}
+        lang={lang}
+        t={t}
+        achStats={achStats}
+        achStreak={achStreak}
+        achCoins={achCoins}
+        achPets={achPets}
+        achPetStage={achPetStage}
+        storedAchs={storedAchs}
+        achPopupIds={achPopupIds}
+        onBack={goBack}
+        goNova={goNova}
+      />
     );
   }
 
   /* Build-a-castle — every world the kid masters raises a tower with its flag.
      The final tower carries a crown flag; the whole castle is the long-game trophy. */
   if (screen === "castle" && kid) {
-    const towers = BANDS.map((b) => {
-      const prog = worldProgress(skillsMap, kid.id, b.id);
-      return { band: b, built: prog.mastered === prog.total && prog.total > 0, prog };
-    });
-    const builtCount = towers.filter((t) => t.built).length;
-    const allBuilt = builtCount === towers.length;
-    const TOWER_COLORS = ["#7ec850", "#f5b84c", "#5aa7e8", "#9a7ce0", "#ef7ba6"];
     return (
-      <div className="app">
-        <main className="screen castle-screen">
-          <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
-            <div className="head-title">
-              <h2>🏰 {t.castleTitle}</h2>
-              <p className="head-sub">{t.castleBuilt(builtCount, towers.length)}</p>
-            </div>
-            <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
-          </header>
-
-          <div className="castle-scene" role="img" aria-label={t.castleTitle}>
-            <div className="castle-sun" aria-hidden="true" />
-            <div className="castle-cloud c1" aria-hidden="true" />
-            <div className="castle-cloud c2" aria-hidden="true" />
-
-            <div className="castle-keep">
-              <div className="castle-towers">
-                {towers.map((tw, i) => (
-                  <button
-                    key={tw.band.id}
-                    className={`castle-tower${tw.built ? " built" : ""}`}
-                    style={{ "--tower": TOWER_COLORS[i % TOWER_COLORS.length] } as React.CSSProperties}
-                    disabled={!tw.built}
-                    onClick={() => openCert(tw.band)}
-                    title={tw.built ? t.castleTowerBuilt(tw.band.title) : undefined}
-                    aria-label={tw.built ? t.castleTowerBuilt(tw.band.title) : t.castleTowerToBuild(tw.band.title)}
-                  >
-                    <span className="castle-flag" aria-hidden="true">
-                      {tw.built ? <Icon name={tw.band.key} size={30} /> : <span className="castle-flag-empty">…</span>}
-                    </span>
-                    <span className="castle-pole" aria-hidden="true" />
-                    <span className="castle-roof" aria-hidden="true" />
-                    <span className="castle-body" aria-hidden="true">
-                      <span className="castle-window">{tw.built ? "⭐" : "🔒"}</span>
-                    </span>
-                    <span className="castle-label">{tw.band.title}</span>
-                    <span className="castle-sub">{tw.built ? "✓" : t.castleBuildCta(tw.band.title)}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="castle-wall" aria-hidden="true">
-                <span className="castle-gate" />
-                <span className="castle-gate-door" />
-              </div>
-            </div>
-
-            <div className="castle-ground" aria-hidden="true" />
-            {allBuilt && (
-              <div className="castle-crown" role="status">{t.castleCrown}</div>
-            )}
-          </div>
-        </main>
-      </div>
+      <CastleScreen
+        kid={kid}
+        skillsMap={skillsMap}
+        t={t}
+        onBack={goBack}
+        goNova={goNova}
+        openCert={openCert}
+      />
     );
   }
 
   /* Printable certificate — a real keepsake the family can print or save as
      PDF. Only complete worlds can be celebrated this way. */
   if (screen === "cert" && kid && certWorld) {
-    const cSkills = filterSkills.filter((sk) => sk.band === certWorld.id && sk.game && (skillsMap[`${kid.id}:${sk.id}`]?.pMastered ?? 0) >= masteryThresholdFor(sk.id));
     return (
-      <div className="cert-screen" role="document" aria-label={t.certTitle}>
-        <div className="cert-toolbar no-print">
-          <button className="icon-btn" onClick={goBack} aria-label={t.certBack}>‹</button>
-          <span className="cert-toolbar-title">{t.certTitle}</span>
-          <button className="cert-share-btn" onClick={() => void shareCert()}>{t.certShare}</button>
-          <button className="cert-print-btn" onClick={() => window.print()}>{t.certPrint}</button>
-          {shareMsg && <span className="cert-share-feedback" role="status">{shareMsg}</span>}
-        </div>
-        <div className="cert-sheet">
-          <div className="cert-border" />
-          <div className="cert-top">
-            <span className="cert-nova" role="img" aria-label={t.certSigned}>🦉</span>
-            <span className="cert-title">{t.certTitle}</span>
-            <span className="cert-nova" role="img" aria-hidden="true">🦉</span>
-          </div>
-          <p className="cert-line">{t.certThisCertifies}</p>
-          <p className="cert-name">{kid.name}</p>
-          <p className="cert-line">{t.certHasMastered}</p>
-          <p className="cert-world">{lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title}</p>
-          <p className="cert-skills">{t.certSkillCount(cSkills.length)}</p>
-          <ul className="cert-list">
-            {cSkills.slice(0, 6).map((sk) => (
-              <li key={sk.id}>{sk.title}{sk.titleBn ? <span className="cert-bn"> {sk.titleBn}</span> : null}</li>
-            ))}
-          </ul>
-          <p className="cert-nova-line">{t.certWithNova}</p>
-          <div className="cert-foot">
-            <div className="cert-date">
-              <span className="cert-foot-label">{t.certDate}</span>
-              <span className="cert-foot-value">{cardDate(Date.now(), lang)}</span>
-            </div>
-            <div className="cert-sign">
-              <span className="cert-sign-emoji" role="img" aria-hidden="true">🦉</span>
-              <span className="cert-foot-value">{t.certSigned}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CertScreen
+        certWorld={certWorld}
+        kid={kid}
+        skillsMap={skillsMap}
+        t={t}
+        lang={lang}
+        shareMsg={shareMsg}
+        onBack={goBack}
+        shareCert={shareCert}
+      />
     );
   }
 
