@@ -18,15 +18,24 @@ Covers, against `app/routers/shares.py`:
       the row is lazily rewritten to a hash so the SAME link keeps working on
       the next hit via the new-form path.
 """
+import asyncio
 import re
 import sys
+import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from sqlalchemy import Select, select  # noqa: E402
+
+from app.models import ContentItem, Kid, KidSettings, ProgressEvent, SkillMastery  # noqa: E402
+from app.routers import shares as shares_mod  # noqa: E402
 from app.routers.shares import (  # noqa: E402
     _is_legacy_raw,
     _share_token_hash,
+    get_share_snapshot,
     resolve_share_token,
 )
 
@@ -127,6 +136,135 @@ rows = {"kid-2": _share_token_hash(fresh)}
 check("new-form row resolves via hashed inbound", simulate_public_lookup(rows, fresh), ("kid-2", False))
 check("new-form row does NOT resolve the raw as a separate match", simulate_public_lookup(rows, "some-other-token-abc-321"), (None, False))
 check("unknown kid → no match", simulate_public_lookup({}, "whatever"), (None, False))
+
+print("⑤  #1645 — /share/{token} caps the token length at the framework boundary…")
+
+
+def _share_token_max_length():
+    for route in shares_mod.router.routes:
+        if not hasattr(route, "path") or "/share/" not in (route.path or ""):
+            continue
+        for mf in route.dependant.path_params:
+            if mf.name != "token":
+                continue
+            for m in getattr(mf.field_info, "metadata", None) or []:
+                if type(m).__name__ == "MaxLen":
+                    return m.max_length
+    return None
+
+
+check("token path param carries a 64-char max_length (422 guard)", _share_token_max_length(), 64)
+check("real minted token (32 chars) is under the cap", len(LEGACY_RAW), 32)
+check("oversized megabyte token would 422 before the DB lookup", 65 > 64, True)
+
+print("⑥  #1646 — get_share_snapshot derives the window from the UTC day…")
+
+
+class FakeShareResult:
+    def __init__(self, rows):
+        self._rows = list(rows)
+
+    def all(self):
+        return list(self._rows)
+
+
+class FakeShareSession:
+    """Postgres-free AsyncSession shaped exactly for get_share_snapshot."""
+
+    def __init__(self, *, kid=None, events=None, settings=None, top_title=None, mastered=None):
+        self.kid = kid
+        self.events = events or []
+        self.settings = settings
+        self.top_title = top_title
+        self.mastered = mastered or []
+        self.commits = 0
+        self.last_event_select = None
+
+    async def scalar(self, stmt):
+        if isinstance(stmt, Select) and self.kid:
+            entity = stmt.column_descriptions[0].get("entity")
+            if entity is Kid:
+                return self.kid
+            if entity is ContentItem:
+                return self.top_title
+        return None
+
+    async def scalars(self, stmt):
+        if isinstance(stmt, Select):
+            entity = stmt.column_descriptions[0].get("entity")
+            if entity is ProgressEvent:
+                self.last_event_select = stmt
+                return FakeShareResult(self.events)
+            if entity is SkillMastery:
+                return FakeShareResult(self.mastered)
+        return FakeShareResult([])
+
+    async def get(self, model, pk):
+        if model is KidSettings and self.settings is not None and self.settings.kid_id == pk:
+            return self.settings
+        return None
+
+    async def commit(self):
+        self.commits += 1
+
+
+class _FakeDatetime(datetime):
+    """Subclass that pins `now()` to a fixed UTC instant and records the tz arg."""
+
+    _fixed = datetime(2026, 8, 17, 12, 30, tzinfo=timezone.utc)
+    called_with = []
+
+    @classmethod
+    def now(cls, tz=None):
+        cls.called_with.append(tz)
+        if tz:
+            return cls._fixed.astimezone(tz)
+        return cls._fixed
+
+
+fixed_utc_date = _FakeDatetime._fixed.date()
+kid = Kid(id=uuid.uuid4(), profile_id=uuid.uuid4(), name="K", share_token=_share_token_hash("tok-utc"))
+event = ProgressEvent(
+    id=1,
+    kid_id=kid.id,
+    skill_id="s1",
+    game_id="game-fruit-tree",
+    correct=True,
+    kind="round",
+    created_at=_FakeDatetime._fixed - timedelta(hours=5),  # same UTC day
+)
+fake = FakeShareSession(kid=kid, events=[event])
+_FakeDatetime.called_with.clear()
+with mock.patch.object(shares_mod, "datetime", _FakeDatetime):
+    out = asyncio.run(get_share_snapshot("tok-utc", db=fake))
+check("now() was asked for the UTC clock", _FakeDatetime.called_with == [timezone.utc], True)
+check("week_of is the UTC calendar day, not the host's local day", out.week_of, fixed_utc_date.isoformat())
+check("active_days counts the event's UTC day", out.active_days, 1)
+check("minutes_by_day is a 7-entry window (oldest → newest)", len(out.minutes_by_day), 7)
+check("rounds surfaced from the UTC window", out.rounds, 1)
+
+# The events query must bind the window as an aware UTC midnight (same pattern
+# as kids.py weekly), so a non-UTC Postgres session can't shift the boundary.
+def _find_created_at_bound(clause):
+    """Drill into the WHERE tree and return the RHS bound value for
+    `progress_events.created_at >= :param` (or None if absent)."""
+    from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList
+    if isinstance(clause, BooleanClauseList):
+        for c in clause.clauses:
+            r = _find_created_at_bound(c)
+            if r is not None:
+                return r
+    if isinstance(clause, BinaryExpression):
+        col = getattr(clause, "left", None)
+        if str(getattr(col, "name", "")).lower() == "created_at":
+            return getattr(clause.right, "value", None)
+    return None
+
+
+_bound = _find_created_at_bound(fake.last_event_select.whereclause) if fake.last_event_select is not None else None
+check("events window binds an aware UTC datetime (not a naive date)", _bound is not None and _bound.tzinfo is not None, True)
+check("events window starts exactly 6 days before the UTC now",
+      _bound is not None and _bound.date() == fixed_utc_date - timedelta(days=6), True)
 
 print()
 if fails:

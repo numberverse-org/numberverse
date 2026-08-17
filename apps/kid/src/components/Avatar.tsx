@@ -1,10 +1,11 @@
 /* Avatar components — KidAvatar (mix-and-match buddy), AvatarBuilder (Customize
  * screen), QuietChrome (#248 quiet-hours dim). Extracted from App.tsx (#589). */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AvatarIcon, Icon, AVATAR_EMOJI, AVATAR_KEYS } from "./Icon";
 import { kidParts, AVATAR_PART_OPTIONS, AVATAR_PART_LABELS, type AvatarParts, type Kid } from "../lib/journey";
 import type { Lang, Strings } from "../i18n";
 import { speak } from "../game/speech";
+import { useDialogFocus } from "../lib/dialogFocus";
 /** Render a kid's buddy — the full mix-and-match look when set, else the base sticker. */
 export function KidAvatar({ kid, size, className }: { kid: Kid; size: number; className?: string }) {
   const parts = kidParts(kid);
@@ -46,6 +47,7 @@ export function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [pendingExit, setPendingExit] = useState<null | { go: () => void }>(null);
   const [announce, setAnnounce] = useState("");
+  const confirmRef = useRef<HTMLDivElement>(null);
 
   const dirty =
     draft.base !== startParts.base ||
@@ -75,6 +77,9 @@ export function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
       go();
     }
   };
+  // #1601 — the unsaved-exit confirm sheet is a real modal dialog: focus moves
+  // inside on open, Tab stays trapped, Escape discards, and focus is restored.
+  useDialogFocus(unsavedOpen, () => { setUnsavedOpen(false); pendingExit?.go(); }, confirmRef);
   return (
     <div className="app">
       <div className="sr-only" role="status" aria-live="polite">{announce}</div>
@@ -144,6 +149,7 @@ export function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
             aria-modal="true"
             aria-label={t.avatarUnsavedTitle}
             onClick={(e) => e.stopPropagation()}
+            ref={confirmRef}
           >
             <span className="avatar-confirm-emoji" aria-hidden="true">🎨</span>
             <h3 className="avatar-confirm-title">{t.avatarUnsavedTitle}</h3>

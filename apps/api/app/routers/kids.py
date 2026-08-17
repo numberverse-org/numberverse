@@ -14,7 +14,7 @@ import uuid
 from collections import Counter
 from datetime import date, datetime, timedelta, time, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -198,9 +198,20 @@ async def update_kid(
     db: AsyncSession = Depends(get_db),
 ):
     kid = await _get_owned_kid(kid_id, profile, db)
-    for field, val in {"name": body.name, "avatar": body.avatar, "birth_year": body.birth_year}.items():
-        if val is not None:
-            setattr(kid, field, val)
+    # #1648 — distinguish 'omitted' from 'explicitly sent as null'. Pydantic's
+    # `model_fields_set` records which keys the payload actually carried, so a
+    # parent can CLEAR avatar/birth_year by sending an explicit null (the old
+    # `if val is not None` guard treated null exactly like an omitted key and
+    # silently ignored it — those fields could never be cleared via PATCH).
+    # `name` is NOT NULL in the DB, so a sent-as-null name must NOT reach the
+    # column (skip None for name only; avatar/birth_year clear on null).
+    for field in ("name", "avatar", "birth_year"):
+        if field not in body.model_fields_set:
+            continue
+        val = getattr(body, field)
+        if val is None and field == "name":
+            continue
+        setattr(kid, field, val)
     # #1044 — a birth_year edit changes the age-derived default max_band, so
     # recompute the cap. A kid created capped at band 2 who is now 9+ must be
     # cleared/raised to the new age's surface — otherwise their legit progress
@@ -322,7 +333,11 @@ async def put_kid_settings(
 @router.get("/{kid_id}/weak-skills", response_model=list[WeakSkillOut])
 async def get_kid_weak_skills(
     kid_id: uuid.UUID,
-    threshold: float = 0.7,
+    # #1644 — threshold is a mastery probability: bound it to [0, 1] at the
+    # framework boundary so a caller can't pass threshold=-5 (returns EVERY
+    # skill, mastered ones included, as 'weak') or threshold=999 (returns
+    # none) and silently produce a misleading printable worksheet.
+    threshold: float = Query(default=0.7, ge=0.0, le=1.0),
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):

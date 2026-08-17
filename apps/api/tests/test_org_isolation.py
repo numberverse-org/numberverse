@@ -20,6 +20,7 @@ Run with Postgres:              pytest apps/api/tests/test_org_isolation.py --db
 import sys
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -28,9 +29,15 @@ try:
 except ImportError:  # pragma: no cover
     pytest = None
 
+from fastapi import HTTPException  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
-from app.deps import org_scoped, _validate_role_hierarchy  # noqa: E402
+from app.deps import (  # noqa: E402
+    _validate_role_hierarchy,
+    org_scoped,
+    parse_org_id_header,
+    parse_uuid,
+)
 from app.models import Classroom, Kid, SkillMastery  # noqa: E402
 
 
@@ -86,6 +93,42 @@ def _run_standalone():
     check("owner ≥ admin", _try_role("owner", "admin"), True)
     check("admin ≥ teacher", _try_role("admin", "teacher"), True)
     check("teacher ≥ teacher", _try_role("teacher", "teacher"), True)
+
+    # #1629 — the role-failure message is generic: it must not leak the
+    # internal role vocabulary or the caller's exact role.
+    try:
+        _validate_role_hierarchy("teacher", "admin")
+        check("role hierarchy failure raises", "no-error", "403")
+    except HTTPException as e:
+        check("role hierarchy failure status", e.status_code, 403)
+        check("role hierarchy message is generic", e.detail, "Insufficient privileges")
+
+    print("⑥  Shared identifier parsing (#1627/#1628)…")
+    org_str = str(org_id)
+    check("parse_uuid ok", str(parse_uuid(org_str)), org_str)
+    try:
+        parse_uuid("not-a-uuid")
+        check("parse_uuid malformed → 400", "no-error", 400)
+    except HTTPException as e:
+        check("parse_uuid malformed → 400", e.status_code, 400)
+        check("parse_uuid labels the field", e.detail, "Invalid id")
+    try:
+        parse_uuid("not-a-uuid", what="org_id")
+        check("parse_uuid what label", "no-error", "Invalid org_id")
+    except HTTPException as e:
+        check("parse_uuid what label", e.detail, "Invalid org_id")
+
+    req = SimpleNamespace(headers={"X-Org-ID": org_str})
+    check("parse_org_id_header ok", str(parse_org_id_header(req)), org_str)
+    check("parse_org_id_header absent → None",
+          parse_org_id_header(SimpleNamespace(headers={})), None)
+    try:
+        parse_org_id_header(SimpleNamespace(headers={"X-Org-ID": "garbage"}))
+        check("parse_org_id_header malformed → 400", "no-error", 400)
+    except HTTPException as e:
+        check("parse_org_id_header malformed → 400", e.status_code, 400)
+        check("parse_org_id_header detail identical everywhere",
+              e.detail, "Invalid X-Org-ID")
 
     print()
     print(f"✓ org-isolation unit matrix: {passes} passed, {fails} failed")

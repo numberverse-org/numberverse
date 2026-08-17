@@ -7,11 +7,19 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
-from ..deps import org_scoped, require_admin, require_super_admin, resolve_org_id
+from ..deps import (
+    org_scoped,
+    parse_org_id_header,
+    parse_uuid,
+    require_admin,
+    require_super_admin,
+    resolve_org_id,
+)
 from ..security import hash_password, password_bytes_ok
 from ..models import (
     AdminAudit,
@@ -79,7 +87,10 @@ WRITABLE_FIELDS: dict[str, set[str]] = {
         "aggregate_opt_in",
     },
     "kids": {
-        "profile_id",
+        # #1637 — profile_id deliberately ABSENT: ownership is set at creation
+        # and must be immutable through this router (an org-admin must never be
+        # able to reassign a child to a different family via PUT). coins stays
+        # writable but is gated ge=0 in _validate_kids_payload.
         "name",
         "avatar",
         "birth_year",
@@ -302,14 +313,28 @@ def _writable_payload(resource: str, body: dict) -> dict:
     return {k: v for k, v in body.items() if k in allowed and k not in DENIED_WRITE_FIELDS}
 
 
+def _validate_kids_payload(payload: dict) -> None:
+    """#1637 — kids-specific shape checks the generic allow-list can't express.
+
+    `coins` is the kid's aggregate Nova wallet balance; it must never go
+    negative through the admin console. The kid app's last-write-wins sync uses
+    a monotonic wallet_seq, so an admin writing a negative floor would corrupt
+    the wallet math and let a spend resurrect unlimited coins."""
+    coins = payload.get("coins")
+    if coins is None:
+        return
+    if isinstance(coins, bool) or not isinstance(coins, (int, float)) or coins < 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "coins must be >= 0")
+
+
 def _pk_value(model: type, raw: str) -> Any:
     # #854 — UUID models receive the id as a plain path str; a malformed UUID
-    # must be a 422 ("Invalid id"), not an unhandled ValueError → 500.
+    # must never be an unhandled ValueError → 500. #1627 — the shared helper
+    # enforces ONE 400 contract for every malformed client-supplied identifier
+    # (path param, header, body); 422 stays reserved for schema-level body
+    # validation only.
     if model in UUID_MODELS:
-        try:
-            return uuid.UUID(raw)
-        except ValueError:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid id") from None
+        return parse_uuid(raw, what="id")
     return raw
 
 
@@ -760,7 +785,7 @@ async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncS
 # unbounded work / a full-table pull.
 MAX_RANGE_ROWS = 500
 MAX_FILTER_KEYS = 10
-MAX_FILTER_LIST_LEN = 200  # #1801 — an IN-clause value list is bounded too
+MAX_FILTER_LIST_LEN = 100  # #1647/#1801 — an IN-clause value list is bounded too
 MAX_SORT_COLUMNS = 1
 
 
@@ -851,12 +876,7 @@ async def list_resource(
     # all rows across all orgs; otherwise the filter is applied automatically.
     org_id = getattr(request.state, "org_id", None)
     if org_id is None and model in ORG_SCOPED_MODELS:
-        header_org = request.headers.get("X-Org-ID")
-        if header_org:
-            try:
-                org_id = uuid.UUID(header_org)
-            except (ValueError, AttributeError):
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+        org_id = parse_org_id_header(request)  # #1628 — one parser for X-Org-ID
     if org_id is not None:
         if model is Organization:
             # Organization has no org_id column — its PK *is* the tenant id.
@@ -941,16 +961,15 @@ async def get_resource(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     # #968 — org-scoped fetch: if the model carries org_id, scope the PK lookup.
     if model in ORG_SCOPED_MODELS:
+        pk_cols = list(model.__table__.primary_key.columns)
         pk = _pk_value(model, item_id)
-        stmt = select(model).where(model.__table__.primary_key.columns.keys()[0] == pk)
+        # #1622 regression — the PK lookup must reference the COLUMN, not its
+        # name string (`.keys()[0]` is a str, so `'id' == pk` compiled to
+        # `WHERE false` and every org-scoped GET 404'd).
+        stmt = select(model).where(pk_cols[0] == pk)
         org_id = getattr(request.state, "org_id", None)
         if org_id is None:
-            header_org = request.headers.get("X-Org-ID")
-            if header_org:
-                try:
-                    org_id = uuid.UUID(header_org)
-                except (ValueError, AttributeError):
-                    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+            org_id = parse_org_id_header(request)  # #1628 — one parser for X-Org-ID
         if org_id is not None:
             if model is Organization:
                 stmt = stmt.where(Organization.id == org_id)
@@ -986,9 +1005,14 @@ async def create_resource(
         _validate_config(key, value)
         obj = model(key=key, value=value)
         db.add(obj)
-        await db.flush()
-        _write_audit(db, profile, "create", "config", key, {"value": _jsonable(value)})
-        await db.commit()
+        try:
+            await db.flush()
+            _write_audit(db, profile, "create", "config", key, {"value": _jsonable(value)})
+            await db.commit()
+        except IntegrityError:
+            # #1625 — same 409 contract as the generic create path.
+            await db.rollback()
+            raise HTTPException(status.HTTP_409_CONFLICT, "Resource already exists") from None
         await db.refresh(obj)
         return _row_to_dict(obj)
 
@@ -1015,25 +1039,33 @@ async def create_resource(
         else:
             org_id = getattr(request.state, "org_id", None)
             if org_id is None:
-                header_org = request.headers.get("X-Org-ID")
-                if header_org:
-                    try:
-                        org_id = uuid.UUID(header_org)
-                    except (ValueError, AttributeError):
-                        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+                org_id = parse_org_id_header(request)  # #1628 — one parser for X-Org-ID
             if org_id is not None:
                 if "org_id" in payload and payload["org_id"] is not None:
-                    if uuid.UUID(str(payload["org_id"])) != org_id:
+                    # #1624/#1627 — a malformed caller-supplied body org_id is a
+                    # 400 (shared helper), never an unhandled ValueError → 500.
+                    if parse_uuid(payload["org_id"], what="org_id") != org_id:
                         raise HTTPException(
                             status.HTTP_403_FORBIDDEN,
                             "Cannot create resource for a different organization",
                         )
                 payload["org_id"] = org_id
+
+    if resource == "kids":
+        _validate_kids_payload(payload)
+
     obj = model(**payload)
     db.add(obj)
-    await db.flush()  # populate server-assigned PKs (UUID) before auditing
-    _write_audit(db, profile, "create", resource, _obj_pk(obj), {"fields": sorted(payload)})
-    await db.commit()
+    try:
+        await db.flush()  # populate server-assigned PKs (UUID) before auditing
+        _write_audit(db, profile, "create", resource, _obj_pk(obj), {"fields": sorted(payload)})
+        await db.commit()
+    except IntegrityError:
+        # #1625 — a duplicate unique key / FK / CHECK violation is a clean 409
+        # Conflict (mirroring /auth/signup), never a bare 500. The constraint
+        # name is deliberately NOT echoed — no internal schema leaks.
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Resource already exists") from None
     await db.refresh(obj)
     return _row_to_dict(obj)
 
@@ -1057,12 +1089,7 @@ async def _org_scoped_get(
         stmt = select(model).where(pk_cols[0] == pk)
         org_id = getattr(request.state, "org_id", None)
         if org_id is None:
-            header_org = request.headers.get("X-Org-ID")
-            if header_org:
-                try:
-                    org_id = uuid.UUID(header_org)
-                except (ValueError, AttributeError):
-                    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+            org_id = parse_org_id_header(request)  # #1628 — one parser for X-Org-ID
         if org_id is not None:
             if model is Organization:
                 stmt = stmt.where(Organization.id == org_id)
@@ -1115,26 +1142,40 @@ async def update_resource(
         if "key" in payload and payload["key"] != item_id:
             detail["key"] = payload["key"]
         _write_audit(db, profile, "update", "config", item_id, detail)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # #1625 — same 409 contract as the generic update path.
+            await db.rollback()
+            raise HTTPException(status.HTTP_409_CONFLICT, "Resource already exists") from None
         await db.refresh(obj)
         return _row_to_dict(obj)
 
     payload = _writable_payload(resource, body)
+    if resource == "kids":
+        _validate_kids_payload(payload)
     # #968 — org-scoped update: prevent overwriting org_id to a different value.
-    if model in ORG_SCOPED_MODELS and "org_id" in payload:
-        org_id = getattr(request.state, "org_id", None) or request.headers.get("X-Org-ID")
-        if org_id and payload["org_id"] is not None:
-            payload_org = uuid.UUID(str(payload["org_id"])) if not isinstance(payload["org_id"], uuid.UUID) else payload["org_id"]
-            request_org = uuid.UUID(str(org_id)) if not isinstance(org_id, uuid.UUID) else org_id
-            if payload_org != request_org:
-                raise HTTPException(
-                    status.HTTP_403_FORBIDDEN,
-                    "Cannot move resource to a different organization",
-                )
+    # #1627/#1628 — a malformed body/header org_id is a 400 via the shared
+    # parsers, never an unhandled ValueError → 500.
+    if model in ORG_SCOPED_MODELS and "org_id" in payload and payload["org_id"] is not None:
+        org_id = getattr(request.state, "org_id", None)
+        if org_id is None:
+            org_id = parse_org_id_header(request)
+        if org_id is not None and parse_uuid(payload["org_id"], what="org_id") != org_id:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Cannot move resource to a different organization",
+            )
     for key, val in payload.items():
         setattr(obj, key, val)
-    _write_audit(db, profile, "update", resource, item_id, {"fields": sorted(payload)})
-    await db.commit()
+    try:
+        _write_audit(db, profile, "update", resource, item_id, {"fields": sorted(payload)})
+        await db.commit()
+    except IntegrityError:
+        # #1625 — a duplicate unique key / FK / CHECK violation is a clean 409
+        # Conflict (mirroring /auth/signup), never a bare 500.
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Resource already exists") from None
     await db.refresh(obj)
     return _row_to_dict(obj)
 

@@ -141,6 +141,13 @@ export default function HomeScreen({
       setScanOpen(false);
     }, [stopScanner, setScanOpen]);
     useDialogFocus(scanOpen, closeScan, scanSheetRef);
+    // #1603 — the beat-the-owl drill sheet is a modal dialog: focus moves to the
+    // first option on open, Tab is trapped, Enter picks, Escape closes + restores.
+    const challengeRef = useRef<HTMLDivElement>(null);
+    useDialogFocus(Boolean(challenge), closeChallenge, challengeRef);
+    // #1604 — the first-play tour card is a modal dialog with the same treatment.
+    const tourRef = useRef<HTMLDivElement>(null);
+    useDialogFocus(tourStep !== null, closeTour, tourRef);
     // #1122 — the journey view (recommended next skill + the stop path around
     // "you are here") is one memoized unit keyed on [skillsMap, kid.id], so an
     // unrelated store tick re-renders Home without re-sweeping the 135-stop
@@ -1061,7 +1068,7 @@ export default function HomeScreen({
               zero Phaser changes. */}
           {challenge && (
             <div className="challenge-overlay" onClick={closeChallenge}>
-              <div className="challenge-sheet" role="dialog" aria-label={mature ? t.chTileMature : t.chTile} onClick={(e) => e.stopPropagation()}>
+              <div className="challenge-sheet" role="dialog" aria-label={mature ? t.chTileMature : t.chTile} onClick={(e) => e.stopPropagation()} ref={challengeRef}>
                 {challenge.won ? (
                   <>
                     <div className="challenge-result" role="status">
@@ -1149,6 +1156,7 @@ export default function HomeScreen({
                 role="dialog"
                 aria-label={t.tourTitle}
                 onClick={(e) => e.stopPropagation()}
+                ref={tourRef}
               >
                 <div className="tour-emoji" aria-hidden="true">{TOUR_STEPS[tourStep].emoji}</div>
                 <div className="tour-title">

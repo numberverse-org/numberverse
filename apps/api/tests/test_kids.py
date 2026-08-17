@@ -36,6 +36,7 @@ from app.routers.kids import (  # noqa: E402
     _age_band_cap,
     _clamp_goal,
     _weekly_trigger,
+    router as kids_router,
     update_kid,
 )
 from app.schemas import KidUpdateIn  # noqa: E402
@@ -167,6 +168,28 @@ s = KidSettings(kid_id=kid.id, max_band=2)  # parent narrowed below the age defa
 out, db = run_update_scenario(kid, s, KidUpdateIn(birth_year=byr(9)))  # age 9 → cap 4
 check("G: cap raised 2 → 4 when the age surface outgrows a manual narrowing", s.max_band, 4)
 
+# H—J: #1648 — model_fields_set distinguishes 'omitted' from 'sent as null'.
+print("H—J:  #1648 — update_kid clear semantics (model_fields_set)…")
+
+# H: explicit null avatar CLEARS the field.
+kid = make_kid(avatar="🦉", birth_year=byr(6))
+out, db = run_update_scenario(kid, None, KidUpdateIn(avatar=None))
+check("H: explicit avatar null clears the avatar", out.avatar, None)
+check("H: avatar cleared, birth_year untouched", out.birth_year, byr(6))
+
+# I: explicit null birth_year CLEARS the field.
+kid = make_kid(avatar="🦉", birth_year=byr(6))
+out, db = run_update_scenario(kid, None, KidUpdateIn(birth_year=None))
+check("I: explicit birth_year null clears birth_year", out.birth_year, None)
+check("I: birth_year cleared, avatar untouched", out.avatar, "🦉")
+
+# J: an OMITTED key does not change the field (the old `if val is not None`
+# guard treated omitted and null identically — both were skipped).
+kid = make_kid(avatar="🦉", birth_year=byr(6), name="Old")
+out, db = run_update_scenario(kid, None, KidUpdateIn(name="Renamed"))
+check("J: omitted avatar unchanged", out.avatar, "🦉")
+check("J: omitted birth_year unchanged", out.birth_year, byr(6))
+
 print("③  _weekly_trigger — #1536 signal selection + no double-fire…")
 check("rounds=0 → reminder", _weekly_trigger(mastered_today=[], mastered_this_week=[], streak=0, rounds=0), "reminder")
 check("rounds=0 beats a stale streak milestone (new-week reset)", _weekly_trigger(mastered_today=[], mastered_this_week=[], streak=7, rounds=0), "reminder")
@@ -194,6 +217,33 @@ check("daily cap beats weekday caps (45, daily 30 → 30)", _clamp_goal(45, 30, 
 check("no caps → goal as-is (45→45)", _clamp_goal(45, None, None), 45)
 check("all-zero weekday caps → no cap (45→45)", _clamp_goal(45, None, "0,0,0,0,0,0,0"), 45)
 check("daily_cap 0 treated as no cap (45→45)", _clamp_goal(45, 0, None), 45)
+
+print("⑤  #1644 — weak-skills threshold is bounded at the framework boundary…")
+
+
+def _weak_skill_threshold_constraints():
+    """Return (default, ge, le) for the /weak-skills `threshold` query param."""
+    for route in kids_router.routes:
+        if not hasattr(route, "path") or "weak-skills" not in (route.path or ""):
+            continue
+        for mf in route.dependant.query_params:
+            if mf.name != "threshold":
+                continue
+            fi = mf.field_info
+            ge = le = None
+            for m in getattr(fi, "metadata", None) or []:
+                if type(m).__name__ == "Ge":
+                    ge = m.ge
+                elif type(m).__name__ == "Le":
+                    le = m.le
+            return getattr(fi, "default", None), ge, le
+    return None, None, None
+
+
+_default, _ge, _le = _weak_skill_threshold_constraints()
+check("threshold default is 0.7", _default, 0.7)
+check("threshold has ge=0.0 (no negative thresholds)", _ge, 0.0)
+check("threshold has le=1.0 (no >1 mastery thresholds)", _le, 1.0)
 
 print()
 print(f"✓ kids helper matrix: {passes} passed, {fails} failed")

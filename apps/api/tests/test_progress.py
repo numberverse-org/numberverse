@@ -32,7 +32,7 @@ from sqlalchemy import Select, UniqueConstraint
 from sqlalchemy.dialects.postgresql.dml import Insert as PGInsert
 
 from app.bandlock import skill_band_allowed
-from app.models import Kid, KidSettings, ProgressEvent, SkillMastery
+from app.models import Kid, KidSettings, ProgressEvent, SkillMastery, Subscription
 from app.routers import progress as P
 from app.routers.progress import (  # noqa: E402
     DEFAULT_PARAMS,
@@ -42,7 +42,7 @@ from app.routers.progress import (  # noqa: E402
     _decay,
     _next_mastered_at,
 )
-from app.schemas import ProgressBatchIn, ProgressEventIn  # noqa: E402
+from app.schemas import AccelerationIn, ProgressBatchIn, ProgressEventIn  # noqa: E402
 
 passes = 0
 fails = 0
@@ -124,6 +124,10 @@ class FakeSession:
 
     async def scalar(self, stmt):
         if isinstance(stmt, Select) and self.kids:
+            # #premium — resolve_plan queries Subscription; a missing row means
+            # "free" plan, so return None for that lookup (never a Kid).
+            if stmt.column_descriptions[0].get("entity") is Subscription:
+                return None
             return next(iter(self.kids.values()))
         return None
 
@@ -179,6 +183,78 @@ def ev(kid_id, skill_id, *, correct=True, uid=None, timestamp=None):
         uid=uid,
         timestamp=timestamp,
     )
+
+
+class FakeAccelSession:
+    """In-memory AsyncSession shaped for `record_acceleration` (#1640).
+
+    Simulates the pieces the /acceleration handler touches:
+      · _get_owned_kid  → scalar(Select) returns the stored kid (ownership ok)
+      · _load_band_caps → execute(Select) returns (kid_id, max_band) rows
+      · accel insert    → execute(PGInsert) applies the (kid_id, uid) dedup the
+        real uq_accel_kid_uid constraint gives ON CONFLICT DO NOTHING, and
+        records each stored row so the test can assert ROW COUNT stability.
+    """
+
+    def __init__(self):
+        self.kids: dict[uuid.UUID, Kid] = {}
+        self.settings: dict[uuid.UUID, KidSettings] = {}
+        self.rows: list[dict] = []  # stored acceleration rows (deduped)
+        self._seen_uids: set[tuple] = set()
+        self.last_insert_rows: list[dict] | None = None
+        self.committed = False
+
+    def add_kid(self, *, max_band: int | None = None) -> Kid:
+        kid = Kid(id=uuid.uuid4(), profile_id=uuid.uuid4(), name="Test Kid")
+        self.kids[kid.id] = kid
+        if max_band is not None:
+            self.settings[kid.id] = KidSettings(kid_id=kid.id, max_band=max_band)
+        return kid
+
+    async def scalar(self, stmt):
+        if isinstance(stmt, Select) and self.kids:
+            # #premium — resolve_plan queries Subscription; a missing row means
+            # "free" plan, so return None for that lookup (never a Kid).
+            if stmt.column_descriptions[0].get("entity") is Subscription:
+                return None
+            return next(iter(self.kids.values()))
+        return None
+
+    async def execute(self, stmt):
+        if isinstance(stmt, Select):
+            rows = [(kid_id, ks.max_band) for kid_id, ks in self.settings.items()]
+            return FakeResult(rows)
+        if isinstance(stmt, PGInsert):
+            rows = _extract_insert_rows(stmt)
+            self.last_insert_rows = rows
+            inserted = []
+            for r in rows:
+                key = (r["kid_id"], r["uid"])
+                if key in self._seen_uids:
+                    continue  # ON CONFLICT DO NOTHING → not re-counted
+                self._seen_uids.add(key)
+                self.rows.append(r)
+                inserted.append(r)
+            return FakeResult(inserted)  # rowcount == number actually inserted
+        return FakeResult([])
+
+    async def commit(self):
+        self.committed = True
+
+
+def accel(kid_id, skill_id, *, reason="easy", band_from=1, band_to=2, uid=None):
+    return AccelerationIn(
+        kid_id=kid_id,
+        skill_id=skill_id,
+        reason=reason,
+        band_from=band_from,
+        band_to=band_to,
+        uid=uid,
+    )
+
+
+async def post_acceleration(fake, entries):
+    return await P.record_acceleration(entries, profile=_FakeProfile(), db=fake)
 
 
 async def main():
@@ -338,6 +414,28 @@ async def main():
     check("band policy: band 1 passes under cap 1", skill_band_allowed("count-1-10", SKILL_BANDS, 1), True)
     check("band policy: unknown skill fails closed under a cap", skill_band_allowed("nope", SKILL_BANDS, 1), False)
     check("band policy: no cap admits everything", skill_band_allowed("count-to-50", SKILL_BANDS, None), True)
+
+    print("④  #1640 — acceleration: uid-less rows get a synthetic uid; durable-outbox replay stays idempotent…")
+
+    # #1640 — /acceleration stored a.uid VERBATIM. A None uid (legacy client)
+    # defeated the (kid_id, uid) ON CONFLICT dedup because Postgres treats NULLs
+    # as distinct, so a lost-ACK re-post created duplicate skip entries. Mirror
+    # the stories/progress fix: synthesize a server-side uid for every entry
+    # that arrives without one, so the unique key NEVER sees a NULL.
+    fake = FakeAccelSession()
+    kid = fake.add_kid(max_band=5)
+    r1 = await post_acceleration(fake, [accel(kid.id, "count-to-50", uid=None)])
+    check("uid-less acceleration entry records", r1["recorded"], 1)
+    check("server synthesized a non-NULL uid for dedup", fake.last_insert_rows[0]["uid"] is not None, True)
+    check("synthesized uid is a UUID string", isinstance(fake.last_insert_rows[0]["uid"], str), True)
+    stable_uid = fake.last_insert_rows[0]["uid"]
+
+    # A replayed durable-outbox batch (now carrying the stable uid) is a silent
+    # no-op — the SAME (kid_id, uid) that Postgres would conflict on.
+    r2 = await post_acceleration(fake, [accel(kid.id, "count-to-50", uid=stable_uid)])
+    check("replayed acceleration entry records 0", r2["recorded"], 0)
+    check("replay counted as duplicate", r2["duplicates_skipped"], 1)
+    check("acceleration row count stays 1 after replay", len(fake.rows), 1)
 
 
 asyncio.run(main())

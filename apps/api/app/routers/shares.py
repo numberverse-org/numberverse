@@ -17,9 +17,9 @@ import hashlib
 import secrets
 import uuid
 from collections import Counter
-from datetime import date, timedelta
+from datetime import datetime, time, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -256,7 +256,14 @@ async def revoke_share_token(
     response_model=ShareSnapshotOut,
     dependencies=[Depends(SHARE_SNAPSHOT_RATE_LIMIT)],
 )
-async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
+async def get_share_snapshot(
+    # #1645 — tokens are `token_urlsafe(24)` (~32 chars); a 64-char cap rejects
+    # oversized/megabyte tokens at the framework boundary (422) before they ever
+    # reach the DB equality lookup. The route is IP-rate-limited, but a single
+    # request should still not be able to push a huge string into the query.
+    token: str = Path(max_length=64),
+    db: AsyncSession = Depends(get_db),
+):
     """Public weekly snapshot for a share card. NO auth: the token IS the key.
     Unknown/revoked/paused tokens → 404 (a guessed link finds nothing)."""
     if not token:
@@ -286,13 +293,20 @@ async def get_share_snapshot(token: str, db: AsyncSession = Depends(get_db)):
     if settings is not None and settings.paused:
         await _share_not_found()
 
-    now = date.today()
+    # #1646 — events are stamped `datetime.now(timezone.utc)` server-side, so the
+    # week window and `week_of` must derive from UTC too (mirrors kids.py weekly,
+    # #857). A naive `date.today()` on a non-UTC host would shift the card's
+    # 7-day window / active_days / minutes_by_day a day off from the in-app view.
+    now = datetime.now(timezone.utc).date()
     start = now - timedelta(days=6)
+    # Bind the window as an aware UTC midnight (same pattern as kids.py weekly) so
+    # the timestamptz comparison doesn't depend on the Postgres session TimeZone.
+    start_dt = datetime.combine(start, time.min, tzinfo=timezone.utc)
     events = (
         await db.scalars(
             select(ProgressEvent).where(
                 ProgressEvent.kid_id == kid.id,
-                ProgressEvent.created_at >= start,
+                ProgressEvent.created_at >= start_dt,
             )
         )
     ).all()

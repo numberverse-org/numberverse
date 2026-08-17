@@ -27,11 +27,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pydantic import ValidationError  # noqa: E402
 
 from app.schemas import (  # noqa: E402
+    AccelerationIn,
     KidIn,
     KidOut,
+    KidSettingsIn,
     KidSnapshotOut,
     KidUpdateIn,
+    LearningStoryIn,
     ProfileUpdateIn,
+    ProgressBatchIn,
+    ProgressEventIn,
     SignupIn,
 )
 
@@ -177,7 +182,62 @@ for model in (KidIn, KidUpdateIn, KidOut, KidSnapshotOut):
     kw = build_kwargs(model, name="Aarif", display_name="Aarif", avatar=None)
     check(f"{label} accepts None avatar", accepts(model, **kw), True)
 
+print("③  validation caps — bounded strings (#1641/#1642), bounded list (#1643), bounded coins (#1649)…")
+
+KID = "00000000-0000-0000-0000-000000000001"
+
+# ── #1641 LearningStoryIn: game_id ≤ 64, error_kind/action ≤ 24, misconception_code ≤ 64 ──
+def story(**kw):
+    base = dict(kid_id=KID, skill_id="count-1-10", game_id="tower-tap", outcome=False)
+    base.update(kw)
+    return base
+
+check("LearningStoryIn accepts a normal game_id", accepts(LearningStoryIn, **story()), True)
+check("#1641 LearningStoryIn rejects a 65-char game_id", rejects(LearningStoryIn, **story(game_id="g" * 65)), True)
+check("#1641 LearningStoryIn accepts a 64-char game_id (boundary)", accepts(LearningStoryIn, **story(game_id="g" * 64)), True)
+# The vocab fields are enum-bounded (#1614) too; these assert the max_length caps
+# are defense-in-depth should the catalog ever grow or the enum validator change.
+check("#1641 LearningStoryIn rejects an over-long misconception_code", rejects(LearningStoryIn, **story(misconception_code="m" * 65)), True)
+check("#1641 LearningStoryIn rejects an over-long error_kind", rejects(LearningStoryIn, **story(error_kind="e" * 25)), True)
+check("#1641 LearningStoryIn rejects an over-long action", rejects(LearningStoryIn, **story(action="a" * 25)), True)
+
+# ── #1642 ProgressEventIn / AccelerationIn: skill_id, game_id ≤ 64 ──
+def pevent(**kw):
+    base = dict(kid_id=KID, skill_id="count-1-10", game_id="tower-tap", correct=True)
+    base.update(kw)
+    return base
+
+check("ProgressEventIn accepts normal ids", accepts(ProgressEventIn, **pevent()), True)
+check("#1642 ProgressEventIn rejects a 65-char game_id", rejects(ProgressEventIn, **pevent(game_id="g" * 65)), True)
+check("#1642 ProgressEventIn rejects a 65-char skill_id", rejects(ProgressEventIn, **pevent(skill_id="s" * 65)), True)
+
+def accel(**kw):
+    base = dict(kid_id=KID, skill_id="count-1-10", reason="easy", band_from=1, band_to=2)
+    base.update(kw)
+    return base
+
+check("#1642 AccelerationIn accepts a normal skill_id", accepts(AccelerationIn, **accel()), True)
+check("#1642 AccelerationIn rejects a 65-char skill_id", rejects(AccelerationIn, **accel(skill_id="s" * 65)), True)
+
+# ── #1643 KidSettingsIn.enabled_subjects: list ≤ 32, each item ≤ 16 ──
+check("#1643 enabled_subjects None stays None", KidSettingsIn(enabled_subjects=None).enabled_subjects, None)
+check("#1643 enabled_subjects accepts a 6-subject list",
+      accepts(KidSettingsIn, enabled_subjects=["math", "bangla", "english", "science", "bgs", "ict"]), True)
+check("#1643 enabled_subjects accepts exactly 32 items (boundary)",
+      accepts(KidSettingsIn, enabled_subjects=["math"] * 32), True)
+check("#1643 enabled_subjects rejects 33 items", rejects(KidSettingsIn, enabled_subjects=["math"] * 33), True)
+check("#1643 enabled_subjects rejects a 17-char item", rejects(KidSettingsIn, enabled_subjects=["x" * 17]), True)
+check("#1643 enabled_subjects accepts a 16-char item (boundary)", accepts(KidSettingsIn, enabled_subjects=["x" * 16]), True)
+
+# ── #1649 ProgressBatchIn.coins: each value in 0..1_000_000 ──
+base_events = [ProgressEventIn(**pevent())]
+check("#1649 coins accepts None", accepts(ProgressBatchIn, events=base_events, coins=None), True)
+check("#1649 coins accepts 0 (boundary)", accepts(ProgressBatchIn, events=base_events, coins={KID: 0}), True)
+check("#1649 coins accepts 1_000_000 (boundary)", accepts(ProgressBatchIn, events=base_events, coins={KID: 1_000_000}), True)
+check("#1649 coins rejects 1_000_001", rejects(ProgressBatchIn, events=base_events, coins={KID: 1_000_001}), True)
+check("#1649 coins rejects a negative value", rejects(ProgressBatchIn, events=base_events, coins={KID: -1}), True)
+
 print()
 print(f"✓ schemas validation matrix: {passes} passed, {fails} failed")
-print(f"SUMMARY schemas: {passes} checks, #1824+#1828 fixed, test green")
+print(f"SUMMARY schemas: {passes} checks, #1824+#1828+#1641+#1642+#1643+#1649 fixed, test green")
 sys.exit(1 if fails else 0)

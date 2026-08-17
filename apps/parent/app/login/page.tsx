@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { login, validateToken, type LoginResponse } from "../../lib/api";
-import { LOGIN_LANGS, type LoginLang } from "../lib/portal";
+import { LOGIN_LANGS, type LoginLang, nvTrackParent } from "../lib/portal";
 
 // Demo-mode only: the seeded demo@numberverse.dev account is REAL on the box
 // (a live kid + plus subscription). Advertising its credentials on a production
@@ -44,6 +44,8 @@ export default function LoginPage() {
         return;
       }
       localStorage.setItem("nv_parent_token", res.token);
+      // #1617 — local-only adoption signal (nothing leaves the device).
+      nvTrackParent("login");
       setOk(res);
     } catch (e) {
       // #1587 — surface the real cause: bad credentials (401), rate limit

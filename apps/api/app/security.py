@@ -17,7 +17,11 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     try:
         return bcrypt.checkpw(password.encode(), hashed.encode())
-    except ValueError:
+    except (ValueError, TypeError, AttributeError):
+        # #1630 — a malformed stored hash (NULL, non-ASCII, truncated) must
+        # degrade to a clean False → 401, never crash the login/change-password
+        # flows with a 500. TypeError/AttributeError cover `hashed.encode()`
+        # failing on a NULL or non-str row and bcrypt choking on bad bytes.
         return False
 
 

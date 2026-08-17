@@ -67,12 +67,17 @@ _stub("app.db", get_db=_get_db, Base=_Base)
 # limiter deps are only used as FastAPI's Depends() arguments, which this suite
 # bypasses by calling the raw functions directly.
 _stub("app.deps", get_current_profile=lambda *a, **k: None)
-# app.schemas — RoundedInt is the only name the import router uses; int|None is
-# faithful for these tests.
-_stub("app.schemas", RoundedInt=int | None)
-# app.scrub — redact_context is a pure PII scrubber tested separately; the
-# router only needs a callable envelope.
-_stub("app.scrub", redact_context=lambda ctx: ctx or {})
+# app.schemas — the import router reads RoundedInt + the shared context budget
+# constant (#1638); int|None is faithful for these tests.
+_stub("app.schemas", RoundedInt=int | None, CONTEXT_MAX_BYTES=16 * 1024)
+# app.scrub — redact_context + the context validators the import router reuses
+# are pure PII/validation helpers tested separately; callable envelopes suffice.
+_stub(
+    "app.scrub",
+    redact_context=lambda ctx: ctx or {},
+    clamp_context_strings=lambda ctx, n: ctx,
+    context_depth=lambda ctx: 0,
+)
 
 
 def _load(name, path):

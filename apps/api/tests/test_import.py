@@ -70,12 +70,53 @@ _stub("app.db", get_db=_get_db, Base=_Base)
 # limiter deps are only used as FastAPI's Depends() arguments, which this suite
 # bypasses by calling the raw endpoint directly.
 _stub("app.deps", get_current_profile=lambda *a, **k: None)
-# app.schemas — RoundedInt is the only name the import router uses; a plain
-# int|None alias is faithful for these tests.
-_stub("app.schemas", RoundedInt=int | None)
+# app.schemas — the import router reads RoundedInt plus the #1638 context-guard
+# names (CONTEXT_MAX_BYTES + the clamp/depth helpers re-exported from scrub.py).
+# RoundedInt is a plain int|None alias; the clamp/depth helpers are faithful
+# stand-ins for the real scrub implementations so the oversized/deep context
+# rejection tests exercise the real logic.
+def _clamp_context_strings(v, max_len):
+    out = {}
+    for k, val in v.items():
+        if isinstance(val, str):
+            out[k] = val[:max_len]
+        elif isinstance(val, dict):
+            out[k] = _clamp_context_strings(val, max_len)
+        elif isinstance(val, list):
+            out[k] = [
+                item[:max_len] if isinstance(item, str)
+                else _clamp_context_strings(item, max_len) if isinstance(item, dict)
+                else item
+                for item in val
+            ]
+        else:
+            out[k] = val
+    return out
+
+
+def _context_depth(v):
+    if not isinstance(v, dict):
+        return 0
+    if not v:
+        return 1
+    return 1 + max(_context_depth(val) if isinstance(val, dict) else 0 for val in v.values())
+
+
+_stub(
+    "app.schemas",
+    RoundedInt=int | None,
+    CONTEXT_MAX_BYTES=16 * 1024,
+    clamp_context_strings=_clamp_context_strings,
+    context_depth=_context_depth,
+)
 # app.scrub — redact_context is a pure PII scrubber tested separately; the
-# import logic only needs a callable envelope.
-_stub("app.scrub", redact_context=lambda ctx: ctx or {})
+# import logic also reads the context clamp/depth helpers from here (#1638).
+_stub(
+    "app.scrub",
+    redact_context=lambda ctx: ctx or {},
+    clamp_context_strings=_clamp_context_strings,
+    context_depth=_context_depth,
+)
 
 
 def _load(name, path):
@@ -405,7 +446,12 @@ foreign_kid = models.Kid(id=KID_UUID, profile_id=OTHER_ID, name="Other")
 result4, _db = run_sync(make_doc(), existing_sets=[[foreign_kid], [], [], [], []])
 check("foreign existing kid → conflict", result4.conflicts, 1)
 check("foreign existing kid → created 0", result4.created, 0)
-check("foreign existing kid detail", "another profile" in result4.conflict_details[0], True)
+# #1634 — the cross-profile reason is NEUTRAL: the importer is their own
+# parent account, so confirming a UUID is owned by someone else would leak
+# account ownership through /import/restore.
+check("foreign existing kid detail is neutral", "id conflict" in result4.conflict_details[0], True)
+check("foreign existing kid detail drops the ownership rationale",
+      "another profile" not in result4.conflict_details[0], True)
 
 # document supplies a profile_id that differs from the caller → conflict
 result5, _db = run_sync(make_doc(profile_id=OTHER_ID), existing_sets=[[], [], [], [], []])
@@ -431,12 +477,36 @@ for bad_fmt, bad_ver in [("bogus", VERSION), (FORMAT, 999)]:
     except import_data.HTTPException as e:
         check(f"format/version {bad_fmt}/{bad_ver} → 422", e.status_code, 422)
 
-# oversized body (content-length > 10 MB) → 413 before any row is written
+# oversized body (content-length > MAX_IMPORT_BODY_BYTES) → 413 before any row
+# is written — the route guard agrees with the app-wide 1 MiB cap (#1632).
 try:
     run_sync(make_doc(), headers={"content-length": str(import_data.MAX_IMPORT_BODY_BYTES + 1)})
     check("oversized body → 413", "no exception", "HTTPException")
 except import_data.HTTPException as e:
     check("oversized body → 413", e.status_code, 413)
+
+# MAX_IMPORT_BODY_BYTES must agree with the app-wide 1 MiB cap — a single
+# source of truth (#1632). main.py aliases THIS constant into the middleware's
+# `MAX_REQUEST_BODY_BYTES`, so an import guard ever higher than 1 MiB would be
+# an unreachable lie. (We assert the value here without importing app.main — a
+# heavy module that needs pydantic_settings — to keep this suite portable to
+# the bare-Python CI runner.)
+check("MAX_IMPORT_BODY_BYTES is 1 MiB (#1632)",
+      import_data.MAX_IMPORT_BODY_BYTES, 1024 * 1024)
+
+# non-numeric Content-Length → hard 400 (#1633), never a silent skip
+try:
+    run_sync(make_doc(), headers={"content-length": "not-a-number"})
+    check("non-numeric Content-Length → 400", "no exception", "HTTPException")
+except import_data.HTTPException as e:
+    check("non-numeric Content-Length → 400", e.status_code, 400)
+
+# an empty-string / malformed content-length on an otherwise valid body → 400
+try:
+    run_sync(make_doc(), headers={"content-length": "12x34"})
+    check("mixed-content Content-Length → 400", "no exception", "HTTPException")
+except import_data.HTTPException as e:
+    check("mixed-content Content-Length → 400", e.status_code, 400)
 
 # pydantic field constraints reject out-of-range / malformed settings
 from pydantic import ValidationError  # noqa: E402
@@ -464,6 +534,68 @@ _import_budget = inspect.getclosurevars(import_data.IMPORT_RATE_LIMIT).nonlocals
 check("IMPORT_RATE_LIMIT strictly below _REQUESTS_PER_MIN (120/min)",
       _import_budget is not None and _import_budget < _REQUESTS_PER_MIN, True)
 check("IMPORT_RATE_LIMIT is 10/min", _import_budget, 10)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ⑫  #1638/#1639 — import schema caps: oversized/deep context and list-count
+#     ceilings are rejected at the schema boundary (422)
+# ═══════════════════════════════════════════════════════════════════
+print("⑫  #1638/#1639 — context guards + list-count caps reject at the boundary…")
+
+
+def _nested(depth):
+    ctx = {}
+    cur = ctx
+    for _ in range(depth):
+        cur["a"] = {}
+        cur = cur["a"]
+    return ctx
+
+
+def rejects(label, fn):
+    try:
+        fn()
+        check(f"{label} rejected", "accepted", "ValidationError")
+    except ValidationError:
+        check(f"{label} rejected", "rejected", "rejected")
+
+
+# #1638 — the SAME context guards as the live /stories route: 16 KiB serialized
+# budget, 4 KiB per-string clamp, max 10 nesting levels → 422.
+rejects("#1638 context over 16 KiB serialized",
+        lambda: import_data.ImportStoryIn(uid="x", skill_id="s", game_id="g", outcome=True,
+                                          context={f"k{i}": "value" for i in range(3000)}))
+rejects("#1638 context deeper than 10 levels",
+        lambda: import_data.ImportStoryIn(uid="x", skill_id="s", game_id="g", outcome=True,
+                                          context=_nested(11)))
+
+# 4 KiB per-string clamp: a huge single string is CLAMPED (not rejected) and
+# the stored envelope stays under the serialized budget.
+_clamped = import_data.ImportStoryIn(
+    uid="x", skill_id="s", game_id="g", outcome=True, context={"t": "a" * (200 * 1024)}
+).context
+check("#1638 huge single string clamped to 4 KiB", len(_clamped["t"]), 4096)
+
+# a 10-level context is still accepted (matches live-path cap). _nested(d)
+# yields depth d+1 (the innermost empty dict counts as level 1), so _nested(9)
+# is exactly depth 10 — the boundary — and is allowed.
+import_data.ImportStoryIn(uid="x", skill_id="s", game_id="g", outcome=True,
+                          context=_nested(9))
+check("#1638 10-level context accepted", "accepted", "accepted")
+
+# #1639 — per-kid / per-document list ceilings → 422.
+rejects("#1639 >500 mastery", lambda: import_data.ImportKidIn(
+    name="x", mastery=[default_mastery() for _ in range(501)]))
+rejects("#1639 >5000 events", lambda: import_data.ImportKidIn(
+    name="x", events=[default_event() for _ in range(5001)]))
+rejects("#1639 >500 stories", lambda: import_data.ImportKidIn(
+    name="x", stories=[default_story() for _ in range(501)]))
+rejects("#1639 >64 kids in a document", lambda: import_data.ImportIn(
+    format=FORMAT, version=VERSION, kids=[import_data.ImportKidIn(name=str(i)) for i in range(65)]))
+
+# at the cap (boundary inclusive) is accepted
+import_data.ImportKidIn(name="x", events=[default_event() for _ in range(5000)])
+check("#1639 5000 events accepted", "accepted", "accepted")
 
 
 # ═══════════════════════════════════════════════════════════════════

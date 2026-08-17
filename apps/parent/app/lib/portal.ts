@@ -38,6 +38,52 @@ if (typeof window !== "undefined") {
   });
 }
 
+/** #1617 — local-only feature-usage ring counter. The portal stays ZERO
+ *  analytics: this is a tiny privacy-preserving buffer in localStorage that
+ *  records WHICH parent features get used, and nothing else. Like the kid
+ *  app's `nv_play_minutes` pattern, it never leaves the device (no fetch, no
+ *  beacon, no SDK, no cookies). The parent can export it alongside the
+ *  diagnostics buffer above, and it is capped so it can never grow unbounded. */
+export const NV_PARENT_USAGE_MAX = 200;
+export const NV_PARENT_USAGE_KEY = "nv_parent_usage";
+
+export interface ParentUsageEntry {
+  /** Stable event handle, e.g. "worksheet_print", "switch_kid". */
+  event: string;
+  /** ISO timestamp of when the event fired. */
+  at: string;
+}
+
+/** Read the current usage ring from localStorage ([] on any failure — private
+ *  browsing / corrupted JSON never breaks the caller). */
+export function readParentUsage(): ParentUsageEntry[] {
+  try {
+    const raw = localStorage.getItem(NV_PARENT_USAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e): e is ParentUsageEntry =>
+        !!e && typeof (e as ParentUsageEntry).event === "string" && typeof (e as ParentUsageEntry).at === "string"
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** Record one parent feature use into the local-only ring. Best-effort (never
+ *  throws, never blocks the caller), and capped so the ring stays bounded.
+ *  Handlers call this once per meaningful action. */
+export function nvTrackParent(event: string): void {
+  try {
+    const next = [...readParentUsage(), { event, at: new Date().toISOString() }];
+    if (next.length > NV_PARENT_USAGE_MAX) next.splice(0, next.length - NV_PARENT_USAGE_MAX);
+    localStorage.setItem(NV_PARENT_USAGE_KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable/full — the event is dropped, never an error */
+  }
+}
+
 
 export const AVATARS = ["🛡️", "🔮", "🗡️", "🪓", "🏹", "🦊", "🐱", "🐼", "🐸", "🦄", "🐯", "🐰", "🐨", "🐹", "🦁"];
 
@@ -1074,6 +1120,9 @@ export const DEBUG_LANGS = {
     export: "📋 Export as text",
     exported: "Copied diagnostics to clipboard ✓",
     missing: "missing",
+    // #1617 — local-only feature-usage ring, exportable beside the errors.
+    usageExport: "📋 Export usage",
+    usageExported: "Copied usage to clipboard ✓",
   },
   bn: {
     title: "🩺 ডায়াগনস্টিকস",
@@ -1093,6 +1142,9 @@ export const DEBUG_LANGS = {
     export: "📋 টেক্সট হিসেবে কপি করুন",
     exported: "ডায়াগনস্টিকস ক্লিপবোর্ডে কপি হয়েছে ✓",
     missing: "অনুপস্থিত",
+    // #1617 — local-only feature-usage ring, exportable beside the errors.
+    usageExport: "📋 ব্যবহারের তথ্য কপি করুন",
+    usageExported: "ব্যবহারের তথ্য ক্লিপবোর্ডে কপি হয়েছে ✓",
   },
 } as const;
 

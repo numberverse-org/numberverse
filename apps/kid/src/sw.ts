@@ -309,7 +309,14 @@ async function apiNetworkBoundary({ request }: { request: Request }): Promise<Re
   } catch {
     // Network unreachable — NEVER let this escape as a network failure.
     if (request.method === "GET") {
-      const cached = await cache.match(request, { ignoreSearch: true });
+      // #1650 — match with the EXACT key the put wrote (query included).
+      // ignoreSearch would collapse every /api endpoint to its bare pathname
+      // and answer an offline ?kid=B request with whatever ?kid=A body was last
+      // cached — serving the WRONG child's roster/snapshots/settings on a
+      // multi-kid shared device with no staleness signal. The 503 envelope (not
+      // a substituted body) is the safe failure mode for a query that wasn't
+      // cached.
+      const cached = await cache.match(request);
       if (cached) return staleEnvelope(cached);
       return offlineEnvelope(503, {});
     }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signup, type LoginResponse } from "../../lib/api";
-import { SIGNUP_LANGS, type SignupLang } from "../lib/portal";
+import { SIGNUP_LANGS, type SignupLang, nvTrackParent } from "../lib/portal";
 
 /** #1537 — the parent portal's missing self-onboarding path. Same shell/card
  *  styling as /login, but POSTs the signup shape and, on success, stores the
@@ -38,6 +38,8 @@ export default function SignupPage() {
     try {
       const res = await signup(email.trim(), password, name.trim());
       localStorage.setItem("nv_parent_token", res.token);
+      // #1617 — local-only adoption signal (nothing leaves the device).
+      nvTrackParent("signup");
       setOk(res);
     } catch (e) {
       // #1587 — surface the real cause: already-registered email (409), rate

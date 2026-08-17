@@ -10,11 +10,12 @@ Covers:
      - unsafe header values are sanitized (CR/LF stripped, capped at 64).
   ② app.exception_handler(Exception): an unhandled route exception → 500, an
      ERROR record with method/path/status/request_id lands (and the structured
-     _JsonFormatter also stamps request_id on the record), and the 500 response
-     still carries X-Request-ID.
+     _JsonFormatter also stamps request_id on the record), the 500 response
+     carries X-Request-ID, and the 500 BODY carries request_id too (#1626).
   ③ app.exception_handler(HTTPException): 5xx logs, 4xx stays quiet; the
      client-visible {"detail": ...} shape is unchanged.
-  ④ RequestValidationError (422) is not spammed.
+  ④ RequestValidationError (422) is not spammed, keeps FastAPI's detail array,
+     and carries request_id in the body (#1626).
 
 Run:  cd apps/api && python3 tests/test_request_id.py
 """
@@ -249,7 +250,9 @@ def test_exception_handlers():
     rid = "boom-req-001"
     r = client.get("/__test_boom", headers={"X-Request-ID": rid})
     check("unhandled exception → 500", r.status_code, 500)
-    check("500 body shape unchanged", r.json(), {"detail": "Internal Server Error"})
+    _500_body = r.json()
+    check("500 body detail unchanged", _500_body.get("detail"), "Internal Server Error")
+    check("500 body carries request_id (#1626)", _500_body.get("request_id"), rid)
     check("500 response carries X-Request-ID", r.headers.get("x-request-id"), rid)
     errs = _records(path="/__test_boom")
     check("one ERROR record for the raised route", len(errs) == 1, f"got {len(errs)}")
@@ -294,6 +297,11 @@ def test_validation_422_quiet():
     r = client.post("/__test_validate", json={"email": "not-an-email", "age": "x"})
     check("422 status", r.status_code, 422)
     check("422 response carries X-Request-ID", bool(r.headers.get("x-request-id")))
+    _422_body = r.json()
+    check("422 body keeps FastAPI's detail array (not flattened)",
+          isinstance(_422_body.get("detail"), list) and len(_422_body["detail"]) >= 1, True)
+    check("422 body carries request_id (#1626)",
+          _422_body.get("request_id"), r.headers.get("x-request-id"))
     errs = _records(path="/__test_validate")
     check("422 produces no ERROR record", len(errs) == 0, f"got {len(errs)}")
 

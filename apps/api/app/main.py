@@ -5,6 +5,8 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -14,6 +16,7 @@ from .db import SessionLocal
 from .embeddings import embed_stories
 from .errorlog import install as install_errorlog, request_id_ctx
 from .routers import admin, auth, content, export, kids, progress, shares
+from .routers.import_data import MAX_IMPORT_BODY_BYTES
 from .scrub import ScrubFilter
 from .seed import create_tables, seed
 
@@ -34,7 +37,12 @@ log = logging.getLogger("numberverse")
 # client can POST an arbitrarily large JSON document and force Pydantic to
 # deserialize the whole thing (memory/CPU exhaustion). 1 MiB is far beyond any
 # real Numberverse payload (auth, progress, content metadata, etc.).
-MAX_REQUEST_BODY_BYTES = 1 * 1024 * 1024
+#
+# #1632 — ONE source of truth: the value lives in routers/import_data.py
+# (`MAX_IMPORT_BODY_BYTES`) and is aliased here, so the import route's own
+# guard and the outermost middleware can never drift apart (two disagreeing
+# literals would leave a dead guard that can never fire).
+MAX_REQUEST_BODY_BYTES = MAX_IMPORT_BODY_BYTES
 
 
 class RequestBodySizeLimitMiddleware:
@@ -54,7 +62,17 @@ class RequestBodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        content_length = self._content_length(scope)
+        content_length, malformed_content_length = self._content_length(scope)
+        # #1633 — a present-but-non-numeric Content-Length is malformed HTTP.
+        # Reject it with a hard 400 before any framework work instead of
+        # silently forwarding the request to full body parsing.
+        if malformed_content_length:
+            await self._send_400(
+                send,
+                path=scope.get("path"),
+                request_id=request_id_ctx.get(),
+            )
+            return
         if content_length is not None and content_length > self.max_body_bytes:
             await self._send_413(
                 send,
@@ -80,7 +98,7 @@ class RequestBodySizeLimitMiddleware:
                         await self._send_413(
                             send,
                             path=scope.get("path"),
-                            content_length=self._content_length(scope) or "chunked",
+                            content_length=self._content_length(scope)[0] or "chunked",
                             request_id=request_id_ctx.get(),
                         )
                     # Stop the downstream app from consuming the rest of the
@@ -106,15 +124,23 @@ class RequestBodySizeLimitMiddleware:
 
     @staticmethod
     def _content_length(scope):
+        """Return ``(length, malformed)`` from the request's Content-Length headers.
+
+        ``length`` is the largest parsed numeric value (None when absent).
+        ``malformed`` is True when a Content-Length header is present but not a
+        plain number — callers reject that as a hard 400 (#1633) instead of
+        silently forwarding the request to full body parsing.
+        """
         lengths = []
+        malformed = False
         for name, value in scope.get("headers", []):
             if name.lower() != b"content-length":
                 continue
             try:
                 lengths.append(int(value.decode("latin-1").strip()))
             except (ValueError, UnicodeDecodeError):
-                continue
-        return max(lengths) if lengths else None
+                malformed = True
+        return (max(lengths) if lengths else None), malformed
 
     async def _send_413(self, send, path=None, content_length=None, request_id=None):
         # #1757 — oversized-body rejections were silent; surface them as a
@@ -130,6 +156,28 @@ class RequestBodySizeLimitMiddleware:
             {
                 "type": "http.response.start",
                 "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
+
+    async def _send_400(self, send, path=None, request_id=None):
+        # #1633 — a non-numeric Content-Length is malformed HTTP, not a body we
+        # can size-check; reject it before any framework work. Log the rejection
+        # once (like the 413 path, #1757) so malformed-header floods are
+        # debuggable.
+        log.warning(
+            "400 malformed content-length: path=%s request_id=%s",
+            path, request_id,
+        )
+        body = b'{"detail":"Invalid Content-Length header"}'
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 400,
                 "headers": [
                     (b"content-type", b"application/json"),
                     (b"content-length", str(len(body)).encode("ascii")),
@@ -478,10 +526,10 @@ app.include_router(admin.router)
 # now land as ERROR records in data/error.log (method/path/status/request_id,
 # PII-scrubbed) instead of falling through Starlette's ServerErrorMiddleware
 # with no method/path/request_id. The handlers still return the client-visible
-# JSON payload unchanged — the log record is the point. 4xx stays quiet
-# (except the 401/429 WARNINGs added by the rate-limit wave), and
-# RequestValidationError (422) keeps FastAPI's specific handler because it is
-# more specific than Exception.
+# JSON payload unchanged (500 additionally carries `request_id` in the body —
+# #1626) — the log record is the point. 4xx stays quiet (except the 401/429
+# WARNINGs added by the rate-limit wave), and RequestValidationError (422) has
+# its own handler below (#1626) that keeps FastAPI's detail array intact.
 @app.exception_handler(HTTPException)
 async def _http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code >= 500:
@@ -501,6 +549,21 @@ async def _http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
+@app.exception_handler(RequestValidationError)
+async def _validation_exception_handler(request: Request, exc: RequestValidationError):
+    # #1626 — 422 bodies now carry the same correlation id the header does, but
+    # the client-visible `detail` ARRAY is preserved exactly (many clients parse
+    # `detail[0].loc` / `detail[0].msg` — do NOT flatten it). No ERROR record:
+    # 422 stays quiet (#1750).
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": jsonable_encoder(exc.errors()),
+            "request_id": request_id_ctx.get(),
+        },
+    )
+
+
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request: Request, exc: Exception):
     log.error(
@@ -513,7 +576,12 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
     # id must be threaded explicitly here for 500 responses.
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error"},
+        content={
+            "detail": "Internal Server Error",
+            # #1626 — the correlation id lives in the body too, so clients that
+            # read the JSON body (not just the header) can correlate the 500.
+            "request_id": request_id_ctx.get(),
+        },
         headers={"X-Request-ID": request_id_ctx.get()},
     )
 

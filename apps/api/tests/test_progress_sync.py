@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import Select, Table, Update
 from sqlalchemy.dialects.postgresql.dml import Insert as PGInsert
 
-from app.models import Kid, KidSettings, SkillMastery
+from app.models import Kid, KidSettings, SkillMastery, Subscription
 from app.routers import progress as P
 from app.routers.progress import _lock_mastery_keys
 from app.schemas import ProgressBatchIn, ProgressEventIn
@@ -106,6 +106,10 @@ class FakeSession:
 
     async def scalar(self, stmt):
         if isinstance(stmt, Select) and self.kids:
+            # #premium — resolve_plan queries Subscription; a missing row means
+            # "free" plan, so return None for that lookup (never a Kid).
+            if stmt.column_descriptions[0].get("entity") is Subscription:
+                return None
             return next(iter(self.kids.values()))
         return None
 

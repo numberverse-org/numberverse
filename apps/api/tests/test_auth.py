@@ -361,6 +361,17 @@ async def _run():
     auth._LOGIN_GUARD = login_guard
     auth._PASSWORD_GUARD = pw_guard
 
+    print("⓪  verify_password tolerates corrupted stored hashes (#1630)…")
+    # A NULL / non-ASCII / truncated password_hash row must degrade to False
+    # (→ clean 401), never crash the auth flows with a 500.
+    check("corrupted hash (None) → False", verify_password("password123", None), False)
+    check("corrupted hash (non-ASCII bytes) → False",
+          verify_password("password123", "!!!\x80\xff"), False)
+    check("corrupted hash (truncated) → False",
+          verify_password("password123", "$2b$12$ab"), False)
+    check("corrupted hash (non-str attr) → False",
+          verify_password("password123", 12345), False)
+
     print("①  Signup: hashed password, session minted, dup rejected, length policy…")
     db = FakeDB()
     req = make_request()

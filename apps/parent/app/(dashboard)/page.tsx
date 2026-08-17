@@ -58,6 +58,7 @@ import { worksheetFor, type WorksheetProblem } from "../../lib/worksheet";
 import {
   ACCOUNT_LANGS,
   BANNER_LANGS,
+  DEBUG_LANGS,
   DEFAULT_SETTINGS,
   KID_FORM_LANGS,
   LOADING_LANGS,
@@ -78,7 +79,9 @@ import {
   buildWeeklyNarrative,
   kidCurrentBand,
   nvDiagErrors,
+  nvTrackParent,
   readNarrDraft,
+  readParentUsage,
   relTime,
   toBnNum,
   weekdayLimits,
@@ -349,6 +352,8 @@ export default function ParentDashboard() {
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
   const [diagCopied, setDiagCopied] = useState(false);
+  // #1617 — copied hint for the local-only usage-ring export button.
+  const [usageCopied, setUsageCopied] = useState(false);
   const [swVersion, setSwVersion] = useState<string | null>(null);
   // #85 — topbar sync chip: live online/offline + "synced X ago". Tracked from
   // the browser's network events; the manual button just re-runs refreshAll.
@@ -523,6 +528,9 @@ export default function ParentDashboard() {
         // #7/#85 — record when the dashboard data last came from the API, so the
         // diagnostics card + sync chip can say "synced X ago" (offline-safe).
         setLastSync(Date.now());
+        // #1617 — the parent is looking at the dashboard (weekly report view),
+        // so record the feature use locally. Never leaves the device.
+        nvTrackParent("weekly_report_view");
       } finally {
         setInitialLoading(false);
       }
@@ -730,6 +738,8 @@ export default function ParentDashboard() {
       } catch {
         /* private browsing — keep the selection in memory only */
       }
+      // #1617 — local-only adoption signal (nothing leaves the device).
+      nvTrackParent("switch_kid");
       setActiveId(id);
       // #1495 — kids loaded by refreshAll already have mastery cached, so this
       // early return IS the cache hit; no per-kid activity re-fetch happens on
@@ -873,6 +883,8 @@ export default function ParentDashboard() {
 
   async function handleSaveSettings() {
     if (!token || !activeId) return;
+    // #1617 — local-only adoption signal (nothing leaves the device).
+    nvTrackParent("save_settings");
     setBusy(true);
     setError(null);
     try {
@@ -908,6 +920,8 @@ export default function ParentDashboard() {
    *  every device. */
   async function handleTogglePause() {
     if (!token || !activeId) return;
+    // #1617 — local-only adoption signal (nothing leaves the device).
+    nvTrackParent("pause_toggle");
     setBusy(true);
     setError(null);
     try {
@@ -945,6 +959,8 @@ export default function ParentDashboard() {
   /** #132 — build + show a printable worksheet from the kid's weak skills. */
   async function handleWorksheet() {
     if (!token || !activeId || sheetBusy) return;
+    // #1617 — local-only adoption signal (nothing leaves the device).
+    nvTrackParent("worksheet_print");
     setSheetBusy(true);
     setError(null);
     try {
@@ -967,6 +983,8 @@ export default function ParentDashboard() {
    *  each QR is pure client-side (offline-first, nothing leaves the browser). */
   async function handleQRCards() {
     if (!token || !activeId || qrBusy) return;
+    // #1617 — local-only adoption signal (nothing leaves the device).
+    nvTrackParent("qr_cards");
     setQrBusy(true);
     setError(null);
     try {
@@ -1609,12 +1627,45 @@ export default function ParentDashboard() {
     }
   }
 
+  /** #1617 — export the local-only feature-usage ring as plain text (clipboard,
+   *  falling back to a download), mirroring exportDiagnostics above. Only event
+   *  handles + timestamps leave the browser — NO names, ids, emails or device
+   *  data, and nothing is ever sent over the network. */
+  async function exportUsage() {
+    const events = readParentUsage();
+    const rows: string[] = [
+      "Numberverse parent portal — local feature usage (on-device only)",
+      `time: ${new Date().toISOString()}`,
+      "--- usage (last 200) ---",
+      ...(events.length ? events.map((e) => `${e.at}  ${e.event}`) : ["(none recorded yet)"]),
+    ];
+    const text = rows.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setUsageCopied(true);
+      window.setTimeout(() => setUsageCopied(false), 2000);
+    } catch {
+      // Clipboard blocked → fall back to a download (still stays on-device).
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `numberverse-usage-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  }
+
   /** #245 — share-card deep link: mint the kid's opaque token (first share
    *  only) and append a UNIQUE per-kid link to the WhatsApp weekly card. The
    *  link opens an ANONYMOUS snapshot page — no name, no skill data, no
    *  tracking; only the parent can mint the token. */
   async function handleShareWeekly() {
     if (!token || !activeId || shareBusy[activeId]) return;
+    // #1617 — local-only adoption signal (nothing leaves the device).
+    nvTrackParent("share_report");
     const kidId = activeId;
     setShareBusy((prev) => ({ ...prev, [kidId]: true }));
     setShareErr((prev) => ({ ...prev, [kidId]: null }));
@@ -2198,6 +2249,19 @@ export default function ParentDashboard() {
               diagCopied={diagCopied}
               exportDiagnostics={exportDiagnostics}
             />
+            {/* #1617 — export the local-only feature-usage ring beside the
+                diagnostics buffer. Never leaves the device. */}
+            <div className="card" style={{ marginTop: 12 }}>
+              <h2>{DEBUG_LANGS[wizLang].usageExport}</h2>
+              <p className="hint">{DEBUG_LANGS[wizLang].hint}</p>
+              <button
+                className="btn btn-small"
+                type="button"
+                onClick={() => void exportUsage()}
+              >
+                {usageCopied ? DEBUG_LANGS[wizLang].usageExported : DEBUG_LANGS[wizLang].usageExport}
+              </button>
+            </div>
           </section>
 
           {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}

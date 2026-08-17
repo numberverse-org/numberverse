@@ -19,13 +19,15 @@ Idempotency:
 
 The route is auth-protected exactly like the export route (account+IP rate
 limiter over `get_current_profile`) and is bounded by the app's global request
-body limit plus an explicit 10 MB route guard.
+body limit — exactly 1 MiB (#1632). The route guard uses the SAME shared
+constant, so there is no misleading second limit.
 """
+import json
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,8 +35,8 @@ from ..db import get_db
 from ..export_format import FORMAT, VERSION
 from ..models import Kid, KidSettings, LearningStory, Profile, ProgressEvent, SkillMastery
 from ..ratelimit import rate_limit
-from ..schemas import RoundedInt
-from ..scrub import redact_context
+from ..schemas import CONTEXT_MAX_BYTES, RoundedInt
+from ..scrub import clamp_context_strings, context_depth, redact_context
 
 router = APIRouter(prefix="/api/v1", tags=["import"])
 
@@ -46,10 +48,14 @@ router = APIRouter(prefix="/api/v1", tags=["import"])
 # account+IP.
 IMPORT_RATE_LIMIT = rate_limit(limit=10)
 
-# Defense-in-depth on top of the app's global request-body guard (#836). The
-# global middleware is stricter (1 MiB), but if it is ever relaxed this route
-# still refuses absurd multi-megabyte documents before processing rows.
-MAX_IMPORT_BODY_BYTES = 10 * 1024 * 1024
+# #1632 — defense-in-depth on top of the app's global request-body guard (#836).
+# The global middleware (main.py:RequestBodySizeLimitMiddleware) is the REAL cap
+# (1 MiB), so this route guard must AGREE with it — an unreachable guard is a
+# lie. The value is defined ONCE here and main.py imports it, so the two can
+# never drift. Do NOT raise this without raising the global middleware cap (and
+# raising that cap is out of scope — a bigger import limit is a separate product
+# decision).
+MAX_IMPORT_BODY_BYTES = 1 * 1024 * 1024
 
 
 class ImportSettingsIn(BaseModel):
@@ -116,6 +122,36 @@ class ImportStoryIn(BaseModel):
     context: dict = Field(default_factory=dict)
     created_at: datetime | None = None
 
+    # #1638 — import validation parity: the LIVE /stories route
+    # (schemas.LearningStoryIn) bounds the context envelope with these SAME
+    # checks — 16 KiB serialized budget, 4 KiB per-string clamp, max 10 nesting
+    # levels — BEFORE redact_context runs. Imports must enforce the same bounds
+    # so a restore can't store an oversized/deep envelope the live route would
+    # reject. The helpers are imported read-only from schemas.py (sibling
+    # ownership — schemas.py is never edited).
+    @field_validator("context")
+    @classmethod
+    def _context_byte_budget(cls, v: dict) -> dict:
+        if not v:
+            return v
+        clamped = clamp_context_strings(v, 4096)
+        try:
+            size = len(json.dumps(clamped, separators=(",", ":"), default=str))
+        except (TypeError, ValueError, RecursionError):
+            raise ValueError("context must be JSON-serializable") from None
+        if size > CONTEXT_MAX_BYTES:
+            raise ValueError(f"context too large (max {CONTEXT_MAX_BYTES} bytes)")
+        return clamped
+
+    @field_validator("context")
+    @classmethod
+    def _context_no_deep_nesting(cls, v: dict) -> dict:
+        if not v:
+            return v
+        if context_depth(v) > 10:
+            raise ValueError("context nesting too deep (max 10 levels)")
+        return v
+
 
 class ImportKidIn(BaseModel):
     id: str | None = None  # exported kid id — the stable upsert key
@@ -125,9 +161,14 @@ class ImportKidIn(BaseModel):
     birth_year: int | None = Field(default=None, ge=2010, le=2030)
     created_at: datetime | None = None
     settings: ImportSettingsIn | None = None
-    mastery: list[ImportMasteryIn] = Field(default_factory=list)
-    events: list[ImportEventIn] = Field(default_factory=list)
-    stories: list[ImportStoryIn] = Field(default_factory=list)
+    # #1639 — per-kid ceilings consistent with realistic export sizes. The 1 MiB
+    # body cap bounds BYTES, not row count — an unbounded list would let one
+    # accepted kid smuggle tens of thousands of ORM adds + in-memory dedup
+    # entries in. Exceeding a cap → 422 at the schema boundary (mirrors
+    # ProgressBatchIn's max_length=200).
+    mastery: list[ImportMasteryIn] = Field(default_factory=list, max_length=500)
+    events: list[ImportEventIn] = Field(default_factory=list, max_length=5_000)
+    stories: list[ImportStoryIn] = Field(default_factory=list, max_length=500)
 
 
 class ImportIn(BaseModel):
@@ -135,7 +176,7 @@ class ImportIn(BaseModel):
     version: int
     exported_at: datetime | None = None
     profile: dict | None = None
-    kids: list[ImportKidIn] = Field(default_factory=list)
+    kids: list[ImportKidIn] = Field(default_factory=list, max_length=64)
 
 
 class ImportOut(BaseModel):
@@ -244,13 +285,22 @@ def _reject_oversized(request: Request) -> None:
     content_length = request.headers.get("content-length")
     if content_length:
         try:
-            if int(content_length) > MAX_IMPORT_BODY_BYTES:
-                raise HTTPException(
-                    status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    "Import document too large (max 10 MB)",
-                )
-        except ValueError:
-            pass
+            size = int(content_length)
+        except (ValueError, TypeError):
+            # #1633 — a non-numeric Content-Length is malformed HTTP. The outer
+            # request-body middleware rejects it first; keep the SAME hard 400
+            # here so a caller that reaches the route (bypassing or after the
+            # middleware) is treated consistently — never silently forwarded to
+            # full body parsing.
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Invalid Content-Length header",
+            ) from None
+        if size > MAX_IMPORT_BODY_BYTES:
+            raise HTTPException(
+                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                "Import document too large",
+            )
 
 
 @router.post("/import", response_model=ImportOut)
@@ -304,14 +354,19 @@ async def import_family_data(
             conflicts += 1
             conflict_details.append("Kid skipped: missing or invalid id")
             continue
+        # #1634 — both cross-profile dodges (foreign profile hint AND a kid id
+        # owned by another profile) get the SAME NEUTRAL reason. The importer is
+        # their own parent account: confirming that a specific UUID is owned by
+        # someone else would leak account ownership through /import/restore, so
+        # drop the rationale and keep the count.
         if item.profile_id is not None and item.profile_id != profile.id:
             conflicts += 1
-            conflict_details.append("Kid skipped: belongs to another profile")
+            conflict_details.append("Kid skipped: id conflict")
             continue
         existing = existing_kids.get(kid_uuid)
         if existing is not None and existing.profile_id != profile.id:
             conflicts += 1
-            conflict_details.append("Kid skipped: belongs to another profile")
+            conflict_details.append("Kid skipped: id conflict")
             continue
         accepted.append((item, kid_uuid, existing))
 

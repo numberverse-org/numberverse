@@ -55,6 +55,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi import HTTPException  # noqa: E402
 from sqlalchemy import Boolean, Float, Integer  # noqa: E402
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB  # noqa: E402
+from sqlalchemy.exc import IntegrityError  # noqa: E402
 
 from app.main import (  # noqa: E402
     MAX_REQUEST_BODY_BYTES,
@@ -171,11 +172,15 @@ class _FakeDB:
         self.storage = storage if storage is not None else _Storage()
         self.commits = 0
         self.flushes = 0
+        self.rollbacks = 0
         self.added = []
         self.deleted = []
         self.crud_rows = {}   # str(pk) -> model row, for db.get
         self.list_rows = []   # rows returned by db.scalars
         self._bucket_objs = {}  # key -> RateLimitBucket identity-map object
+        # #1625 — when True, commit() raises IntegrityError so the admin CRUD
+        # path's 409 handling can be asserted without Postgres.
+        self.raise_on_commit = False
 
     # ── rate-limit fixed-window upsert (INSERT ... ON CONFLICT) ──
     async def execute(self, stmt):
@@ -251,6 +256,14 @@ class _FakeDB:
                     self.crud_rows[str(pk_val)] = obj
 
     async def commit(self):
+        if self.raise_on_commit:
+            # Simulate a Postgres unique/FK/CHECK violation surfacing as a
+            # sqlalchemy IntegrityError (the generic admin 409 path).
+            raise IntegrityError(
+                "INSERT INTO resource (...) VALUES (...)",
+                {},
+                Exception('duplicate key value violates unique constraint "uq"'),
+            )
         self.commits += 1
         for key, obj in self._bucket_objs.items():
             self.storage.buckets[key] = {
@@ -258,6 +271,9 @@ class _FakeDB:
                 "window_start": obj.window_start,
                 "locked_until": obj.locked_until,
             }
+
+    async def rollback(self):
+        self.rollbacks += 1
 
     async def refresh(self, obj):
         for col in obj.__table__.columns:
@@ -287,6 +303,14 @@ def _profile(role="admin", is_admin=False):
 
 def _request():
     return SimpleNamespace(state=SimpleNamespace(org_id=None), headers={})
+
+
+def _request_with_org(org_id):
+    """Request carrying an X-Org-ID header (state.org_id still unset)."""
+    return SimpleNamespace(
+        state=SimpleNamespace(org_id=None),
+        headers={"X-Org-ID": str(org_id)},
+    )
 
 
 def _content_row(cid, title, *, enabled=True, band=1):
@@ -489,10 +513,10 @@ async def _run_admin_crud():
         "content_items", _request(), None, None, '{"title":{"x":1}}', prof, db))
     check("list nested filter payload → 400", st, 400)
 
-    # #1801 — an IN-clause value list is bounded like the other guards
+    # #1647/#1801 — an IN-clause value list is bounded like the other guards
     st, _ = await aexc_status(admin_router.list_resource(
         "content_items", _request(), None, None,
-        json.dumps({"id": ["x"] * 201}), prof, db))
+        json.dumps({"id": ["x"] * (admin_router.MAX_FILTER_LIST_LEN + 1)}), prof, db))
     check("list oversized IN-list filter → 400", st, 400)
 
     ok = await admin_router.list_resource(
@@ -525,10 +549,12 @@ async def _run_admin_crud():
         "content_items", "missing", _request(), prof, db))
     check("get missing row → 404", st, 404)
 
-    # malformed UUID on a UUID model → 422, not 500 (#854)
+    # malformed UUID on a UUID model → 400, not 500 (#854/#1627 — ONE 400
+    # contract for every malformed client-supplied identifier; 422 is reserved
+    # for schema-level body validation only)
     st, dt = await aexc_status(admin_router.get_resource(
         "kids", "not-a-uuid", _request(), prof, db))
-    check("get malformed UUID → 422 Invalid id", (st, dt), (422, "Invalid id"))
+    check("get malformed UUID → 400 Invalid id", (st, dt), (400, "Invalid id"))
 
     # ── update ──
     upd = await admin_router.update_resource(
@@ -1053,6 +1079,155 @@ async def _run_admin_reset_password():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# ⑭  #1622/#1623 — org-scoped admin CRUD: force-bind, 403 on cross-org,
+#     malformed body org_id 400 (never 500)
+# ══════════════════════════════════════════════════════════════════════════
+
+async def _run_admin_org_crud():
+    print("⑭  Org-scoped admin CRUD — force-bind, cross-org 403, malformed body 400…")
+    prof = _profile()
+    org_a = uuid.uuid4()
+    org_b = uuid.uuid4()
+
+    def _sub(org=None):
+        return Subscription(
+            id=uuid.uuid4(), profile_id=uuid.uuid4(), plan="premium", status="active",
+            org_id=org, seats=None, store=None, store_ref=None, current_period_end=None,
+            created_at=datetime(2026, 8, 1, 12, 0, 0),
+        )
+
+    # ── GET an org-scoped resource with an X-Org-ID → 200 (not 500)
+    sub = _sub(org=org_a)
+    db = _FakeDB()
+    db.crud_rows[str(sub.id)] = sub
+    got = await admin_router.get_resource("subscriptions", str(sub.id), _request_with_org(org_a), prof, db)
+    check("get org-scoped resource with X-Org-ID returns the row", str(got["org_id"]), str(org_a))
+
+    # ── GET a missing org-scoped id → clean 404, never 500
+    db2 = _FakeDB()
+    st, _ = await aexc_status(admin_router.get_resource(
+        "subscriptions", str(uuid.uuid4()), _request_with_org(org_a), prof, db2))
+    check("get org-scoped missing id → 404, never 500", st, 404)
+
+    # ── POST org-scoped with a valid X-Org-ID → 201, org_id force-bound
+    db3 = _FakeDB()
+    created = await admin_router.create_resource(
+        "subscriptions", {"profile_id": str(uuid.uuid4()), "plan": "premium"},
+        _request_with_org(org_a), prof, db3,
+    )
+    check("create org-scoped POST force-binds org_id", str(created["org_id"]), str(org_a))
+    check("create org-scoped writes an audit row", any(
+        isinstance(a, AdminAudit) and a.action == "create" for a in db3.added), True)
+
+    # ── POST with a mismatched body org_id → 403, never 500
+    db4 = _FakeDB()
+    st, _ = await aexc_status(admin_router.create_resource(
+        "subscriptions",
+        {"profile_id": str(uuid.uuid4()), "plan": "premium", "org_id": str(org_b)},
+        _request_with_org(org_a), prof, db4,
+    ))
+    check("create org-scoped mismatched body org_id → 403", st, 403)
+
+    # ── POST with a malformed body org_id → 400 (#1624/#1627), never 500
+    db5 = _FakeDB()
+    st, dt = await aexc_status(admin_router.create_resource(
+        "subscriptions",
+        {"profile_id": str(uuid.uuid4()), "plan": "premium", "org_id": "not-a-uuid"},
+        _request_with_org(org_a), prof, db5,
+    ))
+    check("create malformed body org_id → 400 Invalid org_id", (st, dt), (400, "Invalid org_id"))
+
+    # ── PUT with a mismatched body org_id → 403 (#1624 on the update path)
+    sub_upd = _sub(org=org_a)
+    db6 = _FakeDB()
+    db6.crud_rows[str(sub_upd.id)] = sub_upd
+    st, _ = await aexc_status(admin_router.update_resource(
+        "subscriptions", str(sub_upd.id), {"org_id": str(org_b)},
+        _request_with_org(org_a), prof, db6,
+    ))
+    check("update org-scoped mismatched body org_id → 403", st, 403)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ⑮  #1637 — kids writable allow-list: profile_id immutable, coins ge=0
+# ══════════════════════════════════════════════════════════════════════════
+
+async def _run_admin_kids_guard():
+    print("⑮  Kids guard — profile_id not writable, coins constrained ge=0…")
+    prof = _profile()
+
+    check("kids WRITABLE_FIELDS no longer contains profile_id",
+          "profile_id" in admin_router.WRITABLE_FIELDS["kids"], False)
+
+    kid = Kid(
+        id=uuid.uuid4(), profile_id=uuid.uuid4(), name="Moyna", avatar="owl",
+        birth_year=2019, coins=10, org_id=None,
+        created_at=datetime(2026, 8, 1, 12, 0, 0),
+    )
+    db = _FakeDB()
+    db.crud_rows[str(kid.id)] = kid
+
+    # PUT with a profile_id in the body → mass-assignment guard drops it
+    updated = await admin_router.update_resource(
+        "kids", str(kid.id), {"profile_id": str(uuid.uuid4()), "name": "Rumi"},
+        _request(), prof, db,
+    )
+    check("kid PUT ignores profile_id (ownership immutable)", str(updated["profile_id"]), str(kid.profile_id))
+    check("kid PUT still writes writable fields", updated["name"], "Rumi")
+
+    # negative coins → 400 on both create and update
+    db2 = _FakeDB()
+    st, _ = await aexc_status(admin_router.create_resource(
+        "kids", {"name": "N", "coins": -5}, _request(), prof, db2))
+    check("create kid with negative coins → 400", st, 400)
+
+    st, dt = await aexc_status(admin_router.update_resource(
+        "kids", str(kid.id), {"coins": -1}, _request(), prof, db))
+    check("update kid with negative coins → 400", (st, "coins" in (dt or "")), (400, True))
+
+    # zero/positive coins still accepted
+    db3 = _FakeDB()
+    created = await admin_router.create_resource(
+        "kids", {"name": "N", "coins": 0}, _request(), prof, db3)
+    check("create kid with zero coins ok", created.get("coins"), 0)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ⑯  #1625 — IntegrityError → 409 Conflict on create/update (never 500)
+# ══════════════════════════════════════════════════════════════════════════
+
+async def _run_admin_integrity():
+    print("⑯  IntegrityError → 409 on create/update (rollback + generic message)…")
+    prof = _profile()
+
+    # create: commit raises IntegrityError → 409, not 500
+    db = _FakeDB()
+    db.raise_on_commit = True
+    st, dt = await aexc_status(admin_router.create_resource(
+        "content_items", {"id": "c1", "kind": "game", "title": "Dup"},
+        _request(), prof, db,
+    ))
+    check("create IntegrityError → 409 Conflict", st, 409)
+    check("create 409 message is generic (no constraint name)",
+          "constraint" not in (dt or "").lower() and "unique" not in (dt or "").lower(), True)
+    check("create IntegrityError rolled back", db.rollbacks, 1)
+
+    # update: commit raises IntegrityError → 409, not 500
+    kid = Kid(
+        id=uuid.uuid4(), profile_id=uuid.uuid4(), name="Moyna", coins=5,
+        created_at=datetime(2026, 8, 1, 12, 0, 0),
+    )
+    db2 = _FakeDB()
+    db2.crud_rows[str(kid.id)] = kid
+    db2.raise_on_commit = True
+    st, dt = await aexc_status(admin_router.update_resource(
+        "kids", str(kid.id), {"name": "Rumi"}, _request(), prof, db2))
+    check("update IntegrityError → 409 Conflict", st, 409)
+    check("update 409 message is generic", dt, "Resource already exists")
+    check("update IntegrityError rolled back", db2.rollbacks, 1)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 
 def _run():
     test_mass_assignment_guard()
@@ -1061,6 +1236,9 @@ def _run():
     asyncio.run(_run_admin_crud())
     asyncio.run(_run_admin_guards())
     asyncio.run(_run_admin_create())
+    asyncio.run(_run_admin_org_crud())
+    asyncio.run(_run_admin_kids_guard())
+    asyncio.run(_run_admin_integrity())
     asyncio.run(_run_rate_limit_window())
     asyncio.run(_run_rate_limit_deps())
     asyncio.run(_run_auth_attempt_guard())
