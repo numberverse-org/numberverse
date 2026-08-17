@@ -1653,6 +1653,8 @@ const EN: Record<string, Entry> = {
   exploreGardenProgress: (vars) => `${vars?.n ?? "0"} / ${vars?.target ?? "0"}`,
   exploreGardenDone: (vars) => `You planted ${vars?.n ?? "0"} ${vars?.emoji ?? "🌱"}!`,
   exploreGardenDoneAny: (vars) => `You planted ${vars?.n ?? "0"} things!`,
+  // First-play demo line — shows a pointer tap the garden once, on first visit.
+  exploreGardenDemo: "Tap the garden to plant — like this!",
   fetchTitle: "🎾 Fetch",
   fetchHint: "Tap to throw the ball for Nova!",
   fetchGood: "What a throw! +2 🪙 ⭐",
@@ -3373,6 +3375,8 @@ const BN: Record<string, Entry> = {
   exploreGardenProgress: (vars) => `${bnNum(vars?.n ?? "0")} / ${bnNum(vars?.target ?? "0")}`,
   exploreGardenDone: (vars) => `তুমি ${bnNum(vars?.n ?? "0")}টা ${vars?.emoji ?? "🌱"} লাগিয়েছ!`,
   exploreGardenDoneAny: (vars) => `তুমি ${bnNum(vars?.n ?? "0")}টা লাগিয়েছ!`,
+  // First-play demo line — বাচ্চাকে একবার দেখিয়ে দেওয়া হয় কীভাবে লাগাতে হয়।
+  exploreGardenDemo: "বাগানে টিপে লাগাও — এমন!",
   fetchTitle: "🎾 বল আনো",
   fetchHint: "নোভার জন্য বল ছুঁড়ে দাও!",
   fetchGood: "কী ছোঁড়া! +2 🪙 ⭐",

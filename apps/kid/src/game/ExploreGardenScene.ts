@@ -5,6 +5,7 @@ import { pop, bad, click, win } from "./audio";
 import { speak, bnNumber } from "./speech";
 import { getAppLang } from "./locale";
 import { t as tr, digit } from "./i18n";
+import { prefersReducedMotion } from "./reducedMotion";
 import { txt, promptTxt, NV_GOLD, roundMeter, type RoundMeterApi } from "./ui";
 import { correctCelebrate } from "./celebrate";
 import { SAT, SAB } from "./safeArea";
@@ -23,21 +24,40 @@ const ITEM_NAMES: Record<string, { en: string; bn: string }> = {
   "🍄": { en: "mushroom", bn: "মাশরুম" },
 };
 
-/** A quest = one round. `emoji` undefined means "plant anything" (free count). */
+/** Shape palette (NCTB K.G.2 set) — a shape quest swaps the bottom palette to
+ *  these so the kid identifies AND counts the named shape. */
+const SHAPES = ["⬤", "🔺", "⬛", "⭐"] as const;
+
+/** Spoken names per shape glyph (TTS cannot read the glyphs). */
+const SHAPE_NAMES: Record<string, { en: string; bn: string }> = {
+  "⬤": { en: "circle", bn: "বৃত্ত" },
+  "🔺": { en: "triangle", bn: "ত্রিভুজ" },
+  "⬛": { en: "square", bn: "বর্গ" },
+  "⭐": { en: "star", bn: "তারা" },
+};
+
+/** A quest = one round. `emoji` undefined means "plant anything" (free count);
+ *  `shapes` true means the target comes from the SHAPES palette (K.G.2). */
 interface Quest {
   emoji?: string;
   n: number;
+  shapes?: boolean;
 }
 
-/** Counting quests, ramping from 1 → 6 and alternating specific/free targets.
- *  The parent advances the session after ROUNDS_TO_FINISH rounds, so a kid
- *  typically sees ~3 of these per visit. */
+/** Counting + shape quests, ramping from 1 → 6 and alternating specific/free
+ *  targets. Shape quests appear once the kid has done a couple of counting
+ *  quests (K.CC.1 → K.G.2). The parent advances the session after
+ *  ROUNDS_TO_FINISH rounds, so a kid typically sees ~3 of these per visit. */
 const QUESTS: Quest[] = [
   { emoji: "🌸", n: 1 },
   { emoji: "🐝", n: 2 },
+  { emoji: "⬤", n: 2, shapes: true },
   { emoji: "🌸", n: 3 },
+  { emoji: "🔺", n: 3, shapes: true },
   { emoji: undefined, n: 4 },
+  { emoji: "⭐", n: 4, shapes: true },
   { emoji: "🦋", n: 5 },
+  { emoji: "⬛", n: 5, shapes: true },
   { emoji: undefined, n: 6 },
   { emoji: "🌱", n: 4 },
   { emoji: "☀️", n: 5 },
@@ -83,6 +103,17 @@ export class ExploreGardenScene extends Phaser.Scene {
   private speakBtn!: Phaser.GameObjects.Container;
   private paletteTop = 0;
 
+  // Which palette is currently rendered (so a shape quest rebuilds the bottom
+  // bar and a nature quest doesn't needlessly flicker it).
+  private usingShapes = false;
+
+  // First-play onboarding demo state.
+  private demoRunning = false;
+  private demoPointer?: Phaser.GameObjects.Text;
+  private demoSkip?: () => void;
+  private demoHasShown = false; // plays once per scene visit, first quest only
+  private demoSeen = false; // persisted once per device (nv_explore_garden_demo)
+
   constructor() {
     super("ExploreGarden");
   }
@@ -99,6 +130,11 @@ export class ExploreGardenScene extends Phaser.Scene {
     this.totalPlaced = 0;
     this.plants = [];
     this.paletteButtons = [];
+    this.usingShapes = false;
+    this.demoRunning = false;
+    this.demoPointer = undefined;
+    this.demoHasShown = false;
+    this.demoSeen = this.readDemoSeen();
 
     gameBackground(this, "forest");
     this.drawHeader();
@@ -146,7 +182,7 @@ export class ExploreGardenScene extends Phaser.Scene {
     this.meter.setPosition(width / 2, 148 + sat);
 
     this.renderControls(width, sat);
-    this.renderPalette(width, height, sab);
+    this.renderPalette();
     this.renderPlantZone(width, sat);
     this.applyGoalText();
   }
@@ -183,11 +219,16 @@ export class ExploreGardenScene extends Phaser.Scene {
     return c;
   }
 
-  private renderPalette(width: number, height: number, sab: number) {
+  private renderPalette() {
     this.paletteButtons.forEach((entry) => entry.btn.destroy());
     this.paletteButtons = [];
 
-    const n = PALETTE.length;
+    const { width, height } = this.scale;
+    const sab = SAB();
+    const palette = this.activePalette();
+    this.usingShapes = !!this.quest?.shapes;
+
+    const n = palette.length;
     const baseR = 30;
     const gap = 10;
     const totalW = n * baseR * 2 + (n - 1) * gap;
@@ -199,7 +240,7 @@ export class ExploreGardenScene extends Phaser.Scene {
     this.paletteTop = paletteTop;
     const y = paletteTop + r;
 
-    PALETTE.forEach((emoji, i) => {
+    palette.forEach((emoji, i) => {
       const btn = this.add
         .container(x0 + i * step, y)
         .setDepth(70)
@@ -229,6 +270,12 @@ export class ExploreGardenScene extends Phaser.Scene {
       .setDepth(1)
       .setInteractive({ useHandCursor: true });
     this.plantZone.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // While the demo plays, the plant zone is the demo's stage — the kid's
+      // tap ends the demo instead of planting a second item.
+      if (this.demoRunning) {
+        this.cancelDemo();
+        return;
+      }
       this.plant(pointer.x, pointer.y);
     });
   }
@@ -242,18 +289,148 @@ export class ExploreGardenScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.clearGarden(); // fresh canvas per goal
     // Auto-select the target so a pre-reader never has to find it.
+    const palette = this.activePalette();
     if (this.quest.emoji) {
-      const idx = PALETTE.indexOf(this.quest.emoji as (typeof PALETTE)[number]);
+      const idx = palette.indexOf(this.quest.emoji);
       if (idx >= 0) {
         this.selectedIndex = idx;
-        this.selectedEmoji = PALETTE[idx];
+        this.selectedEmoji = palette[idx];
       }
     }
+    // A shape quest swaps the whole bottom palette; a nature quest only needs
+    // the highlight re-applied (the palette bar itself is unchanged).
+    if (this.usingShapes !== !!this.quest.shapes) {
+      this.renderPalette();
+    } else {
+      this.applyPaletteHighlight();
+    }
     this.applyGoalText();
-    this.applyPaletteHighlight();
     this.meter.set(0, this.target);
     this.updateProgress();
     this.speakGoal();
+    this.maybeRunDemo();
+  }
+
+  // ── first-play onboarding demo ────────────────────────────────────────────
+
+  private readDemoSeen(): boolean {
+    if (typeof window === "undefined") return true;
+    try {
+      return window.localStorage.getItem("nv_explore_garden_demo") === "1";
+    } catch {
+      return true; // storage blocked — don't trap the kid on every visit
+    }
+  }
+
+  private markDemoSeen() {
+    try {
+      window.localStorage.setItem("nv_explore_garden_demo", "1");
+    } catch {
+      /* storage blocked — the demo just replays next time */
+    }
+  }
+
+  /** Plays on the very first quest of the very first visit (once per device).
+   *  Taps it on BEFORE the kid can plant, so a pre-reader SEES the mechanic. */
+  private maybeRunDemo() {
+    if (this.demoHasShown || this.demoSeen) return;
+    this.demoHasShown = true;
+
+    // Reduced motion: skip the tween, just show a brief static pointer + line.
+    if (prefersReducedMotion()) {
+      this.demoSeen = true;
+      this.markDemoSeen();
+      const btn = this.paletteButtons[this.selectedIndex]?.btn;
+      if (btn) {
+        const hint = this.add
+          .text(btn.x, btn.y - 46, "👆", txt(36, "#ffffff", { shadow: false }))
+          .setOrigin(0.5)
+          .setDepth(90);
+        this.time.delayedCall(1400, () => hint.destroy());
+      }
+      speak(tr("exploreGardenDemo"));
+      return;
+    }
+
+    this.runDemo();
+  }
+
+  /** Animated "👆" that leaves the target palette button, travels into the
+   *  plant zone, taps, and grows a plant — the kid's first lesson in how to
+   *  play. Interruptible on any pointerdown. */
+  private runDemo() {
+    this.demoRunning = true;
+    const btn = this.paletteButtons[this.selectedIndex]?.btn;
+    const startX = btn ? btn.x : this.scale.width / 2;
+    const startY = btn ? btn.y : this.paletteTop - 20;
+
+    const zoneTop = 170 + SAT();
+    const zoneBottom = this.paletteTop - 10;
+    const endX = Phaser.Math.Clamp(startX, 18, this.scale.width - 18);
+    const endY = Phaser.Math.Clamp(startY - 130, zoneTop + 40, zoneBottom - 6);
+
+    const pointer = this.add
+      .text(startX, startY, "👆", txt(40, "#ffffff", { shadow: false }))
+      .setOrigin(0.5)
+      .setDepth(90)
+      .setAlpha(0);
+    this.demoPointer = pointer;
+
+    // Any pointerdown anywhere skips the demo immediately.
+    const skip = () => this.cancelDemo();
+    this.demoSkip = skip;
+    this.input.on("pointerdown", skip);
+
+    this.tweens.add({ targets: pointer, alpha: 1, duration: 120 });
+    this.tweens.add({
+      targets: pointer,
+      x: endX,
+      y: endY,
+      duration: 900,
+      delay: 120,
+      ease: "Sine.easeInOut",
+      onComplete: () => {
+        // Demo's own tap: grow a plant and hand back to normal play.
+        this.spawnPlant(endX, endY, this.selectedEmoji);
+        this.totalPlaced += 1;
+        this.counter.setText(this.counterText());
+        speak(tr("exploreGardenDemo"));
+        this.time.delayedCall(150, () => speak(this.lang === "bn" ? bnNumber(1) : "1", { cancel: false }));
+        // Fade the pointer out, then finish.
+        this.tweens.add({
+          targets: pointer,
+          alpha: 0,
+          duration: 200,
+          delay: 300,
+          onComplete: () => {
+            this.input.off("pointerdown", skip);
+            this.demoSkip = undefined;
+            pointer.destroy();
+            this.demoPointer = undefined;
+            this.demoRunning = false;
+          },
+        });
+      },
+    });
+
+    // Bounded safety net — never leave the demo running forever.
+    this.time.delayedCall(2500, () => this.cancelDemo());
+  }
+
+  private cancelDemo() {
+    if (!this.demoRunning && !this.demoPointer) return;
+    this.demoRunning = false;
+    if (this.demoSkip) {
+      this.input.off("pointerdown", this.demoSkip);
+      this.demoSkip = undefined;
+    }
+    if (this.demoPointer) {
+      this.tweens.killTweensOf(this.demoPointer);
+      this.demoPointer.destroy();
+      this.demoPointer = undefined;
+    }
+    this.demoSeen = true;
+    this.markDemoSeen();
   }
 
   private applyGoalText() {
@@ -300,14 +477,24 @@ export class ExploreGardenScene extends Phaser.Scene {
 
   private selectPalette(index: number) {
     this.selectedIndex = index;
-    this.selectedEmoji = PALETTE[index];
+    this.selectedEmoji = this.activePalette()[index];
     this.applyPaletteHighlight();
+  }
+
+  /** The palette in charge right now — shapes on a K.G.2 quest, nature otherwise. */
+  private activePalette(): readonly string[] {
+    return this.quest?.shapes ? SHAPES : PALETTE;
+  }
+
+  /** The spoken-name table matching the active palette (TTS can't read glyphs). */
+  private activeNames(): Record<string, { en: string; bn: string }> {
+    return this.quest?.shapes ? SHAPE_NAMES : ITEM_NAMES;
   }
 
   private speakGoal() {
     const bn = this.lang === "bn";
     if (this.quest.emoji) {
-      const name = ITEM_NAMES[this.quest.emoji];
+      const name = this.activeNames()[this.quest.emoji];
       speak(bn ? `${bnNumber(this.target)}টা ${name?.bn ?? ""} লাগাও` : `Plant ${this.target} ${name?.en ?? ""}`);
     } else {
       speak(bn ? `${bnNumber(this.target)}টা যা খুশি লাগাও` : `Plant ${this.target} of anything`);
@@ -336,8 +523,9 @@ export class ExploreGardenScene extends Phaser.Scene {
     } else {
       // Not the goal item — plant it anyway (no pressure) but nudge them back.
       bad();
-      const name = ITEM_NAMES[emoji];
-      const targetName = ITEM_NAMES[this.quest.emoji as string];
+      const names = this.activeNames();
+      const name = names[emoji];
+      const targetName = names[this.quest.emoji as string];
       speak(
         this.lang === "bn"
           ? `এটা ${name?.bn ?? ""} — ${targetName?.bn ?? ""} লাগাই!`
