@@ -1,3 +1,7 @@
+## 18 Aug 2026 — 1.2.2 (Catalog search + subject filter (wave-15))
+
+abdccf1 feat(kid): catalog search + subject filter on world-detail + syllabus (#1075)
+
 ## 18 Aug 2026 — 1.2.1 (Fix iOS fullscreen layout apps)
 
 3973912 Fix iOS fullscreen layout apps
