@@ -1,3 +1,7 @@
+## 17 Aug 2026 — 0.99.0 (Explore Garden shape quests (K.G.2) + first-play tap demo)
+
+6e0a734 feat(kid): Explore Garden shape quests (K.G.2) + first-play tap demo
+
 ## 17 Aug 2026 — 0.98.0 (Admin correctness + schema caps + router validation + kid a11y + SW query-key + parent usage + Explore Garden gameplay)
 
 fa5443a feat(kid): Explore Garden guided counting gameplay (#1143)
