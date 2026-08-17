@@ -7,7 +7,10 @@ FROM alpine:3.19
 
 RUN apk add --no-cache autossh openssh-client
 
-# autossh supervises the underlying `ssh`; -M 0 disables its own monitoring port
-# (the SSH connection's keep-alive handles liveness). vps-tunnel is the Host
-# alias in /root/.ssh/config (mounted at runtime).
-ENTRYPOINT ["autossh", "-M", "0", "-N", "-v", "-D", "0.0.0.0:1080", "-E", "/dev/stdout", "vps-tunnel"]
+# #1748-fix — OpenSSH running as root REFUSES a ~/.ssh/config (and private key)
+# that it does not own; the compose bind-mounts the host's files read-only, so
+# they keep the HOST owner (uid 1000) inside the container and ssh exits with
+# "Bad owner or permissions on /root/.ssh/config" forever. Copy them into a
+# root-owned location at container start, then exec autossh against that copy.
+# The mounts stay read-only (never baked), so secrets still come from the box.
+ENTRYPOINT ["/bin/sh", "-c", "set -e; mkdir -p /root/.ssh; cp /mnt/tunnel/config /root/.ssh/config; chown root:root /root/.ssh/config; chmod 600 /root/.ssh/config; if [ -f /mnt/tunnel/id_rsa ]; then cp /mnt/tunnel/id_rsa /root/.ssh/id_rsa; chown root:root /root/.ssh/id_rsa; chmod 600 /root/.ssh/id_rsa; fi; exec autossh -M 0 -N -v -D 0.0.0.0:1080 -E /dev/stdout vps-tunnel"]

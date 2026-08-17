@@ -115,8 +115,11 @@ services:
     container_name: numberverse-demo-bkash-tunnel
     restart: unless-stopped
     volumes:
-      - ${NV_BKASH_TUNNEL_KEY:-~/.ssh/nv_bkash_tunnel_key}:/root/.ssh/id_rsa:ro
-      - ./ssh_config.tunnel:/root/.ssh/config:ro
+      # #1748-fix — mounts land under /mnt/tunnel (read-only, never baked);
+      # the container entrypoint copies them into root-owned ~/.ssh paths at
+      # start, because ssh-as-root rejects a host-owned ~/.ssh/config.
+      - ${NV_BKASH_TUNNEL_KEY:-~/.ssh/nv_bkash_tunnel_key}:/mnt/tunnel/id_rsa:ro
+      - ./ssh_config.tunnel:/mnt/tunnel/config:ro
     logging: *default-logging
     deploy:
       resources:

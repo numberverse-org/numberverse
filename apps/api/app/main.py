@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+import time
 import uuid
 from contextlib import asynccontextmanager
 
@@ -9,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from .accesslog import AccessLogMiddleware, install_access
 from .config import settings
@@ -32,6 +34,22 @@ install_errorlog()
 # (its own rotating file, same scrubber). Attaches at most once.
 install_access()
 log = logging.getLogger("numberverse")
+
+# #1748 — the background embed/prune loop's liveness state, read by /health.
+# `_embed_task` is the running asyncio task; `_embed_heartbeat` is a monotonic
+# timestamp refreshed on every loop pass so /health can distinguish "alive and
+# ticking" from "task alive but wedged inside a hang" (a task that is not done
+# but stopped heartbeating is just as dead for ops purposes).
+_embed_task: asyncio.Task | None = None
+_embed_heartbeat: float = 0.0
+# #1748 — /health treats the background loop as healthy only when its last
+# heartbeat is younger than this many loop intervals (a stalled loop, or a DB
+# outage that wedges the tick, must surface as degraded instead of "ok").
+_EMBED_HEARTBEAT_TOLERANCE_MULTIPLIER = 3
+# #1748 — the /health DB probe must never hang an LB/uptime monitor: bound the
+# round-trip (the engine already uses pool_pre_ping, so a dead Postgres fails
+# fast on checkout — this caps the pathological case).
+_HEALTH_DB_PROBE_TIMEOUT_SECONDS = 2.0
 
 # #836 — abuse guard: FastAPI/Starlette impose no global request-body cap, so a
 # client can POST an arbitrarily large JSON document and force Pydantic to
@@ -370,6 +388,12 @@ async def _embed_loop():
     _tick_count = 0
     _prune_every = max(1, 3600 // interval)  # ≈1 hour
     while True:
+        # #1748 — heartbeat BEFORE the tick's work: a pass that then hangs in
+        # embed_stories or the prune still leaves a stale heartbeat that /health
+        # can see (the timestamp is refreshed on the NEXT pass if the loop
+        # recovers). If the loop never reaches here again, /health degrades.
+        global _embed_heartbeat
+        _embed_heartbeat = time.monotonic()
         try:
             async with SessionLocal() as db:
                 result = await embed_stories(db)
@@ -440,13 +464,18 @@ async def lifespan(app: FastAPI):
     log.info("Seeding…")
     await seed()
     log.info("API ready ✅")
-    embed_task = asyncio.create_task(_embed_loop())
+    global _embed_task, _embed_heartbeat
+    _embed_task = asyncio.create_task(_embed_loop())
+    # #1748 — the task may not have taken its first pass yet; /health treats
+    # "task started, heartbeat still zero" as starting (degraded if it never
+    # produces a heartbeat within the tolerance window).
+    _embed_heartbeat = time.monotonic()
     try:
         yield
     finally:
-        embed_task.cancel()
+        _embed_task.cancel()
         try:
-            await embed_task
+            await _embed_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
             pass
 
@@ -588,4 +617,55 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "numberverse-api"}
+    """#1748 — real liveness probe, not a static "ok".
+
+    Reports the API as healthy only when BOTH the database answers a `SELECT 1`
+    within the probe timeout AND the background embed/prune loop is heartbeating
+    (running + last pass within the tolerance window). Any failure → HTTP 503
+    with the failing check named, so the uptime monitor / deploy smoke (which
+    grep the body for `"status":"ok"`) correctly flag a dead API instead of
+    trusting nginx's 200 shell.
+    """
+    checks: dict[str, str] = {}
+    overall = "ok"
+
+    # ── DB probe: SELECT 1 with a hard timeout ─────────────────────────────
+    try:
+        async with asyncio.timeout(_HEALTH_DB_PROBE_TIMEOUT_SECONDS):
+            async with SessionLocal() as db:
+                await db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:  # noqa: BLE001 — health must never raise, only degrade
+        checks["database"] = "unreachable"
+        overall = "degraded"
+
+    # ── background embed/prune loop liveness ───────────────────────────────
+    task = _embed_task
+    if task is None:
+        checks["background_jobs"] = "not-started"
+        overall = "degraded"
+    elif task.done():
+        checks["background_jobs"] = "stopped"
+        overall = "degraded"
+    else:
+        interval = settings.kotha_embed_interval_minutes * 60
+        tolerance = max(
+            30.0,
+            interval * _EMBED_HEARTBEAT_TOLERANCE_MULTIPLIER,
+        )
+        age = time.monotonic() - _embed_heartbeat
+        if _embed_heartbeat <= 0 or age > tolerance:
+            checks["background_jobs"] = "stalled"
+            overall = "degraded"
+        else:
+            checks["background_jobs"] = "ok"
+
+    payload = {
+        "status": overall,
+        "service": "numberverse-api",
+        "checks": checks,
+    }
+    if overall == "ok":
+        return payload
+    return JSONResponse(status_code=503, content=payload)
+

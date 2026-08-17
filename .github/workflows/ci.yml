@@ -148,7 +148,7 @@ jobs:
       # the loop (`|| exit 1`), failing the whole job.
       # Modules (documentation): accesslog adaptive_model admin auth_hardening
       # auth band_lock bkash config_guard embedding_metadata errorlog export
-      # import ip_ratelimit_tags jwt_rotation kids migrations_ddl
+      # health_probe import ip_ratelimit_tags jwt_rotation kids migrations_ddl
       # moni_subject_deltas org_isolation premium_gate progress_sync progress
       # push ratelimit_keys read_tier_ratelimit refresh_rotation request_id
       # retention schemas_validation scrub session_guard shares_token_hash
