@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_profile
+from ..deps import get_current_profile, resolve_plan
 from ..models import Profile, Session
 from ..ratelimit import AuthAttemptGuard, _request_ip, ip_rate_limit, redact_key
 from ..schemas import (
@@ -42,6 +42,15 @@ from ..session_guard import revoke_other_sessions  # #265 — password change ki
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 logger = logging.getLogger("numberverse")
+
+
+async def _profile_out(db: AsyncSession, profile: Profile) -> ProfileOut:
+    """ProfileOut enriched with the resolved billing entitlement."""
+    out = ProfileOut.model_validate(profile)
+    plan, expires = await resolve_plan(db, profile)
+    out.plan = plan
+    out.plan_expires_at = expires
+    return out
 
 # #1489 — credential endpoints get their own failure-aware limiter (exponential
 # lockout) rather than the throughput-oriented fixed window used by the write
@@ -191,7 +200,7 @@ async def signup(
     if response is not None:
         set_refresh_cookie(response, request, refresh_token)
     await db.refresh(profile)
-    return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
+    return TokenOut(token=token, profile=await _profile_out(db, profile))
 
 
 @router.post("/login", response_model=TokenOut)
@@ -219,7 +228,7 @@ async def login(
     token, refresh_token = await _issue_session(profile, request, db)
     if response is not None:
         set_refresh_cookie(response, request, refresh_token)
-    return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
+    return TokenOut(token=token, profile=await _profile_out(db, profile))
 
 
 @router.get("/google/status")
@@ -271,12 +280,15 @@ async def google_auth(
     token, refresh_token = await _issue_session(profile, request, db)
     if response is not None:
         set_refresh_cookie(response, request, refresh_token)
-    return TokenOut(token=token, profile=ProfileOut.model_validate(profile))
+    return TokenOut(token=token, profile=await _profile_out(db, profile))
 
 
 @router.get("/me", response_model=ProfileOut)
-async def me(profile: Profile = Depends(get_current_profile)):
-    return profile
+async def me(
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _profile_out(db, profile)
 
 
 @router.patch("/me", response_model=ProfileOut)

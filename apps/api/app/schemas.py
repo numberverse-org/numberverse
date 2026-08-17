@@ -157,6 +157,10 @@ class ProfileOut(BaseModel):
     consent_version: str | None = None
     consent_at: datetime | None = None
     consent_method: str | None = None
+    # Billing entitlement — "free" (Worlds 1–2) | "plus". The server is the
+    # source of truth; the kid app caches this with a 30-day offline grace.
+    plan: str = "free"
+    plan_expires_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -277,7 +281,12 @@ class KidOut(BaseModel):
 # (Mon..Sun; 0 = unlimited that day), or None to fall back to daily_limit_min /
 # the kid-app defaults (45 school, 90 weekend).
 class KidSettingsIn(BaseModel):
-    enabled_subjects: list[str] | None = None  # None = all
+    # #1643 — the one unbounded surface on the settings model. Cap the LIST (32
+    # subjects — the curriculum catalog ships 6, so this is generous) and each
+    # ITEM (16 chars — the longest subject id in the catalog is 7) so a tampered
+    # client can't store thousands of arbitrary-length strings that ride every
+    # settings fetch and band-lock check.
+    enabled_subjects: list[str] | None = Field(default=None, max_length=32)
     max_band: int | None = Field(default=None, ge=1, le=5)
     daily_limit_min: int | None = Field(default=None, ge=1, le=600)
     weekday_limits_min: str | None = Field(default=None, pattern=r"^(\d{1,3},){6}\d{1,3}$")
@@ -331,6 +340,21 @@ class KidSettingsIn(BaseModel):
         if v is None:
             return None
         return {k: max(-2, min(2, int(x))) for k, x in v.items()}
+
+    # #1643 — cap each enabled_subjects item. The sibling fields (focus_subject,
+    # voice_tone) are length/enum-bounded; this list was the one unbounded
+    # surface. There is no subject-catalog constant in this file, so the cap is
+    # a generous length bound (16 chars ≫ the 7-char longest catalog id) rather
+    # than a membership check.
+    @field_validator("enabled_subjects")
+    @classmethod
+    def _cap_enabled_subjects(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        for item in v:
+            if len(item) > 16:
+                raise ValueError("enabled_subjects items must be at most 16 characters")
+        return v
 
 
 class KidSettingsOut(BaseModel):
@@ -460,8 +484,13 @@ MISCONCEPTION_CODES = frozenset(
 
 class ProgressEventIn(BaseModel):
     kid_id: uuid.UUID
-    skill_id: str
-    game_id: str
+    # #1642 — both ids were unbounded strings at the boundary. skill_id is
+    # FK-bounded by skills.id but a tampered client can still send a
+    # megabyte-long free string; game_id has NO FK and an unbounded column, so a
+    # 200-event batch of oversized ids would pass validation and persist. Cap
+    # both at the catalog id format.
+    skill_id: str = Field(max_length=64)
+    game_id: str = Field(max_length=64)
     correct: bool
     response_ms: RoundedInt = None
     difficulty: float | None = None
@@ -519,6 +548,13 @@ class WeeklyOut(BaseModel):
     trigger: str = "weekly-summary"  # #1536 — "weekly-summary" | "milestone" | "reminder"
 
 
+# #1649 — bound each reported coin balance. The server keeps the max ever
+# reported (newest-wins) and multi-device sync propagates it, so an absurd value
+# (e.g. 2**53) would persist as a wallet balance and fan out to every device.
+# 0..1_000_000 is far above any real wallet while still generous.
+CoinBalance = Annotated[int, Field(ge=0, le=1_000_000)]
+
+
 class ProgressBatchIn(BaseModel):
     # #833 — cap the batch so record_progress can't be used as a bulk-row/
     # mastery-lookup amplifier. 200 is far above the documented ~40-per-sync.
@@ -526,7 +562,9 @@ class ProgressBatchIn(BaseModel):
     # #9 — multi-device sync: the client's current coin balance per kid
     # ("<kid_id>": int). The server keeps the max ever reported (newest-wins),
     # so a kid's Nova wallet follows them across devices.
-    coins: dict[str, int] | None = None
+    # #1649 — each value is range-bounded (0..1_000_000) so a tampered report
+    # can't persist an absurd wallet value; out-of-range → 422.
+    coins: dict[str, CoinBalance] | None = None
     # #1804 — per-kid monotonic wallet version ("<kid_id>": int). The server
     # only accepts a coins+wallet_seq update when the incoming seq is strictly
     # greater than the stored value (last-write-wins — a spend lowers both, so
@@ -578,14 +616,20 @@ from .scrub import clamp_context_strings, context_depth  # noqa: E402
 class LearningStoryIn(BaseModel):
     kid_id: uuid.UUID
     skill_id: str
-    game_id: str
+    # #1641 — game_id is NOT FK-bounded (unlike skill_id): it is a bare string
+    # column, so a tampered client can POST a megabyte-long id that persists and
+    # widens every story query/group-by. Cap at the game catalog id format.
+    game_id: str = Field(max_length=64)
     # Client durable-outbox uid — the dedup key (#331). Re-posting the same uid
     # is a no-op server-side, so a lost ACK can't create duplicate stories.
     uid: str | None = None
     outcome: bool
-    error_kind: str | None = None
-    misconception_code: str | None = None
-    action: str | None = None
+    # #1641 — the Moni vocab fields already reject anything outside their enum
+    # sets (#1614); these max_length caps add a storage budget (defense-in-depth)
+    # in case the catalog vocabularies ever grow or a client drifts.
+    error_kind: str | None = Field(default=None, max_length=24)
+    misconception_code: str | None = Field(default=None, max_length=64)
+    action: str | None = Field(default=None, max_length=24)
     difficulty: float | None = None
     response_ms: RoundedInt = None
     wrong_streak: RoundedInt = None
@@ -683,7 +727,9 @@ class AccelerationIn(BaseModel):
     """One "skipped ahead" entry. `uid` is the client's durable-outbox key —
     re-posting the same uid is a no-op (same dedup as stories)."""
     kid_id: uuid.UUID
-    skill_id: str
+    # #1642 — same catalog-id cap as ProgressEventIn.skill_id (FK-bounded, but
+    # there is no reason to accept an arbitrary-length string at the boundary).
+    skill_id: str = Field(max_length=64)
     # easy | know | moving-on | parent — why this skill was skipped.
     reason: str = Field(pattern=r"^(easy|know|moving-on|parent)$")
     band_from: RoundedIntRequired = Field(ge=1, le=5)

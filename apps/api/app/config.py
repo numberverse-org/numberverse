@@ -124,6 +124,30 @@ class Settings(BaseSettings):
     # #984 — hard-delete revoked sessions older than this many days.
     session_purge_days: int = 30
 
+    # ── Freemium billing (Parent Plus) ────────────────────────────────────────
+    # bKash Tokenized Checkout merchant credentials. All empty by default so the
+    # API boots WITHOUT bKash configured (the billing routes return 501 until
+    # they're set) — mirrors the google_client_id "disabled until configured"
+    # pattern. Never forgeable defaults, so no startup guard needed.
+    bkash_base_url: str = "https://tokenized.pay.bka.sh/v1.2.0-beta/tokenized/checkout"
+    bkash_username: str = ""
+    bkash_password: str = ""
+    bkash_app_key: str = ""
+    bkash_app_secret: str = ""
+    # Optional SOCKS5/HTTP proxy so bKash sees a stable whitelisted IP. The
+    # Numberverse deploy runs its OWN bkash-tunnel container (autossh -D) for
+    # this — see infra/deploy/docker-compose.prod.yml.
+    bkash_proxy_url: str | None = None
+    # Parent Plus pricing. Config, not code — the launch price is chosen later
+    # ("decide later — just build the rails", 17 Aug 2026).
+    plus_annual_bdt: int = 1499
+    plus_annual_days: int = 365
+
+    @property
+    def bkash_configured(self) -> bool:
+        """True when all four bKash merchant credentials are present."""
+        return bool(self.bkash_username and self.bkash_password and self.bkash_app_key and self.bkash_app_secret)
+
     @model_validator(mode="before")
     @classmethod
     def _drop_legacy_jwt_expiry_env(cls, data):

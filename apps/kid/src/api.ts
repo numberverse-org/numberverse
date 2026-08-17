@@ -328,6 +328,44 @@ export async function validateParentSession(): Promise<boolean> {
   }
 }
 
+/** 30-day offline grace for a cached "plus" entitlement (freemium gate). */
+const PLAN_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Cache the entitlement the server reported for the signed-in parent. */
+function cachePlan(profile: { plan?: string } | undefined): void {
+  const plan = profile?.plan === "plus" ? ("plus" as const) : ("free" as const);
+  useKidStore.getState().setPlan(plan, Date.now());
+}
+
+/** Refresh the cached billing entitlement. Trusts a cached "plus" within the
+ *  30-day grace window (a paying family in airplane mode stays unlocked); a
+ *  cached "free" always re-checks so an upgrade lands promptly. */
+export async function refreshEntitlement(): Promise<void> {
+  const { plan, planCheckedAt } = useKidStore.getState();
+  const now = Date.now();
+  if (plan === "plus" && planCheckedAt > 0 && now - planCheckedAt <= PLAN_GRACE_MS) return;
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem(LS.parentToken);
+  } catch {
+    /* storage denied */
+  }
+  if (!token) {
+    useKidStore.getState().setPlan("free", now);
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const data = await res.json();
+      cachePlan(data.profile);
+    }
+    // non-ok → keep the current cache (transient/offline); re-check later.
+  } catch {
+    // offline — keep the current cache.
+  }
+}
+
 export async function signinParent(email: string, password: string): Promise<void> {
   const res = await fetch(`${API}/auth/login`, {
     method: "POST",
@@ -339,6 +377,7 @@ export async function signinParent(email: string, password: string): Promise<voi
   localStorage.setItem(LS.parentToken, data.token as string);
   localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? "Parent");
   resetIdentity();
+  cachePlan(data.profile);
 }
 
 /** #1463 — Google sign-in failure modes. The gate needs to tell a parent WHY
@@ -379,6 +418,7 @@ export async function signinGoogle(idToken: string): Promise<void> {
   localStorage.setItem(LS.parentToken, data.token as string);
   localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? "Parent");
   resetIdentity();
+  cachePlan(data.profile);
 }
 
 export async function signupParent(email: string, password: string, displayName: string): Promise<void> {
@@ -392,6 +432,7 @@ export async function signupParent(email: string, password: string, displayName:
   localStorage.setItem(LS.parentToken, data.token as string);
   localStorage.setItem(LS.parentName, (data.profile?.display_name as string) ?? (displayName || "Parent"));
   resetIdentity();
+  cachePlan(data.profile);
 }
 
 export function clearParentSession(): void {

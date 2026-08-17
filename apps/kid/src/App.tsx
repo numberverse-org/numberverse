@@ -20,7 +20,7 @@ import {
   type ErrorKind,
 } from "@numberverse/core";
 import { useKidStore, todayIso, dayIsoAgo, NOVA_QUEST_TARGET, NOVA_QUEST_REWARD, QUEST_REWARDS, NOVA_MASTERY_REWARD, NOVA_SHARE_REWARD, NOVA_BIRTHDAY_COINS, NOVA_CALENDAR_REWARDS, NOVA_DAILY_CAP, calendarCycleDay, QUEST_TARGETS, questTypeFor, type QuestType, STORY_QUEUE_CAP, NOVA_SPECIES, speciesById, speciesEmoji, type RoundResult, type MistakeState, type KothaStory, PERSIST_ERROR_EVENT, PERSIST_OK_EVENT } from "./store";
-import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, updateKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
+import { syncProgress, startAutoSync, restoreServerState, fetchKidSettings, updateKidSettings, cachedKidSettings, todayMinutes, addTodayMinutes, todayLimitMin, quietTimeNow, hasParentSession, parentName, validateParentSession, refreshEntitlement, signinParent, signupParent, signinGoogle, GoogleSignInError, clearParentSession, signoutParent, drainStoriesIfFull, drainAccelIfFull, hasParentPin, setParentPin, verifyParentPin, clearParentPin, hasSecurityQA, securityQuestionId, setSecurityQA, verifySecurityQA, KID_SETTINGS_DEFAULT, goalNudgedToday, markGoalNudgedToday, type KidSettings } from "./api";
 import { googleEnabled, googleClientId } from "./googleAuthMeta";
 import { ensureAudio, startMusic, toggleMusicMute, toggleSoundMute, isMusicMuted, click, whooshUp, tada, setMusicTheme, setSfxVolume, setMusicVolume, setSfxMuted, coinSound, setQuietLevel as setAudioQuiet } from "./game/audio";
 import { setCurrentKidName } from "./game/kidName";
@@ -86,7 +86,7 @@ const GoogleSignIn = lazy(() =>
 // parent panel footer without dragging App's lazy graph into boot.
 import { APP_BUILD, APP_VERSION } from "./version";
 
-export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar" | "worksheet" | "flashcards";
+export type Screen = "welcome" | "syllabus" | "home" | "kidpick" | "addkid" | "worlds" | "worlddetail" | "playing" | "done" | "break" | "contrast" | "parent" | "settings" | "nova" | "nova3d" | "garden" | "cards" | "badges" | "achievements" | "leaderboard" | "trophyroom" | "cert" | "castle" | "avatar" | "worksheet" | "flashcards" | "upgrade";
 /** Rounds per skill before advancing to the next skill in a world.
  *  5 rounds = a real practice block, not a drive-by. */
 const ROUNDS_TO_FINISH = 5;
@@ -553,6 +553,7 @@ export default function App() {
   const gardenWater = useKidStore((s) => s.gardenWater);
   const gardenMastery = useKidStore((s) => s.gardenMastery);
   const skillsMap = useKidStore((s) => s.skills);
+  const plan = useKidStore((s) => s.plan);
   const mistakes = useKidStore((s) => s.mistakes);
   // #1124/#1820 — parent-panel wrong-answer heatmap: pre-aggregate the
   // (unbounded, growing) mistakes ledger into per-day skill buckets + day
@@ -1055,6 +1056,7 @@ export default function App() {
         setScreen("parent"); // shows the inline sign-in form — same parent page
       }
     });
+    void refreshEntitlement(); // refresh cached billing entitlement (30-day grace)
     return () => {
       active = false;
     };
@@ -1610,6 +1612,10 @@ export default function App() {
   const coopSheetRef = useRef<HTMLDivElement>(null);
   const closeCoop = useCallback(() => setCoopOpen(false), []);
   useDialogFocus(coopOpen && kids.length >= 2, closeCoop, coopSheetRef);
+  // #1604 — the calm-mode sheet is a modal dialog: same autofocus, Tab trap,
+  // Escape-close, and focus-restore treatment.
+  const calmRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(calmOpen, () => setCalmOpen(false), calmRef);
   // #1403/#1455 — one language-switch path for the welcome buttons, Settings
   // pills AND the in-game HUD toggle: persist via the locale layer, speak the
   // new language aloud, and mirror it to the screen-reader live region.
@@ -1847,6 +1853,7 @@ export default function App() {
     coins: number;
   } | null>(null);
   const bossTimerRef = useRef<number | undefined>(undefined);
+  const bossRef = useRef<HTMLDivElement>(null);
 
   const startBoss = (band: number) => {
     if (!kid) return;
@@ -1893,6 +1900,9 @@ export default function App() {
     window.clearTimeout(bossTimerRef.current);
     setLandBoss(null);
   };
+  // #1603 — the boss duel sheet is a modal dialog: focus moves to the first
+  // option on open, Tab is trapped, Enter picks, Escape closes + restores.
+  useDialogFocus(Boolean(landBoss), closeBoss, bossRef);
 
   /* ── #356 first-play tour: 4-step, skippable core-loop walkthrough. Shows
    *  once per device the first time a kid lands on home; "Skip" always works. */
@@ -3030,6 +3040,20 @@ export default function App() {
     window.setTimeout(() => el.classList.remove("map-locked-shake"), 520);
   };
 
+  /** Freemium — a premium-locked land (band 3+) opens the upgrade screen instead
+   *  of the mastery-lock message. Payment lives in the parent portal, not here. */
+  const tapPremiumWorld = (b: Band, e: React.MouseEvent<HTMLButtonElement>) => {
+    click();
+    announce(t.premiumLockedSpeak);
+    speak(t.premiumLockedSpeak);
+    const el = e.currentTarget;
+    el.classList.remove("map-locked-shake");
+    void el.offsetWidth;
+    el.classList.add("map-locked-shake");
+    window.setTimeout(() => el.classList.remove("map-locked-shake"), 520);
+    setScreen("upgrade");
+  };
+
   /** 🚀 #249 — skip-ahead: the kid already knows the next lesson. Marks the
    *  skill mastered locally (journey advances past it) + logs an acceleration
    *  entry with the band jump, so the parent portal's acceleration plan shows
@@ -3915,6 +3939,29 @@ export default function App() {
           <p className="settings-footer">
             {t.settingsAboutSub} · {APP_VERSION} · {APP_BUILD.split(" · ")[0]}
           </p>
+        </main>
+      </div>
+    );
+  }
+  if (screen === "upgrade") {
+    // Freemium — kid-facing "Parent Plus" explainer. No payment here (bKash/Nagad
+    // redirects are awkward on a kid's phone); the parent unlocks in the portal.
+    return (
+      <div className="app">
+        <main className="screen worlds parent-screen upgrade-screen">
+          <header className="screen-head">
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.worldsLabel)}>‹</button>
+            <div className="head-title">
+              <h2>{t.premiumTitle}</h2>
+              <p className="head-sub">{t.premiumSub}</p>
+            </div>
+          </header>
+          <div className="gate-card">
+            <div className="gate-logo" aria-hidden>🔒</div>
+            <p className="gate-sub">{t.premiumBody}</p>
+            <p className="upgrade-included" aria-label={t.premiumIncluded}>{t.premiumIncluded}</p>
+            <button className="big-btn play-now" onClick={goBack}>{t.premiumAskParent}</button>
+          </div>
         </main>
       </div>
     );
@@ -5314,7 +5361,8 @@ export default function App() {
               </div>
               {BANDS.map((b, i) => {
                 const prog = worldProgress(skillsMap, kid!.id, b.id);
-                const unlocked = worldUnlocked(skillsMap, kid!.id, b.id);
+                const premiumLocked = plan !== "plus" && b.id > 2;
+                const unlocked = worldUnlocked(skillsMap, kid!.id, b.id) && !premiumLocked;
                 const prev = BANDS.find((x) => x.id === b.id - 1);
                 const prevProg = prev ? worldProgress(skillsMap, kid!.id, prev.id) : null;
                 // #1485 — the SAME unlockGap helper as land-detail: honest
@@ -5339,6 +5387,10 @@ export default function App() {
                       onClick={(e) => {
                         if (unlocked) {
                           openWorld(b);
+                          return;
+                        }
+                        if (premiumLocked) {
+                          tapPremiumWorld(b, e);
                           return;
                         }
                         tapLockedWorld(b, more, prevTitle, e);
@@ -5376,11 +5428,13 @@ export default function App() {
                               : complete
                                 ? t.worldComplete
                                 : t.mapLandProg(prog.mastered, prog.total)
-                            : capped
-                              ? t.worldLockedCap
-                              : gate.ready
-                                ? t.readyFor(lang === "bn" ? b.titleBn ?? b.title : b.title)
-                                : t.masterMoreIn(gate.more, prevTitle)}
+                            : premiumLocked
+                              ? t.premiumLockedSub
+                              : capped
+                                ? t.worldLockedCap
+                                : gate.ready
+                                  ? t.readyFor(lang === "bn" ? b.titleBn ?? b.title : b.title)
+                                  : t.masterMoreIn(gate.more, prevTitle)}
                         </span>
                       </span>
                       <span className="map-island-num">{i + 1}</span>
@@ -5549,7 +5603,7 @@ export default function App() {
             DOM/celebration language as the owl challenge but its own state). */}
         {landBoss && (
           <div className="challenge-overlay" onClick={closeBoss}>
-            <div className="challenge-sheet boss-sheet" role="dialog" aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn} onClick={(e) => e.stopPropagation()}>
+            <div className="challenge-sheet boss-sheet" role="dialog" aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn} onClick={(e) => e.stopPropagation()} ref={bossRef}>
               {landBoss.won ? (
                 <>
                   <div className="challenge-result" role="status">
@@ -6554,7 +6608,7 @@ export default function App() {
             explanation + toggle for reduced motion (mid-meltdown reachable). */}
         {calmOpen && (
           <div className="coop-overlay" onClick={() => setCalmOpen(false)}>
-            <div className="coop-sheet" role="dialog" aria-label={t.calmTitle} onClick={(e) => e.stopPropagation()}>
+            <div className="coop-sheet" role="dialog" aria-label={t.calmTitle} onClick={(e) => e.stopPropagation()} ref={calmRef}>
               <h3 className="coop-title">🦋 {t.calmTitle}</h3>
               <p className="coop-sub">{t.calmBody}</p>
               <div className="settings-row-line">

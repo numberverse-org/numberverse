@@ -580,6 +580,10 @@ function initialMistake(now: number, difficulty: number): MistakeState {
   return { wrong: 0, open: 0, firstAt: now, lastAt: now, lastDifficulty: difficulty, byDay: {} };
 }
 
+/** Billing entitlement — "free" (Worlds 1–2) or "plus" (everything). The server
+ *  is the truth; this is the cached on-device view (30-day offline grace). */
+export type Plan = "free" | "plus";
+
 interface KidState {
   score: number;
   stars: number;
@@ -597,6 +601,10 @@ interface KidState {
   syncChannels: Record<SyncChannel, SyncState>;
   /** #1556 — durable sync signal (persisted + mirrored to `nv_sync_signal`). */
   syncSignal: SyncSignal;
+  /** Billing entitlement cached on-device ("free" | "plus"). */
+  plan: Plan;
+  /** Epoch ms of the last server entitlement check (30-day offline-grace anchor). */
+  planCheckedAt: number;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
   skills: Record<string, SkillState>;
   /** Wrong-answer ledger per kid+skill. Key `${kidId}:${skillId}`. */
@@ -662,6 +670,8 @@ interface KidState {
   setChannelSyncState: (ch: SyncChannel, s: SyncState) => void;
   /** #1556 — update + persist the parent-visible sync signal. */
   setSyncSignal: (patch: Partial<SyncSignal>) => void;
+  /** Set the cached entitlement + stamp when it was last confirmed by the server. */
+  setPlan: (plan: Plan, checkedAt: number) => void;
   skillFor: (kidId: string, skillId: string) => SkillState;
   /** 🧠 MONI profile for a kid (empty profile if never seen). */
   moniFor: (kidId: string) => MoniProfile;
@@ -1000,6 +1010,12 @@ export const useKidStore = create<KidState>()(
       syncState: "idle",
       syncChannels: { progress: "idle", stories: "idle", accel: "idle" },
       syncSignal: DEFAULT_SYNC_SIGNAL,
+      plan: "free",
+      planCheckedAt: 0,
+      setPlan: (plan, checkedAt) => {
+        if (get().plan === plan && get().planCheckedAt === checkedAt) return {};
+        return { plan, planCheckedAt: checkedAt };
+      },
       skills: {},
       mistakes: {},
       stats: {},

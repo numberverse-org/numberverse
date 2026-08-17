@@ -89,6 +89,14 @@ export const en: Strings = {
     mapLockedSpeak: (more, prev) => `${prev} is locked for now — master ${more} more ${more === 1 ? "skill" : "skills"} there to open it.`,
     // #1486 — the parent's difficulty cap is the honest reason this stays locked.
     worldLockedCap: "This land is locked by your grown-up's settings",
+    // Freemium — worlds 3+ need Parent Plus.
+    premiumLockedSub: "🔒 Parent Plus",
+    premiumLockedSpeak: "This world needs Parent Plus. Ask your parent to unlock it!",
+    premiumTitle: "🔒 Parent Plus",
+    premiumSub: "Worlds 3 and beyond need Parent Plus",
+    premiumBody: "Worlds 1 and 2 are free forever. To open more lands, your parent can unlock Parent Plus from the parent portal.",
+    premiumIncluded: "All 8 worlds · every game · cloud sync · up to 4 kids",
+    premiumAskParent: "Ask your parent to unlock it in the parent portal",
     journey: "Journey",
     worldsLabel: "Worlds",
     mapTab: "Map",

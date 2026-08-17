@@ -1,0 +1,13 @@
+# bKash SOCKS5 tunnel — a minimal autossh container that keeps an SSH -D
+# (dynamic SOCKS5) forward to the bKash-whitelisted VPS alive. The API reaches
+# it at socks5h://bkash-tunnel:1080 (set NV_BKASH_PROXY_URL). The SSH private
+# key and config are mounted read-only at runtime (see docker-compose.prod.yml),
+# never baked into the image.
+FROM alpine:3.19
+
+RUN apk add --no-cache autossh openssh-client
+
+# autossh supervises the underlying `ssh`; -M 0 disables its own monitoring port
+# (the SSH connection's keep-alive handles liveness). vps-tunnel is the Host
+# alias in /root/.ssh/config (mounted at runtime).
+ENTRYPOINT ["autossh", "-M", "0", "-N", "-v", "-D", "0.0.0.0:1080", "-E", "/dev/stdout", "vps-tunnel"]

@@ -1,6 +1,8 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -9,8 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
 from .db import get_db
-from .models import OrgMember, Profile, Session
+from .models import OrgMember, Profile, Session, Subscription
 from .security import decode_token, sha256_token
+
+log = logging.getLogger("numberverse.deps")
 
 # #868 — authorization-model guardrail. Kid-app devices are parent-credentialed
 # TODAY: they authenticate with the parent's token, so they currently inherit
@@ -20,6 +24,22 @@ from .security import decode_token, sha256_token
 # `require_parent` / `require_admin` / `require_super_admin`.
 
 bearer = HTTPBearer(auto_error=False)
+
+
+async def resolve_plan(db: AsyncSession, profile: Profile) -> tuple[str, datetime | None]:
+    """Resolve a parent's billing entitlement: ("free", None) or ("plus", period_end).
+
+    The SERVER is the strict source of truth — a missing or expired subscription
+    is "free". The 30-day offline grace is a CLIENT-side concern: the kid app
+    caches this value and only downgrades when a re-check here reports "free".
+    """
+    sub = await db.scalar(select(Subscription).where(Subscription.profile_id == profile.id))
+    if sub is None or sub.plan != "plus":
+        return "free", None
+    end = sub.current_period_end
+    if end is not None and end.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        return "free", None
+    return "plus", end
 
 
 async def get_current_profile(
@@ -33,10 +53,16 @@ async def get_current_profile(
         # #1774 — decode_token routes the verifying key by the token's `kid`
         # claim: current key (jwt_secret) or, during a rotation's grace window,
         # the previous key (jwt_secret_old). Any unknown/mismatched kid or bad
-        # signature surfaces as an Exception and lands here as a 401.
+        # signature surfaces as jwt.InvalidTokenError and lands here as a 401.
         payload = decode_token(cred.credentials)
-    except Exception:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
+    except jwt.InvalidTokenError as exc:
+        # #1631 — only PyJWT's token errors are an auth failure. A misconfigured
+        # secret, a broken DB, or a bug inside decode_token must NOT be masked
+        # as a fake 401 — unexpected exceptions propagate to the app's global
+        # exception handler and become a logged 500. The discarded error is
+        # still logged server-side before the client sees the generic 401.
+        log.warning("token decode failed: %s", exc)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token") from exc
 
     token_hash = sha256_token(cred.credentials)
 
@@ -222,6 +248,38 @@ def org_scoped(stmt: Select, org_id: uuid.UUID | None) -> Select:
     return stmt
 
 
+def parse_uuid(value: object, what: str = "id") -> uuid.UUID:
+    """#1627 — the ONE parser for every client-supplied UUID.
+
+    Path params, headers, and caller-controlled body fields are all untrusted
+    input; each malformed value must yield the SAME contract: HTTP 400 with a
+    `what`-labelled detail, never an unhandled ValueError → 500. FastAPI's
+    native 422 is reserved for schema-level body validation only.
+
+    Usage::
+
+        parse_uuid(raw_path_id)                       # → 400 "Invalid id"
+        parse_uuid(header_value, what="X-Org-ID")     # → 400 "Invalid X-Org-ID"
+        parse_uuid(body_org_id, what="org_id")        # → 400 "Invalid org_id"
+    """
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid {what}") from None
+
+
+def parse_org_id_header(request: Request) -> uuid.UUID | None:
+    """#1628 — the ONE way to read the X-Org-ID header.
+
+    Returns None when the header is absent; a malformed value is a 400 with the
+    exact same status + detail at every call site (resolve_org_id,
+    require_org_member, the admin router)."""
+    header_org = request.headers.get("X-Org-ID")
+    if not header_org:
+        return None
+    return parse_uuid(header_org, what="X-Org-ID")
+
+
 async def resolve_org_id(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -240,15 +298,9 @@ async def resolve_org_id(
     if org_id is not None:
         return org_id
 
-    # Explicit header override (service accounts, admin tools).
-    header_org = request.headers.get("X-Org-ID")
-    if header_org:
-        try:
-            return uuid.UUID(header_org)
-        except (ValueError, AttributeError):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID header")
-
-    return None
+    # Explicit header override (service accounts, admin tools). #1628 — one
+    # parser so the 400 status + detail match every other X-Org-ID site.
+    return parse_org_id_header(request)
 
 
 async def _resolve_org_member(
@@ -286,13 +338,11 @@ _ROLE_RANK = {"teacher": 0, "admin": 1, "owner": 2}
 def _validate_role_hierarchy(actual: str, minimum: str) -> None:
     """Check that `actual` is at least `minimum` in the role hierarchy.
 
-    Raises 403 if the actual role is insufficient.
-    """
+    Raises 403 if the actual role is insufficient. #1629 — the client-facing
+    message is intentionally generic: it must not leak the internal role
+    vocabulary or the caller's exact role."""
     if _ROLE_RANK.get(actual, -1) < _ROLE_RANK.get(minimum, 0):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            f"Insufficient org role: need at least '{minimum}', got '{actual}'",
-        )
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient privileges")
 
 
 def require_org_member(org_id_source: str = "header", min_role: str | None = None):
@@ -330,23 +380,18 @@ def require_org_member(org_id_source: str = "header", min_role: str | None = Non
         resolved_org_id: uuid.UUID | None = None
 
         if org_id_source == "header":
-            header_val = request.headers.get("X-Org-ID")
-            if header_val:
-                try:
-                    resolved_org_id = uuid.UUID(header_val)
-                except (ValueError, AttributeError):
-                    raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid X-Org-ID")
+            # #1628 — one parser for X-Org-ID at every call site, so the 400
+            # status + detail are identical everywhere.
+            resolved_org_id = parse_org_id_header(request)
         elif org_id_source == "path":
             # Extract org_id from path params (FastAPI injects it).
             raw = request.path_params.get("org_id")
             if raw:
-                if isinstance(raw, uuid.UUID):
-                    resolved_org_id = raw
-                else:
-                    try:
-                        resolved_org_id = uuid.UUID(str(raw))
-                    except (ValueError, AttributeError):
-                        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid org_id in path")
+                # #1627 — a malformed path org_id is the same 400 contract as
+                # every other client-supplied identifier.
+                resolved_org_id = (
+                    raw if isinstance(raw, uuid.UUID) else parse_uuid(raw, what="org_id")
+                )
         elif org_id_source == "domain":
             # Future: resolve org from Host header → org.slug lookup.
             raise HTTPException(
@@ -354,9 +399,12 @@ def require_org_member(org_id_source: str = "header", min_role: str | None = Non
                 "Domain-based org resolution not yet implemented",
             )
         else:
+            # #1629 — never echo an internal programming constant to the client;
+            # log it server-side and return a generic 500.
+            log.warning("require_org_member: unknown org_id_source %r", org_id_source)
             raise HTTPException(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
-                f"Unknown org_id_source: {org_id_source}",
+                "Internal server error",
             )
 
         if resolved_org_id is None:

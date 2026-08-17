@@ -63,6 +63,9 @@ class Profile(Base):
 
     kids: Mapped[list["Kid"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
     sessions: Mapped[list["Session"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
+    # Freemium — one billing subscription per profile (reverse of Subscription.profile).
+    # Free accounts have NO row, so this is nullable.
+    subscription: Mapped["Subscription | None"] = relationship(back_populates="profile", uselist=False)
 
 
 class Kid(Base):
@@ -336,13 +339,17 @@ class LearningStory(Base):
     uid: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     kid_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("kids.id", ondelete="CASCADE"), index=True)
     skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
-    game_id: Mapped[str] = mapped_column(String)
+    # #1641 — game_id/error_kind/misconception_code/action are schema-level +
+    # future-table definitions capped to match the real catalog vocabularies
+    # (Pydantic caps in LearningStoryIn are the runtime enforcement; these
+    # lengths keep fresh tables honest without writing a migration).
+    game_id: Mapped[str] = mapped_column(String(64))
     # Moni's classification of a wrong round (fatigue|misconception|gap|guessing|slip)
     # or None when the round was correct.
-    error_kind: Mapped[str | None] = mapped_column(String, nullable=True)
-    misconception_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    error_kind: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    misconception_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # The Moni plan action taken this round (reteach|slow_down|break|encourage|...).
-    action: Mapped[str | None] = mapped_column(String, nullable=True)
+    action: Mapped[str | None] = mapped_column(String(24), nullable=True)
     outcome: Mapped[bool] = mapped_column(Boolean)  # correct this round
     difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
     response_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -400,7 +407,10 @@ class ProgressEvent(Base):
     # #914 — joined/filtered against skills (worksheets, analytics); keep an
     # index so those joins don't scan the whole event log.
     skill_id: Mapped[str] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"), index=True)
-    game_id: Mapped[str] = mapped_column(String)
+    # #1642 — schema-level definition; cap game_id at the catalog id format
+    # (Pydantic caps in ProgressEventIn are the runtime enforcement). skill_id is
+    # FK-bounded by skills.id so its column stays a bare FK String.
+    game_id: Mapped[str] = mapped_column(String(64))
     correct: Mapped[bool] = mapped_column(Boolean)
     response_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     difficulty: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -449,7 +459,7 @@ class Subscription(Base):
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    profile: Mapped[Profile] = relationship()
+    profile: Mapped[Profile] = relationship(back_populates="subscription")
 
 
 class PushSubscription(Base):

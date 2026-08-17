@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..bandlock import skill_band_allowed
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_profile, org_scoped, resolve_org_id
+from ..deps import get_current_profile, org_scoped, resolve_org_id, resolve_plan
+from ..premium_gate import skill_allowed as premium_skill_allowed
 from ..models import AccelerationLog, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
 from ..ratelimit import read_rate_limit, rate_limit
 from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn, StoryStatsOut
@@ -197,10 +198,15 @@ async def record_progress(
     # band-skipped rounds: a stale catalog / parent-lowered-cap must surface as a
     # stuck outbox, never silent permanent loss.
     caps = await _load_band_caps(db, kid_ids)
+    # Premium gate: a "free" plan can only persist bands 1–2 (Worlds 1–2). A
+    # tampered client can't smuggle premium-band progress past the server.
+    plan, _ = await resolve_plan(db, profile)
     events = []
     band_skipped_uids: list[str] = []
     for e in body.events:
-        if skill_band_allowed(e.skill_id, SKILL_BANDS, caps.get(e.kid_id)):
+        if skill_band_allowed(e.skill_id, SKILL_BANDS, caps.get(e.kid_id)) and premium_skill_allowed(
+            plan, SKILL_BANDS.get(e.skill_id)
+        ):
             events.append(e)
         elif e.uid is not None:
             band_skipped_uids.append(e.uid)
@@ -424,10 +430,13 @@ async def record_stories(
     # moments for out-of-band skills (same rule as /progress).
     # #1026 — report the dropped uids so the client requeues (never clears).
     caps = await _load_band_caps(db, kid_ids)
+    plan, _ = await resolve_plan(db, profile)
     stories = []
     band_skipped_uids: list[str] = []
     for s in body:
-        if skill_band_allowed(s.skill_id, SKILL_BANDS, caps.get(s.kid_id)):
+        if skill_band_allowed(s.skill_id, SKILL_BANDS, caps.get(s.kid_id)) and premium_skill_allowed(
+            plan, SKILL_BANDS.get(s.skill_id)
+        ):
             stories.append(s)
         elif s.uid is not None:
             band_skipped_uids.append(s.uid)
@@ -511,10 +520,17 @@ async def record_acceleration(
 
     # #275 — band lock: a capped kid can't log skips beyond their max_band either.
     caps = await _load_band_caps(db, kid_ids)
+    plan, _ = await resolve_plan(db, profile)
     rows = [
         {
             "kid_id": a.kid_id,
-            "uid": a.uid,
+            # #1640 — a None uid defeats Postgres unique-constraint dedup
+            # (NULLs are treated as distinct), so a lost-ACK re-post of a
+            # no-uid acceleration batch would create duplicate skip entries.
+            # Server-generate a synthetic uid for every entry that arrives
+            # without one, mirroring the stories handler (#942) and /progress
+            # (#1023), so (kid_id, uid) ON CONFLICT dedup holds for ALL rows.
+            "uid": a.uid if a.uid is not None else str(uuid.uuid4()),
             "skill_id": a.skill_id,
             "reason": a.reason,
             "band_from": a.band_from,
@@ -522,6 +538,7 @@ async def record_acceleration(
         }
         for a in body
         if skill_band_allowed(a.skill_id, SKILL_BANDS, caps.get(a.kid_id))
+        and premium_skill_allowed(plan, SKILL_BANDS.get(a.skill_id))
     ]
     band_skipped = len(body) - len(rows)
     if rows:

@@ -101,5 +101,28 @@ services:
           cpus: "0.5"
           memory: 256M
 
+  # bKash SOCKS5 tunnel — bKash whitelists the merchant's outbound IP, so the API
+  # routes its bKash calls through a stable VPS IP instead of the home connection.
+  # autossh keeps an SSH -D (SOCKS5) forward to the VPS alive; the API reaches it
+  # at socks5h://bkash-tunnel:1080 (NV_BKASH_PROXY_URL). The SSH key + config are
+  # mounted read-only at runtime (NOT baked into the image) — the key must exist
+  # on the box at ${NV_BKASH_TUNNEL_KEY:-~/.ssh/nv_bkash_tunnel_key}.
+  bkash-tunnel:
+    build:
+      context: ../..
+      dockerfile: infra/deploy/Dockerfile.tunnel
+    image: numberverse-demo-tunnel:${NV_VERSION:?set NV_VERSION (e.g. 0.69.0)}
+    container_name: numberverse-demo-bkash-tunnel
+    restart: unless-stopped
+    volumes:
+      - ${NV_BKASH_TUNNEL_KEY:-~/.ssh/nv_bkash_tunnel_key}:/root/.ssh/id_rsa:ro
+      - ./ssh_config.tunnel:/root/.ssh/config:ro
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
 volumes:
   nv_pg:

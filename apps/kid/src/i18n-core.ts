@@ -105,6 +105,14 @@ export interface Strings {
   mapLockedSpeak: (more: number, prev: string) => string;
   /** #1486 — parent difficulty cap blocks this land regardless of progress. */
   worldLockedCap: string;
+  /** Freemium — this land needs Parent Plus (band 3+). */
+  premiumLockedSub: string;
+  premiumLockedSpeak: string;
+  premiumTitle: string;
+  premiumSub: string;
+  premiumBody: string;
+  premiumIncluded: string;
+  premiumAskParent: string;
   /* learning journey */
   journey: string;
   worldsLabel: string;

@@ -1,0 +1,12 @@
+# bKash tunnel SSH config (mounted read-only into the bkash-tunnel container).
+# Replace HostName with the VPS that is whitelisted with bKash. The private key
+# is mounted at /root/.ssh/id_rsa by docker-compose (never versioned).
+Host vps-tunnel
+    HostName REPLACE_WITH_VPS_IP
+    User ubuntu
+    IdentityFile /root/.ssh/id_rsa
+    Ciphers aes128-gcm@openssh.com,chacha20-poly1305@openssh.com,aes128-ctr
+    ServerAliveInterval 10
+    ServerAliveCountMax 2
+    ExitOnForwardFailure yes
+    StrictHostKeyChecking no
