@@ -11,11 +11,9 @@ job idempotent).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, MetaData, String, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from .db import Base
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 try:
     from pgvector.sqlalchemy import Vector
@@ -24,6 +22,18 @@ try:
 except ImportError:  # pragma: no cover — exercised only on minimal installs
     HAVE_VECTOR = False
     Vector = None  # type: ignore[assignment]
+
+
+# The `story_embeddings` table lives on its OWN metadata (not Base.metadata)
+# so the startup `Base.metadata.create_all` never tries to CREATE it. The
+# Postgres `vector` extension is a server-side requirement that postgres:16
+# -alpine does NOT ship, so a DB without it would otherwise crash the whole
+# API boot with `type "vector" does not exist` — even though the embed job
+# (which also needs the optional sentence-transformers ML stack) is gracefully
+# disabled anyway. The embed job creates this table LAZILY, only after it has
+# confirmed `CREATE EXTENSION IF NOT EXISTS vector` succeeded.
+embed_metadata = MetaData()
+EmbedBase = declarative_base(metadata=embed_metadata)
 
 
 if HAVE_VECTOR:
@@ -35,7 +45,7 @@ if HAVE_VECTOR:
     _MODEL_DEFAULT = settings.kotha_embed_model
     _DIM_DEFAULT = settings.kotha_embed_dim
 
-    class StoryEmbedding(Base):
+    class StoryEmbedding(EmbedBase):
         """A gte-small vector for one story — derived data, rebuildable.
         `story_id` is unique, so re-running the embed job is always a no-op."""
 

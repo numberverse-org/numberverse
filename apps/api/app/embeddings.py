@@ -20,6 +20,7 @@ import logging
 from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.schema import CreateTable
 
 from .config import settings
 from .models import LearningStory
@@ -101,6 +102,15 @@ async def embed_stories(db: AsyncSession, limit: int = EMBED_MAX_PER_RUN) -> dic
     except Exception as exc:  # noqa: BLE001
         log.warning("pgvector extension unavailable: %s", exc)
         return {"status": "skipped", "reason": "pgvector extension unavailable in database"}
+
+    # The story_embeddings table is NOT part of Base.metadata (it lives on its
+    # own embed_metadata), so startup create_all never touches it. Create it
+    # here, lazily, now that the extension is confirmed present.
+    try:
+        await db.execute(CreateTable(StoryEmbedding.__table__, if_not_exists=True))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("story_embeddings table unavailable: %s", exc)
+        return {"status": "skipped", "reason": "story_embeddings table unavailable"}
 
     embedded_ids = select(StoryEmbedding.story_id)
     pending_q = (
