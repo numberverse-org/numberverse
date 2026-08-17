@@ -863,6 +863,7 @@ export function worldEmoji(key: string): string {
     case "star-academy": return "🚀";
     case "jungle-canopy": return "🌴";
     case "polar-peaks": return "❄️";
+    case "summit-peaks": return "⛰️";
     default: return "⭐";
   }
 }
@@ -882,6 +883,7 @@ export const WORLD_LANDS: Record<
   5: { c1: "#2b2350", c2: "#c4b5fd", c3: "#e6dcff", c2_22: "rgba(196,181,253,0.16)", deco: ["🚀", "⭐", "🌠"] },       // Star Academy
   6: { c1: "#1e4d1f", c2: "#43d17c", c3: "#c8f7a9", c2_22: "rgba(67,209,124,0.16)", deco: ["🌴", "🦜", "🌿"] },        // Jungle Canopy (#20)
   7: { c1: "#1f3a5f", c2: "#8fd3ff", c3: "#e3f4ff", c2_22: "rgba(143,211,255,0.16)", deco: ["❄️", "🐧", "🏔️"] },       // Polar Peaks (#20)
+  8: { c1: "#2e2638", c2: "#f0a83c", c3: "#ffe3b3", c2_22: "rgba(240,168,60,0.16)", deco: ["⛰️", "🦅", "🌄"] },        // Summit Peaks (#1164)
 };
 
 /** Worlds unlock by PROGRESS, not age — beat the previous world to open the next.
