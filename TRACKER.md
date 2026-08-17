@@ -1,5 +1,5 @@
 # 🎮 Numberverse — Product Tracker
-> Last updated: 17 Aug 2026
+> Last updated: 18 Aug 2026
 
 ## 🛡️ ADMIN-CORRECTNESS + ROUTER/VALIDATION WAVE (#1622–#1649) + FOLLOW-UPS (#1601/#1603/#1604/#1617/#1650) 17 Aug 2026 ⏳ → 0.98.0 (7 fan-out subagents dispatched)
 - **Wave-10 (API hardening, 28 issues, 4 tasks):** admin-CRUD (#1622/#1623/#1624/#1625/#1627/#1628/#1629/#1630/#1631/#1635/#1636/#1637/#1647 — undeclared `request` NameErrors on org-scoped GET/POST, unguarded uuid.UUID → 400, IntegrityError → 409, shared parse helpers, generic role/org errors, soft-fail verify_password, token decode logging, WRITABLE_FIELDS profile_id removal, filter-list cap); error/import (#1626/#1632/#1633/#1634/#1638/#1639 — request_id in 500/422 bodies, 1 MiB guard alignment, hard-400 non-numeric Content-Length, neutral conflict reason, import context validators, list caps); schema caps (#1641/#1642/#1643/#1649 — bounded error_kind/game_id/enabled_subjects/coins); router validation (#1640/#1644/#1645/#1646/#1648 — uid synthesis, threshold range, token length, UTC share window, PATCH null-clear).

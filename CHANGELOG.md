@@ -1,3 +1,7 @@
+## 18 Aug 2026 — 1.0.0 (Docs consistency + infra ops + data-model indexes + frontend quality (wave-12))
+
+90c2192 feat+fix: docs consistency, infra ops correctness, data-model indexes, frontend quality
+
 ## 17 Aug 2026 — 0.99.0 (Explore Garden shape quests (K.G.2) + first-play tap demo)
 
 6e0a734 feat(kid): Explore Garden shape quests (K.G.2) + first-play tap demo
