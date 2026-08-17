@@ -165,7 +165,7 @@
 
 ## ⚙️ The daily standup (`scripts/team/oracle_team.py`)
 Every 24h (launchd `com.tresha.oracle-team`) the runner:
-1. Executes the **~30 automated checks** mapped to the ⚙️ roles above (safety scan, privacy
+1. Executes the **~37 automated checks** (the runner prints the live count) mapped to the ⚙️ roles above (safety scan, privacy
    scan, curriculum shape, i18n, tsc, audit, bundle/precache budgets, live domain, memory,
    **adjudicator rulings**, and **visual/asset/contrast integrity**).
 2. Prints a **status board** — per layer, pass ⚠️ warn ✖ fail, with the owning role.

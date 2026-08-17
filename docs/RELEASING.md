@@ -8,11 +8,12 @@ A feature becomes a version in 7 automated steps. No manual tagging, no
 ```
 PR merged → CI green (build core → typecheck → audit → api compile+tests
             → license audit) plus label gate; release.sh also demands oracle CLEAN
-        → bash infra/deploy/scripts/release.sh 0.26.x "one-line summary"
+        → bash infra/deploy/scripts/release.sh 0.X.Y "one-line summary"
             1. Quality gates      (core build · kid typecheck · audit · oracle CLEAN)
-            2. Bump stamp         (APP_BUILD → "dd Mmm YYYY · 0.26.x (summary)" + TRACKER date)
+            2. Bump stamp         (APP_BUILD → "dd Mmm YYYY · 0.X.Y (summary)" + TRACKER date)
             3. Changelog          (CHANGELOG.md prepended with commits since last tag)
-            4. Commit + tag       (chore: 0.26.x release — summary  →  tag 0.26.x)
+            4. Commit + tag       (chore: 0.X.Y release — summary  →  tag 0.X.Y)
+            4b. LATEST_RELEASE    writes the shipped version to docs/LATEST_RELEASE.md
             5. Push               (main + tag)  →  GitHub Actions:
                     • ci.yml        re-verifies the exact tagged commit
                     • release.yml   drafts a GitHub Release with auto-generated notes
@@ -26,9 +27,15 @@ PR merged → CI green (build core → typecheck → audit → api compile+tests
 ## How to ship (one command)
 
 ```bash
-bash infra/deploy/scripts/release.sh 0.26.x "one-line summary"
+bash infra/deploy/scripts/release.sh 0.X.Y "one-line summary"
 # add --no-deploy to stop after push/tag (deploy later with deploy.sh)
 ```
+
+`0.X.Y` is a placeholder — ship the **next real version**, always the one in
+`docs/LATEST_RELEASE.md`. `release.sh` writes the version it just shipped there
+(step `4b` above), and the release-train (README example, issue board, deploy
+docs) reads that file. **Reference the file, never a hard-coded semver** — it's
+the single source of truth for "what version are we on."
 
 Versions are **TRUE SEMVER (0.MAJOR.MINOR.PATCH)** — the version you pass IS
 the semver, used verbatim in the stamp, the git tag, and APP_VERSION. The
@@ -74,7 +81,7 @@ fails loudly instead of pretending).
 | `content-safety` | `scripts/content-safety.mjs` — no unsafe words in skill titles / scene strings; allowlist-able (#91) |
 | `tracker-scan` | `scripts/tracker-scan.mjs` — no ad/tracker dependency or endpoint (100% ad-free) (#92) |
 | `label` | PR title is conventional → type label |
-| **oracle** (release gate) | `scripts/team/oracle_team.py --no-page` — the 35-role standup must be CLEAN before a tag |
+| **oracle** (release gate) | `scripts/team/oracle_team.py --no-page` — the Oracle Team's **105-role** standup must be CLEAN before a tag |
 
 ## The mastery-gate flow
 

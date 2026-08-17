@@ -24,6 +24,10 @@ import {
   hasParentSession,
   hasParentPin,
   hasSecurityQA,
+  setParentPin,
+  verifyParentPin,
+  setSecurityQA,
+  verifySecurityQA,
   KID_SETTINGS_DEFAULT,
   type KidSettings,
 } from "../src/api";
@@ -525,5 +529,62 @@ describe("signin/reauth helper booleans", () => {
   it("hasSecurityQA requires both the question AND answer", () => {
     localStorage.setItem("nv_parent_sec_q", "0");
     expect(hasSecurityQA()).toBe(false);
+  });
+});
+
+/* ── #819 PIN + recovery secret hashing (PBKDF2 + legacy upgrade) ──────── */
+
+describe("#819 parent PIN + recovery answer (hash, normalize, legacy upgrade)", () => {
+  /** Replicates the pre-#819 fixed-salt FNV-1a format so we can seed a legacy
+   *  install and assert verifyParentPin/verifySecurityQA re-hash it to PBKDF2. */
+  function legacyFnv1a(value: string): string {
+    const SALT = "numberverse-parent-pin-v1";
+    let h = 0x811c9dc5;
+    const s = `${SALT}:${value}`;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return `fnv1a$${(h >>> 0).toString(16).padStart(8, "0")}`;
+  }
+
+  it("setParentPin/verifyParentPin round-trip — never stores the raw PIN", async () => {
+    await setParentPin("1234");
+    expect(localStorage.getItem("nv_parent_pin")).not.toBe("1234");
+    expect(localStorage.getItem("nv_parent_pin")!.startsWith("pbkdf2-sha256$")).toBe(true);
+    expect(await verifyParentPin("1234")).toBe(true);
+    expect(await verifyParentPin("9999")).toBe(false);
+  });
+
+  it("upgrades a legacy fnv1a PIN to PBKDF2 on first successful verify", async () => {
+    localStorage.setItem("nv_parent_pin", legacyFnv1a("1234"));
+    expect(localStorage.getItem("nv_parent_pin")!.startsWith("fnv1a$")).toBe(true);
+    expect(await verifyParentPin("1234")).toBe(true);
+    // the weak hash is re-hashed in place (and still verifies)
+    const upgraded = localStorage.getItem("nv_parent_pin")!;
+    expect(upgraded.startsWith("pbkdf2-sha256$")).toBe(true);
+    expect(await verifyParentPin("1234")).toBe(true);
+  });
+
+  it("normalizeRecoveryAnswer — trim, lower-case, collapse spaces", async () => {
+    await setSecurityQA("2", "  Blue   MOON ");
+    expect(await verifySecurityQA("blue moon")).toBe(true);
+    expect(await verifySecurityQA("  BLUE  moon  ")).toBe(true);
+    expect(await verifySecurityQA("blue")).toBe(false);
+    expect(localStorage.getItem("nv_parent_sec_a")!.startsWith("pbkdf2-sha256$")).toBe(true);
+  });
+
+  it("upgrades a legacy fnv1a recovery answer to PBKDF2 on first successful verify", async () => {
+    localStorage.setItem("nv_parent_sec_q", "2");
+    localStorage.setItem("nv_parent_sec_a", legacyFnv1a("blue moon"));
+    expect(await verifySecurityQA("blue moon")).toBe(true);
+    expect(localStorage.getItem("nv_parent_sec_a")!.startsWith("pbkdf2-sha256$")).toBe(true);
+  });
+
+  it("returns false (and does not upgrade) when nothing is stored", async () => {
+    expect(await verifyParentPin("1234")).toBe(false);
+    expect(await verifySecurityQA("blue moon")).toBe(false);
+    expect(localStorage.getItem("nv_parent_pin")).toBeNull();
+    expect(localStorage.getItem("nv_parent_sec_a")).toBeNull();
   });
 });

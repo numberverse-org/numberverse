@@ -34,11 +34,14 @@ scripts/team  → Oracle Team: daily standup + weekly council (see TEAM.md)
 ```
 
 ## The Oracle Team (TEAM.md)
-Numberverse is run by a **75-role continuous team** (5 layers × 15): 🧠 Oracle Council,
-🛠️ Engineering Crew, 🛡️ Quality & Trust, 🎨 Content & Experience, 🚀 Growth & Parent Care.
-Every day `scripts/team/oracle_team.py` runs 22 automated role-checks and learns the report
-to the memory API; every week `oracle_council.py` turns the standups into a strategy brief.
-Any ✖ failure pages the owner. See **[TEAM.md](TEAM.md)**.
+Numberverse is run by a **105-role continuous team** (7 layers × 15): the 🧠 Oracle
+Council, 🛠️ Engineering Crew, 🛡️ Quality & Trust, 🎨 Content & Experience, and 🚀
+Growth & Parent Care layers run the product forward, ⚖️ Adjudicator rules disputes, and
+👁️ Visual Inspection is the eyes on every pixel.
+Every day `scripts/team/oracle_team.py` runs the team's automated role-checks (the runner
+prints the live count · 105 total) and learns the report to the memory API; every week
+`oracle_council.py` turns the standups into a strategy brief. Any ✖ failure pages the
+owner. See **[TEAM.md](TEAM.md)**.
 
 ## Develop
 ```bash
@@ -60,10 +63,12 @@ Live: `https://kids.munna-khan.xyz` (Cloudflare named tunnel) · LAN: `http://19
 
 ## Release (one command, fully gated)
 ```bash
-bash infra/deploy/scripts/release.sh 0.24.1 "Moni plan-driven sessions"   # gates → stamp → changelog → tag → push → deploy
+bash infra/deploy/scripts/release.sh 0.99.0 "Explore Garden shape quests"   # gates → stamp → changelog → tag → push → deploy
 ```
 TRUE SEMVER (`0.MAJOR.MINOR.PATCH`). Pushing the semver tag fires CI + a
-GitHub Release with auto-notes. See **[docs/RELEASING.md](docs/RELEASING.md)**.
+GitHub Release with auto-notes. `release.sh` writes the current version to
+**[docs/LATEST_RELEASE.md](docs/LATEST_RELEASE.md)** — always ship the version
+it lists, so this example never rots. See **[docs/RELEASING.md](docs/RELEASING.md)**.
 
 ## Tracking (the issue board + project)
 Every idea is a GitHub issue on a milestone. Live roadmap board:
@@ -76,6 +81,6 @@ auto-assigned + auto-triaged. See **[docs/ISSUE_BOARD.md](docs/ISSUE_BOARD.md)**
 ```bash
 cd apps/kid && ./node_modules/.bin/tsc --noEmit -p tsconfig.json   # type-safe
 cd apps/kid && node scripts/audit.mjs                              # i18n + catalog + seed integrity
-python3 scripts/team/oracle_team.py                                # the Oracle Team's 22-role sign-off
+python3 scripts/team/oracle_team.py                                # the Oracle Team's 105-role sign-off
 ```
 CI runs these on every push/PR via GitHub Actions (`numberverse-org/numberverse`).

@@ -19,12 +19,15 @@ to see every column at once.
 
 ## Epics (milestones)
 
+Milestones track **release trains** — the retired `vN` names are gone; with TRUE
+SEMVER (see `docs/RELEASING.md`) each milestone is a minor release's train. The
+current in-flight version lives in `docs/LATEST_RELEASE.md` — anchor on that
+file, not a frozen list.
+
 | Milestone | Focus |
 |---|---|
-| `v11 — next ship` | the current cut: Taka Tap v2, parent streak, first tagged release |
-| `v12 — parent power` | caps, debug card, share upgrades, sync |
-| `v13 — content wave` | count-to-100, Bangla sentences, digraphs, seasons |
-| `v14 — polish & perf` | async Phaser chunk, iOS pass, accessibility |
+| `0.99 — Explore Garden` | shape quests (K.G.2) + first-play tap demo |
+| `0.98 — Parent & Garden` | admin correctness, schema caps, parent usage, Explore Garden gameplay |
 | `Backlog` | parked ideas — pull from here when a milestone is light |
 
 ## The workflow (how work actually moves)
@@ -41,7 +44,7 @@ to see every column at once.
 
 ## Moving a card
 ```bash
-gh issue edit 12 --label "status: todo,priority: high" --milestone "v13 — content wave"
+gh issue edit 12 --label "status: todo,priority: high" --milestone "0.99 — Explore Garden"
 gh issue close 12
 ```
 

@@ -79,6 +79,21 @@ export default function LearningControls({
   const snapshot = savedSnapshots[active.id];
   const unsaved = snapshot ? JSON.stringify(snapshot) !== JSON.stringify(activeSettings) : false;
 
+  // #762 — unsaved-changes guard: warn before the tab closes / navigates while
+  // edits are pending, so a parent who tweaked controls can't lose them
+  // silently. (The sticky Save row + "Unsaved changes" banner below mark the
+  // same pending state; this catches the tab-close / back-navigation escape
+  // hatch where a banner alone can't help.)
+  useEffect(() => {
+    if (!unsaved) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [unsaved]);
+
   // #1512 — the difficulty cap only offers worlds 1–5, but FOCUS_BANDS runs to
   // 7. When a cap is set, focus choices are restricted to bands ≤ the cap so a
   // parent can never pin a world above the ceiling they just chose.

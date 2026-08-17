@@ -46,6 +46,10 @@ from app.migrations import (  # noqa: E402
     _q,
 )
 
+# #907/#908 — the models carry composite / created_at indexes in __table_args__
+# so BOTH fresh-DB create_all and existing-DB apply_index_migrations get them.
+from app.models import LearningStory, ProgressEvent  # noqa: E402
+
 dialect = postgresql.dialect()
 fails = []
 
@@ -110,6 +114,34 @@ for _expr in sorted(_CHECK_SQLTEXT_ALLOWLIST["kid_settings"]):
     check(f"kid_settings allowlisted: {_expr[:44]}…", _check_sqltext_ok("kid_settings", _expr), True)
 check("unregistered expression refused", _check_sqltext_ok("kid_settings", "1 = 1; DROP TABLE kids"), False)
 check("unknown table refused", _check_sqltext_ok("not_a_table", "1 = 1"), False)
+
+# ── model index declarations (#907, #908) ─────────────────────────────────────
+# The indexes must be declared on the MODELS (not just the migration harness)
+# so a fresh DB gets them from create_all and the existing-DB path picks them
+# up from table.indexes. Assert the name + column set SQLAlchemy would compile.
+
+
+def _index_cols(idx) -> tuple:
+    return tuple(c.name for c in idx.columns)
+
+
+_prog_indexes = {i.name: _index_cols(i) for i in ProgressEvent.__table__.indexes}
+check(
+    "ProgressEvent composite (kid_id, id) index (#907)",
+    _prog_indexes.get("ix_progress_events_kid_id_id"),
+    ("kid_id", "id"),
+)
+_story_indexes = {i.name: _index_cols(i) for i in LearningStory.__table__.indexes}
+check(
+    "LearningStory created_at index (#908)",
+    _story_indexes.get("ix_learning_stories_created_at"),
+    ("created_at",),
+)
+check(
+    "LearningStory (kid_id, created_at) index (#908)",
+    _story_indexes.get("ix_learning_stories_kid_id_created_at"),
+    ("kid_id", "created_at"),
+)
 
 print("─" * 30)
 if fails:

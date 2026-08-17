@@ -22,7 +22,13 @@ VERSION = 2
 
 
 def iso(dt: datetime | None) -> str | None:
-    """Serialize timestamp columns as UTC ISO strings (handles legacy naive)."""
+    """Serialize timestamp columns as UTC ISO strings.
+
+    #906 — the model columns are DateTime(timezone=True), so fresh-DB values
+    are already aware and this is a plain astimezone. The `tzinfo is None`
+    branch is a legacy guard for rows written before the tz migration (they
+    were stored as naive UTC); labeling them UTC preserves the stored instant.
+    """
     if dt is None:
         return None
     if dt.tzinfo is None:

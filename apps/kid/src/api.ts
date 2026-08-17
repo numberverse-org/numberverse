@@ -459,10 +459,17 @@ export async function verifyParentPin(pin: string): Promise<boolean> {
   const stored = readLS(LS.parentPin);
   if (!stored) return false;
   try {
-    return await verifyParentSecret(pin, stored);
+    if (!(await verifyParentSecret(pin, stored))) return false;
   } catch {
     return false;
   }
+  // #819 — legacy upgrade: a pre-PBKDF2 install stored a weak fixed-salt
+  // `fnv1a$…` hash. It verified, so re-hash to the slow per-device KDF NOW so
+  // the weak hash doesn't linger in localStorage for offline brute-forcing.
+  if (stored.startsWith("fnv1a$")) {
+    localStorage.setItem(LS.parentPin, await hashParentSecret(pin));
+  }
+  return true;
 }
 export function clearParentPin(): void {
   localStorage.removeItem(LS.parentPin);
@@ -493,11 +500,18 @@ export async function setSecurityQA(qid: string, answer: string): Promise<void> 
 export async function verifySecurityQA(answer: string): Promise<boolean> {
   const stored = readLS(LS.parentSecA);
   if (!stored) return false;
+  const normalized = normalizeRecoveryAnswer(answer);
   try {
-    return await verifyParentSecret(normalizeRecoveryAnswer(answer), stored);
+    if (!(await verifyParentSecret(normalized, stored))) return false;
   } catch {
     return false;
   }
+  // #819 — legacy upgrade (same as verifyParentPin): re-hash a verified legacy
+  // `fnv1a$…` recovery answer to the slow KDF so it doesn't linger.
+  if (stored.startsWith("fnv1a$")) {
+    localStorage.setItem(LS.parentSecA, await hashParentSecret(normalized));
+  }
+  return true;
 }
 export function clearSecurityQA(): void {
   localStorage.removeItem(LS.parentSecQ);
@@ -1417,20 +1431,21 @@ const LS_SETTINGS = "nv_kid_settings"; // { localKidId: KidSettings }
 // write path. (A multi-tab write won't be seen until reload — fine for a kid app.)
 let settingsCache: Record<string, KidSettings> | null = null;
 
-/** #818 — required boolean/string/number switches a parsed setting must
- *  actually have before we trust it as a `KidSettings`; anything else is
- *  dropped so a corrupt entry can't ride into the runtime as a fresh object
- *  (the merge path fills missing optional fields with `KID_SETTINGS_DEFAULT`). */
-const REQUIRED_SETTING_FIELDS = [
-  "enabled_subjects",
-  "max_band",
-  "daily_limit_min",
-  "weekday_limits_min",
-  "tts_enabled",
-  "music_enabled",
-  "voice_record_enabled",
-  "paused",
-] as const;
+/** #818 — required switches a parsed setting must actually HAVE, WITH the
+ *  right runtime type, before we trust it as a `KidSettings`; anything else
+ *  is dropped so a corrupt entry (missing keys OR mistyped fields) can't ride
+ *  into the runtime as a fresh object (the merge path fills missing optional
+ *  fields with `KID_SETTINGS_DEFAULT`). */
+const REQUIRED_SETTING_FIELDS: Record<string, (v: unknown) => boolean> = {
+  enabled_subjects: (v) => v === null || Array.isArray(v),
+  max_band: (v) => v === null || typeof v === "number",
+  daily_limit_min: (v) => v === null || typeof v === "number",
+  weekday_limits_min: (v) => v === null || typeof v === "string",
+  tts_enabled: (v) => typeof v === "boolean",
+  music_enabled: (v) => typeof v === "boolean",
+  voice_record_enabled: (v) => typeof v === "boolean",
+  paused: (v) => typeof v === "boolean",
+};
 
 function readSettingsCache(): Record<string, KidSettings> {
   if (settingsCache) return settingsCache;
@@ -1444,8 +1459,13 @@ function readSettingsCache(): Record<string, KidSettings> {
       // per-kid settings object (or is an older/corrupt one missing required
       // keys) is skipped so the default merge below fills the gaps.
       if (!isRecord(v)) continue;
-      const missing = REQUIRED_SETTING_FIELDS.some((f) => !(f in v));
-      if (missing) continue;
+      // #818 — presence AND type check: a settings entry missing a required
+      // key (older/corrupt) or holding a mistyped value (e.g. tts_enabled as a
+      // string) is skipped so the default merge fills the gaps safely.
+      const invalid = Object.entries(REQUIRED_SETTING_FIELDS).some(
+        ([field, check]) => !(field in v) || !check(v[field]),
+      );
+      if (invalid) continue;
       settingsCache[k] = v as unknown as KidSettings;
     }
   }

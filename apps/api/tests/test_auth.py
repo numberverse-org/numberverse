@@ -476,11 +476,11 @@ async def _run():
     )
 
     # #865 sub-second race: a legacy token minted AFTER the logout-all cutoff
-    # must be ACCEPTED. create_access_token emits a whole-second `iat`, so
-    # minting 1µs after the cutoff still yields iat == floor(cutoff_ts) and the
-    # `iat <= marker_ts` check rejects it — the CORRECT behavior is acceptance.
-    # (This check is RED on today's code and documents the bug; fix = preserve
-    # sub-second precision in the token's iat claim.)
+    # must be ACCEPTED. security.create_access_token emits `iat` as a FLOAT
+    # unix timestamp (`now.timestamp()`), so a token minted 1µs after the cutoff
+    # carries iat > marker_ts and survives the `iat <= marker_ts` check. The
+    # whole-second truncation that once falsely killed these is fixed in
+    # security.py; this check stays as a regression guard.
     db_race = FakeDB()
     prof_race = add_profile(db_race, email="legacy-race@test.com", password="password123")
     prof_race.legacy_sessions_revoked_at = datetime.now(timezone.utc) - timedelta(microseconds=1)
@@ -657,6 +657,47 @@ async def _run():
     check("logout_all revokes session a", a9.revoked_at is not None, True)
     check("logout_all revokes session b", b9.revoked_at is not None, True)
     check("logout_all stamps legacy cutoff", p9.legacy_sessions_revoked_at is not None, True)
+
+    # #865 — end-to-end: a no-sid legacy token minted BEFORE logout-all is
+    # killed by the REAL handler. The token has no sessions row (never
+    # materialized), so only the profile-level cutoff can kill it — this
+    # asserts the full logout_all → get_current_profile path, not just the
+    # stamping.
+    db_logout = FakeDB()
+    p_logout = add_profile(db_logout, email="legacy-logout@test.com", password="password123")
+    legacy_logout_token = create_access_token(str(p_logout.id), p_logout.role, session_id=None)
+    await auth.logout_all(p_logout, db_logout)
+    await expect_http(
+        "no-sid token minted before logout-all rejected (full flow)",
+        deps.get_current_profile(
+            make_request(), SimpleNamespace(credentials=legacy_logout_token), db_logout
+        ),
+        401,
+    )
+
+    # #865 — end-to-end: change-password ALSO kills a legacy no-sid token
+    # minted before the change. The caller's current session stays alive; the
+    # pre-change no-sid token has no row and is cut by the profile cutoff.
+    db_pw = FakeDB()
+    p_pw = add_profile(db_pw, email="legacy-cp@test.com", password="oldpass123")
+    cur_sess_pw = add_session(db_pw, p_pw, token_hash="cp-current")
+    legacy_cp_token = create_access_token(str(p_pw.id), p_pw.role, session_id=None)
+    req_cp = make_request()
+    req_cp.state.session = cur_sess_pw
+    await auth.change_password(
+        ChangePasswordIn(current_password="oldpass123", new_password="newpass456"),
+        req_cp,
+        p_pw,
+        db_pw,
+    )
+    check("change-password keeps caller session", cur_sess_pw.revoked_at, None)
+    await expect_http(
+        "no-sid token minted before change-password rejected (full flow)",
+        deps.get_current_profile(
+            make_request(), SimpleNamespace(credentials=legacy_cp_token), db_pw
+        ),
+        401,
+    )
 
     print()
     print(f"✓ {passes} checks passed")

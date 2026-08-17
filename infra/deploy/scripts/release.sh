@@ -31,8 +31,22 @@ echo "════════════════════════�
 echo "── 1/6 Quality gates ───────────────────────────"
 pnpm --filter @numberverse/core build >/dev/null 2>&1 && echo "  ✓ core build"
 (cd apps/kid && ./node_modules/.bin/tsc --noEmit -p tsconfig.json) && echo "  ✓ kid typecheck"
+# #809 — the gates MUST be blocking. `node … | tail -1` and `… | tail -1 | sed`
+# return the LAST command's status, so a failing audit/oracle (non-zero) is masked
+# and a red gate could still stamp+tag+deploy. Capture the REAL generator exit code
+# via PIPESTATUS[0] and abort BEFORE any stamp/tag.
 node apps/kid/scripts/audit.mjs 2>&1 | tail -1
+AUDIT_RC="${PIPESTATUS[0]}"
+if [ "$AUDIT_RC" -ne 0 ]; then
+  echo "✖ AUDIT GATE FAILED (exit $AUDIT_RC) — aborting, no stamp/tag/deploy." >&2
+  exit 1
+fi
 python3 scripts/team/oracle_team.py --no-page 2>&1 | tail -1 | sed 's/^/  oracle: /'
+ORACLE_RC="${PIPESTATUS[0]}"
+if [ "$ORACLE_RC" -ne 0 ]; then
+  echo "✖ ORACLE GATE FAILED (exit $ORACLE_RC) — aborting, no stamp/tag/deploy." >&2
+  exit 1
+fi
 
 echo "── 2/6 Bump build stamp + semver + tracker ────"
 python3 - "$TODAY" "$VERSION" "$SUMMARY" <<'PY'

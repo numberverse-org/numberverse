@@ -333,6 +333,12 @@ class LearningStory(Base):
     # constraint, so legacy rows never collide.
     __table_args__ = (
         UniqueConstraint("kid_id", "uid", name="uq_learning_story_kid_uid"),
+        # #908 — every retention/aggregation/admin prune filters on created_at
+        # (age-window scans), and the per-kid volume-guard prune additionally
+        # orders by (kid_id, created_at); declare both so FRESH DBs get them
+        # from create_all (an existing DB gains them via apply_index_migrations).
+        Index("ix_learning_stories_created_at", "created_at"),
+        Index("ix_learning_stories_kid_id_created_at", "kid_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -356,8 +362,10 @@ class LearningStory(Base):
     wrong_streak: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Free envelope: question, kid's answer, reaction, tts, moni plan diff, ...
     context: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
-    # #908 — indexed for time-window analytics / rate-limit / retention queries.
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    # #908 — index declared in __table_args__ (ix_learning_stories_created_at)
+    # so fresh DBs + apply_index_migrations both create the NAMED index for
+    # time-window analytics / rate-limit / retention queries.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     kid: Mapped[Kid] = relationship()
 

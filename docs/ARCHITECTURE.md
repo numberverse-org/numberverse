@@ -112,4 +112,8 @@ apps/api/app/             main.py · models.py · routers/{auth,kids,progress,
                           content,export,admin}.py · embeddings.py · scrub.py
 infra/                    docker-compose.yml (dev) · deploy/ (compose.prod,
                           Dockerfile.*, scripts/{release,deploy,rollback}.sh)
+web/prototype/            LEGACY prototype (pre-PWA experiment — not shipped,
+                          kept for reference only)
+docs/plans/               design plans & proposals (pet minigames, 3d nova,
+                          freemium gate)
 ```

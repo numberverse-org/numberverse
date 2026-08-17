@@ -37,6 +37,13 @@ async def resolve_plan(db: AsyncSession, profile: Profile) -> tuple[str, datetim
     if sub is None or sub.plan != "plus":
         return "free", None
     end = sub.current_period_end
+    # #906 — `current_period_end` is DateTime(timezone=True) on fresh DBs, but
+    # rows written before the tz migration are naive UTC in the DB. The
+    # replace() is a legacy guard, not a tz conversion: it labels a naive
+    # value as UTC (the instant it was stored) so the expiry comparison stays
+    # correct for both old and new rows. Once #906 lands on the live DB
+    # (ALTER COLUMN ... AT TIME ZONE 'UTC'), every value is aware and this is a
+    # no-op.
     if end is not None and end.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         return "free", None
     return "plus", end

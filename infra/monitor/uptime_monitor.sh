@@ -45,6 +45,18 @@ probe() {
   curl -sL --max-time 12 -o /dev/null -w '%{http_code}' -H 'Cache-Control: no-cache' "$1/?nv$RANDOM$RANDOM" || echo 000
 }
 
+# ── origin /health probe (#810): nginx serves the static bundle with a 200 even
+# when the FastAPI container/DB are down, so a root 200 is NOT health. The origin
+# is healthy only when /health returns JSON status:ok → echo "ok" / "bad".
+probe_health() {
+  local body
+  body=$(curl -s --max-time 12 -H 'Cache-Control: no-cache' "$1/health" 2>/dev/null || true)
+  case "$body" in
+    *'"status":"ok"'*|*'"status": "ok"'*) echo ok ;;
+    *) echo bad ;;
+  esac
+}
+
 # ── telegram send (Bot API) ───────────────────────────────────────────────
 tg_send() {
   [ "$TG_READY" = "1" ] || { [ "$QUIET" = "0" ] && echo "telegram: not configured (missing TG creds)"; return 1; }
@@ -76,22 +88,26 @@ recovered_logged=$recovered_logged
 EOS
 }
 
-# ── check live + origin ───────────────────────────────────────────────────
-code_live=$(probe "$LIVE")
-code_origin=$(probe "$ORIGIN")
+# ── check live (public face) + origin (/health) ────────────────────────────
+live_code=$(probe "$LIVE")
+origin_ok=$(probe_health "$ORIGIN")
 
-if [ "$code_live" = "200" ] || [ "$code_origin" = "200" ]; then
-  # UP (origin 200 OR tunnel 200 — a healthy release is reachable somewhere)
+# #814 — the system is UP only when BOTH the public face AND the origin are good.
+# A LIVE (edge/tunnel) outage with the origin still healthy is a REAL outage of the
+# public site — it must alert, not be silently folded into "UP" because origin=200.
+
+if [ "$live_code" = "200" ] && [ "$origin_ok" = "ok" ]; then
+  # UP — public face reachable AND origin healthy
   if [ "$fail" -ge "$THRESHOLD" ]; then
     # recovering from an episode — notify
-    echo "$now  UP (live=$code_live origin=$code_origin) after ${fail} failures — sending recovery" >> "$LOG"
+    echo "$now  UP (live=$live_code origin=$origin_ok) after ${fail} failures — sending recovery" >> "$LOG"
     [ "$QUIET" = "0" ] && echo "recovered after $fail failures"
     tg_send "✅ Numberverse is <b>back up</b> (${now}). Downtime episode ended." >> "$LOG" 2>&1 || true
     fail=0; down_since=""; alerted=0; recovered_logged=1
   else
     # normal healthy tick
-    [ "$QUIET" = "0" ] && echo "ok (live=$code_live origin=$code_origin)"
-    [ "$last" != "up" ] && echo "$now  UP (live=$code_live origin=$code_origin)" >> "$LOG"
+    [ "$QUIET" = "0" ] && echo "ok (live=$live_code origin=$origin_ok)"
+    [ "$last" != "up" ] && echo "$now  UP (live=$live_code origin=$origin_ok)" >> "$LOG"
     fail=0
   fi
   last="up"
@@ -99,15 +115,19 @@ if [ "$code_live" = "200" ] || [ "$code_origin" = "200" ]; then
   exit 0
 fi
 
-# DOWN (both probes failed)
+# DOWN / degraded — either the public face is unreachable OR the origin /health
+# is bad. Count toward the alert threshold like any outage (#814: edge-down with
+# a healthy origin is still a real incident, not "UP").
 fail=$((fail + 1))
 [ -z "$down_since" ] && down_since="$now"
-echo "$now  DOWN attempt $fail (live=$code_live origin=$code_origin)" >> "$LOG"
+echo "$now  DOWN attempt $fail (live=$live_code origin=$origin_ok)" >> "$LOG"
 [ "$QUIET" = "0" ] && echo "down (attempt $fail/$THRESHOLD)"
+EDGE_NOTE=""
+[ "$live_code" != "200" ] && [ "$origin_ok" = "ok" ] && EDGE_NOTE=" (origin OK — public face/edge unreachable)"
 
 if [ "$fail" -ge "$THRESHOLD" ] && [ "$alerted" != "1" ]; then
   # false-alarm guard crossed → alert once per episode
-  tg_send "🚨 <b>Numberverse is DOWN</b> — live=$LIVE returned $code_live, origin=$ORIGIN returned $code_origin. Down since $down_since (${fail} consecutive probes)." \
+  tg_send "🚨 <b>Numberverse is DOWN</b> — live=$LIVE returned $live_code, origin /health=$origin_ok$EDGE_NOTE. Down since $down_since (${fail} consecutive probes)." \
     && alerted=1 \
     && echo "$now  ALERT sent (down since $down_since)" >> "$LOG" \
     || echo "$now  ALERT attempted (no tg or send failed)" >> "$LOG"

@@ -97,6 +97,12 @@ backup() {
   echo "$(date '+%F %T')  $ENC  ($SIZE, AES-256)" >> "$DEST_DIR/last-backup.txt"
   # retention: keep the NEWEST $RETENTION dumps (encrypted) only
   ls -1t "$DEST_DIR"/numberverse-*.sql.gz.enc | tail -n +$((RETENTION + 1)) | xargs -r rm -f
+  # #812 — legacy PLAINTEXT dumps (pre-#310, before encryption) accumulate forever
+  # because only the .enc glob was pruned. Prune them too, bounded by the same
+  # retention. They're restorable via decrypt() (the .sql.gz branch) but keeping
+  # them beyond the retention window only wastes disk on unencrypted data — the
+  # .enc copy of the same age is the keeper.
+  ls -1t "$DEST_DIR"/numberverse-*.sql.gz | tail -n +$((RETENTION + 1)) | xargs -r rm -f
   KEEP=$(ls -1 "$DEST_DIR"/numberverse-*.sql.gz.enc | wc -l | tr -d ' ')
   [ "$QUIET" = false ] && echo "✓ encrypted dump done ($SIZE), $KEEP dumps kept (retention $RETENTION)"
 }
