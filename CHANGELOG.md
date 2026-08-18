@@ -1,3 +1,7 @@
+## 19 Aug 2026 — 1.9.0 (Admin console sign-out-everywhere + cascade confirms (wave-22))
+
+ea65e4f feat(admin): sign-out-everywhere surface + cascade-consequence confirm (wave-22)
+
 ## 19 Aug 2026 — 1.8.0 (Misconception-based math distractors (wave-21))
 
 b37badf fix(seed): percent-of-number description parity with core (25/50/100/150)
