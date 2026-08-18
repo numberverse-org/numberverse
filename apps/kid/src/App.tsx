@@ -3669,7 +3669,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>←</button>
             <div className="head-title">
               <h2>⚙️ {t.settingsTitle}</h2>
               <p className="head-sub">{t.settingsSub}</p>
@@ -4105,7 +4105,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen upgrade-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.worldsLabel)}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.worldsLabel)}>←</button>
             <div className="head-title">
               <h2>{t.premiumTitle}</h2>
               <p className="head-sub">{t.premiumSub}</p>
@@ -4134,7 +4134,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen gate-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>‹</button>
+              <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>←</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -4263,7 +4263,7 @@ export default function App() {
         <div className="app">
           <main className="screen worlds parent-screen">
             <header className="screen-head">
-              <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>‹</button>
+              <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>←</button>
               <div className="head-title">
                 <h2>{t.parentTitle}</h2>
                 <p className="head-sub">{t.parentSub}</p>
@@ -4470,7 +4470,7 @@ export default function App() {
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.settingsTitle)}>←</button>
             <div className="head-title">
               <h2>{t.parentTitle}</h2>
               <p className="head-sub">{t.parentSub}</p>
@@ -5113,7 +5113,7 @@ export default function App() {
       <div className="app">
         <main className="screen lb-screen">
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.whoPlaying)}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.whoPlaying)}>←</button>
             <div className="head-title">
               <h2>{t.lbTitle}</h2>
               <p className="head-sub">{t.lbSub}</p>
@@ -5174,7 +5174,7 @@ export default function App() {
               onClick={goBack}
               aria-label={t.backTo(t.welcomeTitle)}
             >
-              ‹
+              ←
             </button>
             <div className="head-title">
               <h2>{t.whoPlaying}</h2>
@@ -5306,7 +5306,7 @@ export default function App() {
           {/* #248 — quiet-hours dim + 🌙 badge */}
           {quietChrome}
           <header className="screen-head">
-            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
+            <button className="icon-btn" onClick={goBack} aria-label={t.backTo(t.homeBtn)}>←</button>
             <div className="head-title">
               <h2>🏆 {t.cardsTitle}</h2>
               <p className="head-sub">{t.cardsSub(collected, totalCards)}</p>
@@ -5918,12 +5918,12 @@ export default function App() {
             navy canvas during engine load/error. */}
         {inNova && (
           <button className="hud-back garden-back" onClick={goBack} aria-label={t.back}>
-            ‹
+            ←
           </button>
         )}
         {inGarden && (
           <button className="hud-back garden-back" onClick={goBack} aria-label={t.homeBtn}>
-            ‹
+            ←
           </button>
         )}
         <div

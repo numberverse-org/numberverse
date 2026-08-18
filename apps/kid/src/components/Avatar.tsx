@@ -85,7 +85,7 @@ export function AvatarBuilder({ kid, t, lang, onSave, onBack, onNova }: {
       <div className="sr-only" role="status" aria-live="polite">{announce}</div>
       <main className="screen avatar-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={confirmLeave(onBack)} aria-label={t.backTo(t.homeBtn)}>‹</button>
+          <button className="icon-btn" onClick={confirmLeave(onBack)} aria-label={t.backTo(t.homeBtn)}>←</button>
           <div className="head-title">
             <h2>{t.avatarTitle}</h2>
             <p className="head-sub">{t.avatarSub}</p>

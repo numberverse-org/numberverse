@@ -69,7 +69,7 @@ export default function WorldsScreen({
         {/* #248 — quiet-hours dim + 🌙 badge */}
         {quietChrome}
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>←</button>
           <div className="head-title">
             <h2>{kid ? <AvatarIcon emoji={kid.avatar} size={26} /> : null} {kid?.name ? t.worldsOf(kid.name) : t.worldsOf("")}</h2>
             <p className="head-sub">{mapView ? t.mapSub : journeyView ? t.journeySub : t.masterSkillsSub}</p>

@@ -117,7 +117,7 @@ export function WorksheetScreen({ kid, skillsMap, mistakes, t, lang, onBack }: S
     return (
       <div className="print-screen" role="document" aria-label={t.wsTitle}>
         <div className="cert-toolbar no-print">
-          <button className="icon-btn" onClick={() => setReady(false)} aria-label={t.wsBack}>‹</button>
+          <button className="icon-btn" onClick={() => setReady(false)} aria-label={t.wsBack}>←</button>
           <span className="cert-toolbar-title">{t.wsTitle}</span>
           <button className="cert-print-btn" onClick={() => window.print()}>{t.wsPrint}</button>
         </div>
@@ -163,7 +163,7 @@ export function WorksheetScreen({ kid, skillsMap, mistakes, t, lang, onBack }: S
     <div className="app">
       <main className="screen worlds parent-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.wsBack}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.wsBack}>←</button>
           <div className="head-title">
             <h2>{t.wsTitle}</h2>
             <p className="head-sub">{t.wsSub}</p>
@@ -266,7 +266,7 @@ export function FlashcardsScreen({ kid, skillsMap, t, lang, onBack }: Omit<Sheet
     return (
       <div className="print-screen" role="document" aria-label={t.fcTitle}>
         <div className="cert-toolbar no-print">
-          <button className="icon-btn" onClick={() => setReady(false)} aria-label={t.fcBack}>‹</button>
+          <button className="icon-btn" onClick={() => setReady(false)} aria-label={t.fcBack}>←</button>
           <span className="cert-toolbar-title">{t.fcTitle}</span>
           <button className="cert-print-btn" onClick={() => window.print()} disabled={drawing}>{t.fcPrint}</button>
         </div>
@@ -306,7 +306,7 @@ export function FlashcardsScreen({ kid, skillsMap, t, lang, onBack }: Omit<Sheet
     <div className="app">
       <main className="screen worlds parent-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.fcBack}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.fcBack}>←</button>
           <div className="head-title">
             <h2>{t.fcTitle}</h2>
             <p className="head-sub">{t.fcSub}</p>

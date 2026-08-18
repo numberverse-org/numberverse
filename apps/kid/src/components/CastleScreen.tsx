@@ -25,7 +25,7 @@ export default function CastleScreen({ kid, skillsMap, t, onBack, goNova, openCe
     <div className="app">
       <main className="screen castle-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>←</button>
           <div className="head-title">
             <h2>🏰 {t.castleTitle}</h2>
             <p className="head-sub">{t.castleBuilt(builtCount, towers.length)}</p>

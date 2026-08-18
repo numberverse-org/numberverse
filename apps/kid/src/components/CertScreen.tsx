@@ -19,7 +19,7 @@ export default function CertScreen({ certWorld, kid, skillsMap, t, lang, shareMs
   return (
     <div className="cert-screen" role="document" aria-label={t.certTitle}>
       <div className="cert-toolbar no-print">
-        <button className="icon-btn" onClick={onBack} aria-label={t.certBack}>‹</button>
+        <button className="icon-btn" onClick={onBack} aria-label={t.certBack}>←</button>
         <span className="cert-toolbar-title">{t.certTitle}</span>
         <button className="cert-share-btn" onClick={() => void shareCert()}>{t.certShare}</button>
         <button className="cert-print-btn" onClick={() => window.print()}>{t.certPrint}</button>

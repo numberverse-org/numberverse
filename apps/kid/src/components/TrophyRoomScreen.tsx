@@ -23,7 +23,7 @@ export default function TrophyRoomScreen({ kid, skillsMap, lang, t, onBack, goNo
     <div className="app">
       <main className="screen tr-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>←</button>
           <div className="head-title">
             <h2>{t.trTitle}</h2>
             <p className="head-sub">{t.trSub(trophyCount, rows.length)}</p>

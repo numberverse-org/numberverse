@@ -70,7 +70,7 @@ export default function SyllabusScreen({
     <div className="app">
       <main className="screen worlds parent-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.welcomeTitle)}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.welcomeTitle)}>←</button>
           <div className="head-title">
             <h2>{t.syllabusTitle}</h2>
             <p className="head-sub">{t.syllabusSub}</p>

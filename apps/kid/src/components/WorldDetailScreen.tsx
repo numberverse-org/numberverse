@@ -69,7 +69,7 @@ export default function WorldDetailScreen({
               <span key={di} className={`worlddetail-deco-item d${di}`} style={{ animationDelay: `${di * 0.6}s` }}>{d}</span>
             ))}
           </span>
-          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.worldsLabel)}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.worldsLabel)}>←</button>
           <div className="head-title">
             <h2><Icon name={world.key} size={26} /> {lang === "bn" ? world.titleBn ?? world.title : world.title}</h2>
             <p className="head-sub">{prog.total === 0 ? t.worldNoLessons : t.worldAges(world.ageRange, prog.mastered, prog.total)}</p>

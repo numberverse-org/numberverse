@@ -24,7 +24,7 @@ export default function AddKidForm({ t, lang, onSave, onCancel, onSyllabus, onPa
     <div className="app">
       <main className="screen worlds">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onCancel} aria-label={t.backTo(t.whoPlaying)}>‹</button>
+          <button className="icon-btn" onClick={onCancel} aria-label={t.backTo(t.whoPlaying)}>←</button>
           <div className="head-title">
             <h2>{t.addKid}</h2>
             <p className="head-sub">{t.addKidSub}</p>

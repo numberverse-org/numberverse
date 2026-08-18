@@ -35,7 +35,7 @@ export default function BadgesScreen({
     <div className="app">
       <main className="screen badges-screen">
         <header className="screen-head">
-          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>‹</button>
+          <button className="icon-btn" onClick={onBack} aria-label={t.backTo(t.homeBtn)}>←</button>
           <div className="head-title">
             <h2>{t.badgeTitle}</h2>
             <p className="head-sub">{t.badgeSub(earnedCount, BADGES.length)}</p>
