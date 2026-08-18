@@ -1,3 +1,7 @@
+## 19 Aug 2026 — 1.4.0 (Account erasure completeness + keyboard play (wave-17))
+
+0b529ee feat+fix: account erasure completeness + keyboard play (wave-17)
+
 ## 18 Aug 2026 — 1.3.0 (Kid onboarding UX + a11y cluster (wave-16))
 
 86db47c feat+fix(kid): onboarding UX + a11y cluster (wave-16)
