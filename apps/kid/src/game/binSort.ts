@@ -298,6 +298,11 @@ export abstract class BinSortScene extends Phaser.Scene {
     const c = this.add.container(x, y, [bg, icon, label]);
     c.setSize(cardW, cardH);
     c.setInteractive({ useHandCursor: true });
+    // TAP-TO-ANSWER fallback — a young kid can tap the bin they think is right
+    // instead of dragging the item onto it. Both paths call the same dropOn(),
+    // so a tap and a drag are identical answers. Drag still works for those who
+    // can; this un-sticks the ~15 sort scenes that were drag-only.
+    c.on("pointerdown", () => this.dropOn(bin));
     return c;
   }
 
@@ -373,6 +378,10 @@ export abstract class BinSortScene extends Phaser.Scene {
   }
 
   private dropOn(bin: SortBin | null) {
+    // #child-ux — guard against a tap/drop landing mid-animation (the item is
+    // already flying to a bin after a correct answer, or the timeout already
+    // resolved the round). A second tap during that window must not double-fire.
+    if (this.busy) return;
     const cfg = this.cfg();
     const it = this.queue[this.qIdx];
     if (bin === null) {

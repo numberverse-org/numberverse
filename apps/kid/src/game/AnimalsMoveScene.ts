@@ -212,6 +212,8 @@ export class AnimalsMoveScene extends Phaser.Scene {
     const c = this.add.container(x, y, [bg, icon, label]);
     c.setSize(cardW, cardH);
     c.setInteractive({ useHandCursor: true });
+    // TAP-TO-ANSWER — tap the bin to answer instead of dragging (same dropOn).
+    c.on("pointerdown", () => this.dropOn(move));
     return c;
   }
 
@@ -233,6 +235,7 @@ export class AnimalsMoveScene extends Phaser.Scene {
   }
 
   private dropOn(move: Move | null) {
+    if (this.busy) return; // tap/drop mid-animation must not double-fire
     const a = this.queue[this.qIdx];
     if (move === null) {
       this.flyBack();

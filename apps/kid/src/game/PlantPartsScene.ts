@@ -237,6 +237,8 @@ export class PlantPartsScene extends Phaser.Scene {
     const c = this.add.container(x, y, [bg, icon, label]);
     c.setSize(cardW, cardH);
     c.setInteractive({ useHandCursor: true });
+    // TAP-TO-ANSWER — tap the bin to answer instead of dragging (same dropOn).
+    c.on("pointerdown", () => this.dropOn((cfg as { need?: boolean }).need ?? null));
     return c;
   }
 
@@ -288,6 +290,7 @@ export class PlantPartsScene extends Phaser.Scene {
   }
 
   private dropOn(need: boolean | null) {
+    if (this.busy) return; // tap/drop mid-animation must not double-fire
     const id = this.queue[this.qIdx];
     const item = NEEDS.find((n) => n.id === id)!;
     if (need === null) { this.flyBack(); return; }

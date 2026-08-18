@@ -235,6 +235,8 @@ export class ComputerSafetyScene extends Phaser.Scene {
     const c = this.add.container(x, y, [bg, icon, label]);
     c.setSize(cardW, cardH);
     c.setInteractive({ useHandCursor: true });
+    // TAP-TO-ANSWER — tap the bin to answer instead of dragging (same dropOn).
+    c.on("pointerdown", () => this.dropOn((cfg as { safe?: boolean }).safe ?? null));
     return c;
   }
 
@@ -282,6 +284,7 @@ export class ComputerSafetyScene extends Phaser.Scene {
   }
 
   private dropOn(safe: boolean | null) {
+    if (this.busy) return; // tap/drop mid-animation must not double-fire
     const id = this.queue[this.qIdx];
     const habit = HABITS.find((h) => h.id === id)!;
     if (safe === null) { this.flyBack(); return; }
