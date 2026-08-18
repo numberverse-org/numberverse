@@ -1,3 +1,7 @@
+## 19 Aug 2026 — 1.5.0 (Shared error boundaries + font/Bangla-legibility fixes (wave-18))
+
+6e23ffe feat: shared error boundaries + font/Bangla-legibility fixes (wave-18)
+
 ## 19 Aug 2026 — 1.4.0 (Account erasure completeness + keyboard play (wave-17))
 
 0b529ee feat+fix: account erasure completeness + keyboard play (wave-17)
