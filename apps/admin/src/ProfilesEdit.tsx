@@ -12,6 +12,7 @@ export default function ProfilesEdit() {
             getConfirmText={(record) =>
               record?.email ?? record?.display_name ?? String(record?.id ?? "")
             }
+            cascadeNote="Deleting this profile also permanently deletes every kid, their progress, and their stories."
           />
         }
       >

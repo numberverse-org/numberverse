@@ -16,6 +16,9 @@ export interface ConfirmDeleteProps {
   /** Returns the id used for the delete mutation (defaults to record.id). */
   getId?: (record: any) => any;
   label?: string;
+  /** #1887 — a short, explicit statement of what ELSE this delete destroys
+   *  (dependent rows / cascades) so the operator can't miss the blast radius. */
+  cascadeNote?: string;
 }
 
 const overlay: React.CSSProperties = {
@@ -86,6 +89,7 @@ export function ConfirmDelete({
   getConfirmText = (record) => String(record?.id ?? ""),
   getId = (record) => record?.id,
   label = "Delete",
+  cascadeNote,
 }: ConfirmDeleteProps) {
   const record = useRecordContext();
   const [open, setOpen] = useState(false);
@@ -123,6 +127,11 @@ export function ConfirmDelete({
           <div style={dialog} onClick={(e) => e.stopPropagation()}>
             <h2 style={title}>Delete permanently?</h2>
             <div style={warning}>⚠️ This cannot be undone.</div>
+            {cascadeNote && (
+              <div style={{ color: "#7a4a00", background: "#fff8e1", border: "1px solid #ffdd8f", borderRadius: 10, padding: "10px 12px", fontSize: 13, marginTop: 10 }}>
+                {cascadeNote}
+              </div>
+            )}
             <div style={{ color: "#444", margin: "14px 0 6px" }}>
               Type <strong>{confirmText}</strong> to confirm:
             </div>
@@ -161,11 +170,12 @@ export function ConfirmDelete({
 export function ConfirmDeleteToolbar({
   getConfirmText,
   getId,
-}: Pick<ConfirmDeleteProps, "getConfirmText" | "getId">) {
+  cascadeNote,
+}: Pick<ConfirmDeleteProps, "getConfirmText" | "getId" | "cascadeNote">) {
   return (
     <Toolbar>
       <SaveButton />
-      <ConfirmDelete getConfirmText={getConfirmText} getId={getId} />
+      <ConfirmDelete getConfirmText={getConfirmText} getId={getId} cascadeNote={cascadeNote} />
     </Toolbar>
   );
 }

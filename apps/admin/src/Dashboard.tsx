@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useGetIdentity } from "react-admin";
+import { useGetIdentity, useLogout } from "react-admin";
 import { API } from "./apiBase";
 // #849 — the dashboard goes through the shared token-injecting client instead
 // of hand-rolling `fetch` + an Authorization header.
@@ -42,6 +42,10 @@ const box: React.CSSProperties = {
 
 export default function Dashboard() {
   const { identity } = useGetIdentity();
+  // #1885 — surface "sign out everywhere": authProvider.logout({logoutAll})
+  // revokes every session the API mints (not just this device's), so an admin
+  // who lost a device can kill the leaked token from here.
+  const logout = useLogout();
   const [stats, setStats] = useState<Stats | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -67,9 +71,32 @@ export default function Dashboard() {
 
   return (
     <div style={box}>
-      <h1 style={{ fontSize: 22, marginBottom: 4 }}>Numberverse Console</h1>
-      <div style={{ color: "#888", marginBottom: 18 }}>
-        {identity?.fullName ? `Signed in as ${identity.fullName}` : "Platform overview"}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <h1 style={{ fontSize: 22, marginBottom: 4 }}>Numberverse Console</h1>
+          <div style={{ color: "#888" }}>
+            {identity?.fullName ? `Signed in as ${identity.fullName}` : "Platform overview"}
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            if (window.confirm("Sign out on EVERY device? This revokes all active sessions.")) {
+              logout({ logoutAll: true });
+            }
+          }}
+          style={{
+            background: "none",
+            border: "1px solid #ccc",
+            color: "#555",
+            borderRadius: 10,
+            padding: "8px 12px",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          👋 Sign out everywhere
+        </button>
       </div>
 
       {err && <div style={{ color: "#c62828", marginBottom: 12 }}>{err}</div>}

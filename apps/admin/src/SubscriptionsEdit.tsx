@@ -6,7 +6,12 @@ export default function SubscriptionsEdit() {
   return (
     <Edit>
       <SimpleForm
-        toolbar={<ConfirmDeleteToolbar getConfirmText={(record) => String(record?.id ?? "")} />}
+        toolbar={
+          <ConfirmDeleteToolbar
+            getConfirmText={(record) => String(record?.id ?? "")}
+            cascadeNote="Deleting this subscription permanently removes this family's billing history."
+          />
+        }
       >
         <TextInput source="profile_id" />
         <TextInput source="plan" />

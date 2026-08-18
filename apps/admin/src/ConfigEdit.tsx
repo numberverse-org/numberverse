@@ -39,6 +39,7 @@ function ConfigForm() {
             <ConfirmDeleteToolbar
               getConfirmText={(r) => r?.key ?? String(r?.id ?? "")}
               getId={(r) => r?.key ?? r?.id}
+              cascadeNote="Deleting this config key is product-wide — it may change behavior for every learning round."
             />
           }
         >
@@ -73,6 +74,7 @@ function ConfigForm() {
             <ConfirmDeleteToolbar
               getConfirmText={(r) => r?.key ?? String(r?.id ?? "")}
               getId={(r) => r?.key ?? r?.id}
+              cascadeNote="Deleting this config key is product-wide — it may change behavior for every learning round."
             />
           }
         >
