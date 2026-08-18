@@ -11,6 +11,7 @@ import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, answerFlash } from "./ui";
 import { SAB } from "./safeArea";
 import { makeDraggableTo } from "./gestures";
+import { hintIntro } from "./hints";
 import { ladderValue, poolTierFor, roundsForLevel, nextLevelIndex, timeForLevel } from "./difficulty";
 
 /**
@@ -318,6 +319,9 @@ export abstract class BinSortScene extends Phaser.Scene {
     const name = t(cfg.nameKeys[it.id]);
     this.prompt.setText(t(cfg.promptKey, { name }));
     speak(t(cfg.promptKey, { name }), { lang: getAppLang() === "bn" ? "bn" : "en" });
+    // Phase 4 — one-time "how to answer" cue (tap or drag) so the mechanic is
+    // self-explanatory before the kid can miss it.
+    hintIntro(this, { intro: () => t("sortHint") });
     // #1058 — per-item countdown when the scene opts into the shared time ramp.
     const timeMs = timeForLevel(cfg.timePerItemMs, this.levelIndex);
     this.drawTimeBar(timeMs ? 1 : 0);

@@ -9,6 +9,7 @@ import { speak } from "./speech";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { questionPanel, type QuestionPanelApi } from "./question";
+import { hintIntro } from "./hints";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, type GridLayout, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
@@ -283,6 +284,15 @@ export abstract class DragReorderScene extends Phaser.Scene {
       w: gl.cardW,
       h: cfg.cardH,
     }));
+
+    // Phase 4 — the reorder prompt is shown but was never SPOKEN, leaving
+    // pre-readers on AlphaOrder/BanglaDays/Story silent. Speak it once per
+    // round, and give a one-time "how to answer" cue (drag the card into order).
+    if (this.prompt) {
+      const line = this.promptString();
+      if (line) speak(line, { lang: this.speechLang() });
+    }
+    hintIntro(this, { intro: () => t("sortHint") });
   }
 
   /** Correct-order items for this round (swap-reorder scenes). */
