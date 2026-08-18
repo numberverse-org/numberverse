@@ -4,7 +4,7 @@ import { t as sceneT } from "./i18n";
 import { prefersReducedMotion } from "./reducedMotion";
 import { matureRender } from "./renderBand"; // #1035 — float text follows the band font
 import { speak } from "./speech"; // #1066 — say the hard-win acknowledgment aloud
-import { NV_GOLD, NV_PINK, NV_SKY, NV_ORANGE } from "./ui"; // tokenized #591
+import { NV_GOLD, NV_PINK, NV_SKY, NV_ORANGE } from "./tokens"; // #1939 — leaf module, breaks ui↔celebrate cycle
 
 /**
  * Combo + celebration engine — the "juice" of a correct answer.

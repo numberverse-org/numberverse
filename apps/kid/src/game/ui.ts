@@ -233,19 +233,27 @@ export function questionTxt(): Phaser.Types.GameObjects.Text.TextStyle {
    instead of scattering hex literals — the oracle's visual-polish guard
    flags any non-palette hex used ≥15×, so new colors must become tokens here
    (and the matching --nv-* var in styles.css :root). Mirrors the parent
-   app's --nv-* token set, so both apps share the same named colors. */
-export const NV_GOLD = "#ffd166";    // sunshine gold — stars, coins, highlights
-export const NV_SKY = "#4cc9f0";     // sky blue — links, playful accents
-export const NV_GREEN = "#4ade80";   // success green — correct, growth
-export const NV_PINK = "#ff8fa3";    // soft pink — hearts, candy, cute
-export const NV_BROWN = "#3b2418";   // dark cocoa — text on light fills
-export const NV_NAVY = "#0b2545";    // deep navy — dark surfaces
-export const NV_GRAY = "#8d99ae";    // cool gray — muted/secondary
-export const NV_INK = "#3b3b3b";     // near-black ink — body text
-export const NV_ORANGE = "#ffb35c";  // warm orange — energy
-export const NV_RED = "#f87171";     // soft red — errors/warnings
-export const NV_MINT = "#7ee8d2";    // mint — bubbles, success tints
-export const NV_COCOA = "#7a4e2a";   // cocoa brown — wood, fur, earth
+   app's --nv-* token set, so both apps share the same named colors.
+   #1939 — the constants live in ./tokens (a leaf module) so celebrate.ts can
+   import them without ui.ts↔celebrate.ts forming a runtime cycle; they're
+   re-exported here so the 167 existing importers keep working unchanged. */
+export {
+  NV_GOLD,
+  NV_SKY,
+  NV_GREEN,
+  NV_PINK,
+  NV_BROWN,
+  NV_NAVY,
+  NV_GRAY,
+  NV_INK,
+  NV_ORANGE,
+  NV_RED,
+  NV_MINT,
+  NV_COCOA,
+} from "./tokens";
+// ui.ts's own body also reads a few tokens (the BTN_* styles below); import
+// them into local scope alongside the re-export so they resolve.
+import { NV_GREEN, NV_ORANGE, NV_PINK } from "./tokens";
 
 /* ─────────────────────────── button styles ─────────────────────────── */
 
