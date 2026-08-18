@@ -222,7 +222,7 @@ SKILLS_SEED: list[tuple[str, int, str, str, str, str, int, str]] = [
     ("ict-code-blocks", 6, "ict", "What does this block do?", "এই ব্লকটি কী করে?", "c6-ict-2", 6, "Read simple coding blocks — loop, move, print, if — and say what they do"),
     # Band 7 — Polar Peaks (refinement)
     ("decimals-tenths", 7, "math", "Decimal place value", "দশমিকের স্থানীয় মান", "c7-math-3", 7, "Place value in decimals (0.5, 0.25, 0.75) — the top tier of the Decimals family"),
-    ("percent-of-number", 7, "math", "Percent of a number", "সংখ্যার শতকরা", "c7-math-2", 7, "Find 10%, 25%, 50% and 75% of a number (top tier of Percent)"),
+    ("percent-of-number", 7, "math", "Percent of a number", "সংখ্যার শতকরা", "c7-math-2", 7, "Find 25%, 50%, 100% and 150% of a number (top tier of Percent)"),
     ("fraction-simplify", 7, "math", "Simplify fractions", "ভগ্নাংশ ছোট করি", "c7-math-1", 7, "Reduce fractions to simplest form (4⁄8 → ½)"),
     ("bgs-heritage", 7, "bgs", "Bangladesh heritage", "বাংলাদেশের ঐতিহ্য", "c7-bgs-1", 7, "Festivals, crafts, foods, landmarks"),
     ("en-sentence-order", 7, "english", "Sentence order", "বাক্য সাজিয়ে অনুচ্ছেদ", "c7-english-1", 7, "Order sentences into a clear paragraph (topic → detail → end)"),
