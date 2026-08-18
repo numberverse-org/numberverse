@@ -4,7 +4,9 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
-import { speakMath } from "./speech";
+import { speak, speakMath } from "./speech";
+import { confettiBurst } from "./celebrate";
+import { prefersReducedMotion } from "./reducedMotion";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, BTN_RED, BTN_PURPLE, BTN_ORANGE, BTN_PRIMARY, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -131,6 +133,12 @@ export class BalloonPopScene extends Phaser.Scene {
   }
 
   private bob(b: Balloon) {
+    // #1577 — under reduced motion the balloons rest in place at baseX/baseY.
+    if (prefersReducedMotion()) {
+      b.sprite.setPosition(b.baseX, b.baseY);
+      b.sprite.setAngle(0);
+      return;
+    }
     // #1242 — while the fresh question is on screen, keep the balloon at rest
     // and schedule the drift to begin AFTER the freeze window.
     const wait = this.frozenUntil - this.time.now;
@@ -198,7 +206,10 @@ export class BalloonPopScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(value === target, ms, this.levelIndex + 1);
-    this.time.delayedCall(850, () => {
+    // #1571 — the completing round gets its own celebration + a beat to land.
+    const completed = this.roundsDone >= ROUNDS_TO_FINISH;
+    if (completed) this.celebrateCompletion();
+    this.time.delayedCall(completed ? 1700 : 850, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
       this.startRound();
@@ -210,7 +221,14 @@ export class BalloonPopScene extends Phaser.Scene {
     this.balloons = [];
   }
 
+  /** #1571 — a distinct "you finished" moment: confetti + a spoken exclamation. */
+  private celebrateCompletion() {
+    confettiBurst(this, this.scale.width / 2, this.scale.height * 0.4, 30);
+    speak(t("dwGreat"));
+  }
+
   private sparkle(x: number, y: number) {
+    if (prefersReducedMotion()) return; // #1578 — the win still reads via the pop
     for (let i = 0; i < 18; i++) {
       const p = this.add.circle(x, y, 3 + Math.random() * 3, this.randomColor());
       this.tweens.add({

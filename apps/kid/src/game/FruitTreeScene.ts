@@ -5,6 +5,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak, speakMath } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -68,6 +69,8 @@ export class FruitTreeScene extends Phaser.Scene {
       this.layout();
       this.reflow();
     });
+    // #1577 — the +n bag's idle rock dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.tweens.killTweensOf(this.bag));
     this.layout();
     this.startRound();
   }
@@ -197,6 +200,8 @@ export class FruitTreeScene extends Phaser.Scene {
   }
 
   private bobBag(bag: Phaser.GameObjects.Container) {
+    // #1577 — reduced motion leaves the +n bag resting at its spot.
+    if (prefersReducedMotion()) return;
     this.tweens.add({
       targets: bag,
       angle: Phaser.Math.Between(-3, 3),

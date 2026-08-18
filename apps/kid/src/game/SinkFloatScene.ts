@@ -6,6 +6,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 import { answerRow } from "./layout";
@@ -91,6 +92,8 @@ export class SinkFloatScene extends Phaser.Scene {
     this.tank = this.add.graphics();
     this.meter = roundMeter(this);
     onSceneResize(this, () => this.layout());
+    // #1577 — the waterline bob dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.tweens.killTweensOf(this.objSprite));
     this.layout();
     this.startRound();
   }
@@ -216,8 +219,10 @@ export class SinkFloatScene extends Phaser.Scene {
     });
   }
 
-  /** A gentle bob at the waterline — the check for "float". */
+  /** A gentle bob at the waterline — the check for "float".
+   *  #1577 — reduced motion leaves the object resting at the waterline. */
   private bob() {
+    if (prefersReducedMotion()) return;
     this.tweens.add({
       targets: this.objSprite,
       y: this.waterlineY - 6,

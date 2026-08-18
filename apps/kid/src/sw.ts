@@ -39,8 +39,34 @@ const wbClients = { clientsClaim: () => self.clients.claim() };
 // page reloads onto the fresh bundle. Without the SKIP_WAITING message this
 // worker stays quietly in the waiting state forever.
 self.addEventListener("message", (event) => {
-  if ((event.data as { type?: string } | null)?.type === "SKIP_WAITING") {
+  const data = (event.data as { type?: string; path?: string } | null) ?? null;
+  if (data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+  // #1585 — the speech layer probes whether the neural voice model is already in
+  // the nv-voice cache. A held Bangla line behind a model that can NEVER download
+  // (offline + not cached) falls back to best-effort speech immediately instead of
+  // waiting out its hold timeout. Keys are matched by pathname so the probe never
+  // couples to the ?v= cache-busting version string (neuralVoice.ts owns that).
+  if (data?.type === "NV_VOICE_CACHE_PROBE" && typeof data.path === "string") {
+    event.waitUntil(
+      (async () => {
+        let cached = false;
+        if (data.path) {
+          try {
+            const cache = await caches.open("nv-voice");
+            cached = (await cache.keys()).some(
+              (req) => req instanceof Request && new URL(req.url).pathname === data.path
+            );
+          } catch {
+            cached = false;
+          }
+        }
+        const src = event.source as { postMessage: (msg: unknown) => void } | null;
+        src?.postMessage({ type: "NV_VOICE_CACHE_PROBE_RESULT", path: data.path, cached });
+      })()
+    );
   }
 });
 

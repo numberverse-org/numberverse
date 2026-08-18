@@ -5,6 +5,7 @@ import { starPop } from "./audio";
 import { enableSwipeToAnswer } from "./gestures";
 import { matureRender } from "./renderBand"; // #1040/#1035 — older-kid font stack
 import { prefersReducedMotion } from "./reducedMotion";
+import { readA11y } from "./a11y"; // #1582 — Big Text toggle scales canvas glyphs too
 
 /**
  * Modern 2026-style game UI: soft gradient buttons with glass edges,
@@ -35,11 +36,68 @@ function fontStack(): string {
   return matureRender() ? FONT_MATURE : FONT_YOUNG;
 }
 
+/* #1582 — the Big Text a11y toggle scales the DOM around the game canvas, but
+ * Phaser glyphs are drawn INTO the canvas and ignore CSS zoom. `bigTextFactor()`
+ * is the game-side scale (1.2 when Big Text is on, 1 otherwise) applied by
+ * txt()/questionTxt() so every canvas glyph grows WITH the DOM.
+ *
+ * LIVE RE-LAYOUT: a changed factor re-measures text, so existing Text objects
+ * must rebuild their layout when the toggle flips. a11y.ts applies the pref as
+ * an `nv-big-text` class on <html>, so a MutationObserver here is the single
+ * source of truth — same-tab toggles AND cross-tab storage syncs both end in a
+ * class change. Panels/scenes that hold text subscribe with onBigTextChange()
+ * and rebuild at the new scale. */
+let bigTextScale = readBigTextScale();
+function readBigTextScale(): number {
+  try {
+    return readA11y().bigText ? 1.2 : 1;
+  } catch {
+    return 1; // storage blocked — default scale
+  }
+}
+const bigTextListeners = new Set<() => void>();
+/** The current Big-Text scale factor (1.2 on, 1 off). txt()/questionTxt() read
+ *  this so every canvas glyph follows the a11y toggle. */
+export function bigTextFactor(): number {
+  return bigTextScale;
+}
+/** Subscribe to Big-Text toggles (like onReducedMotionChange). Returns an
+ *  idempotent unsubscribe — wire your callback to SHUTDOWN + DESTROY (#1746). */
+export function onBigTextChange(listener: () => void): () => void {
+  bigTextListeners.add(listener);
+  let off = false;
+  return () => {
+    if (off) return;
+    off = true;
+    bigTextListeners.delete(listener);
+  };
+}
+function refreshBigTextScale(): void {
+  const next = readBigTextScale();
+  if (next === bigTextScale) return;
+  bigTextScale = next;
+  for (const cb of bigTextListeners) {
+    try {
+      cb();
+    } catch {
+      /* a listener must never break the refresh */
+    }
+  }
+}
+if (typeof window !== "undefined" && typeof MutationObserver !== "undefined") {
+  new MutationObserver(refreshBigTextScale).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+}
+
 /** Modern text style: rounded font stack, 1px tracking, soft drop shadow. */
 export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Types.GameObjects.Text.TextStyle {
+  // #1582 — Big Text scales the glyph: every canvas label follows the toggle.
+  const px = Math.round(size * bigTextScale);
   const st: Phaser.Types.GameObjects.Text.TextStyle = {
     fontFamily: fontStack(),
-    fontSize: `${size}px`,
+    fontSize: `${px}px`,
     color,
     fontStyle: opts.bold ? "800" : "600",
     align: opts.align ?? "center",
@@ -50,16 +108,16 @@ export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Typ
         ? undefined
         : {
             offsetX: 0,
-            offsetY: size >= 40 ? 5 : 3,
+            offsetY: px >= 40 ? 5 : 3,
             color: "rgba(3,12,34,0.45)",
-            blur: size >= 40 ? 14 : 8,
+            blur: px >= 40 ? 14 : 8,
             stroke: true,
             fill: true,
           },
   };
   if (opts.outline) {
     st.stroke = "rgba(4,14,36,0.85)";
-    st.strokeThickness = Math.max(3, Math.round(size / 8));
+    st.strokeThickness = Math.max(3, Math.round(px / 8));
   }
   return st;
 }
@@ -101,16 +159,18 @@ export function promptTxt(size: number): Phaser.Types.GameObjects.Text.TextStyle
  *  Bangla questions still fit on a phone. Use this (not promptTxt) for the
  *  line that IS the question ("How many in all?", "Find the letter…"). */
 export function questionTxt(): Phaser.Types.GameObjects.Text.TextStyle {
+  // #1582 — Big Text scales the question glyphs (and the glow follows the size).
+  const px = Math.round(34 * bigTextScale);
   return {
     fontFamily: fontStack(),
-    fontSize: "34px",
+    fontSize: `${px}px`,
     color: "#fff8e1",
     fontStyle: "800",
     align: "center",
     letterSpacing: 0, // keep 0 — letter-spacing breaks Bangla complex-script shaping
     wordWrap: { width: 340, useAdvancedWrap: true },
     stroke: "#1d3557",
-    strokeThickness: 7,
+    strokeThickness: Math.max(7, Math.round(px / 4)),
     shadow: {
       offsetX: 0,
       offsetY: 3,
@@ -198,7 +258,11 @@ function addCorrectBadge(scene: Phaser.Scene, c: Phaser.GameObjects.Container, x
   badge.add(scene.add.text(0, 0, "✓", { fontSize: `${Math.round(r * 1.25)}px`, color: "#0b2545", fontStyle: "bold" }).setOrigin(0.5));
   c.add(badge);
   c.setData("nv-correct-badge", badge);
-  scene.tweens.add({ targets: badge, scale: 1.35, duration: 180, yoyo: true, ease: "Back.easeOut" });
+  // #1578 — the badge's little pop is motion too; reduced motion keeps the
+  // badge static (the ✓ shape is the cue, not the bounce).
+  if (!prefersReducedMotion()) {
+    scene.tweens.add({ targets: badge, scale: 1.35, duration: 180, yoyo: true, ease: "Back.easeOut" });
+  }
 }
 
 /* ─────────────────────────── face textures ─────────────────────────── */
@@ -336,6 +400,10 @@ export interface ModernBtnOpts {
   wrap?: number;
   /** Render a vector icon from the SVG library instead of a text label. */
   icon?: { key: string; size: number; y?: number; scale?: number };
+  /** #1584 — semantic (screen-reader / keyboard) name for an ICON-ONLY button
+   *  whose display label is empty. It becomes the button's `nv-label`, so the
+   *  keyboard bridge and verdict speech announce the option's real name. */
+  ariaLabel?: string;
 }
 
 /** Build a modern circular answer button. Returns the interactive Container. */
@@ -373,12 +441,13 @@ export function modernAnswerButton(
   const api: ModernBtnApi = {
     setCorrect() {
       face.setTexture(faceTex(scene, r, BTN_CORRECT.top, BTN_CORRECT.bottom)).setDisplaySize(r * 2, r * 2);
-      // #783 — the correct-answer pop honours reduced motion: the button still
-      // recolors (and flashes) instantly, it just doesn't bounce.
+      // #783/#1578 — the correct-answer pop honours reduced motion: the button
+      // still recolors instantly (that's the non-motion cue), but the scale
+      // bounce AND the alpha flash are motion, so both are gated.
       if (!prefersReducedMotion()) {
         scene.tweens.add({ targets: c, scale: 1.14, duration: 130, yoyo: true, ease: "Back.easeOut" });
+        scene.tweens.add({ targets: face, alpha: 0.35, duration: 60, yoyo: true, repeat: 1 });
       }
-      scene.tweens.add({ targets: face, alpha: 0.35, duration: 60, yoyo: true, repeat: 1 });
       addCorrectBadge(scene, c, Math.round(r * 0.7), -Math.round(r * 0.7), Math.max(9, Math.round(r * 0.3)));
     },
     setDisabled() {
@@ -387,10 +456,13 @@ export function modernAnswerButton(
     },
     setLabel(t: string) {
       if (labelText) labelText.setText(t);
+      // #1584 — the semantic name follows the visual label (ariaLabel wins for
+      // icon-only buttons whose display label stays empty).
+      c.setData("nv-label", opts.ariaLabel ?? t);
     },
   };
   c.setData("nv-btn", api);
-  c.setData("nv-label", label); // #785/#1005 — keyboard/SR answer label
+  c.setData("nv-label", opts.ariaLabel ?? label); // #785/#1005/#1584 — keyboard/SR answer label
 
   // satisfying press dip
   c.on("pointerdown", () => {
@@ -410,7 +482,9 @@ export function modernCardButton(
   style: BtnStyle = BTN_NEUTRAL,
   labelSize = 24,
   wrap?: number,
-  optsIcon?: ModernBtnOpts["icon"]
+  optsIcon?: ModernBtnOpts["icon"],
+  /** #1584 — semantic (screen-reader / keyboard) name for an icon-only card. */
+  ariaLabel?: string
 ): Phaser.GameObjects.Container {
   const face = scene.add.image(0, 0, cardFaceTex(scene, w, h, style.top, style.bottom)).setDisplaySize(w, h);
   let labelText: Phaser.GameObjects.Text | null = null;
@@ -445,10 +519,13 @@ export function modernCardButton(
     },
     setLabel(t: string) {
       if (labelText) labelText.setText(t);
+      // #1584 — the semantic name follows the visual label (ariaLabel wins for
+      // icon-only cards whose display label stays empty).
+      c.setData("nv-label", ariaLabel ?? t);
     },
   };
   c.setData("nv-btn", api);
-  c.setData("nv-label", label); // #785/#1005 — keyboard/SR answer label
+  c.setData("nv-label", ariaLabel ?? label); // #785/#1005/#1584 — keyboard/SR answer label
   c.on("pointerdown", () => {
     scene.tweens.add({ targets: c, scale: 0.95, duration: 90, yoyo: true, ease: "Sine.easeInOut" });
   });
@@ -549,9 +626,18 @@ export function roundMeter(scene: Phaser.Scene): RoundMeterApi {
   let prevDone = -1; // -1 forces the very first rebuild
   const rebuild = (done: number) => {
     container.removeAll(true);
-    // shrink the stars when the round is long (Count & Pop runs up to 12 pops)
-    const R = total <= 4 ? 11 : total <= 6 ? 9 : 7;
-    const gap = total <= 4 ? 30 : total <= 6 ? 26 : 22;
+    // #1574 — stars keep a READABLE size no matter how long the round is. The
+    // old code shrank the star RADIUS by total (>6 → R=7 dots), so a long
+    // Count & Pop meter's filled stars were nearly invisible. Now the row
+    // first squeezes its SPACING to fit the screen width, and only a truly
+    // packed row eases the radius down — never below the 9px readable floor.
+    const BASE_R = 11;
+    const BASE_GAP = 30;
+    const avail = Math.max(140, scene.scale.width - 48);
+    const span = (total - 1) * BASE_GAP;
+    const gapScale = span <= avail ? 1 : Math.max(0.5, avail / span);
+    const gap = Math.max(16, BASE_GAP * gapScale);
+    const R = gapScale >= 1 ? BASE_R : Math.max(9, Math.round(BASE_R * Math.sqrt(gapScale)));
     const startX = -((total - 1) * gap) / 2;
     let played = false;
     for (let i = 0; i < total; i++) {

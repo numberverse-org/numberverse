@@ -6,6 +6,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -102,6 +103,8 @@ export class DayNightScene extends Phaser.Scene {
     this.sun = this.add.circle(0, 0, 30, 0xffd166).setDepth(4);
     this.sunRays = this.add.graphics().setDepth(3);
     onSceneResize(this, () => this.layout());
+    // #1577 — the earth's spin (a tween on `this`) dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.stopSpin());
     this.layout();
     this.startRound();
   }
@@ -162,6 +165,9 @@ export class DayNightScene extends Phaser.Scene {
   }
 
   private startSpin(ms: number) {
+    // #1577 — reduced motion keeps the earth frozen at its current theta; the
+    // house is still positioned by the pre-spin draw.
+    if (prefersReducedMotion()) return;
     this.spin = this.tweens.add({
       targets: this,
       theta: this.theta + TWO_PI,

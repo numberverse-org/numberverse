@@ -165,6 +165,9 @@ export default function DoneScreen({
               ? t.keepGoing(prog.total - prog.mastered, world.title)
               : t.greatSession}
         </div>
+        {/* #1568 — ONE prominent call-to-action. When a next stop exists, it's
+            the big "Next round"; "Play again" is hidden so the path forward is
+            unambiguous (it stays available via the other ghost links below). */}
         {nextStop ? (
           <button className="big-btn next-btn" onClick={startNextRound}>
             <span className="play-btn-main">▶ {t.nextRound}</span>
@@ -175,9 +178,6 @@ export default function DoneScreen({
           </button>
         ) : (
           <button className="big-btn" onClick={replaySession}>{t.playAgain}</button>
-        )}
-        {nextStop && (
-          <button className="ghost-btn" onClick={replaySession}>{t.playAgain}</button>
         )}
         {complete && (
           <button className="cert-btn" onClick={() => openCert(world)}>{t.certBtn}</button>

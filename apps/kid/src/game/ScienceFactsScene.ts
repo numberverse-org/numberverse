@@ -3,6 +3,7 @@ import { onSceneResize } from "./sceneLifecycle";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { speak } from "./speech"; // #1580 — the fact question is spoken aloud
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
 import { hintWrong } from "./hints";
@@ -177,7 +178,10 @@ export class ScienceFactsScene extends Phaser.Scene {
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
-    this.questionText.setText(`${this.target.emoji} ${L(this.target.q, this.target.qBn)}`);
+    const question = L(this.target.q, this.target.qBn);
+    this.questionText.setText(`${this.target.emoji} ${question}`);
+    // #1580 — the fact is spoken aloud so a pre-reader hears what to answer.
+    speak(question);
     this.spawnButtons();
     this.armChallenge();
   }

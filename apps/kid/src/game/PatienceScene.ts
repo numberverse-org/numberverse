@@ -7,6 +7,7 @@ import { GAMES } from "@numberverse/core";
 import { win } from "./audio";
 import { correctCelebrate } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
@@ -119,6 +120,11 @@ export class PatienceScene extends Phaser.Scene {
       this.time.removeEvent(this.nextRoundCall);
       this.nextRoundCall = undefined;
     }
+    // #1577 — the breathing pulse dies with the scene.
+    if (this.pulse) {
+      this.pulse.stop();
+      this.pulse = undefined;
+    }
   }
 
   private layout() {
@@ -161,7 +167,8 @@ export class PatienceScene extends Phaser.Scene {
     this.prompt.set(t(this.scenario.waiting));
     speak(t(this.scenario.waiting), { lang: getAppLang() === "bn" ? "bn" : "en" });
     // the scene breathes while it waits
-    this.pulse = this.tweens.add({ targets: this.bigEmoji, scaleX: 1.07, scaleY: 1.07, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    // #1577 — reduced motion keeps the emoji still; the wait bar is the signal.
+    this.pulse = prefersReducedMotion() ? undefined : this.tweens.add({ targets: this.bigEmoji, scaleX: 1.07, scaleY: 1.07, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     this.startProgress();
     this.scheduleDistractions();
   }
@@ -222,7 +229,10 @@ export class PatienceScene extends Phaser.Scene {
     c.setSize(80, 48);
     c.setInteractive();
     c.on("pointerdown", () => this.tapDistraction(c));
-    this.tweens.add({ targets: c, y: y - 12, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    // #1577 — reduced motion keeps the bubble static but still tappable.
+    if (!prefersReducedMotion()) {
+      this.tweens.add({ targets: c, y: y - 12, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
     this.distraction = c;
   }
 

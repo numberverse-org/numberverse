@@ -164,6 +164,16 @@ function persistSavedSessions(sessions: Record<string, SavedSession>): void {
   writeLS(SAVED_SESSIONS_KEY, JSON.stringify(sessions));
 }
 
+/** #1567 — the adaptive difficulty rung (a ladder index, 0–5 on the 6-tier
+ *  ladders) → a kid-friendly stage name. Bottom tiers read as "Easy", the
+ *  middle as "Just right", the top as "Tricky". Returns the i18n key so the
+ *  caller can render it in the active language. */
+function rungStageKey(idx: number): "rungEasy" | "rungJustRight" | "rungTricky" {
+  if (idx <= 1) return "rungEasy";
+  if (idx <= 3) return "rungJustRight";
+  return "rungTricky";
+}
+
 const AVATARS = AVATAR_KEYS;
 
 /** #1178/#1186 — shared Suspense fallback while a lazy screen chunk resolves
@@ -186,6 +196,12 @@ export default function App() {
   // instead of a blank gap: spinner while it loads, a retry button if it fails.
   const [gameBoot, setGameBoot] = useState<"loading" | "ready" | "error">("loading");
   const [gameBootNonce, setGameBootNonce] = useState(0); // retry re-arms the boot
+  // #1570 — a stalled chunk import reads as a frozen spinner. After a few
+  // seconds of "loading" we surface a manual Try-again; tapping the loading
+  // card itself also gives feedback ("almost ready…") instead of dead air.
+  const [bootStall, setBootStall] = useState(false);
+  const [bootPoked, setBootPoked] = useState(false);
+  const bootPokeTimer = useRef<number | undefined>(undefined);
   const sessionRef = useRef<SessionStep[]>([]);
   /** #253 — the in-progress session survives a kid switch. `sessionRef` holds
    *  the CURRENT kid's steps; this map holds abandoned mid-flight sessions keyed
@@ -297,6 +313,11 @@ export default function App() {
   /** #1426 — kid-initiated pause: a child can pause the active scene from the
    *  HUD instead of only having a parent kill-switch or a full leave button. */
   const [kidPaused, setKidPaused] = useState(false);
+  // #1566 — soft confirm before leaving a live session: a back-tap or the
+  // pause-card Exit asks "Stop playing for now?" instead of dumping the kid
+  // straight to the previous screen. Leaving is never a loss (the session is
+  // snapshotted), but a young child deserves a second tap to be sure.
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
   // 🎯 #325 — the active contrast drill (template + the skill it fixes) and
   // the current round index. When the drill finishes, the misconception is
   // resolved warmly in the store.
@@ -346,18 +367,25 @@ export default function App() {
   const scanStreamRef = useRef<MediaStream | null>(null);
   const scanRafRef = useRef<number | undefined>(undefined);
   // FIRST TIME → the WELCOME screen sits on top of everything: language pick
-  // first (topmost), then the binary Guest-vs-Sign-in scene, with the syllabus
-  // one tap away BEFORE any sign-in. `nv_seen_welcome` is set on mount so it
-  // only appears once per device. Then the normal flow: a parent session lands
-  // on the journey, otherwise the PARENT page (which shows the sign-in form
-  // inline — the one and only parent page in the whole app).
+  // first, then a cheerful start that drops into profile creation (sign-in is
+  // a subtle "For parents" link — #1565). `nv_seen_welcome` is set on mount so
+  // it only appears once per device. Then the normal flow: returning LOCAL kids
+  // (guest profiles on this device, no parent session) land straight on their
+  // journey — home or the kid picker — BEFORE any sign-in (#1564). Only a
+  // device with no local kids falls through to the parent page (the sign-in
+  // form inline — the one and only parent page in the whole app).
   const [screen, setScreen] = useState<Screen>(() => {
     if (!readLS("nv_seen_welcome")) return "welcome"; // #1219 — guarded read
-    if (!hasParentSession()) return "parent";
+    // #1564 — local kids win over the parent gate: a returning Guest kid
+    // (device-local `nv_kids`, no parent session) must never land on the
+    // sign-in form. Parents-with-kids behave exactly as before (kids existed).
     const list = loadKids();
-    if (list.length === 0) return "addkid";
-    const id = readLS("nv_kid_id"); // #1219 — guarded read
-    return list.some((k) => k.id === id) ? "home" : "kidpick";
+    if (list.length > 0) {
+      const id = readLS("nv_kid_id"); // #1219 — guarded read
+      return list.some((k) => k.id === id) ? "home" : "kidpick";
+    }
+    if (!hasParentSession()) return "parent";
+    return "addkid";
   });
   // #1352 — a simple screen history stack. Every forward navigation pushes the
   // previous screen, so the in-app back buttons and the PWA/system back gesture
@@ -1775,6 +1803,14 @@ export default function App() {
   };
   // 🚀 #249 — skip-ahead toast on the world detail screen.
   const [skipNotice, setSkipNotice] = useState<string | null>(null);
+  // #1572 — two-tap confirm on the "I already know this" skip chip. The first
+  // tap only ARMS (and shows "Skip this one? It won't be taught again"); the
+  // second tap within 4s actually accel-skips. Guards the arm window + toast.
+  const skipArmedRef = useRef<string | null>(null);
+  const skipArmTimer = useRef<number | undefined>(undefined);
+  // #1567 — transient "next block got a little harder" toast when the session
+  // advances onto a higher adaptive rung.
+  const [rungNotice, setRungNotice] = useState<string | null>(null);
 
   // Auto-enter fullscreen once, on the first interaction — "fullscreen by default".
   const didAutoFs = useRef(false);
@@ -2385,6 +2421,30 @@ export default function App() {
     }
   };
 
+  /** #1566 — every in-game leave path goes through a soft confirm first. The
+   *  HUD ‹ back and the pause-card Exit both call this (never leaveGame
+   *  directly), so a young child is asked "Stop playing for now?" before the
+   *  session is left. Leaving outside a live session (nothing to lose) is a
+   *  no-confirm straight exit. */
+  const requestLeave = () => {
+    // On the playing screen with an active kid, always confirm; elsewhere
+    // (nova / garden back buttons use their own goBack path, not this) there
+    // is no live session to lose, so leave straight away.
+    if (screen !== "playing" || !kid) {
+      leaveGame();
+      return;
+    }
+    // Freeze the scene under the confirm (same kid-pause path) so the game
+    // doesn't keep playing behind the question.
+    if (!kidPaused) pauseGame();
+    setLeaveConfirm(true);
+  };
+  const cancelLeave = () => setLeaveConfirm(false);
+  const confirmLeave = () => {
+    setLeaveConfirm(false);
+    leaveGame();
+  };
+
   /** #1426 — kid-initiated pause: freeze the active lesson scene and show a
    *  kid-safe pause card. The parent kill-switch remains the safety backstop;
    *  this is the child's own "pause for a moment" control. */
@@ -2515,6 +2575,38 @@ export default function App() {
       teardownGame();
     };
   }, [screen, gameBootNonce]);
+
+  // #1570 — a chunk import that stalls is indistinguishable from a slow load,
+  // so we arm a "Try again" affordance after a few seconds of loading. The
+  // stall flag flips the overlay from "almost ready…" to an explicit retry.
+  useEffect(() => {
+    if (gameBoot !== "loading") {
+      setBootStall(false);
+      setBootPoked(false);
+      if (bootPokeTimer.current) {
+        window.clearTimeout(bootPokeTimer.current);
+        bootPokeTimer.current = undefined;
+      }
+      return;
+    }
+    const to = window.setTimeout(() => setBootStall(true), 5000);
+    return () => window.clearTimeout(to);
+  }, [gameBoot]);
+  /** #1570 — a tap on the loading card is acknowledged, never dead air. */
+  const pokeBoot = () => {
+    if (gameBoot !== "loading" || bootStall) return;
+    setBootPoked(true);
+    announce(t.bootAlmostReady);
+    if (bootPokeTimer.current) window.clearTimeout(bootPokeTimer.current);
+    bootPokeTimer.current = window.setTimeout(() => setBootPoked(false), 2200);
+  };
+  /** #1570 — manual retry: bump the boot nonce so the playing/nova/garden boot
+   *  effect re-runs (teardown the stale attempt, then import the chunk again). */
+  const retryBoot = () => {
+    setBootStall(false);
+    setBootPoked(false);
+    setGameBootNonce((n) => n + 1);
+  };
 
   /* ── Nova companion home: greet the kid right after profile selection ── */
   useEffect(() => {
@@ -2859,7 +2951,21 @@ export default function App() {
     }
     const next = sessionIdx + 1;
     if (next < sessionRef.current.length) {
+      // #1567 — celebrate a step UP: when the next block starts on a higher
+      // adaptive rung than the one just finished, tell the kid their game is
+      // getting a little trickier (they're ready for it). No toast on a same/
+      // easier ramp — those are the steady practice blocks.
+      const nextStep = sessionRef.current[next];
+      const prevRung = adaptiveLevelIndex(kid.id, step.skillId, step.gameId);
+      const nextRung = nextStep ? adaptiveLevelIndex(kid.id, nextStep.skillId, nextStep.gameId) : prevRung;
       setSessionIdx(next);
+      if (nextRung > prevRung) {
+        const bn = getAppLang() === "bn";
+        cancelSpeech();
+        speak(t.rungUpSpeak, { lang: bn ? "bn" : "en" });
+        setRungNotice(t.rungUp(t[rungStageKey(nextRung)]));
+        window.setTimeout(() => setRungNotice(null), 2600);
+      }
     } else {
       // #327 — fatigue-aware pacing: read Moni's profile BEFORE recordSession
       // resets sessionRounds. If the session crossed the fatigue threshold, the
@@ -3105,6 +3211,23 @@ export default function App() {
     if (!kid) return;
     click();
     setLimitNotice(null);
+    // #1572 — two-tap confirm. Accel-skip DUURABLY masters the skill and jumps
+    // the journey ahead, so a single stray tap must never do that. The first
+    // tap arms + shows "Skip this one? It won't be taught again"; only a second
+    // tap within the 4s window performs the skip (the window also disarms).
+    if (skipArmedRef.current !== skill.id) {
+      skipArmedRef.current = skill.id;
+      announce(t.skipConfirm);
+      setSkipNotice(t.skipConfirm);
+      if (skipArmTimer.current) window.clearTimeout(skipArmTimer.current);
+      skipArmTimer.current = window.setTimeout(() => {
+        skipArmedRef.current = null;
+        setSkipNotice(null);
+      }, 4000);
+      return;
+    }
+    skipArmedRef.current = null;
+    if (skipArmTimer.current) window.clearTimeout(skipArmTimer.current);
     const from = skill.band;
     const to = Math.min(5, from + 1);
     useKidStore.getState().accelSkip(kid.id, skill.id, "know", from, to);
@@ -3207,10 +3330,11 @@ export default function App() {
   ) : null;
 
   /* ── WELCOME (first time — topmost) ──────────────────────────────────────
-   *  The very first screen on a fresh device. LANGUAGE first (topmost), then
-   *  the BINARY scene: Guest mode OR Sign in. The syllabus is one tap away
-   *  BEFORE any sign-in. Every choice keeps working — nothing is locked
-   *  behind the gate; the gate just unlocks cross-device progress. */
+   *  The very first screen on a fresh device. LANGUAGE first (topmost), then a
+   *  CHEERFUL START (#1565): one big "Let's play" drops straight into profile
+   *  creation → the home tour. Sign-in is deferred to a subtle "For parents"
+   *  link; the syllabus stays one tap away BEFORE any sign-in. Nothing is
+   *  locked behind the gate — the gate just unlocks cross-device progress. */
   if (screen === "welcome") {
     return (
       <div className="app">
@@ -3240,17 +3364,19 @@ export default function App() {
               </button>
             </div>
 
-            {/* BINARY SCENE: Guest mode | Sign in */}
-            <div className="welcome-binary">
-              <button className="big-btn welcome-guest" onClick={enterAsGuest}>
-                {guestArmed ? t.guestConfirm : t.welcomeGuest}
-              </button>
-              <p className="gate-guest-sub">{t.welcomeGuestSub}</p>
-              <div className="gate-or"><span>{t.welcomeOr}</span></div>
-              <button className="ghost-btn welcome-signin" onClick={() => { gateReturn.current = "syllabus"; setScreen("parent"); }}>
-                {t.welcomeSignin}
-              </button>
-            </div>
+            {/* CHEERFUL START (#1565) — the primary first-run action. No
+                grown-up Guest/Sign-in binary: this drops into profile creation
+                (addkid when no profile exists) → the home tour. The welcome-guest
+                handler still guards the rare signed-in-parent first run. */}
+            <button className="big-btn welcome-guest" onClick={enterAsGuest}>
+              {guestArmed ? t.guestConfirm : t.welcomeStart}
+            </button>
+            <p className="gate-guest-sub">{t.welcomeGuestSub}</p>
+
+            {/* Sign-in deferred to a subtle link for grown-ups (#1565). */}
+            <button className="welcome-parents-link" onClick={() => { gateReturn.current = "syllabus"; setScreen("parent"); }}>
+              {t.welcomeForParents}
+            </button>
 
             <button className="welcome-syllabus-link" onClick={goSyllabus}>
               {t.welcomeSyllabus}
@@ -5446,6 +5572,11 @@ export default function App() {
     // the skill-tree bars, so the in-game loop and long-term loop feel unified.
     const curMastery = inGame && kid && curStep ? skillsMap[`${kid.id}:${curStep.skillId}`] : undefined;
     const curMasteryPct = curStep ? masteryDisplayPct(curMastery, curStep.skillId) : 0;
+    // #1567 — the adaptive rung, kid-spoken. The engine auto-ramps per-skill;
+    // this chip tells the child which stage they're on (Easy / Just right /
+    // Tricky) so a silently harder block never feels unfair.
+    const curRung = inGame && kid && curStep ? adaptiveLevelIndex(kid.id, curStep.skillId, curStep.gameId) : 0;
+    const curRungKey = rungStageKey(curRung);
     return (
       <div className="app game-app">
         {/* #248 — quiet-hours dim also belongs over the game canvas (not just home). */}
@@ -5473,7 +5604,7 @@ export default function App() {
         <div className="hud" hidden={!inGame}>
           {inGame && (
             <>
-              <button className="hud-back" onClick={leaveGame} aria-label={t.leaveGame}>‹</button>
+              <button className="hud-back" onClick={requestLeave} aria-label={t.leaveGame}>‹</button>
               <button
                 className="hud-back hud-pause"
                 onClick={pauseGame}
@@ -5485,6 +5616,11 @@ export default function App() {
               </button>
               <span className="hud-world">{world && <Icon name={world.key} size={18} />} {world?.title}</span>
               {curStep ? <span className="hud-skill">{curStep.title}</span> : null}
+              {curStep && kid && (
+                <span className="hud-rung" title={t.hudRung} role="text">
+                  {t[curRungKey]}
+                </span>
+              )}
               {curReteach && <span className="hud-reteach">🎯 {t.practicePill}</span>}
               <span className="round-chip">{t.round(Math.min(roundsDone + 1, ROUNDS_TO_FINISH), ROUNDS_TO_FINISH)}</span>
               {curStep && kid && (
@@ -5575,7 +5711,22 @@ export default function App() {
               <p className="coop-sub">{t.kidPauseBody}</p>
               <div className="kid-pause-actions">
                 <button className="big-btn" onClick={resumeGame}>{t.resumeGame}</button>
-                <button className="ghost-btn" onClick={leaveGame}>{t.leaveGame}</button>
+                <button className="ghost-btn" onClick={requestLeave}>{t.leaveGame}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* #1566 — soft leave confirm. Rendered above any pause card so the
+            kid answers ONE question ("Stop playing for now?") before the
+            session is left. Leaving is snapshotted, never discarded. */}
+        {leaveConfirm && inGame && (
+          <div className="coop-overlay kid-pause-overlay" role="dialog" aria-modal="true" aria-label={t.leaveConfirmTitle}>
+            <div className="coop-sheet kid-pause-sheet">
+              <div className="coop-title">👋 {t.leaveConfirmTitle}</div>
+              <p className="coop-sub">{t.leaveConfirmBody}</p>
+              <div className="kid-pause-actions">
+                <button className="big-btn" onClick={confirmLeave}>{t.leaveConfirmYes}</button>
+                <button className="ghost-btn" onClick={cancelLeave}>{t.leaveConfirmNo}</button>
               </div>
             </div>
           </div>
@@ -5618,10 +5769,32 @@ export default function App() {
             </button>
           </div>
         )}
+        {/* #1570 — the loading card is alive: Nova + "almost ready…" text, a
+            tap is acknowledged with a warm "still warming up" nudge, and a
+            stalled chunk import arms a manual Try-again (re-arms the boot). */}
         {gameBoot !== "ready" && gameBoot !== "error" && (
-          <div className="game-boot-loading" role="status" aria-label={t.loadingGame}>
+          <div
+            className={`game-boot-loading${bootStall ? " stall" : ""}`}
+            role="status"
+            aria-label={t.loadingGame}
+            onClick={pokeBoot}
+          >
+            <span className="game-boot-nova" aria-hidden="true"><Icon name="nova" size={40} /></span>
             <span className="game-boot-spinner" aria-hidden="true" />
-            <span className="screen-suspense-txt">{t.loadingGame}</span>
+            <span className="screen-suspense-txt">
+              {bootStall || bootPoked ? t.bootWarmHint : t.bootAlmostReady}
+            </span>
+            {bootStall && (
+              <button
+                className="game-boot-retry"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  retryBoot();
+                }}
+              >
+                <span aria-hidden="true">↻</span> {t.gameLoadRetry}
+              </button>
+            )}
           </div>
         )}
         {/* #292 — Nova reaction pack v2: a floating Nova face bubble for win
@@ -5714,6 +5887,8 @@ export default function App() {
           </div>
         )}
         {coopToast && <div className="coop-toast" role="status">👥 {coopToast}</div>}
+        {/* #1567 — "next block is a little trickier" toast. */}
+        {rungNotice && <div className="coop-toast rung-toast" role="status">{rungNotice}</div>}
         {storageWarning && (
           <div className="storage-toast" role="alert">⚠️ {t.storageFull}</div>
         )}

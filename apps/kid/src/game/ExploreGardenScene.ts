@@ -142,6 +142,11 @@ export class ExploreGardenScene extends Phaser.Scene {
     this.meter = roundMeter(this);
     this.layout();
     onSceneResize(this, () => this.layout());
+    // #1577 — plant bobs + palette pulses die with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      for (const p of this.plants) this.tweens.killTweensOf(p);
+      for (const e of this.paletteButtons) this.tweens.killTweensOf(e.btn);
+    });
     this.startQuest();
   }
 
@@ -466,7 +471,7 @@ export class ExploreGardenScene extends Phaser.Scene {
       this.tweens.killTweensOf(entry.btn);
       entry.btn.setScale(selected ? 1.1 : 1);
       // The target pulses gently so the eye lands on it.
-      if (target && !this.isPlantingDone()) {
+      if (target && !this.isPlantingDone() && !prefersReducedMotion()) {
         this.tweens.add({ targets: entry.btn, scale: selected ? 1.16 : 1.06, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
       }
     });
@@ -566,6 +571,8 @@ export class ExploreGardenScene extends Phaser.Scene {
   }
 
   private bob(target: Phaser.GameObjects.Text, baseY: number) {
+    // #1577 — reduced motion keeps the plant where it was planted.
+    if (prefersReducedMotion()) return;
     this.tweens.add({
       targets: target,
       y: baseY + Phaser.Math.Between(3, 7),

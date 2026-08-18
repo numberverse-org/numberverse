@@ -81,24 +81,59 @@ export default function WorldsScreen({
           <button className="icon-btn nova-hud-btn" onClick={goNova} aria-label={t.novaMeet}><Icon name="nova" size={24} /></button>
         </header>
 
-        {curStop ? (
-          <button className="big-btn play-now" onClick={() => startSingleSkill(curStop.skill)}>
-            {t.playNext(lang === "bn" ? curStop.skill.titleBn ?? curStop.skill.title : curStop.skill.title)}
-          </button>
-        ) : journeyDone ? (
-          (() => {
-            const rec = recommendedSkill(skillsMap, kid!.id);
-            return rec ? (
-              <button className="big-btn play-now" onClick={() => startSingleSkill(rec)}>
-                {t.beatYourBest ?? t.playNext(lang === "bn" ? rec.titleBn ?? rec.title : rec.title)}
+        {/* #1569 — "Play next" is pinned to a FIXED footer so it never scrolls
+            out of reach on the journey rail. The wrapper is a full-width
+            gradient scrim; the button itself stays a normal big-btn (its own
+            glow pulse). The content below gets a bottom spacer so the last
+            stop is never hidden behind the footer. */}
+        {(curStop || journeyDone) && (
+          <div
+            className="journey-play-footer"
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 40,
+              display: "flex",
+              justifyContent: "center",
+              padding: "10px 16px calc(10px + env(safe-area-inset-bottom))",
+              background: "linear-gradient(180deg, rgba(10,18,36,0) 0%, rgba(10,18,36,0.92) 40%)",
+              pointerEvents: "none",
+            }}
+          >
+            {curStop ? (
+              <button
+                className="big-btn play-now"
+                style={{ pointerEvents: "auto", margin: 0 }}
+                onClick={() => startSingleSkill(curStop.skill)}
+              >
+                {t.playNext(lang === "bn" ? curStop.skill.titleBn ?? curStop.skill.title : curStop.skill.title)}
               </button>
-            ) : (
-              <button className="big-btn play-now" onClick={() => startPlayWorld(BANDS[0])}>
-                {t.practiceAgain}
-              </button>
-            );
-          })()
-        ) : null}
+            ) : journeyDone ? (
+              (() => {
+                const rec = recommendedSkill(skillsMap, kid!.id);
+                return rec ? (
+                  <button
+                    className="big-btn play-now"
+                    style={{ pointerEvents: "auto", margin: 0 }}
+                    onClick={() => startSingleSkill(rec)}
+                  >
+                    {t.beatYourBest ?? t.playNext(lang === "bn" ? rec.titleBn ?? rec.title : rec.title)}
+                  </button>
+                ) : (
+                  <button
+                    className="big-btn play-now"
+                    style={{ pointerEvents: "auto", margin: 0 }}
+                    onClick={() => startPlayWorld(BANDS[0])}
+                  >
+                    {t.practiceAgain}
+                  </button>
+                );
+              })()
+            ) : null}
+          </div>
+        )}
 
         <div
           className="view-toggle"
@@ -234,7 +269,11 @@ export default function WorldsScreen({
                     <span className="map-island-meta">
                       <span className="map-island-name">
                         {lang === "bn" ? b.titleBn ?? b.title : b.title}
-                        {isHere && <span className="map-here-chip">📍 {t.mapHere}</span>}
+                        {isHere && (
+                          <span className="map-here-chip" style={{ animation: "jPulse 1.8s ease-in-out infinite" }}>
+                            📍 {t.mapHere}
+                          </span>
+                        )}
                         {settings.focus_subject && settings.focus_band === b.id && (
                           <span
                             className="map-focus-pin"
@@ -352,7 +391,16 @@ export default function WorldsScreen({
                                       : t.journeyLocked}
                               </span>
                             </span>
-                            {st.current && <span className="j-play-chip">▶</span>}
+                            {st.current && (
+                              <span
+                                className="j-play-chip"
+                                role="img"
+                                aria-label={t.mapHere}
+                                style={{ width: "auto", padding: "0 12px", borderRadius: 999, animation: "jPulse 1.8s ease-in-out infinite" }}
+                              >
+                                📍 {t.mapHere}
+                              </span>
+                            )}
                           </span>
                         </button>
                       );
@@ -427,6 +475,8 @@ export default function WorldsScreen({
             {allComplete && <div className="badge">{t.champion}</div>}
           </>
         )}
+        {/* #1569 — room for the pinned play-next footer (never covers the last stop). */}
+        {(curStop || journeyDone) && <div style={{ height: 118 }} aria-hidden="true" />}
       </main>
 
       {/* #1164 — intermediate land-boss duel sheet (fixed overlay, same

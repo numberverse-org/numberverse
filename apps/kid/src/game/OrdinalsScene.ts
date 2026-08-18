@@ -5,6 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD, NV_GREEN, NV_RED } from "./ui";
@@ -97,6 +98,10 @@ export class OrdinalsScene extends Phaser.Scene {
     this.flagG = this.add.graphics().setDepth(20);
 
     onSceneResize(this, () => this.layout());
+    // #1577 — runner bobs die with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      for (const r of this.runners) r.bob?.stop();
+    });
     this.layout();
     this.startRound();
   }
@@ -144,14 +149,18 @@ export class OrdinalsScene extends Phaser.Scene {
       const c = this.add.container(0, 0, [face, emoji]);
       c.setSize(CARD_W, CARD_H);
       c.setInteractive({ useHandCursor: true });
-      const bob = this.tweens.add({
-        targets: c,
-        y: "+=4",
-        duration: 700 + lane * 90,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
+      let bob: Phaser.Tweens.Tween | undefined;
+      // #1577 — reduced motion keeps the runners waiting at the start line.
+      if (!prefersReducedMotion()) {
+        bob = this.tweens.add({
+          targets: c,
+          y: "+=4",
+          duration: 700 + lane * 90,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
       c.on("pointerdown", () => this.tap(pos));
       this.paintRunner(face, 0xffffff);
       const runner: Runner = { pos, c, face, bob };

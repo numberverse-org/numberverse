@@ -4,6 +4,7 @@ import { t , digit} from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { speak } from "./speech"; // #1580 — the arcade fact is spoken aloud
 import { correctCelebrate , floatText } from "./celebrate";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
@@ -233,7 +234,7 @@ export class ArcadeCatchScene extends Phaser.Scene {
       this.a = Phaser.Math.Between(1, maxA);
       this.b = Phaser.Math.Between(1, maxA);
       this.answer = this.a + this.b;
-      this.factText.setText(`${digit(this.a)} + ${digit(this.b)} = ?`);
+      this.setFact(`${digit(this.a)} + ${digit(this.b)} = ?`);
       return;
     }
     if (this.factType === "sub") {
@@ -241,7 +242,7 @@ export class ArcadeCatchScene extends Phaser.Scene {
       this.a = Phaser.Math.Between(1, maxA);
       this.b = Phaser.Math.Between(1, this.a);
       this.answer = this.a - this.b;
-      this.factText.setText(`${digit(this.a)} − ${digit(this.b)} = ?`);
+      this.setFact(`${digit(this.a)} − ${digit(this.b)} = ?`);
       return;
     }
     if (this.factType === "mult") {
@@ -249,7 +250,7 @@ export class ArcadeCatchScene extends Phaser.Scene {
       this.a = Phaser.Math.RND.pick(set);
       this.b = Phaser.Math.Between(2, 10);
       this.answer = this.a * this.b;
-      this.factText.setText(`${digit(this.a)} × ${digit(this.b)} = ?`);
+      this.setFact(`${digit(this.a)} × ${digit(this.b)} = ?`);
       return;
     }
     // division — level is the divisor table (1..6 on the fast-round ladder)
@@ -257,7 +258,14 @@ export class ArcadeCatchScene extends Phaser.Scene {
     const quotient = Phaser.Math.Between(2, 12);
     this.a = this.b * quotient;
     this.answer = quotient;
-    this.factText.setText(`${digit(this.a)} ÷ ${digit(this.b)} = ?`);
+    this.setFact(`${digit(this.a)} ÷ ${digit(this.b)} = ?`);
+  }
+
+  /** #1580 — the falling-fact question is spoken aloud so a listening learner
+   *  hears the problem under the arcade pressure, not just reads it. */
+  private setFact(q: string) {
+    this.factText.setText(q);
+    speak(q);
   }
 
   /** Reused from TimesTableScene (#1170): single table first, then mixed. */

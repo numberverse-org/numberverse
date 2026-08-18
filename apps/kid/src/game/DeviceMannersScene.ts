@@ -5,6 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, roundMeter, modernCardButton, BTN_NEUTRAL, BTN_ORANGE, type RoundMeterApi, NV_GOLD, NV_GREEN, NV_RED } from "./ui";
@@ -87,6 +88,8 @@ export class DeviceMannersScene extends Phaser.Scene {
     this.buildConfirmButtons();
 
     onSceneResize(this, () => this.layout());
+    // #1577 — the temptation's idle bounce dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.tweens.killTweensOf(this.temptation));
     this.layout();
     this.startRound();
   }
@@ -350,6 +353,8 @@ export class DeviceMannersScene extends Phaser.Scene {
   }
 
   private startTemptBounce() {
+    // #1577 — reduced motion keeps the temptation static but still tappable.
+    if (prefersReducedMotion()) return;
     this.temptTween = this.tweens.add({
       targets: this.temptation,
       y: this.geom.tempY - 14,

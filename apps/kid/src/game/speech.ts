@@ -50,7 +50,15 @@ let lastSpeechAt = 0;
 /* #1375 — when a device has NO Bangla Web-Speech voice and the on-device neural
  * model is still downloading, the old path silently dropped Bangla lines. Now
  * the LATEST line is held and spoken the moment the neural voice becomes ready
- * (still never a wrong-language voice). */
+ * (still never a wrong-language voice).
+ *
+ * #1585 — the hold is BOUNDED, not indefinite: a slow (or offline / never
+ * available) model download must never leave a Bangla-only device silent. After
+ * BN_HOLD_TIMEOUT_MS the held line is spoken through the BEST engine that
+ * exists — the neural voice if it finished, otherwise Web Speech reading with a
+ * bn-BD language hint (the browser's documented no-voice fallback). While a
+ * line is held, listeners are notified so the UI can surface a "voice loading…"
+ * hint. */
 let pendingBnLine: {
   clean: string;
   opts: SpeakOpts;
@@ -59,17 +67,135 @@ let pendingBnLine: {
   volume: number;
 } | null = null;
 let neuralReadyUnsub: (() => void) | null = null;
+let holdTimer: ReturnType<typeof setTimeout> | null = null;
 
-function holdBnLine(clean: string, opts: SpeakOpts, token: number, speaker: number | undefined, volume: number) {
-  pendingBnLine = { clean, opts, token, speaker, volume };
-  if (!neuralReadyUnsub) neuralReadyUnsub = onNeuralReady(flushPendingBnLine);
+/** #1585 — how long a Bangla line waits for the neural model before it falls
+ *  back to best-available speech. 10s covers a cold Wi-Fi model download
+ *  without leaving the kid sitting in silence for a minute+. */
+const BN_HOLD_TIMEOUT_MS = 10_000;
+
+type VoiceLoadingListener = (loading: boolean) => void;
+const voiceLoadingListeners = new Set<VoiceLoadingListener>();
+let voiceLoading = false;
+function setVoiceLoading(v: boolean) {
+  if (voiceLoading === v) return;
+  voiceLoading = v;
+  for (const cb of voiceLoadingListeners) {
+    try {
+      cb(v);
+    } catch {
+      /* a listener must never break the state change */
+    }
+  }
+}
+/** True while a Bangla line is being held for the neural voice (no bn Web
+ *  Speech voice exists yet). UI surfaces this as "voice loading…". */
+export function isVoiceLoading(): boolean {
+  return voiceLoading;
+}
+/** Subscribe to voice-loading changes (idempotent unsubscribe — wire to both
+ *  SHUTDOWN and DESTROY per #1746). */
+export function onVoiceLoadingChange(cb: VoiceLoadingListener): () => void {
+  voiceLoadingListeners.add(cb);
+  let off = false;
+  return () => {
+    if (off) return;
+    off = true;
+    voiceLoadingListeners.delete(cb);
+  };
+}
+
+function clearHold() {
+  if (holdTimer) {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+  }
+  if (neuralReadyUnsub) {
+    neuralReadyUnsub();
+    neuralReadyUnsub = null;
+  }
+  pendingBnLine = null;
+  setVoiceLoading(false);
+}
+
+/** The "best engine that exists" fallback: the neural voice if it finished,
+ *  otherwise Web Speech reading Bengali with a bn-BD language hint (never a
+ *  WRONG-LANGUAGE voice). If neither engine exists the line is dropped — there
+ *  is nothing audible to say it. */
+function bestEffortBnSpeak(clean: string, opts: SpeakOpts, token: number, volume: number) {
+  if (token !== speakToken) return;
+  if (isNeuralReady()) {
+    const toneSpk = parentVoiceTone ? TONE_SPEAKER[parentVoiceTone] : undefined;
+    void neuralSpeak(clean, { queue: opts.cancel === false, volume, speaker: toneSpk });
+    return;
+  }
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
+  if (!synth) return; // no engine at all — nothing audible to fall back to
+  try {
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = "bn-BD";
+    u.rate = (opts.rate ?? 0.9) * parentVoiceRate;
+    u.pitch = opts.pitch ?? 1.1;
+    u.volume = volume;
+    primeSpeech();
+    synth.resume?.();
+    synth.cancel(); // one voice at a time, no lagging queue
+    synth.speak(u);
+  } catch {
+    /* speech unavailable */
+  }
+}
+
+/** #1585 — ask the service worker whether the neural model is already in the
+ *  nv-voice cache. If it's missing AND the device reports offline, a held
+ *  Bangla line can never be spoken by the model — flush it to best-effort
+ *  immediately instead of waiting out the hold timeout. */
+function probeVoiceModelCached(token: number) {
+  if (typeof navigator === "undefined") return;
+  const ctrl = navigator.serviceWorker?.controller;
+  if (!ctrl) return;
+  const onMsg = (e: MessageEvent) => {
+    const d = e.data as { type?: string; cached?: boolean } | null;
+    if (!d || d.type !== "NV_VOICE_CACHE_PROBE_RESULT") return;
+    navigator.serviceWorker?.removeEventListener("message", onMsg);
+    if (d.cached === false && typeof navigator !== "undefined" && navigator.onLine === false && pendingBnLine?.token === token) {
+      const p = pendingBnLine;
+      pendingBnLine = null;
+      clearHold();
+      bestEffortBnSpeak(p.clean, p.opts, p.token, p.volume);
+    }
+  };
+  navigator.serviceWorker.addEventListener("message", onMsg);
+  ctrl.postMessage({ type: "NV_VOICE_CACHE_PROBE", path: "/voice/bn_BD-google-medium.onnx" });
 }
 
 function flushPendingBnLine() {
   const p = pendingBnLine;
-  pendingBnLine = null;
+  clearHold(); // cancels the timeout + ready-listener; clears the loading hint
   if (!p || p.token !== speakToken || !isNeuralReady()) return;
   void neuralSpeak(p.clean, { queue: p.opts.cancel === false, volume: p.volume, speaker: p.speaker });
+}
+
+function holdBnLine(clean: string, opts: SpeakOpts, token: number, speaker: number | undefined, volume: number) {
+  // #1585 — an offline device can never DOWNLOAD the model, so holding is
+  // pointless (and would later double-speak the line once neural came up):
+  // speak via best-effort NOW instead of a long silence.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    bestEffortBnSpeak(clean, opts, token, volume);
+    return;
+  }
+  pendingBnLine = { clean, opts, token, speaker, volume };
+  if (!neuralReadyUnsub) neuralReadyUnsub = onNeuralReady(flushPendingBnLine);
+  setVoiceLoading(true);
+  probeVoiceModelCached(token); // belt-and-suspenders for a misreported onLine
+  holdTimer = setTimeout(() => {
+    holdTimer = null;
+    const p = pendingBnLine;
+    pendingBnLine = null;
+    clearHold();
+    if (!p || p.token !== token) return;
+    bestEffortBnSpeak(p.clean, p.opts, p.token, p.volume);
+  }, BN_HOLD_TIMEOUT_MS);
 }
 
 /* ─────────────────────────── platform detection ─────────────────────────── */
@@ -596,8 +722,8 @@ export function speak(text: string, opts: SpeakOpts = {}) {
   // from a previous question are skipped, so rapid taps never stack.
   const token = ++speakToken;
   // A newer line supersedes any held no-bn-voice line (latest-wins across both
-  // the web and neural engines).
-  pendingBnLine = null;
+  // the web and neural engines) and drops the hold timeout + loading hint.
+  clearHold();
 
   // Bangla → the ON-DEVICE neural voice (Piper VITS) whenever it's ready: the
   // SAME warm Bengali voice on every device, fully offline, and zero risk of a

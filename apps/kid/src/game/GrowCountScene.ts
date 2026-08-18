@@ -3,6 +3,7 @@ import { onSceneResize } from "./sceneLifecycle";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak, bnNumber } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
 import { gameBackground } from "./backgrounds";
@@ -63,6 +64,10 @@ export class GrowCountScene extends Phaser.Scene {
     onSceneResize(this, () => {
       this.layout();
       this.reflow();
+    });
+    // #1577 — seed bobs die with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      for (const s of this.seeds) this.tweens.killTweensOf(s.sprite);
     });
     this.layout();
     this.startRound();
@@ -217,6 +222,7 @@ export class GrowCountScene extends Phaser.Scene {
   }
 
   private bob(c: Phaser.GameObjects.Container) {
+    if (prefersReducedMotion()) return; // #1577 — the seed rests where it was planted
     this.tweens.add({
       targets: c,
       y: (c.y as number) + Phaser.Math.Between(-4, 4),

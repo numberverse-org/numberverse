@@ -5,6 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, roundMeter, BTN_PRIMARY, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -104,6 +105,8 @@ export class ShapePartsScene extends Phaser.Scene {
     this.shapeGfx = this.add.graphics();
     this.highlightGfx = this.add.graphics();
     onSceneResize(this, () => this.layout());
+    // #1577 — the halo pulse dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.stopPulse());
     this.layout();
     this.startRound();
   }
@@ -223,6 +226,9 @@ export class ShapePartsScene extends Phaser.Scene {
     g.lineStyle(4, 0xffd166, 0.9);
     g.strokeCircle(0, 0, r + 20);
     this.pulse = this.add.container(this.shapeCenter.x, this.shapeCenter.y, [g]);
+    // #1577 — reduced motion keeps the static halo (still the "tap me" cue),
+    // skips the breathing pulse.
+    if (prefersReducedMotion()) return;
     this.pulseTween = this.tweens.add({
       targets: this.pulse,
       alpha: 0.4,

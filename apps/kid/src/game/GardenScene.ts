@@ -6,6 +6,7 @@ import { gameBackground } from "./backgrounds";
 import { txt, promptTxt, NV_GOLD } from "./ui";
 import { t } from "./i18n";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { confettiBurst, starBurst, floatText } from "./celebrate";
 import { getAppLang } from "./locale";
 import { SAT, SAB } from "./safeArea";
@@ -56,6 +57,8 @@ export class GardenScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsub?.();
       this.unsub = undefined;
+      // #1577 — plant glow pulses / bobs die with the scene.
+      for (const p of this.plants) this.tweens.killTweensOf(p);
     });
     // KayKit forest props (precached by the service worker) frame the garden.
     this.load.image("nv-deco-tree", "/assets/forest/tree.png");
@@ -199,7 +202,10 @@ export class GardenScene extends Phaser.Scene {
       glow.fillStyle(0xffd166, 0.16);
       glow.fillCircle(0, -6, 44);
       c.addAt(glow, 0);
-      this.tweens.add({ targets: glow, scale: 1.12, alpha: 0.4, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      // #1577 — reduced motion keeps the static glow, skips the pulse.
+      if (!prefersReducedMotion()) {
+        this.tweens.add({ targets: glow, scale: 1.12, alpha: 0.4, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+      }
     } else {
       this.bob(c);
     }
@@ -207,6 +213,7 @@ export class GardenScene extends Phaser.Scene {
   }
 
   private bob(c: Phaser.GameObjects.Container) {
+    if (prefersReducedMotion()) return; // #1577 — the plant rests in its pot
     this.tweens.add({
       targets: c,
       y: (c.y as number) + Phaser.Math.Between(-4, 4),

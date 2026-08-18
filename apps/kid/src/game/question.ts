@@ -3,7 +3,9 @@ import { pop } from "./audio";
 import { assetIcon } from "./svgAssets";
 import { prefersReducedMotion, onReducedMotionChange } from "./reducedMotion";
 import { matureRender } from "./renderBand"; // #1035 — band-aware question font
-import { NV_GOLD, NV_GREEN } from "./ui"; // tokenized #591
+import { speak, isVoiceLoading, onVoiceLoadingChange, type SpeakOpts } from "./speech"; // #1580/#1581/#1585
+import { bigTextFactor, onBigTextChange, NV_GOLD, NV_GREEN } from "./ui"; // #1582 + tokenized #591
+import { t } from "./i18n";
 
 /**
  * "Nova's question bubble" — the thing a kid MUST see before every round.
@@ -32,6 +34,24 @@ export interface QuestionPanelApi {
  *  Count & Pop) where a down-tail would poke off the edge. */
 export interface QuestionPanelOpts {
   tail?: "down" | "none";
+}
+
+/* #1580 — the SHARED question-speak hook. Scenes route every "read the question
+ * aloud" call through speakQuestion() so the question panel's replay button
+ * (#1581) and the voice-loading hint (#1585) stay in sync. The last spoken line
+ * is remembered so a tap on the panel's 🔊 re-hears the question. */
+let lastSpokenQuestion: { text: string; opts: SpeakOpts } | null = null;
+
+/** Speak a question line with the app's TTS. Prefer this over speak() for the
+ *  "read the question" moments — it records the line for the replay button. */
+export function speakQuestion(text: string, opts: SpeakOpts = {}) {
+  lastSpokenQuestion = { text: String(text), opts };
+  speak(text, opts);
+}
+
+/** Re-speak the last speakQuestion() line (the panel's replay button). */
+export function speakLastQuestion(): void {
+  if (lastSpokenQuestion) speak(lastSpokenQuestion.text, lastSpokenQuestion.opts);
 }
 
 const NAVY = 0x0b2545;
@@ -116,15 +136,17 @@ export function questionPanel(
   const outer = scene.add.container(x, y).setDepth(5000);
   const inner = scene.add.container(0, 0);
   outer.add(inner);
+  let lastText = ""; // #1581 — the panel remembers its question for replay
 
   // soft glow behind the bubble (breathes so it can't be missed)
   const glow = scene.add.graphics();
+  const baseFont = 32; // #1582 — Big Text scales this by bigTextFactor()
   const tx = scene.add
     .text(0, 0, "", {
       fontFamily: matureRender()
         ? "'Nunito', 'Noto Sans Bengali', system-ui, 'Segoe UI', sans-serif"
         : "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
-      fontSize: "32px",
+      fontSize: `${baseFont}px`,
       color: TEXT_COLOR,
       fontStyle: "800",
       align: "center",
@@ -136,7 +158,45 @@ export function questionPanel(
   const novaRing = scene.add.circle(0, 0, NOVA_SIZE * 0.72, 0xffffff, 0.95);
   novaRing.setStrokeStyle(4, 0xffffff, 1);
 
-  inner.add([glow, novaRing, nova, tx]);
+  // #1582 — re-style the question glyphs at the current Big Text scale. The
+  // wrap shrinks in lockstep so the same line-count keeps the bubble shaped.
+  const applyPanelTextScale = () => {
+    const f = bigTextFactor();
+    tx.setFontSize(`${Math.round(baseFont * f)}px`);
+    tx.setWordWrapWidth(Math.round(MAX_TEXT_W / f), true);
+  };
+
+  // #1581 — a shared speaker/replay button: every scene with a question panel
+  // gets "hear it again" for free (QuestionWordsScene used to be the only one).
+  const replayBtn = scene.add.container(0, 0);
+  replayBtn.add(scene.add.circle(0, 0, 16, 0xffffff, 0.95).setStrokeStyle(2, NAVY, 1));
+  replayBtn.add(scene.add.text(0, 1, "🔊", { fontSize: "14px" }).setOrigin(0.5));
+  replayBtn.setSize(34, 34);
+  replayBtn.setInteractive(new Phaser.Geom.Circle(0, 0, 18), Phaser.Geom.Circle.Contains);
+  replayBtn.on("pointerdown", () => {
+    pop();
+    if (lastSpokenQuestion) speakLastQuestion();
+    else speakQuestion(lastText);
+  });
+
+  // #1585 — a small "voice loading…" hint appears while a Bangla line is held
+  // for the on-device neural voice (this device has no bn Web-Speech voice yet).
+  const loadingHint = scene.add
+    .text(0, 0, t("voiceLoading"), {
+      fontFamily: matureRender()
+        ? "'Nunito', 'Noto Sans Bengali', system-ui, 'Segoe UI', sans-serif"
+        : "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif",
+      fontSize: "13px",
+      color: "#ffffff",
+      fontStyle: "800",
+      stroke: "#1d3557",
+      strokeThickness: 3,
+      align: "center",
+    })
+    .setOrigin(0.5)
+    .setVisible(isVoiceLoading());
+
+  inner.add([glow, novaRing, nova, tx, replayBtn, loadingHint]);
 
   const layout = () => {
     const textW = Math.min(tx.width, MAX_TEXT_W);
@@ -150,6 +210,10 @@ export function questionPanel(
     novaRing.setPosition(-contentW / 2 + NOVA_SIZE / 2, 0);
     nova.setPosition(-contentW / 2 + NOVA_SIZE / 2, 0);
     tx.setPosition(-contentW / 2 + NOVA_SIZE + GAP + textW / 2, 0);
+    // #1581 — the speaker button tucks into the bubble's top-right corner.
+    replayBtn.setPosition(w / 2 - 30, -h / 2 + 30);
+    // #1585 — "voice loading…" sits just below the bubble tail.
+    loadingHint.setPosition(0, h / 2 + 32);
   };
 
   const popIn = () => {
@@ -199,26 +263,40 @@ export function questionPanel(
     if (reduced) stopIdleMotion();
     else startIdleMotion();
   });
+  // #1582 — live Big Text: the question glyphs re-scale the moment the toggle
+  // flips (the wrap and bubble re-measure in layout()).
+  const offBigText = onBigTextChange(() => {
+    applyPanelTextScale();
+    if (tx.text) layout();
+  });
+  // #1585 — live voice-loading hint: show while a Bangla line is held.
+  const offVoiceLoading = onVoiceLoadingChange((loading) => {
+    loadingHint.setVisible(loading && outer.visible);
+  });
   // #1746 — the listener lives in a module-level Set, so it must be released
   // on BOTH SHUTDOWN and DESTROY (a game teardown destroys scenes without a
   // stop). `once` fires each event at most once; the tornDown guard makes a
-  // double-fire (both events for one scene) a no-op, and offReducedMotion is
-  // itself idempotent.
+  // double-fire (both events for one scene) a no-op, and off* are themselves
+  // idempotent.
   let tornDown = false;
   const teardown = () => {
     if (tornDown) return;
     tornDown = true;
     offReducedMotion();
+    offBigText();
+    offVoiceLoading();
     stopIdleMotion();
   };
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, teardown);
   scene.events.once(Phaser.Scenes.Events.DESTROY, teardown);
 
+  applyPanelTextScale();
   layout();
 
   return {
     set(text: string) {
       tx.setText(text);
+      lastText = text;
       layout();
       popIn();
     },

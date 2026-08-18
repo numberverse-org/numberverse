@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { floatText } from "./celebrate";
+import { floatText, confettiBurst } from "./celebrate";
 import { onSceneResize } from "./sceneLifecycle";
 import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
@@ -442,7 +442,13 @@ export class BanglaSpellScene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(this.roundCorrect, ms, this.levelIndex + 1);
-    this.time.delayedCall(400, () => {
+    // #1571 — the completing round gets its own celebration + a beat to land.
+    const completed = this.roundsDone >= ROUNDS_TO_FINISH;
+    if (completed) {
+      confettiBurst(this, this.scale.width / 2, this.scale.height * 0.35, 30);
+      speak(t("dwGreat"));
+    }
+    this.time.delayedCall(completed ? 1600 : 400, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
       this.startRound();

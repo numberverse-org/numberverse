@@ -5,6 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -122,7 +123,11 @@ export class KeyboardExplorerScene extends Phaser.Scene {
     // #1139 — real-keyboard path: the physical key IS the tap. Tablets and
     // no-keyboard devices keep the on-screen QWERTY tap path below as fallback.
     this.input.keyboard?.on("keydown", this.keyHandler);
-    this.events.once("shutdown", () => this.input.keyboard?.off("keydown", this.keyHandler));
+    this.events.once("shutdown", () => {
+      this.input.keyboard?.off("keydown", this.keyHandler);
+      // #1577 — the target-badge pulse dies with the scene.
+      this.tweens.killTweensOf(this.targetBadge);
+    });
 
     onSceneResize(this, () => this.layout());
     this.layout();
@@ -154,7 +159,10 @@ export class KeyboardExplorerScene extends Phaser.Scene {
     this.targetBadge.add(g);
     this.targetChar = this.add.text(0, -2, "A", txt(44, "#7c2d12", { bold: true, shadow: false })).setOrigin(0.5);
     this.targetBadge.add(this.targetChar);
-    this.tweens.add({ targets: this.targetBadge, scaleX: 1.06, scaleY: 1.06, duration: 550, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    // #1577 — reduced motion keeps the badge static; the key glyph still reads.
+    if (!prefersReducedMotion()) {
+      this.tweens.add({ targets: this.targetBadge, scaleX: 1.06, scaleY: 1.06, duration: 550, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
   }
 
   private buildKeys() {

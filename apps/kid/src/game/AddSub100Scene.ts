@@ -4,8 +4,9 @@ import { t } from "./i18n";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
-import { correctCelebrate } from "./celebrate";
-import { speakMath } from "./speech";
+import { correctCelebrate, confettiBurst } from "./celebrate";
+import { speak, speakMath } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, modernCardButton, correctButton, ringCorrect, BTN_PRIMARY, BTN_NEUTRAL, BTN_ORANGE, btnFromColor, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -148,7 +149,10 @@ export class AddSub100Scene extends Phaser.Scene {
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(value === this.answer, ms, this.levelIndex + 1);
-    this.time.delayedCall(800, () => {
+    // #1571 — the completing round gets its own celebration + a beat to land.
+    const completed = this.roundsDone >= ROUNDS_TO_FINISH;
+    if (completed) this.celebrateCompletion();
+    this.time.delayedCall(completed ? 1600 : 800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
       this.startRound();
@@ -160,7 +164,14 @@ export class AddSub100Scene extends Phaser.Scene {
     this.buttons = [];
   }
 
+  /** #1571 — a distinct "you finished" moment: confetti + a spoken exclamation. */
+  private celebrateCompletion() {
+    confettiBurst(this, this.scale.width / 2, this.scale.height * 0.4, 30);
+    speak(t("dwGreat"));
+  }
+
   private sparkle(x: number, y: number) {
+    if (prefersReducedMotion()) return; // #1578 — the win still reads via the pop
     for (let i = 0; i < 16; i++) {
       const p = this.add.circle(x, y, 3 + Math.random() * 3, this.randomColor());
       this.tweens.add({

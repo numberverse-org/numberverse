@@ -6,6 +6,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { bnNumber, enNumber, speak, speakAnswer, speakMath } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -93,6 +94,9 @@ export class FruitAddScene extends Phaser.Scene {
       this.layout();
       this.reflow();
     });
+    // #1577 — ambient chips/fruit motion dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.killAmbient());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.killAmbient());
     this.layout();
     this.startRound();
   }
@@ -219,6 +223,8 @@ export class FruitAddScene extends Phaser.Scene {
       .text(z.x + z.w / 2, z.y - 34, `−${count}`, txt(72, "#ff6b6b", {bold: true, outline: true}))
       .setOrigin(0.5)
       .setDepth(50);
+    // #1577 — reduced motion keeps the chip visible but skips the bob.
+    if (prefersReducedMotion()) return;
     this.tweens.add({
       targets: this.minusText,
       y: z.y - 40,
@@ -237,6 +243,8 @@ export class FruitAddScene extends Phaser.Scene {
       .text(z.x + z.w / 2, z.y - 34, `+${b}`, txt(60, NV_GREEN, {bold: true, outline: true}))
       .setOrigin(0.5)
       .setDepth(50);
+    // #1577 — reduced motion keeps the chip visible but skips the bob.
+    if (prefersReducedMotion()) return;
     this.tweens.add({
       targets: this.symbolText,
       y: z.y - 40,
@@ -460,7 +468,15 @@ export class FruitAddScene extends Phaser.Scene {
     });
   }
 
+  /** #1577 — stop the ambient chip + fruit bobs when the scene leaves. */
+  private killAmbient() {
+    if (this.minusText) this.tweens.killTweensOf(this.minusText);
+    if (this.symbolText) this.tweens.killTweensOf(this.symbolText);
+    for (const c of [...this.leftGroup, ...this.rightGroup]) this.tweens.killTweensOf(c);
+  }
+
   private bob(c: Phaser.GameObjects.Container) {
+    if (prefersReducedMotion()) return; // #1577 — fruit rest in the basket
     this.tweens.add({
       targets: c,
       y: c.y + Phaser.Math.Between(-6, 6),

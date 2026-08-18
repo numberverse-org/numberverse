@@ -27,6 +27,13 @@ export interface Strings {
   gameKeyHint: string;
   /** #1074 — per-game difficulty/age signal (Bangladesh school class). */
   classLabel: (n: number) => string;
+  /* #1567 — the adaptive difficulty rung, kid-spoken */
+  hudRung: string;
+  rungEasy: string;
+  rungJustRight: string;
+  rungTricky: string;
+  rungUp: (stage: string) => string;
+  rungUpSpeak: string;
   /** #1033 — older-kid greeting register (bands 5+, ages ~10+). */
   homeHelloMature: (name: string) => string;
   /** #1033 — older-kid re-entry greeting (bands 5+, ages ~10+). */
@@ -143,6 +150,8 @@ export interface Strings {
   /** 🚀 #249 — skip-ahead: the kid already knows the next lesson. */
   skipAhead: string;
   skipAheadHint: (title: string) => string;
+  /** #1572 — two-tap confirm before a durable accel-skip. */
+  skipConfirm: string;
   skipDone: string;
   skipLogged: (title: string) => string;
   /** #276 — per-land skill tree: mastered nodes glow, tap a leaf to jump in. */
@@ -483,6 +492,11 @@ export interface Strings {
   kidPauseTitle: string;
   kidPauseBody: string;
   resumeGame: string;
+  /* #1566 — soft confirm before leaving a live session */
+  leaveConfirmTitle: string;
+  leaveConfirmBody: string;
+  leaveConfirmYes: string;
+  leaveConfirmNo: string;
   parentTitle: string;
   parentSub: string;
   parentWelcome: (name: string) => string;
@@ -539,7 +553,11 @@ export interface Strings {
   /** #1403 — spoken confirmation when the language changes (read in the NEW lang). */
   langSwitched: string;
   welcomeGuest: string;
+  /** #1565 — first-run primary CTA: a cheerful start into profile creation. */
+  welcomeStart: string;
   welcomeGuestSub: string;
+  /** #1565 — sign-in deferred to a subtle "For parents" link on the welcome. */
+  welcomeForParents: string;
   welcomeOr: string;
   welcomeSignin: string;
   welcomeSyllabus: string;
@@ -926,6 +944,9 @@ export interface Strings {
   islandLoading: string;
   /* #346 — friendly loading copy for the engine/lazy-screen spinners */
   loadingGame: string;
+  /* #1570 — the engine-boot loading card is tappable + re-arms on stall */
+  bootAlmostReady: string;
+  bootWarmHint: string;
   /* #1377/#1408 — kid-facing game-chunk load failure + recovery */
   gameLoadError: string;
   gameLoadErrorHint: string;

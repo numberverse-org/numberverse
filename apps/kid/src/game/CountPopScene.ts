@@ -5,6 +5,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak, bnNumber } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { hintWrong, hintIntro } from "./hints";
 import { gameBackground } from "./backgrounds";
@@ -97,12 +98,18 @@ export class CountPopScene extends Phaser.Scene {
     });
   }
 
-  /** #1742 — cancel the pending round-restart delayedCall. Idempotent. */
+  /** #1742 — cancel the pending round-restart delayedCall. Idempotent.
+   *  #1577 — ambient motion (bubble bobs + the halo pulse) dies with the scene. */
   private shutdown() {
     if (this.nextRoundCall) {
       this.time.removeEvent(this.nextRoundCall);
       this.nextRoundCall = undefined;
     }
+    if (this.haloTween) {
+      this.tweens.killTweensOf(this.halo);
+      this.haloTween = undefined;
+    }
+    for (const b of this.bubbles) this.tweens.killTweensOf(b.sprite);
   }
 
   private drawBackground() {
@@ -226,6 +233,7 @@ export class CountPopScene extends Phaser.Scene {
   }
 
   private bob(c: Phaser.GameObjects.Container) {
+    if (prefersReducedMotion()) return; // #1577 — bubbles rest at their spot
     this.tweens.add({
       targets: c,
       // #1244 — gentler drift (was ±10): wild bobbing hid which bubble to pop
@@ -251,6 +259,9 @@ export class CountPopScene extends Phaser.Scene {
     g.lineStyle(3, 0xffd166, 0.85);
     g.strokeCircle(0, 0, BUBBLE_RADIUS + 10);
     this.halo = this.add.container(target.sprite.x, target.sprite.y, [g]);
+    // #1577 — reduced motion keeps the static halo (the affordance still says
+    // "this one") but skips the pulse.
+    if (prefersReducedMotion()) return;
     this.haloTween = this.tweens.add({
       targets: this.halo,
       scale: 1.1,

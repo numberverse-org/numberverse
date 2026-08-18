@@ -3,6 +3,7 @@ import { onSceneResize } from "./sceneLifecycle";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
+import { speak } from "./speech"; // #1580 — the generated problem is spoken aloud
 import { getAppLang } from "./locale";
 import { t } from "./i18n";
 import { hintWrong } from "./hints";
@@ -208,6 +209,10 @@ export class NegativeNumberScene extends Phaser.Scene {
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.factText.setText(this.round.fact);
     this.prompt.set(this.round.prompt);
+    // #1580 — a pre-reader or listening learner hears the problem, not just
+    // reads it. The shared panel → speak hook lands after the sibling wave; the
+    // direct line is the fallback today.
+    speak(this.round.fact);
     this.rebuildLabels();
     this.clearMarker();
     if (this.round.start !== undefined) this.drawMarker(this.round.start);

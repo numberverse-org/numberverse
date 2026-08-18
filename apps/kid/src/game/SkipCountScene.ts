@@ -5,6 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN, NV_RED } from "./ui";
@@ -79,6 +80,10 @@ export class SkipCountScene extends Phaser.Scene {
     this.lineG = this.add.graphics().setDepth(20);
     this.buildOptions();
     onSceneResize(this, () => this.layout());
+    // #1577 — the blank "?" pulse dies with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.blankText) this.tweens.killTweensOf(this.blankText);
+    });
     this.layout();
     this.startRound();
   }
@@ -210,7 +215,10 @@ export class SkipCountScene extends Phaser.Scene {
       .text(bx, y - 28, "?", txt(22, NV_GOLD, { bold: true, outline: true }))
       .setOrigin(0.5)
       .setDepth(30);
-    this.tweens.add({ targets: this.blankText, scale: 1.25, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    // #1577 — reduced motion keeps the "?" still; the orange dot marks the blank.
+    if (!prefersReducedMotion()) {
+      this.tweens.add({ targets: this.blankText, scale: 1.25, duration: 420, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
   }
 
   private tap(i: number) {

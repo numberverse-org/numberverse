@@ -121,11 +121,57 @@ export function floatText(
   return t;
 }
 
+/** #1579 — reduced-motion "correct" cue: a STATIC (non-animating) gold flare
+ *  shown where confetti would burst. Nothing moves — it simply appears beside
+ *  the right answer and fades away — so a kid who can't hear the chime (or
+ *  whose motion sensitivity skips the particles) still SEES "that was right". */
+function staticGoldFlare(scene: Phaser.Scene, x: number, y: number) {
+  // only one flare at a time — a double-firing tier (confetti + stars) should
+  // never stack two bursts over the same spot.
+  const prev = scene.data.get("nv-static-flare") as Phaser.GameObjects.Graphics | undefined;
+  if (prev && prev.active) {
+    scene.tweens.killTweensOf(prev);
+    prev.destroy();
+  }
+  const g = scene.add.graphics().setDepth(5850);
+  const gold = Phaser.Display.Color.HexStringToColor(NV_GOLD).color;
+  // central glow blob
+  g.fillStyle(gold, 0.4);
+  g.fillCircle(x, y, 30);
+  // eight static rays on a gold ring
+  g.lineStyle(7, gold, 0.95);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.lineBetween(x + Math.cos(a) * 34, y + Math.sin(a) * 34, x + Math.cos(a) * 58, y + Math.sin(a) * 58);
+  }
+  g.lineStyle(3, 0xffffff, 0.8);
+  g.strokeCircle(x, y, 30);
+  scene.data.set("nv-static-flare", g);
+  // opacity-only exit — a gentle fade is not the motion reduced-motion skips.
+  scene.time.delayedCall(1500, () => {
+    if (!g.active) return;
+    scene.tweens.add({
+      targets: g,
+      alpha: 0,
+      duration: 600,
+      ease: "Quad.easeOut",
+      onComplete: () => {
+        scene.data.remove("nv-static-flare");
+        g.destroy();
+      },
+    });
+  });
+}
+
 /** One burst of kid confetti — colored bits fly up, spin, and settle out.
- *  Honours reduced motion (#350): no particles, the moment still registers via
- *  the floating text + chime the caller already fires. */
+ *  Honours reduced motion (#350): no particles; instead the moment registers
+ *  via the static gold flare (#1579) + the floating text + chime the caller
+ *  already fires. */
 export function confettiBurst(scene: Phaser.Scene, x: number, y: number, n = 24) {
-  if (prefersReducedMotion()) return;
+  if (prefersReducedMotion()) {
+    staticGoldFlare(scene, x, y);
+    return;
+  }
   // #784 — NV_* tokens for the colors that have one; the teal/lavender extras
   // are intentional land accents without a token yet.
   const colors = [
@@ -161,9 +207,13 @@ export function confettiBurst(scene: Phaser.Scene, x: number, y: number, n = 24)
 }
 
 /** Star burst — a ring of little stars, for the big moments. Honours reduced
- *  motion (#350) like confettiBurst. */
+ *  motion (#350) like confettiBurst: the static gold flare stands in for the
+ *  flying stars (#1579). */
 export function starBurst(scene: Phaser.Scene, x: number, y: number, n = 10) {
-  if (prefersReducedMotion()) return;
+  if (prefersReducedMotion()) {
+    staticGoldFlare(scene, x, y);
+    return;
+  }
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
     const dist = Phaser.Math.Between(70, 120);

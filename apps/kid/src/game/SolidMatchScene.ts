@@ -5,6 +5,7 @@ import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD } from "./ui";
@@ -103,6 +104,11 @@ export class SolidMatchScene extends Phaser.Scene {
     this.big = this.add.container(0, 0).setDepth(5);
 
     onSceneResize(this, () => this.layout());
+    // #1577 — the turntable spins die with the scene.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.spins.forEach((s) => s.remove());
+      this.spins = [];
+    });
     this.layout();
     this.startRound();
   }
@@ -216,8 +222,10 @@ export class SolidMatchScene extends Phaser.Scene {
     return btn;
   }
 
-  /** Fake-3D turntable: scaleX oscillates 1 → -1 so the solid appears to spin. */
+  /** Fake-3D turntable: scaleX oscillates 1 → -1 so the solid appears to spin.
+   *  #1577 — reduced motion keeps the solid still (its face is still readable). */
   private spin(target: Phaser.GameObjects.Container) {
+    if (prefersReducedMotion()) return;
     const tw = this.tweens.addCounter({
       from: 0,
       to: 360,

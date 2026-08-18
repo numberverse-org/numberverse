@@ -6,6 +6,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win } from "./audio";
 import { speak } from "./speech";
+import { prefersReducedMotion } from "./reducedMotion";
 import { gameBackground } from "./backgrounds";
 import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD } from "./ui";
 
@@ -65,6 +66,9 @@ export class CatchBugScene extends Phaser.Scene {
     this.prompt = questionPanel(this, 0, 0);
     this.meter = roundMeter(this);
     this.net = this.add.text(0, 0, "🥅", txt(58, "#ffffff")).setOrigin(0.5).setDepth(2);
+    // #1577 — bug bobs are per-bug and transient, so a shutdown just clears the
+    // scene's whole tween pool (the TweenManager would anyway).
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.tweens.killAll());
     onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();
@@ -119,14 +123,17 @@ export class CatchBugScene extends Phaser.Scene {
     const c = this.add.container(p.x, p.y).setDepth(10);
     c.add(this.add.text(0, 0, emoji, txt(this.tapSize(), "#ffffff")).setOrigin(0.5));
     // gentle idle bob — a live bug waits to be caught
-    this.tweens.add({
-      targets: c,
-      y: p.y - 9,
-      duration: 500 + Math.random() * 500,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
+    // #1577 — reduced motion keeps the bug planted where it spawned.
+    if (!prefersReducedMotion()) {
+      this.tweens.add({
+        targets: c,
+        y: p.y - 9,
+        duration: 500 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
     c.setSize(this.tapHit() * 2, this.tapHit() * 2);
     c.setInteractive();
     c.on("pointerdown", () => this.catchBug(c));

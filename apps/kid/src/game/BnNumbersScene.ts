@@ -5,6 +5,8 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { bad, pop, win } from "./audio";
 import { speak } from "./speech";
+import { confettiBurst } from "./celebrate";
+import { prefersReducedMotion } from "./reducedMotion";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, modernAnswerButton, correctButton, BTN_PRIMARY, BTN_ORANGE, roundMeter, gridLayout, type RoundMeterApi, type GridLayout, NV_GOLD } from "./ui";
@@ -34,6 +36,12 @@ export class BnNumbersScene extends Phaser.Scene {
   private prompt!: QuestionPanelApi;
   private roundText!: Phaser.GameObjects.Text;
   private speaker!: Phaser.GameObjects.Container;
+  /** #1575 — the 🔊 replay button as a bare container so the win window can
+   *  disable it (no overlapping TTS) and startRound can re-arm it. */
+  private speakerBtn!: Phaser.GameObjects.Container;
+  /** #1575 — the spoken digit shown faintly as a ghost in the question panel,
+   *  so a pre-reader who misses the audio still sees the digit shape. */
+  private ghost!: Phaser.GameObjects.Text;
   private meter!: RoundMeterApi;
   private background!: Phaser.GameObjects.Graphics;
   // Pre-read on every resize so spawnCards() doesn't interleave layout reads
@@ -62,7 +70,15 @@ export class BnNumbersScene extends Phaser.Scene {
     const spk = modernAnswerButton(this, 0, 0, 34, "🔊", BTN_ORANGE, { labelSize: 34 });
     spk.on("pointerdown", () => this.sayNumber());
     this.speaker.add(spk);
+    this.speakerBtn = spk;
     this.prompt = questionPanel(this, 0, 0, { tail: "none" });
+    // #1575 — a faint ghost of the spoken digit, at home in the question panel.
+    this.ghost = this.add
+      .text(0, 0, "", txt(40, "#0b2545", { bold: true, shadow: false }))
+      .setOrigin(0.5)
+      .setAlpha(0.3)
+      .setDepth(5200)
+      .setVisible(false);
     this.prompt.set(t("listenNumber"));
     onSceneResize(this, () => this.layout());
     this.layout();
@@ -87,18 +103,23 @@ export class BnNumbersScene extends Phaser.Scene {
     this.meter.setPosition(width / 2, 104);
     this.speaker.setPosition(width / 2, height - 110 - sab);
     this.prompt.setPosition(width / 2, height - 32 - sab);
+    this.ghost.setPosition(width / 2, height - 84 - sab);
     this.reflowCards();
   }
 
   private startRound() {
     this.cards.forEach((c) => c.destroy());
     this.cards = [];
+    // #1576 — the 🔊 speaker comes back once a fresh question is on screen.
+    this.speakerBtn.setInteractive({ useHandCursor: true });
     const n = LEVELS[Math.min(this.levelIndex, LEVELS.length - 1)];
     this.target = DIGITS[Phaser.Math.Between(0, Math.min(n, DIGITS.length) - 1)];
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.prompt.set(t("listenNumber"));
+    // #1575 — the faint ghost echoes the digit Nova is about to say.
+    this.ghost.setText(this.target.ch).setVisible(true);
     this.sayNumber();
     this.spawnCards(n);
   }
@@ -128,12 +149,16 @@ export class BnNumbersScene extends Phaser.Scene {
       const c = modernAnswerButton(this, x, y, gl.cardW / 2, digit.ch, BTN_PRIMARY, { labelSize: Math.max(28, Math.round(gl.cardW / 1.8)) });
       c.on("pointerdown", () => this.tap(c, digit.ch));
       c.setData("val", digit.ch);
+      c.setData("word", digit.word);
       this.cards.push(c);
     });
   }
 
   private tap(container: Phaser.GameObjects.Container, ch: string) {
     if (ch !== this.target.ch) {
+      // #1575 — a missed candidate still teaches: say which digit they tapped.
+      const word = container.getData("word") as string | undefined;
+      if (word) speak(word);
       hintWrong(this, container, {
         hint: () => "Listen — which number did Nova say?",
         hintBn: () => "শোনো — নোভা কোন সংখ্যাটা বলেছে?",
@@ -145,13 +170,17 @@ export class BnNumbersScene extends Phaser.Scene {
     pop();
     correctButton(container);
     this.cards.forEach((c) => c.disableInteractive());
+    this.speakerBtn.disableInteractive(); // #1576 — no replay during the win window
     this.sparkle(container.x, container.y);
     const ms = Math.max(1, this.time.now - this.startedAt);
     win();
     this.roundsDone++;
     this.meter.set(this.roundsDone, ROUNDS_TO_FINISH);
     this.onRoundDone?.(ch === this.target.ch, ms, this.levelIndex + 1);
-    this.time.delayedCall(800, () => {
+    // #1571 — the completing round gets its own moment + a beat to land it.
+    const completed = this.roundsDone >= ROUNDS_TO_FINISH;
+    if (completed) this.celebrateCompletion();
+    this.time.delayedCall(completed ? 1600 : 800, () => {
       if (this.roundsDone >= ROUNDS_TO_FINISH) this.roundsDone = 0;
       this.levelIndex++;
       this.startRound();
@@ -163,7 +192,15 @@ export class BnNumbersScene extends Phaser.Scene {
     for (const c of this.cards) c.x = Phaser.Math.Clamp(c.x, 30, width - 30);
   }
 
+  /** #1571 — a distinct "you finished" moment: confetti + a spoken exclamation
+   *  so the completing round reads as a finish, not just another correct tap. */
+  private celebrateCompletion() {
+    confettiBurst(this, this.scale.width / 2, this.scale.height * 0.35, 30);
+    speak(t("dwGreat"));
+  }
+
   private sparkle(x: number, y: number) {
+    if (prefersReducedMotion()) return; // #1578 — the win still reads via the pop
     for (let i = 0; i < 16; i++) {
       const p = this.add.circle(x, y, 3 + Math.random() * 3, this.randomColor());
       this.tweens.add({

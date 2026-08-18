@@ -185,8 +185,13 @@ export function installGameKeyboardAccess(game: Phaser.Game): void {
       case "Enter":
       case " ":
         e.preventDefault();
-        if (focusIndex >= 0 && focused && focused.active) focused.emit("pointerdown");
-        else move(0);
+        if (focusIndex >= 0 && focused && focused.active) {
+          // #1584 — reuse the button's semantic nv-label in the verdict
+          // announce, so a screen-reader kid hears WHICH option they chose.
+          const chosen = buttonLabel(focused);
+          focused.emit("pointerdown");
+          if (chosen) announce(t("a11yChosen", { label: chosen }));
+        } else move(0);
         break;
       default:
         break;

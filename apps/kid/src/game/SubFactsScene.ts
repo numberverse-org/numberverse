@@ -5,6 +5,7 @@ import { questionPanel, type QuestionPanelApi } from "./question";
 import { GAMES } from "@numberverse/core";
 import { pop, win, bad } from "./audio";
 import { correctCelebrate , floatText } from "./celebrate";
+import { speak } from "./speech"; // #1580 — the timed fact is spoken aloud
 import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, NV_GOLD, NV_GREEN } from "./ui";
@@ -163,7 +164,11 @@ export class SubFactsScene extends Phaser.Scene {
     const maxA = this.factRange();
     this.a = Phaser.Math.Between(1, maxA);
     this.b = Phaser.Math.Between(1, this.a);
-    this.prompt.set(`${digit(this.a)} − ${digit(this.b)} = ?`);
+    // #1580 — timed drill facts are raced at speed; speak the problem so a
+    // listening learner doesn't lose it on a glance.
+    const q = `${digit(this.a)} − ${digit(this.b)} = ?`;
+    this.prompt.set(q);
+    speak(q);
     this.placeMarker(this.a, 0xffd166);
 
     const ans = this.a - this.b;

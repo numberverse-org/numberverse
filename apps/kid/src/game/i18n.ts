@@ -26,6 +26,10 @@ const EN: Record<string, Entry> = {
   // #785/#1005 — keyboard + screen-reader answer bridge
   a11yOptions: "Choose an answer — {count} options: {list}.",
   a11yOption: "Option {n} of {total}: {label}",
+  // #1584 — announced when the kid activates a focused option on the keyboard.
+  a11yChosen: "You chose {label}.",
+  // #1585 — shown while a Bangla line is held for the on-device neural voice.
+  voiceLoading: "Voice loading…",
   letsLearn: "Let's learn!",
   total: "total {n}",
   roundTap: "Round {n} · tap {count} numbers",
@@ -1751,6 +1755,10 @@ const BN: Record<string, Entry> = {
   // #785/#1005 — keyboard + screen-reader answer bridge
   a11yOptions: "উত্তর বাছাই করো — {count}টি বিকল্প: {list}।",
   a11yOption: "বিকল্প {n}/{total}: {label}",
+  // #1584 — announced when the kid activates a focused option on the keyboard.
+  a11yChosen: "তুমি {label} বেছে নিয়েছ।",
+  // #1585 — shown while a Bangla line is held for the on-device neural voice.
+  voiceLoading: "ভয়েস লোড হচ্ছে…",
   letsLearn: "চলো শিখি!",
   total: "মোট {n}",
   roundTap: "রাউন্ড {n} · {count}টা সংখ্যা ট্যাপ করো",
