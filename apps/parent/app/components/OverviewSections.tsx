@@ -124,6 +124,8 @@ export function WeeklyCard({
   shareCopied,
   shareErr,
   handleShareWeekly,
+  handleStopSharing,
+  shareStopBusy,
   setShareCopied,
   wizLang,
 }: {
@@ -139,6 +141,10 @@ export function WeeklyCard({
   /** #1594 — inline share failure (the real reason, not the global banner). */
   shareErr: string | null;
   handleShareWeekly: () => void;
+  /** #866 — revoke the live share link (nulls the token server-side). */
+  handleStopSharing: () => void;
+  /** #866 — true while a revoke is in flight (disables the stop button). */
+  shareStopBusy: boolean;
   setShareCopied: (v: boolean) => void;
   wizLang: WizardLang;
 }) {
@@ -186,7 +192,15 @@ export function WeeklyCard({
         >
           {shareCopied ? STREAK_LANGS[wizLang].shareCopied : STREAK_LANGS[wizLang].shareCopy}
         </button>
-        <span className="muted small">{STREAK_LANGS[wizLang].shareNote}</span>
+        <span className="muted small">{STREAK_LANGS[wizLang].shareNote}</span>{" "}
+        <button
+          className="ghost-btn small"
+          disabled={shareStopBusy}
+          onClick={() => void handleStopSharing()}
+          title={STREAK_LANGS[wizLang].shareStop}
+        >
+          {shareStopBusy ? STREAK_LANGS[wizLang].shareStopping : STREAK_LANGS[wizLang].shareStop}
+        </button>
       </span>
     )}
   </div>

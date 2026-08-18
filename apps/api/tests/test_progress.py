@@ -632,6 +632,26 @@ async def _run_story_cap():
 
 asyncio.run(main())
 
+
+# ⑧  #1900/#1902 — typed schema + route registration: /stories/stats must be its
+#     OWN registered route (never shadowed by /stories) and declare the
+#     StoryStatsOut response_model; the schema shape stays stable.
+from app.schemas import StoryStatsOut  # noqa: E402
+
+_stats_path = "/api/v1/kids/{kid_id}/stories/stats"
+_list_path = "/api/v1/kids/{kid_id}/stories"
+stats_routes = [r for r in P.router.routes if getattr(r, "path", "") == _stats_path]
+list_routes = [r for r in P.router.routes if getattr(r, "path", "") == _list_path]
+check("stories list route is registered", len(list_routes) == 1, True)
+check("stories/stats is its own registered route (not swallowed)", len(stats_routes) == 1, True)
+if stats_routes:
+    check("stories/stats is a GET route", "GET" in getattr(stats_routes[0], "methods", set()), True)
+    check("stories/stats declares StoryStatsOut response_model",
+          getattr(stats_routes[0], "response_model", None) is StoryStatsOut, True)
+_stats = StoryStatsOut(total=3, by_skill={"count-1-10": 2}, by_error_kind={}, by_misconception={"dec": 1})
+check("StoryStatsOut constructs — typed dict shape (total/by_skill/by_error_kind/by_misconception)",
+      _stats.total == 3 and _stats.by_skill["count-1-10"] == 2 and _stats.by_misconception["dec"] == 1, True)
+
 print()
 print(f"✓ progress suite: {passes} passed, {fails} failed")
 print(f"SUMMARY progress: {passes + fails} checks, findings #7/#8 closed, real bugs: none")

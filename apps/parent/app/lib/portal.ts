@@ -978,6 +978,9 @@ export const STREAK_LANGS = {
     shareCopied: "✓ Copied",
     shareCopy: "Copy link",
     shareNote: "opens a private, anonymous week snapshot",
+    // #866 — stop-sharing control (revokes the live link).
+    shareStop: "Stop sharing",
+    shareStopping: "Stopping…",
     shareErr: "Couldn't create the share link.",
     noRounds: "No rounds this week yet — have {name} play a game and this report comes alive.",
     roundsLabel: "rounds",
@@ -1013,6 +1016,9 @@ export const STREAK_LANGS = {
     shareCopied: "✓ কপি হয়েছে",
     shareCopy: "লিংক কপি করুন",
     shareNote: "একটি ব্যক্তিগত, বেনামি সপ্তাহের স্ন্যাপশট খোলে",
+    // #866 — stop-sharing control (revokes the live link).
+    shareStop: "শেয়ারিং বন্ধ করুন",
+    shareStopping: "বন্ধ হচ্ছে…",
     shareErr: "শেয়ার লিংক তৈরি করা যায়নি।",
     noRounds: "এই সপ্তাহে এখনো কোনো রাউন্ড নেই — {name} একটা খেলা খেললে এই রিপোর্ট সাজবে।",
     roundsLabel: "রাউন্ড",

@@ -289,6 +289,32 @@ check(
     True,
 )
 
+print("⑧  #1908/#1903/#1909 — revoke route + zero-identity snapshot + paused gate…")
+
+from app.routers.shares import ShareSnapshotOut  # noqa: E402
+
+# #1908 — the "stop sharing" revoke route is registered as a DELETE.
+_del = [r for r in shares_mod.router.routes if getattr(r, "path", "") == "/api/v1/kids/{kid_id}/share-token"
+        and "DELETE" in getattr(r, "methods", set())]
+check("DELETE /kids/{kid_id}/share-token (revoke) is registered", len(_del) == 1, True)
+_rot = [r for r in shares_mod.router.routes if getattr(r, "path", "") == "/api/v1/kids/{kid_id}/share-token/rotate"]
+check("POST /share-token/rotate stays registered after revoke", len(_rot) == 1, True)
+
+# #1903/#1909 — the public snapshot carries ZERO identity: no coins/wallet, no
+# kid id/name — wallet balance is intentionally omitted, so renaming the field
+# or re-adding coins fails loudly here.
+_snap_fields = set(ShareSnapshotOut.model_fields.keys())
+check("public snapshot omits the wallet balance (coins)", "coins" not in _snap_fields, True)
+check("public snapshot omits any kid identifier", not {"kid_id", "name", "avatar"} & _snap_fields, True)
+check("public snapshot retains only week aggregates",
+      {"rounds", "minutes", "correct_pct", "active_days", "mastered_count", "top_game"} <= _snap_fields, True)
+
+# #1909 — the snapshot handler gates on the parent's pause kill-switch
+# (KidSettings.paused) so a paused kid's link stops resolving.
+_gss_src = inspect.getsource(get_share_snapshot)
+check("public snapshot gates on KidSettings.paused",
+      "settings.paused" in _gss_src or "KidSettings" in _gss_src, True)
+
 print()
 if fails:
     print(f"✗ share-token-hash suite: {passes} passed, {fails} failed")

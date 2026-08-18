@@ -480,6 +480,14 @@ export async function getShareToken(token: string, kidId: string): Promise<strin
   return data.token;
 }
 
+/** #866 — revoke the kid's share link. The server nulls the opaque token so
+ *  the public snapshot stops resolving immediately; the next share mints a
+ *  fresh token. Gives the parent the "stop sharing" flip side of minting. */
+export async function revokeShareToken(token: string, kidId: string): Promise<void> {
+  const res = await authFetch(token, `${API}/kids/${kidId}/share-token`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to stop sharing");
+}
+
 /** #245 — PUBLIC read of a share snapshot (no auth — the token IS the key).
  *  No tracking: this page makes exactly this one fetch. */
 export interface ShareFetchResult {

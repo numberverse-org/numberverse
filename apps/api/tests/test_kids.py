@@ -39,7 +39,7 @@ from app.routers.kids import (  # noqa: E402
     router as kids_router,
     update_kid,
 )
-from app.schemas import KidUpdateIn  # noqa: E402
+from app.schemas import KidUpdateIn, WeeklyOut  # noqa: E402
 
 passes = 0
 fails = 0
@@ -244,6 +244,32 @@ _default, _ge, _le = _weak_skill_threshold_constraints()
 check("threshold default is 0.7", _default, 0.7)
 check("threshold has ge=0.0 (no negative thresholds)", _ge, 0.0)
 check("threshold has le=1.0 (no >1 mastery thresholds)", _le, 1.0)
+
+# ⑤  #1900/#1901 — reset route declares ResetOut response_model; the minutes
+#     metric is documented as a session/response-time proxy (never unlabeled).
+from app.schemas import ResetOut  # noqa: E402
+
+_reset_routes = [r for r in kids_router.routes if getattr(r, "path", "") == "/api/v1/kids/{kid_id}/reset"]
+check("reset route is registered", len(_reset_routes) == 1, True)
+if _reset_routes:
+    check("reset route declares ResetOut response_model",
+          getattr(_reset_routes[0], "response_model", None) is ResetOut, True)
+_reset = ResetOut(reset=True, kid_id="3fa85f64-5717-4562-b3fc-2c963f66afa6")
+check("ResetOut constructs (reset bool + echoed kid_id str)", _reset.reset is True and isinstance(_reset.kid_id, str), True)
+
+# #1901 — the minutes metric is documented in source as a session/session-minutes
+# (or legacy response-time proxy) value — never a pretend "learning minutes"
+# number. The label sits in source comments, so introspect schemas.py source.
+import inspect as _inspect  # noqa: E402
+import app.schemas as _schemas_mod  # noqa: E402
+
+_schemas_src = _inspect.getsource(_schemas_mod)
+# The WeeklyOut / WeeklyDayOut minutes docs say "SESSION minutes" and that the
+# legacy fallback is the "response_ms proxy" — honest, non-misleading labeling.
+check("WeeklyOut.minutes documented as SESSION minutes (not unlabelled minutes)",
+      "SESSION minutes" in _schemas_src, True)
+check("legacy minutes fallback labelled a response_ms proxy (not 'learning minutes')",
+      "response_ms proxy" in _schemas_src.lower() or "response-time proxy" in _schemas_src.lower(), True)
 
 print()
 print(f"✓ kids helper matrix: {passes} passed, {fails} failed")

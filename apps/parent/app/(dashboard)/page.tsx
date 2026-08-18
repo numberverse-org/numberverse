@@ -26,6 +26,7 @@ import {
   getStoryStats,
   getAcceleration,
   getShareToken,
+  revokeShareToken,
   resetKidProgress,
   createKid,
   updateKid,
@@ -375,6 +376,9 @@ export default function ParentDashboard() {
   // #1594 — per-kid share failure, shown INLINE in the share dialog (not the
   // global banner). Cleared on a fresh attempt.
   const [shareErr, setShareErr] = useState<Record<string, string | null>>({});
+  // #866 — stop-sharing (revoke) is a separate busy flag so the "share" button
+  // stays live while a revoke is in flight.
+  const [shareStopBusy, setShareStopBusy] = useState<Record<string, boolean>>({});
 
   // #1595 — inline duplicate / kid-count guard. Replaces the previous native
   // `window.confirm` (headless-incompatible + no a11y). The armed guard's
@@ -1776,6 +1780,25 @@ export default function ParentDashboard() {
     }
   }
 
+  /** #866 — stop sharing: revoke the kid's share token so the public snapshot
+   *  link stops resolving. The server nulls the token (next share mints a
+   *  fresh one); we clear this kid's local link state to match. */
+  async function handleStopSharing() {
+    if (!token || !activeId || shareStopBusy[activeId]) return;
+    const kidId = activeId;
+    setShareStopBusy((prev) => ({ ...prev, [kidId]: true }));
+    setShareErr((prev) => ({ ...prev, [kidId]: null }));
+    try {
+      await revokeShareToken(token, kidId);
+      setShareLink((prev) => ({ ...prev, [kidId]: null }));
+      setShareCopied((prev) => ({ ...prev, [kidId]: false }));
+    } catch {
+      setShareErr((prev) => ({ ...prev, [kidId]: "Couldn't stop sharing." }));
+    } finally {
+      setShareStopBusy((prev) => ({ ...prev, [kidId]: false }));
+    }
+  }
+
   /** #239 — a reteach hook for a flagged skill: a QR the kid scans in the app
    *  (`NV:<skillId>`) to jump straight into that skill's game. Pure client-side
    *  QR, no network needed — matches the existing flashcard-card pattern. */
@@ -2139,6 +2162,8 @@ export default function ParentDashboard() {
               shareCopied={shareCopied[active.id] ?? false}
               shareErr={shareErr[active.id] ?? null}
               handleShareWeekly={handleShareWeekly}
+              handleStopSharing={handleStopSharing}
+              shareStopBusy={shareStopBusy[active.id] ?? false}
               setShareCopied={(v) => setShareCopied((prev) => ({ ...prev, [active.id]: v }))}
               wizLang={wizLang}
             />
