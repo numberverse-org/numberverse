@@ -1,3 +1,7 @@
+## 18 Aug 2026 — 1.3.0 (Kid onboarding UX + a11y cluster (wave-16))
+
+86db47c feat+fix(kid): onboarding UX + a11y cluster (wave-16)
+
 ## 18 Aug 2026 — 1.2.3 (Explore Garden shapes visible + earlier in quest order)
 
 adba44a fix(kid): Explore Garden shapes visible + earlier in quest order
