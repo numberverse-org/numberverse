@@ -1,3 +1,7 @@
+## 19 Aug 2026 — 1.6.0 (Sync correctness + observability + assets + CSS a11y (wave-19))
+
+98987e7 feat+fix: sync correctness + observability + assets + CSS a11y (wave-19)
+
 ## 19 Aug 2026 — 1.5.0 (Shared error boundaries + font/Bangla-legibility fixes (wave-18))
 
 6e23ffe feat: shared error boundaries + font/Bangla-legibility fixes (wave-18)
