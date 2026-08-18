@@ -1,3 +1,7 @@
+## 19 Aug 2026 — 1.7.0 (API error hardening + event instrumentation + scene bugs (wave-20))
+
+0e342b5 feat+fix: API error hardening + event instrumentation + scene bugs (wave-20)
+
 ## 19 Aug 2026 — 1.6.0 (Sync correctness + observability + assets + CSS a11y (wave-19))
 
 98987e7 feat+fix: sync correctness + observability + assets + CSS a11y (wave-19)
