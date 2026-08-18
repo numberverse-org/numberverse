@@ -54,6 +54,7 @@ const {
   boxReward,
   questTypeFor,
   calendarCycleDay,
+  aggregateSyncState,
 } = store;
 
 const STORE_KEY = "nv_store_v1";
@@ -345,6 +346,93 @@ describe("restoreSnapshot newest-wins multi-device merge (#9)", () => {
     expect(useKidStore.getState().skills["ghost:s9"]).toBeUndefined();
     // a positive wallet still creates the kid's nova entry
     expect(useKidStore.getState().nova["ghost"]!.coins).toBe(10);
+  });
+
+  it("#1805 — a snapshot with a NEWER last_practice wins even with fewer corrects", () => {
+    seed();
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 5,
+      mastery: [{ skillId: "s1", mastery: 0.6, correct: 3, attempts: 4, streak: 2, lastPractice: 5000, lastDecay: 5000 }],
+    });
+    const s1 = useKidStore.getState().skills["devA:s1"]!;
+    expect(s1.correct).toBe(3); // newer timestamp owns the skill
+    expect(s1.attempts).toBe(4);
+    expect(s1.streak).toBe(2);
+    expect(s1.pMastered).toBe(0.6);
+    expect(s1.lastPractice).toBe(5000);
+  });
+
+  it("#1805 — a snapshot with an OLDER last_practice loses to local practice", () => {
+    seed();
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 5,
+      mastery: [{ skillId: "s1", mastery: 0.6, correct: 99, attempts: 100, streak: 2, lastPractice: 500, lastDecay: 500 }],
+    });
+    const s1 = useKidStore.getState().skills["devA:s1"]!;
+    expect(s1.correct).toBe(10); // local lastPractice (1000) is newer → local keeps the skill
+    expect(s1.lastPractice).toBe(1000);
+    expect(s1.pMastered).toBe(0.9);
+  });
+
+  it("#1805 — equal timestamps fall back to the accumulated-corrects tiebreak", () => {
+    seed();
+    // equal lastPractice (1000) + MORE corrects → snapshot wins
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 5,
+      mastery: [{ skillId: "s1", mastery: 0.6, correct: 15, attempts: 20, streak: 4, lastPractice: 1000, lastDecay: 1000 }],
+    });
+    expect(useKidStore.getState().skills["devA:s1"]!.correct).toBe(15);
+    // equal lastPractice + FEWER corrects → local keeps its win
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 5,
+      mastery: [{ skillId: "s1", mastery: 0.6, correct: 8, attempts: 20, streak: 4, lastPractice: 1000, lastDecay: 1000 }],
+    });
+    expect(useKidStore.getState().skills["devA:s1"]!.correct).toBe(15);
+  });
+
+  it("#1813 — last_decay is adopted from the snapshot, not re-stamped now", () => {
+    seed();
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 40,
+      mastery: [{ skillId: "s1", mastery: 0.7, correct: 20, attempts: 25, streak: 8, lastPractice: 5000, lastDecay: 4321 }],
+    });
+    const s1 = useKidStore.getState().skills["devA:s1"]!;
+    expect(s1.lastDecay).toBe(4321);
+    expect(s1.lastPractice).toBe(5000);
+  });
+
+  it("#1813 — a snapshot with lastPractice but NO lastDecay keeps the local decay", () => {
+    seed();
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 40,
+      mastery: [{ skillId: "s1", mastery: 0.7, correct: 20, attempts: 25, streak: 8, lastPractice: 5000 }],
+    });
+    const s1 = useKidStore.getState().skills["devA:s1"]!;
+    expect(s1.lastPractice).toBe(5000);
+    expect(s1.lastDecay).toBe(1000); // local decay survives when snap omits it
+  });
+});
+
+describe("aggregateSyncState (#1812)", () => {
+  it("worst unresolved channel wins across all three drains", () => {
+    expect(aggregateSyncState({ progress: "ok", stories: "ok", accel: "ok" })).toBe("ok");
+    expect(aggregateSyncState({ progress: "error", stories: "ok", accel: "idle" })).toBe("error");
+    expect(aggregateSyncState({ progress: "reconnecting", stories: "ok", accel: "idle" })).toBe("reconnecting");
+    expect(aggregateSyncState({ progress: "offline", stories: "reconnecting", accel: "idle" })).toBe("reconnecting");
+    expect(aggregateSyncState({ progress: "syncing", stories: "ok", accel: "idle" })).toBe("syncing");
+    expect(aggregateSyncState({ progress: "idle", stories: "idle", accel: "idle" })).toBe("idle");
+  });
+
+  it("setChannelSyncState recomputes the aggregate from every channel", () => {
+    useKidStore.getState().setChannelSyncState("stories", "error");
+    expect(useKidStore.getState().syncState).toBe("error");
+    useKidStore.getState().setChannelSyncState("progress", "reconnecting");
+    // worst-wins: error still outranks reconnecting
+    expect(useKidStore.getState().syncState).toBe("error");
+    useKidStore.getState().setChannelSyncState("stories", "ok");
+    expect(useKidStore.getState().syncState).toBe("reconnecting");
+    useKidStore.getState().setChannelSyncState("progress", "ok");
+    expect(useKidStore.getState().syncState).toBe("ok");
   });
 });
 

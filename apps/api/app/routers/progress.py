@@ -176,6 +176,24 @@ async def _lock_mastery_keys(db: AsyncSession, pairs: set[tuple[uuid.UUID, str]]
         await db.execute(stmt)
 
 
+async def _lock_story_cap_keys(db: AsyncSession, kid_ids: set[uuid.UUID]) -> None:
+    """#1808 — serialize the per-kid story-cap check+insert per kid.
+
+    The Kotha cap below is a non-atomic `SELECT count(*)` then
+    `INSERT ... ON CONFLICT` with no row lock. Two concurrent batches for the
+    SAME kid can both read a count under the cap and both insert, overshooting
+    `kotha_max_stories_per_kid`. A Postgres advisory transaction lock on a
+    stable hash of the kid_id makes those batches serialize: the lock is held
+    until the handler's db.commit(), so the second batch's count can't start
+    until the first batch's insert commits. Mirrors the coins #1803 pattern; a
+    distinct key prefix keeps this lock space separate from mastery locks."""
+    for kid_id in kid_ids:
+        stmt = text(
+            "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"
+        ).bindparams(key=f"storycap:{kid_id}")
+        await db.execute(stmt)
+
+
 # #853 — this handler is fully synchronous and commits before returning, so the
 # response is the imperative result (200), not a queued acknowledgement (202).
 @router.post("/progress", status_code=status.HTTP_200_OK)
@@ -448,6 +466,10 @@ async def record_stories(
     # adversarial or buggy client from flooding the table past the configured
     # cap even when the per-hour rate limit hasn't tripped.
     cap = settings.kotha_max_stories_per_kid
+    # #1808 — acquire the per-kid advisory transaction lock BEFORE the count+insert
+    # so two concurrent batches can't both read under the cap and overshoot. Held
+    # until the commit at the end of this handler.
+    await _lock_story_cap_keys(db, kid_ids)
     for kid_id in kid_ids:
         current_count = await db.scalar(
             select(func.count()).select_from(LearningStory).where(LearningStory.kid_id == kid_id)

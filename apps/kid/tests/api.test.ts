@@ -17,6 +17,7 @@ import {
   syncAccel,
   drainStoriesIfFull,
   drainAccelIfFull,
+  restoreServerState,
   quietTimeNow,
   todayLimitMin,
   goalNudgedToday,
@@ -586,5 +587,163 @@ describe("#819 parent PIN + recovery answer (hash, normalize, legacy upgrade)", 
     expect(await verifySecurityQA("blue moon")).toBe(false);
     expect(localStorage.getItem("nv_parent_pin")).toBeNull();
     expect(localStorage.getItem("nv_parent_sec_a")).toBeNull();
+  });
+});
+
+/* ── #1811 device-auth 401/403 re-auth ─────────────────────────────────── */
+
+describe("#1811 device-auth 401/403 re-auth", () => {
+  function seedDeviceIdentity(): void {
+    localStorage.setItem("nv_device_id", "dev1");
+    localStorage.setItem("nv_device_secret", "seed");
+    localStorage.setItem("nv_device_token", "devtok");
+    localStorage.setItem("nv_kids", JSON.stringify([{ id: "k1", name: "Kid", birthYear: 2018 }]));
+    localStorage.setItem("nv_kid_map", JSON.stringify({ k1: "srv_1" }));
+  }
+
+  it("clears the device token and surfaces 'reconnecting' on a 401, keeping the outbox", async () => {
+    seedDeviceIdentity();
+    useKidStore.setState({ pending: [pendingEvent() as never] });
+    const fetchMock = vi.fn(async () => new Response(null, { status: 401 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncProgress();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1); // only the /progress POST
+    expect(localStorage.getItem("nv_device_token")).toBeNull(); // re-auth next tick
+    expect(useKidStore.getState().syncChannels.progress).toBe("reconnecting");
+    expect(useKidStore.getState().syncSignal.lastError).toBe("reconnecting");
+    expect(useKidStore.getState().pending).toHaveLength(1); // outbox never dropped
+  });
+
+  it("403 is treated like 401 (reconnecting), NOT account-gone (no wipe)", async () => {
+    seedDeviceIdentity();
+    useKidStore.setState({ pending: [pendingEvent() as never] });
+    const fetchMock = vi.fn(async () => new Response(null, { status: 403 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncProgress();
+
+    expect(useKidStore.getState().syncChannels.progress).toBe("reconnecting");
+    // #1687 — 410 (not 403) is the account-gone signal; a 403 must not wipe.
+    expect(useKidStore.getState().skills).toBeDefined();
+    expect(useKidStore.getState().pending).toHaveLength(1);
+  });
+});
+
+/* ── #1809 twin-collision kid mapping (claimed set) ────────────────────── */
+
+describe("#1809 twin-collision kid mapping", () => {
+  it("creates a fresh server kid when a name/year is already claimed by a twin", async () => {
+    localStorage.setItem("nv_parent_token", "tok");
+    localStorage.setItem(
+      "nv_kids",
+      JSON.stringify([
+        { id: "k1", name: "Twin", birthYear: 2018 },
+        { id: "k2", name: "Twin", birthYear: 2018 },
+      ])
+    );
+    localStorage.setItem("nv_kid_map", JSON.stringify({}));
+    useKidStore.setState({ pending: [pendingEvent({ kidId: "k1" }) as never] });
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === `${API}/kids` && (!init?.method || init.method === "GET")) {
+        return okJson([{ id: "srv_1", name: "Twin", birth_year: 2018 }]);
+      }
+      if (url === `${API}/kids` && init?.method === "POST") return okJson({ id: "srv_2" });
+      if (url === `${API}/progress`) return okJson({});
+      return new Response(null, { status: 500 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncProgress();
+
+    const map = JSON.parse(localStorage.getItem("nv_kid_map")!) as Record<string, string>;
+    expect(map.k1).toBe("srv_1"); // first twin claims the existing server kid
+    expect(map.k2).toBe("srv_2"); // second twin gets a FRESH server kid
+    const posts = fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
+    expect(posts).toHaveLength(2); // POST /kids (create srv_2) + POST /progress
+  });
+
+  it("rejects an AMBIGUOUS name/year (two server kids) and creates fresh", async () => {
+    localStorage.setItem("nv_parent_token", "tok");
+    localStorage.setItem("nv_kids", JSON.stringify([{ id: "k1", name: "Twin", birthYear: 2018 }]));
+    localStorage.setItem("nv_kid_map", JSON.stringify({}));
+    useKidStore.setState({ pending: [pendingEvent({ kidId: "k1" }) as never] });
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === `${API}/kids` && (!init?.method || init.method === "GET")) {
+        return okJson([
+          { id: "srv_1", name: "Twin", birth_year: 2018 },
+          { id: "srv_2", name: "Twin", birth_year: 2018 },
+        ]);
+      }
+      if (url === `${API}/kids` && init?.method === "POST") return okJson({ id: "srv_3" });
+      if (url === `${API}/progress`) return okJson({});
+      return new Response(null, { status: 500 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncProgress();
+
+    const map = JSON.parse(localStorage.getItem("nv_kid_map")!) as Record<string, string>;
+    expect(map.k1).toBe("srv_3"); // ambiguous → fresh create
+  });
+});
+
+/* ── #1810 per-kid restore throttle ────────────────────────────────────── */
+
+describe("#1810 per-kid restore throttle", () => {
+  it("throttles a successful restore for 5 minutes, then refetches", async () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.setItem("nv_parent_token", "tok");
+      localStorage.setItem("nv_kids", JSON.stringify([{ id: "kA", name: "Kid", birthYear: 2018 }]));
+      localStorage.setItem("nv_kid_map", JSON.stringify({ kA: "srv_A" }));
+      // first restore succeeds
+      const first = vi.fn(async () => okJson({ coins: 5, wallet_seq: 1, mastery: [] }));
+      vi.stubGlobal("fetch", first);
+      await restoreServerState();
+      expect(first).toHaveBeenCalledTimes(1);
+
+      // second restore within 5 min: throttled — no fetch
+      const second = vi.fn(async () => okJson({ coins: 6, wallet_seq: 2, mastery: [] }));
+      vi.stubGlobal("fetch", second);
+      await restoreServerState();
+      expect(second).toHaveBeenCalledTimes(0);
+
+      // after 5 min: refetches
+      vi.advanceTimersByTime(5 * 60_000 + 1);
+      const third = vi.fn(async () => okJson({ coins: 7, wallet_seq: 3, mastery: [] }));
+      vi.stubGlobal("fetch", third);
+      await restoreServerState();
+      expect(third).toHaveBeenCalledTimes(1);
+      expect(useKidStore.getState().nova.kA!.coins).toBe(7);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does NOT consume a kid's throttle on a failed snapshot — retries next tick", async () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.setItem("nv_parent_token", "tok");
+      localStorage.setItem("nv_kids", JSON.stringify([{ id: "kB", name: "Kid", birthYear: 2018 }]));
+      localStorage.setItem("nv_kid_map", JSON.stringify({ kB: "srv_B" }));
+      // first restore: snapshot fetch fails (fetch rejects → fetchSnapshot null)
+      const first = vi.fn(async () => {
+        throw new TypeError("down");
+      });
+      vi.stubGlobal("fetch", first);
+      await restoreServerState();
+      expect(first).toHaveBeenCalledTimes(1);
+
+      // second restore immediately: retried (throttle NOT consumed on failure)
+      const second = vi.fn(async () => okJson({ coins: 5, wallet_seq: 1, mastery: [] }));
+      vi.stubGlobal("fetch", second);
+      await restoreServerState();
+      expect(second).toHaveBeenCalledTimes(1);
+      expect(useKidStore.getState().nova.kB!.coins).toBe(5);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

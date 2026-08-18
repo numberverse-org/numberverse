@@ -106,8 +106,8 @@ describe("serializeSnapshot (#1814)", () => {
   });
 });
 
-describe("persist.worker (#1814)", () => {
-  it("posts back the stringified snapshot on message (stub self)", async () => {
+describe("persist.worker (#1814/#1815)", () => {
+  it("stringifies writes AND parses+migrates rehydrate reads off-thread (stub self)", async () => {
     const postMessage = vi.fn();
     const selfStub: { postMessage: typeof postMessage; onmessage: null | ((ev: MessageEvent) => void) } = {
       postMessage,
@@ -117,12 +117,70 @@ describe("persist.worker (#1814)", () => {
     try {
       // Dynamic import AFTER stubbing `self`: the worker module binds its
       // handler to the stub's onmessage at module eval. The module is only
-      // imported in this one test, so the fresh stub is guaranteed.
+      // imported in this one test, so the fresh stub is guaranteed. All three
+      // messages below drive the SAME bound handler — no module-cache reload.
       const mod = await import("../src/persist.worker");
       const state = sampleState();
+
+      // write path: a state object → string reply
       selfStub.onmessage!({ data: state } as MessageEvent);
-      expect(postMessage).toHaveBeenCalledTimes(1);
-      expect(postMessage).toHaveBeenCalledWith(serializeSnapshot(state as never));
+      expect(postMessage).toHaveBeenNthCalledWith(1, serializeSnapshot(state as never));
+
+      // read path: a v0 raw blob → already-MIGRATED envelope at the current
+      // version (zustand then skips its own migrate — single implementation).
+      selfStub.onmessage!({
+        data: { type: "parse", raw: JSON.stringify({ state, version: 0 }) },
+      } as MessageEvent);
+      const reply = postMessage.mock.calls[1][0] as {
+        type: string;
+        state: Record<string, unknown> | null;
+        version: number;
+      };
+      expect(reply.type).toBe("parse-result");
+      expect(reply.version).toBe(1);
+      expect(reply.state).not.toBeNull();
+      // the worker ran the SAME migration as the main thread — the blob's
+      // already-present syncSignal/mono fields pass through untouched
+      expect((reply.state as Record<string, unknown>).syncSignal).toEqual(state.syncSignal);
+      expect((reply.state as { skills: Record<string, unknown> }).skills["k1:s1"]).toEqual(
+        state.skills["k1:s1"]
+      );
+
+      // genuine minimal v0 blob (no v1-only keys) → migration backfills them
+      selfStub.onmessage!({
+        data: {
+          type: "parse",
+          raw: JSON.stringify({
+            state: { skills: { "k1:s1": state.skills["k1:s1"] }, nova: { k1: state.nova.k1 } },
+            version: 0,
+          }),
+        },
+      } as MessageEvent);
+      const v0reply = postMessage.mock.calls[2][0] as {
+        type: string;
+        state: Record<string, unknown> | null;
+        version: number;
+      };
+      expect(v0reply.state).toEqual({
+        skills: { "k1:s1": state.skills["k1:s1"] },
+        mistakes: {},
+        stats: {},
+        nova: { k1: state.nova.k1 },
+        garden: {},
+        pending: [],
+        stories: [],
+        accel: [],
+        moni: {},
+        moniWrongStreak: {},
+        moniStrictness: {},
+        moniSkillDeltas: {},
+        syncSignal: { lastSuccessAt: null, pendingCount: 0, lastError: null },
+      });
+
+      // corrupt blob → null state (same #1374 guard as the sync path)
+      selfStub.onmessage!({ data: { type: "parse", raw: "{corrupt!!not json" } } as MessageEvent);
+      expect(postMessage.mock.calls[3][0]).toEqual({ type: "parse-result", state: null });
+
       expect(mod).toBeDefined();
     } finally {
       vi.unstubAllGlobals();

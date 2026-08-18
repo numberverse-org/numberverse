@@ -92,8 +92,11 @@ export interface AccelEvent {
   ts: number;
 }
 
-/** Live indicator of the background sync (for the home/parent screens). */
-export type SyncState = "idle" | "syncing" | "ok" | "offline" | "error";
+/** Live indicator of the background sync (for the home/parent screens).
+ *  #1811 — "reconnecting" = a drain was rejected with 401/403 (stale/revoked
+ *  credential): the token was cleared and the NEXT heartbeat re-auths. It's a
+ *  transient recovery state — better than a permanent "error". */
+export type SyncState = "idle" | "syncing" | "ok" | "offline" | "error" | "reconnecting";
 
 /** #1027 — which outbox owns a sync-state write. Each channel tracks its own
  *  terminal state so a success on one never clobbers an error on another (the
@@ -101,10 +104,13 @@ export type SyncState = "idle" | "syncing" | "ok" | "offline" | "error";
 export type SyncChannel = "progress" | "stories" | "accel";
 
 /** #1027 — collapse the three channel states into one UI-facing aggregate.
- *  Worst state wins: error > offline > syncing > ok > idle. */
+ *  Worst state wins: error > reconnecting > offline > syncing > ok > idle.
+ *  #1811 — reconnecting (credential rejected, re-auth on next tick) outranks
+ *  offline so a stuck channel is never masked as a mere connectivity drop. */
 export function aggregateSyncState(c: Record<SyncChannel, SyncState>): SyncState {
   const all = [c.progress, c.stories, c.accel];
   if (all.includes("error")) return "error";
+  if (all.includes("reconnecting")) return "reconnecting";
   if (all.includes("offline")) return "offline";
   if (all.includes("syncing")) return "syncing";
   if (all.includes("ok")) return "ok";
@@ -750,15 +756,29 @@ interface KidState {
   petAdopt: (kidId: string, speciesId: string) => void;
   /** #9 — merge a server snapshot into the local store, newest-wins. Called on
    *  a SECOND device after the parent signs in, so a kid's progress "follows"
-   *  them (aggregate mastery + coins only — never voice/face). The device with
-   *  more accumulated corrects wins a skill; the wallet takes the higher
-   *  wallet_seq (#1804) — never a max of coins, so a spend can't resurrect. */
+   *  them (aggregate mastery + coins only — never voice/face). #1805 — a skill
+   *  is owned by the state with the NEWER last-practice timestamp (the server's
+   *  last_practice vs the local lastPractice), falling back to accumulated
+   *  corrects only as a tiebreak, so a stale high-correct device can't clobber
+   *  the device that just played. #1813 — the server's last_decay is preserved,
+   *  not re-stamped now. The wallet takes the higher wallet_seq (#1804) — never
+   *  a max of coins, so a spend can't resurrect. */
   restoreSnapshot: (
     kidId: string,
     snap: {
       coins: number;
       walletSeq: number;
-      mastery: Array<{ skillId: string; mastery: number; correct: number; attempts: number; streak: number }>;
+      mastery: Array<{
+        skillId: string;
+        mastery: number;
+        correct: number;
+        attempts: number;
+        streak: number;
+        /** #1805 — epoch ms of the server's last_practice (ISO → ms in api.ts). */
+        lastPractice?: number | null;
+        /** #1813 — epoch ms of the server's last_decay. */
+        lastDecay?: number | null;
+      }>;
     }
   ) => void;
 }
@@ -817,7 +837,12 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   if (typeof Worker !== "undefined") {
     try {
       worker = new Worker(new URL("./persist.worker.ts", import.meta.url), { type: "module" });
-      worker.onmessage = (ev: MessageEvent<string>) => {
+      worker.onmessage = (ev: MessageEvent) => {
+        // #1815 — the worker ALSO replies to rehydrate PARSE requests with an
+        // object ({ type: "parse-result", … }); only STRING replies belong to
+        // the write queue. The parse handler (in getItem) uses its own
+        // addEventListener so the two reply paths never cross.
+        if (typeof ev.data !== "string") return;
         const p = inFlight.shift(); // oldest posted write — replies are ordered
         if (!p) return;
         // Build the zustand envelope {"state":…,"version":…} WITHOUT re-stringifying
@@ -903,6 +928,59 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   }
   return {
     getItem: (name) => {
+      // #1815 — the persisted blob's JSON.parse + migrateKidState used to run
+      // synchronously on the main thread at rehydrate (blocking first paint for
+      // a power user's large nv_store_v1 blob). Offload BOTH to the persist
+      // worker: read the raw string here (a cheap localStorage.getItem), post it
+      // for parse+migrate, and return a Promise that zustand's rehydrate awaits.
+      // The worker replies with the ALREADY-MIGRATED state stamped with the
+      // current version, so zustand skips its own migrate (single implementation).
+      if (worker) {
+        // Capture the narrowed non-null worker — `worker` is a `let` that
+        // onerror can null out, and TS can't narrow it inside the closure.
+        const w = worker;
+        let raw: string | null = null;
+        try {
+          raw = localStorage.getItem(name);
+        } catch {
+          raw = null;
+        }
+        if (raw === null) return null;
+        return new Promise((resolve) => {
+          const onParse = (ev: MessageEvent) => {
+            const d = ev.data;
+            if (!d || typeof d !== "object" || d.type !== "parse-result") return;
+            w.removeEventListener("message", onParse);
+            if (d.state == null) {
+              // #1374 — corrupted / unparseable blob must not silently empty
+              // the store: drop the broken bytes so the next successful persist
+              // writes a clean blob back, and rehydrate the default state.
+              try {
+                base.removeItem(name);
+              } catch {
+                /* storage unavailable — rehydrate defaults without a write */
+              }
+              resolve(null);
+            } else {
+              resolve({ state: d.state, version: d.version });
+            }
+          };
+          w.addEventListener("message", onParse);
+          try {
+            w.postMessage({ type: "parse", raw });
+          } catch {
+            // Worker died between construction and the post — fall back to the
+            // synchronous path rather than hanging rehydrate forever.
+            w.removeEventListener("message", onParse);
+            try {
+              resolve(base.getItem(name));
+            } catch {
+              resolve(null);
+            }
+          }
+        });
+      }
+      // No worker (test env / older webview): legacy synchronous path.
       try {
         return base.getItem(name);
       } catch {
@@ -963,11 +1041,20 @@ export function serializeSnapshot(state: PersistedKidState): string {
 }
 
 /**
- * #789 — nv_store_v1 persist migration HOOK. `version: 1` lives in the persist
- * config below; zustand routes ANY stored blob whose `version` differs through
- * this function on rehydrate. A blob WITHOUT a version key is the original v0
- * release — zustand passes `undefined`, normalized to 0 here, and it upgrades
- * through the same path as an explicit `version: 0` blob.
+ * #789/#1815 — the CURRENT persisted shape version. Used by the persist config
+ * below AND by the persist worker's rehydrate parse (which stamps the reply
+ * with this version so zustand skips its own migrate — the worker already ran
+ * it). Bump this whenever the persisted `partialize` shape changes (see the
+ * how-to-bump doc on migrateKidState).
+ */
+export const PERSIST_VERSION = 1;
+
+/**
+ * #789 — nv_store_v1 persist migration HOOK. `version: PERSIST_VERSION` lives
+ * in the persist config below; zustand routes ANY stored blob whose `version`
+ * differs through this function on rehydrate. A blob WITHOUT a version key is
+ * the original v0 release — zustand passes `undefined`, normalized to 0 here,
+ * and it upgrades through the same path as an explicit `version: 0` blob.
  *
  * HOW TO BUMP THE VERSION on a future breaking schema change (a new/renamed/
  * removed field on the persisted `partialize` shape):
@@ -985,7 +1072,9 @@ export function serializeSnapshot(state: PersistedKidState): string {
  * Whatever version is "current" passes through untouched — zustand's shallow
  * merge backfills anything missing from the store's initializer defaults.
  */
-function migrateKidState(persisted: unknown, version: number): PersistedKidState {
+/** #1815 — exported so the persist worker can run parse+migrate OFF the main
+ *  thread on rehydrate (same single implementation as the main-thread path). */
+export function migrateKidState(persisted: unknown, version: number): PersistedKidState {
   if (!persisted || typeof persisted !== "object" || Array.isArray(persisted)) {
     // zustand's shallow merge backfills every missing key with the defaults
     // declared in the store initializer above.
@@ -1587,11 +1676,26 @@ export const useKidStore = create<KidState>()(
             if (m.correct <= 0) continue;
             const key = keyOf(kidId, m.skillId);
             const local = s.skills[key];
-            // Newest-wins: the device with more accumulated corrects owns the
-            // skill (the server is the sum of ALL devices' outboxes, so it wins
-            // against a stale/fresh device but loses to a device that just played
-            // and hasn't drained yet — that event catches up on the next sync).
-            if (local && local.correct > m.correct) continue;
+            // #1805 — genuine last-write-wins on the last-practice timestamp:
+            // the server's snapshot is the sum of ALL devices' outboxes, so a
+            // NEWER last_practice wins against a stale/fresh device, but LOSES
+            // to a device that just played (that event catches up on the next
+            // sync). Only when timestamps are absent (or exactly equal) do we
+            // fall back to the accumulated-corrects tiebreak (the old behavior).
+            const localT = local?.lastPractice ?? 0;
+            const snapT = typeof m.lastPractice === "number" ? m.lastPractice : null;
+            let snapWins: boolean;
+            if (snapT !== null && snapT > 0) {
+              if (localT > 0) {
+                snapWins = snapT > localT || (snapT === localT && (local?.correct ?? 0) <= m.correct);
+              } else {
+                snapWins = true; // no local practice recorded → server is the truth
+              }
+            } else {
+              // no usable server timestamp → legacy correct-count comparison
+              snapWins = !local || (local?.correct ?? 0) <= m.correct;
+            }
+            if (!snapWins) continue;
             skills[key] = {
               kidId,
               skillId: m.skillId,
@@ -1599,8 +1703,12 @@ export const useKidStore = create<KidState>()(
               correct: m.correct,
               attempts: m.attempts,
               streak: m.streak,
-              lastPractice: local?.lastPractice ?? Date.now(),
-              lastDecay: Date.now(),
+              // #1805 — adopt the server's last-practice so a future merge is
+              // genuinely last-write-wins; #1813 — preserve the server's
+              // last_decay instead of re-stamping now (which discarded decay
+              // history). Fall back to the surviving local value, then now.
+              lastPractice: m.lastPractice ?? local?.lastPractice ?? Date.now(),
+              lastDecay: m.lastDecay ?? local?.lastDecay ?? Date.now(),
             };
           }
           // #1804 — wallet last-write-wins on the monotonic wallet_seq, NOT a max
@@ -2034,7 +2142,7 @@ export const useKidStore = create<KidState>()(
       name: "nv_store_v1",
       // #789 — any future breaking change to the persisted shape bumps this
       // AND adds a `case` in migrateKidState above (see its doc: how-to-bump).
-      version: 1,
+      version: PERSIST_VERSION,
       migrate: migrateKidState,
       storage: debouncedPersistStorage(),
       // #1226 — DON'T parse the persisted blob at store creation (which fires

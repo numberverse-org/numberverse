@@ -245,6 +245,23 @@ registerRoute(
   "GET"
 );
 
+// #1735 — og-card (social link preview) must survive offline: og:image points
+// at the live host, and a shared link opened offline should still show its
+// card. og-card.png is in the precache glob, but the WebP/AVIF alternatives
+// (#1727) and any future format need a runtime home too — mirror /voice with a
+// CacheFirst route so an og-card miss is fetched once, then served offline.
+registerRoute(
+  /\/og-card\.(?:png|webp|avif)$/,
+  new CacheFirst({
+    cacheName: "nv-og",
+    plugins: [
+      new ExpirationPlugin({ maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 30 }),
+      new CacheableResponsePlugin({ statuses: [200] }),
+    ],
+  }),
+  "GET"
+);
+
 // #1722 — Bengali font faces (Noto Sans Bengali ×5, ~235KB) are NOT in the
 // static precache (see vite.config.ts globIgnores): an en-only install must
 // not download Bangla weights it never renders. CacheFirst on first use

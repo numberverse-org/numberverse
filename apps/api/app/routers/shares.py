@@ -45,6 +45,16 @@ SHARE_READ_RATE_LIMIT = read_rate_limit()
 # a valid-but-paused link by response time alone (approximate, not exact).
 _SHARE_404_DELAY_SECONDS = 0.02
 
+# #1800 — the mint/rotate audit timestamps live in migrations-owned columns
+# (`share_token_created_at` / `share_token_revoked_at`) that are deliberately
+# kept OFF the ORM model (models.py owns that addition), so the three write
+# paths share ONE named SQL constant instead of three hand-written UPDATE
+# strings that could silently drift from the column's migration.
+_SHARE_TOKEN_MINT_SQL = text(
+    "UPDATE kids SET share_token_created_at = now(), "
+    "share_token_revoked_at = NULL WHERE id = CAST(:kid_id AS uuid)"
+)
+
 
 async def _share_not_found() -> None:
     await asyncio.sleep(_SHARE_404_DELAY_SECONDS)
@@ -168,13 +178,7 @@ async def get_share_token(
         owned.share_token = _share_token_hash(raw)
         # #1550 — audit when this token was minted (stored via migrations.py;
         # kept off the ORM model so another wave can own the column addition).
-        await db.execute(
-            text(
-                "UPDATE kids SET share_token_created_at = now(), "
-                "share_token_revoked_at = NULL WHERE id = CAST(:kid_id AS uuid)"
-            ),
-            {"kid_id": str(kid_id)},
-        )
+        await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
         await db.commit()
         await db.refresh(owned)
     elif _is_legacy_raw(owned.share_token):
@@ -188,13 +192,7 @@ async def get_share_token(
         # re-mints (rotates) exactly like the /rotate endpoint.
         raw = secrets.token_urlsafe(24)
         owned.share_token = _share_token_hash(raw)
-        await db.execute(
-            text(
-                "UPDATE kids SET share_token_created_at = now(), "
-                "share_token_revoked_at = NULL WHERE id = CAST(:kid_id AS uuid)"
-            ),
-            {"kid_id": str(kid_id)},
-        )
+        await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
         await db.commit()
         await db.refresh(owned)
     return ShareTokenOut(token=raw)

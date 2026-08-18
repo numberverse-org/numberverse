@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import UpdateBanner from "./components/UpdateBanner";
 import ErrorBoundary, { logBoundaryError, type BoundaryCopy } from "./components/ErrorBoundary";
+import { initErrorReporter, reportBoundaryError } from "./lib/errorReporter";
 import { NOVA_SPLASH } from "./assets/novaSplash";
 import { swUpdateAvailable } from "./updateBanner";
 import "./styles/boot.css"; // #1177 — splash + base tokens only; screens.css rides the lazy App chunk
@@ -307,6 +308,12 @@ function SplashScreen({ ready }: { ready: boolean }) {
   );
 }
 
+// #1756 — install the client error reporter (fetch shadow + sync-stuck poller)
+// at boot, BEFORE the App chunk mounts and the always-sync heartbeat starts,
+// so the shadow is live for the first sync POST and the poller can detect a
+// stuck outbox from the first heartbeat. Never on the critical path.
+initErrorReporter();
+
 /** Boot: the splash holds (no blank gap) until the App chunk resolves, then
  *  runs its normal countdown. SplashScreen + RotateOverlay are the ONLY pieces
  *  of the render tree that must be live before first paint. */
@@ -337,9 +344,11 @@ function Boot() {
           label="boot"
           lang={bootBn ? "bn" : "en"}
           copy={bootBn ? BOOT_COPY.bn : BOOT_COPY.en}
-          onCatch={(error) => {
+          onCatch={(error, errorInfo) => {
             logBootCrash(error);
             setCrashCount((c) => c + 1);
+            // #1756 — scrubbed, throttled report to POST /api/v1/errors.
+            void reportBoundaryError("boot", error, errorInfo?.componentStack);
           }}
           onResetFresh={crashCount >= 2 ? clearBootPersist : undefined}
         >

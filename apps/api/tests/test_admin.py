@@ -177,6 +177,7 @@ class _FakeDB:
         self.deleted = []
         self.crud_rows = {}   # str(pk) -> model row, for db.get
         self.list_rows = []   # rows returned by db.scalars
+        self.last_stmts = []  # every stmt handed to scalars (compile-assertable)
         self._bucket_objs = {}  # key -> RateLimitBucket identity-map object
         # #1625 — when True, commit() raises IntegrityError so the admin CRUD
         # path's 409 handling can be asserted without Postgres.
@@ -223,6 +224,7 @@ class _FakeDB:
         return self.crud_rows.get(str(pk))
 
     async def scalars(self, stmt):
+        self.last_stmts.append(stmt)
         return _FakeResult(rows=list(self.list_rows))
 
     def add(self, obj):
@@ -582,6 +584,69 @@ async def _run_admin_crud():
     st, _ = await aexc_status(admin_router.delete_resource(
         "content_items", "missing", _request(), prof, db))
     check("delete missing row → 404", st, 404)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ④b  #1799 — `~` filters escape SQL wildcards: a literal %/_ is matched
+#       literally, never as an ILIKE pattern
+# ══════════════════════════════════════════════════════════════════════════
+
+def _compile_last_list_stmt(db):
+    """Compile the last stmt list_resource handed to scalars → (sql, params)."""
+    compiled = db.last_stmts[-1].compile()
+    return str(compiled), dict(compiled.params)
+
+
+async def _run_admin_wildcard_escape():
+    print("④b  #1799 — `~` filter wildcards are escaped (%% / _ matched literally)…")
+    prof = _profile()
+
+    # Pure helper: % → \%, _ → \_, and the escape char itself is escaped FIRST.
+    check("_escape_like_literal escapes a literal percent",
+          admin_router._escape_like_literal("50%"), "50\\%")
+    check("_escape_like_literal escapes a literal underscore",
+          admin_router._escape_like_literal("a_b"), "a\\_b")
+    check("_escape_like_literal escapes the escape char first",
+          admin_router._escape_like_literal("back\\slash"), "back\\\\slash")
+    check("_escape_like_literal double-escapes a backslash before %",
+          admin_router._escape_like_literal("\\%"), "\\\\\\%")
+
+    # A `~%` filter must bind the ESCAPED pattern so it matches a literal `%`
+    # instead of every row: pattern is %\%% (needs a real `%` char), not %%%.
+    db = _FakeDB()
+    await admin_router.list_resource("content_items", _request(), None, None,
+                                     '{"title":"~%"}', prof, db)
+    sql, params = _compile_last_list_stmt(db)
+    check("list ~%% filter carries the ILIKE ESCAPE clause", "ESCAPE" in sql, True)
+    check("list ~%% filter binds the escaped literal %% pattern",
+          "%\\%%" in params.values(), True)
+    check("list ~%% filter does NOT bind a match-everything %%%",
+          "%%%" in params.values(), False)
+
+    # A literal `%` inside a longer value is searchable too (e.g. a title "50%").
+    db = _FakeDB()
+    await admin_router.list_resource("content_items", _request(), None, None,
+                                     '{"title":"~50%"}', prof, db)
+    _, params = _compile_last_list_stmt(db)
+    check("list ~50%% binds the literal percent inside the value",
+          "%50\\%%" in params.values(), True)
+
+    # A literal `_` is searchable: pattern is %a\_b%, so `axb` would NOT match.
+    db = _FakeDB()
+    await admin_router.list_resource("content_items", _request(), None, None,
+                                     '{"title":"~a_b"}', prof, db)
+    _, params = _compile_last_list_stmt(db)
+    check("list ~a_b escapes the underscore (literal _ search)",
+          "%a\\_b%" in params.values(), True)
+
+    # Escaping must not disturb the surrounding %-wildcards of the `~` contains
+    # semantics — the term is still wrapped in %...% on BOTH sides.
+    db = _FakeDB()
+    await admin_router.list_resource("content_items", _request(), None, None,
+                                     '{"title":"~on"}', prof, db)
+    _, params = _compile_last_list_stmt(db)
+    check("list ~on still wraps the term in contains %...%",
+          "%on%" in params.values(), True)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1234,6 +1299,7 @@ def _run():
     test_config_validation()
     test_whitelist_coverage()
     asyncio.run(_run_admin_crud())
+    asyncio.run(_run_admin_wildcard_escape())
     asyncio.run(_run_admin_guards())
     asyncio.run(_run_admin_create())
     asyncio.run(_run_admin_org_crud())

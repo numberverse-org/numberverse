@@ -217,13 +217,20 @@ async function mapLocalKidsToServer(token: string): Promise<Record<string, strin
   const existing = await fetch(`${API}/kids`, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
     r.ok ? r.json() : []
   );
+  // #1809 — a server kid may be claimed by AT MOST ONE local kid. Track every
+  // server id already mapped (persisted map + this pass) so a name/year that a
+  // twin already claimed can't silently merge two local kids onto one server
+  // kid (collapsing their separate progress). An AMBIGUOUS match (zero or
+  // multiple unclaimed server kids with the same name/year) also creates fresh.
+  const claimed = new Set<string>(Object.values(map));
   for (const k of localKids()) {
     if (map[k.id]) continue;
-    const match = (existing as Array<{ id: string; name: string; birth_year?: number | null }>).find(
-      (sk) => sk.name === k.name && String(sk.birth_year) === String(k.birthYear)
+    const matches = (existing as Array<{ id: string; name: string; birth_year?: number | null }>).filter(
+      (sk) => sk.name === k.name && String(sk.birth_year) === String(k.birthYear) && !claimed.has(sk.id)
     );
-    if (match) {
-      map[k.id] = match.id;
+    if (matches.length === 1) {
+      map[k.id] = matches[0].id;
+      claimed.add(matches[0].id);
       changed = true;
       continue;
     }
@@ -233,7 +240,9 @@ async function mapLocalKidsToServer(token: string): Promise<Record<string, strin
       body: JSON.stringify({ name: k.name, avatar: k.avatar, birth_year: k.birthYear }),
     });
     if (!created.ok) throw new Error(`kid create ${created.status}`);
-    map[k.id] = (await created.json()).id;
+    const srvId = (await created.json()).id as string;
+    map[k.id] = srvId;
+    claimed.add(srvId);
     changed = true;
   }
   if (changed) writeKidMap(map);
@@ -627,8 +636,13 @@ export async function signoutParent(): Promise<void> {
   resetIdentity();
 }
 
-/** #1464 — restore throttle is keyed to the identity, not wall-clock. */
-let lastRestoreAt = 0;
+/** #1810 — restore throttle is keyed to the identity AND per-kid. The old
+ *  single global timestamp was stamped BEFORE the fetch loop, so one mid-loop
+ *  failure (offline / 5xx) skipped EVERY kid for 5 minutes. Each kid now has
+ *  its own timestamp, and only a SUCCESSFUL snapshot consumes it — a failed kid
+ *  retries on the next heartbeat while the healthy kids stay quiet. */
+const RESTORE_INTERVAL_MS = 5 * 60_000;
+const lastRestoreAtPerKid: Record<string, number> = {};
 
 /** Drop the cached sync identity so the NEXT call picks up a new parent token
  *  (or the device account) — call after sign-in / sign-out / validation. */
@@ -636,8 +650,8 @@ function resetIdentity(): void {
   identityPromise = null;
   // A fresh identity (sign-in / sign-out) must perform its own first restore,
   // even if the previous account restored moments ago. The heartbeat stays
-  // throttled because it does NOT reset this timer.
-  lastRestoreAt = 0;
+  // throttled because it does NOT reset the per-kid timestamps.
+  for (const k of Object.keys(lastRestoreAtPerKid)) delete lastRestoreAtPerKid[k];
 }
 
 let syncing = false;
@@ -765,6 +779,52 @@ function dropStaleIdentity(channel: SyncChannel): void {
   useKidStore.getState().setChannelSyncState(channel, "idle");
 }
 
+/** #1811 — a drain was rejected with 401/403: the credential is stale or
+ *  revoked. The old code treated it as a permanent "error" (or — for 401 — as
+ *  account-gone, wiping the store) and never re-authenticated, wedging the
+ *  outbox on a dead token forever.
+ *
+ *  DEVICE account → clear the cached device token + the cached identity so the
+ *  NEXT heartbeat re-auths fresh (deviceAuth signup→login, same deterministic
+ *  device id) and drains the still-queued outbox. Surface a transient
+ *  "reconnecting" state — better than a permanent "error".
+ *
+ *  PARENT account → the stored access token is short-lived (≤15 min), so a 401
+ *  usually means it simply expired. Try ONE httpOnly-cookie refresh; if the
+ *  refresh cookie is dead too, the account is conclusively gone (#1687) → wipe
+ *  + drop to the gate (preserved account-erasure completeness). */
+async function handleRejectedAuth(channel: SyncChannel): Promise<void> {
+  let parentToken: string | null = null;
+  try {
+    parentToken = localStorage.getItem(LS.parentToken);
+  } catch {
+    parentToken = null;
+  }
+  if (parentToken) {
+    const fresh = await tryRefreshParentSession();
+    if (fresh) {
+      // Access token refreshed — re-resolve identity next tick and keep the
+      // queued outbox; this drain's batch was NOT posted, so stay transient.
+      resetIdentity();
+      useKidStore.getState().setChannelSyncState(channel, "reconnecting");
+      useKidStore.getState().setSyncSignal({ lastError: "reconnecting" });
+      reportSyncOutcome(false);
+      return;
+    }
+    handleAccountGone();
+    return;
+  }
+  try {
+    localStorage.removeItem(LS.deviceToken);
+  } catch {
+    /* storage denied */
+  }
+  resetIdentity();
+  useKidStore.getState().setChannelSyncState(channel, "reconnecting");
+  useKidStore.getState().setSyncSignal({ lastError: "reconnecting" });
+  reportSyncOutcome(false);
+}
+
 /** Drain the persisted outbox to the server (one batch per call, batching the
  *  rest). Safe to call from anywhere, any number of times — concurrent calls
  *  share the lock and never double-post. A successful batch instantly drains
@@ -865,15 +925,22 @@ export async function syncProgress(): Promise<void> {
       // and wait for the next heartbeat (no spin, no silent drop).
       drained = done.size === mapped.length;
     } else {
-      // #1687 — 401/410 on a drain means the account is gone (its tokens died
-      // with it): wipe the persisted store + credentials and drop to the gate.
+      // #1811 — 401/403 = stale/revoked credential: clear it + re-auth on the
+      // next heartbeat (parent: refresh once, else account-gone #1687). The
+      // outbox stays queued and the channel surfaces "reconnecting".
+      // #1687 — 410 alone means the account is conclusively GONE (its tokens
+      // died with it): wipe the persisted store + credentials + drop to the gate.
       // Any other failure keeps the outbox queued and parent-visible.
-      if (res.status === 401 || res.status === 410) {
+      if (res.status === 401 || res.status === 403) {
+        await handleRejectedAuth("progress");
+        return;
+      }
+      if (res.status === 410) {
         handleAccountGone();
         return;
       }
       setChannelSyncState("progress", "error");
-      // #1556 — 401/403/429/5xx etc: the outbox is stuck; make it parent-visible.
+      // #1556 — 429/5xx etc: the outbox is stuck; make it parent-visible.
       useKidStore.getState().setSyncSignal({ lastError: "error" });
       reportSyncOutcome(false);
     }
@@ -956,8 +1023,13 @@ export async function syncStories(): Promise<void> {
       useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       reportSyncOutcome(true);
     } else {
-      // #1687 — 401/410 = account gone (see syncProgress): wipe + drop to gate.
-      if (res.status === 401 || res.status === 410) {
+      // #1811 — 401/403 = stale/revoked credential: re-auth on the next tick.
+      // #1687 — 410 = account gone (see syncProgress): wipe + drop to gate.
+      if (res.status === 401 || res.status === 403) {
+        await handleRejectedAuth("stories");
+        return;
+      }
+      if (res.status === 410) {
         handleAccountGone();
         return;
       }
@@ -1052,8 +1124,13 @@ export async function syncAccel(): Promise<void> {
       useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       reportSyncOutcome(true);
     } else {
-      // #1687 — 401/410 = account gone (see syncProgress): wipe + drop to gate.
-      if (res.status === 401 || res.status === 410) {
+      // #1811 — 401/403 = stale/revoked credential: re-auth on the next tick.
+      // #1687 — 410 = account gone (see syncProgress): wipe + drop to gate.
+      if (res.status === 401 || res.status === 403) {
+        await handleRejectedAuth("accel");
+        return;
+      }
+      if (res.status === 410) {
         handleAccountGone();
         return;
       }
@@ -1163,12 +1240,30 @@ export function filterLocalStories(
     .slice(0, limit);
 }
 
+/** Convert the server's ISO-datetime (or null) to epoch ms, or null. */
+function toEpochMs(v: unknown): number | null {
+  if (typeof v !== "string") return null;
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? t : null;
+}
+
 /** #9 — pull one kid's aggregate server profile (mastery + coins). Returns null
- *  when there's no mapping / offline / server error — restore is always best-effort. */
+ *  when there's no mapping / offline / server error — restore is always best-effort.
+ *  #1805/#1813 — the mastery rows carry the server's last_practice / last_decay
+ *  (ISO datetimes) converted to epoch ms so restoreSnapshot can do genuine
+ *  last-write-wins and preserve the decay stamp. */
 async function fetchSnapshot(localKidId: string): Promise<{
   coins: number;
   walletSeq: number; // #1804 — monotonic wallet version (last-write-wins restore)
-  mastery: Array<{ skillId: string; mastery: number; correct: number; attempts: number; streak: number }>;
+  mastery: Array<{
+    skillId: string;
+    mastery: number;
+    correct: number;
+    attempts: number;
+    streak: number;
+    lastPractice: number | null;
+    lastDecay: number | null;
+  }>;
 } | null> {
   const identity = await ensureIdentity();
   const sid = identity?.kidFor(localKidId);
@@ -1179,10 +1274,21 @@ async function fetchSnapshot(localKidId: string): Promise<{
     });
     if (!res.ok) return null;
     const data = await res.json();
+    const mastery = Array.isArray(data.mastery)
+      ? data.mastery.map((m: Record<string, unknown>) => ({
+          skillId: m.skill_id as string,
+          mastery: m.mastery as number,
+          correct: m.correct as number,
+          attempts: m.attempts as number,
+          streak: m.streak as number,
+          lastPractice: toEpochMs(m.last_practice),
+          lastDecay: toEpochMs(m.last_decay),
+        }))
+      : [];
     return {
       coins: data.coins ?? 0,
       walletSeq: data.wallet_seq ?? 0,
-      mastery: data.mastery ?? [],
+      mastery,
     };
   } catch {
     return null; // offline — skip quietly, retry next tick
@@ -1192,18 +1298,23 @@ async function fetchSnapshot(localKidId: string): Promise<{
 /** #9 — multi-device sync, RESTORE side: on a second device after the parent
  *  signs in, merge every mapped kid's server profile into the local store
  *  (newest-wins). Offline-first unaffected — this never touches the outbox and
- *  never blocks gameplay. Throttled to once per 5 min so the heartbeat stays
- *  quiet on the primary device (where the merge is a no-op / equal-values). */
+ *  never blocks gameplay. #1810 — throttled PER KID (5 min) and a kid's
+ *  timestamp is stamped only after a SUCCESSFUL snapshot, so a partial failure
+ *  (one kid's fetch hiccup) retries just that kid on the next heartbeat instead
+ *  of stalling every kid for 5 minutes. The heartbeat stays quiet on the primary
+ *  device (where the merge is a no-op / equal-values). */
 export async function restoreServerState(): Promise<void> {
-  const now = Date.now();
-  if (now - lastRestoreAt < 5 * 60_000) return;
   if (typeof navigator !== "undefined" && !navigator.onLine) return; // #264 offline
   const identity = await ensureIdentity();
   if (!identity) return; // offline — don't consume the throttle; retry on the online event
-  lastRestoreAt = now;
+  const now = Date.now();
   for (const k of localKids()) {
+    if (now - (lastRestoreAtPerKid[k.id] ?? 0) < RESTORE_INTERVAL_MS) continue;
     const snap = await fetchSnapshot(k.id);
-    if (snap) useKidStore.getState().restoreSnapshot(k.id, snap);
+    if (snap) {
+      useKidStore.getState().restoreSnapshot(k.id, snap);
+      lastRestoreAtPerKid[k.id] = now; // #1810 — throttle consumed ONLY on success
+    }
   }
 }
 
@@ -1264,12 +1375,20 @@ export function startAutoSync(): () => void {
     }, syncBackoffDelay());
   };
   const tick = () => {
-    void syncProgress();
-    void syncStories();
-    void syncAccel(); // 🚀 #249 — acceleration outbox drains with the same heartbeat
+    // #1812 — serialize the three drains so their parent-visible signal writes
+    // (lastError / lastSuccessAt / channel states) can't interleave into a
+    // wrong final state. The per-channel composite (aggregateSyncState,
+    // worst-wins) still reflects the worst unresolved channel. Each drain
+    // hot-loops internally via its own lock, so serializing the first batch
+    // costs nothing — the heartbeat re-arms every 30s–5min regardless.
+    void (async () => {
+      await syncProgress();
+      await syncStories();
+      await syncAccel(); // 🚀 #249 — acceleration outbox drains with the same heartbeat
+    })();
     // #1621 — app-open/session-start (deduped to once per kid per day).
     emitSessionStart();
-    // #9 — second-device catch-up: throttled inside.
+    // #9 — second-device catch-up: throttled inside (#1810 per-kid).
     void restoreServerState();
     schedule();
   };

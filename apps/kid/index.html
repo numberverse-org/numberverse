@@ -140,11 +140,13 @@
     <meta property="og:url" content="https://kids.munna-khan.xyz/" />
     <meta property="og:title" content="Numberverse — kids learn math &amp; Bangla, offline &amp; no ads" />
     <meta property="og:description" content="The fun offline learning world for ages 2–13 — math & Bangla, adaptive, private. বাংলা শেখার অ্যাপ · অফলাইনেও চলে · কোনো বিজ্ঞাপন নেই" />
-    <!-- #993 — host-absolute URL by design (crawlers only). og-card.png is
-	         excluded from the SW precache (globIgnores) so this card is NOT
-	         available offline — it is crawl-only for Facebook/WhatsApp/Twitter
-	         link previews and does NOT participate in the offline contract. -->
-	    <meta property="og:image" content="https://kids.munna-khan.xyz/og-card.png" />
+    <!-- #993/#1735 — host-absolute URL by design (crawlers read it; the PWA
+         never rewrites it at runtime). og-card.png IS in the SW precache (the
+         vite glob covers png), and the WebP/AVIF alternatives (#1727) are
+         served by the runtime nv-og CacheFirst route — so a shared link opened
+         offline still shows its card. PNG stays the og:image for max crawler
+         compatibility; webp/avif are the modern-format alternatives. -->
+    <meta property="og:image" content="https://kids.munna-khan.xyz/og-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />

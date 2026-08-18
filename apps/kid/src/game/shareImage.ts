@@ -398,25 +398,48 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, start
   return lines;
 }
 
-/** Turn a canvas into a PNG blob — with zero identifying metadata (#93).
- *  `stripPngMetadata` (from @numberverse/core) drops every tEXt/zTXt/iTXt/
- *  eXIf chunk, so a share card never carries a kid's name, a path, or EXIF
- *  into WhatsApp.
+/** Encode options for the share-card renderers (#1731). */
+export interface CanvasBlobOptions {
+  /** Output format. Default "png" — the lossless, byte-perfect format every
+   *  share target (WhatsApp, iMessage, email) renders, and the one whose
+   *  metadata we can strip (#93). "webp" is ~3-5× smaller for the 1080×1350
+   *  cards at a quality level; "jpeg" is the fallback for very large cards
+   *  where even WebP is overkill. */
+  format?: "png" | "webp" | "jpeg";
+  /** Lossy quality 0–1, used for "webp"/"jpeg" only (ignored for "png"). */
+  quality?: number;
+}
+
+/** Turn a canvas into a share blob — PNG by default, with an opt-in WebP/JPEG
+ *  format + quality for the cases that want a smaller card (#1731).
+ *
+ *  PNG (the default) keeps zero identifying metadata (#93): `stripPngMetadata`
+ *  (from @numberverse/core) drops every tEXt/zTXt/iTXt/eXIf chunk, so a share
+ *  card never carries a kid's name, a path, or EXIF into WhatsApp. WebP/JPEG
+ *  output from a canvas carries no such container metadata, so those bytes pass
+ *  through untouched — if a browser can't encode the requested format it falls
+ *  back to PNG, which the `b.type === "image/png"` branch strips as usual.
  *
  *  #1817 — renderShareCard/renderCertCard are now async; this accepts either
  *  an already-resolved canvas or the promise itself, so both old (sync) and
  *  new (await) call sites stay valid. The metadata strip is unchanged (#1819). */
 export async function canvasToBlob(
-  canvas: HTMLCanvasElement | Promise<HTMLCanvasElement>
+  canvas: HTMLCanvasElement | Promise<HTMLCanvasElement>,
+  opts: CanvasBlobOptions = {}
 ): Promise<Blob> {
   const cv = await canvas;
+  const format = opts.format ?? "png";
   return new Promise((resolve, reject) => {
     cv.toBlob((b) => {
-      if (!b) { reject(new Error("canvas toBlob failed")); return; }
-      b.arrayBuffer()
-        .then((ab) => resolve(new Blob([stripPngMetadata(ab)], { type: "image/png" })))
-        .catch(reject);
-    }, "image/png");
+      if (!b) { reject(new Error(`canvas toBlob(${format}) failed`)); return; }
+      if (b.type === "image/png") {
+        b.arrayBuffer()
+          .then((ab) => resolve(new Blob([stripPngMetadata(ab)], { type: "image/png" })))
+          .catch(reject);
+      } else {
+        resolve(b);
+      }
+    }, `image/${format}`, opts.quality);
   });
 }
 

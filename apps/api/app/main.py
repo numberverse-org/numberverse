@@ -1,11 +1,12 @@
 import asyncio
 import logging
 import re
+import secrets
 import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,10 +15,12 @@ from sqlalchemy import text
 
 from .accesslog import AccessLogMiddleware, install_access
 from .config import settings
-from .db import SessionLocal
+from .db import SessionLocal, db_pool_status
 from .embeddings import embed_stories
 from .errorlog import install as install_errorlog, request_id_ctx
-from .routers import admin, auth, content, export, kids, progress, shares
+from .metrics import observe_http, render_metrics
+from .routers import admin, auth, content, errors, export, kids, progress, shares
+from .security import decode_token
 from .routers.import_data import MAX_IMPORT_BODY_BYTES
 from .scrub import ScrubFilter
 from .seed import create_tables, seed
@@ -281,6 +284,78 @@ class RequestIDMiddleware:
             request_id_ctx.reset(token)
 
 
+_UUID_SEGMENT_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+_LONG_HEX_RE = re.compile(r"\b[0-9a-fA-F]{16,}\b")
+_NUM_SEGMENT_RE = re.compile(r"\b\d+\b")
+# #1755 — route-label cardinality guard: any path segment that long is almost
+# certainly a token/id, never a route literal (the longest real segments here
+# are ~13 chars like /api/v1/acceleration).
+_LONG_SEGMENT_RE = re.compile(r"/[A-Za-z0-9._-]{25,}")
+
+
+def _route_label(path: str) -> str:
+    """Normalize a raw request path into a low-cardinality route label.
+
+    Dynamic segments (uuid kid/org ids, hex device ids, bare integers, and
+    long url-safe share tokens) all collapse to ``{id}`` so a fleet of devices
+    can never turn into a fleet of distinct labels — 1000 kids must stay a
+    handful of /api/v1 routes, not 1000 `route` label values.
+    """
+    if not path:
+        return "/"
+    out = _UUID_SEGMENT_RE.sub("{id}", path)
+    out = _LONG_HEX_RE.sub("{id}", out)
+    out = _LONG_SEGMENT_RE.sub("/{id}", out)
+    out = _NUM_SEGMENT_RE.sub("{id}", out)
+    return out
+
+
+class MetricsMiddleware:
+    """#1755 — per-request observability: counters + a latency histogram.
+
+    Records one `http_requests_total{route,status}` and one
+    `request_latency_seconds{route}` observation per completed HTTP request.
+    The exception path records 500 explicitly: Starlette's ServerErrorMiddleware
+    sends the 500 straight to the transport, bypassing this send wrapper, so the
+    only way an unhandled exception is counted is from the except clause here.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        start = time.monotonic()
+        status: int | None = None
+
+        async def send_with_metrics(message):
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_with_metrics)
+        except Exception:
+            observe_http(
+                _route_label(scope.get("path") or "/"),
+                500,
+                time.monotonic() - start,
+            )
+            raise
+        else:
+            observe_http(
+                _route_label(scope.get("path") or "/"),
+                status if status is not None else 500,
+                time.monotonic() - start,
+            )
+
+
 # ═════════════════════════════════════════════════════════════════════════
 # #1672 — CSRF defense-in-depth for state-changing /auth/ endpoints.
 # The rotating refresh cookie is SameSite=strict (#1773) — the PRIMARY defense.
@@ -511,7 +586,7 @@ app.add_middleware(
 # list, so the runtime stack (outermost → innermost) is the reverse of the
 # declaration order below:
 #
-#   RequestID → RequestBodySizeLimit → AccessLog → SameOrigin → CORS → app
+#   RequestID → RequestBodySizeLimit → AccessLog → Metrics → SameOrigin → CORS → app
 #
 # RequestID stays OUTERMOST (#1749, added LAST) so request_id_ctx is set for
 # every layer beneath it — including RequestBodySizeLimit's 413 rejection
@@ -522,13 +597,21 @@ app.add_middleware(
 # cross-origin auth POST is rejected with a CORS-free 403 before CORS context
 # is added). AccessLog is INSIDE RequestID (so request_id is already set when
 # it emits) and inside RequestBodySizeLimit (so it only sees requests that
-# passed the body-size guard).
+# passed the body-size guard). MetricsMiddleware (#1755) sits alongside the
+# access log — inside RequestID (so the recorded latency includes the request-id
+# mint) and inside the body-size guard (413/400 rejections are surfaced by
+# RequestBodySizeLimit's own WARNINGs, like the access log).
 
 # #1672 — CSRF defense-in-depth origin check for state-changing /auth/ routes.
 # Declared AFTER CORS (runtime: AccessLog → SameOrigin → CORS) so same-origin /
 # configured-origin requests still flow through CORS unchanged. FastAPI's
 # reverse-order wrap puts the LAST-declared user middleware outermost; see above.
 app.add_middleware(SameOriginAuthMiddleware)
+
+# #1755 — observability. Declared just inside the access log so every routed
+# request (SameOrigin 403 rejections included) is counted, while oversized-body
+# 413/400 rejections stay the body-size guard's own warning.
+app.add_middleware(MetricsMiddleware)
 
 # #1754 — access timing log. Declared FIRST so it lands INNERMOST of the user
 # middleware: inside RequestID (request_id_ctx already set) and inside the
@@ -549,6 +632,7 @@ app.include_router(content.router)
 app.include_router(export.router)
 app.include_router(shares.router)
 app.include_router(admin.router)
+app.include_router(errors.router)
 
 
 # #1750 — structured 5xx logging. Unhandled exceptions and 5xx HTTPExceptions
@@ -615,6 +699,61 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+def _bearer_token(request: Request) -> str | None:
+    """Return the Bearer credential from an Authorization header, or None."""
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[len("bearer "):].strip()
+    return None
+
+
+async def metrics_auth(request: Request) -> None:
+    """#1755 — /metrics gate: an operator token when configured, else admin JWT.
+
+    When `NV_METRICS_TOKEN` is set the Bearer token must match it exactly
+    (constant-time compare). When it is NOT set, /metrics requires an admin /
+    super_admin JWT — verified from the signed `role` claim, no DB hit, so the
+    metrics endpoint stays reachable even while the DB pool is the thing that is
+    saturated. The role claim is signed into the token (#868) and can't be
+    forged without the JWT secret.
+    """
+    token = getattr(settings, "metrics_token", None)
+    presented = _bearer_token(request)
+    if token:
+        if not presented or not secrets.compare_digest(presented, token):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or missing metrics token")
+        return
+    if not presented:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or missing metrics token")
+    try:
+        payload = decode_token(presented)
+    except Exception:  # noqa: BLE001 — any decode failure is an invalid token
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or missing metrics token") from None
+    if payload.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient privileges")
+
+
+@app.get("/metrics", dependencies=[Depends(metrics_auth)])
+async def metrics_endpoint() -> Response:
+    """#1755 — Prometheus text-format metrics for scrapers / `curl`.
+
+    Emits in-process counters/histograms (`http_requests_total`,
+    `request_latency_seconds`, `db_checkout_wait_seconds`) plus live DB pool
+    gauges — hand-rendered, no client library.
+    """
+    pool = db_pool_status()
+    lines = [
+        "# HELP db_pool_checked_out Current DB pool connections checked out.",
+        "# TYPE db_pool_checked_out gauge",
+        f"db_pool_checked_out {pool['checked_out']}",
+        "# HELP db_pool_overflow Current DB pool overflow connections (negative = unused capacity).",
+        "# TYPE db_pool_overflow gauge",
+        f"db_pool_overflow {pool['overflow']}",
+        "",
+    ]
+    return Response(content="\n".join(lines) + render_metrics(), media_type="text/plain")
+
+
 @app.get("/health")
 async def health():
     """#1748 — real liveness probe, not a static "ok".
@@ -624,7 +763,8 @@ async def health():
     (running + last pass within the tolerance window). Any failure → HTTP 503
     with the failing check named, so the uptime monitor / deploy smoke (which
     grep the body for `"status":"ok"`) correctly flag a dead API instead of
-    trusting nginx's 200 shell.
+    trusting nginx's 200 shell. The payload also carries a `pool` object
+    (#1759) with live DB pool utilization for operators.
     """
     checks: dict[str, str] = {}
     overall = "ok"
@@ -664,6 +804,9 @@ async def health():
         "status": overall,
         "service": "numberverse-api",
         "checks": checks,
+        # #1759 — live pool utilization (checked_out / overflow) so a saturating
+        # pool is visible next to the liveness verdict.
+        "pool": db_pool_status(),
     }
     if overall == "ok":
         return payload

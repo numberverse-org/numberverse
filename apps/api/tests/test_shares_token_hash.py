@@ -266,6 +266,29 @@ check("events window binds an aware UTC datetime (not a naive date)", _bound is 
 check("events window starts exactly 6 days before the UTC now",
       _bound is not None and _bound.date() == fixed_utc_date - timedelta(days=6), True)
 
+print("⑦  #1800 — mint/rotate paths share ONE named SQL constant (no drift)…")
+
+import inspect  # noqa: E402
+
+from sqlalchemy.sql.expression import TextClause  # noqa: E402
+
+mint_sql = shares_mod._SHARE_TOKEN_MINT_SQL
+check("mint/rotate SQL is a single named text constant", isinstance(mint_sql, TextClause), True)
+check(
+    "constant audits both share_token_created_at and revoked_at",
+    "share_token_created_at = now()" in str(mint_sql)
+    and "share_token_revoked_at = NULL" in str(mint_sql),
+    True,
+)
+
+src = inspect.getsource(shares_mod)
+check("all three mint/rotate paths reference the shared constant", src.count("_SHARE_TOKEN_MINT_SQL"), 3)
+check(
+    "no inline UPDATE for share_token_created_at remains",
+    'text("UPDATE kids SET share_token_created_at' not in src,
+    True,
+)
+
 print()
 if fails:
     print(f"✗ share-token-hash suite: {passes} passed, {fails} failed")

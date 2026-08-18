@@ -28,10 +28,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from fastapi import HTTPException  # noqa: E402
 from sqlalchemy import Select, UniqueConstraint
 from sqlalchemy.dialects.postgresql.dml import Insert as PGInsert
+from sqlalchemy.sql.expression import TextClause  # noqa: E402
 
 from app.bandlock import skill_band_allowed
+from app.config import settings  # noqa: E402
 from app.models import Kid, KidSettings, ProgressEvent, SkillMastery, Subscription
 from app.routers import progress as P
 from app.routers.progress import (  # noqa: E402
@@ -40,9 +43,15 @@ from app.routers.progress import (  # noqa: E402
     _adaptive_params,
     _bkt_update,
     _decay,
+    _lock_story_cap_keys,
     _next_mastered_at,
 )
-from app.schemas import AccelerationIn, ProgressBatchIn, ProgressEventIn  # noqa: E402
+from app.schemas import (  # noqa: E402
+    AccelerationIn,
+    LearningStoryIn,
+    ProgressBatchIn,
+    ProgressEventIn,
+)
 
 passes = 0
 fails = 0
@@ -242,6 +251,111 @@ class FakeAccelSession:
         self.committed = True
 
 
+class FakeStorySession:
+    """In-memory AsyncSession shaped exactly for `record_stories` (#1808).
+
+    Simulates the pieces the /stories handler touches, in order:
+      · _get_owned_kid  → scalar(Select) returns the stored kid (ownership ok)
+      · _load_band_caps → execute(Select) returns (kid_id, max_band) rows
+      · resolve_plan    → scalar(Select) on Subscription returns None (free)
+      · advisory lock   → execute(TextClause) acquires a per-key asyncio.Lock
+        (released on commit, mirroring pg_advisory_xact_lock's transaction
+        scope); an optional barrier forces two CONCURRENT calls to reach the
+        lock together so the count+insert race is actually exercised.
+      · stories count   → scalar(count(*)) returns the committed story count
+      · stories insert  → execute(PGInsert) applies the (kid_id, uid) dedup the
+        real uq_learning_stories_kid_uid constraint gives ON CONFLICT DO
+        NOTHING; the count bumps only at commit (READ COMMITTED semantics).
+    """
+
+    def __init__(self, lock_barrier=None):
+        self.kids: dict[uuid.UUID, Kid] = {}
+        self.settings: dict[uuid.UUID, KidSettings] = {}
+        self.story_count = 0
+        self.story_store: list[dict] = []
+        self._seen_uids: set[tuple] = set()
+        self.advisory_locks: list[str] = []
+        self._tx_locks: dict[str, asyncio.Lock] = {}
+        self._held: asyncio.Lock | None = None
+        self.lock_barrier = lock_barrier  # optional asyncio.Barrier (race test)
+        self.committed = False
+        self.op_log: list[tuple] = []
+
+    def add_kid(self, *, max_band: int | None = None) -> Kid:
+        kid = Kid(id=uuid.uuid4(), profile_id=uuid.uuid4(), name="Test Kid")
+        self.kids[kid.id] = kid
+        if max_band is not None:
+            self.settings[kid.id] = KidSettings(kid_id=kid.id, max_band=max_band)
+        return kid
+
+    def seed_stories(self, kid_id: uuid.UUID, n: int) -> None:
+        """Pre-fill `n` stored stories (e.g. cap - 1) so the handler sees a
+        near-full backlog; the count query reflects these."""
+        for i in range(n):
+            key = (kid_id, f"seed-{i}")
+            self._seen_uids.add(key)
+            self.story_store.append({"kid_id": kid_id, "uid": f"seed-{i}"})
+        self.story_count = len(self.story_store)
+
+    async def scalar(self, stmt):
+        if isinstance(stmt, Select):
+            entity = stmt.column_descriptions[0].get("entity")
+            if entity is Kid:
+                return next(iter(self.kids.values()), None)
+            if entity is Subscription:
+                return None  # free plan
+        if "count(*)" in str(stmt.compile()):
+            self.op_log.append(("count", self.story_count))
+            return self.story_count
+        return None
+
+    async def execute(self, stmt):
+        if isinstance(stmt, Select):
+            rows = [(kid_id, ks.max_band) for kid_id, ks in self.settings.items()]
+            return FakeResult(rows)
+        if isinstance(stmt, TextClause):
+            key = stmt.compile().params.get("key")
+            self.advisory_locks.append(key)
+            self.op_log.append(("lock", key))
+            if self.lock_barrier is not None:
+                await self.lock_barrier.wait()  # both racers reach the lock
+            lock = self._tx_locks.setdefault(key, asyncio.Lock())
+            await lock.acquire()
+            self._held = lock
+            return FakeResult([])
+        if isinstance(stmt, PGInsert):
+            rows = _extract_insert_rows(stmt)
+            self.op_log.append(("insert", len(rows)))
+            inserted = []
+            for r in rows:
+                key = (r["kid_id"], r["uid"])
+                if key in self._seen_uids:
+                    continue  # ON CONFLICT DO NOTHING → not re-counted
+                self._seen_uids.add(key)
+                self.story_store.append(r)
+                inserted.append(r)
+            return FakeResult(inserted)
+        return FakeResult([])
+
+    async def commit(self):
+        self.committed = True
+        self.story_count = len(self.story_store)
+        self.op_log.append(("commit", self.story_count))
+        if self._held is not None:
+            self._held.release()
+            self._held = None
+
+
+def story(kid_id, skill_id, *, uid=None, outcome=True):
+    return LearningStoryIn(
+        kid_id=kid_id,
+        skill_id=skill_id,
+        game_id="count-1-10-game",
+        outcome=outcome,
+        uid=uid,
+    )
+
+
 def accel(kid_id, skill_id, *, reason="easy", band_from=1, band_to=2, uid=None):
     return AccelerationIn(
         kid_id=kid_id,
@@ -436,6 +550,84 @@ async def main():
     check("replayed acceleration entry records 0", r2["recorded"], 0)
     check("replay counted as duplicate", r2["duplicates_skipped"], 1)
     check("acceleration row count stays 1 after replay", len(fake.rows), 1)
+
+    await _run_story_cap()
+
+
+async def _run_story_cap():
+    print("⑤  #1808 — story cap: per-kid advisory lock serializes count+insert…")
+
+    # Mechanism: a fresh batch acquires the kid's advisory lock BEFORE any cap
+    # count, and the key is namespaced so it can't collide with mastery locks.
+    fake = FakeStorySession()
+    kid = fake.add_kid(max_band=5)
+    r = await P.record_stories([story(kid.id, "count-1-10", uid="s1")],
+                               profile=_FakeProfile(), db=fake)
+    check("fresh kid story records", r["recorded"], 1)
+    check("one advisory lock acquired for the batch", len(fake.advisory_locks), 1)
+    check("lock key is kid-scoped and namespaced (storycap: prefix)",
+          fake.advisory_locks[0].startswith("storycap:"), True)
+    ops = [op for op, *_ in fake.op_log]
+    check("advisory lock precedes the cap count",
+          ops.index("lock") < ops.index("count"), True)
+
+    # Every kid in a multi-kid batch is locked before ANY cap count runs.
+    fake = FakeStorySession()
+    kid_a = fake.add_kid(max_band=5)
+    kid_b = fake.add_kid(max_band=5)
+    await P.record_stories([story(kid_a.id, "count-1-10", uid="a1"),
+                            story(kid_b.id, "count-1-10", uid="b1")],
+                           profile=_FakeProfile(), db=fake)
+    check("one advisory lock per kid in the batch", len(fake.advisory_locks), 2)
+    ops = [op for op, *_ in fake.op_log]
+    check("all locks are acquired before the first cap count",
+          max(i for i, op in enumerate(ops) if op == "lock")
+          < min(i for i, op in enumerate(ops) if op == "count"), True)
+
+    # Cap enforcement: an at-cap batch is rejected 429 and stores nothing.
+    cap = settings.kotha_max_stories_per_kid
+    fake = FakeStorySession()
+    kid = fake.add_kid(max_band=5)
+    fake.seed_stories(kid.id, cap)
+    try:
+        await P.record_stories([story(kid.id, "count-1-10", uid="over")],
+                               profile=_FakeProfile(), db=fake)
+        check("at-cap batch is rejected", "no-429", 429)
+    except HTTPException as exc:
+        check("at-cap batch is rejected (429)", exc.status_code, 429)
+    check("nothing stored past the cap", fake.story_count, cap)
+
+    # cap - 1 → exactly one more story is accepted, then the cap holds.
+    fake = FakeStorySession()
+    kid = fake.add_kid(max_band=5)
+    fake.seed_stories(kid.id, cap - 1)
+    r = await P.record_stories([story(kid.id, "count-1-10", uid="ok")],
+                               profile=_FakeProfile(), db=fake)
+    check("cap-1 batch records exactly one", r["recorded"], 1)
+    check("store now sits exactly at the cap", fake.story_count, cap)
+
+    # Concurrency race: two simultaneous batches for a near-full kid are forced
+    # to reach the advisory lock together (barrier). The lock serializes the
+    # count+insert, so at most ONE records — the cap is never exceeded even
+    # though both batches start before either commits.
+    fake = FakeStorySession(lock_barrier=asyncio.Barrier(2))
+    kid = fake.add_kid(max_band=5)
+    fake.seed_stories(kid.id, cap - 1)
+    res = await asyncio.gather(
+        P.record_stories([story(kid.id, "count-1-10", uid="race-1")],
+                         profile=_FakeProfile(), db=fake),
+        P.record_stories([story(kid.id, "count-1-10", uid="race-2")],
+                         profile=_FakeProfile(), db=fake),
+        return_exceptions=True,
+    )
+    recorded = sum(r["recorded"] for r in res if isinstance(r, dict))
+    rejected = sum(
+        1 for r in res
+        if isinstance(r, HTTPException) and r.status_code == 429
+    )
+    check("race: exactly one of the two batches records", recorded, 1)
+    check("race: the other batch is rejected 429", rejected, 1)
+    check("race: story count never exceeds the cap", fake.story_count, cap)
 
 
 asyncio.run(main())

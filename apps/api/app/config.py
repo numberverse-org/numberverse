@@ -123,6 +123,23 @@ class Settings(BaseSettings):
     max_progress_events_per_kid: int = 5000
     # #984 — hard-delete revoked sessions older than this many days.
     session_purge_days: int = 30
+    # #1755 — operator token for /metrics (NV_METRICS_TOKEN). Empty in dev: the
+    # /metrics gate then falls back to an admin/super_admin JWT. Set a strong
+    # token on any reachable deployment so traffic shape isn't public.
+    metrics_token: str | None = None
+
+    # ── DB connection pool (#1759) ───────────────────────────────────────────
+    # Async connections are lazy — queues hold pooled connections cheaply, and
+    # `max_overflow` absorbs bursts without growing the base pool forever.
+    # `pool_timeout` bounds how long a checkout may wait before SQLAlchemy
+    # raises TimeoutError (a saturated pool surfaces fast instead of hanging).
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 30
+    # #1759 — a checkout that waited longer than this (seconds) logs a WARNING,
+    # so an exhausted pool is visible in the error log, not just in the
+    # db_checkout_wait_seconds histogram.
+    db_checkout_warn_seconds: float = 1.0
 
     # ── Freemium billing (Parent Plus) ────────────────────────────────────────
     # bKash Tokenized Checkout merchant credentials. All empty by default so the

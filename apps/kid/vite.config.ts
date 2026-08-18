@@ -67,9 +67,11 @@ export default defineConfig({
       injectManifest: {
         // #993 — og-card.png must be precached too: og:image points at the live
         // host, and a shared link opened offline should still show its card.
-        // png covers the shipped file; jpg/jpeg/webp keep the glob ready for
-        // any future og-card format without a config edit.
-        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,svg,ico,json,glb,wasm}"],
+        // png covers the shipped file; jpg/jpeg/webp/avif keep the glob ready
+        // for the og-card.webp/.avif alternatives (#1727) and any future
+        // og-card format without a config edit. The glob only lists files that
+        // exist in dist, so nothing stale ever enters the precache.
+        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,avif,svg,ico,json,glb,wasm}"],
         // #1722 — the 5 Bengali faces (~235KB total) are NOT precached: an
         // en-only install must not download Bangla weights it never renders.
         // They're served by the runtime CacheFirst route in src/sw.ts

@@ -789,6 +789,17 @@ MAX_FILTER_LIST_LEN = 100  # #1647/#1801 — an IN-clause value list is bounded 
 MAX_SORT_COLUMNS = 1
 
 
+def _escape_like_literal(term: str) -> str:
+    """#1799 — escape SQL LIKE/ILIKE wildcards so a `~` filter matches user
+    input LITERALLY instead of as a pattern.
+
+    A `~` filter becomes `col.ilike(f"%{value}%")`; if the value contains a
+    Postgres wildcard (`%` or `_`) it is interpreted as a pattern, so a `~%`
+    filter matches EVERY row. Escape `%`, `_`, and the escape char itself with
+    the ESCAPE clause's `\\`, so user input is matched literally."""
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 @router.get("/{resource}")
 async def list_resource(
     resource: str,
@@ -910,7 +921,11 @@ async def list_resource(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown filter column: {key}")
         col = table_columns[key]
         if isinstance(val, str) and val.startswith("~"):
-            stmt = stmt.where(col.ilike(f"%{val[1:]}%"))
+            # #1799 — escape `%`/`_`/`\` in the filter value so the ILIKE treats
+            # them literally; the ESCAPE clause makes the backslash the escape
+            # char. Without this a `~%` filter (react-admin "contains" on a
+            # literal percent) matches EVERY row.
+            stmt = stmt.where(col.ilike(f"%{_escape_like_literal(val[1:])}%", escape="\\"))
         elif isinstance(val, list):
             # #1801 — an arbitrary-length list becomes an unbounded parameterized
             # IN clause; cap it like the other resource-exhaustion guards.
