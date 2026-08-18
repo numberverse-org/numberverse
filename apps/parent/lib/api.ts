@@ -294,6 +294,31 @@ export async function updateProfile(token: string, displayName: string): Promise
   return res.json();
 }
 
+/** #980/#1679 — right-to-erasure: DELETE /api/v1/auth/me permanently removes
+ *  the account and ALL associated data (kids, mastery, sessions, stories,
+ *  acceleration, settings) via the DB's cascade FKs. Local accounts confirm by
+ *  re-entering their password (bcrypt-checked server-side); the `confirmation`
+ *  phrase must match the server's literal "delete my account". Google-only
+ *  accounts send a fresh X-Google-ID-Token header instead (password unused). */
+export interface DeleteAccountResult {
+  deleted: boolean;
+  profile_id: string;
+  kids_removed: number;
+}
+
+export async function deleteAccount(
+  token: string,
+  payload: { confirmation: string; password: string },
+): Promise<DeleteAccountResult> {
+  const res = await authFetch(token, `${API}/auth/me`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) await throwApiError(res, "Failed to delete account");
+  return res.json();
+}
+
 export async function getProfile(token: string): Promise<Profile> {
   const res = await authFetch(token, `${API}/auth/me`);
   if (!res.ok) await throwApiError(res, "Failed to load profile");

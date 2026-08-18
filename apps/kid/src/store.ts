@@ -2046,3 +2046,36 @@ export const useKidStore = create<KidState>()(
     }
   )
 );
+
+/** #1687 — wipe the ENTIRE persisted kid store (skills, mistakes, stats, Nova,
+ *  garden, the durable outboxes, Moni profiles) AND the on-disk `nv_store_v1`
+ *  blob, leaving the store back at a fresh-install default.
+ *
+ *  Called by api.ts's handleAccountGone() when the server reports the parent
+ *  account (and its server-side kids) are gone — 401/410 on /auth/me or a sync
+ *  drain. The in-memory reset + clearStorage() together guarantee a reload
+ *  cannot resurrect the old blob. The parent-visible `nv_sync_signal` mirror is
+ *  rewritten to the empty signal so the parent portal sees a clean slate too. */
+export function wipePersistedStore(): void {
+  useKidStore.setState({
+    skills: {},
+    mistakes: {},
+    stats: {},
+    nova: {},
+    garden: {},
+    pending: [],
+    stories: [],
+    accel: [],
+    moni: {},
+    moniWrongStreak: {},
+    moniStrictness: {},
+    moniSkillDeltas: {},
+    syncSignal: DEFAULT_SYNC_SIGNAL,
+  });
+  try {
+    useKidStore.persist.clearStorage();
+  } catch {
+    /* storage denied — the in-memory reset above still clears this session */
+  }
+  persistSyncSignal(useKidStore.getState());
+}

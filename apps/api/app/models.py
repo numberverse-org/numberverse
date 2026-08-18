@@ -266,9 +266,11 @@ class Subject(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     # #913 — global master lib rows have tenant_id NULL; tenant-owned rows are
-    # scoped to a profile and cascade away with that profile.
+    # scoped to the owning profile (an org owner). #1686 — the FK is SET NULL,
+    # NOT CASCADE: deleting an org owner's profile must DISOWN the shared org
+    # curriculum, never cascade it away.
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+        ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title_en: Mapped[str] = mapped_column(String)
     title_bn: Mapped[str] = mapped_column(String)
@@ -280,9 +282,11 @@ class Skill(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     # #913 — global master lib rows have tenant_id NULL; tenant-owned rows are
-    # scoped to a profile and cascade away with that profile.
+    # scoped to the owning profile (an org owner). #1686 — FK is SET NULL, NOT
+    # CASCADE, so deleting an org owner's profile disowns the org curriculum
+    # rather than deleting it.
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+        ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True, index=True
     )
     band: Mapped[int] = mapped_column(Integer)
     subject: Mapped[str] = mapped_column(ForeignKey("subjects.id"))
@@ -499,9 +503,11 @@ class ContentItem(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     # #913 — global master lib rows have tenant_id NULL; tenant-owned rows are
-    # scoped to a profile and cascade away with that profile.
+    # scoped to the owning profile (an org owner). #1686 — FK is SET NULL, NOT
+    # CASCADE, so deleting an org owner's profile disowns the org content
+    # rather than deleting it.
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+        ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True, index=True
     )
     kind: Mapped[str] = mapped_column(String)
     title: Mapped[str] = mapped_column(String)
@@ -525,10 +531,11 @@ class ConfigEntry(Base):
     __tablename__ = "config"
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
-    # NULL = global default; non-NULL = per-tenant override (cascades away with
-    # the profile so org deletion cleans up its config).
+    # NULL = global default; non-NULL = per-tenant override. #1686 — the FK is
+    # SET NULL, NOT CASCADE, so deleting an org owner's profile disowns its
+    # config overrides rather than wiping the shared org config.
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+        ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True, index=True
     )
     value: Mapped[dict] = mapped_column(JSONB)
     default_locale: Mapped[str | None] = mapped_column(String(8), nullable=True,

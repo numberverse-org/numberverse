@@ -36,6 +36,7 @@ import {
   changePassword,
   setPassword,
   updateProfile,
+  deleteAccount,
   validateToken,
   refreshSession,
   listPushSubscriptions,
@@ -1286,6 +1287,42 @@ export default function ParentDashboard() {
     await doSignout(token);
   }
 
+  /** #980/#1679 — right-to-erasure: the parent confirmed the phrase + password
+   *  and the API deleted the account. Clear every local parent credential (mirror
+   *  doSignout's cleanup so no stale token can silently re-auth) and land on the
+   *  gate. The delete-account done string names the deleted kid count. */
+  async function handleDeleteAccount(confirmation: string, password: string) {
+    if (!token) return;
+    setAcctBusy(true);
+    setAcctMsg(null);
+    try {
+      const res = await deleteAccount(token, { confirmation, password });
+      setAcctMsg({ kind: "ok", text: ACCOUNT_LANGS[wizLang].deleteAccountDone(res.kids_removed) });
+      localStorage.removeItem("nv_parent_token");
+      localStorage.removeItem("nv_parent_name");
+      localStorage.removeItem("nv_kid_id");
+      localStorage.removeItem("nv_kid_map");
+      setToken(null);
+      setProfile(null);
+      setAuthState("anon");
+      setAuthNote(null);
+    } catch (e) {
+      const status = (e as { status?: unknown } | null)?.status;
+      const detail = (e as { message?: unknown } | null)?.message;
+      setAcctMsg({
+        kind: "err",
+        text:
+          status === 401 || status === 403
+            ? ACCOUNT_LANGS[wizLang].sessionEnded
+            : typeof detail === "string" && detail && detail !== "Failed to delete account"
+              ? detail
+              : ACCOUNT_LANGS[wizLang].deleteAccountErr,
+      });
+    } finally {
+      setAcctBusy(false);
+    }
+  }
+
   /** #1535 — get (or create) the browser PushSubscription in the API's wire
    *  shape. A missing VAPID public key or unsupported browser returns null and
    *  surfaces the "not configured"/"unsupported" state gracefully — never a
@@ -2214,6 +2251,7 @@ export default function ParentDashboard() {
                       acctMsg={acctMsg}
                       onSetPassword={handleSetPassword}
                       sessionsLoading={sessionsLoading}
+                      onDeleteAccount={(confirmation, password) => void handleDeleteAccount(confirmation, password)}
                       wizLang={wizLang}
           />
 

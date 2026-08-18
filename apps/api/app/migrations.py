@@ -77,6 +77,19 @@ def _index_ddl(index, dialect) -> str:
     return CreateIndex(index, if_not_exists=True).compile(dialect=dialect).string
 
 
+def _fk_ondelete(constraint: ForeignKeyConstraint) -> str | None:
+    """#1681 — the model-declared ON DELETE action for a ForeignKeyConstraint.
+
+    Returns the action ('CASCADE', 'SET NULL', ...) when every column of the
+    constraint declares the SAME action, else None (which means PostgreSQL's
+    default, NO ACTION). Pure function — the DDL tests exercise it without a
+    database."""
+    actions = {el.ondelete for el in constraint.elements if el.ondelete}
+    if len(actions) == 1:
+        return next(iter(actions))
+    return None
+
+
 _CHECK_SQLTEXT_ALLOWLIST: dict[str, set[str]] = {
     # #1793 — every CheckConstraint a model declares must be registered here
     # VERBATIM (extract each `str(c.sqltext)` from models.py at write time and
@@ -250,12 +263,18 @@ async def apply_constraint_migrations() -> list[str]:
                 # not be re-added (name collides → every boot crashes).
                 "pk_cols": tuple(pk["constrained_columns"] or []),
                 "check": {c["name"] for c in insp.get_check_constraints(t)},
+                # #1681 — the inspector ALSO reports each existing FK's name and
+                # ON DELETE option so the repair pass can drop + re-add an FK
+                # whose action predates (or contradicts) the model.
                 "foreign": {
                     (
                         tuple(fk["constrained_columns"]),
                         fk["referred_table"],
                         tuple(fk["referred_columns"]),
-                    )
+                    ): {
+                        "name": fk["name"],
+                        "ondelete": (fk.get("options") or {}).get("ondelete"),
+                    }
                     for fk in insp.get_foreign_keys(t)
                 },
             }
@@ -310,16 +329,51 @@ async def apply_constraint_migrations() -> list[str]:
                     referred_table = constraint.elements[0].column.table.name
                     referred_cols = tuple(el.column.name for el in constraint.elements)
                     key = (cols, referred_table, referred_cols)
-                    if key in have["foreign"]:
-                        continue
                     name = constraint.name or _constraint_name(
                         "fk", [table.name, *cols], ref=referred_table
                     )
+                    # #1681/#1686 — carry the model-declared ON DELETE action
+                    # (CASCADE / SET NULL / ...) into the emitted DDL, so a FK
+                    # an existing DB gains matches the model today, not just on
+                    # a fresh create_all (which can never alter an existing
+                    # constraint).
+                    ondelete = _fk_ondelete(constraint)
+                    ondelete_clause = f" ON DELETE {ondelete}" if ondelete else ""
+                    existing = have["foreign"].get(key) if isinstance(have["foreign"], dict) else None
+                    if existing is not None:
+                        # One-time repair: the DB already has this FK but it was
+                        # migrated with NO ON DELETE (or a different one) than the
+                        # model now declares. Drop + re-add with the intended
+                        # action so it actually applies on existing databases.
+                        db_ondelete = existing["ondelete"]
+                        if ondelete is not None and (db_ondelete or "").lower() != ondelete.lower():
+                            fk_name = existing["name"] or name
+                            await conn.execute(
+                                text(
+                                    f"ALTER TABLE {_q(table.name)} DROP CONSTRAINT {_q(fk_name)}"
+                                )
+                            )
+                            await conn.execute(
+                                text(
+                                    f"ALTER TABLE {_q(table.name)} ADD CONSTRAINT {_q(fk_name)} "
+                                    f"FOREIGN KEY ({', '.join(_q(c) for c in cols)}) "
+                                    f"REFERENCES {_q(referred_table)} "
+                                    f"({', '.join(_q(c) for c in referred_cols)})"
+                                    f"{ondelete_clause}"
+                                )
+                            )
+                            added.append(f"{table.name}.{fk_name}")
+                            log.warning(
+                                "repaired foreign key %s.%s: ondelete %r -> %r",
+                                table.name, fk_name, db_ondelete, ondelete,
+                            )
+                        continue
                     await conn.execute(
                         text(
                             f"ALTER TABLE {_q(table.name)} ADD CONSTRAINT {_q(name)} "
                             f"FOREIGN KEY ({', '.join(_q(c) for c in cols)}) "
                             f"REFERENCES {_q(referred_table)} ({', '.join(_q(c) for c in referred_cols)})"
+                            f"{ondelete_clause}"
                         )
                     )
                     added.append(f"{table.name}.{name}")

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,42 @@ log = logging.getLogger("numberverse.deps")
 # `require_parent` / `require_admin` / `require_super_admin`.
 
 bearer = HTTPBearer(auto_error=False)
+
+# #1678 — a legacy no-sid token materializes a Session row on FIRST use (even a
+# pure read). Left unbounded, a fleet of old devices could pile up hundreds of
+# active rows per profile, and each row keeps its ip/user_agent PII alive until
+# the 30-day revoked-session purge. Cap the ACTIVE rows per profile: once the
+# cap is reached, the least-recently-active rows are revoked first, then the
+# new legacy session is granted.
+MAX_ACTIVE_SESSIONS_PER_PROFILE = 20
+
+
+async def _cap_active_sessions(db: AsyncSession, profile_id: uuid.UUID) -> None:
+    """#1678 — bound a profile's active sessions before a legacy no-sid token
+    materializes a NEW row, so self-materialization can't grow the active set
+    without limit.
+
+    Revokes the least-recently-active rows beyond ``MAX_ACTIVE_SESSIONS_PER_PROFILE
+    - 1`` (the caller is about to insert the one remaining slot). The revoked
+    rows then age into the scheduled 30-day purge — the cap is what stops the
+    unbounded pile-up in the meantime. No-op while under the cap. Mutations are
+    flushed on the caller's commit (the legacy-materialization path always
+    commits); nothing is persisted here for a read-only request that found an
+    existing row.
+    """
+    now = datetime.now(timezone.utc)
+    rows = (
+        await db.scalars(
+            select(Session)
+            .where(Session.profile_id == profile_id, Session.revoked_at.is_(None))
+            .order_by(Session.last_seen_at.asc())
+        )
+    ).all()
+    excess = len(rows) - (MAX_ACTIVE_SESSIONS_PER_PROFILE - 1)
+    if excess <= 0:
+        return
+    for stale in rows[:excess]:
+        stale.revoked_at = now
 
 
 async def resolve_plan(db: AsyncSession, profile: Profile) -> tuple[str, datetime | None]:
@@ -121,10 +158,19 @@ async def get_current_profile(
                 marker_ts = profile.legacy_sessions_revoked_at.replace(
                     tzinfo=timezone.utc
                 ).timestamp()
-                if isinstance(iat, (int, float)) and iat <= marker_ts:
+                # #1677 — the cutoff is only meaningful for a token that CARRIES
+                # its mint time. A signed legacy token with a missing/unparseable
+                # `iat` cannot be proven to predate the logout-all marker, so it
+                # is treated as revoked rather than silently sailing past the
+                # kill switch.
+                if not isinstance(iat, (int, float)) or iat <= marker_ts:
                     raise HTTPException(
                         status.HTTP_401_UNAUTHORIZED, "Session revoked — sign in again"
                     )
+            # #1678 — a legacy token that has never materialized a row is about
+            # to create one; bound the profile's active set first so a fleet of
+            # stale devices can't pile up unbounded rows.
+            await _cap_active_sessions(db, profile.id)
             # Materialize a session row so this legacy token is reachable by
             # logout / logout-all / password-change revocation from now on. Use
             # an insert-on-conflict: two concurrent requests carrying the same

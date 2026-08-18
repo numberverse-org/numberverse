@@ -1132,6 +1132,21 @@ export default function App() {
     };
   }, []);
 
+  // #1687 — account-gone wipe: api.ts dispatches this when /auth/me or a sync
+  // drain returns 401/410 (the parent account was deleted server-side). The
+  // store + credentials + PIN/QA keys are already wiped by handleAccountGone;
+  // here the app just drops to the parent gate (the same sign-in page the
+  // dead-session path uses).
+  useEffect(() => {
+    const onAccountGone = () => {
+      setPinOk(false);
+      gateReturn.current = "parent";
+      setScreen("parent");
+    };
+    window.addEventListener("nv:account-gone", onAccountGone);
+    return () => window.removeEventListener("nv:account-gone", onAccountGone);
+  }, []);
+
   // First-time welcome: mark it seen once so it never reopens on this device.
   useEffect(() => {
     try {

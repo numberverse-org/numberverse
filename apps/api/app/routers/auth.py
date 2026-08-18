@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -546,40 +546,161 @@ async def delete_account(
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
-    """Permanently delete the parent account and ALL associated data. The parent
-    must confirm by sending their password. Returns a summary of what was deleted.
-    #980 — satisfies GDPR Art.17 right-to-erasure / COPPA 16 CFR 312.6 deletion."""
-    from ..models import Kid
+    """Permanently delete the parent account and ALL associated data.
 
-    # #1675 — the confirmation password is bcrypt-CHECKED below (local) and
-    # must fit bcrypt's 72-byte window; reject before any bcrypt work.
-    _check_password_bytes(body.password)
-    # Google-only accounts can't provide a password they set — require the typed
-    # confirmation string as the safeguard instead.
+    A local account confirms by re-entering its password (bcrypt-checked here).
+    #1685 — a Google-only account has no password they know (its hash is a
+    random, un-knowable value), so a typed phrase alone is NOT credential
+    proof: a fresh Google ID token must ALSO be re-verified (mirroring
+    /auth/set-password) and must match this account's email.
+
+    Returns an ENUMERATED summary of what was deleted plus the retention
+    exceptions. #980 — satisfies GDPR Art.17 right-to-erasure / COPPA 16 CFR
+    312.6 deletion."""
+    from ..models import (
+        AccelerationLog,
+        AdminAudit,
+        Kid,
+        LearningStory,
+        ProgressEvent,
+        SkillMastery,
+    )
+    from ..ratelimit import delete_profile_rate_limit_buckets
+    from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
+
+    # ── credential re-proof ──────────────────────────────────────────────
     if profile.auth_provider == "google":
+        # #1685 — a fresh Google id_token is the CANARY proof of ownership.
         if body.confirmation.strip().lower() != "delete my account":
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
                 "Type 'delete my account' to confirm",
             )
+        id_token = (request.headers.get("X-Google-ID-Token") or "").strip()
+        if not id_token:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Missing Google credential — provide a fresh ID token to delete this account",
+            )
+        info = _verify_google_token(id_token)
+        if _google_email(info) != profile.email:
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "Google credential does not match this account",
+            )
     else:
+        # #1675 — the confirming password is bcrypt-CHECKED below and must fit
+        # bcrypt's 72-byte window; reject before any bcrypt work.
+        _check_password_bytes(body.password)
         if not verify_password(body.password, profile.password_hash):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Password is incorrect")
-    # Gather summary quantities before deletion
+
+    # ── enumerate summary quantities BEFORE deletion ─────────────────────
     kids = (await db.scalars(select(Kid).where(Kid.profile_id == profile.id))).all()
+    kid_ids = [k.id for k in kids]
     kid_count = len(kids)
     session_count = (
         await db.scalar(
             select(func.count()).select_from(Session).where(Session.profile_id == profile.id)
         )
     ) or 0
-    # Delete the profile → CASCADE removes kids, sessions, and all FK-chained rows
+    event_count = 0
+    story_count = 0
+    mastery_count = 0
+    accel_count = 0
+    if kid_ids:
+        event_count = (
+            await db.scalar(
+                select(func.count()).select_from(ProgressEvent)
+                .where(ProgressEvent.kid_id.in_(kid_ids))
+            )
+        ) or 0
+        story_count = (
+            await db.scalar(
+                select(func.count()).select_from(LearningStory)
+                .where(LearningStory.kid_id.in_(kid_ids))
+            )
+        ) or 0
+        mastery_count = (
+            await db.scalar(
+                select(func.count()).select_from(SkillMastery)
+                .where(SkillMastery.kid_id.in_(kid_ids))
+            )
+        ) or 0
+        accel_count = (
+            await db.scalar(
+                select(func.count()).select_from(AccelerationLog)
+                .where(AccelerationLog.kid_id.in_(kid_ids))
+            )
+        ) or 0
+
+    # #1680 — the durable rate limiter keys by profile/email/IP and would keep
+    # referencing the deleted account forever; remove NOW and surface the count.
+    bucket_count = await delete_profile_rate_limit_buckets(
+        db, profile.id, email=profile.email
+    )
+
+    # #1688 — AdminAudit is append-only by design (no FK), so it survives the
+    # delete. Rotate every row's admin_id to an unlinkable random UUID so the
+    # compliance paper trail no longer identifies the deleted account. (It is
+    # a documented retention exception — see the note — not a deletion.)
+    audit_rows = (
+        await db.scalars(select(AdminAudit).where(AdminAudit.admin_id == profile.id))
+    ).all()
+    for row in audit_rows:
+        row.admin_id = uuid.uuid4()
+
+    # Delete the profile → CASCADE removes kids, sessions, subscriptions,
+    # push_subscriptions, org_members, and every kid-chained row. The shared
+    # org curriculum (subjects/skills/content/config tenant rows) is DISOWNED
+    # — SET NULL per #1686 — never cascade-deleted.
     await db.delete(profile)
     await db.commit()
+
+    # #1682 — kids/story rows are gone, but story_embeddings can survive where
+    # its FK was migrated without ON DELETE CASCADE (#943): sweep orphans.
+    embed_pruned = 0
+    if HAVE_VECTOR and StoryEmbedding is not None and kid_count:
+        embed_result = await db.execute(
+            text(
+                "DELETE FROM story_embeddings "
+                "WHERE story_id NOT IN (SELECT id FROM learning_stories)"
+            )
+        )
+        embed_pruned = getattr(embed_result, "rowcount", None) or 0
+        await db.commit()
+
     return {
         "deleted": True,
         "profile_id": str(profile.id),
         "kids_removed": kid_count,
         "sessions_removed": session_count,
-        "note": "All associated data (mastery, progress events, learning stories, acceleration logs, settings) removed via cascade.",
+        "mastery_removed": mastery_count,
+        "events_removed": event_count,
+        "stories_removed": story_count,
+        "acceleration_removed": accel_count,
+        "rate_limit_buckets_removed": bucket_count,
+        "story_embeddings_pruned": embed_pruned,
+        # #1684 — enumerate what was ACTUALLY deleted and call out the explicit
+        # retention exceptions instead of overstating "All associated data …
+        # removed via cascade."
+        "note": (
+            "Profile, kids, per-kid settings, sessions, subscriptions, web-push "
+            f"subscriptions and org memberships deleted. Kid pedagogy: mastery "
+            f"({mastery_count}), progress events ({event_count}), learning "
+            f"stories ({story_count}), acceleration log ({accel_count}), and "
+            f"orphaned story vectors ({embed_pruned}) removed. Durable "
+            f"rate-limit buckets ({bucket_count}) cleared. ORGANIZATION "
+            "retention: deleting an org owner PROFILE does not delete the "
+            "organization or its shared curriculum — tenant-scoped subjects, "
+            "skills, content and config are disowned (SET NULL), never "
+            "cascaded. EXCEPTION (retained, not editable here): the append-only "
+            "AdminAudit compliance trail survives but its admin id is rotated "
+            "so it no longer identifies this account. EXCEPTION (retained): "
+            "server log files under data/error.log are PII-redacted and rotate "
+            "at 1 MiB × 3 (see errorlog.py); they are not rewritten on "
+            "deletion. EXCEPTION (outside server reach): on-device app caches "
+            "are cleared by the client and expire within its normal refresh "
+            "cycle."
+        ),
     }

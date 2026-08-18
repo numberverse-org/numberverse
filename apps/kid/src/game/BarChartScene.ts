@@ -9,6 +9,7 @@ import { speak, bnNumber } from "./speech";
 import { hintWrong } from "./hints";
 import { gameBackground } from "./backgrounds";
 import { txt, correctButton, roundMeter, type RoundMeterApi, NV_GOLD, NV_NAVY } from "./ui";
+import { tagKeyboardAnswer } from "./keyboardPlay"; // #1599 — shared keyboard/SR answer bridge
 import { SAB } from "./safeArea";
 
 const LEVELS = GAMES.find((g) => g.id === "game-barchart")?.difficultyLevels ?? [3, 3, 4, 4, 4, 4];
@@ -234,6 +235,10 @@ export class BarChartScene extends Phaser.Scene {
       const hitH = this.baselineY - topY + 52;
       c.setSize(barW + 28, hitH);
       c.setInteractive();
+      // #1599 — the bar column IS the answer tile: tag it so the shared
+      // keyboard/SR bridge (keyboardPlay.ts) can arrow to it and Enter/Space
+      // fires the exact same pointerdown handler a tap uses.
+      tagKeyboardAnswer(c, `${cat.emoji} ${bn ? cat.bn : cat.en}`);
       const idx = i;
       c.on("pointerdown", () => this.tap(c, idx));
       this.bars.push({ sprite: c, count: cat.count, value: cat.emoji });

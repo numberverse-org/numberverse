@@ -18,6 +18,23 @@ import { t } from "./i18n";
  * list the swipe-to-answer gesture layer already uses.
  */
 
+/** #1599 — tag a scene's custom-built answer tile so the shared keyboard + SR
+ *  bridge below (installGameKeyboardAccess) can navigate to it.
+ *
+ *  The bridge finds answer buttons by the `nv-btn` marker in the scene's
+ *  display list. The shared factories (modernAnswerButton / modernCardButton)
+ *  already set it; scenes that hand-build their own containers (e.g. Bar Chart's
+ *  tap-a-bar columns) call this once per tile. `label` is the human name the
+ *  bridge announces (e.g. "🍎 apples") — it doubles as the swipe-to-answer
+ *  layer's signal that the tile is a real answer button. */
+export function tagKeyboardAnswer(
+  tile: Phaser.GameObjects.Container,
+  label: string,
+): void {
+  tile.setData("nv-btn", {});
+  tile.setData("nv-label", label);
+}
+
 let focusIndex = -1;
 let focused: Phaser.GameObjects.Container | null = null;
 let focusRing: Phaser.GameObjects.Graphics | null = null;

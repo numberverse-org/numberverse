@@ -1,4 +1,4 @@
-import { useKidStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncChannel, type SyncEvent } from "./store";
+import { useKidStore, wipePersistedStore, STORY_QUEUE_CAP, type AccelEvent, type KothaStory, type RoundResult, type SyncChannel, type SyncEvent } from "./store";
 import { hashParentSecret, verifyParentSecret, deriveDeviceSecret } from "./lib/pinHash";
 
 /**
@@ -319,7 +319,11 @@ export async function validateParentSession(): Promise<boolean> {
       // still valid. Try ONE refresh before clearing the parent session.
       const fresh = await tryRefreshParentSession();
       if (fresh) return true;
-      clearParentSession();
+      // #1687 — the session is conclusively dead AND the refresh cookie couldn't
+      // revive it (a deleted account's sessions are cascade-removed, so this is
+      // also the account-gone signal). Wipe the persisted store + credentials +
+      // PIN/QA keys and drop to the gate instead of only clearing the token.
+      handleAccountGone();
       return false;
     }
     return true; // 5xx / offline envelope — keep the session, revalidate later
@@ -440,6 +444,34 @@ export function clearParentSession(): void {
   localStorage.removeItem(LS.parentName);
   localStorage.removeItem(LS.parentAggregateOptIn);
   resetIdentity();
+}
+
+/** #1687 — the server reports the account is GONE (401/410 on /auth/me or a
+ *  sync drain): the parent account and every server-side kid under it were
+ *  deleted (right-to-erasure, #980). Wipe the device's persisted kid store,
+ *  the parent credentials, the PIN/QA keys and the kid→server mapping so no
+ *  stale progress or credential can linger, then emit a signal the app listens
+ *  for to drop to the gate.
+ *
+ *  The anonymous DEVICE account (guest mode) is deliberately LEFT intact — it
+ *  is a separate server account, untouched by the parent's deletion. */
+export function handleAccountGone(): void {
+  wipePersistedStore(); // #1687 — resets nv_store_v1 + the sync-signal mirror
+  localStorage.removeItem(LS.parentToken);
+  localStorage.removeItem(LS.parentName);
+  localStorage.removeItem(LS.parentAggregateOptIn);
+  localStorage.removeItem(LS.parentKid);
+  localStorage.removeItem(LS.kidMap);
+  clearParentPin(); // #86
+  clearSecurityQA(); // #247
+  resetIdentity();
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event("nv:account-gone"));
+    } catch {
+      /* non-browser / older webview — the cleared keys still protect reloads */
+    }
+  }
 }
 
 /* ── #86 Parent-area PIN lock ────────────────────────────────────────────
@@ -833,6 +865,13 @@ export async function syncProgress(): Promise<void> {
       // and wait for the next heartbeat (no spin, no silent drop).
       drained = done.size === mapped.length;
     } else {
+      // #1687 — 401/410 on a drain means the account is gone (its tokens died
+      // with it): wipe the persisted store + credentials and drop to the gate.
+      // Any other failure keeps the outbox queued and parent-visible.
+      if (res.status === 401 || res.status === 410) {
+        handleAccountGone();
+        return;
+      }
       setChannelSyncState("progress", "error");
       // #1556 — 401/403/429/5xx etc: the outbox is stuck; make it parent-visible.
       useKidStore.getState().setSyncSignal({ lastError: "error" });
@@ -917,6 +956,11 @@ export async function syncStories(): Promise<void> {
       useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       reportSyncOutcome(true);
     } else {
+      // #1687 — 401/410 = account gone (see syncProgress): wipe + drop to gate.
+      if (res.status === 401 || res.status === 410) {
+        handleAccountGone();
+        return;
+      }
       setChannelSyncState("stories", "error");
       useKidStore.getState().setSyncSignal({ lastError: "error" });
       reportSyncOutcome(false);
@@ -1008,6 +1052,11 @@ export async function syncAccel(): Promise<void> {
       useKidStore.getState().setSyncSignal({ lastSuccessAt: Date.now(), lastError: null });
       reportSyncOutcome(true);
     } else {
+      // #1687 — 401/410 = account gone (see syncProgress): wipe + drop to gate.
+      if (res.status === 401 || res.status === 410) {
+        handleAccountGone();
+        return;
+      }
       setChannelSyncState("accel", "error");
       useKidStore.getState().setSyncSignal({ lastError: "error" });
       reportSyncOutcome(false);

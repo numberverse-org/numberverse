@@ -43,8 +43,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import jwt as pyjwt  # noqa: E402
 from fastapi import HTTPException  # noqa: E402
-from sqlalchemy.sql.dml import Insert  # noqa: E402
-from sqlalchemy.sql.elements import BinaryExpression, BindParameter, BooleanClauseList, Null  # noqa: E402
+from sqlalchemy.sql.dml import Delete, Insert  # noqa: E402
+from sqlalchemy.sql.elements import BinaryExpression, BindParameter, BooleanClauseList, Null, TextClause  # noqa: E402
 from sqlalchemy.sql.functions import count as count_fn  # noqa: E402
 
 from app import deps  # noqa: E402
@@ -295,6 +295,11 @@ class FakeDB:
             self._apply_defaults(obj)
             self._store(obj)
             return _Single(obj.id)
+        if isinstance(stmt, (Delete, TextClause)):
+            # #1680/#1682 — delete_account prunes rate_limit_buckets and (when
+            # vectors are enabled) story_embeddings via delete()/text(); the
+            # fake store has no such rows, so these are no-ops.
+            return _Single(0)
         return _Single(await self.scalar(stmt))
 
 
@@ -582,6 +587,65 @@ async def _run():
         401,
     )
     check("profile survives failed delete", db6._stores[Profile].get(p6.id) is not None, True)
+
+    # #1685 — a Google-only account has no password they know, so the typed
+    # phrase alone must NOT be enough: a fresh Google id_token is required and
+    # its verified email must match the account.
+    print("⑤b #1685 — Google-only account needs a fresh id_token (not just a typed phrase)…")
+    if google_id_token is None:
+        check("google-auth installed (for #1685)", False, True)
+    else:
+        _orig_client_id = settings.google_client_id
+        _orig_verify = google_id_token.verify_oauth2_token
+        settings.google_client_id = "test-client.apps.googleusercontent.com"
+        try:
+            dbg = FakeDB()
+            pg = add_profile(dbg, email="gd@test.com", auth_provider="google")
+            await expect_http(
+                "google delete without id_token → 400",
+                auth.delete_account(
+                    DeleteAccountIn(confirmation="delete my account", password="irrelevant"),
+                    make_request(),  # no X-Google-ID-Token header
+                    pg, dbg,
+                ),
+                400,
+            )
+            check("profile survives missing-token delete", dbg._stores[Profile].get(pg.id) is not None, True)
+
+            def _fake_verify_ok(token, request, audience):
+                return {"email": "gd@test.com", "email_verified": True}
+
+            google_id_token.verify_oauth2_token = _fake_verify_ok
+            req_g = make_request()
+            req_g.headers["X-Google-ID-Token"] = "valid.id.token"
+            res = await auth.delete_account(
+                DeleteAccountIn(confirmation="delete my account", password="irrelevant"),
+                req_g, pg, dbg,
+            )
+            check("google delete with matching token succeeds", res["deleted"], True)
+            check("google profile removed", dbg._stores[Profile].get(pg.id), None)
+
+            dbg2 = FakeDB()
+            pg2 = add_profile(dbg2, email="gd@test.com", auth_provider="google")
+
+            def _fake_verify_other(token, request, audience):
+                return {"email": "someone-else@test.com", "email_verified": True}
+
+            google_id_token.verify_oauth2_token = _fake_verify_other
+            req_g2 = make_request()
+            req_g2.headers["X-Google-ID-Token"] = "valid.id.token"
+            await expect_http(
+                "google delete with mismatched email → 401",
+                auth.delete_account(
+                    DeleteAccountIn(confirmation="delete my account", password="irrelevant"),
+                    req_g2, pg2, dbg2,
+                ),
+                401,
+            )
+            check("profile survives mismatched-token delete", dbg2._stores[Profile].get(pg2.id) is not None, True)
+        finally:
+            google_id_token.verify_oauth2_token = _orig_verify
+            settings.google_client_id = _orig_client_id
 
     print("⑥  get_current_profile: missing/invalid/revoked/legacy…")
     db7 = FakeDB()

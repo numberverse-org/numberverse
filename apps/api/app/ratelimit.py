@@ -24,6 +24,7 @@ import hashlib
 import logging
 import math
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
@@ -90,6 +91,42 @@ async def prune_rate_limit_buckets(db, older_than_days: int = BUCKET_PRUNE_OLDER
     )
     await db.commit()
     return result.rowcount or 0
+
+
+async def delete_profile_rate_limit_buckets(
+    db: AsyncSession, profile_id: uuid.UUID, email: str | None = None
+) -> int:
+    """#1680 — hard-delete every rate_limit_buckets row that identifies this
+    profile, so right-to-erasure cleans up the durable limiter state that would
+    otherwise keep referencing a deleted account forever.
+
+    The buckets are keyed by PREFIX — the exact shapes `rate_limit` /
+    `read_rate_limit` / `AuthAttemptGuard` mint (see this module):
+
+      ``login:email:{email}``        — login failure/lockout on the email;
+      ``pw:profile:{profile_id}``    — change-password failure/lockout;
+      ``{profile_id}:...``           — account+IP write/read windows, incl.
+                                       ``{profile_id}:{ip}:{endpoint}``,
+                                       ``{profile_id}:{endpoint}`` and the
+                                       ``:read`` variants.
+
+    ``_``/``%`` in an email local-part are LIKE metacharacters; a match on a
+    DIFFERENT (already-deleted) account's bucket is harmless, and no other
+    account shares this profile's ``{profile_id}:`` prefix. Returns the number
+    of rows removed. Does NOT commit — the caller commits with the deletion."""
+    prefixes = [f"{profile_id}:"]
+    if email:
+        prefixes.append(f"login:email:{email}")
+    prefixes.append(f"pw:profile:{profile_id}")
+    total = 0
+    for prefix in prefixes:
+        result = await db.execute(
+            delete(RateLimitBucket).where(RateLimitBucket.key.like(prefix + "%"))
+        )
+        # `rowcount` is the live-DB row count; a fake/test session may expose a
+        # different result shape, so default to 0 rather than crash.
+        total += getattr(result, "rowcount", None) or 0
+    return total
 
 
 def redact_key(value: str) -> str:

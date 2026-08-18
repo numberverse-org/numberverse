@@ -15,7 +15,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -574,5 +574,17 @@ async def reset_kid_progress(
     await db.execute(delete(ProgressEvent).where(ProgressEvent.kid_id == kid_id))
     await db.execute(delete(LearningStory).where(LearningStory.kid_id == kid_id))
     await db.execute(delete(AccelerationLog).where(AccelerationLog.kid_id == kid_id))
+    # #1682 — story_embeddings rows key on story_id (no per-kid FK), so wiping
+    # the learning_stories rows leaves orphan vectors unless swept. Same
+    # idempotent orphan sweep the admin prune uses (#943).
+    from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
+
+    if HAVE_VECTOR and StoryEmbedding is not None:
+        await db.execute(
+            text(
+                "DELETE FROM story_embeddings "
+                "WHERE story_id NOT IN (SELECT id FROM learning_stories)"
+            )
+        )
     await db.commit()
     return ResetOut(reset=True, kid_id=str(kid_id))

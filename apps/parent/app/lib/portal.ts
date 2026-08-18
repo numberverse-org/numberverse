@@ -489,6 +489,17 @@ export const ACCOUNT_LANGS = {
     summaryMastered: "{n} mastered",
     summaryInProgress: "{n} in progress",
     summaryCoverage: "{pct}% of the catalog mastered ({mastered}/{total} skills)",
+    // #980/#1679 — right-to-erasure delete-account card. The `confirmation`
+    // phrase the server verifies is the literal English "delete my account",
+    // so the SAME phrase is what both locales ask the parent to type.
+    deleteAccount: "Delete account",
+    deleteAccountSub: "Permanently delete your account and ALL associated data — kids, progress, stories, sessions. This cannot be undone.",
+    deleteAccountCta: "Delete my account",
+    deleteAccountConfirm: "Type 'delete my account' to confirm",
+    deleteAccountConfirmPh: "delete my account",
+    deleteAccountPasswordLabel: "Enter your password",
+    deleteAccountDone: (kids: number) => `Account deleted. ${kids} kid${kids === 1 ? "" : "s"} and all data removed.`,
+    deleteAccountErr: "Could not delete the account — please try again.",
   },
   bn: {
     changePwTitle: "পাসওয়ার্ড পরিবর্তন",
@@ -528,6 +539,16 @@ export const ACCOUNT_LANGS = {
     summaryMastered: "{n} আয়ত্ত",
     summaryInProgress: "{n} চলছে",
     summaryCoverage: "ক্যাটালগের {pct}% আয়ত্ত ({mastered}/{total} দক্ষতা)",
+    // #980/#1679 — right-to-erasure delete-account card (সার্ভার যে শব্দগুচ্ছ
+    // যাচাই করে সেটিই ইংরেজি "delete my account", তাই দুই ভাষাতেই ওটাই টাইপ করতে হবে)।
+    deleteAccount: "অ্যাকাউন্ট মুছুন",
+    deleteAccountSub: "আপনার অ্যাকাউন্ট ও সমস্ত তথ্য চিরতরে মুছুন — বাচ্চা, অগ্রগতি, গল্প, সেশন। এটি ফেরানো যাবে না।",
+    deleteAccountCta: "আমার অ্যাকাউন্ট মুছুন",
+    deleteAccountConfirm: "নিশ্চিত করতে 'delete my account' লিখুন",
+    deleteAccountConfirmPh: "delete my account",
+    deleteAccountPasswordLabel: "আপনার পাসওয়ার্ড লিখুন",
+    deleteAccountDone: (kids: number) => `অ্যাকাউন্ট মুছে ফেলা হয়েছে। ${kids} জন বাচ্চা ও সকল তথ্য মুছে ফেলা হয়েছে।`,
+    deleteAccountErr: "অ্যাকাউন্ট মুছে ফেলা যায়নি — আবার চেষ্টা করুন।",
   },
 } as const;
 

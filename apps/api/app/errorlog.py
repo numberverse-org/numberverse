@@ -15,6 +15,15 @@ Privacy (#124 checklist): every field passes through the same scrubber as #266
 *rendered* traceback (``Formatter.format`` computes ``exc_text`` from
 ``exc_info`` AFTER filters run, so a filter alone would let PII-shaped
 traceback lines through). Verify with tests/test_errorlog.py.
+
+Retention (#1690): this file is an EXPLICIT account-deletion retention
+exception. Right-to-erasure (DELETE /api/v1/auth/me) does not rewrite or
+truncate it — logs are intentionally not editable post-hoc (tamper-evidence),
+and the file is bounded by the 1 MiB × 3 rotation below, so PII never
+accumulates unbounded. The scrubber redacts the exact email shape the auth
+flow stores (``scrub._EMAIL`` matches ``local@host.tld``), and auth log lines
+additionally hash the account key via ``ratelimit.redact_key`` before it ever
+reaches the logger — so a raw address is not persisted in the first place.
 """
 from __future__ import annotations
 

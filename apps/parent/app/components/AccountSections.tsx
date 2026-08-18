@@ -142,6 +142,7 @@ export function AccountCard({
   acctMsg,
   onSetPassword,
   sessionsLoading,
+  onDeleteAccount,
   wizLang,
 }: {
   profile: Profile | null;
@@ -164,13 +165,25 @@ export function AccountCard({
   onSetPassword?: (pw: string) => void;
   /** #1548 — lets the card show a true loading state before sessions arrive. */
   sessionsLoading: boolean;
+  /** #980/#1679 — right-to-erasure: confirm the phrase + re-enter the password
+   *  (Google accounts may leave the password empty — the API re-verifies a
+   *  fresh Google credential instead). */
+  onDeleteAccount: (confirmation: string, password: string) => void;
   wizLang: WizardLang;
 }) {
   // #1545 — two-tap inline confirm for each session revoke (never window.confirm:
   // headless tests can't click through it). Armed = session id awaiting confirm.
   const [revokeArmed, setRevokeArmed] = useState<string | null>(null);
+  // #980/#1679 — delete-account card local state: armed → phrase + password.
+  const [delArmed, setDelArmed] = useState(false);
+  const [delConfirm, setDelConfirm] = useState("");
+  const [delPassword, setDelPassword] = useState("");
   const t = ACCOUNT_LANGS[wizLang];
   const pwTooLong = pwNew.length > 72;
+  // The server verifies the literal EN phrase in BOTH locales, so the parent
+  // must type exactly that (deleteAccountConfirmPh is the same string in bn).
+  const deletePhraseOk = delConfirm.trim().toLowerCase() === t.deleteAccountConfirmPh.toLowerCase();
+  const deletePwOk = profile?.auth_provider === "google" || delPassword.length > 0;
 
   const newPasswordFields = (
     <>
@@ -330,6 +343,69 @@ export function AccountCard({
         {t.signOutAll}
       </button>
     </div>
+  </div>
+
+  {/* #980/#1679 — right-to-erasure: delete the WHOLE account. Two-tap inline
+      confirm (never window.confirm) + phrase + password re-entry. */}
+  <hr />
+  <div className="danger-row delete-account-row">
+    <div>
+      <h3>{t.deleteAccount}</h3>
+      <p className="muted small">{t.deleteAccountSub}</p>
+    </div>
+    {delArmed ? (
+      <div className="delete-account-form">
+        <div className="form-grid">
+          <label>
+            {t.deleteAccountPasswordLabel}
+            <input
+              type="password"
+              value={delPassword}
+              onChange={(e) => setDelPassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={acctBusy}
+            />
+          </label>
+          <label>
+            {t.deleteAccountConfirm}
+            <input
+              value={delConfirm}
+              onChange={(e) => setDelConfirm(e.target.value)}
+              placeholder={t.deleteAccountConfirmPh}
+              disabled={acctBusy}
+            />
+          </label>
+        </div>
+        <div className="row-buttons">
+          <button
+            className="btn danger"
+            disabled={acctBusy || !deletePhraseOk || !deletePwOk}
+            onClick={() => onDeleteAccount(delConfirm, delPassword)}
+          >
+            {acctBusy ? t.saving : t.deleteAccountCta}
+          </button>
+          <button
+            className="btn ghost"
+            disabled={acctBusy}
+            onClick={() => {
+              setDelArmed(false);
+              setDelConfirm("");
+              setDelPassword("");
+            }}
+          >
+            {t.cancel}
+          </button>
+        </div>
+      </div>
+    ) : (
+      <button
+        className="btn danger-ghost"
+        disabled={acctBusy}
+        onClick={() => setDelArmed(true)}
+      >
+        {t.deleteAccountCta}
+      </button>
+    )}
   </div>
 </section>
   );

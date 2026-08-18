@@ -34,7 +34,7 @@ if _venv_python() != sys.executable:
     os.execv(_venv_python(), [_venv_python(), str(Path(__file__).resolve()), *sys.argv[1:]])
 
 sys.path.insert(0, API_DIR)
-from sqlalchemy import Column, Index, Integer, MetaData, Table  # noqa: E402
+from sqlalchemy import Column, ForeignKeyConstraint, Index, Integer, MetaData, Table  # noqa: E402
 from sqlalchemy.dialects import postgresql  # noqa: E402
 
 from app.migrations import (  # noqa: E402
@@ -42,6 +42,7 @@ from app.migrations import (  # noqa: E402
     _check_sqltext_ok,
     _column_ddl,
     _constraint_name,
+    _fk_ondelete,
     _index_ddl,
     _q,
 )
@@ -108,6 +109,24 @@ check(
     _unique.startswith("CREATE UNIQUE INDEX IF NOT EXISTS"),
     True,
 )
+
+# ── _fk_ondelete (#1681) ──────────────────────────────────────────────────────
+_fk_md = MetaData()
+_fk_parent = Table("organizations", _fk_md, Column("id", Integer, primary_key=True))
+_fk_cascade = ForeignKeyConstraint(
+    ["tenant_id"], ["organizations.id"], ondelete="CASCADE"
+)
+check("_fk_ondelete CASCADE", _fk_ondelete(_fk_cascade), "CASCADE")
+_fk_setnull = ForeignKeyConstraint(
+    ["tenant_id"], ["organizations.id"], ondelete="SET NULL"
+)
+check("_fk_ondelete SET NULL", _fk_ondelete(_fk_setnull), "SET NULL")
+_fk_restrict = ForeignKeyConstraint(
+    ["tenant_id"], ["organizations.id"], ondelete="RESTRICT"
+)
+check("_fk_ondelete RESTRICT", _fk_ondelete(_fk_restrict), "RESTRICT")
+_fk_none = ForeignKeyConstraint(["tenant_id"], ["organizations.id"])
+check("_fk_ondelete undeclared → None", _fk_ondelete(_fk_none), None)
 
 # ── _check_sqltext_ok (#1793) ─────────────────────────────────────────────────
 for _expr in sorted(_CHECK_SQLTEXT_ALLOWLIST["kid_settings"]):
