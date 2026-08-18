@@ -1,3 +1,8 @@
+## 19 Aug 2026 — 1.8.0 (Misconception-based math distractors (wave-21))
+
+b37badf fix(seed): percent-of-number description parity with core (25/50/100/150)
+bef1637 fix(kid): misconception-based math distractors (wave-21)
+
 ## 19 Aug 2026 — 1.7.0 (API error hardening + event instrumentation + scene bugs (wave-20))
 
 0e342b5 feat+fix: API error hardening + event instrumentation + scene bugs (wave-20)
