@@ -5783,7 +5783,10 @@ export default function App() {
         <div className="hud" hidden={!inGame}>
           {inGame && (
             <>
-              <button className="hud-back" onClick={requestLeave} aria-label={t.leaveGame}>‹</button>
+              {/* Phase 2 — a visible home glyph (not a cryptic ‹) so a kid always
+                  knows how to get out; the pause stays beside it. Both keep their
+                  aria-labels for screen readers. */}
+              <button className="hud-back" onClick={requestLeave} aria-label={t.leaveGame} title={t.leaveGame}>🏠</button>
               <button
                 className="hud-back hud-pause"
                 onClick={pauseGame}
