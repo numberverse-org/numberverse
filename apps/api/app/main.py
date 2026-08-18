@@ -84,6 +84,10 @@ class RequestBodySizeLimitMiddleware:
             return
 
         content_length, malformed_content_length = self._content_length(scope)
+        # #1854 — the size guard sits OUTSIDE CORSMiddleware, so its rejection
+        # headers must carry the CORS context themselves (see _send_413). Grab
+        # the request Origin once, for both the header-budget and streamed paths.
+        origin = _first_header(scope, b"origin")
         # #1633 — a present-but-non-numeric Content-Length is malformed HTTP.
         # Reject it with a hard 400 before any framework work instead of
         # silently forwarding the request to full body parsing.
@@ -100,6 +104,7 @@ class RequestBodySizeLimitMiddleware:
                 path=scope.get("path"),
                 content_length=content_length,
                 request_id=request_id_ctx.get(),
+                origin=origin,
             )
             return
 
@@ -121,6 +126,7 @@ class RequestBodySizeLimitMiddleware:
                             path=scope.get("path"),
                             content_length=self._content_length(scope)[0] or "chunked",
                             request_id=request_id_ctx.get(),
+                            origin=origin,
                         )
                     # Stop the downstream app from consuming the rest of the
                     # oversized stream; it would just waste CPU/network.
@@ -163,24 +169,32 @@ class RequestBodySizeLimitMiddleware:
                 malformed = True
         return (max(lengths) if lengths else None), malformed
 
-    async def _send_413(self, send, path=None, content_length=None, request_id=None):
+    async def _send_413(self, send, path=None, content_length=None, request_id=None, origin=None):
         # #1757 — oversized-body rejections were silent; surface them as a
         # WARNING (PII-scrubbed) before the 413 goes out. `content_length` is
         # the observed Content-Length header value, or "chunked" for streamed
         # bodies of unknown length.
+        # #1854 — CORSMiddleware never sees this response (the size guard is
+        # OUTERMOST), so without the header below a cross-origin client's
+        # browser would block the readable 413. Echo the request's Origin as
+        # Access-Control-Allow-Origin exactly like CORS would; an Origin-less
+        # caller (curl, native apps) needs no CORS header.
         log.warning(
             "413 too large: path=%s content_length=%s request_id=%s",
             path, content_length, request_id,
         )
         body = b'{"detail":"Request body too large"}'
+        headers = [
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(body)).encode("ascii")),
+        ]
+        if origin:
+            headers.append((b"access-control-allow-origin", origin.encode("latin-1")))
         await send(
             {
                 "type": "http.response.start",
                 "status": 413,
-                "headers": [
-                    (b"content-type", b"application/json"),
-                    (b"content-length", str(len(body)).encode("ascii")),
-                ],
+                "headers": headers,
             }
         )
         await send({"type": "http.response.body", "body": body})
@@ -551,7 +565,18 @@ async def lifespan(app: FastAPI):
         _embed_task.cancel()
         try:
             await _embed_task
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        except asyncio.CancelledError:
+            # #1858 — the await raises CancelledError because WE cancelled the
+            # embed task (the shutdown signal we requested), not because the
+            # server is tearing down abnormally. Propagate it instead of
+            # swallowing it, so cancellation stays semantically visible to
+            # whoever awaits the lifespan. The old tuple-catch turned every
+            # shutdown into a silent success.
+            raise
+        except Exception:  # noqa: BLE001
+            # A scheduler task that dies on its own (say, a bug inside the
+            # loop) must not take down shutdown — log-free pass keeps the
+            # exit path clean.
             pass
 
 
@@ -662,16 +687,37 @@ async def _http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
+# #1851 — field names whose submitted value is a secret. Pydantic echoes the raw
+# `input` back in each 422 error; for a credential field that leaks the secret
+# the client just sent (a password, a Google id_token…). Redact `input` for
+# exactly these names in `_validation_exception_handler` below.
+_SENSITIVE_VALIDATION_FIELDS = frozenset({
+    "password", "current_password", "new_password", "id_token", "refresh_token",
+})
+
+
 @app.exception_handler(RequestValidationError)
 async def _validation_exception_handler(request: Request, exc: RequestValidationError):
     # #1626 — 422 bodies now carry the same correlation id the header does, but
     # the client-visible `detail` ARRAY is preserved exactly (many clients parse
-    # `detail[0].loc` / `detail[0].msg` — do NOT flatten it). No ERROR record:
-    # 422 stays quiet (#1750).
+    # `detail[0].loc` / `detail[0].msg` — do NOT flatten it). #1851 — Pydantic's
+    # per-error `input` echoed the submitted secret back for credential fields;
+    # rebuild each error with `input` replaced for sensitive field names while
+    # every other entry stays byte-identical. No ERROR record: 422 stays quiet
+    # (#1750).
+    errors = []
+    for err in exc.errors():
+        err = dict(err)
+        if any(
+            isinstance(part, str) and part in _SENSITIVE_VALIDATION_FIELDS
+            for part in err.get("loc", ())
+        ):
+            err["input"] = "[redacted]"
+        errors.append(err)
     return JSONResponse(
         status_code=422,
         content={
-            "detail": jsonable_encoder(exc.errors()),
+            "detail": jsonable_encoder(errors),
             "request_id": request_id_ctx.get(),
         },
     )

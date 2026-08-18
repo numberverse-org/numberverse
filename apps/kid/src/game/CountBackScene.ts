@@ -103,15 +103,21 @@ export class CountBackScene extends Phaser.Scene {
     this.locked = false;
     this.target = this.current - 1;
 
-    // 3 distractors near the target, no duplicates, all ≥ 0
+    // 3 distractors near the target, no duplicates, all in the game's valid
+    // domain 0..START. The neighbor list can only supply up to 3 options
+    // (target+2 / target+1 / target-1, filtered to ≥ 0 and ≤ START — a
+    // countdown from START never shows a number above it) — when the target is
+    // 0 the last neighbor is negative, so top up from the FULL valid range
+    // 0..START with a bounded deterministic scan. The old
+    // `Phaser.Math.Between(0, target + 2)` fallback only ever produced 0/1/2 at
+    // target=0, so it never found a fresh number and hung forever before
+    // blast-off (#1865).
     const opts = [this.target];
-    const candidates = [this.target + 2, this.target + 1, this.target - 1, this.target - 2, this.target - 3];
-    for (const c of candidates) {
+    for (const c of [this.target + 2, this.target + 1, this.target - 1]) {
       if (opts.length >= 4) break;
-      if (c >= 0 && !opts.includes(c)) opts.push(c);
+      if (c >= 0 && c <= START && !opts.includes(c)) opts.push(c);
     }
-    while (opts.length < 4) {
-      const c = Phaser.Math.Between(0, this.target + 2);
+    for (let c = 0; c <= START && opts.length < 4; c++) {
       if (!opts.includes(c)) opts.push(c);
     }
     const n = opts.length;

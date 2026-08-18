@@ -549,3 +549,74 @@ describe("persisted-store durability", () => {
     }
   });
 });
+
+describe("wrong-tap story carries per-round attempts across 5s-burst coalescing (#1845)", () => {
+  it("a fresh wrong-tap story records attempts:1 (top-level + context envelope)", () => {
+    resetStore();
+    const actions = useKidStore.getState();
+    actions.recordWrong("k1", "s1", "game-countpop", 1, 3, 5);
+    const stories = useKidStore.getState().stories;
+    expect(stories).toHaveLength(1);
+    expect(stories[0].attempts).toBe(1);
+    expect(stories[0].context.attempts).toBe(1);
+    expect(stories[0].difficulty).toBe(1);
+  });
+
+  it("coalesces a 5s burst into ONE story whose attempts count survives the merge", () => {
+    vi.useFakeTimers();
+    try {
+      resetStore();
+      const actions = useKidStore.getState();
+      actions.recordWrong("k1", "s1", "game-countpop", 1, 3, 5);
+      vi.advanceTimersByTime(1000);
+      actions.recordWrong("k1", "s1", "game-countpop", 1, 3, 5);
+      vi.advanceTimersByTime(1000);
+      actions.recordWrong("k1", "s1", "game-countpop", 1, 3, 5);
+      const stories = useKidStore.getState().stories;
+      expect(stories).toHaveLength(1); // the mash is ONE learning moment
+      expect(stories[0].attempts).toBe(3);
+      expect(stories[0].context.attempts).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a burst that straddles the 5s window starts a SECOND story (each attempts:1)", () => {
+    vi.useFakeTimers();
+    try {
+      resetStore();
+      const actions = useKidStore.getState();
+      actions.recordWrong("k1", "s1", "game-countpop", 1, 3, 5);
+      vi.advanceTimersByTime(6000);
+      actions.recordWrong("k1", "s1", "game-countpop", 1, 3, 5);
+      const stories = useKidStore.getState().stories;
+      expect(stories).toHaveLength(2);
+      expect(stories[0].attempts).toBe(1);
+      expect(stories[1].attempts).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("round-abandoned event kind (#1842)", () => {
+  it("queueSyncEvent persists a round-abandoned event to the durable outbox", () => {
+    resetStore();
+    const actions = useKidStore.getState();
+    actions.queueSyncEvent({
+      kidId: "k1",
+      skillId: "s1",
+      gameId: "game-countpop",
+      correct: false,
+      difficulty: 2,
+      responseMs: 0,
+      kind: "round-abandoned",
+      meta: { wrongs: 3, source: "leave" },
+    });
+    const pending = useKidStore.getState().pending;
+    expect(pending).toHaveLength(1);
+    expect(pending[0].kind).toBe("round-abandoned");
+    expect(pending[0].difficulty).toBe(2);
+    expect(pending[0].meta).toEqual({ wrongs: 3, source: "leave" });
+  });
+});

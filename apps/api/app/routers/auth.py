@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -119,6 +120,19 @@ def _verify_google_token(id_token: str) -> dict:
         info = google_id_token.verify_oauth2_token(
             id_token, google_requests.Request(), audience=[client_id]
         )
+    except ImportError as e:
+        # #1853 — google-auth is a lazy, optional dependency (the `from`
+        # sits inside the try so an env without `google-auth` still boots).
+        # A missing client library is a server capability gap, not the
+        # client's fault: surface the same "not configured" body the unset
+        # NV_GOOGLE_CLIENT_ID path returns (#382), as a 503, instead of
+        # leaking an unhandled ImportError as a 500. This clause MUST precede
+        # the 401 clause below: when the import failed, the name
+        # GoogleAuthError is UNBOUND, and merely evaluating that clause's
+        # tuple would itself raise and mask the real cause.
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "Google sign-in not configured"
+        ) from e
     except (ValueError, GoogleAuthError) as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google credential") from e
     # #801 — absent/false `email_verified` is a rejected auth (401), never a 500.
@@ -215,8 +229,17 @@ async def signup(
         consent_method="signup",
     )
     db.add(profile)
-    await db.flush()  # assign profile.id before minting its session
-    token, refresh_token = await _issue_session(profile, request, db)
+    try:
+        # #1852 — the email unique constraint is the source of truth: two
+        # CONCURRENT signups for the same email can both clear the lookup
+        # above, and only the DB can arbitrate the race. Roll back and surface
+        # the winner's IntegrityError (at flush or the session-issue commit)
+        # as a clean 409 instead of an unhandled 500.
+        await db.flush()  # assign profile.id before minting its session
+        token, refresh_token = await _issue_session(profile, request, db)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
     if response is not None:
         set_refresh_cookie(response, request, refresh_token)
     await db.refresh(profile)

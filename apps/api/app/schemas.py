@@ -446,7 +446,17 @@ class WeakSkillOut(BaseModel):
 # garden growth, challenge reward, session-start, session-minutes) that reflects
 # activity WITHOUT moving mastery. Kept in sync with apps/kid/src/store.ts.
 PROGRESS_EVENT_KINDS = frozenset(
-    {"round", "wrong", "coins", "quest", "garden", "challenge", "session-start", "session-minutes"}
+    {
+        "round",
+        "wrong",
+        "coins",
+        "quest",
+        "garden",
+        "challenge",
+        "session-start",
+        "session-minutes",
+        "round-abandoned",
+    }
 )
 
 

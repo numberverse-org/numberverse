@@ -33,6 +33,7 @@ from ..models import (
     Kid,
     KidSettings,
     LearningStory,
+    ParentEvent,
     Profile,
     ProgressEvent,
     SkillMastery,
@@ -171,6 +172,10 @@ async def export_json(
         "profile": profile_meta(profile),
         "kids": kids_out,
     }
+    # #1843 — audit the export on the parent's account (a family export is the
+    # heaviest privacy surface; the parent should see when one was pulled).
+    db.add(ParentEvent(profile_id=profile.id, action="export_json", event_type="export", target="all"))
+    await db.commit()
     data = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
     return Response(
         content=data,
@@ -191,6 +196,10 @@ async def export_csv(
     kids = await _owned_kids(db, profile)
     kid_ids = [k.id for k in kids]
     events = (await db.scalars(select(ProgressEvent).where(ProgressEvent.kid_id.in_(kid_ids)))).all() if kid_ids else []
+    # #1843 — audit the CSV export on the parent's account (same privacy surface
+    # as the JSON export).
+    db.add(ParentEvent(profile_id=profile.id, action="export_csv", event_type="export", target="all"))
+    await db.commit()
     data = to_csv(round_rows(kids, events), CSV_FIELDS)
     return Response(
         content=data,

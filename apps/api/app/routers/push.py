@@ -27,6 +27,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -107,7 +108,33 @@ async def subscribe(
         auth=body.auth,
     )
     db.add(subscription)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # #1852 — the endpoint unique constraint is the source of truth: a
+        # CONCURRENT subscribe for the same endpoint can clear the lookup
+        # above, and the DB arbitrates the race. Roll back and treat the
+        # now-existing row exactly like the just-found branch above (update in
+        # place when it's ours, 409 when another account won the race).
+        await db.rollback()
+        existing = await db.scalar(
+            select(PushSubscription).where(PushSubscription.endpoint == body.endpoint)
+        )
+        if existing is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "This push subscription is already registered to another account",
+            ) from None
+        if existing.profile_id != profile.id:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "This push subscription is already registered to another account",
+            ) from None
+        existing.p256dh = body.p256dh
+        existing.auth = body.auth
+        await db.commit()
+        await db.refresh(existing)
+        return existing
     await db.refresh(subscription)
     return subscription
 

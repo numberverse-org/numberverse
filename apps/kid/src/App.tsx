@@ -337,6 +337,13 @@ export default function App() {
   // blocks escalate the reward (Sharper ×2 → ×3…); a non-challenge step resets
   // the chain so only 'beat your best' replays stack.
   const challengeStreakRef = useRef<Record<string, number>>({});
+  // #1842 — the round currently in flight. Set at scene start, kept alive across
+  // completed rounds within the step (each round's difficulty advances on a
+  // correct), and cleared when the step/session ends. leaveGame() flushes a
+  // `round-abandoned` event from it so a kid who exits mid-round is measurable.
+  // `wrongsBase` snapshots the skill's cumulative mistake count at round start so
+  // the abandoned event can report the wrongs that happened IN THIS round.
+  const activeRoundRef = useRef<{ skillId: string; gameId: string; difficulty: number; wrongsBase: number } | null>(null);
   const [roundsDone, setRoundsDone] = useState(0);
   const [sessionIdx, setSessionIdx] = useState(0);
   // #1048 — the kid's "too easy / too hard" tap on the done screen. A signed
@@ -2436,10 +2443,38 @@ export default function App() {
   /** Leave the game canvas mid-session back to the world detail screen.
    *  Stays FULLSCREEN — the app defaults to fullscreen; parents exit via the
    *  footer toggle or the "f" key. */
+  /** #1842 — flush a `round-abandoned` event for the round still in flight
+   *  (mid-round scene shutdown / home-tap). Emit exactly once per round: the
+   *  activeRoundRef is nulled on flush so a later leave/unmount can't double
+   *  count, and the playing-effect cleanup clears it on natural session end
+   *  (done/break), so only a genuine leave is recorded. Queued to the durable
+   *  `pending` outbox exactly like the engagement events. */
+  const flushAbandonedRound = () => {
+    const active = activeRoundRef.current;
+    if (!active || !kid) return;
+    activeRoundRef.current = null;
+    const mistakes = useKidStore.getState().mistakes;
+    const mk = `${kid.id}:${active.skillId}`;
+    const wrongsSoFar = (mistakes[mk]?.wrong ?? 0) - active.wrongsBase;
+    useKidStore.getState().queueSyncEvent({
+      kidId: kid.id,
+      skillId: active.skillId,
+      gameId: active.gameId,
+      correct: false,
+      difficulty: active.difficulty,
+      responseMs: 0,
+      ts: Date.now(),
+      kind: "round-abandoned",
+      meta: { wrongs: Math.max(0, wrongsSoFar), source: "leave" },
+    });
+  };
+
   const leaveGame = () => {
     // #1424 — leaving is not discarding: snapshot the in-flight session so the
     // kid can come back and resume exactly where they stopped.
     if (kid) snapshotSession(kid.id);
+    // #1842 — a mid-round leave is an abandoned round; measure the drop-off.
+    flushAbandonedRound();
     setKidPaused(false);
     cancelSpeech();
     const game = gameRef.current;
@@ -2755,7 +2790,19 @@ export default function App() {
     setCurrentKidName(kid.name);
     // Arm the wrong-answer ledger so hintWrong() records THIS kid+skill on every
     // wrong tap (resolve-to-complete: wrongs accumulate until a correct solve).
-    wrongLedger.setContext({ kidId: kid.id, skillId: step.skillId, gameId: step.gameId, difficulty: startLevelIndex });
+    // #1845 — wrong taps must record the SAME difficulty the completion event
+    // uses. Scenes report `levelIndex + 1` on onRoundDone, so the ledger context
+    // uses the 1-based start rung, not the raw 0-based startLevelIndex.
+    wrongLedger.setContext({ kidId: kid.id, skillId: step.skillId, gameId: step.gameId, difficulty: startLevelIndex + 1 });
+    // #1842 — arm the abandoned-round signal for this scene step. wrongsBase is
+    // the skill's cumulative wrong count NOW; an abandoned event reports the
+    // delta so only THIS round's wrong taps count.
+    activeRoundRef.current = {
+      skillId: step.skillId,
+      gameId: step.gameId,
+      difficulty: startLevelIndex + 1,
+      wrongsBase: useKidStore.getState().mistakes[`${kid.id}:${step.skillId}`]?.wrong ?? 0,
+    };
     const start = (game: Game) => {
       if (!active || screen !== "playing" || leavingGameRef.current) return;
       // #1448 — fade the previous scene out before stopping it, then fade the
@@ -2796,6 +2843,12 @@ export default function App() {
         // skill has no narrower range.
         levels: getSkill(step.skillId)?.dataLevels ?? getGame(step.gameId)?.difficultyLevels,
         onRoundDone: (correct: boolean, ms: number, difficulty: number) => {
+          // #1842 — a completed round advances the scene's level rung on a
+          // correct, so the round NEXT IN LINE (the one a mid-round leave would
+          // abandon) sits one rung up; a wrong round keeps the same rung.
+          if (activeRoundRef.current) {
+            activeRoundRef.current.difficulty = correct ? difficulty + 1 : difficulty;
+          }
           // Was this skill NEVER attempted before this round? (feeds the
           // "try a new game" quest type — must be captured BEFORE the event
           // lands, or the fresh state is already consumed.)
@@ -2955,6 +3008,10 @@ export default function App() {
       // Leaving the drill screen disarms the ledger — Nova/Garden taps aren't
       // skill attempts. Any wrongs recorded so far stay in the ledger.
       wrongLedger.setContext(null);
+      // #1842 — the step/session ended (natural completion, screen swap, or a
+      // leaveGame that already flushed). Disarm the abandoned-round signal so a
+      // later leaveGame on another screen can't emit a stale abandonment.
+      activeRoundRef.current = null;
     };
   }, [screen, world, kid, sessionIdx, reteachNonce, lang, addEvent, novaAwardRound, novaQuestProgress, gardenWater, gardenMastery]);
 

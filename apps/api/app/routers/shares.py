@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import ContentItem, Kid, KidSettings, Profile, ProgressEvent, SkillMastery
+from ..models import ContentItem, Kid, KidSettings, ParentEvent, Profile, ProgressEvent, SkillMastery
 from ..ratelimit import ip_rate_limit, read_rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["share"])
@@ -127,6 +127,211 @@ def _humanize_game_id(game_id: str) -> str:
     return cleaned.replace("-", " ").title() or game_id
 
 
+# #1846 — SCENE-LEVEL key for a game id. CountPop/FruitAdd-style TIERS share one
+# Phaser scene (game-countpop20, game-countpop50 → 'CountPop'), so "top game"
+# must aggregate by the scene, not the raw tier game_id — otherwise a kid who
+# split their week across three CountPop tiers reads as three tiny games instead
+# of one clear favorite. Mirrors the kid app's GAME_SCENES (packages/core/src/
+# skills.ts). Unknown/legacy ids fall back to the id itself (a single-scene game
+# IS its own scene).
+_GAME_SCENE_KEYS: dict[str, str] = {
+    "game-cvcbuild": "CvcBuild",
+    "game-plurals": "Plurals",
+    "game-pasted": "PastEd",
+    "game-casematch": "CaseMatch",
+    "game-trace": "Trace",
+    "game-bndaysmonths": "BanglaDays",
+    "game-bnspelling": "BanglaSpell",
+    "game-banglaspell": "BanglaSpell",
+    "game-bnpronouns": "Pronoun",
+    "game-countback": "CountBack",
+    "game-countpop": "CountPop",
+    "game-countpop20": "CountPop",
+    "game-countpop50": "CountPop",
+    "game-count100": "Count100",
+    "game-build999": "Build999",
+    "game-growcount": "GrowCount",
+    "game-fruitadd-10": "FruitAdd",
+    "game-fruitsub-10": "FruitAdd",
+    "game-fruitadd-20": "FruitAdd",
+    "game-fruitsub-20": "FruitAdd",
+    "game-fruittree": "FruitTree",
+    "game-shapecatcher": "ShapeCatcher",
+    "game-shapenames": "ShapeCatcher",
+    "game-tapdrag": "CatchBug",
+    "game-villagecity": "VillageCity",
+    "game-patience": "Patience",
+    "game-froghop": "FrogHop",
+    "game-memorypairs": "MemoryPairs",
+    "game-memory": "Memory",
+    "game-countsong": "CountingSong",
+    "game-bnletters": "BnLetters",
+    "game-bnconsonants": "BnLetters",
+    "game-bnnumbers": "BnNumbers",
+    "game-enletters": "EnLetters",
+    "game-bnbonds": "NumberBonds",
+    "game-bnbonds20": "NumberBonds",
+    "game-oddeven": "OddEven",
+    "game-shapeparts": "ShapeParts",
+    "game-bncolors": "BnColors",
+    "game-bdtaka": "BdMoney",
+    "game-addfacts": "FactsAdd",
+    "game-subfacts": "SubFacts",
+    "game-doubles": "Doubles",
+    "game-maketen": "MakeTen",
+    "game-addregroup": "AddRegroup",
+    "game-subborrow": "SubBorrow",
+    "game-array-mult": "ArrayMult",
+    "game-skipcount": "SkipCount",
+    "game-shares2": "ShareRem",
+    "game-fracset": "FracSet",
+    "game-mixedfrac": "MixedFrac",
+    "game-dectenths": "DecTenths",
+    "game-makechange": "MakeChange",
+    "game-elapsed": "ElapsedTime",
+    "game-measure": "Measurement",
+    "game-perim": "PerimFence",
+    "game-solidmatch": "SolidMatch",
+    "game-symmetry": "SymmetryMirror",
+    "game-animalsmove": "AnimalsMove",
+    "game-plantlife": "PlantLife",
+    "game-plants": "PlantParts",
+    "game-seasons": "WeatherSeasons",
+    "game-living": "LivingSort",
+    "game-senses": "FiveSenses",
+    "game-shadows": "ShadowGuess",
+    "game-magnets": "MagnetPoles",
+    "game-watercycle": "WaterCycle",
+    "game-keyboard": "KeyboardExplorer",
+    "game-device": "DeviceManners",
+    "game-computer": "ComputerSafety",
+    "game-habits": "HabitSort",
+    "game-professions": "ProfessionsMatch",
+    "game-festivals": "FestivalSort",
+    "game-kindness": "Kindness",
+    "game-honesty": "Truth",
+    "game-ordinals": "Ordinals",
+    "game-idioms": "Idioms",
+    "game-verbgender": "VerbGender",
+    "game-classifiers": "Classifiers",
+    "game-digraphs": "Digraphs",
+    "game-longvowels": "LongVowel",
+    "game-coinvalues": "CoinValue",
+    "game-timewords": "TimeWords",
+    "game-directionwords": "DirectionWords",
+    "game-polite": "Polite",
+    "game-enphonics": "EnPhonics",
+    "game-rcontrolled": "RControlled",
+    "game-magice": "MagicE",
+    "game-prepositions": "Prepositions",
+    "game-qwords": "QuestionWords",
+    "game-story": "Story",
+    "game-compounds-en": "CompoundEn",
+    "game-readaloud": "ReadAloud",
+    "game-alphabet": "AlphaOrder",
+    "game-wordfam": "WordFamily",
+    "game-yesno": "YesNo",
+    "game-balloonpop": "BalloonPop",
+    "game-balance": "Balance",
+    "game-sinkfloat": "SinkFloat",
+    "game-foodchain": "FoodChain",
+    "game-foodsource": "FoodSource",
+    "game-material": "MaterialSort",
+    "game-oddevensort": "OddEvenSort",
+    "game-vowelconsonant": "VowelConsonantSort",
+    "game-shapecorner": "ShapeCornerSort",
+    "game-plantanimal": "PlantAnimalSort",
+    "game-daynight": "DayNight",
+    "game-addsub100": "AddSub100",
+    "game-clock": "ClockTime",
+    "game-rocketmult": "RocketMult",
+    "game-multable": "TimesTable",
+    "game-share": "FairShare",
+    "game-div-23": "DivisionFacts",
+    "game-regroup": "Regroup",
+    "game-pizzafrac": "PizzaFrac",
+    "game-comparefrac": "CompareFrac",
+    "game-bnwords": "BnWords",
+    "game-conjunctfind": "ConjunctFind",
+    "game-bnsightwords": "BnSightWords",
+    "game-sentencebuilder": "SentenceBuilder",
+    "game-storyread": "StoryRead",
+    "game-rhymes": "RhymeTime",
+    "game-wordpairs": "WordPairs",
+    "game-punct": "Punct",
+    "game-compounds": "Compound",
+    "game-lettersound": "LetterSound",
+    "game-matramatrix": "MatraMatrix",
+    "game-readstory": "ReadStory",
+    "game-numberwords": "NumberWords",
+    "game-riddle": "Riddle",
+    "game-cvc": "Cvc",
+    "game-contracts": "Contracts",
+    "game-compare": "Compare",
+    "game-synant": "SynAnt",
+    "game-irregulars": "IrregularPlurals",
+    "game-past": "PastTense",
+    "game-division": "DivisionFacts",
+    "game-fracmatch": "FractionMatch",
+    "game-placevalue": "PlaceValue",
+    "game-round": "Rounding",
+    "game-barchart": "BarChart",
+    "game-picto": "PictoGraph",
+    "game-bnmatras": "BnMatras",
+    "game-sightwords": "SightWords",
+    "game-animalhome": "AnimalHome",
+    "game-decimals": "Decimals",
+    "game-percent": "Percent",
+    "game-area": "AreaPerim",
+    "game-bnsentence": "BnSentence",
+    "game-grammar": "Grammar",
+    "game-bgs": "BgsFacts",
+    "game-bnmatra-words": "BnMatras",
+    "game-bgs-country": "BgsFacts",
+    "game-bgs-civics": "BgsFacts",
+    "game-onlinesafety": "OnlineSafety",
+    "game-statematter": "StatesMatter",
+    "game-encomprehension": "ReadAloud",
+    "game-enparagraph": "ReadAloud",
+    "game-humanbody": "HumanBody",
+    "game-body-systems": "HumanBody",
+    "game-sentenceorder": "Story",
+    "game-mathsolve": "MathSolve",
+    "game-negatives": "NegativeNumber",
+    "game-sciencefacts": "ScienceFacts",
+    "game-codelogic": "CodeLogic",
+    "game-arcadecatch": "ArcadeCatch",
+    "game-exploregarden": "ExploreGarden",
+}
+
+
+def _scene_key(game_id: str) -> str:
+    """#1846 — the scene-level key a game id aggregates under. Shared-scene tiers
+    (CountPop/FruitAdd) collapse to one scene; single-scene ids are their own key."""
+    return _GAME_SCENE_KEYS.get(game_id, game_id)
+
+
+def _top_game_scene(events: list[ProgressEvent]) -> tuple[str, str] | None:
+    """#1846 — the most-played SCENE for an event list, plus a representative raw
+    game id INSIDE that scene (so a caller can still resolve a catalog title).
+
+    Counts by scene key instead of the raw tier game_id: a week split across
+    CountPop's three tiers reads as ONE favorite, not three tiny per-tier counts.
+    Returns `(scene_key, representative_game_id)` or None when empty, so callers
+    can reuse it across the weekly card and the public share snapshot."""
+    if not events:
+        return None
+    scene_counts: Counter[str] = Counter()
+    scene_raw: dict[str, Counter[str]] = {}
+    for e in events:
+        sk = _scene_key(e.game_id)
+        scene_counts[sk] += 1
+        scene_raw.setdefault(sk, Counter())[e.game_id] += 1
+    top_scene = scene_counts.most_common(1)[0][0]
+    rep_id = scene_raw[top_scene].most_common(1)[0][0]
+    return top_scene, rep_id
+
+
 class ShareTokenOut(BaseModel):
     token: str
 
@@ -195,6 +400,9 @@ async def get_share_token(
         await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
         await db.commit()
         await db.refresh(owned)
+    # #1843 — audit the share-link access/mint on the parent's account.
+    db.add(ParentEvent(profile_id=profile.id, action="share_mint", event_type="share", target=str(kid_id)))
+    await db.commit()
     return ShareTokenOut(token=raw)
 
 
@@ -221,6 +429,8 @@ async def rotate_share_token(
         ),
         {"kid_id": str(kid_id)},
     )
+    # #1843 — audit the rotation on the parent's account.
+    db.add(ParentEvent(profile_id=profile.id, action="share_rotate", event_type="share", target=str(kid_id)))
     await db.commit()
     await db.refresh(owned)
     return ShareTokenOut(token=raw)
@@ -246,6 +456,8 @@ async def revoke_share_token(
         text("UPDATE kids SET share_token_revoked_at = now() WHERE id = CAST(:kid_id AS uuid)"),
         {"kid_id": str(kid_id)},
     )
+    # #1843 — audit the revocation on the parent's account.
+    db.add(ParentEvent(profile_id=profile.id, action="share_revoke", event_type="share", target=str(kid_id)))
     await db.commit()
 
 
@@ -314,20 +526,24 @@ async def get_share_snapshot(
     # response_ms (which is per-answer latency, not play time).
     minutes = _session_span_minutes(events)
     active_days = len({e.created_at.date() for e in events})
-    games = Counter(e.game_id for e in events)
-    top_game_id = games.most_common(1)[0][0] if games else None
+    # #1846 — aggregate by SCENE key so CountPop/FruitAdd tiers collapse into one
+    # favorite instead of fragmenting the week into several tiny per-tier counts.
+    hit = _top_game_scene(events)
     top_game = None
-    if top_game_id:
+    if hit:
+        # Representative raw id within the winning scene — the catalog lookup
+        # resolves a real game title (the scene key itself isn't a catalog id).
         # #1551 — resolve the raw game id to its catalog title so the public
         # snapshot never leaks an internal machine id. Unknown/legacy ids fall
         # back to a humanized slug.
+        _scene, rep_id = hit
         title = await db.scalar(
             select(ContentItem.title).where(
-                ContentItem.id == top_game_id,
+                ContentItem.id == rep_id,
                 ContentItem.kind == "game",
             )
         )
-        top_game = title or _humanize_game_id(top_game_id)
+        top_game = title or _humanize_game_id(rep_id)
 
     mastered_rows = (
         await db.scalars(

@@ -598,6 +598,31 @@ class AdminAudit(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class ParentEvent(Base):
+    """#1843 — append-only audit of parent account ACTIONS on the account itself
+    (share-link mint/rotate/revoke, data export). Keyed by profile_id (NOT a kid
+    FK) so deleting a kid never deletes the parent's own audit trail; deleting
+    the profile cascades the rows away. `event_type` is the domain ("share" |
+    "export"), `action` the specific verb ("share_mint" | "share_rotate" |
+    "share_revoke" | "export_json" | "export_csv"), `target` the affected kid id
+    (uuid string) or "all" for a family export. Committed by the caller's
+    existing transaction — these endpoints already commit on every write path."""
+
+    __tablename__ = "parent_events"
+    # #1843 — the parent portal lists "recent account activity" per profile,
+    # ordered newest first; the composite index covers that read in one scan.
+    __table_args__ = (
+        Index("ix_parent_events_profile_id_created_at", "profile_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    action: Mapped[str] = mapped_column(String(32))
+    event_type: Mapped[str] = mapped_column(String(16))
+    target: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # ═════════════════════════════════════════════════════════════════════════
 # Multi-tenancy models (#961-#969)
 # ═════════════════════════════════════════════════════════════════════════

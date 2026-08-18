@@ -37,7 +37,8 @@ export type SyncEventKind =
   | "garden"
   | "challenge"
   | "session-start"
-  | "session-minutes";
+  | "session-minutes"
+  | "round-abandoned";
 
 /** A round queued for server sync — durable outbox (persisted) so nothing is
  *  lost when the kid plays offline. kidId + ts attach context the RoundResult
@@ -71,6 +72,12 @@ export interface KothaStory {
   difficulty: number;
   responseMs: number;
   wrongStreak: number;
+  /** #1845 — wrong taps within one 5s burst coalesce into a single story; this
+   *  carries how many wrong taps that story represents so the per-round attempt
+   *  count survives the coalescing (wrongStreak is the skill's streak across
+   *  bursts, not the per-burst attempt count). Mirrored into `context.attempts`
+   *  so the server's JSONB envelope persists it. */
+  attempts?: number;
   /** Free envelope — reason/message/tts/source. */
   context: Record<string, unknown>;
   ts: number;
@@ -1283,6 +1290,9 @@ export const useKidStore = create<KidState>()(
           // #89 — carry the CORRECT answer too so the parent panel can show
           // "picked X → answer Y" (the exact question's two sides) from the
           // same offline story ledger — no extra fetch, no schema change.
+          // #1845 — every wrong tap counts toward the round's attempt total
+          // (survives the 5s-burst coalesce below via context.attempts).
+          const attempts = 1;
           const story: KothaStory = {
             uid,
             kidId,
@@ -1295,14 +1305,17 @@ export const useKidStore = create<KidState>()(
             difficulty,
             responseMs: 0,
             wrongStreak,
-            context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null, correctAnswer: typeof correct === "number" ? correct : null },
+            attempts,
+            context: { reason: diag.reason, message: diag.action.message, source: "wrong-tap", fingerprint: fp?.code ?? null, wrongAnswer: typeof wrong === "number" ? wrong : null, correctAnswer: typeof correct === "number" ? correct : null, attempts },
             ts: now,
           };
           // #1228 — coalesce a wrong-tap BURST: consecutive wrongs on the SAME
           // skill within 5s are one learning moment, not N stories. The keypad
           // mash becomes a single story whose wrongStreak/answers/latest
           // diagnosis keep updating — the array doesn't grow per tap (the
-          // hottest drill-scene path).
+          // hottest drill-scene path). #1845 — the coalesced story CARRIES the
+          // attempt count (context.attempts), so the parent sees the mash was 4
+          // wrong taps, not 1.
           const stories = s.stories ?? [];
           const last = stories[stories.length - 1];
           const sameBurst =
@@ -1313,8 +1326,26 @@ export const useKidStore = create<KidState>()(
             last.skillId === skillId &&
             typeof last.ts === "number" &&
             now - last.ts <= 5000;
+          // #1845 — the coalesced story's attempt count: the previous story's
+          // count (legacy persisted stories may lack the field → fall back to 1)
+          // plus this tap. Guarded on `last` because the FIRST tap has no prior
+          // story (prevAttempts is unused then — sameBurst is false).
+          const prevAttempts = last
+            ? (last.attempts ?? (last.context?.attempts as number | undefined) ?? 1)
+            : 1;
+          const nextAttempts = prevAttempts + 1;
           const nextStories = sameBurst
-            ? [...stories.slice(0, -1), { ...last, wrongStreak, misconceptionCode: misCode, context: story.context, ts: now }]
+            ? [
+                ...stories.slice(0, -1),
+                {
+                  ...last,
+                  wrongStreak,
+                  misconceptionCode: misCode,
+                  attempts: nextAttempts,
+                  context: { ...last.context, ...story.context, attempts: nextAttempts },
+                  ts: now,
+                },
+              ]
             : // #1229 — offline ceiling: stop queueing NEW stories past the hard cap.
               stories.length >= STORY_HARD_CAP
               ? stories

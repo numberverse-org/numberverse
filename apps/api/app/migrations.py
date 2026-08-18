@@ -181,6 +181,32 @@ async def apply_column_migrations() -> list[str]:
         added.append("push_subscriptions")
         added.append("push_subscriptions.profile_id")
 
+    # #1843 — parent account-action audit (share mint/rotate/revoke, export).
+    # Same create_all + explicit-DDL belt-and-suspenders pattern as
+    # push_subscriptions above: fresh DBs get it from the ParentEvent model,
+    # existing DBs from this idempotent CREATE TABLE IF NOT EXISTS + index.
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS parent_events ("
+                "id UUID PRIMARY KEY, "
+                "profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, "
+                "action VARCHAR(32) NOT NULL, "
+                "event_type VARCHAR(16) NOT NULL, "
+                "target VARCHAR(64), "
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT now()"
+                ")"
+            )
+        )
+        await conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_parent_events_profile_id_created_at "
+                "ON parent_events (profile_id, created_at)"
+            )
+        )
+        added.append("parent_events")
+        added.append("parent_events.profile_id")
+
     return added
 
 

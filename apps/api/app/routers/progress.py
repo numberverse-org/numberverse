@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -38,6 +39,8 @@ MAX_BATCH_SIZE = 100
 # skill_id → band, from the seed (the same catalog the client ships — the audit
 # gate keeps them in sync).
 SKILL_BANDS: dict[str, int] = {row[0]: row[1] for row in SKILLS_SEED}
+
+logger = logging.getLogger("numberverse")
 
 
 async def _load_band_caps(db: AsyncSession, kid_ids: set[uuid.UUID]) -> dict[uuid.UUID, int | None]:
@@ -207,7 +210,7 @@ async def record_progress(
     for kid_id in kid_ids:
         owned = await _get_owned_kid(kid_id, profile, db)
         if not owned:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
 
     # #275 — band lock: drop events for skills beyond the kid's max_band (or any
     # skill we can't verify when a cap is set). Never lets a capped kid persist
@@ -442,7 +445,7 @@ async def record_stories(
     for kid_id in kid_ids:
         owned = await _get_owned_kid(kid_id, profile, db)
         if not owned:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
 
     # #275 — band lock on stories too: a capped kid must not accumulate learning
     # moments for out-of-band skills (same rule as /progress).
@@ -475,10 +478,18 @@ async def record_stories(
             select(func.count()).select_from(LearningStory).where(LearningStory.kid_id == kid_id)
         )
         if current_count is not None and current_count >= cap:
+            # #1855 — the client-facing 429 detail is STATIC: the old string
+            # leaked the kid's live story count and the configured cap to the
+            # client. Those numbers are an ops concern, so they move to a
+            # server-side WARNING (PII-scrubbed, kid_id is a plain uuid here)
+            # that an operator can grep.
+            logger.warning(
+                "story cap reached: kid=%s count=%s cap=%s",
+                kid_id, current_count, cap,
+            )
             raise HTTPException(
                 status.HTTP_429_TOO_MANY_REQUESTS,
-                f"Kid {kid_id} already has {current_count} stories "
-                f"(max {cap}). Prune before adding more.",
+                "Story cap reached — prune before adding more",
             )
 
     rows = [
@@ -538,7 +549,7 @@ async def record_acceleration(
     for kid_id in kid_ids:
         owned = await _get_owned_kid(kid_id, profile, db)
         if not owned:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Kid {kid_id} not found")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
 
     # #275 — band lock: a capped kid can't log skips beyond their max_band either.
     caps = await _load_band_caps(db, kid_ids)

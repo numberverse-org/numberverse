@@ -11,7 +11,6 @@ these, and notification senders key on it to choose a message kind):
 """
 
 import uuid
-from collections import Counter
 from datetime import date, datetime, timedelta, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -20,7 +19,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
 from ..deps import get_current_profile, org_scoped, resolve_org_id
-from ..models import AccelerationLog, Kid, KidSettings, LearningStory, Profile, ProgressEvent, Skill, SkillMastery
+from ..models import (
+    AccelerationLog,
+    ContentItem,
+    Kid,
+    KidSettings,
+    LearningStory,
+    Profile,
+    ProgressEvent,
+    Skill,
+    SkillMastery,
+)
 from ..ratelimit import read_rate_limit, rate_limit
 from ..schemas import (
     ActivityOut,
@@ -34,6 +43,10 @@ from ..schemas import (
     WeeklyDayOut,
     WeeklyOut,
 )
+# #1846/#1847 — the scene-key + title-resolution helpers live in shares.py (the
+# share card already humanizes top_game); kids.py reuses them so the weekly card
+# and the public share card can never drift apart.
+from .shares import _humanize_game_id, _top_game_scene
 
 router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 
@@ -476,8 +489,23 @@ async def get_kid_weekly(
             )
         )
     active_days = sum(1 for ev in by_day.values() if ev)
-    games = Counter(e.game_id for e in round_events)
-    top_game = games.most_common(1)[0][0] if games else None
+    # #1846 — aggregate by SCENE key so shared-scene tiers (CountPop/FruitAdd)
+    # count as ONE favorite instead of fragmenting the week into per-tier counts.
+    hit = _top_game_scene(round_events)
+    top_game = None
+    if hit:
+        # #1847 — resolve the winning scene to a catalog TITLE (the weekly card
+        # should read "Fruit Basket", not "game-fruitadd-10"). A representative
+        # raw id inside the scene feeds the same ContentItem lookup + humanize
+        # fallback the share card uses (shares.py), so both surfaces agree.
+        _scene, rep_id = hit
+        title = await db.scalar(
+            select(ContentItem.title).where(
+                ContentItem.id == rep_id,
+                ContentItem.kind == "game",
+            )
+        )
+        top_game = title or _humanize_game_id(rep_id)
 
     # #4 — 🔥 current streak: consecutive calendar days with ≥1 round, ending
     # today, or yesterday when today isn't played yet (the streak stays alive

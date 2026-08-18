@@ -73,15 +73,20 @@ def _story_text(story: LearningStory) -> str:
 
 def embed_text(text: str) -> list[float] | None:
     """Embed ONE query text for semantic retrieval (#323). Returns the vector,
-    or None when the ML stack is missing — callers report a clear error."""
+    or None when the ML stack is missing OR broken — callers report a clear error."""
     try:
         encoder = _load_encoder()
-    except Exception as exc:  # noqa: BLE001 — a missing ML stack must not crash
+        vec = encoder.encode(  # type: ignore[union-attr]  # encoder is not None here
+            [text], normalize_embeddings=True, show_progress_bar=False
+        )
+    except Exception as exc:  # noqa: BLE001 — a missing/broken ML stack must not crash
+        # #1857 — `encoder.encode` used to sit OUTSIDE the try, so a load-time
+        # success followed by an encode-time failure (a corrupt/half-downloaded
+        # model, a CUDA/OOM hiccup) 500'd the admin semantic-search route.
+        # Fold it in: same None + WARNING contract as the load-failure path, so
+        # the admin route's `None` check surfaces the clean 503.
         log.warning("embed model unavailable for search: %s", exc)
         return None
-    vec = encoder.encode(  # type: ignore[union-attr]  # encoder is not None here
-        [text], normalize_embeddings=True, show_progress_bar=False
-    )
     return vec[0].tolist()
 
 

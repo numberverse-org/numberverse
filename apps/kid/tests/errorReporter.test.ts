@@ -8,6 +8,7 @@ import {
   resetErrorReporter,
   SYNC_STUCK_TICKS,
 } from "../src/lib/errorReporter";
+import { APP_VERSION } from "../src/version";
 
 describe("errorReporter — client-side redaction", () => {
   it("redacts emails, phones, IPs and long digit runs", () => {
@@ -102,7 +103,10 @@ describe("errorReporter — boundary report + throttle", () => {
     expect(init.method).toBe("POST");
     const body = JSON.parse(String(init.body)) as { message: string; version: string; kind: string };
     expect(body.kind).toBe("boundary");
-    expect(body.version).toBe("1.5.0");
+    // The payload carries the app's CURRENT stamped version (version.ts is
+    // stamped by release.sh); a hardcoded "1.5.0" here went stale on every
+    // bump and broke the suite after the 1.6.0 release.
+    expect(body.version).toBe(APP_VERSION);
     expect(body.message).toContain("[REDACTED]");
     expect(body.message).not.toContain("user@school.com");
 
