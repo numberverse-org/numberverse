@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "19 Aug 2026 · 1.10.0 (Kid UX overhaul (un-stick games, back, minimal HUD, hints) + share-token stop-sharing)";
-export const APP_VERSION = "1.10.0";
+export const APP_BUILD = "19 Aug 2026 · 1.10.1 (Unmistakable ← back arrows across all screens (navigation clarity))";
+export const APP_VERSION = "1.10.1";

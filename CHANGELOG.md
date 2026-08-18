@@ -1,3 +1,7 @@
+## 19 Aug 2026 — 1.10.1 (Unmistakable ← back arrows across all screens (navigation clarity))
+
+fc751ff fix(kid): replace cryptic ‹ back glyph with unmistakable ← across all screens
+
 ## 19 Aug 2026 — 1.10.0 (Kid UX overhaul (un-stick games, back, minimal HUD, hints) + share-token stop-sharing)
 
 c2ec4a5 feat(parent): stop-sharing control + API typed-model tests (wave-23)
