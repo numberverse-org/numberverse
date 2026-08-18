@@ -1,3 +1,11 @@
+## 19 Aug 2026 — 1.10.0 (Kid UX overhaul (un-stick games, back, minimal HUD, hints) + share-token stop-sharing)
+
+c2ec4a5 feat(parent): stop-sharing control + API typed-model tests (wave-23)
+bb81ddb feat(kid): one-time "how to answer" hint on sort/reorder scenes (Phase 4)
+01c5166 fix(kid): minimal HUD during a round — hide 7 progress-only indicators (Phase 3)
+620988b fix(kid): visible home glyph replaces cryptic ‹ back button (Phase 2)
+e7d9fd3 fix(kid): tap-to-answer fallback for drag-only sort scenes (Phase 1)
+
 ## 19 Aug 2026 — 1.9.0 (Admin console sign-out-everywhere + cascade confirms (wave-22))
 
 ea65e4f feat(admin): sign-out-everywhere surface + cascade-consequence confirm (wave-22)
