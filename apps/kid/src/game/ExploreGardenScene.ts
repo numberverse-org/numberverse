@@ -25,14 +25,15 @@ const ITEM_NAMES: Record<string, { en: string; bn: string }> = {
 };
 
 /** Shape palette (NCTB K.G.2 set) — a shape quest swaps the bottom palette to
- *  these so the kid identifies AND counts the named shape. */
-const SHAPES = ["⬤", "🔺", "⬛", "⭐"] as const;
+ *  these so the kid identifies AND counts the named shape. Colored emoji (not
+ *  monochrome ⬤/⬛ glyphs) so they render large and visible on every device. */
+const SHAPES = ["🟢", "🔺", "🟦", "⭐"] as const;
 
 /** Spoken names per shape glyph (TTS cannot read the glyphs). */
 const SHAPE_NAMES: Record<string, { en: string; bn: string }> = {
-  "⬤": { en: "circle", bn: "বৃত্ত" },
+  "🟢": { en: "circle", bn: "বৃত্ত" },
   "🔺": { en: "triangle", bn: "ত্রিভুজ" },
-  "⬛": { en: "square", bn: "বর্গ" },
+  "🟦": { en: "square", bn: "বর্গ" },
   "⭐": { en: "star", bn: "তারা" },
 };
 
@@ -44,23 +45,23 @@ interface Quest {
   shapes?: boolean;
 }
 
-/** Counting + shape quests, ramping from 1 → 6 and alternating specific/free
- *  targets. Shape quests appear once the kid has done a couple of counting
- *  quests (K.CC.1 → K.G.2). The parent advances the session after
- *  ROUNDS_TO_FINISH rounds, so a kid typically sees ~3 of these per visit. */
+/** Counting + shape quests, ramping 1 → 6 and interleaving shape recognition
+ *  from the SECOND quest (K.G.2) so a kid sees shapes right away instead of
+ *  only after several flower rounds. The parent advances the session after
+ *  ROUNDS_TO_FINISH rounds, so the first shape quest is always within reach. */
 const QUESTS: Quest[] = [
   { emoji: "🌸", n: 1 },
+  { emoji: "🟢", n: 2, shapes: true },      // circle — shapes visible early
   { emoji: "🐝", n: 2 },
-  { emoji: "⬤", n: 2, shapes: true },
+  { emoji: "🔺", n: 3, shapes: true },      // triangle
   { emoji: "🌸", n: 3 },
-  { emoji: "🔺", n: 3, shapes: true },
-  { emoji: undefined, n: 4 },
-  { emoji: "⭐", n: 4, shapes: true },
+  { emoji: "🟦", n: 3, shapes: true },      // square
+  { emoji: undefined, n: 4 },               // free count
+  { emoji: "⭐", n: 4, shapes: true },      // star
   { emoji: "🦋", n: 5 },
-  { emoji: "⬛", n: 5, shapes: true },
-  { emoji: undefined, n: 6 },
+  { emoji: "🟢", n: 4, shapes: true },      // circle again
+  { emoji: undefined, n: 6 },               // free count
   { emoji: "🌱", n: 4 },
-  { emoji: "☀️", n: 5 },
 ];
 
 /**
