@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "18 Aug 2026 · 1.2.2 (Catalog search + subject filter (wave-15))";
-export const APP_VERSION = "1.2.2";
+export const APP_BUILD = "18 Aug 2026 · 1.2.3 (Explore Garden shapes visible + earlier in quest order)";
+export const APP_VERSION = "1.2.3";

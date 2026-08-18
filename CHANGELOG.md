@@ -1,3 +1,7 @@
+## 18 Aug 2026 — 1.2.3 (Explore Garden shapes visible + earlier in quest order)
+
+adba44a fix(kid): Explore Garden shapes visible + earlier in quest order
+
 ## 18 Aug 2026 — 1.2.2 (Catalog search + subject filter (wave-15))
 
 abdccf1 feat(kid): catalog search + subject filter on world-detail + syllabus (#1075)
