@@ -106,10 +106,32 @@ export class AddSub100Scene extends Phaser.Scene {
 
   private spawnButtons() {
     const opts = new Set<number>([this.answer]);
+    // Misconception distractors — add/sub errors: off-by-one, forgetting the
+    // carry (adds the ones columns only), or reversing the operation (adding
+    // when subtracting) / doubling an addend.
+    const errs =
+      this.mode === "add"
+        ? [
+            this.answer + 1,
+            this.answer - 1,
+            this.answer - 10 * Math.floor(this.answer / 10), // no-carry (ones only)
+            this.a * 2, // counted the first addend twice
+          ]
+        : [
+            this.answer + 1,
+            this.answer - 1,
+            this.a + this.b, // reversed: added instead of subtracted
+            this.a - (this.b - 1), // took one less away
+          ];
+    for (const e of errs) {
+      if (opts.size >= 4) break;
+      if (e >= 0 && e <= 100 && e !== this.answer) opts.add(e);
+    }
+    // fall back to ±neighbors only when the error set is exhausted
     let delta = 1;
     while (opts.size < 4) {
-      const cand = Math.max(0, this.answer + (delta % 2 === 1 ? -delta : delta));
-      if (cand !== this.answer) opts.add(cand);
+      const cand = this.answer + (delta % 2 === 1 ? -delta : delta);
+      if (cand >= 0 && cand <= 100 && cand !== this.answer) opts.add(cand);
       delta++;
     }
     const values = [...opts].sort(() => Math.random() - 0.5);

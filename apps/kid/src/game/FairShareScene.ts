@@ -278,10 +278,23 @@ export class FairShareScene extends Phaser.Scene {
 
   private spawnButtons() {
     const opts = new Set<number>([this.answer]);
+    // Misconception distractors — sharing errors: one more/less "each" (the
+    // fair-share group count), or sharing into the wrong number of baskets.
+    const errs = [
+      this.answer + 1,
+      this.answer - 1,
+      Math.min(this.dividend, this.answer + this.divisor),
+      Math.max(1, this.answer - this.divisor),
+    ];
+    for (const e of errs) {
+      if (opts.size >= 4) break;
+      if (e >= 1 && e <= 100 && e !== this.answer) opts.add(e);
+    }
+    // fall back to ±neighbors only when the error set is exhausted
     let delta = 1;
     while (opts.size < 4) {
-      const cand = Math.max(1, this.answer + (delta % 2 === 1 ? -delta : delta));
-      if (cand !== this.answer) opts.add(cand);
+      const cand = this.answer + (delta % 2 === 1 ? -delta : delta);
+      if (cand >= 1 && cand <= 100 && cand !== this.answer) opts.add(cand);
       delta++;
     }
     const values = [...opts].sort(() => Math.random() - 0.5);

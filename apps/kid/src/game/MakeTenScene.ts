@@ -121,9 +121,18 @@ export class MakeTenScene extends Phaser.Scene {
       .setVisible(true);
 
     const opts = new Set<number>([ans]);
+    // Misconception distractors — bridge-to-ten errors: a wrong-leftover split
+    // (10 + (left±1), i.e. ans±1), forgetting the made-ten entirely (10), and
+    // adding the whole ten to the base (a+10) instead of just the leftover.
+    for (const e of [ans + 1, ans - 1, 10 + (this.left - 1), 10 + (this.left + 1), this.a + 10, 10]) {
+      if (opts.size >= 4) break;
+      if (e >= 10 && e <= 19 && e !== ans) opts.add(e);
+    }
+    let d = 1;
     while (opts.size < 4) {
-      const d = ans + Phaser.Math.Between(-3, 3);
-      if (d >= 10 && d <= 19) opts.add(d);
+      const c = ans + (d % 2 === 1 ? -d : d);
+      if (c >= 10 && c <= 19 && c !== ans) opts.add(c);
+      d++;
     }
     const bank = [...opts].sort(() => Math.random() - 0.5);
 

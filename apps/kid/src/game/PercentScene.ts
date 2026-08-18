@@ -98,9 +98,16 @@ export class PercentScene extends Phaser.Scene {
   private startRound() {
     this.clearButtons();
     this.percent = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
-    // pick a total that divides cleanly for the percent
-    const denominators: Record<number, number[]> = { 10: [10, 20, 30, 40], 20: [5, 10, 15, 20], 25: [4, 8, 12, 16], 50: [2, 4, 6, 8, 10], 100: [3, 5, 7, 9] };
-    const opts = denominators[this.percent] ?? [2, 4, 6, 8];
+    // pick a total that divides cleanly for the percent. 150% (#1869) needs
+    // EVEN totals so 1.5× stays a whole percent — it no longer falls through
+    // to the [2,4,6,8] catch-all.
+    const denominators: Record<number, number[]> = { 10: [10, 20, 30, 40], 20: [5, 10, 15, 20], 25: [4, 8, 12, 16], 50: [2, 4, 6, 8, 10], 100: [3, 5, 7, 9], 150: [2, 4, 6, 8, 10] };
+    const opts = denominators[this.percent];
+    if (!opts) {
+      // fail loudly — a percent rung with no whole-percent total set is a
+      // ladder bug (it would silently ask "X% of 10" with a half answer)
+      throw new Error(`[PercentScene] no clean total set for percent ${this.percent}`);
+    }
     this.total = Phaser.Math.RND.pick(opts);
     this.answer = (this.percent / 100) * this.total;
     this.startedAt = this.time.now;
@@ -155,10 +162,24 @@ export class PercentScene extends Phaser.Scene {
 
   private spawnButtons() {
     const opts = new Set<number>([this.answer]);
+    // Misconception distractors — percent errors: one tenth/quarter/half off,
+    // or confusing the percent with the answer (e.g. 50% of 8 → 8 instead of 4).
+    const errs = [
+      this.answer + 1,
+      this.answer - 1,
+      this.total,
+      Math.round(this.answer + this.answer * 0.1),
+      Math.max(0, Math.round(this.answer - this.answer * 0.1)),
+    ];
+    for (const e of errs) {
+      if (opts.size >= 4) break;
+      if (e >= 0 && e <= 150 && e !== this.answer) opts.add(e);
+    }
+    // fall back to ±neighbors only when the error set is exhausted
     let delta = 1;
     while (opts.size < 4) {
-      const cand = Math.max(0, this.answer + (delta % 2 === 1 ? -delta : delta));
-      if (cand !== this.answer) opts.add(cand);
+      const cand = this.answer + (delta % 2 === 1 ? -delta : delta);
+      if (cand >= 0 && cand <= 150 && cand !== this.answer) opts.add(cand);
       delta++;
     }
     const values = [...opts].sort(() => Math.random() - 0.5);

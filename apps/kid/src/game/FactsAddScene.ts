@@ -118,9 +118,26 @@ export class FactsAddScene extends Phaser.Scene {
 
     const ans = this.a + this.b;
     const opts = new Set<number>([ans]);
+    // Misconception distractors — addition-facts errors: one more/less
+    // (counting), dropping the ten/no-carry (the ones sum only), and the
+    // swapped-digit reversal where the fact shape allows it.
+    const errs = [
+      ans + 1,
+      ans - 1,
+      ans - 10 * Math.floor(ans / 10), // forgot the carry — the ones alone
+      parseInt(String(ans).split("").reverse().join(""), 10), // 15 → 51
+    ];
+    for (const e of errs) {
+      if (opts.size >= 4) break;
+      if (e >= 0 && e <= 20 && e !== ans) opts.add(e);
+    }
+    // widen the fallback to the whole valid domain so distractors never
+    // collapse at the 20 cap (10+10 was always the largest, alone)
+    let d = 1;
     while (opts.size < 4) {
-      const d = ans + Phaser.Math.Between(-3, 3);
-      if (d >= 0 && d <= 20) opts.add(d);
+      const c = ans + (d % 2 === 1 ? -d : d);
+      if (c >= 0 && c <= 20 && c !== ans) opts.add(c);
+      d++;
     }
     const bank = [...opts].sort(() => Math.random() - 0.5);
 

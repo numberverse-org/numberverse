@@ -191,8 +191,21 @@ export class PlaceValueScene extends Phaser.Scene {
 
   private spawnButtons() {
     const opts = new Set<number>([this.answer]);
-    while (opts.size < 4) {
-      opts.add(Phaser.Math.Between(0, 9));
+    // Misconception distractors — a digit the number ACTUALLY contains (the
+    // answer is no longer the only digit present), then an off-by-one neighbor.
+    const raw = String(this.number).split("").map((c) => Number(c));
+    for (const digit of raw) {
+      if (opts.size >= 4) break;
+      if (digit !== this.answer) opts.add(digit);
+    }
+    for (const digit of [this.answer + 1, this.answer - 1]) {
+      if (opts.size >= 4) break;
+      if (digit >= 0 && digit <= 9 && digit !== this.answer) opts.add(digit);
+    }
+    // bounded fill from 0..9 (terminates; only reached for numbers with few
+    // distinct digits, e.g. 2222)
+    for (let c = 0; c <= 9 && opts.size < 4; c++) {
+      if (c !== this.answer) opts.add(c);
     }
     const values = [...opts].sort(() => Math.random() - 0.5);
     const { radius, y, xFor } = answerRow(this, values.length, BUTTON_RADIUS);

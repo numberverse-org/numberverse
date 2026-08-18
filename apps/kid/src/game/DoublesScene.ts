@@ -138,9 +138,18 @@ export class DoublesScene extends Phaser.Scene {
     }
 
     const opts = new Set<number>([ans]);
+    // Misconception distractors — near-doubles ARE the point of the lesson, so
+    // always offer the double one less and one more (6+6 → 11 and 13): the kid
+    // has to tell the exact double apart from the near-doubles by sight.
+    for (const e of [this.base * 2 + 1, this.base * 2 - 1, this.base * 2]) {
+      if (opts.size >= 4) break;
+      if (e >= 2 && e <= 20 && e !== ans) opts.add(e);
+    }
+    let d = 1;
     while (opts.size < 4) {
-      const d = ans + Phaser.Math.Between(-3, 3);
-      if (d >= 2 && d <= 20) opts.add(d);
+      const c = ans + (d % 2 === 1 ? -d : d);
+      if (c >= 2 && c <= 20 && c !== ans) opts.add(c);
+      d++;
     }
     const bank = [...opts].sort(() => Math.random() - 0.5);
 

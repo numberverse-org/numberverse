@@ -101,7 +101,9 @@ export class DivisionFactsScene extends Phaser.Scene {
     this.clearButtons();
     const divisor = this.levels[Math.min(this.levelIndex, this.levels.length - 1)];
     this.divisor = divisor;
-    const quotient = Phaser.Math.Between(2, 12);
+    // clamp the dividend to ≤100 (#1867): the quotient comes from 2..⌊100/div⌋
+    // instead of a fixed 2..12 (12×12=144 asked "divide within 100")
+    const quotient = Phaser.Math.Between(2, Math.floor(100 / divisor));
     this.dividend = divisor * quotient;
     this.answer = quotient;
     this.startedAt = this.time.now;
@@ -155,10 +157,23 @@ export class DivisionFactsScene extends Phaser.Scene {
 
   private spawnButtons() {
     const opts = new Set<number>([this.answer]);
+    // Misconception distractors — division errors: counting the groups one too
+    // many/too few, or dividing by the wrong divisor (a one-off regroup).
+    const errs = [
+      this.answer + 1,
+      this.answer - 1,
+      Math.floor(this.dividend / (this.divisor + 1)),
+      Math.ceil(this.dividend / Math.max(1, this.divisor - 1)),
+    ];
+    for (const e of errs) {
+      if (opts.size >= 4) break;
+      if (e >= 0 && e <= 100 && e !== this.answer) opts.add(e);
+    }
+    // fall back to ±neighbors only when the error set is exhausted
     let delta = 1;
     while (opts.size < 4) {
-      const cand = Math.max(0, this.answer + (delta % 2 === 1 ? -delta : delta));
-      if (cand !== this.answer) opts.add(cand);
+      const cand = this.answer + (delta % 2 === 1 ? -delta : delta);
+      if (cand >= 0 && cand <= 100 && cand !== this.answer) opts.add(cand);
       delta++;
     }
     const values = [...opts].sort(() => Math.random() - 0.5);

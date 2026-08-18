@@ -250,10 +250,28 @@ export class TimesTableScene extends Phaser.Scene {
 
   private spawnButtons() {
     const opts = new Set<number>([this.answer]);
+    // Misconception distractors — real times-table errors: one row/column too
+    // many or too few, or adding one row/column's worth instead of the product.
+    // So 6×7=42 offers 49/48/36, not 41/43 (random ±neighbors).
+    const errs = [
+      (this.a + 1) * this.b, // one row too many (7×7 = 49)
+      this.a * (this.b + 1), // one column too many (6×8 = 48)
+      this.a * (this.b - 1), // one column too few (6×6 = 36)
+      (this.a - 1) * this.b, // one row too few (5×7 = 35)
+      this.answer + this.a,
+      this.answer - this.a,
+      this.answer + this.b,
+      this.answer - this.b,
+    ];
+    for (const e of errs) {
+      if (opts.size >= 4) break;
+      if (e >= 0 && e <= 100 && e !== this.answer) opts.add(e);
+    }
+    // fall back to ±neighbors only when the error set is exhausted
     let delta = 1;
     while (opts.size < 4) {
-      const cand = Math.max(0, this.answer + (delta % 2 === 1 ? -delta : delta));
-      if (cand !== this.answer) opts.add(cand);
+      const cand = this.answer + (delta % 2 === 1 ? -delta : delta);
+      if (cand >= 0 && cand <= 100 && cand !== this.answer) opts.add(cand);
       delta++;
     }
     const values = [...opts].sort(() => Math.random() - 0.5);
