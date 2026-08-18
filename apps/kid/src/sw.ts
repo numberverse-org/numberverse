@@ -245,6 +245,24 @@ registerRoute(
   "GET"
 );
 
+// #1722 — Bengali font faces (Noto Sans Bengali ×5, ~235KB) are NOT in the
+// static precache (see vite.config.ts globIgnores): an en-only install must
+// not download Bangla weights it never renders. CacheFirst on first use
+// (mirrors /voice) so a bn session works fully offline after one SW-controlled
+// online load. Latin faces stay precached. The preload in index.html only fires
+// for bn installs, so this route is cold for en sessions.
+registerRoute(
+  /\/fonts\/NotoSansBengali-.*\.woff2$/,
+  new CacheFirst({
+    cacheName: "nv-fonts-bn",
+    plugins: [
+      new ExpirationPlugin({ maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 }),
+      new CacheableResponsePlugin({ statuses: [200] }),
+    ],
+  }),
+  "GET"
+);
+
 /* ── /api — the offline-first network boundary (#264) ─────────────────── */
 const API_CACHE = "nv-api";
 

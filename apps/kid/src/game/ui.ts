@@ -6,6 +6,7 @@ import { enableSwipeToAnswer } from "./gestures";
 import { matureRender } from "./renderBand"; // #1040/#1035 — older-kid font stack
 import { prefersReducedMotion } from "./reducedMotion";
 import { readA11y } from "./a11y"; // #1582 — Big Text toggle scales canvas glyphs too
+import { getAppLang } from "./locale"; // #1720 — Bangla canvas text size multiplier
 
 /**
  * Modern 2026-style game UI: soft gradient buttons with glass edges,
@@ -29,12 +30,47 @@ export interface TxtOpts {
 /* #1035 — typography scales with the kid's band. Younger bands keep the round,
  * cheerful Baloo 2 display face; bands 5+ (older kids) swap to Nunito as the
  * lead face so lessons stop looking like toddler toys. Bangla still falls
- * through to Noto Sans Bengali in both stacks. */
-const FONT_YOUNG = "'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, 'Segoe UI', sans-serif";
-const FONT_MATURE = "'Nunito', 'Noto Sans Bengali', system-ui, 'Segoe UI', sans-serif";
+ * through to Noto Sans Bengali in both stacks.
+ *
+ * #1717 — each webfont is followed by its `<font> Fallback` twin (defined in
+ * boot.css with metric overrides matching the webfont's native line box), so a
+ * fallback→webfont swap never shifts layout. */
+const FONT_YOUNG = "'Baloo 2', 'Baloo 2 Fallback', 'Noto Sans Bengali', 'Noto Sans Bengali Fallback', 'Nunito', 'Nunito Fallback', system-ui, 'Segoe UI', sans-serif";
+const FONT_MATURE = "'Nunito', 'Nunito Fallback', 'Noto Sans Bengali', 'Noto Sans Bengali Fallback', system-ui, 'Segoe UI', sans-serif";
 function fontStack(): string {
   return matureRender() ? FONT_MATURE : FONT_YOUNG;
 }
+
+/* #1718 — wait for the canvas font faces (Baloo 2 / Nunito / Noto Sans
+ * Bengali, at the weights game text uses) to be loaded before creating Phaser
+ * Text objects. Phaser bakes glyphs at creation time — text created before
+ * the webfont lands is rasterized in the fallback and NEVER re-renders. The
+ * boot path already gates on this in gameHost.ts; scenes that create text
+ * OUTSIDE the normal boot flow can await this directly. Loads are
+ * language-aware: an en session never fetches the Bengali faces (#1722). */
+let fontReadyPromise: Promise<unknown> | null = null;
+export function whenFontsReady(): Promise<unknown> {
+  if (fontReadyPromise) return fontReadyPromise;
+  if (typeof document === "undefined" || !document.fonts?.load) {
+    fontReadyPromise = Promise.resolve();
+    return fontReadyPromise;
+  }
+  const loads = ['600 16px "Baloo 2"', '800 16px "Baloo 2"', '600 16px "Nunito"', '800 16px "Nunito"'];
+  if (getAppLang() === "bn") {
+    loads.push('600 16px "Noto Sans Bengali"', '800 16px "Noto Sans Bengali"');
+  }
+  fontReadyPromise = Promise.all([document.fonts.ready, ...loads.map((f) => document.fonts.load(f))]).catch(
+    () => {
+      /* a font failure must never block a scene */
+    }
+  );
+  return fontReadyPromise;
+}
+// #1718 — pre-warm the canvas fonts the moment the UI toolkit module loads (the
+// game chunk), so scenes that create text before the boot gate resolves still
+// rasterize the real faces. Resolves instantly when the fonts are already
+// loaded; an en session never loads the Bengali faces (#1722).
+void whenFontsReady();
 
 /* #1582 — the Big Text a11y toggle scales the DOM around the game canvas, but
  * Phaser glyphs are drawn INTO the canvas and ignore CSS zoom. `bigTextFactor()`
@@ -91,10 +127,19 @@ if (typeof window !== "undefined" && typeof MutationObserver !== "undefined") {
   });
 }
 
+/* #1720 — Bangla legibility: Bengali glyphs (matras + vowel signs stack above
+ * the x-height) read ~1.15× smaller than Latin at the same px, so a Bangla
+ * session scales canvas text up. Mirrors the DOM rule in boot.css/screens.css
+ * (html[lang="bn"]). getAppLang() is the runtime language holder (locale.ts). */
+function bnTextScale(): number {
+  return getAppLang() === "bn" ? 1.15 : 1;
+}
+
 /** Modern text style: rounded font stack, 1px tracking, soft drop shadow. */
 export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Types.GameObjects.Text.TextStyle {
   // #1582 — Big Text scales the glyph: every canvas label follows the toggle.
-  const px = Math.round(size * bigTextScale);
+  // #1720 — a Bangla session also bumps canvas text ~1.15× for legibility.
+  const px = Math.round(size * bigTextScale * bnTextScale());
   const st: Phaser.Types.GameObjects.Text.TextStyle = {
     fontFamily: fontStack(),
     fontSize: `${px}px`,
@@ -131,7 +176,8 @@ export function txt(size: number, color: string, opts: TxtOpts = {}): Phaser.Typ
 export function promptTxt(size: number): Phaser.Types.GameObjects.Text.TextStyle {
   return {
     fontFamily: fontStack(),
-    fontSize: `${size}px`,
+    // #1720 — a Bangla session scales canvas prompts ~1.15× for legibility.
+    fontSize: `${Math.round(size * bnTextScale())}px`,
     color: "#ffffff",
     fontStyle: "800",
     align: "center",

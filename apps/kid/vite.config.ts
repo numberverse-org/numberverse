@@ -70,6 +70,13 @@ export default defineConfig({
         // png covers the shipped file; jpg/jpeg/webp keep the glob ready for
         // any future og-card format without a config edit.
         globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,svg,ico,json,glb,wasm}"],
+        // #1722 — the 5 Bengali faces (~235KB total) are NOT precached: an
+        // en-only install must not download Bangla weights it never renders.
+        // They're served by the runtime CacheFirst route in src/sw.ts
+        // (nv-fonts-bn) on first use, so a bn install works fully offline after
+        // one SW-controlled online load. The Latin faces (Baloo 2 / Nunito)
+        // stay in the precache (offline-first for the majority script).
+        globIgnores: ["**/fonts/NotoSansBengali-*.woff2"],
         // #991 — the 5 MiB cap applies ONLY to the precache glob above (the
         // ~2.2 MB index chunk, app shell, fonts, icons, etc.). The ~110 MB
         // neural voice model and other /voice/ runtime assets deliberately

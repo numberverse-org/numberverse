@@ -75,7 +75,12 @@ html {
 }
 
 body {
-  font-family: "Baloo 2", "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* #1719 — "Baloo 2"/"Nunito" were never loaded by the parent app (no
+     @font-face, no next/font) so they silently resolved to system-ui. Drop the
+     dead refs and add Noto Sans Bengali so Bangla text (the portal is
+     bilingual) renders with a proper Bengali face when the device has one
+     (Android ships Noto Sans Bengali; iOS/Windows use their system faces). */
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif;
   background: var(--nv-body-bg);
   color: var(--nv-text);
   min-height: 100%;

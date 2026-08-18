@@ -951,6 +951,15 @@ export interface Strings {
   gameLoadError: string;
   gameLoadErrorHint: string;
   gameLoadRetry: string;
+  /* #1707/#1714 — shared ErrorBoundary fallback copy. Used by the kid app's
+     per-screen boundaries (STR is the locale gate); the boot chunk + parent
+     portal keep their own inline en/bn because they must not pull STR in
+     (#1217). */
+  errTitle: string;
+  errBody: string;
+  errRetry: string;
+  errGoHome: string;
+  errResetFresh: string;
   /* #1376 — storage-full / QuotaExceeded write warning */
   storageFull: string;
   islandBeta: string;

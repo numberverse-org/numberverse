@@ -1,5 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
+import ErrorBoundary, { logBoundaryError } from "./components/ErrorBoundary";
 import "./styles/screens.css"; // #1177 — deferred screen CSS rides the lazy App chunk (never blocks first paint)
 // Type-only — Phaser's runtime lives in the async engine chunk (issue #15), so
 // `import type` is erased and the main bundle carries ZERO engine bytes.
@@ -186,6 +187,38 @@ function ScreenFallback() {
       <span className="game-boot-spinner" aria-hidden="true" />
       <span className="screen-suspense-txt">{STR[bn ? "bn" : "en"].loadingGame}</span>
     </div>
+  );
+}
+
+/** #1707 — per-screen error boundary. A throw in ONE screen falls back to
+ *  Nova's "something went wrong — let's go back" (shared ErrorBoundary +
+ *  STR-sourced copy → locale gate) and returns to the app home, while the App
+ *  shell + session state survive. #1709 — its Retry re-renders the subtree, so
+ *  a failed lazy screen chunk re-attempts its import WITHOUT a full reload.
+ *  #1711 — every catch is logged to the nvDiagErrors-style buffer. */
+function SafeScreen({
+  lang,
+  t,
+  label,
+  onGoHome,
+  children,
+}: {
+  lang: Lang;
+  t: Strings;
+  label: string;
+  onGoHome: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <ErrorBoundary
+      label={`screen:${label}`}
+      lang={lang}
+      copy={{ title: t.errTitle, body: t.errBody, retry: t.errRetry, goHome: t.errGoHome }}
+      onCatch={(error) => logBoundaryError(`screen:${label}`, error)}
+      onGoHome={onGoHome}
+    >
+      {children}
+    </ErrorBoundary>
   );
 }
 
@@ -3352,6 +3385,7 @@ export default function App() {
    *  locked behind the gate — the gate just unlocks cross-device progress. */
   if (screen === "welcome") {
     return (
+      <SafeScreen lang={lang} t={t} label="welcome" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen worlds parent-screen gate-screen">
           <div className="gate-card welcome-card">
@@ -3400,6 +3434,7 @@ export default function App() {
           </div>
         </main>
       </div>
+      </SafeScreen>
     );
   }
 
@@ -3413,6 +3448,7 @@ export default function App() {
    *  Bands expand/collapse; each lesson shows the game + the idea it teaches. */
   if (screen === "syllabus") {
     return (
+      <SafeScreen lang={lang} t={t} label="syllabus" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <SyllabusScreen
           kid={kid}
@@ -3426,6 +3462,7 @@ export default function App() {
           startSingleSkill={startSingleSkill}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -3433,11 +3470,16 @@ export default function App() {
   // and leaderboard stay reachable (they are grown-up / non-play surfaces);
   // every kid play screen from home onward shows the pause screen instead.
   if (pauseGate && screen !== "settings" && screen !== "parent" && screen !== "leaderboard") {
-    return pauseGate;
+    return (
+      <SafeScreen lang={lang} t={t} label="pause" onGoHome={() => setScreen("home")}>
+        {pauseGate}
+      </SafeScreen>
+    );
   }
 
   if (screen === "home" && kid) {
     return (
+    <SafeScreen lang={lang} t={t} label="home" onGoHome={() => setScreen("home")}>
     <Suspense fallback={<ScreenFallback />}>
     <HomeScreen
       kid={kid}
@@ -3517,6 +3559,7 @@ export default function App() {
       onGuestUpgrade={goGuestUpgrade}
     />
     </Suspense>
+    </SafeScreen>
     );
   }
 
@@ -3565,6 +3608,7 @@ export default function App() {
               ? t.settingsSyncError
               : t.settingsSyncIdle;
     return (
+      <SafeScreen lang={lang} t={t} label="settings" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
@@ -3993,12 +4037,14 @@ export default function App() {
           </p>
         </main>
       </div>
+      </SafeScreen>
     );
   }
   if (screen === "upgrade") {
     // Freemium — kid-facing "Parent Plus" explainer. No payment here (bKash/Nagad
     // redirects are awkward on a kid's phone); the parent unlocks in the portal.
     return (
+      <SafeScreen lang={lang} t={t} label="upgrade" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen worlds parent-screen upgrade-screen">
           <header className="screen-head">
@@ -4016,6 +4062,7 @@ export default function App() {
           </div>
         </main>
       </div>
+      </SafeScreen>
     );
   }
   if (screen === "parent") {
@@ -4026,6 +4073,7 @@ export default function App() {
     if (!signedIn) {
       const valid = gateMode === "in" ? gateEmail.trim().length > 0 && gatePass.length > 0 : gateName.trim().length > 0 && gateEmail.trim().length > 0 && gatePass.length >= 6;
       return (
+        <SafeScreen lang={lang} t={t} label="parent-gate" onGoHome={() => setScreen("home")}>
         <div className="app">
           <main className="screen worlds parent-screen gate-screen">
             <header className="screen-head">
@@ -4043,15 +4091,32 @@ export default function App() {
               {googleClientId() ? (
                 <>
                   <div className="gate-google">
-                    <Suspense fallback={null}>
-                      <GoogleSignIn
-                        onToken={(tok) => void submitGoogle(tok)}
-                        disabled={gateBusy}
-                        fallbackText={googleEnabled() ? t.gateGoogleGone : t.gateGoogleUnavailable}
-                        retryText={t.gateGoogleRetry}
-                        lang={lang}
-                      />
-                    </Suspense>
+                    {/* #1710 — GoogleSignIn is a lazy chunk wrapped only in
+                        Suspense fallback={null}; a chunk/render throw would
+                        unmount the whole gate. Give it the shared boundary with
+                        a REAL inline fallback (the Google sign-in is optional —
+                        email tabs always remain below). */}
+                    <ErrorBoundary
+                      label="google-signin"
+                      lang={lang}
+                      onCatch={(error) => logBoundaryError("google-signin", error)}
+                      fallback={({ retry }) => (
+                        <div className="gate-google-fallback" role="alert" aria-live="polite">
+                          <p className="gate-sub">{googleEnabled() ? t.gateGoogleGone : t.gateGoogleUnavailable}</p>
+                          <button className="ghost-btn" onClick={retry}>{t.gateGoogleRetry}</button>
+                        </div>
+                      )}
+                    >
+                      <Suspense fallback={null}>
+                        <GoogleSignIn
+                          onToken={(tok) => void submitGoogle(tok)}
+                          disabled={gateBusy}
+                          fallbackText={googleEnabled() ? t.gateGoogleGone : t.gateGoogleUnavailable}
+                          retryText={t.gateGoogleRetry}
+                          lang={lang}
+                        />
+                      </Suspense>
+                    </ErrorBoundary>
                   </div>
                   {googleEnabled() && <div className="gate-or"><span>{t.gateGoogleOr}</span></div>}
                 </>
@@ -4112,6 +4177,7 @@ export default function App() {
             </div>
           </main>
         </div>
+        </SafeScreen>
       );
     }
     // 🔐 PIN gate (#86): a signed-in parent proves a 4-digit PIN before the
@@ -4136,6 +4202,7 @@ export default function App() {
       const secQ = SECURITY_QUESTIONS[Math.min(Math.max(Number(securityQuestionId()) || 0, 0), SECURITY_QUESTIONS.length - 1)];
       const secStepSub = secStep === "pick" ? t.secPickSub : secStep === "answer" ? t.secAnswerSub : "";
       return (
+        <SafeScreen lang={lang} t={t} label="parent-pin" onGoHome={() => setScreen("home")}>
         <div className="app">
           <main className="screen worlds parent-screen">
             <header className="screen-head">
@@ -4327,6 +4394,7 @@ export default function App() {
             </div>
           </main>
         </div>
+        </SafeScreen>
       );
     }
     // Signed in → the full parent panel.
@@ -4341,6 +4409,7 @@ export default function App() {
     const famMastered = [...masteredCounts(skillsMap, kids.map((k) => k.id)).values()].reduce((a, b) => a + b, 0);
     const PARENT_PORTAL = "/parent/"; // full Next.js portal (same origin)
     return (
+      <SafeScreen lang={lang} t={t} label="parent" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen worlds parent-screen">
           <header className="screen-head">
@@ -4968,6 +5037,7 @@ export default function App() {
           <p className="build-stamp">Numberverse · v{APP_VERSION}</p>
         </main>
       </div>
+      </SafeScreen>
     );
   }
 
@@ -4982,6 +5052,7 @@ export default function App() {
       })
       .sort((a, b) => b.mastery - a.mastery || b.stars - a.stars || a.kid.name.localeCompare(b.kid.name));
     return (
+      <SafeScreen lang={lang} t={t} label="leaderboard" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen lb-screen">
           <header className="screen-head">
@@ -5031,11 +5102,13 @@ export default function App() {
           )}
         </main>
       </div>
+      </SafeScreen>
     );
   }
 
   if (screen === "kidpick" || (screen === "home" && !kid)) {
     return (
+      <SafeScreen lang={lang} t={t} label="kidpick" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen worlds">
           <header className="screen-head">
@@ -5120,11 +5193,13 @@ export default function App() {
           </div>
         </main>
       </div>
+      </SafeScreen>
     );
   }
 
   if (screen === "addkid") {
     return (
+      <SafeScreen lang={lang} t={t} label="addkid" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <AddKidForm
           t={t}
@@ -5135,6 +5210,7 @@ export default function App() {
           onParent={goParent}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5143,6 +5219,7 @@ export default function App() {
      "none"), saved per kid, fully offline. */
   if (screen === "avatar" && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="avatar" onGoHome={() => setScreen("home")}>
       <AvatarBuilder
         kid={kid}
         t={t}
@@ -5156,6 +5233,7 @@ export default function App() {
         onBack={goBack}
         onNova={() => setScreen("nova")}
       />
+      </SafeScreen>
     );
   }
 
@@ -5165,6 +5243,7 @@ export default function App() {
     const totalCards = journeyStops().length;
     const rank = rankFor(collected, lang);
     return (
+      <SafeScreen lang={lang} t={t} label="cards" onGoHome={() => setScreen("home")}>
       <div className="app">
         <main className="screen cards-screen">
           {/* #248 — quiet-hours dim + 🌙 badge */}
@@ -5274,11 +5353,13 @@ export default function App() {
           </div>
         </main>
       </div>
+      </SafeScreen>
     );
   }
 
   if (screen === "worlds") {
     return (
+      <SafeScreen lang={lang} t={t} label="worlds" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <WorldsScreen
           kid={kid}
@@ -5310,11 +5391,13 @@ export default function App() {
           closeBoss={closeBoss}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
   if (screen === "worlddetail" && world && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="worlddetail" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <WorldDetailScreen
           world={world}
@@ -5329,11 +5412,13 @@ export default function App() {
           skipNotice={skipNotice}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
   if (screen === "done" && world && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="done" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <DoneScreen
           world={world}
@@ -5362,6 +5447,7 @@ export default function App() {
           setScreen={setScreen}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5372,6 +5458,7 @@ export default function App() {
      + next-round button are still there. */
   if (screen === "break" && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="break" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <BreakScreen
           kid={kid}
@@ -5381,6 +5468,7 @@ export default function App() {
           setScreen={setScreen}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5391,6 +5479,7 @@ export default function App() {
      works; a kid can never get stuck. */
   if (screen === "contrast" && kid && contrastJob) {
     return (
+      <SafeScreen lang={lang} t={t} label="contrast" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <ContrastScreen
           template={contrastJob.template}
@@ -5404,6 +5493,7 @@ export default function App() {
           setScreen={setScreen}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5411,6 +5501,7 @@ export default function App() {
      streak, full-land mastery). Conditions read only local state — offline. */
   if (screen === "badges" && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="badges" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <BadgesScreen
           kid={kid}
@@ -5424,6 +5515,7 @@ export default function App() {
           goNova={goNova}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5432,6 +5524,7 @@ export default function App() {
      gets a confetti + spoken cheer exactly once (via the store's sync). */
   if (screen === "trophyroom" && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="trophyroom" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <TrophyRoomScreen
           kid={kid}
@@ -5442,6 +5535,7 @@ export default function App() {
           goNova={goNova}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5450,6 +5544,7 @@ export default function App() {
      unlocks — the unlock animation. All offline (local stats only). */
   if (screen === "achievements" && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="achievements" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <AchievementsScreen
           kid={kid}
@@ -5467,6 +5562,7 @@ export default function App() {
           goNova={goNova}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5474,6 +5570,7 @@ export default function App() {
      The final tower carries a crown flag; the whole castle is the long-game trophy. */
   if (screen === "castle" && kid) {
     return (
+      <SafeScreen lang={lang} t={t} label="castle" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <CastleScreen
           kid={kid}
@@ -5484,6 +5581,7 @@ export default function App() {
           openCert={openCert}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5491,6 +5589,7 @@ export default function App() {
      PDF. Only complete worlds can be celebrated this way. */
   if (screen === "cert" && kid && certWorld) {
     return (
+      <SafeScreen lang={lang} t={t} label="cert" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <CertScreen
           certWorld={certWorld}
@@ -5503,6 +5602,7 @@ export default function App() {
           shareCert={shareCert}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5513,6 +5613,7 @@ export default function App() {
     const wsKid = kids.find((k) => k.id === parentKidId) ?? kid ?? kids[0];
     if (!wsKid) return null;
     return (
+      <SafeScreen lang={lang} t={t} label="worksheet" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <WorksheetScreen
           kid={wsKid}
@@ -5523,6 +5624,7 @@ export default function App() {
           onBack={() => setScreen("parent")}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5534,6 +5636,7 @@ export default function App() {
     const fcKid = kids.find((k) => k.id === parentKidId) ?? kid ?? kids[0];
     if (!fcKid) return null;
     return (
+      <SafeScreen lang={lang} t={t} label="flashcards" onGoHome={() => setScreen("home")}>
       <Suspense fallback={<ScreenFallback />}>
         <FlashcardsScreen
           kid={fcKid}
@@ -5543,6 +5646,7 @@ export default function App() {
           onBack={() => setScreen("parent")}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5551,6 +5655,7 @@ export default function App() {
      where the pet games live. */
   if (screen === "nova3d") {
     return (
+      <SafeScreen lang={lang} t={t} label="nova3d" onGoHome={() => setScreen("home")}>
       <Suspense
         fallback={
           // #880 — the lazy Nova3DHome chunk is SW-precached; show the same
@@ -5573,6 +5678,7 @@ export default function App() {
           onExit={() => setScreen("home")}
         />
       </Suspense>
+      </SafeScreen>
     );
   }
 
@@ -5593,6 +5699,7 @@ export default function App() {
     const curRung = inGame && kid && curStep ? adaptiveLevelIndex(kid.id, curStep.skillId, curStep.gameId) : 0;
     const curRungKey = rungStageKey(curRung);
     return (
+      <SafeScreen lang={lang} t={t} label="nova" onGoHome={() => setScreen("home")}>
       <div className="app game-app">
         {/* #248 — quiet-hours dim also belongs over the game canvas (not just home). */}
         {quietChrome}
@@ -5908,6 +6015,7 @@ export default function App() {
           <div className="storage-toast" role="alert">⚠️ {t.storageFull}</div>
         )}
       </div>
+      </SafeScreen>
     );
   }
 

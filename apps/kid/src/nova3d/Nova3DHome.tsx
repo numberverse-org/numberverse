@@ -10,7 +10,8 @@
  *   • "Play games (2D)" returns to the 2D NovaScene where the pet mini-games
  *     and the 135 learning games live — Phaser never mounts alongside this.
  */
-import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import ErrorBoundary, { logBoundaryError } from "../components/ErrorBoundary";
 import { getAppLang } from "../game/locale";
 import { speak } from "../game/speech";
 import { STR } from "../i18n";
@@ -24,26 +25,6 @@ interface Props {
   kidId?: string; // #689 store keys (nova / garden / coins)
   onBack2d: () => void; // → 2D Nova home (pet games etc.)
   onExit: () => void; // → the app home
-}
-
-/** #684 — a lazy-chunk load failure must NEVER blank the app. If the 3D
- *  island's chunk throws (browser quirk, cache corruption…), we fall back to
- *  the 2D Nova home instead of unmounting the whole React tree. */
-class IslandErrorBoundary extends Component<
-  { onFallback: () => void; children: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  componentDidCatch() {
-    // drop the island for this visit — the kid is back on 2D in a tap
-    this.props.onFallback();
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
 }
 
 export default function Nova3DHome({ kidName, kidId, onBack2d, onExit }: Props) {
@@ -87,7 +68,23 @@ export default function Nova3DHome({ kidName, kidId, onBack2d, onExit }: Props) 
         </button>
       </header>
 
-      <IslandErrorBoundary onFallback={onBack2d}>
+      {/* #1714/#1713 — the shared boundary takes over IslandErrorBoundary's
+          role: a lazy chunk / render throw never blanks the app. #1713 — the
+          fallback now shows a KID-FACING localized message (not a silent empty
+          frame) with "Go back" (→ 2D Nova) + Retry (re-attempts the island
+          import). */}
+      <ErrorBoundary
+        label="island"
+        lang={lang}
+        copy={{
+          title: t.errTitle,
+          body: t.errBody,
+          retry: t.errRetry,
+          goHome: t.errGoHome,
+        }}
+        onCatch={(error) => logBoundaryError("island", error)}
+        onGoHome={onBack2d}
+      >
         <Suspense
           fallback={
             <div className="island-loading" role="status">
@@ -100,7 +97,7 @@ export default function Nova3DHome({ kidName, kidId, onBack2d, onExit }: Props) 
             <Nova3D onPlay2d={onBack2d} kidId={kidId} />
           </div>
         </Suspense>
-      </IslandErrorBoundary>
+      </ErrorBoundary>
 
       <footer className="island-bottom">
         <span className="island-hint">{t.islandHint}</span>

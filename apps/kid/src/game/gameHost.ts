@@ -11,6 +11,31 @@
 import type { Game, Scene } from "phaser";
 import { startPerfProbe, stopPerfProbe } from "./perfProbe"; // #1324 — frame-jank measuring stick
 
+/* #1718 — the canvas rasterizes glyphs at Text-creation time, so Phaser text
+ * created before the webfonts land is stuck in the fallback font forever.
+ * Gate boot resolution on DOM font readiness (language-aware: an en session
+ * never fetches the Bengali faces — #1722). Kept in the MAIN bundle, so it
+ * reads nv_lang directly instead of importing ./locale (which would drag
+ * @numberverse/core into the boot chunk). */
+const GAME_FONT_LOADS = ['600 16px "Baloo 2"', '800 16px "Baloo 2"', '600 16px "Nunito"', '800 16px "Nunito"'];
+const GAME_BN_FONT_LOADS = ['600 16px "Noto Sans Bengali"', '800 16px "Noto Sans Bengali"'];
+function gameLangIsBn(): boolean {
+  try {
+    return (localStorage.getItem("nv_lang") || "en") === "bn";
+  } catch {
+    return false; // storage denied — English defaults
+  }
+}
+async function fontsReady(): Promise<void> {
+  if (typeof document === "undefined" || !document.fonts?.load) return;
+  const loads = gameLangIsBn() ? [...GAME_FONT_LOADS, ...GAME_BN_FONT_LOADS] : GAME_FONT_LOADS;
+  try {
+    await Promise.all([document.fonts.ready, ...loads.map((f) => document.fonts.load(f))]);
+  } catch {
+    /* a font failure must never block the game */
+  }
+}
+
 let bootPromise: Promise<Game | null> | null = null;
 let current: Game | null = null;
 /** The generation `current` was created in. Lets the fast-path in `boot()`
@@ -102,14 +127,18 @@ export function getGame(): Game | null {
  *  as soon as the Game object exists, but the renderer/texture manager can still
  *  be booting. Resolving on the instance made `whenReady()` race: a caller could
  *  observe `isBooted` before READY and start a scene on a half-booted game (or
- *  miss the event entirely and leave a blank navy canvas). */
+ *  miss the event entirely and leave a blank navy canvas).
+ *
+ *  #1718 — also gate on DOM font readiness before resolving, so scenes rasterize
+ *  the real faces (Baloo 2 / Nunito / Noto Sans Bengali) instead of the system
+ *  fallback (Phaser text never re-renders after creation). */
 function waitForGame(g: Game, gen: number): Promise<Game | null> {
   if (gen !== generation) return Promise.resolve(null);
   // Phaser sets isBooted at the START of boot, before the renderer/texture
   // manager has finished and before READY. isRunning is the flag flipped by
   // Game.start() AFTER the READY event, so it is the correct "already ready"
   // check here.
-  if (g.isRunning) return Promise.resolve(g);
+  if (g.isRunning) return fontsReady().then(() => (gen === generation ? g : null));
   return new Promise((resolve) => {
     let settled = false;
     const settle = (out: Game | null) => {
@@ -117,7 +146,9 @@ function waitForGame(g: Game, gen: number): Promise<Game | null> {
       settled = true;
       resolve(gen === generation ? out : null);
     };
-    g.events.once("ready", () => settle(g));
+    g.events.once("ready", () => {
+      void fontsReady().then(() => settle(g));
+    });
     g.events.once("destroy", () => settle(null));
   });
 }

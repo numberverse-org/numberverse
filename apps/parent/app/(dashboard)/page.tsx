@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import ErrorBoundary, { logBoundaryError } from "../../../kid/src/components/ErrorBoundary";
 
 import {
   isAllowedExternalUrl,
@@ -159,6 +160,45 @@ function pushSubToBody(sub: PushSubscription): PushSubscribeBody {
     p256dh: toB64(sub.getKey("p256dh")),
     auth: toB64(sub.getKey("auth")),
   };
+}
+
+/** #1705 — per-section error boundary for the dashboard. A throw in ONE card
+ *  shows an INLINE friendly fallback (with a Retry that re-renders the same
+ *  section) instead of blanking the whole portal. Uses the shared
+ *  ErrorBoundary; copy stays in the portal's BANNER_LANGS tone, self-contained
+ *  en/bn (this helper must render even when the section's data is bad). */
+function SectionErr({ label, children }: { label: string; children: ReactNode }) {
+  const bn =
+    typeof window !== "undefined" &&
+    (() => {
+      try {
+        return localStorage.getItem("nv_parent_lang") === "bn";
+      } catch {
+        return false;
+      }
+    })();
+  return (
+    <ErrorBoundary
+      label={`parent:${label}`}
+      lang={bn ? "bn" : "en"}
+      copy={{
+        title: bn ? "এই অংশে সমস্যা হয়েছে" : "This section hit a snag",
+        body: bn ? "চিন্তা নেই — আবার চেষ্টা করুন।" : "Don't worry — try again.",
+        retry: bn ? "আবার চেষ্টা করুন" : "Try again",
+      }}
+      onCatch={(error) => logBoundaryError(`parent:${label}`, error)}
+      fallback={({ copy, retry }) => (
+        <section className="card" role="alert" style={{ textAlign: "center", padding: 24 }}>
+          <p className="muted">{copy.body}</p>
+          <button type="button" className="btn btn-small" onClick={retry}>
+            {copy.retry}
+          </button>
+        </section>
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }
 
 export default function ParentDashboard() {
@@ -1897,44 +1937,48 @@ export default function ParentDashboard() {
 
       {/* #246 — guided multi-kid onboarding (first run with no kids) */}
       {onboarding === "open" && !error && (
-        <OnboardingCard
-          wizLang={wizLang}
-          onChangeLang={(next) => {
-            setWizLang(next);
-            localStorage.setItem("nv_parent_lang", next);
-          }}
-          kids={kids}
-          editName={editName}
-          setEditName={setEditName}
-          editAvatar={editAvatar}
-          setEditAvatar={setEditAvatar}
-          editBirthYear={editBirthYear}
-          setEditBirthYear={setEditBirthYear}
-          onboardBusy={onboardBusy}
-          onboardErr={onboardErr}
-          onSubmit={() => void handleOnboardCreate()}
-          onAddAnother={() => document.getElementById("onboard-name")?.focus()}
-          onFinish={finishOnboarding}
-        />
+        <SectionErr label="onboarding">
+          <OnboardingCard
+            wizLang={wizLang}
+            onChangeLang={(next) => {
+              setWizLang(next);
+              localStorage.setItem("nv_parent_lang", next);
+            }}
+            kids={kids}
+            editName={editName}
+            setEditName={setEditName}
+            editAvatar={editAvatar}
+            setEditAvatar={setEditAvatar}
+            editBirthYear={editBirthYear}
+            setEditBirthYear={setEditBirthYear}
+            onboardBusy={onboardBusy}
+            onboardErr={onboardErr}
+            onSubmit={() => void handleOnboardCreate()}
+            onAddAnother={() => document.getElementById("onboard-name")?.focus()}
+            onFinish={finishOnboarding}
+          />
+        </SectionErr>
       )}
 
       {/* After onboarding (or skipped): a plain empty state with a fast path in.
           #1591 — "Not now" never permanently dismisses: a "Re-run setup guide"
           affordance keeps the wizard reachable. */}
       {kids.length === 0 && onboarding === "done" && !error && (
-        <EmptyState
-          wizLang={wizLang}
-          onAddFirst={() => {
-            setShowAdd(true);
-            setEditName("");
-            setEditAvatar("🦊");
-            setEditBirthYear(defaultBirthYear());
-          }}
-          onRerunSetup={() => {
-            setOnboarding("open");
-            setShowAdd(false);
-          }}
-        />
+        <SectionErr label="empty-state">
+          <EmptyState
+            wizLang={wizLang}
+            onAddFirst={() => {
+              setShowAdd(true);
+              setEditName("");
+              setEditAvatar("🦊");
+              setEditBirthYear(defaultBirthYear());
+            }}
+            onRerunSetup={() => {
+              setOnboarding("open");
+              setShowAdd(false);
+            }}
+          />
+        </SectionErr>
       )}
 
       {/* #619 — persistent section navigation (sticky sidebar on desktop,
@@ -1991,328 +2035,382 @@ export default function ParentDashboard() {
         </p>
       )}
       {/* ── family overview ── */}
-      <FamilyOverview
-        kids={kids}
-        famMastered={famMastered}
-        famRounds={famRounds}
-        famMinutes={famMinutes}
-        famActive={famActive}
-        wizLang={wizLang}
-      />
+      <SectionErr label="family-overview">
+        <FamilyOverview
+          kids={kids}
+          famMastered={famMastered}
+          famRounds={famRounds}
+          famMinutes={famMinutes}
+          famActive={famActive}
+          wizLang={wizLang}
+        />
+      </SectionErr>
 
       {/* ── kid switcher ── */}
-      <KidSwitcher
-        kids={kids}
-        activeId={activeId}
-        onSwitch={(id) => void switchKid(id)}
-        onToggleAdd={() => {
-          setShowAdd((s) => !s);
-          setConfirmReset(false);
-          setConfirmDelete(false);
-          // #1589 — opening the ADD form always starts blank, never with the
-          // active kid's pre-filled edit values.
-          setEditName("");
-          setEditAvatar("🦊");
-          setEditBirthYear(defaultBirthYear());
-        }}
-        wizLang={wizLang}
-      />
+      <SectionErr label="kid-switcher">
+        <KidSwitcher
+          kids={kids}
+          activeId={activeId}
+          onSwitch={(id) => void switchKid(id)}
+          onToggleAdd={() => {
+            setShowAdd((s) => !s);
+            setConfirmReset(false);
+            setConfirmDelete(false);
+            // #1589 — opening the ADD form always starts blank, never with the
+            // active kid's pre-filled edit values.
+            setEditName("");
+            setEditAvatar("🦊");
+            setEditBirthYear(defaultBirthYear());
+          }}
+          wizLang={wizLang}
+        />
+      </SectionErr>
 
       {/* ── add-kid form ── */}
-      <AddKidCard
-        showAdd={showAdd}
-        busy={busy}
-        editName={editName}
-        editAvatar={editAvatar}
-        editBirthYear={editBirthYear}
-        wizLang={wizLang}
-        handleCreate={handleCreate}
-        setEditName={setEditName}
-        setEditAvatar={setEditAvatar}
-        setEditBirthYear={setEditBirthYear}
-        setShowAdd={setShowAdd}
-      />
+      <SectionErr label="add-kid-form">
+        <AddKidCard
+          showAdd={showAdd}
+          busy={busy}
+          editName={editName}
+          editAvatar={editAvatar}
+          editBirthYear={editBirthYear}
+          wizLang={wizLang}
+          handleCreate={handleCreate}
+          setEditName={setEditName}
+          setEditAvatar={setEditAvatar}
+          setEditBirthYear={setEditBirthYear}
+          setShowAdd={setShowAdd}
+        />
+      </SectionErr>
 
       {/* #1590 — how the kid's device joins (the kid app signs in with the
           same parent account — verified flow, no device code). */}
       {!initialLoading && kids.length > 0 && (
-        <section className="card pair-card" id="device-join">
-          <h2>{PAIR_LANGS[wizLang].title}</h2>
-          <ol className="help-steps">
-            {[1, 2, 3, 4].map((i) => (
-              <li key={i}>{PAIR_LANGS[wizLang][`step${i}` as keyof typeof PAIR_LANGS.en]}</li>
-            ))}
-          </ol>
-          <p className="hint">{PAIR_LANGS[wizLang].note}</p>
-        </section>
+        <SectionErr label="device-join">
+          <section className="card pair-card" id="device-join">
+            <h2>{PAIR_LANGS[wizLang].title}</h2>
+            <ol className="help-steps">
+              {[1, 2, 3, 4].map((i) => (
+                <li key={i}>{PAIR_LANGS[wizLang][`step${i}` as keyof typeof PAIR_LANGS.en]}</li>
+              ))}
+            </ol>
+            <p className="hint">{PAIR_LANGS[wizLang].note}</p>
+          </section>
+        </SectionErr>
       )}
 
       {active && (
         <>
           {/* ── progress summary ── */}
-          <SummaryCard
-            active={active}
-            masteredCount={masteredCount}
-            inProgressCount={activeMastery.filter((m) => m.mastery < 0.8 && m.attempts > 0).length}
-            catalogCount={SKILLS.length}
-            wizLang={wizLang}
-            pendingSwitchId={pendingSwitchId}
-            onConfirmSwitch={confirmSwitchKid}
-            onCancelSwitch={() => setPendingSwitchId(null)}
-          />
+          <SectionErr label="summary">
+            <SummaryCard
+              active={active}
+              masteredCount={masteredCount}
+              inProgressCount={activeMastery.filter((m) => m.mastery < 0.8 && m.attempts > 0).length}
+              catalogCount={SKILLS.length}
+              wizLang={wizLang}
+              pendingSwitchId={pendingSwitchId}
+              onConfirmSwitch={confirmSwitchKid}
+              onCancelSwitch={() => setPendingSwitchId(null)}
+            />
+          </SectionErr>
 
           {/* #244 — daily play summary: today's headline on open */}
-          <TodayCard
-            todayRounds={todayRounds}
-            todayMinutes={todayMinutes}
-            todayMastered={todayMastered}
-            wizLang={wizLang}
-          />
+          <SectionErr label="today">
+            <TodayCard
+              todayRounds={todayRounds}
+              todayMinutes={todayMinutes}
+              todayMastered={todayMastered}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* ── this week (the "show me my kid learned" card) ── */}
-          <WeeklyCard
-            active={active}
-            activeWeekly={activeWeekly}
-            weeklyStreak={weeklyStreak}
-            todayCap={todayCap}
-            todayCapPct={todayCapPct}
-            todayMinutes={todayMinutes}
-            shareBusy={shareBusy[active.id] ?? false}
-            shareLink={shareLink[active.id] ?? null}
-            shareCopied={shareCopied[active.id] ?? false}
-            shareErr={shareErr[active.id] ?? null}
-            handleShareWeekly={handleShareWeekly}
-            setShareCopied={(v) => setShareCopied((prev) => ({ ...prev, [active.id]: v }))}
-            wizLang={wizLang}
-          />
+          <SectionErr label="weekly">
+            <WeeklyCard
+              active={active}
+              activeWeekly={activeWeekly}
+              weeklyStreak={weeklyStreak}
+              todayCap={todayCap}
+              todayCapPct={todayCapPct}
+              todayMinutes={todayMinutes}
+              shareBusy={shareBusy[active.id] ?? false}
+              shareLink={shareLink[active.id] ?? null}
+              shareCopied={shareCopied[active.id] ?? false}
+              shareErr={shareErr[active.id] ?? null}
+              handleShareWeekly={handleShareWeekly}
+              setShareCopied={(v) => setShareCopied((prev) => ({ ...prev, [active.id]: v }))}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* #79 — 🏆 mastery timeline: when each skill was won */}
-          <MasteryTimeline
-            active={active}
-            masteryTimeline={masteryTimeline}
-            wizLang={wizLang}
-          />
+          <SectionErr label="mastery-timeline">
+            <MasteryTimeline
+              active={active}
+              masteryTimeline={masteryTimeline}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* #237 — per-kid reading & story progress view */}
-<StoriesCard
-          active={active}
-                      activeMastery={activeMastery}
-          />
+<SectionErr label="stories">
+            <StoriesCard
+              active={active}
+              activeMastery={activeMastery}
+            />
+          </SectionErr>
 
           {/* #238 — auto-generated weekly learning narrative from Kotha */}
-<WeekWordsCard
-          active={active}
-                      weekNarrative={weekNarrative}
-                      narrLang={narrLang}
-                      setNarrLang={setNarrLang}
-                      narrText={narrText}
-                      onNarrativeEdit={onNarrativeEdit}
-                      handleRegenerateNarr={handleRegenerateNarr}
-                      handleCopyNarr={handleCopyNarr}
-                      narrCopied={narrCopied}
-          />
+          <SectionErr label="week-words">
+            <WeekWordsCard
+              active={active}
+              weekNarrative={weekNarrative}
+              narrLang={narrLang}
+              setNarrLang={setNarrLang}
+              narrText={narrText}
+              onNarrativeEdit={onNarrativeEdit}
+              handleRegenerateNarr={handleRegenerateNarr}
+              handleCopyNarr={handleCopyNarr}
+              narrCopied={narrCopied}
+            />
+          </SectionErr>
 
           {/* #239 — struggle alert: top Moni-flagged skills this week */}
-<HelpNeededCard
-          active={active}
-                      flags={flags}
-                      narrLang={narrLang}
-                      reteachQr={reteachQr}
-                      reteachBusy={reteachBusy}
-                      handleReteachQr={handleReteachQr}
-          />
+          <SectionErr label="help-needed">
+            <HelpNeededCard
+              active={active}
+              flags={flags}
+              narrLang={narrLang}
+              reteachQr={reteachQr}
+              reteachBusy={reteachBusy}
+              handleReteachQr={handleReteachQr}
+            />
+          </SectionErr>
 
           {/* 🚀 #249 — acceleration plan: skills the kid skipped ahead past + why */}
-<AccelCard
-          active={active}
-                      accelRows={accelRows}
-                      narrLang={narrLang}
-          />
+<SectionErr label="accel">
+            <AccelCard
+              active={active}
+              accelRows={accelRows}
+              narrLang={narrLang}
+            />
+          </SectionErr>
 
           {/* 🗓️ #251 — rolling 12-month archive, derived client-side from the
               full activity history (offline-generated after one lazy fetch). */}
-<ArchiveCard
-          active={active}
-                      activeArchive={activeArchive}
-                      archLoading={archLoading}
-                      archiveLoaded={archiveLoaded}
-                      activeId={activeId!}
-                      selMonth={selMonth}
-                      setArchMonth={setArchMonth}
-                      exportArchive={exportArchive}
-                      narrLang={narrLang}
-                      archiveError={archError}
-                      onRetryArchive={() => activeId && loadArchive(activeId, true)}
-          />
+          <SectionErr label="archive">
+            <ArchiveCard
+              active={active}
+              activeArchive={activeArchive}
+              archLoading={archLoading}
+              archiveLoaded={archiveLoaded}
+              activeId={activeId!}
+              selMonth={selMonth}
+              setArchMonth={setArchMonth}
+              exportArchive={exportArchive}
+              narrLang={narrLang}
+              archiveError={archError}
+              onRetryArchive={() => activeId && loadArchive(activeId, true)}
+            />
+          </SectionErr>
 
           {/* 🧵 #255 — session timeline: play blocks (date, rounds, accuracy,
               mastered skills) grouped client-side from the full history. */}
-<SessionsCard
-          activeId={activeId}
-                      activeSessions={activeSessions}
-                      sessionDays={sessionDays}
-                      selSessionDay={selSessionDay}
-                      setSessionDay={setSessionDay}
-                      visibleSessions={visibleSessions}
-                      archLoading={archLoading}
-                      archiveLoaded={archiveLoaded}
-                      wizLang={wizLang}
-          />
+          <SectionErr label="sessions">
+            <SessionsCard
+              activeId={activeId}
+              activeSessions={activeSessions}
+              sessionDays={sessionDays}
+              selSessionDay={selSessionDay}
+              setSessionDay={setSessionDay}
+              visibleSessions={visibleSessions}
+              archLoading={archLoading}
+              archiveLoaded={archiveLoaded}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* 🎮 #252 — game coverage: which games the kid hasn't tried yet (nudge variety). */}
-<GamesCard
-          active={active}
-                      coverageBySubject={coverageBySubject}
-                      coveragePct={coveragePct}
-                      coveragePlayed={coveragePlayed}
-                      coverageTotal={coverageTotal}
-                      untriedGames={untriedGames}
-          />
+          <SectionErr label="games">
+            <GamesCard
+              active={active}
+              coverageBySubject={coverageBySubject}
+              coveragePct={coveragePct}
+              coveragePlayed={coveragePlayed}
+              coverageTotal={coverageTotal}
+              untriedGames={untriedGames}
+            />
+          </SectionErr>
 
           {/* #240 — compare two kids side-by-side (offline) */}
-          <CompareCard
-            kids={kids}
-            cmpAId={cmpAId}
-            cmpBId={cmpBId}
-            setCmpA={setCmpA}
-            setCmpB={setCmpB}
-            mtrA={mtrA}
-            mtrB={mtrB}
-            compareRows={compareRows}
-          />
+          <SectionErr label="compare">
+            <CompareCard
+              kids={kids}
+              cmpAId={cmpAId}
+              cmpBId={cmpBId}
+              setCmpA={setCmpA}
+              setCmpB={setCmpB}
+              mtrA={mtrA}
+              mtrB={mtrB}
+              compareRows={compareRows}
+            />
+          </SectionErr>
 
           {/* #132 — printable worksheet from weak skills */}
-<WorksheetCard
-          active={active}
-                      sheet={sheet}
-                      sheetBusy={sheetBusy}
-                      handleWorksheet={handleWorksheet}
-                      setSheet={setSheet}
-          />
+          <SectionErr label="worksheet">
+            <WorksheetCard
+              active={active}
+              sheet={sheet}
+              sheetBusy={sheetBusy}
+              handleWorksheet={handleWorksheet}
+              setSheet={setSheet}
+            />
+          </SectionErr>
 
           {/* #139 — printable flashcard QR sheet (offline-first) */}
-<FlashcardsCard
-          active={active}
-                      qrCards={qrCards}
-                      qrBusy={qrBusy}
-                      handleQRCards={handleQRCards}
-                      setQrCards={setQrCards}
-          />
+          <SectionErr label="flashcards">
+            <FlashcardsCard
+              active={active}
+              qrCards={qrCards}
+              qrBusy={qrBusy}
+              handleQRCards={handleQRCards}
+              setQrCards={setQrCards}
+            />
+          </SectionErr>
           {/* ── controls ── */}
-          <LearningControls
-            active={active}
-            activeSettings={activeSettings}
-            patchSettings={patchSettings}
-            wizLang={wizLang}
-            busy={busy}
-            handleSaveSettings={handleSaveSettings}
-            savedTick={savedTick}
-            onTogglePause={() => void handleTogglePause()}
-          />
+          <SectionErr label="learning-controls">
+            <LearningControls
+              active={active}
+              activeSettings={activeSettings}
+              patchSettings={patchSettings}
+              wizLang={wizLang}
+              busy={busy}
+              handleSaveSettings={handleSaveSettings}
+              savedTick={savedTick}
+              onTogglePause={() => void handleTogglePause()}
+            />
+          </SectionErr>
 
           {/* ── activity feed ── */}
-<ActivityFeed
-          active={active}
-                      activity={recentActivity}
-                      wizLang={wizLang}
-          />
+          <SectionErr label="activity-feed">
+            <ActivityFeed
+              active={active}
+              activity={recentActivity}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* #89 — per-skill missed questions, derived from the already-loaded
               story ledger (offline-first). Shows the answer picked vs the right
               one + Moni's diagnosis, grouped per skill, with a reteach badge. */}
-<MissedCard
-          active={active}
-                      missedSkills={missedSkills}
-                      wizLang={wizLang}
-          />
+          <SectionErr label="missed">
+            <MissedCard
+              active={active}
+              missedSkills={missedSkills}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* ── mastery table ── */}
-<MasteryCard
-          activeMastery={activeMastery}
-          />
+          <SectionErr label="mastery">
+            <MasteryCard
+              activeMastery={activeMastery}
+            />
+          </SectionErr>
 
           {/* ── account & security ── */}
-<AccountCard
-          profile={profile}
-                      displayName={displayName}
-                      setDisplayName={setDisplayName}
-                      pwCurrent={pwCurrent}
-                      setPwCurrent={setPwCurrent}
-                      pwNew={pwNew}
-                      setPwNew={setPwNew}
-                      pwConfirm={pwConfirm}
-                      setPwConfirm={setPwConfirm}
-                      handleSaveName={handleSaveName}
-                      handleChangePw={handleChangePw}
-                      handleSignoutAll={handleSignoutAll}
-                      sessions={sessions}
-                      handleRevoke={handleRevoke}
-                      acctBusy={acctBusy}
-                      acctMsg={acctMsg}
-                      onSetPassword={handleSetPassword}
-                      sessionsLoading={sessionsLoading}
-                      onDeleteAccount={(confirmation, password) => void handleDeleteAccount(confirmation, password)}
-                      wizLang={wizLang}
-          />
+          <SectionErr label="account">
+            <AccountCard
+              profile={profile}
+              displayName={displayName}
+              setDisplayName={setDisplayName}
+              pwCurrent={pwCurrent}
+              setPwCurrent={setPwCurrent}
+              pwNew={pwNew}
+              setPwNew={setPwNew}
+              pwConfirm={pwConfirm}
+              setPwConfirm={setPwConfirm}
+              handleSaveName={handleSaveName}
+              handleChangePw={handleChangePw}
+              handleSignoutAll={handleSignoutAll}
+              sessions={sessions}
+              handleRevoke={handleRevoke}
+              acctBusy={acctBusy}
+              acctMsg={acctMsg}
+              onSetPassword={handleSetPassword}
+              sessionsLoading={sessionsLoading}
+              onDeleteAccount={(confirmation, password) => void handleDeleteAccount(confirmation, password)}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* ── edit + danger zone ── */}
-<EditKidCard
-          active={active}
-                      busy={busy}
-                      editName={editName}
-                      setEditName={setEditName}
-                      editAvatar={editAvatar}
-                      setEditAvatar={setEditAvatar}
-                      editBirthYear={editBirthYear}
-                      setEditBirthYear={setEditBirthYear}
-                      wizLang={wizLang}
-                      confirmReset={confirmReset}
-                      setConfirmReset={setConfirmReset}
-                      confirmDelete={confirmDelete}
-                      setConfirmDelete={setConfirmDelete}
-                      handleRename={handleRename}
-                      handleReset={handleReset}
-                      handleDelete={handleDelete}
-          />
+          <SectionErr label="edit-kid">
+            <EditKidCard
+              active={active}
+              busy={busy}
+              editName={editName}
+              setEditName={setEditName}
+              editAvatar={editAvatar}
+              setEditAvatar={setEditAvatar}
+              editBirthYear={editBirthYear}
+              setEditBirthYear={setEditBirthYear}
+              wizLang={wizLang}
+              confirmReset={confirmReset}
+              setConfirmReset={setConfirmReset}
+              confirmDelete={confirmDelete}
+              setConfirmDelete={setConfirmDelete}
+              handleRename={handleRename}
+              handleReset={handleReset}
+              handleDelete={handleDelete}
+            />
+          </SectionErr>
 
           {/* #7 — 🩺 local-only diagnostics (never leaves the device).
               #1499 — wrapped in a stable id so the sidebar can jump here. */}
-          <section id="diagnostics">
-            <DiagnosticsCard
-              debugOpen={debugOpen}
-              setDebugOpen={setDebugOpen}
-              wizLang={wizLang}
-              lastSync={lastSync}
-              swVersion={swVersion}
-              diagCopied={diagCopied}
-              exportDiagnostics={exportDiagnostics}
-            />
-            {/* #1617 — export the local-only feature-usage ring beside the
-                diagnostics buffer. Never leaves the device. */}
-            <div className="card" style={{ marginTop: 12 }}>
-              <h2>{DEBUG_LANGS[wizLang].usageExport}</h2>
-              <p className="hint">{DEBUG_LANGS[wizLang].hint}</p>
-              <button
-                className="btn btn-small"
-                type="button"
-                onClick={() => void exportUsage()}
-              >
-                {usageCopied ? DEBUG_LANGS[wizLang].usageExported : DEBUG_LANGS[wizLang].usageExport}
-              </button>
-            </div>
-          </section>
+          <SectionErr label="diagnostics">
+            <section id="diagnostics">
+              <DiagnosticsCard
+                debugOpen={debugOpen}
+                setDebugOpen={setDebugOpen}
+                wizLang={wizLang}
+                lastSync={lastSync}
+                swVersion={swVersion}
+                diagCopied={diagCopied}
+                exportDiagnostics={exportDiagnostics}
+              />
+              {/* #1617 — export the local-only feature-usage ring beside the
+                  diagnostics buffer. Never leaves the device. */}
+              <div className="card" style={{ marginTop: 12 }}>
+                <h2>{DEBUG_LANGS[wizLang].usageExport}</h2>
+                <p className="hint">{DEBUG_LANGS[wizLang].hint}</p>
+                <button
+                  className="btn btn-small"
+                  type="button"
+                  onClick={() => void exportUsage()}
+                >
+                  {usageCopied ? DEBUG_LANGS[wizLang].usageExported : DEBUG_LANGS[wizLang].usageExport}
+                </button>
+              </div>
+            </section>
+          </SectionErr>
 
           {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}
-<HelpCard
-          helpOpen={helpOpen}
-                      setHelpOpen={setHelpOpen}
-                      wizLang={wizLang}
-          />
+          <SectionErr label="help">
+            <HelpCard
+              helpOpen={helpOpen}
+              setHelpOpen={setHelpOpen}
+              wizLang={wizLang}
+            />
+          </SectionErr>
 
           {/* ── #262 on-device data review (localStorage, offline) ── */}
-          <div id="on-device">
-            <OnDeviceData />
-          </div>
+          <SectionErr label="on-device">
+            <div id="on-device">
+              <OnDeviceData />
+            </div>
+          </SectionErr>
         </>
       )}
           </div>

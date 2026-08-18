@@ -57,14 +57,40 @@
          kid-assets task; there is no separate favicon-32.png). -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <meta name="theme-color" content="#0b2545" />
-    <!-- #349 first-paint priority: preload the two fonts the FIRST screen uses
-         (title face + body face). With font-display:swap this shrinks the
-         system-font→custom-font swap to a single fast same-origin fetch, so
-         first paint lands on the real look (no FOUC). Same-origin = zero
-         cross-origin requests by design (offline-first), so <preconnect> is a
-         deliberate no-op here — there's nothing external to warm up. -->
-    <link rel="preload" href="/fonts/Baloo2-500.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/Nunito-400.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- #349 first-paint priority: preload the faces the FIRST screen (splash)
+         actually draws — Baloo 2 weight 800 (title) + 700 (tag). The old
+         Baloo2-500 + Nunito-400 preloads warmed faces the splash never renders
+         (#1715). Same-origin = zero cross-origin requests by design
+         (offline-first), so <preconnect> is a deliberate no-op here — there's
+         nothing external to warm up. -->
+    <link rel="preload" href="/fonts/Baloo2-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/Baloo2-700.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      // #1716/#1720 — the splash also renders Bangla when the app language is
+      // bn (tag = weight 700, no-ads pill = weight 800). Preload those Noto
+      // Sans Bengali faces, and mark the document language so
+      // :lang(bn)/html.lang-bn rules (the Bangla legibility scale) match from
+      // first paint. Reads nv_lang directly — same guarded read as main.tsx
+      // (storage denied → English defaults).
+      (function () {
+        var isBn = false;
+        try {
+          isBn = (localStorage.getItem("nv_lang") || "en") === "bn";
+        } catch (e) { /* storage denied — English defaults */ }
+        if (!isBn) return;
+        document.documentElement.lang = "bn";
+        document.documentElement.classList.add("lang-bn");
+        ["/fonts/NotoSansBengali-700.woff2", "/fonts/NotoSansBengali-800.woff2"].forEach(function (href) {
+          var l = document.createElement("link");
+          l.rel = "preload";
+          l.href = href;
+          l.as = "font";
+          l.type = "font/woff2";
+          l.crossOrigin = "";
+          document.head.appendChild(l);
+        });
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- iOS home-screen (Safari ignores the manifest; these drive it) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />

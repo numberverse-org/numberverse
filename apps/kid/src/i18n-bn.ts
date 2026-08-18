@@ -904,6 +904,12 @@ export const bn: Strings = {
     gameLoadError: "এবার খেলাটি লোড করা যায়নি।",
     gameLoadErrorHint: "ইন্টারনেট দেখে আবার চেষ্টা করতে ট্যাপ করো।",
     gameLoadRetry: "আবার চেষ্টা করো",
+    /* #1707/#1714 — shared-boundary fallback copy (must match DEFAULT_ERR_COPY) */
+    errTitle: "কিছু একটা সমস্যা হয়েছে",
+    errBody: "চিন্তা নেই — ফিরে গিয়ে আবার খেলি!",
+    errRetry: "আবার চেষ্টা করো",
+    errGoHome: "ফিরে যাই",
+    errResetFresh: "রিসেট করে নতুন করে শুরু করো",
     storageFull: "এই ডিভাইসে এখন খেলার অগ্রগতি জমা হচ্ছে না — একজন বড়োকে জায়গা খালি করতে বলো।",
     islandBeta: "নতুন · বিটা",
     islandHint: "ঘুরাতে টেনে ধরো · জুম করতে চিমটি",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ErrorBoundary, { logBoundaryError } from "../../../kid/src/components/ErrorBoundary";
 import { fetchShareSnapshot, type ShareSnapshot } from "../../lib/api";
 import { SHARE_LANGS, type ShareLang } from "../lib/portal";
 
@@ -57,6 +58,19 @@ export default function ShareClient() {
   const toggleLang = () => setLang((prev) => (prev === "en" ? "bn" : "en"));
 
   return (
+    <ErrorBoundary
+      label="share"
+      lang={lang}
+      // #1706 — a malformed/throwy snapshot must never blank the link. The
+      // fallback matches SHARE_LANGS' recovery tone ("This link may have
+      // expired" / try-again) instead of unmounting the whole page.
+      copy={{
+        title: lang === "bn" ? "এই লিংকটির মেয়াদ শেষ হয়ে থাকতে পারে" : "This link may have expired",
+        body: lang === "bn" ? "একটি নতুন শেয়ার কার্ডের জন্য বলুন, অথবা পরে আবার চেষ্টা করুন।" : "Ask for a fresh share card, or try again in a little while.",
+        retry: lang === "bn" ? "আবার চেষ্টা করুন" : "Try again",
+      }}
+      onCatch={(error) => logBoundaryError("share", error)}
+    >
     <>
       <div className="share-lang-toggle center" style={{ textAlign: "center", marginBottom: 10 }}>
         <button className="ghost-btn small" onClick={toggleLang} aria-pressed={lang === "bn"}>
@@ -126,5 +140,6 @@ export default function ShareClient() {
         </>
       )}
     </>
+    </ErrorBoundary>
   );
 }

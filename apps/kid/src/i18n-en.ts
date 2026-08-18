@@ -904,6 +904,12 @@ export const en: Strings = {
     gameLoadError: "The game couldn't load this time.",
     gameLoadErrorHint: "Check your connection, then tap to try again.",
     gameLoadRetry: "Try again",
+    /* #1707/#1714 — shared-boundary fallback copy (must match DEFAULT_ERR_COPY) */
+    errTitle: "Something went wrong",
+    errBody: "Don't worry — let's go back and keep playing!",
+    errRetry: "Try again",
+    errGoHome: "Go back",
+    errResetFresh: "Reset and start fresh",
     storageFull: "This device can't save progress right now — please ask a grown-up to free some space.",
     islandBeta: "New · beta",
     islandHint: "Drag to look around · pinch to zoom",

@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import UpdateBanner from "./components/UpdateBanner";
+import ErrorBoundary, { logBoundaryError, type BoundaryCopy } from "./components/ErrorBoundary";
 import { NOVA_SPLASH } from "./assets/novaSplash";
 import { swUpdateAvailable } from "./updateBanner";
 import "./styles/boot.css"; // #1177 — splash + base tokens only; screens.css rides the lazy App chunk
@@ -79,33 +80,64 @@ async function deferSWRegistration() {
   }
 }
 
-/** #1217 — a failed lazy-chunk load must show a recovery path, never a frozen
- *  blank canvas (offline-first SW + precache make this a rare fallback). */
-class BootErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+/** #1708 — the persisted keys a repeatedly-crashing boot may be wedged on.
+ *  Cleared together by "reset and start fresh" so a corrupted blob can never
+ *  loop the boot forever. */
+const PERSIST_KEY = "nv_store_v1"; // zustand persist (store.ts)
+const SAVED_SESSIONS_KEY = "nv_saved_sessions_v1"; // in-flight session snapshots (App.tsx)
+
+/** #1708 — wipe the known persisted state, then hard-reload onto a fresh store.
+ *  This is the only "reset" that can escape a corrupted-blob boot loop (a plain
+ *  retry just re-evaluates the same bad state). Never touches server progress —
+ *  the store re-syncs on load. */
+function clearBootPersist(): void {
+  for (const key of [PERSIST_KEY, SAVED_SESSIONS_KEY]) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* storage denied — the reload below still gives a clean slate */
+    }
   }
-  render() {
-    if (!this.state.failed) return this.props.children;
-    const bn = bootBn;
-    return (
-      <div className="boot-error">
-        <p>{bn ? "আবার চেষ্টা করো" : "Tap to retry"}</p>
-        <button
-          onClick={() => {
-            this.setState({ failed: false });
-            window.location.reload();
-          }}
-        >
-          ↻
-        </button>
-      </div>
-    );
+  window.location.reload();
+}
+
+/** #1712 — the boot fallback SURFACES context (what happened + that nothing is
+ *  lost) instead of the old bare "Tap to retry". Self-contained inline en/bn:
+ *  the boot chunk cannot import STR (#1217), so this mirrors the shape of the
+ *  shared boundary's default copy. */
+const BOOT_COPY: Record<"en" | "bn", Partial<BoundaryCopy>> = {
+  en: {
+    title: "Numberverse hit a snag",
+    body: "We couldn't start Numberverse this time. Tap to try again — nothing you've learned is lost.",
+    retry: "Try again",
+  },
+  bn: {
+    title: "Numberverse একটু সমস্যায় পড়েছে",
+    body: "এইবার Numberverse শুরু করা গেল না। আবার চেষ্টা করো — তোমার শেখা কিছুই হারাবে না।",
+    retry: "আবার চেষ্টা করো",
+  },
+};
+
+/** #1708 — log the offending persisted-state shape (key + byte size + head of
+ *  the blob) alongside the error so a corrupted nv_store_v1 is diagnosable from
+ *  the diag buffer. Uses logBoundaryError → console.error in dev + the
+ *  nvDiagErrors-style ring in prod (#1711). */
+function logBootCrash(error: unknown): string {
+  const shape: string[] = [];
+  try {
+    for (const key of [PERSIST_KEY, SAVED_SESSIONS_KEY]) {
+      const raw = localStorage.getItem(key);
+      if (raw === null) continue;
+      shape.push(`${key}=${raw.length}b:${raw.slice(0, 48)}`);
+    }
+  } catch {
+    /* storage denied — no shape to report */
   }
+  const msg = `${error instanceof Error ? error.message : String(error)}${
+    shape.length ? ` state[${shape.join(" ")}]` : ""
+  }`;
+  logBoundaryError("boot", new Error(msg));
+  return msg;
 }
 
 /**
@@ -280,6 +312,9 @@ function SplashScreen({ ready }: { ready: boolean }) {
  *  of the render tree that must be live before first paint. */
 function Boot() {
   const [appReady, setAppReady] = useState(false);
+  // #1708 — a repeat-crash counter arms the heavier "reset and start fresh"
+  // escape hatch only after the plain retry has already failed once.
+  const [crashCount, setCrashCount] = useState(0);
   useEffect(() => {
     let alive = true;
     appLoaded.then(() => {
@@ -292,10 +327,24 @@ function Boot() {
   return (
     <>
       <SplashScreen ready={appReady} />
+      {/* #1714 — the shared boundary reuses the OLD BootErrorBoundary role: a
+          failed lazy App-chunk load shows context + a real recovery, never a
+          blank canvas. Its retry re-renders <App/> — React.lazy re-attempts
+          the rejected import on the next render, so this is a CHUNK retry, not
+          a full reload (#1712). */}
       <Suspense fallback={null}>
-        <BootErrorBoundary>
+        <ErrorBoundary
+          label="boot"
+          lang={bootBn ? "bn" : "en"}
+          copy={bootBn ? BOOT_COPY.bn : BOOT_COPY.en}
+          onCatch={(error) => {
+            logBootCrash(error);
+            setCrashCount((c) => c + 1);
+          }}
+          onResetFresh={crashCount >= 2 ? clearBootPersist : undefined}
+        >
           <App />
-        </BootErrorBoundary>
+        </ErrorBoundary>
       </Suspense>
       {/* #1321 — global update banner: prompt-mode SW waits, this is the
           kid-safe "new version ready — tap to update" tap-through. Fixed
