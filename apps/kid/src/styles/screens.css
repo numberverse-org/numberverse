@@ -585,6 +585,23 @@
 }
 .hud[hidden] { display: none; }
 
+/* Phase 3 — minimal HUD during a round. The HUD is playing-only (nova/garden
+   have their own back buttons), so hide the 7 progress-only indicators a kid
+   doesn't need while answering: world title, skill title, difficulty rung,
+   practice pill, mastery bar, stars, streak. What remains is the answerable
+   minimum — 🏠 home, ⏸ pause, round x/y, 🪙 coins — plus the small tool
+   toggles. Progress (stars/streak/mastery) lives on the done screen. */
+.hud .hud-world,
+.hud .hud-skill,
+.hud .hud-rung,
+.hud .hud-reteach,
+.hud .hud-mastery,
+.hud .stars,
+.hud .hud-streak {
+  display: none;
+}
+
+
 .hud-back {
   flex: none;
   width: 46px;
