@@ -10,7 +10,7 @@ import { getAppLang } from "./locale";
 import { gameBackground } from "./backgrounds";
 import { questionPanel, type QuestionPanelApi } from "./question";
 import { hintIntro } from "./hints";
-import { txt, modernCardButton, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, type GridLayout, NV_GOLD } from "./ui";
+import { txt, modernCardButton, cardPool, roundMeter, gridLayout, BTN_NEUTRAL, type RoundMeterApi, type GridLayout, type CardPool, NV_GOLD } from "./ui";
 import { SAB } from "./safeArea";
 
 /**
@@ -147,6 +147,9 @@ export abstract class DragReorderScene extends Phaser.Scene {
 
   protected cards: DragCard[] = [];
   protected targets: DragTarget[] = [];
+  /** #3120 — pooled card buttons, reused across rounds (zero GC churn in
+   *  steady state). Created lazily on the first round from fixed geometry. */
+  protected cardPoolRef?: CardPool;
   protected order: number[] = [];
   protected slotX: number[] = [];
   protected slotCy = 0;
@@ -440,7 +443,15 @@ export abstract class DragReorderScene extends Phaser.Scene {
   protected makeCard(item: DragReorderItem, x: number, y: number, w: number, h: number): Phaser.GameObjects.Container {
     const cfg = this.cfg();
     const fs = cfg.labelSize ? cfg.labelSize(w) : w < 72 ? 12 : 16;
-    return modernCardButton(this, x, y, w, h, item.label, BTN_NEUTRAL, fs, w - 8);
+    // #3120 — pool the base card, but ONLY through this overridable hook. A
+    // subclass that overrides makeCard (e.g. StoryScene's emoji+caption sentence
+    // cards) never sets cardPoolRef, so it bypasses the pool entirely and keeps
+    // its custom rendering. This keeps pooling opt-in per rendering path instead
+    // of silently dropping a subclass's visual override.
+    if (!this.cardPoolRef) {
+      this.cardPoolRef = cardPool(this, w, h, BTN_NEUTRAL, fs, w - 8);
+    }
+    return this.cardPoolRef.claim(item.label, x, y, w, h, BTN_NEUTRAL, fs, w - 8);
   }
 
   protected cardFor(obj: Phaser.GameObjects.Container): DragCard | undefined {
@@ -644,7 +655,8 @@ export abstract class DragReorderScene extends Phaser.Scene {
   }
 
   protected clearRound() {
-    this.cards.forEach((c) => c.obj.destroy());
+    if (this.cardPoolRef) this.cardPoolRef.releaseAll(this.cards.map((c) => c.obj));
+    else this.cards.forEach((c) => c.obj.destroy());
     this.cards = [];
     this.stepLabels.forEach((l) => l.destroy());
     this.stepLabels = [];

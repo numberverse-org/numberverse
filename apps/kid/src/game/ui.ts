@@ -607,7 +607,7 @@ export function wrapPrompt(scene: Phaser.Scene, t: Phaser.GameObjects.Text, pad 
 
 export interface CardPool {
   /** Claim a card for a new option (reuses a pooled one, or grows the pool). */
-  claim(label: string, x: number, y: number, w: number, h: number, style?: BtnStyle, labelSize?: number): Phaser.GameObjects.Container;
+  claim(label: string, x: number, y: number, w: number, h: number, style?: BtnStyle, labelSize?: number, wrap?: number): Phaser.GameObjects.Container;
   /** Return a card to the pool (hidden + non-interactive, ready for reuse). */
   release(c: Phaser.GameObjects.Container): void;
   /** Release a whole row of cards at once. */
@@ -619,26 +619,27 @@ export function cardPool(
   w: number,
   h: number,
   style: BtnStyle = BTN_NEUTRAL,
-  labelSize = 30
+  labelSize = 30,
+  wrap?: number
 ): CardPool {
   const free: Phaser.GameObjects.Container[] = [];
   const grow = (): Phaser.GameObjects.Container => {
-    const c = modernCardButton(scene, 0, -1000, w, h, "", style, labelSize);
+    const c = modernCardButton(scene, 0, -1000, w, h, "", style, labelSize, wrap);
     c.setData("nv-pooled", true);
     c.setVisible(false).disableInteractive();
     free.push(c);
     return c;
   };
   return {
-    claim(label, x, y, ww = w, hh = h, s = style, ls = labelSize) {
+    claim(label, x, y, ww = w, hh = h, s = style, ls = labelSize, wr = wrap) {
       const c = free.pop() ?? grow();
       const api = c.getData("nv-btn") as ModernBtnApi | undefined;
       // Same pool geometry → just relabel; a caller with a different w/h/style
       // should build its own pool (keeps this path allocation-free).
       api?.setLabel(label);
-      if (ww !== w || hh !== h || s !== style || ls !== labelSize) {
+      if (ww !== w || hh !== h || s !== style || ls !== labelSize || wr !== wrap) {
         c.destroy();
-        return modernCardButton(scene, x, y, ww, hh, label, s, ls);
+        return modernCardButton(scene, x, y, ww, hh, label, s, ls, wr);
       }
       c.setPosition(x, y);
       c.setVisible(true);
