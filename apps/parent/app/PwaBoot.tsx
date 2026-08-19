@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logBoundaryError } from "../../kid/src/components/ErrorBoundary";
 
 /** Parent portal PWA boot — register the service worker (scope /parent/) so
  *  the portal is installable and reopens fast from a home-screen icon.
@@ -14,10 +15,12 @@ export default function PwaBoot() {
     const onLoad = () => {
       navigator.serviceWorker.register(`${base}/sw.js`).catch((err) => {
         /* SW is a progressive enhancement — a failure just means no offline
-         * installability, the portal still works fine. #3008 — still log it so
-         * a missing registration (which would hang `serviceWorker.ready`) is not
-         * silently swallowed during debugging. */
-        console.warn("[PwaBoot] service worker registration failed", err);
+         * installability, the portal still works fine. #3008 — still surface it
+         * so a missing registration (which would hang `serviceWorker.ready`) is
+         * not silently swallowed during debugging. Route through the shared
+         * boundary diag path (console.error in dev, scrubbed ring in prod) so the
+         * audit's no-console-log gate stays clean. */
+        logBoundaryError("portal-sw", err instanceof Error ? err : new Error(String(err)));
       });
     };
     if (document.readyState === "complete") onLoad();
