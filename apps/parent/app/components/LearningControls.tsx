@@ -127,13 +127,17 @@ export default function LearningControls({
     patchSettings({ moni_subject_deltas: next });
   }
 
-  // #1514 — bound the goal input to today's effective daily cap (0 = no limit
-  // falls back to 90), and show the post-clamp number, not the raw typed one.
+  // #1514 — bound the goal input to today's effective daily cap. #3050 — when
+  // no cap is configured for the day (0 = "No limit"), the portal must not
+  // force a 90 fallback: allow up to the server's schema ceiling (600), which
+  // matches _clamp_goal's "no cap → goal is the only rule" behaviour.
   const todayIdx = (new Date().getDay() + 6) % 7;
   const todayCap = weekdayLimits(activeSettings)[todayIdx] ?? 90;
-  const goalMax = todayCap > 0 ? todayCap : 90;
+  const GOAL_SCHEMA_MAX = 600;
+  const goalMax = todayCap > 0 ? todayCap : GOAL_SCHEMA_MAX;
   const goalValue = activeSettings.goal_min ?? null;
-  const effectiveGoal = goalValue != null && goalValue > 0 ? Math.min(goalValue, goalMax) : null;
+  const effectiveGoal =
+    goalValue != null && goalValue > 0 ? Math.min(goalValue, goalMax) : null;
   const fmtNum = (n: number) =>
     wizLang === "bn" ? String(n).replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]) : String(n);
 
@@ -201,14 +205,28 @@ export default function LearningControls({
     <h3>{MONI_LANGS[wizLang].title}</h3>
     <p className="muted small">{MONI_LANGS[wizLang].help}</p>
     <div className="toggle-grid">
+      {/* #3045 — the stored default is null ("Moni's own automatic read"), so
+          render an explicit Auto chip for that state instead of silently
+          falling back to 'steady'. Clicking the already-selected chip clears
+          back to null (matching the voice-tone chips), so a parent can always
+          undo a choice. */}
+      <button
+        className={`toggle-chip${activeSettings.moni_strictness === null ? " on" : ""}`}
+        aria-pressed={activeSettings.moni_strictness === null}
+        onClick={() => patchSettings({ moni_strictness: null })}
+      >
+        {MONI_LANGS[wizLang].auto}
+      </button>
       {(["gentle", "steady", "challenging"] as const).map((opt) => {
-        const cur = activeSettings.moni_strictness ?? "steady";
+        const cur = activeSettings.moni_strictness;
         return (
           <button
             key={opt}
             className={`toggle-chip${cur === opt ? " on" : ""}`}
             aria-pressed={cur === opt}
-            onClick={() => patchSettings({ moni_strictness: opt })}
+            onClick={() =>
+              patchSettings({ moni_strictness: cur === opt ? null : opt })
+            }
           >
             {MONI_LANGS[wizLang][opt]}
           </button>
@@ -425,7 +443,10 @@ export default function LearningControls({
         type="number"
         min={0}
         max={goalMax}
-        value={goalValue ?? ""}
+        // #3049 — bind to the effective (clamped) goal, not the raw stored
+        // value, so a 90-min weekend goal shows as 45 on a 45-cap school day
+        // and the number, max attr and hint all agree.
+        value={effectiveGoal ?? ""}
         placeholder={LEARNING_LANGS[wizLang].noGoalPlaceholder}
         aria-label={LEARNING_LANGS[wizLang].dailyGoalTitle}
         onChange={(e) => {

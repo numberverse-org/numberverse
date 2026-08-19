@@ -880,6 +880,7 @@ export const MONI_LANGS = {
   en: {
     title: "🧠 How hard should Moni push?",
     help: "Gentle eases difficulty back, challenging takes it a step up. Moni keeps adapting — this nudges its target.",
+    auto: "Auto (the tutor decides)",
     gentle: "Gentle",
     steady: "Steady",
     challenging: "Challenging",
@@ -887,6 +888,7 @@ export const MONI_LANGS = {
   bn: {
     title: "🧠 মনির ধাক্কা কেমন হোক?",
     help: "নরম = ধাপ পিছিয়ে নেয়, চ্যালেঞ্জিং = ধাপ উপরে তোলে। মনি নিজেই মানিয়ে নেয় — এটা শুধু তার লক্ষ্য টান দেয়।",
+    auto: "অটো (শিক্ষক ঠিক করবেন)",
     gentle: "নরম",
     steady: "স্থির",
     challenging: "চ্যালেঞ্জিং",

@@ -740,6 +740,10 @@ export default function ParentDashboard() {
   // #1513 — two-tap inline confirm: the kid id the parent is trying to switch
   // to while the active kid has unsaved settings edits.
   const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
+  // #3051 — sign-out guard: when the active (or any) kid has unsaved settings
+  // edits, confirm before wiping local state (doSignout currently discards all
+  // staged edits without warning, unlike the kid-switch path which is guarded).
+  const [pendingSignout, setPendingSignout] = useState<boolean>(false);
 
   useEffect(() => {
     setSavedSettings((prev) => {
@@ -762,6 +766,25 @@ export default function ParentDashboard() {
     if (!cur || !saved) return false;
     return JSON.stringify(cur) !== JSON.stringify(saved);
   }
+
+  // #3051 — true when ANY kid has staged, unsaved settings edits. Sign-out
+  // wipes every local settings snapshot, so the confirm must look beyond just
+  // the active kid.
+  function anyDirtyKid(): boolean {
+    return Object.keys(settings).some((id) => isDirtyKid(id));
+  }
+
+  /** #3051 — sign-out entry point. Routes through a two-tap confirm when any
+   *  kid has unsaved edits; otherwise signs out immediately. Mirrors the
+   *  switchKid guard so a parent can never silently lose staged settings. */
+  const requestSignout = useCallback(() => {
+    if (!token) return;
+    if (anyDirtyKid()) {
+      setPendingSignout(true);
+      return;
+    }
+    void doSignout(token);
+  }, [token, settings, savedSettings, doSignout]);
 
   const switchKid = useCallback(
     async (id: string, opts?: { force?: boolean }) => {
@@ -1882,7 +1905,7 @@ export default function ParentDashboard() {
         notifMsg={notifMsg}
         dismissNotifMsg={dismissNotifMsg}
         profile={profile}
-        onSignOut={() => token && doSignout(token)}
+        onSignOut={requestSignout}
         wizLang={wizLang}
       />
 
@@ -1946,6 +1969,23 @@ export default function ParentDashboard() {
           setDupGuard(null);
           dupGuardPayloadRef.current = null;
         }}
+      />
+
+      {/* #3051 — confirm before sign-out while edits are unsaved, so a parent
+          can't silently lose staged settings the way they once did on the
+          kid-switch path before #1513 closed it. */}
+      <ConfirmDialog
+        open={pendingSignout}
+        title={ACCOUNT_LANGS[wizLang].signOut}
+        body={ACCOUNT_LANGS[wizLang].unsavedConfirm}
+        confirmLabel={ACCOUNT_LANGS[wizLang].unsavedContinue}
+        cancelLabel={ACCOUNT_LANGS[wizLang].unsavedCancel}
+        danger
+        onConfirm={() => {
+          setPendingSignout(false);
+          if (token) void doSignout(token);
+        }}
+        onCancel={() => setPendingSignout(false)}
       />
 
       {/* #1516 — first data load: a neutral skeleton over the overview area

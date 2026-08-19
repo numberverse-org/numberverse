@@ -1271,6 +1271,19 @@ input {
   font-family: inherit;
 }
 input:focus { outline: none; border-color: var(--nv-brand); }
+/* #3146 — checkboxes/radios must not inherit the block-level text-input
+   styling above (full-width, padded, bordered box). They stay native-sized. */
+input[type="checkbox"],
+input[type="radio"] {
+  display: inline-block;
+  width: auto;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  accent-color: var(--nv-brand);
+}
 /* #351 — keyboard users get a visible focus ring on the portal (mouse users don't) */
 :focus-visible {
   outline: 3px solid var(--nv-brand);
