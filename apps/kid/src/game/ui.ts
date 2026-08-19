@@ -677,15 +677,17 @@ export interface RoundMeterApi {
  */
 export function roundMeter(scene: Phaser.Scene): RoundMeterApi {
   const container = scene.add.container(0, 0).setDepth(3000);
-  let total = 3;
-  let prevDone = -1; // -1 forces the very first rebuild
-  const rebuild = (done: number) => {
-    container.removeAll(true);
-    // #1574 — stars keep a READABLE size no matter how long the round is. The
-    // old code shrank the star RADIUS by total (>6 → R=7 dots), so a long
-    // Count & Pop meter's filled stars were nearly invisible. Now the row
-    // first squeezes its SPACING to fit the screen width, and only a truly
-    // packed row eases the radius down — never below the 9px readable floor.
+  let total = 0;
+  let nextTotal = 3;
+  let done = 0;
+  // #3121 — per-index display refs so a `done` increment fills exactly ONE new
+  // star in place (objs torn down only when `total` actually changes). Each
+  // slot holds its two circle GameObjects (shadow + star); the star mutates
+  // from "empty" (white ghost) to "filled" (gold) via setFillStyle/setStrokeStyle,
+  // so the row is never rebuilt just because progress advanced.
+  const slots: { shadow?: Phaser.GameObjects.Arc; star: Phaser.GameObjects.Arc }[] = [];
+  const rowStyle = () => {
+    // #1574 — stars keep a READABLE size no matter how long the round is.
     const BASE_R = 11;
     const BASE_GAP = 30;
     const avail = Math.max(140, scene.scale.width - 48);
@@ -693,46 +695,64 @@ export function roundMeter(scene: Phaser.Scene): RoundMeterApi {
     const gapScale = span <= avail ? 1 : Math.max(0.5, avail / span);
     const gap = Math.max(16, BASE_GAP * gapScale);
     const R = gapScale >= 1 ? BASE_R : Math.max(9, Math.round(BASE_R * Math.sqrt(gapScale)));
+    return { gap, R };
+  };
+  const starStroke = (R: number) => Math.max(2, Math.round(R * 0.28));
+  const rebuild = () => {
+    container.removeAll(true);
+    slots.length = 0;
+    const { gap, R } = rowStyle();
     const startX = -((total - 1) * gap) / 2;
-    let played = false;
     for (let i = 0; i < total; i++) {
-      const filled = i < done;
       const x = startX + i * gap;
-      if (filled) {
-        if (i >= prevDone) {
-          // newly filled star → soft shadow + pop + a quiet tick
-          container.add(scene.add.circle(x, 2, R + 1, 0x0b2545, 0.28));
-          const star = scene.add
-            .circle(x, 0, R, 0xffd166)
-            .setStrokeStyle(Math.max(2, Math.round(R * 0.28)), 0xefb419);
-          // #783 — the newly-filled star's pop honours reduced motion: the star
-          // still fills gold instantly, it just doesn't bounce.
-          if (!prefersReducedMotion()) {
-            scene.tweens.add({ targets: star, scale: 1.35, duration: 150, yoyo: true, ease: "Back.easeOut" });
-          }
-          container.add(star);
-          if (!played) {
-            played = true;
-            starPop();
-          }
-        } else {
-          container.add(scene.add.circle(x, 2, R + 1, 0x0b2545, 0.28));
-          container.add(scene.add.circle(x, 0, R, 0xffd166).setStrokeStyle(Math.max(2, Math.round(R * 0.28)), 0xefb419));
-        }
-      } else {
-        container.add(
-          scene.add.circle(x, 0, R, 0xffffff, 0.28).setStrokeStyle(Math.max(2, Math.round(R * 0.28)), 0xffffff, 0.55)
-        );
-      }
+      const shadow = scene.add.circle(x, 2, R + 1, 0x0b2545, 0.28);
+      const star = scene.add.circle(x, 0, R, 0xffffff, 0.28).setStrokeStyle(starStroke(R), 0xffffff, 0.55);
+      container.add([shadow, star]);
+      slots.push({ shadow, star });
     }
-    prevDone = done;
+    // re-apply the current filled state onto the freshly built row
+    for (let i = 0; i < done; i++) fillStar(i, { pop: false, tick: false });
+  };
+  const fillStar = (i: number, opts: { pop: boolean; tick: boolean }) => {
+    const slot = slots[i];
+    if (!slot) return;
+    const R = slot.star.radius;
+    slot.star.setFillStyle(0xffd166, 1).setStrokeStyle(starStroke(R), 0xefb419);
+    // #783 — the newly-filled star's pop honours reduced motion: the star
+    // still fills gold instantly, it just doesn't bounce.
+    if (opts.pop && !prefersReducedMotion()) {
+      scene.tweens.add({ targets: slot.star, scale: 1.35, duration: 150, yoyo: true, ease: "Back.easeOut" });
+    }
+    if (opts.tick) starPop();
+  };
+  const emptyStar = (i: number) => {
+    const slot = slots[i];
+    if (!slot) return;
+    const R = slot.star.radius;
+    slot.star.setFillStyle(0xffffff, 0.28).setStrokeStyle(starStroke(R), 0xffffff, 0.55);
   };
   return {
-    set(done: number, t: number) {
-      const totalChanged = t !== total;
-      total = Math.max(1, t);
-      const next = Math.max(0, Math.min(done, total));
-      if (totalChanged || next !== prevDone) rebuild(next);
+    set(d: number, t: number) {
+      const totalChanged = t !== nextTotal;
+      nextTotal = Math.max(1, t);
+      const nextDone = Math.max(0, Math.min(d, nextTotal));
+      // A new size (or the very first row) rebuilds the whole row from scratch.
+      if (totalChanged || nextTotal !== total) {
+        total = nextTotal;
+        done = nextDone;
+        rebuild();
+        return;
+      }
+      // Same size → mutate in place. Forward progress fills only the new star;
+      // a reset (e.g. roundsDone wrapped back to 0) empties the filled ones.
+      while (done < nextDone) {
+        fillStar(done, { pop: true, tick: true });
+        done++;
+      }
+      while (done > nextDone) {
+        done--;
+        emptyStar(done);
+      }
     },
     setPosition(x, y) {
       container.setPosition(x, y);

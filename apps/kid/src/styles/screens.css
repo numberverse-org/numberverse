@@ -2568,7 +2568,7 @@
 }
 .avatar-confirm-sheet {
   width: 100%;
-  max-width: 380px;
+  max-width: var(--sheet-max);
   padding: 22px 20px;
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(30, 41, 72, 0.98), rgba(18, 26, 50, 0.98));
@@ -2766,7 +2766,7 @@
 }
 .tour-card {
   width: 100%;
-  max-width: 400px;
+  max-width: var(--sheet-max);
   padding: 26px 24px 20px;
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(36, 50, 88, 0.98), rgba(20, 28, 54, 0.98));
@@ -3418,7 +3418,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 }
 .coop-sheet {
   width: 100%;
-  max-width: 400px;
+  max-width: var(--sheet-max);
   background: #0e1a2b;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
@@ -3573,7 +3573,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 }
 .scan-sheet {
   width: 100%;
-  max-width: 400px;
+  max-width: var(--sheet-max);
   background: #0e1a2b;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
@@ -3929,10 +3929,10 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 .moni-goal-skill { font-weight: 700; color: #f4f9ff; display: flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
 .moni-goal-why { font-size: 12px; color: #a9c9e0; white-space: nowrap; }
 /* 🧠 soft session-length note on the done screen — always a suggestion, never a wall */
-.moni-session-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border: 1px dashed rgba(242, 204, 143, 0.35); border-radius: 20px; padding: 6px 14px; margin: 0 auto 10px; max-width: 420px; text-align: left; }
+.moni-session-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffe8b3; background: rgba(242, 204, 143, 0.08); border: 1px dashed rgba(242, 204, 143, 0.35); border-radius: 20px; padding: 6px 14px; margin: 0 auto 10px; max-width: var(--sheet-max); text-align: left; }
 /* #1048 — kid's own "too easy / too hard" voice on the done screen. Soft:
    one tap tunes Moni's per-skill difficulty (clamped ±2), confirmed warmly. */
-.moni-feedback { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 auto 10px; max-width: 420px; }
+.moni-feedback { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 auto 10px; max-width: var(--sheet-max); }
 .moni-feedback-q { font-size: 12.5px; color: #a9c9e0; }
 .moni-feedback-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .moni-feedback .ghost-btn { min-height: 38px; padding: 6px 16px; font-size: 13.5px; }
@@ -5539,7 +5539,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 .quiet-dim {
   position: fixed;
   inset: 0;
-  z-index: 2147483000;
+  z-index: var(--z-dim);
   pointer-events: none;
   background: radial-gradient(ellipse at center, transparent 55%, rgba(4, 10, 20, 0.30) 100%);
   opacity: 0.92;
@@ -5550,7 +5550,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
   position: fixed;
   right: 12px;
   bottom: 12px;
-  z-index: 2147483001;
+  z-index: calc(var(--z-dim) + 1);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -5577,7 +5577,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
   left: 50%;
   bottom: 18px;
   transform: translateX(-50%);
-  z-index: 2147483001;
+  z-index: calc(var(--z-dim) + 1);
   display: flex;
   align-items: center;
   gap: 8px;

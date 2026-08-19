@@ -207,8 +207,11 @@ export class BnSightWordsScene extends Phaser.Scene {
     this.timerFill.clear();
     if (ms <= 0) return;
     const start = this.time.now;
+    // #3123 — 100ms redraw (10Hz) instead of 33ms: the fill path is cleared +
+    // re-buffered each tick, ~30×/sec for a bar that visibly changes a few
+    // times per second at most.
     this.timer = this.time.addEvent({
-      delay: 33,
+      delay: 100,
       loop: true,
       callback: () => {
         const p = 1 - Math.min(1, (this.time.now - start) / ms);

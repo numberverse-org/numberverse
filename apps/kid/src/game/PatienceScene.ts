@@ -189,8 +189,10 @@ export class PatienceScene extends Phaser.Scene {
     };
     // #1739 — re-arm safely: a re-entered startRound must not stack a second
     // looping progress timer on top of a hibernated one.
+    // #3123 — 100ms (10Hz) redraw, not 33ms: the bar moves at most a couple of
+    // times/sec, so re-buffering the path 30×/sec was pure GPU churn.
     if (this.progressTimer) this.time.removeEvent(this.progressTimer);
-    this.progressTimer = this.time.addEvent({ delay: 33, loop: true, callback: update });
+    this.progressTimer = this.time.addEvent({ delay: 100, loop: true, callback: update });
   }
 
   /** A tempting "Tap me!" bubble. Tapping it is gently guided, never punished. */

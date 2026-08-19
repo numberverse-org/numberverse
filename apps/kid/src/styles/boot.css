@@ -212,6 +212,46 @@
      (same order as the body/screen stacks above: webfont before its `<font>
      Fallback` twin, per #1717) so every `--nv-font` consumer gets Baloo 2. */
   --nv-font: "Baloo 2", "Baloo 2 Fallback", "Noto Sans Bengali", "Noto Sans Bengali Fallback", "Nunito", "Nunito Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* #3148 — spacing scale: a 4px base, named so screens stop dropping ad-hoc
+     off-grid px (5, 7, 9, 11.5, 12.5, 13.5, 17, 26, 34, 42 …). Consumers use
+     var(--sp-*) instead of magic numbers so gutters/insets land on the grid. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-15: 60px;
+
+  /* #3148 — radius scale: pill / card / panel corner tokens so the ~9 ad-hoc
+     border-radius buckets (8…999px) collapse to a shared set. */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* #3148 — z-index scale. Fragmented ~20 tiers and the 2147483000 max-int hack
+     are collapsed onto one ordered ladder. Overlays read bottom-up: base <
+     raised < sticky < dropdown < modal < toast < curtain < peak. */
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-dropdown: 1000;
+  --z-modal: 9000;
+  --z-toast: 9000;
+  --z-curtain: 9999;
+  --z-peak: 99998;      /* splash — below the rotate guard */
+  --z-guard: 99999;     /* rotate/portrait guard — top of everything */
+  --z-dim: 100000;      /* quiet-hours dim — above splash/rotate (was 2147483000) */
+
+  /* #3148 — one sheet width instead of the 300/320/340/360/380/400/420/460/520
+     ad-hoc max-widths: no wider than 400px on a tablet, always ≤92vw on a phone. */
+  --sheet-max: min(92vw, 400px);
 }
 
 html, body, #root { height: 100%; background-color: #140a3a; }
@@ -336,7 +376,7 @@ body {
 .splash {
   position: fixed;
   inset: 0;
-  z-index: 99998; /* below the rotate overlay (99999) */
+  z-index: var(--z-peak); /* below the rotate overlay (--z-guard) */
   background:
     radial-gradient(120% 90% at 50% 0%, #1b3a5f 0%, transparent 55%),
     linear-gradient(180deg, var(--nv-navy) 0%, #13315c 60%, #1b3a5f 100%);
@@ -529,7 +569,7 @@ html.lang-bn .splash-no-ads { font-size: 15.5px; } /* 13.5px × 1.15 */
 .rotate-overlay {
   position: fixed;
   inset: 0;
-  z-index: 99999;
+  z-index: var(--z-guard);
   background: linear-gradient(180deg, var(--nv-navy) 0%, #13315c 55%, #1b3a5f 100%);
   display: flex;
   flex-direction: column;
