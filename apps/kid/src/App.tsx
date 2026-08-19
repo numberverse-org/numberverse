@@ -1171,6 +1171,10 @@ export default function App() {
         setPinOk(false);
         setScreen("parent"); // shows the inline sign-in form — same parent page
       }
+    }, () => {
+      // #3089 — a rejected validate (storage-denied getItem upstream) is the
+      // offline case: keep the parent in, never kick them out mid-drop. Do
+      // nothing rather than surfacing an unhandled rejection on the boot poll.
     });
     void refreshEntitlement(); // refresh cached billing entitlement (30-day grace)
     return () => {
@@ -1311,12 +1315,15 @@ export default function App() {
       window.setTimeout(() => setSignoutArmed(false), 4000);
       return;
     }
-    void signoutParent().then(() => {
+    const landOnGate = () => {
       setSignoutArmed(false);
       setPinOk(false);
       gateReturn.current = "parent";
       setScreen("parent"); // stays on the one parent page → inline sign-in form
-    });
+    };
+    // #3089 — even a rejected signout (storage-denied) must land on the gate,
+    // never surface an unhandled rejection. Both handlers run the same reset.
+    void signoutParent().then(landOnGate, landOnGate);
   };
 
   // ── Parent-area PIN lock (#86) ───────────────────────────────────────────
@@ -1581,6 +1588,10 @@ export default function App() {
     let alive = true;
     void fetchKidSettings(kid.id).then((s) => {
       if (alive) setSettings(s);
+    }, () => {
+      // #3089 — a rejected fetch already returns the cached/default value from
+      // inside fetchKidSettings; here we only swallow the unhandled rejection so
+      // the cached settings already applied by setSettings(cachedSettings) stand.
     });
     return () => {
       alive = false;
@@ -1597,6 +1608,10 @@ export default function App() {
       if (document.visibilityState === "hidden") return;
       void fetchKidSettings(kid.id).then((s) => {
         setSettings((prev) => (prev.paused === s.paused ? prev : s));
+      }, () => {
+        // #3089 — the 30s pause poll: a rejected fetch (storage-denied) must not
+        // spam an unhandled rejection every 30s. The cached/current settings
+        // stand, so the pause flag stays as-is until the next successful poll.
       });
     }, 30_000);
     return () => window.clearInterval(iv);

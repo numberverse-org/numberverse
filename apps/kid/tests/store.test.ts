@@ -620,3 +620,38 @@ describe("round-abandoned event kind (#1842)", () => {
     expect(pending[0].meta).toEqual({ wrongs: 3, source: "leave" });
   });
 });
+
+describe("accelSkip durable-outbox entry (#3035)", () => {
+  it("queues an accel entry with the expected band_from/band_to and mastered the skill", () => {
+    resetStore();
+    const actions = useKidStore.getState();
+    actions.accelSkip("k1", "s5", "know", 2, 3);
+
+    const { accel, skills } = useKidStore.getState();
+    expect(accel).toHaveLength(1);
+    const e = accel[0];
+    expect(e.kidId).toBe("k1");
+    expect(e.skillId).toBe("s5");
+    expect(e.reason).toBe("know");
+    expect(e.bandFrom).toBe(2);
+    expect(e.bandTo).toBe(3);
+    expect(typeof e.uid).toBe("string");
+    expect(e.uid.length).toBeGreaterThan(0);
+    expect(typeof e.ts).toBe("number");
+
+    // The skip also marks the skill mastered locally so the journey advances.
+    expect(skills["k1:s5"]?.pMastered).toBe(1);
+  });
+
+  it("records each skip as its own deduped entry (no collapsing across skills)", () => {
+    resetStore();
+    const actions = useKidStore.getState();
+    actions.accelSkip("k1", "s1", "easy", 1, 2);
+    actions.accelSkip("k1", "s2", "know", 1, 3);
+
+    const { accel } = useKidStore.getState();
+    expect(accel).toHaveLength(2);
+    expect(new Set(accel.map((a) => a.uid)).size).toBe(2);
+    expect(accel.map((a) => a.skillId).sort()).toEqual(["s1", "s2"]);
+  });
+});

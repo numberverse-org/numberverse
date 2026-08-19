@@ -299,6 +299,21 @@ function ensureIdentity(): Promise<SyncIdentity | null> {
   return p;
 }
 
+/** #3085 — resolve the sync identity without ever rejecting. `ensureIdentity`
+ *  is already written to be rejection-free, but the four drain/restore entry
+ *  points call it OUTSIDE their try blocks, so a single unexpected throw (e.g. a
+ *  storage-denied getItem upstream of the catch) would surface as an unhandled
+ *  rejection on the heartbeat tick and silently stop draining. Folding the call
+ *  through this helper treats any such rejection as the offline branch (null),
+ *  exactly like the `if (!identity)` guards those functions already handle. */
+async function resolveIdentity(): Promise<SyncIdentity | null> {
+  try {
+    return await ensureIdentity();
+  } catch {
+    return null;
+  }
+}
+
 /* ── Parent sign-in / sign-up (the first-load gate) ────────────────────── */
 export function hasParentSession(): boolean {
   return !!localStorage.getItem(LS.parentToken);
@@ -327,7 +342,9 @@ async function tryRefreshParentSession(): Promise<string | null> {
 
 /** Validate the stored parent token against /auth/me. Clears it when invalid. */
 export async function validateParentSession(): Promise<boolean> {
-  const token = localStorage.getItem(LS.parentToken);
+  // #3089 — read via readLS() so a storage-denied getItem never throws and
+  // rejects the caller (this function is fire-and-forgot with a .then handler).
+  const token = readLS(LS.parentToken);
   if (!token) return false;
   try {
     const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
@@ -631,7 +648,9 @@ export interface KothaAggregates {
  *  the kid→server mapping. Offline-safe — local clear always wins. After this
  *  the app falls back to the guest/device account (progress stays local). */
 export async function signoutParent(): Promise<void> {
-  const token = localStorage.getItem(LS.parentToken);
+  // #3089 — read via readLS() so a storage-denied getItem never throws and
+  // rejects the caller (this function is fire-and-forgot with a .then handler).
+  const token = readLS(LS.parentToken);
   if (token) {
     try {
       await fetch(`${API}/auth/logout`, {
@@ -642,11 +661,17 @@ export async function signoutParent(): Promise<void> {
       /* offline — the local clear below still ends the session here */
     }
   }
-  localStorage.removeItem(LS.parentToken);
-  localStorage.removeItem(LS.parentName);
-  localStorage.removeItem(LS.parentKid);
-  localStorage.removeItem(LS.kidMap);
   resetIdentity();
+  // #3089 — the local clear above is the source of truth; wrap the storage-only
+  // removeItems so a storage-denied context can't turn signout into a reject.
+  try {
+    localStorage.removeItem(LS.parentToken);
+    localStorage.removeItem(LS.parentName);
+    localStorage.removeItem(LS.parentKid);
+    localStorage.removeItem(LS.kidMap);
+  } catch {
+    /* storage denied — resetIdentity() above still drops the in-memory session */
+  }
 }
 
 /** #1810 — restore throttle is keyed to the identity AND per-kid. The old
@@ -869,7 +894,7 @@ export async function syncProgress(): Promise<void> {
     syncing = false;
     return;
   }
-  const identity = await ensureIdentity();
+  const identity = await resolveIdentity();
   if (!identity) {
     setChannelSyncState("progress", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
@@ -1006,7 +1031,7 @@ export async function syncStories(): Promise<void> {
     storySyncing = false;
     return;
   }
-  const identity = await ensureIdentity();
+  const identity = await resolveIdentity();
   if (!identity) {
     setChannelSyncState("stories", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
@@ -1112,7 +1137,7 @@ export async function syncAccel(): Promise<void> {
     accelSyncing = false;
     return;
   }
-  const identity = await ensureIdentity();
+  const identity = await resolveIdentity();
   if (!identity) {
     setChannelSyncState("accel", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
@@ -1338,7 +1363,7 @@ async function fetchSnapshot(localKidId: string): Promise<{
  *  device (where the merge is a no-op / equal-values). */
 export async function restoreServerState(): Promise<void> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return; // #264 offline
-  const identity = await ensureIdentity();
+  const identity = await resolveIdentity();
   if (!identity) return; // offline — don't consume the throttle; retry on the online event
   const now = Date.now();
   for (const k of localKids()) {
@@ -1418,11 +1443,19 @@ export function startAutoSync(): () => void {
       await syncProgress();
       await syncStories();
       await syncAccel(); // 🚀 #249 — acceleration outbox drains with the same heartbeat
-    })();
+    })().catch(() => {
+      // #3085 — backstop: the drains are rejection-free by contract, but a
+      // single unexpected throw must never become an unhandled rejection that
+      // re-fires on every heartbeat tick. Treat it as a failed drain; the next
+      // tick (online/visibility/30s) retries fresh.
+    });
     // #1621 — app-open/session-start (deduped to once per kid per day).
     emitSessionStart();
     // #9 — second-device catch-up: throttled inside (#1810 per-kid).
-    void restoreServerState();
+    void restoreServerState().catch(() => {
+      // #3085 — same backstop: restore is best-effort; an unexpected throw just
+      // means this kid's snapshot retries on the next heartbeat.
+    });
     schedule();
   };
   const onOnline = () => {
