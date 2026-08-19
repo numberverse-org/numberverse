@@ -682,7 +682,7 @@ export default function HomeScreen({
                         aria-label={isToday ? (calendar.claimable ? t.calendarClaim(coins) : calendar.claimedToday ? t.calendarClaimed : t.calendarHint) : t.calendarLocked}
                       >
                         <span className="cal-tile-top">{past || (isToday && calendar.claimedToday) ? "✓" : isToday ? day : "🔒"}</span>
-                        <span className="cal-tile-coin">🪙{coins}</span>
+                        <span className="cal-tile-coin"><Icon name="coin" size={13} />{coins}</span>
                       </button>
                     );
                   })}

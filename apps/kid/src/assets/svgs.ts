@@ -306,6 +306,7 @@ const SHAPES: Record<string, Asset> = {
   square: { emoji: "🟨", svg: view(`<g filter="url(#s)"><rect x="18" y="18" width="64" height="64" rx="8" fill="#ffd166"/></g>`) },
   triangle: { emoji: "🔺", svg: view(`<g filter="url(#s)"><path d="M50 16 L86 82 L14 82 Z" fill="#5fad6a"/></g>`) },
   star: { emoji: "⭐", svg: view(`<g filter="url(#s)"><path d="M50 12 L61 40 L90 41 L67 61 L75 92 L50 74 L25 92 L33 61 L10 41 L39 40 Z" fill="#ffd166" stroke="#efb419" stroke-width="3"/></g>`) },
+  coin: { emoji: "🪙", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="34" fill="#ffd166" stroke="#efb419" stroke-width="5"/><circle cx="50" cy="50" r="24" fill="none" stroke="#efb419" stroke-width="3"/><path d="M50 28 L57 43 L73 43 L61 53 L66 69 L50 59 L34 69 L39 53 L27 43 L43 43 Z" fill="#efb419"/></g>`) },
   diamond: { emoji: "💠", svg: view(`<g filter="url(#s)"><path d="M50 14 L86 50 L50 86 L14 50 Z" fill="#c4b5fd"/><path d="M50 32 L68 50 L50 68 L32 50 Z" fill="#5ee6ff"/></g>`) },
   heart: { emoji: "❤️", svg: view(`<g filter="url(#s)"><path d="M50 88 C24 70 14 52 20 36 C25 22 42 20 50 32 C58 20 75 22 80 36 C86 52 76 70 50 88 Z" fill="#ff6b7a"/></g>`) },
   ring: { emoji: "⭕", svg: view(`<g filter="url(#s)"><circle cx="50" cy="50" r="32" fill="none" stroke="#ffb35c" stroke-width="14"/></g>`) },

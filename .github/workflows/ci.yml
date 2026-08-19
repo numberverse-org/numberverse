@@ -76,6 +76,11 @@ jobs:
           path: packages/core/dist
       - name: Typecheck kid app
         run: pnpm --filter kid typecheck
+      # #1999 — the kid structural vitest suite (scene catalog/reward/timer/…
+      # invariants) was written but ran nowhere; wire it into CI so the static
+      # scene checks actually gate PRs.
+      - name: Kid unit tests (vitest)
+        run: pnpm --filter kid test
 
   audit:
     name: audit
@@ -331,6 +336,27 @@ jobs:
       # The local-preview step above is what exercises the PR's own bundles.
       - name: Numberverse e2e (#264 offline, #925 sync drain, #926 cross-app, #927 portal)
         run: pnpm exec playwright test
+      # #1999 — runtime playability sweep, scoped to the scenes THIS PR touched
+      # (scripts/changed-scenes.mjs). Unchanged scenes are already proven by the
+      # release gate; a PR that edits a scene must boot it here. Shared scene
+      # bases (binSort/reorder/…) emit an empty list → full sweep.
+      - name: Scene playability sweep (changed scenes)
+        env:
+          NV_E2E_BASE: http://127.0.0.1:8081
+          NV_E2E_SKIP_VERSION_CHECK: "1"
+          NV_SWEEP: "1"
+        run: |
+          SWEEP="$(node scripts/changed-scenes.mjs origin/main || true)"
+          # No scene file (nor shared base) changed → nothing to sweep; skip.
+          if [ -z "$SWEEP" ]; then
+            echo "  ✓ no scene changes in this PR — sweep skipped"
+            exit 0
+          fi
+          export NV_SWEEP_SCENES="$SWEEP"
+          node scripts/e2e-preview.mjs > /tmp/nv-e2e-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          pnpm exec playwright test scene-playability
 
   oracle:
     name: oracle

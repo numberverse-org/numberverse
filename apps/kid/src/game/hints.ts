@@ -109,10 +109,18 @@ export function hintIntro(scene: Phaser.Scene, ctx: Pick<HintCtx, "intro">) {
   if (!line) return;
   const key = "hw:intro";
   if (scene.data.get(key)) return;
-  scene.data.set(key, true);
+  // #1999 — store the resolved LINE (not just a true flag) so the persistent
+  // HUD "?" can re-show the same example on demand via the nv:reshow-intro event.
+  scene.data.set(key, line);
   scene.events.once("shutdown", () => {
     scene.data.remove(key);
   });
+  scene.events.on("nv:reshow-intro", () => showIntro(scene, line));
+  showIntro(scene, line);
+}
+
+/** Render + speak the "how to answer" example (shared by first-run + the HUD ?). */
+function showIntro(scene: Phaser.Scene, line: string) {
   bigBanner(scene, line);
   // Calm teaching voice — same slower rate as the hint ladder so the example
   // lands as an instruction, not another question.

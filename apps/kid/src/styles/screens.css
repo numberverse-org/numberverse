@@ -3442,9 +3442,60 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 .coop-card.active { opacity: 0.55; cursor: default; border-color: #43d17c; }
 /* #1426 — kid-initiated pause card */
 .kid-pause-overlay { z-index: 60; }
+/* #1999 — the pause sheet now holds Resume + Go home + 4 settings rows, so it
+   can outgrow a short phone. Cap it and let it scroll; never clip the exit. */
+.kid-pause-sheet { max-height: min(88vh, 640px); overflow-y: auto; }
 .kid-pause-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 .kid-pause-actions .big-btn,
 .kid-pause-actions .ghost-btn { width: 100%; max-width: 320px; margin: 0 auto; }
+
+/* #1999 — the "?" help button on the minimal in-game HUD (one of three). */
+.hud-help {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.hud-help:active { background: rgba(255, 255, 255, 0.22); }
+
+/* #1999 — settings moved out of the HUD into the pause sheet, one row each. */
+.pause-settings {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pause-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.pause-setting-row:active { background: rgba(255, 255, 255, 0.14); }
+.pause-setting-row:disabled { opacity: 0.5; cursor: default; }
+.pause-setting-icon { font-size: 18px; flex: none; }
+.pause-setting-label { font-size: 14px; font-weight: 700; }
 .coop-card:not(.active):active { background: rgba(255, 255, 255, 0.14); }
 .coop-name { font-weight: 700; flex: 1; }
 .coop-you { color: #43d17c; font-size: 13px; font-weight: 700; }
@@ -6672,6 +6723,20 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
 @keyframes nv-spin {
   to { transform: rotate(360deg); }
 }
+/* #1999 — always-visible exit while the game is still loading (HUD is hidden
+   until "ready"). A quiet home affordance so a slow load never strands a kid. */
+.game-boot-exit {
+  margin-top: 4px;
+  border: none;
+  background: transparent;
+  color: var(--nv-navy);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.game-boot-exit:active { background: rgba(11, 37, 69, 0.1); }
 .game-boot-error {
   flex-direction: column;
   gap: 12px;
@@ -6697,6 +6762,20 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
   font-weight: 800;
   padding: 10px 22px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+/* #1999 — scene-crash card: two side-by-side actions (go home + retry), the
+   secondary keeps its ghost look instead of inheriting the gold primary style. */
+.game-boot-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+.game-boot-error-actions .ghost-btn {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--nv-navy);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 /* #1178 — lazy screen chunk Suspense fallback (brief — chunks are SW-precached) */

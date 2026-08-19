@@ -62,6 +62,10 @@ export interface SceneStartOptions {
   /** Invoked once the new scene has actually rendered — the point where the
    *  boot/loading overlay is finally safe to unmount (#1447). */
   onRendered?: () => void;
+  /** #1999 — invoked when `game.scene.start` throws (a scene's `create()` blew
+   *  up). The terminal path: no `render` event will ever fire, so the caller
+   *  must surface a recoverable error instead of a stuck loading overlay. */
+  onError?: (key: string, error: unknown) => void;
   /** Return true to abandon a pending fade-out before starting the next scene
    *  (e.g. the kid pressed Back mid-transition). */
   isCancelled?: () => boolean;
@@ -76,12 +80,23 @@ export interface SceneStartOptions {
  * so no Phaser runtime bytes land in the app chunk — the same guarantee as the
  * rest of this module (#15).
  */
-export function startSceneWithFade({ game, fromKey, toKey, data, onStarted, onRendered, isCancelled }: SceneStartOptions): void {
+export function startSceneWithFade({ game, fromKey, toKey, data, onStarted, onRendered, onError, isCancelled }: SceneStartOptions): void {
   const from = fromKey ? game.scene.getScene(fromKey) : null;
   const begin = () => {
     if (isCancelled?.()) return;
-    game.scene.start(toKey, data);
-    const next = game.scene.getScene(toKey);
+    // #1999 — a scene's `create()` (or `cfg()` config read) can throw on bad
+    // data/assets. Phaser runs outside React's tree, so nothing else catches
+    // this: without a guard it leaves a permanent "loading" overlay. Catch the
+    // synchronous throw and hand the caller a recoverable error path.
+    let next: Scene | null = null;
+    try {
+      game.scene.start(toKey, data);
+      next = game.scene.getScene(toKey);
+    } catch (error) {
+      console.error(`[game] scene "${toKey}" failed to start:`, error);
+      onError?.(toKey, error);
+      return;
+    }
     if (next) {
       next.cameras.main.fadeIn(SCENE_FADE_MS, 0, 0, 0);
       next.events.once("render", () => onRendered?.());

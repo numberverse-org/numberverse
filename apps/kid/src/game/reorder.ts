@@ -151,6 +151,12 @@ export abstract class DragReorderScene extends Phaser.Scene {
   protected slotX: number[] = [];
   protected slotCy = 0;
   protected stepLabels: Phaser.GameObjects.Text[] = [];
+  /** #1999 — tap-to-answer fallback: the card a kid tapped first (awaiting a
+   *  second tap to place it). Null when nothing is selected. */
+  protected selectedCard: DragCard | null = null;
+  /** #1999 — true between dragstart and the pointerup that follows dragend, so
+   *  the tap fallback never double-fires after a tiny (<8px) drag. */
+  protected dragActive = false;
 
   protected abstract cfg(): DragReorderConfig;
 
@@ -217,6 +223,7 @@ export abstract class DragReorderScene extends Phaser.Scene {
     }
     onSceneResize(this, () => this.layout());
     this.registerDrag();
+    this.registerTap();
     this.layout();
     this.startRound();
   }
@@ -242,6 +249,7 @@ export abstract class DragReorderScene extends Phaser.Scene {
   protected startRound() {
     this.clearRound();
     this.locked = false;
+    this.selectedCard = null;
     this.startedAt = this.time.now;
     this.roundText.setText(t("round", { n: this.levelIndex + 1 }));
     this.meter.set(this.roundsDone, this.cfg().rounds);
@@ -249,6 +257,108 @@ export abstract class DragReorderScene extends Phaser.Scene {
     this.data.set("nv:difficulty", this.levelIndex + 1);
     this.dealRound();
     this.armChallenge();
+  }
+
+  /** #1999 — TAP-TO-ANSWER fallback (mirrors binSort's pointerdown). Registered
+   *  ONCE in create(), not per round: a scene-level pointerup that hit-tests by
+   *  coordinates, so it works uniformly for swap-mode (tap card → tap card) and
+   *  free-mode scenes (tap tray card → tap slot/zone) INCLUDING VillageCity,
+   *  whose zones are drawn graphics with no interactive `obj`. */
+  protected registerTap() {
+    this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
+      if (this.locked) return;
+      if (this.dragActive) {
+        // a drag just ended (onDragEnd already placed it) — don't also treat the
+        // release as a tap. Reset for the next interaction.
+        this.dragActive = false;
+        return;
+      }
+      const dx = p.x - p.downX;
+      const dy = p.y - p.downY;
+      if (Math.hypot(dx, dy) > 8) return; // genuine drag, not a tap
+      const card = this.hitCard(p.x, p.y);
+      if (card) {
+        this.onCardTap(card);
+        return;
+      }
+      // Empty-space tap: place a selected card into the nearest target/zone.
+      if (this.selectedCard) {
+        const sel = this.selectedCard;
+        const target = this.targetAt(p.x, p.y);
+        this.clearSelection();
+        if (target) this.onDrop(sel, target);
+      }
+    });
+    this.input.on("pointercancel", () => {
+      this.dragActive = false;
+    });
+  }
+
+  /** The non-placed card under a point, if any (tap target hit-test). */
+  protected hitCard(x: number, y: number): DragCard | null {
+    for (let i = this.cards.length - 1; i >= 0; i--) {
+      const c = this.cards[i];
+      if (c.placed) continue;
+      if (c.obj.getBounds().contains(x, y)) return c;
+    }
+    return null;
+  }
+
+  /** Nearest target/zone under a point (null when far from all). */
+  protected targetAt(x: number, y: number): DragTarget | null {
+    let best: DragTarget | null = null;
+    let bestD = Infinity;
+    const pad = 24;
+    for (const target of this.targets) {
+      const rx = target.w / 2 + pad;
+      const ry = target.h / 2 + pad;
+      const dx = Math.max(Math.abs(x - target.x) - rx, 0);
+      const dy = Math.max(Math.abs(y - target.y) - ry, 0);
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) {
+        bestD = d;
+        best = target;
+      }
+    }
+    return bestD > 60 ? null : best;
+  }
+
+  /** Tap #1 selects the card; tap #2 (another card or empty space) places it. */
+  protected onCardTap(card: DragCard) {
+    if (this.locked) return;
+    if (this.selectedCard === card) {
+      this.clearSelection();
+      return;
+    }
+    if (this.selectedCard) {
+      if (this.cfg().dragMode === "free") {
+        // Free mode: you place a tray card into a TARGET, not onto another card.
+        // Tapping a second tray card just re-selects it.
+        this.clearSelection();
+        this.selectCard(card);
+        return;
+      }
+      // Swap mode: place the selected card onto the tapped card's slot.
+      const sel = this.selectedCard;
+      this.clearSelection();
+      this.onDrop(sel, this.nearestTarget(card.obj));
+    } else {
+      this.selectCard(card);
+    }
+  }
+
+  protected selectCard(card: DragCard) {
+    this.selectedCard = card;
+    card.obj.setDepth(20);
+    this.tweens.add({ targets: card.obj, scale: this.cfg().dragScale ?? 1.12, duration: 90, ease: "Sine.easeOut" });
+  }
+
+  protected clearSelection() {
+    const c = this.selectedCard;
+    this.selectedCard = null;
+    if (!c) return;
+    c.obj.setDepth(10);
+    this.tweens.add({ targets: c.obj, scale: 1, duration: 90, ease: "Sine.easeInOut" });
   }
 
   /** Build the round: slots + shuffled cards (default swap-reorder flow). */
@@ -341,6 +451,7 @@ export abstract class DragReorderScene extends Phaser.Scene {
     if (this.locked) return;
     const card = this.cardFor(obj);
     if (!card) return;
+    this.dragActive = true; // #1999 — suppress the tap fallback on the release
     obj.setDepth(30);
     this.tweens.add({ targets: obj, scale: this.cfg().dragScale ?? 1.12, duration: 90, ease: "Sine.easeOut" });
   }

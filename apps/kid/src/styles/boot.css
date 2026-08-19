@@ -206,6 +206,12 @@
      + low-end phones. screens.css applies it to every label class; new labels
      should reference it so they land readable by default. */
   --nv-min-font: 13px;
+  /* #3142 — the canonical brand type stack as a token. screens.css's 3D-island
+     + HUD surfaces reference `var(--nv-font, …)` but the variable was never
+     defined, so all ten silently fell back to system-ui. Define it once here
+     (same order as the body/screen stacks above: webfont before its `<font>
+     Fallback` twin, per #1717) so every `--nv-font` consumer gets Baloo 2. */
+  --nv-font: "Baloo 2", "Baloo 2 Fallback", "Noto Sans Bengali", "Noto Sans Bengali Fallback", "Nunito", "Nunito Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html, body, #root { height: 100%; background-color: #140a3a; }

@@ -465,6 +465,9 @@ export const en: Strings = {
     kidPauseTitle: "Taking a little break",
     kidPauseBody: "Your game is paused right here. Ready when you are!",
     resumeGame: "▶ Keep playing",
+    pauseGoHome: "🏠 Go home",
+    /* #1999 — persistent "how do I play" help on the in-game HUD. */
+    helpBtn: "How do I play?",
     leaveConfirmTitle: "Stop playing for now?",
     leaveConfirmBody: "Your game is saved right here — you can come back anytime!",
     leaveConfirmYes: "Yes, stop",
@@ -517,8 +520,8 @@ export const en: Strings = {
     welcomeTitle: "Welcome to Numberverse",
     welcomeSub: "Pick a language — the whole app will speak it. You can change it anytime in Settings.",
     welcomeLangLabel: "Choose your language",
-    welcomeEnglish: "🇬🇧 English",
-    welcomeBangla: "🇧🇩 বাংলা",
+    welcomeEnglish: "English",
+    welcomeBangla: "বাংলা",
     langSwitched: "English! Hello!",
     welcomeGuest: "🎮 Continue as guest",
     welcomeStart: "🚀 Let's play!",
@@ -904,6 +907,10 @@ export const en: Strings = {
     gameLoadError: "The game couldn't load this time.",
     gameLoadErrorHint: "Check your connection, then tap to try again.",
     gameLoadRetry: "Try again",
+    /* #1999 — a specific game crashed on start, not a connection/chunk issue. */
+    gameSceneError: "That game didn't open.",
+    gameSceneErrorHint: "No problem — let's go back and pick another one.",
+    gameSceneGoHome: "Go home",
     /* #1707/#1714 — shared-boundary fallback copy (must match DEFAULT_ERR_COPY) */
     errTitle: "Something went wrong",
     errBody: "Don't worry — let's go back and keep playing!",

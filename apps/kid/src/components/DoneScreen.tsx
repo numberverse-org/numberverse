@@ -182,7 +182,7 @@ export default function DoneScreen({
         {complete && (
           <button className="cert-btn" onClick={() => openCert(world)}>{t.certBtn}</button>
         )}
-        <button className="ghost-btn nova-home-btn" onClick={goNova}><Icon name="nova" size={20} /> {t.novaMeet} · 🪙 {novaCoins}</button>
+        <button className="ghost-btn nova-home-btn" onClick={goNova}><Icon name="nova" size={20} /> {t.novaMeet} · <Icon name="coin" size={15} /> {novaCoins}</button>
         <button className="ghost-btn" onClick={() => setScreen("worlds")}>{t.worldsBtn}</button>
         <button className="ghost-btn" onClick={() => setScreen("home")}>{t.homeBtn}</button>
       </main>

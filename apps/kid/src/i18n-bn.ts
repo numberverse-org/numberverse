@@ -465,6 +465,9 @@ export const bn: Strings = {
     kidPauseTitle: "একটু বিরতি নিচ্ছি",
     kidPauseBody: "তোমার খেলা এখানেই থেমে আছে। প্রস্তুত হলে আবার খেলো!",
     resumeGame: "▶ খেলা চালিয়ে যাও",
+    pauseGoHome: "🏠 হোমে যাও",
+    /* #1999 — persistent "how do I play" help on the in-game HUD. */
+    helpBtn: "কীভাবে খেলবো?",
     leaveConfirmTitle: "এখন খেলা বন্ধ করবে?",
     leaveConfirmBody: "তোমার খেলা এখানেই সেভ হয়ে আছে — যেকোনো সময় ফিরে আসতে পারবে!",
     leaveConfirmYes: "হ্যাঁ, বন্ধ করো",
@@ -516,8 +519,8 @@ export const bn: Strings = {
     welcomeTitle: "নম্বরভার্সে স্বাগতম",
     welcomeSub: "একটি ভাষা বেছে নিন — পুরো অ্যাপ সেই ভাষাতেই কথা বলবে। যেকোনো সময় সেটিংসে বদলাতে পারবেন।",
     welcomeLangLabel: "আপনার ভাষা চয়ন করুন",
-    welcomeEnglish: "🇬🇧 English",
-    welcomeBangla: "🇧🇩 বাংলা",
+    welcomeEnglish: "English",
+    welcomeBangla: "বাংলা",
     langSwitched: "বাংলা! হ্যালো!",
     welcomeGuest: "🎮 অতিথি হিসেবে খেলুন",
     welcomeStart: "🚀 চলো খেলি!",
@@ -904,6 +907,10 @@ export const bn: Strings = {
     gameLoadError: "এবার খেলাটি লোড করা যায়নি।",
     gameLoadErrorHint: "ইন্টারনেট দেখে আবার চেষ্টা করতে ট্যাপ করো।",
     gameLoadRetry: "আবার চেষ্টা করো",
+    /* #1999 — a specific game crashed on start, not a connection/chunk issue. */
+    gameSceneError: "এই খেলাটি খোলা যায়নি।",
+    gameSceneErrorHint: "সমস্যা নেই — ফিরে গিয়ে আরেকটি খেলা বেছে নিই।",
+    gameSceneGoHome: "হোমে যাও",
     /* #1707/#1714 — shared-boundary fallback copy (must match DEFAULT_ERR_COPY) */
     errTitle: "কিছু একটা সমস্যা হয়েছে",
     errBody: "চিন্তা নেই — ফিরে গিয়ে আবার খেলি!",

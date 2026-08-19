@@ -147,5 +147,10 @@ export function createGame(parent: HTMLElement): Phaser.Game {
   });
   installGameKeyboardAccess(game); // #785/#1005 — keyboard + SR answer bridge
   armBanglaFontRefresh(game); // #1583 — re-shape Bangla once fonts load
+  // #1999 — expose the catalog scene keys for the playability sweep (e2e). A
+  // test reads this to iterate every game/activity scene through __nvBootScene.
+  (window as unknown as { __nvSceneKeys?: () => string[] }).__nvSceneKeys = () => [
+    ...new Set([...Object.values(GAME_SCENES), ...ACTIVITIES.filter((a) => a.scene).map((a) => a.scene as string)]),
+  ];
   return game;
 }

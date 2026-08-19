@@ -229,6 +229,9 @@ export default function App() {
   // instead of a blank gap: spinner while it loads, a retry button if it fails.
   const [gameBoot, setGameBoot] = useState<"loading" | "ready" | "error">("loading");
   const [gameBootNonce, setGameBootNonce] = useState(0); // retry re-arms the boot
+  // #1999 — which game scene failed (null when the error is a chunk-load/network
+  // failure). Non-null drives the "that game didn't open → go home" card.
+  const [failedSceneKey, setFailedSceneKey] = useState<string | null>(null);
   // #1570 — a stalled chunk import reads as a frozen spinner. After a few
   // seconds of "loading" we surface a manual Try-again; tapping the loading
   // card itself also gives feedback ("almost ready…") instead of dead air.
@@ -353,11 +356,6 @@ export default function App() {
   /** #1426 — kid-initiated pause: a child can pause the active scene from the
    *  HUD instead of only having a parent kill-switch or a full leave button. */
   const [kidPaused, setKidPaused] = useState(false);
-  // #1566 — soft confirm before leaving a live session: a back-tap or the
-  // pause-card Exit asks "Stop playing for now?" instead of dumping the kid
-  // straight to the previous screen. Leaving is never a loss (the session is
-  // snapshotted), but a young child deserves a second tap to be sure.
-  const [leaveConfirm, setLeaveConfirm] = useState(false);
   // 🎯 #325 — the active contrast drill (template + the skill it fixes) and
   // the current round index. When the drill finishes, the misconception is
   // resolved warmly in the store.
@@ -767,7 +765,6 @@ export default function App() {
       };
     })
   );
-  const sessionStreakCount = sessionStreak(events);
   const novaDayStreak = useKidStore((s) => (kid ? s.nova[kid.id]?.streak ?? 0 : 0));
   // #281 — 7-day login calendar: which cycle position is "today" (from the
   // streak anchor), and whether today's bonus is claimable. Claiming requires
@@ -2504,29 +2501,9 @@ export default function App() {
     }
   };
 
-  /** #1566 — every in-game leave path goes through a soft confirm first. The
-   *  HUD ‹ back and the pause-card Exit both call this (never leaveGame
-   *  directly), so a young child is asked "Stop playing for now?" before the
-   *  session is left. Leaving outside a live session (nothing to lose) is a
-   *  no-confirm straight exit. */
-  const requestLeave = () => {
-    // On the playing screen with an active kid, always confirm; elsewhere
-    // (nova / garden back buttons use their own goBack path, not this) there
-    // is no live session to lose, so leave straight away.
-    if (screen !== "playing" || !kid) {
-      leaveGame();
-      return;
-    }
-    // Freeze the scene under the confirm (same kid-pause path) so the game
-    // doesn't keep playing behind the question.
-    if (!kidPaused) pauseGame();
-    setLeaveConfirm(true);
-  };
-  const cancelLeave = () => setLeaveConfirm(false);
-  const confirmLeave = () => {
-    setLeaveConfirm(false);
-    leaveGame();
-  };
+  /** #1999 — leaving now happens from the unified pause sheet's "Go home" button
+   *  (leaveGame directly). The old "Stop playing for now?" confirm is gone: the
+   *  sheet IS the gentle pause — one clear menu, no scary "stop" trap. */
 
   /** #1426 — kid-initiated pause: freeze the active lesson scene and show a
    *  kid-safe pause card. The parent kill-switch remains the safety backstop;
@@ -2553,6 +2530,18 @@ export default function App() {
     }
     ensureAudio();
     setKidPaused(false);
+  };
+
+  /** #1999 — persistent "how do I play" help: re-show the active scene's
+   *  first-run example on demand (not just once). The scene's hintIntro() wired
+   *  a `nv:reshow-intro` listener carrying its localized line. */
+  const reshowHelp = () => {
+    const game = gameRef.current;
+    const key = activeSceneRef.current;
+    if (game && key) {
+      const sc = game.scene.getScene(key);
+      sc?.events.emit("nv:reshow-intro");
+    }
   };
 
   /* ── #357/#1450 — predicted next scene: HOME (and the kid-pick screen that
@@ -2638,6 +2627,23 @@ export default function App() {
       // once their scene has actually rendered, so the loading overlay stays up
       // until there is something real to look at.
       (window as unknown as Record<string, unknown>).__NV_GAME__ = g;
+      // #1999 — test-only hook for the playability sweep (e2e/scene-playability.spec.ts):
+      // boots an arbitrary scene through the SAME startSceneWithFade path the app
+      // uses, so a scene that throws on create() lands in onError → __NV_SCENE_ERROR__
+      // exactly as it would for a real kid. No-op in the normal app (never called).
+      (window as unknown as { __nvBootScene?: (key: string, data?: object) => void }).__nvBootScene = (key: string, data?: object) => {
+        const g = gameRef.current;
+        if (!g) return;
+        startSceneWithFade({
+          game: g,
+          fromKey: activeSceneRef.current,
+          toKey: key,
+          data,
+          onStarted: () => { activeSceneRef.current = key; },
+          onRendered: () => setGameBoot("ready"),
+          onError: (k, err) => sceneError(k, err),
+        });
+      };
     }).catch(() => {
       // #1377 — an unexpected boot rejection must surface the same recovery
       // path as a null boot result (never a console-only failure).
@@ -2688,8 +2694,49 @@ export default function App() {
   const retryBoot = () => {
     setBootStall(false);
     setBootPoked(false);
+    setFailedSceneKey(null);
     setGameBootNonce((n) => n + 1);
   };
+
+  /** #1999 — a scene failed to START (synchronous `create()` throw) or CRASHED
+   *  mid-play (async timer/update throw caught by the window trap below). One
+   *  terminal path: record the key for the playability sweep + flip the boot
+   *  state to `error`, which renders a friendly card with "Go home" + "Try
+   *  again" instead of a stuck spinner. */
+  const sceneError = (key: string | null, err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    const k = key ?? activeSceneRef.current ?? "unknown";
+    (window as unknown as { __NV_SCENE_ERROR__?: { key: string; message: string } }).__NV_SCENE_ERROR__ = {
+      key: k,
+      message: msg,
+    };
+    setFailedSceneKey(k);
+    setBootStall(false);
+    setGameBoot("error");
+  };
+
+  // #1999 — async scene errors (a `delayedCall`/tween/update throw) run outside
+  // React's error boundaries AND outside startSceneWithFade's try/catch. Catch
+  // them globally while a game is live, and route to the same recoverable card.
+  // Scoped to gameplay screens: unrelated window errors (SW, network, etc.) must
+  // not flip a playing scene into the error card.
+  const inGameSurface = screen === "playing" || screen === "nova" || screen === "garden";
+  useEffect(() => {
+    if (!inGameSurface) return;
+    const onWindowError = (e: ErrorEvent) => {
+      const err = e.error ?? new Error(e.message);
+      sceneError(activeSceneRef.current, err);
+    };
+    const onUnhandled = (e: PromiseRejectionEvent) => {
+      sceneError(activeSceneRef.current, e.reason);
+    };
+    window.addEventListener("error", onWindowError);
+    window.addEventListener("unhandledrejection", onUnhandled);
+    return () => {
+      window.removeEventListener("error", onWindowError);
+      window.removeEventListener("unhandledrejection", onUnhandled);
+    };
+  }, [inGameSurface]);
 
   /* ── Nova companion home: greet the kid right after profile selection ── */
   useEffect(() => {
@@ -2722,6 +2769,7 @@ export default function App() {
           activeSceneRef.current = "Nova";
         },
         onRendered: () => setGameBoot("ready"),
+        onError: (key, err) => sceneError(key, err),
       });
     };
     whenGameReady(mountEl, start); // waits for the async engine chunk
@@ -2752,6 +2800,7 @@ export default function App() {
           activeSceneRef.current = "Garden";
         },
         onRendered: () => setGameBoot("ready"),
+        onError: (key, err) => sceneError(key, err),
       });
       // #769 — snapshot the garden the kid is ABOUT to see, so Home can cue
       // "new growth!" whenever it outgrew the last visit.
@@ -3000,6 +3049,7 @@ export default function App() {
           activeSceneRef.current = step.scene;
         },
         onRendered: () => setGameBoot("ready"),
+        onError: (key, err) => sceneError(key, err),
       });
     };
     whenGameReady(mountEl, start); // waits for the async engine chunk
@@ -3398,7 +3448,6 @@ export default function App() {
   };
 
   const curStep = sessionRef.current[sessionIdx];
-  const curReteach = (curStep?.reteach ?? 0) > 0;
   // #292 — reteach moment: when a step flips into its remediation re-run,
   // Nova pops a "let's learn it together" face (once per transition).
   const prevReteachRef = useRef(0);
@@ -5746,15 +5795,6 @@ export default function App() {
     // #1467 — a parent who turned music off for this profile keeps that rule
     // mid-game: the HUD mute mirrors the Settings switch's musicLocked guard.
     const musicLocked = settings.music_enabled === false;
-    // #1434 — the HUD's mastery bar reads the SAME per-skill display metric as
-    // the skill-tree bars, so the in-game loop and long-term loop feel unified.
-    const curMastery = inGame && kid && curStep ? skillsMap[`${kid.id}:${curStep.skillId}`] : undefined;
-    const curMasteryPct = curStep ? masteryDisplayPct(curMastery, curStep.skillId) : 0;
-    // #1567 — the adaptive rung, kid-spoken. The engine auto-ramps per-skill;
-    // this chip tells the child which stage they're on (Easy / Just right /
-    // Tricky) so a silently harder block never feels unfair.
-    const curRung = inGame && kid && curStep ? adaptiveLevelIndex(kid.id, curStep.skillId, curStep.gameId) : 0;
-    const curRungKey = rungStageKey(curRung);
     return (
       <SafeScreen lang={lang} t={t} label="nova" onGoHome={() => setScreen("home")}>
       <div className="app game-app">
@@ -5783,43 +5823,11 @@ export default function App() {
         <div className="hud" hidden={!inGame}>
           {inGame && (
             <>
-              {/* Phase 2 — a visible home glyph (not a cryptic ‹) so a kid always
-                  knows how to get out; the pause stays beside it. Both keep their
-                  aria-labels for screen readers. */}
-              <button className="hud-back" onClick={requestLeave} aria-label={t.leaveGame} title={t.leaveGame}>🏠</button>
-              <button
-                className="hud-back hud-pause"
-                onClick={pauseGame}
-                aria-label={t.pauseGame}
-                title={t.pauseGame}
-                disabled={kidPaused}
-              >
-                ⏸
-              </button>
-              <span className="hud-world">{world && <Icon name={world.key} size={18} />} {world?.title}</span>
-              {curStep ? <span className="hud-skill">{curStep.title}</span> : null}
-              {curStep && kid && (
-                <span className="hud-rung" title={t.hudRung} role="text">
-                  {t[curRungKey]}
-                </span>
-              )}
-              {curReteach && <span className="hud-reteach">🎯 {t.practicePill}</span>}
+              {/* #1999 — MINIMAL HUD: just pause + round + coins + a "?" help.
+                  The crowded mute/calm/lang/co-op toggles moved into the pause
+                  sheet below, so a kid sees only what matters mid-round. */}
+              <button className="hud-back" onClick={pauseGame} aria-label={t.pauseGame} title={t.pauseGame} disabled={kidPaused}>⏸</button>
               <span className="round-chip">{t.round(Math.min(roundsDone + 1, ROUNDS_TO_FINISH), ROUNDS_TO_FINISH)}</span>
-              {curStep && kid && (
-                <span
-                  className="hud-mastery"
-                  role="progressbar"
-                  aria-label={t.hudMastery}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={curMasteryPct}
-                  title={t.hudMastery}
-                >
-                  <span className={`hud-mastery-fill${curMasteryPct >= 100 ? " done" : ""}`} style={{ width: `${curMasteryPct}%` }} />
-                </span>
-              )}
-              <span className="stars">⭐ {stars}</span>
-              {sessionStreakCount >= 2 && <span className="hud-streak">🔥 {sessionStreakCount}</span>}
               <span className="hud-coins">
                 🪙 {novaCoins}
                 {coinsCapped && <em className="hud-coins-maxed" title={t.hudCoinsMaxed} aria-label={t.hudCoinsMaxed}>🎯</em>}
@@ -5829,63 +5837,15 @@ export default function App() {
                   </span>
                 )}
               </span>
-              <button
-                className="hud-music"
-                role="switch"
-                aria-pressed={!muted}
-                aria-label={t.settingsMusicRow}
-                disabled={musicLocked}
-                title={musicLocked ? t.settingsMusicOff : undefined}
-                onClick={() => {
-                  const next = toggleSoundMute(); // #1468 — combined sound+song mute
-                  setMuted(next);
-                  announce(next ? t.a11yMusicOff : t.a11yMusicOn); // #133
-                }}
-              >
-                {muted ? "🔇" : "🔊"}
-              </button>
-              {/* 🦋 #1442 — in-flow calm toggle: a kid mid-meltdown can reach
-                  reduced motion without hunting through the Settings screen. */}
-              <button
-                className="hud-music calm-btn"
-                onClick={() => setCalmOpen(true)}
-                aria-label={t.calmButton}
-                title={t.calmButton}
-                aria-haspopup="dialog"
-              >
-                🦋
-              </button>
-              {/* #1404 — in-scene language switch: no need to leave the lesson.
-                  The scene restarts with the new locale via the `lang` dep on
-                  the playing effect below. */}
-              <button
-                className="hud-music"
-                onClick={() => changeLang(lang === "bn" ? "en" : "bn")}
-                aria-label={t.langSwitch}
-                title={t.langSwitch}
-              >
-                🌐
-              </button>
-              {/* #22 — sibling co-op: only when a second profile exists on this
-                  device. Tap → pass the device to a sibling mid-session. */}
-              {kids.length >= 2 && (
-                <button
-                  className={`hud-music coop-btn${coopOpen ? " coop-open" : ""}`}
-                  onClick={() => setCoopOpen((o) => !o)}
-                  aria-label={t.siblingCoop}
-                  title={t.siblingCoop}
-                  aria-expanded={coopOpen}
-                >
-                  👥
-                </button>
-              )}
+              <button className="hud-help" onClick={reshowHelp} aria-label={t.helpBtn} title={t.helpBtn}>?</button>
             </>
           )}
         </div>
         {/* Garden has its own little back button — it returns to the screen
             that opened the garden (matches the Garden scene's onBack). */}
-        {/* #1426 — kid-initiated pause: a small, kid-safe card over the paused
-            scene. Resume returns to the exact question; Exit snapshots + leaves. */}
+        {/* #1999 — UNIFIED PAUSE SHEET. Tap ⏸ (or the old home button) opens this:
+            Resume, Go home, and the settings toggles that used to crowd the HUD
+            (sound / calm / language / co-op). One clear exit, no scary "stop?" */}
         {kidPaused && inGame && (
           <div className="coop-overlay kid-pause-overlay" role="dialog" aria-modal="true" aria-label={t.kidPauseTitle}>
             <div className="coop-sheet kid-pause-sheet">
@@ -5893,22 +5853,57 @@ export default function App() {
               <p className="coop-sub">{t.kidPauseBody}</p>
               <div className="kid-pause-actions">
                 <button className="big-btn" onClick={resumeGame}>{t.resumeGame}</button>
-                <button className="ghost-btn" onClick={requestLeave}>{t.leaveGame}</button>
+                <button className="ghost-btn" onClick={leaveGame}>{t.pauseGoHome}</button>
               </div>
-            </div>
-          </div>
-        )}
-        {/* #1566 — soft leave confirm. Rendered above any pause card so the
-            kid answers ONE question ("Stop playing for now?") before the
-            session is left. Leaving is snapshotted, never discarded. */}
-        {leaveConfirm && inGame && (
-          <div className="coop-overlay kid-pause-overlay" role="dialog" aria-modal="true" aria-label={t.leaveConfirmTitle}>
-            <div className="coop-sheet kid-pause-sheet">
-              <div className="coop-title">👋 {t.leaveConfirmTitle}</div>
-              <p className="coop-sub">{t.leaveConfirmBody}</p>
-              <div className="kid-pause-actions">
-                <button className="big-btn" onClick={confirmLeave}>{t.leaveConfirmYes}</button>
-                <button className="ghost-btn" onClick={cancelLeave}>{t.leaveConfirmNo}</button>
+              {/* Settings moved out of the HUD into the pause sheet (#1999). */}
+              <div className="pause-settings">
+                <button
+                  className="pause-setting-row"
+                  role="switch"
+                  aria-pressed={!muted}
+                  aria-label={t.settingsMusicRow}
+                  disabled={musicLocked}
+                  title={musicLocked ? t.settingsMusicOff : undefined}
+                  onClick={() => {
+                    const next = toggleSoundMute(); // #1468 — combined sound+song mute
+                    setMuted(next);
+                    announce(next ? t.a11yMusicOff : t.a11yMusicOn); // #133
+                  }}
+                >
+                  <span className="pause-setting-icon" aria-hidden="true">{muted ? "🔇" : "🔊"}</span>
+                  <span className="pause-setting-label">{t.settingsMusicRow}</span>
+                </button>
+                <button
+                  className="pause-setting-row"
+                  onClick={() => setCalmOpen(true)}
+                  aria-label={t.calmButton}
+                  title={t.calmButton}
+                  aria-haspopup="dialog"
+                >
+                  <span className="pause-setting-icon" aria-hidden="true">🦋</span>
+                  <span className="pause-setting-label">{t.calmButton}</span>
+                </button>
+                <button
+                  className="pause-setting-row"
+                  onClick={() => changeLang(lang === "bn" ? "en" : "bn")}
+                  aria-label={t.langSwitch}
+                  title={t.langSwitch}
+                >
+                  <span className="pause-setting-icon" aria-hidden="true">🌐</span>
+                  <span className="pause-setting-label">{t.langSwitch}</span>
+                </button>
+                {kids.length >= 2 && (
+                  <button
+                    className="pause-setting-row"
+                    onClick={() => setCoopOpen((o) => !o)}
+                    aria-label={t.siblingCoop}
+                    title={t.siblingCoop}
+                    aria-expanded={coopOpen}
+                  >
+                    <span className="pause-setting-icon" aria-hidden="true">👥</span>
+                    <span className="pause-setting-label">{t.siblingCoop}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -5944,11 +5939,31 @@ export default function App() {
             and a tap-to-retry when the chunk fails (never a silent blank canvas). */}
         {gameBoot === "error" && (
           <div className="game-boot-error" role="alert">
-            <p>{t.gameLoadError}</p>
-            <p className="game-boot-error-hint">{t.gameLoadErrorHint}</p>
-            <button onClick={() => setGameBootNonce((n) => n + 1)}>
-              <span aria-hidden="true">↻</span> {t.gameLoadRetry}
-            </button>
+            {failedSceneKey ? (
+              <>
+                {/* #1999 — a specific scene crashed on start: offer a friendly
+                    "go home" (the game is broken, retrying won't help) + a retry. */}
+                <p>{t.gameSceneError}</p>
+                <p className="game-boot-error-hint">{t.gameSceneErrorHint}</p>
+                <div className="game-boot-error-actions">
+                  <button className="big-btn" onClick={leaveGame}>
+                    <span aria-hidden="true">🏠</span> {t.gameSceneGoHome}
+                  </button>
+                  <button className="ghost-btn" onClick={() => setGameBootNonce((n) => n + 1)}>
+                    <span aria-hidden="true">↻</span> {t.gameLoadRetry}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* #1186 — chunk load / network failure (no specific scene). */}
+                <p>{t.gameLoadError}</p>
+                <p className="game-boot-error-hint">{t.gameLoadErrorHint}</p>
+                <button onClick={() => setGameBootNonce((n) => n + 1)}>
+                  <span aria-hidden="true">↻</span> {t.gameLoadRetry}
+                </button>
+              </>
+            )}
           </div>
         )}
         {/* #1570 — the loading card is alive: Nova + "almost ready…" text, a
@@ -5977,6 +5992,19 @@ export default function App() {
                 <span aria-hidden="true">↻</span> {t.gameLoadRetry}
               </button>
             )}
+            {/* #1999 — during a long load the kid still needs a way out; the HUD
+                is hidden until the game is ready, so surface a home affordance
+                here (never a stranded spinner with no exit). */}
+            <button
+              className="game-boot-exit"
+              onClick={(e) => {
+                e.stopPropagation();
+                leaveGame();
+              }}
+              aria-label={t.pauseGoHome}
+            >
+              <span aria-hidden="true">←</span> {t.pauseGoHome}
+            </button>
           </div>
         )}
         {/* #292 — Nova reaction pack v2: a floating Nova face bubble for win

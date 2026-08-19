@@ -492,6 +492,8 @@ export interface Strings {
   kidPauseTitle: string;
   kidPauseBody: string;
   resumeGame: string;
+  pauseGoHome: string;
+  helpBtn: string;
   /* #1566 — soft confirm before leaving a live session */
   leaveConfirmTitle: string;
   leaveConfirmBody: string;
@@ -951,6 +953,10 @@ export interface Strings {
   gameLoadError: string;
   gameLoadErrorHint: string;
   gameLoadRetry: string;
+  /* #1999 — a specific game scene crashed on start (not a connection/chunk issue). */
+  gameSceneError: string;
+  gameSceneErrorHint: string;
+  gameSceneGoHome: string;
   /* #1707/#1714 — shared ErrorBoundary fallback copy. Used by the kid app's
      per-screen boundaries (STR is the locale gate); the boot chunk + parent
      portal keep their own inline en/bn because they must not pull STR in

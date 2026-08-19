@@ -47,6 +47,27 @@ if [ "$ORACLE_RC" -ne 0 ]; then
   echo "✖ ORACLE GATE FAILED (exit $ORACLE_RC) — aborting, no stamp/tag/deploy." >&2
   exit 1
 fi
+# #1999 — full runtime playability sweep (every catalog scene boots without a
+# crash). This is the release-grade backstop that a per-PR scoped sweep can't be:
+# a scene that slipped through a merge is caught HERE, before it ships. Blocking:
+# a crash in ANY scene aborts the release (no stamp/tag/deploy).
+echo "── 1.5/6 Scene playability sweep (all scenes) ──"
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm --filter kid build >/dev/null 2>&1
+  node scripts/e2e-preview.mjs > /tmp/nv-sweep-preview.log 2>&1 &
+  SWEEP_PREVIEW_PID=$!
+  trap 'kill "$SWEEP_PREVIEW_PID" 2>/dev/null || true' EXIT
+  NV_SWEEP=1 NV_E2E_BASE=http://127.0.0.1:8081 NV_E2E_SKIP_VERSION_CHECK=1 \
+    pnpm exec playwright test scene-playability
+  SWEEP_RC=$?
+  kill "$SWEEP_PREVIEW_PID" 2>/dev/null || true
+  if [ "$SWEEP_RC" -ne 0 ]; then
+    echo "✖ SCENE PLAYABILITY SWEEP FAILED (exit $SWEEP_RC) — aborting, no stamp/tag/deploy." >&2
+    exit 1
+  fi
+else
+  echo "  ⚠ pnpm unavailable — playability sweep skipped (deploying WITHOUT this gate)." >&2
+fi
 
 echo "── 2/6 Bump build stamp + semver + tracker ────"
 python3 - "$TODAY" "$VERSION" "$SUMMARY" <<'PY'
