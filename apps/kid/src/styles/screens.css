@@ -887,6 +887,8 @@
   .mascot { font-size: 56px; }
   .title { font-size: 30px; }
   .big-btn { padding: 12px 32px; min-height: 48px; }
+  /* #3149 — the 92px play button overflows a 600px-tall landscape window; cap it. */
+  .play-btn { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
 }
 
 /* ---- PLAY screen: the kid-first landing (ONE giant action, no clutter) ---- */
@@ -3338,7 +3340,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
   margin-top: auto;
   padding-top: 18px;
   width: 100%;
-  max-width: 420px;
+  max-width: var(--content-max);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3513,10 +3515,13 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 .coop-close:active { background: rgba(255, 255, 255, 0.16); }
 .coop-toast {
   position: fixed;
-  top: 74px;
+  /* #3149 — clear the notch AND the update banner (z 1000): a safe-area-blind
+     top:74px sat under the banner; raise z above it and honor the inset. */
+  top: calc(env(safe-area-inset-top, 0px) + 74px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 50;
+  z-index: 1010;
+  max-width: min(90vw, 420px);
   background: rgba(14, 26, 43, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: #fff;
@@ -3536,10 +3541,11 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
    amber/red so the save-progress signal reads as "needs a grown-up". */
 .storage-toast {
   position: fixed;
-  top: 74px;
+  /* #3149 — clear the notch + update banner (z 1000), same as coop-toast. */
+  top: calc(env(safe-area-inset-top, 0px) + 74px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 55;
+  z-index: 1010;
   max-width: min(90vw, 420px);
   background: rgba(90, 30, 25, 0.94);
   border: 1px solid rgba(255, 200, 150, 0.45);
@@ -3963,7 +3969,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 .nova-hud-btn { margin-left: auto; font-size: 22px; }
 .nova-home-btn { border-color: rgba(255, 209, 102, 0.35); color: var(--nv-gold); }
 .nova-home-btn:active { background: rgba(255, 209, 102, 0.12); }
-.garden-back { position: fixed; top: 10px; left: 12px; z-index: 7000; }
+.garden-back { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; z-index: 1010; }
 
 
 /* game HUD coin counter */
@@ -4898,6 +4904,9 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 
 .cert-screen {
   min-height: 100dvh;
+  /* #3149 — body is position:fixed + overflow:hidden, so a tall cert has no
+     page scroll; allow THIS screen to scroll its own overflow. */
+  overflow-y: auto;
   background: radial-gradient(circle at 50% 0%, #23304a, #141a2c);
   padding: 14px;
 }
@@ -5833,7 +5842,8 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
 .syllabus-fab {
   position: fixed;
   right: 18px;
-  bottom: 22px;
+  /* #3149 — clear the home-indicator inset (was a notch-blind 22px). */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
   z-index: 60;
   display: flex;
   align-items: center;
@@ -6035,7 +6045,7 @@ html.lang-bn .skill-desc { font-size: 13.2px; } /* 11.5px × 1.15 */
    two-choice language picker, and a voice card that shows what ACTUALLY reads.
    Big tap targets throughout (44px+ rows) — a kid (and a parent) should be
    able to change anything on this page without a second thought. */
-.settings-card { gap: 4px; padding: 10px 14px; }
+.settings-card { gap: 4px; padding: 10px 14px; width: 100%; max-width: 520px; }
 /* One settings row: icon + label on the left, the control (switch / badge) on
    the right. min-height keeps a comfy tap target even when the row has no
    control. */
@@ -6802,6 +6812,8 @@ html.nv-high-contrast .world-emoji { filter: drop-shadow(0 0 2px rgba(255, 255, 
    sheets themselves are warm paper so a printed page reads like a worksheet. */
 .print-screen {
   min-height: 100vh;
+  /* #3149 — same as cert-screen: own overflow so a long sheet scrolls. */
+  overflow-y: auto;
   background: linear-gradient(180deg, #2a4a7a, #1d3557);
   padding: 16px 12px 48px;
 }

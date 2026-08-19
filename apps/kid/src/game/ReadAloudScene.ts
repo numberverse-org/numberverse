@@ -41,7 +41,7 @@ const ITEMS: ReadItem[] = [
   { s: "She rides the bus to school.", q: "How does she go to school?", a: { e: "🚌", c: "by bus" }, d: [{ e: "🚲", c: "by bike" }, { e: "🚗", c: "by car" }, { e: "🚶", c: "on foot" }] },
   { s: "The baby is sleeping in the crib.", q: "Where is the baby sleeping?", a: { e: "👶", c: "in the crib" }, d: [{ e: "👶", c: "on a chair" }, { e: "👶", c: "in the bath" }, { e: "🧸", c: "teddy in the crib" }] },
   { s: "We make a snowman in winter.", q: "When do we make a snowman?", a: { e: "⛄", c: "in winter" }, d: [{ e: "🌞", c: "in summer" }, { e: "🍂", c: "in autumn" }, { e: "🌸", c: "in spring" }] },
-  { s: "The teacher writes on the board.", q: "What does the teacher write on?", a: { e: "👩‍🏫", c: "the board" }, d: [{ e: "📄", c: "paper" }, { e: "🖥️", c: "a screen" }, { e: "📚", c: "a book" }] },
+  { s: "The teacher writes on the board.", q: "What does the teacher write on?", a: { e: "🪧", c: "the board" }, d: [{ e: "📄", c: "paper" }, { e: "🖥️", c: "a screen" }, { e: "📚", c: "a book" }] },
   { s: "The fish swims in the water.", q: "Where does the fish swim?", a: { e: "🐟", c: "in the water" }, d: [{ e: "🐟", c: "in a tree" }, { e: "🐟", c: "in a house" }, { e: "🦆", c: "duck in the water" }] },
   { s: "The elephant is big and gray.", q: "What color is the elephant?", a: { e: "🪨", c: "gray" }, d: [{ e: "🟩", c: "green" }, { e: "🟫", c: "brown" }, { e: "🟦", c: "blue" }] },
   { s: "The train goes fast on the tracks.", q: "Where does the train go?", a: { e: "🚆", c: "on the tracks" }, d: [{ e: "☁️", c: "in the sky" }, { e: "🌊", c: "in the sea" }, { e: "🛣️", c: "on the road" }] },
@@ -222,6 +222,11 @@ export class ReadAloudScene extends Phaser.Scene {
 
   private tap(tile: Phaser.GameObjects.Container, val: Pic) {
     if (this.locked) return;
+    // #3150 — announce the tapped option aloud: a pre-reader can't read the
+    // caption under the picture, and color answers (red/green/blue) are
+    // color-only cues on the square. Speaking the caption ("in the box", "red")
+    // makes every answer distinguishable by EAR, not just by sight.
+    if (this.readAloud) speak(val.c, { lang: "en" });
     if (val === this.item.a) {
       this.locked = true;
       pop();
