@@ -224,6 +224,10 @@ export default function ParentDashboard() {
   // #1506/#1518 — per-kid archive lifecycle. The card spinner/error/retry derive
   // from this explicit status instead of a single global boolean.
   const [archStatus, setArchStatus] = useState<Record<string, "loading" | "loaded" | "error">>({});
+  // #3032 — whether a kid's full-history fetch hit the API's 2000-round cap
+  // (older months may be silently empty). Drives an honest "oldest months may be
+  // incomplete" caption on the archive card.
+  const [archTruncated, setArchTruncated] = useState<Record<string, boolean>>({});
   const [archMonth, setArchMonth] = useState<Record<string, string>>({});
   // 🧵 #255 — per-kid session-timeline day filter ("all" = no filter).
   const [sessionDay, setSessionDay] = useState<Record<string, string>>({});
@@ -611,6 +615,11 @@ export default function ParentDashboard() {
     try {
       const rows = await getActivity(token, kidId, 2000);
       setArchActivity((prev) => ({ ...prev, [kidId]: rows }));
+      // #3032 — the API hard-caps at 2000 rounds (kids.py:398). When we got a
+      // full page back, older months may exist beyond the cap even though the
+      // archive would render them as 0 — surface that instead of a silent false
+      // "idle month".
+      setArchTruncated((prev) => ({ ...prev, [kidId]: rows.length >= 2000 }));
       setArchStatus((prev) => ({ ...prev, [kidId]: "loaded" }));
     } catch {
       // #1506 — keep the failure scoped to this kid's card; the inline
@@ -1567,7 +1576,7 @@ export default function ParentDashboard() {
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
   // 🧵 #255 — session timeline, derived client-side from the SAME full-history
   // feed as the archive (offline after load). Day filter is remembered per kid.
-  const activeSessions = activeId ? buildSessionTimeline(archActivity[activeId] ?? []) : [];
+  const activeSessions = activeId ? buildSessionTimeline(archActivity[activeId] ?? [], activeMastery) : [];
   const sessionDays = [...new Set(activeSessions.map((s) => s.date))]
     .sort((a, b) => (a < b ? 1 : -1))
     .slice(0, 14);
@@ -2291,6 +2300,7 @@ export default function ParentDashboard() {
               exportArchive={exportArchive}
               narrLang={narrLang}
               archiveError={archError}
+              archiveTruncated={!!activeId && !!archTruncated[activeId]}
               onRetryArchive={() => activeId && loadArchive(activeId, true)}
             />
           </SectionErr>

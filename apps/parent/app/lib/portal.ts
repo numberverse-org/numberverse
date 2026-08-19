@@ -690,6 +690,9 @@ export const ARCHIVE_LANGS = {
     notLoaded: "The archive needs the full history — it loads automatically.",
     failed: "Couldn't load the full history.",
     retry: "Try again",
+    // #3032 — the API caps a single history fetch at 2000 rounds, so for a very
+    // active kid the oldest months may render empty even though play exists.
+    truncated: "The oldest months may be incomplete — this child played more than 2,000 rounds, and the portal only loads the newest 2,000.",
   },
   bn: {
     title: "🗓️ মাসিক আর্কাইভ",
@@ -703,6 +706,8 @@ export const ARCHIVE_LANGS = {
     notLoaded: "আর্কাইভের জন্য সম্পূর্ণ ইতিহাস দরকার — এটি নিজে নিজেই লোড হয়।",
     failed: "সম্পূর্ণ ইতিহাস লোড করা যায়নি।",
     retry: "আবার চেষ্টা করুন",
+    // #3032 — 2000-round cap notice (BN).
+    truncated: "সবচেয়ে পুরনো মাসগুলো অসম্পূর্ণ থাকতে পারে — এই বাচ্চা ২,০০০-এর বেশি রাউন্ড খেলেছে, আর পোর্টাল শুধু নতুন ২,০০০ লোড করে।",
   },
 } as const;
 
@@ -1637,27 +1642,60 @@ export interface MonthSummary {
  *  re-bucket of up to ~2000 rounds. WeakMap keys (arrays) are GC'd with the feed. */
 const monthlyArchiveCache = new WeakMap<ActivityRow[], Promise<MonthSummary[]>>();
 
+/** #3033 — a 5-minute gap between instant stamps starts a new play session.
+ *  Mirrors the API shares.py `_SESSION_GAP_SECONDS`. */
+export const SPAN_GAP_MS = 5 * 60 * 1000;
+
+/** #3033 — honest play-time estimate from instant stamps: cluster the occurred-at
+ *  instants into sessions (a gap over `SPAN_GAP_MS` starts a new one) and sum each
+ *  session's elapsed span. `response_ms` is per-answer latency, NOT play time, so
+ *  it must not be used as "minutes played" (see shares.py #1552). This is the
+ *  client-side twin of `_session_span_minutes` so the archive, the timeline, and
+ *  the share card all report the SAME metric. */
+export function sessionSpanMinutes(occurredAts: string[]): number {
+  const stamps = [...occurredAts]
+    .map((iso) => Date.parse(iso))
+    .filter((n) => Number.isFinite(n))
+    .sort((a, b) => a - b);
+  if (stamps.length === 0) return 0;
+  let total = 0;
+  let start = stamps[0];
+  let prev = stamps[0];
+  for (let i = 1; i < stamps.length; i++) {
+    const t = stamps[i];
+    if (t - prev > SPAN_GAP_MS) {
+      total += prev - start;
+      start = t;
+    }
+    prev = t;
+  }
+  total += prev - start;
+  return Math.round((total / 60000) * 10) / 10;
+}
+
 /** Bucket activity rounds into the rolling 12-month archive. `activity` must be
  *  sorted newest-first (as the API returns it). Pure + offline.
  *  #1822 — async: the fold is chunked across frames (yields every CHUNK rows) so
- *  a large feed can't block the UI thread during the dashboard hydrate. */
+ *  a large feed can't block the UI thread during the dashboard hydrate.
+ *  #3031 — months key by the LOCAL calendar (matching the tabs), not the UTC
+ *  slice. #3033 — "minutes" is session-span play time, not Σ response_ms. */
 export async function buildMonthlyArchive(activity: ActivityRow[]): Promise<MonthSummary[]> {
   const hit = monthlyArchiveCache.get(activity);
   if (hit) return hit;
   const promise = (async () => {
-    const byKey = new Map<string, { rounds: number; correct: number; ms: number; skills: Map<string, { rounds: number; correct: number }> }>();
+    const byKey = new Map<string, { rounds: number; correct: number; ats: string[]; skills: Map<string, { rounds: number; correct: number }> }>();
     const CHUNK = 100;
     for (let i = 0; i < activity.length; i++) {
       const a = activity[i];
-      const key = a.created_at.slice(0, 7); // "2026-07-08…" → "2026-07"
+      const key = localMonthKey(activityOccurredAt(a));
       let b = byKey.get(key);
       if (!b) {
-        b = { rounds: 0, correct: 0, ms: 0, skills: new Map() };
+        b = { rounds: 0, correct: 0, ats: [], skills: new Map() };
         byKey.set(key, b);
       }
       b.rounds += 1;
       if (a.correct) b.correct += 1;
-      b.ms += a.response_ms ?? 0;
+      b.ats.push(activityOccurredAt(a));
       const s = b.skills.get(a.skill_id) ?? { rounds: 0, correct: 0 };
       s.rounds += 1;
       if (a.correct) s.correct += 1;
@@ -1671,7 +1709,7 @@ export async function buildMonthlyArchive(activity: ActivityRow[]): Promise<Mont
         .map(([id, s]) => ({ id, ...s }))
         .sort((x, y) => y.rounds - x.rounds)
         .slice(0, 3);
-      return { key: m.key, rounds: b.rounds, correct: b.correct, minutes: Math.round((b.ms / 60000) * 10) / 10, top };
+      return { key: m.key, rounds: b.rounds, correct: b.correct, minutes: sessionSpanMinutes(b.ats), top };
     });
   })();
   // On an (unexpected) rejection, drop the entry so a later call can retry.
@@ -1748,9 +1786,10 @@ export interface TimelineSession {
 /** Internal accumulator while grouping rounds into sessions. */
 export interface TimelineAcc {
   start: string;
+  /** Last occurred-at in this session (for the #3033 session-span minutes). */
+  end: string;
   rounds: number;
   correct: number;
-  ms: number;
   mastered: string[];
 }
 
@@ -1771,6 +1810,15 @@ export function bktUpdate(m: number, correct: boolean, pLearn = 0.1, pGuess = 0.
   return Math.min(1, g + (1 - g) * pLearn);
 }
 
+/** #3030 — idle decay applied BEFORE every update, matching the API's
+ *  progress.py `_decay` (mastery *= (1 - decay_per_day)^days; 0.02/day). The
+ *  client replay previously skipped this, so a decaying skill's crossing event
+ *  drifted from the server's `mastered_at`. */
+export function bktDecay(m: number, days: number, decayPerDay = 0.02): number {
+  if (days <= 0) return m;
+  return Math.max(0, m * Math.pow(1 - decayPerDay, days));
+}
+
 export function localDayKey(iso: string): string {
   const d = new Date(iso);
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -1778,31 +1826,65 @@ export function localDayKey(iso: string): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
+/** #3031 — the LOCAL calendar month of an ISO instant, matching `rollingMonths`
+ *  (which builds its tab keys from the viewer's local `now`). `a.created_at
+ *  .slice(0, 7)` used to return the UTC month, so near a month boundary in a
+ *  non-UTC zone (a Dhaka morning on the 1st is the prior UTC evening) a day of
+ *  play landed under the wrong tab. */
+export function localMonthKey(iso: string): string {
+  const d = new Date(iso);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${d.getFullYear()}-${m}`;
+}
+
+/** #1611 — the effective occurred-at instant of an activity row: the client-
+ *  observed `client_ts` when present, else the server-stamped `created_at`.
+ *  Mirrors the API's `_event_occurred_at` so parent-side bucketing (archive
+ *  months, session spans) attributes an offline-delayed round to when it
+ *  actually happened. */
+export function activityOccurredAt(a: ActivityRow): string {
+  return a.client_ts ?? a.created_at;
+}
+
 /** Group a kid's rounds (newest-first, as the API returns them) into play
  *  sessions and replay BKT to find which skills crossed mastery in each block.
- *  Pure + offline — built from the same full-history fetch as the archive. */
-export function buildSessionTimeline(activity: ActivityRow[]): TimelineSession[] {
+ *  Pure + offline — built from the same full-history fetch as the archive.
+ *  #3030 — seed the replay from the server's current mastery rows (a skill
+ *  already mastered before the fetched window is NOT re-attributed to the first
+ *  window session) and apply idle decay before each update so the crossing
+ *  matches the server's `mastered_at` for a decaying skill. #3033 — `minutes`
+ *  is session-span play time, not Σ response_ms. */
+export function buildSessionTimeline(activity: ActivityRow[], masteryRows: MasteryRow[] = []): TimelineSession[] {
   const events = [...activity].reverse(); // oldest → newest for replay
   const sessions: TimelineAcc[] = [];
   const mastery = new Map<string, number>();
+  // #3030 — per-skill last-seen instant for idle decay. Decay is per-SKILL (the
+  // server's `last_decay` is a skill attribute), not a global gap.
+  const lastSeen = new Map<string, number>();
+  for (const m of masteryRows) {
+    if (m.skill_id) mastery.set(m.skill_id, m.mastery);
+  }
   let cur: TimelineAcc | null = null;
   let prevTs = 0;
   for (const a of events) {
-    const ts = Date.parse(a.created_at);
+    const ts = Date.parse(activityOccurredAt(a));
+    if (!Number.isFinite(ts)) continue;
     if (cur && ts - prevTs > SESSION_GAP_MS) {
       sessions.push(cur);
       cur = null;
     }
-    if (!cur) cur = { start: a.created_at, rounds: 0, correct: 0, ms: 0, mastered: [] };
-    cur.rounds += 1;
-    if (a.correct) cur.correct += 1;
-    cur.ms += a.response_ms ?? 0;
-    const before = mastery.get(a.skill_id) ?? 0;
+    if (!cur) cur = { start: activityOccurredAt(a), end: activityOccurredAt(a), rounds: 0, correct: 0, mastered: [] };
+    const skillTs = lastSeen.get(a.skill_id);
+    const before = bktDecay(mastery.get(a.skill_id) ?? 0, skillTs != null ? (ts - skillTs) / 86_400_000 : 0);
     const after = bktUpdate(before, a.correct);
     mastery.set(a.skill_id, after);
+    lastSeen.set(a.skill_id, ts);
     if (before < SESSION_MASTERY && after >= SESSION_MASTERY && !cur.mastered.includes(a.skill_id)) {
       cur.mastered.push(a.skill_id);
     }
+    cur.rounds += 1;
+    if (a.correct) cur.correct += 1;
+    cur.end = activityOccurredAt(a);
     prevTs = ts;
   }
   if (cur) sessions.push(cur);
@@ -1813,7 +1895,7 @@ export function buildSessionTimeline(activity: ActivityRow[]): TimelineSession[]
     date: localDayKey(s.start),
     rounds: s.rounds,
     correct: s.correct,
-    minutes: Math.round((s.ms / 60000) * 10) / 10,
+    minutes: sessionSpanMinutes([s.start, s.end]),
     mastered: s.mastered,
   }));
 }
@@ -2173,7 +2255,10 @@ export const SHARE_LANGS = {
     windowLabel: "Live this week — {range}",
     rounds: "rounds this week",
     correct: "correct",
-    minutesPlayed: "minutes played",
+    // #3033 — the share card's minutes are a session-span ESTIMATE (shares.py
+    // _session_span_minutes), so label it "estimated play time" rather than the
+    // same "minutes played" the dashboard uses for a different metric.
+    minutesPlayed: "estimated play time",
     min: "min",
     daysActive: "days active",
     skillsMastered: "skills mastered",
@@ -2191,7 +2276,8 @@ export const SHARE_LANGS = {
     windowLabel: "লাইভ — এই সপ্তাহ {range}",
     rounds: "এই সপ্তাহের রাউন্ড",
     correct: "সঠিক",
-    minutesPlayed: "মিনিট খেলা হয়েছে",
+    // #3033 — estimated play time (BN).
+    minutesPlayed: "আনুমানিক খেলার সময়",
     min: "মিনিট",
     daysActive: "সক্রিয় দিন",
     skillsMastered: "আয়ত্ত করা দক্ষতা",

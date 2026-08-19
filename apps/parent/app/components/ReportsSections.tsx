@@ -279,6 +279,7 @@ export function ArchiveCard({
   // #1517 — page.tsx wires onRetryArchive
   onRetryArchive,
   archiveError,
+  archiveTruncated,
 }: {
   active: ActiveKid;
   activeArchive: MonthSummary[];
@@ -294,6 +295,9 @@ export function ArchiveCard({
    *  appears inside the card instead of leaning on the global error banner. */
   onRetryArchive?: () => void;
   archiveError?: boolean;
+  /** #3032 — the history fetch hit the API's 2000-round cap; show an honest
+   *  "oldest months may be incomplete" notice instead of a silent idle-month. */
+  archiveTruncated?: boolean;
 }) {
   const selSummary = activeArchive.find((m) => m.key === selMonth) ?? null;
   // #1605 — roving tabindex + arrow-key navigation on the month tablist.
@@ -348,6 +352,11 @@ export function ArchiveCard({
     </div>
   ) : (
     <>
+      {archiveTruncated && (
+        <p className="muted small" role="note" style={{ marginBottom: 10 }}>
+          ⚠️ {ARCHIVE_LANGS[narrLang].truncated}
+        </p>
+      )}
       <div className="archive-grid" role="tablist" aria-label={ARCHIVE_LANGS[narrLang].selectMonth}>
         {activeArchive.map((m, i) => {
           const mm = rollingMonths(12).find((x) => x.key === m.key);

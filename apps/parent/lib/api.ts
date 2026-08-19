@@ -119,6 +119,15 @@ export interface ActivityRow {
   response_ms: number | null;
   difficulty: number | null;
   created_at: string;
+  /** #1611 — the client-observed occurred-at instant (the API returns this; null
+   *  for legacy rows). Prefer it over `created_at` when bucketing a round to the
+   *  local day/month it actually happened (offline-delayed syncs). */
+  client_ts?: string | null;
+  /** #1616 — event kind ("round" default; "coins"/"quest"/"garden"/"challenge"/
+   *  "session-minutes"…). Engagement rows are activity but NOT a practice round. */
+  kind?: string;
+  /** #1616 — small engagement payload (e.g. {"minutes": 4} for session-minutes). */
+  meta?: Record<string, unknown> | null;
 }
 
 /** 📖 KOTHA (#238) — one learning story emitted by the kid app's story outbox
