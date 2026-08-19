@@ -106,6 +106,32 @@ def _client_ts_from(e) -> datetime | None:
     return None
 
 
+def _synthetic_event_uid(e) -> str:
+    """#3071 — deterministic server-side uid for a None-uid progress event.
+
+    A random uuid per re-post made dedup impossible (see the call site). Derive a
+    stable key from the event's identifying fields so a re-posted logical event
+    always maps to the SAME uid and Postgres ON CONFLICT DO NOTHING dedups it.
+    Includes the client_ts (when present) so two genuinely-distinct events that
+    happen to share kid/skill/correct/game stay distinct by their timestamp."""
+    ts = e.timestamp if e.timestamp is not None else ""
+    cts = e.client_ts.isoformat() if e.client_ts is not None else ""
+    return ":".join(
+        [
+            "synth",
+            str(e.kid_id),
+            str(e.skill_id),
+            str(e.game_id or ""),
+            str(e.correct),
+            str(ts),
+            str(e.response_ms),
+            str(e.difficulty),
+            str(e.kind or ""),
+            cts,
+        ]
+    )
+
+
 def _next_mastered_at(
     prev_mastery: float,
     new_mastery: float,
@@ -157,10 +183,18 @@ async def _get_owned_kid(
     profile: Profile,
     db: AsyncSession,
     org_id: uuid.UUID | None = None,
+    *,
+    for_update: bool = False,
 ) -> Kid:
-    """#962 — resolve a kid the caller owns, scoped to profile and optionally org."""
+    """#962 — resolve a kid the caller owns, scoped to profile and optionally org.
+
+    #3100 — when ``for_update``, take a Postgres ``FOR UPDATE`` row lock on the
+    Kid so this handler serializes against other writers for the same kid (e.g.
+    reset vs /progress). The lock is held until the handler's commit."""
     stmt = select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id)
     stmt = org_scoped(stmt, org_id)
+    if for_update:
+        stmt = stmt.with_for_update()
     kid = await db.scalar(stmt)
     if not kid:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
@@ -215,7 +249,11 @@ async def record_progress(
     params = await _adaptive_params(db)
     kid_ids = {e.kid_id for e in body.events}
     for kid_id in kid_ids:
-        owned = await _get_owned_kid(kid_id, profile, db)
+        # #3100 — lock the Kid row so this write serializes against a concurrent
+        # reset (which also locks the Kid). Without the lock, a /progress could
+        # land rows between the reset's deletes and its commit — "start fresh"
+        # silently retaining progress. Hold until this handler's commit.
+        owned = await _get_owned_kid(kid_id, profile, db, for_update=True)
         if not owned:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
 
@@ -245,11 +283,16 @@ async def record_progress(
         rows = [
             {
                 "kid_id": e.kid_id,
-                # #1023 — the client's durable-outbox uid. A None uid defeats
-                # Postgres unique-constraint dedup (NULLs are distinct), so
-                # synthesize one server-side (#942 pattern) — dedup must hold
-                # for EVERY row.
-                "uid": e.uid if e.uid is not None else str(uuid.uuid4()),
+                # #1023/#3071 — the client's durable-outbox uid. A None uid
+                # defeats Postgres unique-constraint dedup (NULLs are distinct),
+                # so synthesize one server-side. It must be DETERMINISTIC, not a
+                # fresh random uuid: a client that re-posts the same logical
+                # event (lost ACK) with uid=None got a different random uid every
+                # time, so ON CONFLICT DO NOTHING never matched and the BKT loop
+                # double-counted mastery attempts. Derive a stable key from the
+                # event's identifying fields so a re-post of the same event
+                # yields the same uid and dedups.
+                "uid": e.uid if e.uid is not None else _synthetic_event_uid(e),
                 "skill_id": e.skill_id,
                 "game_id": e.game_id,
                 "correct": e.correct,
@@ -492,11 +535,19 @@ async def record_stories(
     # so two concurrent batches can't both read under the cap and overshoot. Held
     # until the commit at the end of this handler.
     await _lock_story_cap_keys(db, kid_ids)
+    # #3095 — beyond the advisory lock (which serializes concurrent batches), the
+    # count-then-insert could still overshoot on a SINGLE batch: a kid at cap-40
+    # receiving a 60-story batch ended at cap+20 because the count was read before
+    # that batch's insert. Enforce the cap per kid by counting how many of THIS
+    # batch's stories each kid may still take (remaining = cap − current_count),
+    # truncating the batch to that headroom so the table never exceeds the cap.
+    remaining_by_kid: dict[uuid.UUID, int] = {}
     for kid_id in kid_ids:
         current_count = await db.scalar(
             select(func.count()).select_from(LearningStory).where(LearningStory.kid_id == kid_id)
         )
-        if current_count is not None and current_count >= cap:
+        current_count = current_count or 0
+        if current_count >= cap:
             # #1855 — the client-facing 429 detail is STATIC: the old string
             # leaked the kid's live story count and the configured cap to the
             # client. Those numbers are an ops concern, so they move to a
@@ -510,6 +561,23 @@ async def record_stories(
                 status.HTTP_429_TOO_MANY_REQUESTS,
                 "Story cap reached — prune before adding more",
             )
+        remaining_by_kid[kid_id] = cap - current_count
+    # Truncate each kid's slice of the batch to its remaining headroom.
+    taken_by_kid: dict[uuid.UUID, int] = {}
+    truncated = False
+    kept_stories = []
+    for s in stories:
+        if taken_by_kid.get(s.kid_id, 0) >= remaining_by_kid.get(s.kid_id, 0):
+            truncated = True
+            continue
+        taken_by_kid[s.kid_id] = taken_by_kid.get(s.kid_id, 0) + 1
+        kept_stories.append(s)
+    if truncated:
+        logger.warning(
+            "story batch truncated to per-kid cap: kept=%d dropped=%d",
+            len(kept_stories), len(stories) - len(kept_stories),
+        )
+    stories = kept_stories
 
     rows = [
         {

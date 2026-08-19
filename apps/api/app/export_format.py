@@ -36,6 +36,28 @@ def iso(dt: datetime | None) -> str | None:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def event_occurred_at(e) -> datetime | None:
+    """#3072 — effective occurred-at instant for a progress event row in the
+    export.
+
+    Prefers the client-observed ``client_ts``, then the integer epoch-ms
+    ``timestamp`` (#1024, converted to an aware UTC datetime), then the
+    server-stamped ``created_at``. A 30-days-offline round exported today is
+    attributed to the day it was PLAYED, not the day it synced. Duck-types the
+    ORM row (this module is dependency-free), so a missing attribute is a clean
+    None fallthrough."""
+    cts = getattr(e, "client_ts", None)
+    if cts is not None:
+        return cts
+    ts = getattr(e, "timestamp", None)
+    if ts is not None:
+        try:
+            return datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            pass
+    return getattr(e, "created_at", None)
+
+
 def profile_meta(profile) -> dict:
     """What a parent may read about their own account. NOTE: deliberately
     omits password_hash, sessions, and is_admin — the export is family data,
@@ -97,9 +119,11 @@ def serialize_kid(kid, settings, mastery, events, stories, acceleration=None) ->
                 "correct": e.correct,
                 "response_ms": e.response_ms,
                 "difficulty": e.difficulty,
-                "created_at": iso(e.created_at),
+                # #3072 — export the real play time (client_ts → timestamp →
+                # created_at), not the server sync stamp.
+                "created_at": iso(event_occurred_at(e)),
             }
-            for e in sorted(events, key=lambda e: e.created_at or datetime.min)
+            for e in sorted(events, key=lambda e: event_occurred_at(e) or datetime.min)
         ],
         "stories": [
             {
@@ -140,7 +164,8 @@ def round_rows(kids, events) -> list[dict]:
         {
             "kid": name_by_id.get(e.kid_id, str(e.kid_id)),
             "kid_id": str(e.kid_id),
-            "date": iso(e.created_at),
+            # #3072 — the round's real play time, not the server sync stamp.
+            "date": iso(event_occurred_at(e)),
             "skill_id": e.skill_id,
             "game_id": e.game_id,
             "correct": e.correct,

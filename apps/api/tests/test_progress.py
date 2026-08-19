@@ -463,6 +463,21 @@ async def main():
     check("same-row update bumped attempts to 2", sm.attempts, 2)
     check("same-row update raised mastery", sm.mastery > sm_mastery_after_1, True)
 
+    # #3071 — a None-uid event must get a DETERMINISTIC server-side uid, so a
+    # lost-ACK re-post of the same logical event dedups (one row, attempts=1)
+    # instead of minting a fresh random uuid and double-counting BKT mastery.
+    fake = FakeSession()
+    kid = fake.add_kid(max_band=5)
+    r1 = await post_progress(fake, kid.id, [ev(kid.id, "count-to-50", correct=True, uid=None, timestamp=123456)])
+    check("no-uid event records once", r1["recorded"], 1)
+    check("no-uid event attempts start at 1", fake.skill_mastery[(kid.id, "count-to-50")].attempts, 1)
+    r2 = await post_progress(fake, kid.id, [ev(kid.id, "count-to-50", correct=True, uid=None, timestamp=123456)])
+    check("re-posted no-uid event dedups (records 0)", r2["recorded"], 0)
+    check("re-posted no-uid event did NOT double-count attempts",
+          fake.skill_mastery[(kid.id, "count-to-50")].attempts, 1)
+    check("only one ProgressEvent row was inserted for the no-uid event",
+          len(fake._inserted_uid_keys), 1)
+
     # Model-level guarantee: unique (kid_id, uid) is what makes ON CONFLICT DO NOTHING dedup correct.
     uqc = [c for c in ProgressEvent.__table__.constraints if isinstance(c, UniqueConstraint)]
     check("progress_events enforces unique (kid_id, uid)",
@@ -623,6 +638,18 @@ async def _run_story_cap():
                                profile=_FakeProfile(), db=fake)
     check("cap-1 batch records exactly one", r["recorded"], 1)
     check("store now sits exactly at the cap", fake.story_count, cap)
+
+    # #3095 — a SINGLE oversized batch must not overshoot the cap: a kid at
+    # cap-40 receiving a 60-story batch is truncated to the 40 remaining slots,
+    # landing exactly at cap (never cap+20). This is the "batch can overshoot on
+    # its own" gap the advisory lock alone cannot close.
+    fake = FakeStorySession()
+    kid = fake.add_kid(max_band=5)
+    fake.seed_stories(kid.id, cap - 40)
+    big_batch = [story(kid.id, "count-1-10", uid=f"big-{i}") for i in range(60)]
+    r = await P.record_stories(big_batch, profile=_FakeProfile(), db=fake)
+    check("oversized single batch is truncated to remaining headroom", r["recorded"], 40)
+    check("oversized batch store never exceeds the cap", fake.story_count, cap)
 
     # Concurrency race: two simultaneous batches for a near-full kid are forced
     # to reach the advisory lock together (barrier). The lock serializes the

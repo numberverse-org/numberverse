@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
@@ -52,13 +53,38 @@ router = APIRouter(prefix="/api/v1/kids", tags=["kids"])
 
 
 def _occurred_at(e: ProgressEvent) -> datetime:
-    """#1611 — the effective occurred-at instant of a progress event.
+    """#1611/#3072 — the effective occurred-at instant of a progress event.
 
     Bucketing (weekly days, active-days, streak, activity ordering) uses the
     client-observed ``client_ts`` when present — an offline-delayed round is
-    attributed to the day it HAPPENED, not the day it synced — and falls back to
-    the server-stamped ``created_at`` for legacy rows."""
-    return e.client_ts if e.client_ts is not None else e.created_at
+    attributed to the day it HAPPENED, not the day it synced. For a legacy row
+    with neither client_ts nor a resolvable integer ``timestamp`` (epoch ms,
+    #1024), fall back to the server-stamped ``created_at``."""
+    if e.client_ts is not None:
+        return e.client_ts
+    ts = getattr(e, "timestamp", None)
+    if ts is not None:
+        try:
+            return datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            pass
+    return e.created_at
+
+
+def _occurred_expr():
+    """#3072 — SQL coalesce for the effective occurred-at instant.
+
+    Mirrors ``_occurred_at`` for the query paths (activity ordering, weekly
+    window, streak): prefer the client-observed ``client_ts``, else the integer
+    epoch-ms ``timestamp`` (#1024, converted to timestamptz), else the
+    server-stamped ``created_at``. A legacy row written with #1024's ``timestamp``
+    but before #1611 added ``client_ts`` is still bucketed by its real play time,
+    not its sync time."""
+    return func.coalesce(
+        ProgressEvent.client_ts,
+        func.to_timestamp(ProgressEvent.timestamp / 1000.0),
+        ProgressEvent.created_at,
+    )
 
 
 def _is_round(e: ProgressEvent) -> bool:
@@ -114,6 +140,8 @@ async def _get_owned_kid(
     profile: Profile,
     db: AsyncSession,
     org_id: uuid.UUID | None = None,
+    *,
+    for_update: bool = False,
 ) -> Kid:
     """Resolve a kid the caller owns.
 
@@ -122,12 +150,18 @@ async def _get_owned_kid(
     via the ``org_scoped`` helper.  When both profile and org are provided,
     the kid must satisfy BOTH scopes (a parent who is also an org member sees
     only their own kids within that org).
+
+    #3100 — when ``for_update``, take a Postgres ``FOR UPDATE`` row lock on the
+    Kid so this handler serializes against other writers for the same kid (e.g.
+    reset vs /progress). The lock is held until the handler's commit.
     """
     stmt = select(Kid).where(Kid.id == kid_id)
     # Parent scope: consumer owns the kid via profile_id.
     stmt = stmt.where(Kid.profile_id == profile.id)
     # Additional org scope when the request carries an org context (#962).
     stmt = org_scoped(stmt, org_id)
+    if for_update:
+        stmt = stmt.with_for_update()
     kid = await db.scalar(stmt)
     if not kid:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
@@ -291,8 +325,19 @@ async def put_kid_settings(
     db: AsyncSession = Depends(get_db),
 ):
     await _get_owned_kid(kid_id, profile, db)
+    # #3099 — the get-then-create was a TOCTOU: two concurrent PUTs on a kid with
+    # no settings row both saw `db.get(...) is None` and both INSERTed the same
+    # primary key, so one commit raised IntegrityError → 500. Materialise the row
+    # atomically first (INSERT ... ON CONFLICT DO NOTHING — one writer wins, the
+    # other becomes a no-op), then read-and-mutate; the row ALWAYS exists after
+    # the guard, so the `db.get` below can only hit the update path.
+    await db.execute(
+        pg_insert(KidSettings)
+        .values(kid_id=kid_id)
+        .on_conflict_do_nothing(index_elements=[KidSettings.kid_id])
+    )
     s = await db.get(KidSettings, kid_id)
-    if s is None:
+    if s is None:  # defensive — the insert above guarantees a row in real PG
         s = KidSettings(kid_id=kid_id)
         db.add(s)
     s.enabled_subjects = body.enabled_subjects
@@ -402,7 +447,7 @@ async def get_kid_activity(
         select(ProgressEvent)
         .where(ProgressEvent.kid_id == kid_id)
         .order_by(
-            func.coalesce(ProgressEvent.client_ts, ProgressEvent.created_at).desc(),
+            _occurred_expr().desc(),
             ProgressEvent.id.desc(),
         )
         .limit(limit)
@@ -455,9 +500,10 @@ async def get_kid_weekly(
         await db.scalars(
             select(ProgressEvent).where(
                 ProgressEvent.kid_id == kid_id,
-                # #1611 — window on the client-observed instant when present so
-                # a round played Sunday but synced Tuesday lands in Sunday.
-                func.coalesce(ProgressEvent.client_ts, ProgressEvent.created_at) >= start_dt,
+                # #1611/#3072 — window on the client-observed instant when
+                # present (client_ts, else the epoch-ms timestamp) so a round
+                # played Sunday but synced Tuesday lands in Sunday.
+                _occurred_expr() >= start_dt,
             )
         )
     ).all()
@@ -514,14 +560,15 @@ async def get_kid_weekly(
     played_dates = set(
         (
             await db.execute(
-                # #1611 — the streak counts the client-observed day (coalesced)
-                # so an offline-delayed round keeps the streak alive on the day
-                # it was actually played.
+                # #1611/#3072 — the streak counts the client-observed day
+                # (coalesced client_ts → timestamp → created_at) so an
+                # offline-delayed round keeps the streak alive on the day it was
+                # actually played.
                 select(
                     func.date(
                         func.timezone(
                             "UTC",
-                            func.coalesce(ProgressEvent.client_ts, ProgressEvent.created_at),
+                            _occurred_expr(),
                         )
                     )
                 )
@@ -597,7 +644,14 @@ async def reset_kid_progress(
     log — "start fresh". Does NOT delete the kid or their settings.
     #981 — previously left LearningStory and AccelerationLog untouched,
     contradicting the 'start fresh' contract."""
-    await _get_owned_kid(kid_id, profile, db)
+    # #3100 — the four deletes below run in one transaction but previously did
+    # NOT serialize against a concurrent /progress for the same kid, so a round
+    # posted between the deletes and the commit survived, silently retaining
+    # progress/events mid-reset. Take a FOR UPDATE lock on the Kid row first:
+    # a concurrent /progress (which now also locks the Kid via _get_owned_kid
+    # for_update) blocks until this reset commits, so the wipe is atomic vs
+    # writers.
+    await _get_owned_kid(kid_id, profile, db, for_update=True)
     await db.execute(delete(SkillMastery).where(SkillMastery.kid_id == kid_id))
     await db.execute(delete(ProgressEvent).where(ProgressEvent.kid_id == kid_id))
     await db.execute(delete(LearningStory).where(LearningStory.kid_id == kid_id))

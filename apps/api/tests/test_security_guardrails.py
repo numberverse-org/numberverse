@@ -111,12 +111,20 @@ class _StoreDB:
         pass
 
     async def execute(self, stmt):
-        # For _allow_fixed_window-style upserts we don't model here (only used
-        # if a test drives ip_rate_limit/rate_limit through this db, which it
-        # doesn't). Return a benign result.
+        # Model the INSERT ... ON CONFLICT DO NOTHING first-use guard that
+        # _allow_fixed_window and AuthAttemptGuard._load_for_update issue
+        # (#3114/#3098): materialise a bucket row only when the key is absent.
         params = stmt.compile().params
-        key = params.get("key")
-        self.store.data[key] = SimpleNamespace(count=int(params.get("count", 1)))
+        key = params.get("key") or params.get("key_1")
+        if key is None:
+            return _Result()
+        if key not in self.store.data:
+            self.store.data[key] = SimpleNamespace(
+                window_start=params.get("window_start"),
+                count=params.get("count", 0),
+                prev_count=params.get("prev_count", 0),
+                locked_until=params.get("locked_until"),
+            )
         return _Result()
 
 

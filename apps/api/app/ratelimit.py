@@ -464,13 +464,29 @@ class AuthAttemptGuard:
     async def _load_for_update(
         self, db: AsyncSession, key: str, now: datetime
     ) -> RateLimitBucket:
-        """Load (or create) one bucket and reset its window if it expired."""
+        """Load (or create) one bucket and reset its window if it expired.
+
+        #3098 — the create-if-absent path was a TOCTOU: two concurrent first-use
+        requests for a fresh key both ran `SELECT ... FOR UPDATE` on an empty
+        result (FOR UPDATE locks nothing when no row exists), both fell into the
+        `row is None` branch, and both `db.add()` + flush the same primary key —
+        the loser raised an IntegrityError → 500 on the very first pair of
+        simultaneous failures. Mirror the first-use guard `_allow_fixed_window`
+        uses (#3114): INSERT ... ON CONFLICT (key) DO NOTHING materialises the row
+        atomically (one writer wins, the other becomes a no-op), so the
+        `SELECT ... FOR UPDATE` below ALWAYS sees an existing row and actually
+        takes the lock before the read-modify-write."""
+        await db.execute(
+            pg_insert(RateLimitBucket)
+            .values(key=key, window_start=now, count=0, prev_count=0, locked_until=None)
+            .on_conflict_do_nothing(index_elements=[RateLimitBucket.key])
+        )
         row = await db.scalar(
             select(RateLimitBucket)
             .where(RateLimitBucket.key == key)
             .with_for_update()
         )
-        if row is None:
+        if row is None:  # defensive — the insert above guarantees a row in real PG
             row = RateLimitBucket(key=key, window_start=now, count=0, locked_until=None)
             db.add(row)
             await db.flush()

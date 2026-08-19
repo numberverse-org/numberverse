@@ -222,6 +222,12 @@ class _SharedStoreDB:
         self._store = store  # {bucket_key: RateLimitBucket}
         self._pending = []
 
+    async def execute(self, stmt):
+        # #3098 — the INSERT ... ON CONFLICT DO NOTHING first-use guard. The
+        # `scalar` + `add`/`flush` path below already materialises the first
+        # row, so this is a benign no-op (mirrors test_ratelimit._BucketDB).
+        return None
+
     async def scalar(self, stmt):
         return self._store.get(_bucket_key(stmt))
 
