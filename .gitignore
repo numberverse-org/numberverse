@@ -42,3 +42,6 @@ test-results/
 playwright-report/
 blob-report/
 apps/api/.venv
+
+# API runtime logs (test-run artifacts) — never commit access.log/error.log
+apps/api/data/
