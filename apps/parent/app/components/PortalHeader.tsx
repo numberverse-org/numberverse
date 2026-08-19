@@ -214,28 +214,32 @@ export default function PortalHeader({
               </button>
             </span>
             {notifAskPass && (
-              <span className="notif-prompt">
-                <span>{N.needParent}</span>
-                <span>{N.passwordLabel}</span>
-                <input
-                  type="password"
-                  value={notifPassword}
-                  onChange={(e) => setNotifPassword(e.target.value)}
-                  placeholder={N.passwordPlaceholder}
-                  aria-label={N.passwordLabel}
-                  autoFocus
-                />
-                <button
-                  className="btn btn-small"
-                  disabled={notifBusy}
-                  onClick={() => confirmEnableNotifications()}
-                >
-                  {notifBusy ? N.verifying : N.confirm}
-                </button>
-                <button className="btn btn-small ghost" disabled={notifBusy} onClick={cancelNotifAsk}>
-                  {N.cancel}
-                </button>
-              </span>
+              <div className="notif-prompt-overlay" role="dialog" aria-modal="true" aria-label={N.passwordLabel}>
+                <div className="notif-prompt">
+                  <span className="notif-prompt-title">{N.needParent}</span>
+                  <span>{N.passwordLabel}</span>
+                  <input
+                    type="password"
+                    value={notifPassword}
+                    onChange={(e) => setNotifPassword(e.target.value)}
+                    placeholder={N.passwordPlaceholder}
+                    aria-label={N.passwordLabel}
+                    autoFocus
+                  />
+                  <div className="notif-prompt-actions">
+                    <button
+                      className="btn btn-small"
+                      disabled={notifBusy}
+                      onClick={() => confirmEnableNotifications()}
+                    >
+                      {notifBusy ? N.verifying : N.confirm}
+                    </button>
+                    <button className="btn btn-small ghost" disabled={notifBusy} onClick={cancelNotifAsk}>
+                      {N.cancel}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
             {notifMsg && (
               <span

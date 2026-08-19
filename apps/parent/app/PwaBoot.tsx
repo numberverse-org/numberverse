@@ -12,9 +12,12 @@ export default function PwaBoot() {
     if (!("serviceWorker" in navigator)) return;
     const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
     const onLoad = () => {
-      navigator.serviceWorker.register(`${base}/sw.js`).catch(() => {
+      navigator.serviceWorker.register(`${base}/sw.js`).catch((err) => {
         /* SW is a progressive enhancement — a failure just means no offline
-         * installability, the portal still works fine. */
+         * installability, the portal still works fine. #3008 — still log it so
+         * a missing registration (which would hang `serviceWorker.ready`) is not
+         * silently swallowed during debugging. */
+        console.warn("[PwaBoot] service worker registration failed", err);
       });
     };
     if (document.readyState === "complete") onLoad();

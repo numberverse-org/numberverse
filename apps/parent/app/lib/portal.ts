@@ -1316,6 +1316,9 @@ export const NOTIF_LANGS = {
     verifying: "verifying…",
     passwordRequired: "Enter your password to continue.",
     unsupported: "Notifications aren't supported on this device",
+    // #3009 — a previously-denied browser permission is a real, separate state:
+    // it is NOT "the server isn't configured". Give it its own, actionable copy.
+    blocked: "Notifications are blocked in this browser — allow them in your site settings, then try again",
     notConfigured: "Notifications aren't configured on this server yet",
     // #1596 — "not configured" should be plain + one-time dismissible, and the
     // copy says who fixes it (an admin adds push keys) instead of hiding behind
@@ -1340,6 +1343,7 @@ export const NOTIF_LANGS = {
     verifying: "যাচাই হচ্ছে…",
     passwordRequired: "চালিয়ে যেতে আপনার পাসওয়ার্ড লিখুন।",
     unsupported: "এই ডিভাইসে নোটিফিকেশন সাপোর্টেড নয়",
+    blocked: "এই ব্রাউজারে নোটিফিকেশন ব্লক করা আছে — সাইট সেটিংসে অনুমতি দিয়ে আবার চেষ্টা করুন",
     notConfigured: "এই সার্ভারে নোটিফিকেশন এখনো কনফিগার করা হয়নি",
     notConfiguredNow: "এই সার্ভারে নোটিফিকেশন এখনো কনফিগার করা হয়নি — চালু করতে আগে অ্যাডমিনকে পুশ কী যোগ করতে হবে।",
     dismiss: "খারিজ করুন",

@@ -45,6 +45,7 @@ import {
   subscribePush,
   unsubscribePush,
   type PushSubscribeBody,
+  type PushSubscriptionRecord,
   type Profile,
   type Kid,
   type MasteryRow,
@@ -478,15 +479,33 @@ export default function ParentDashboard() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // #1535 — initial toggle state comes from the API's push subscription list.
-  // Anon/unsupported browsers never fetch; missing API routes degrade to "off".
+  // #1535 — initial toggle state. #3005 — reconcile against the BROWSER's real
+  // getSubscription() result rather than trusting the server list alone, so the
+  // on/off UI reflects the browser's actual registration (a revoked sub reads
+  // "off" even if a stale server row lingered).
   useEffect(() => {
     if (authState !== "ok" || !token || !browserSupportsPush()) return;
     let alive = true;
     setNotifState("loading");
-    listPushSubscriptions(token)
-      .then((subs) => {
+    const readBrowser = async (): Promise<PushSubscribeBody | null> => {
+      try {
+        const reg = await readyServiceWorker();
+        const existing = reg ? await reg.pushManager.getSubscription() : null;
+        return existing ? pushSubToBody(existing) : null;
+      } catch {
+        return null;
+      }
+    };
+    Promise.all([listPushSubscriptions(token).catch(() => [] as PushSubscriptionRecord[]), readBrowser()])
+      .then(([subs, browserSub]) => {
         if (!alive) return;
+        // Prefer the browser's real state when it exists; otherwise fall back to
+        // the server list (e.g. a sub created on another device).
+        if (browserSub) {
+          setNotifEndpoint(browserSub.endpoint);
+          setNotifState("on");
+          return;
+        }
         const current = subs[0];
         setNotifEndpoint(current?.endpoint ?? null);
         setNotifState(current ? "on" : "off");
@@ -1424,42 +1443,104 @@ export default function ParentDashboard() {
     }
   }
 
+  /** #3008 — wait for a service worker registration with a hard timeout so a
+   *  skipped/failed registration can never leave `navigator.serviceWorker.ready`
+   *  (which only settles when a page-controlling registration exists) dangling.
+   *  Explicitly (re)resolves the registration here rather than relying on the
+   *  `ready` promise alone. */
+  async function readyServiceWorker(timeoutMs = 5000): Promise<ServiceWorkerRegistration | null> {
+    if (!("serviceWorker" in navigator)) return null;
+    const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const swUrl = `${base}/sw.js`;
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    return (await Promise.race([
+      (async () => {
+        // #3008 — `ready` only settles when a page-controlling registration
+        // exists; if registration was skipped (dev) or failed, it hangs forever.
+        // Race it against an explicit get/register so we always settle and can
+        // surface a bounded "not configured" error instead of an infinite spinner.
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg) return reg;
+        } catch {
+          /* `ready` never settled — fall through to an explicit resolve. */
+        }
+        try {
+          return (await navigator.serviceWorker.getRegistration(swUrl)) ||
+            (await navigator.serviceWorker.register(swUrl)) ||
+            null;
+        } catch {
+          return null;
+        }
+      })(),
+      timeout,
+    ]));
+  }
+
   /** #1535 — get (or create) the browser PushSubscription in the API's wire
-   *  shape. A missing VAPID public key or unsupported browser returns null and
-   *  surfaces the "not configured"/"unsupported" state gracefully — never a
-   *  crash. */
-  async function getExistingPushSubscription(): Promise<PushSubscribeBody | null> {
-    if (!browserSupportsPush()) {
-      setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].unsupported });
-      return null;
-    }
+   *  shape. Returns a discriminated result instead of a bare payload/null so
+   *  callers can tell "permission denied" apart from "not configured".
+   *
+   *  #3009 — permission is requested explicitly FIRST and branched on, so a
+   *  previously-denied browser permission gets its own message instead of being
+   *  mislabelled "not configured on this server". Only a missing VAPID key maps
+   *  to notConfigured. */
+  type PushSubscribeResult =
+    | { ok: true; sub: PushSubscribeBody }
+    | { ok: false; reason: "unsupported" | "notConfigured" | "blocked" | "noSw" | "error" };
+
+  async function getExistingPushSubscription(): Promise<PushSubscribeResult> {
+    if (!browserSupportsPush()) return { ok: false, reason: "unsupported" };
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) return pushSubToBody(existing);
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) {
-        setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].notConfigured });
-        return null;
+      // #3009 — ask permission explicitly; a `denied` (or `default` after a
+      // prior deny) result is a browser-permission problem, not a config one.
+      const perm: NotificationPermission = await Notification.requestPermission();
+      if (perm === "denied") return { ok: false, reason: "blocked" };
+
+      const reg = await readyServiceWorker();
+      if (!reg) return { ok: false, reason: "noSw" };
+
+      let existing: PushSubscription | null = null;
+      try {
+        existing = await reg.pushManager.getSubscription();
+      } catch {
+        /* no existing sub — proceed to create one below */
       }
+      if (existing) return { ok: true, sub: pushSubToBody(existing) };
+
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) return { ok: false, reason: "notConfigured" };
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
-      return pushSubToBody(sub);
+      return { ok: true, sub: pushSubToBody(sub) };
     } catch {
-      setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].notConfigured });
-      return null;
+      return { ok: false, reason: "error" };
     }
   }
 
-  /** #1535 — toggle OFF: POST /push/unsubscribe for the current endpoint. */
+  /** #1535 — toggle OFF: POST /push/unsubscribe for the current endpoint, then
+   *  #3005 best-effort revoke the browser-side subscription so `getSubscription()`
+   *  returns null and the on/off UI can never drift from the browser's real state. */
   async function turnOffNotifications() {
     if (!token) return;
     setNotifBusy(true);
     setNotifMsg(null);
     try {
       if (notifEndpoint) await unsubscribePush(token, notifEndpoint);
+      // #3005 — revoke the live browser sub even if the server call failed;
+      // it's a best-effort browser-side cleanup that must not block the toggle.
+      try {
+        const reg = await readyServiceWorker();
+        if (reg) {
+          const existing = await reg.pushManager.getSubscription();
+          if (existing) await existing.unsubscribe();
+        }
+      } catch {
+        /* best-effort; the server unbind already succeeded/ran */
+      }
       setNotifEndpoint(null);
       setNotifState("off");
       setNotifMsg({ kind: "ok", text: NOTIF_LANGS[wizLang].disabled });
@@ -1490,9 +1571,23 @@ export default function ParentDashboard() {
       setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].notConfiguredNow });
       return;
     }
-    // Configured + supported → the normal parent re-confirm gate.
-    setNotifAskPass(true);
-    setNotifPassword("");
+    // #3009 — ask browser permission up front. If the parent previously denied
+    // it, surface the dedicated "blocked" message instead of a dead-end prompt.
+    void (async () => {
+      let perm: NotificationPermission = "default";
+      try {
+        perm = await Notification.requestPermission();
+      } catch {
+        perm = "default";
+      }
+      if (perm === "denied") {
+        setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].blocked });
+        return;
+      }
+      // Configured + supported + not denied → the normal parent re-confirm gate.
+      setNotifAskPass(true);
+      setNotifPassword("");
+    })();
   }
 
   /** #1596 — dismiss the one-time "not configured" message. */
@@ -1513,15 +1608,24 @@ export default function ParentDashboard() {
     setNotifBusy(true);
     setNotifMsg({ kind: "muted", text: NOTIF_LANGS[wizLang].verifying });
     try {
-      const sub = await getExistingPushSubscription();
-      if (!sub) {
-        // getExistingPushSubscription already surfaced the reason.
+      const result = await getExistingPushSubscription();
+      if (!result.ok) {
+        // #3009/#3008 — surface a precise reason instead of a generic dead-end.
+        const text =
+          result.reason === "blocked"
+            ? NOTIF_LANGS[wizLang].blocked
+            : result.reason === "noSw"
+              ? NOTIF_LANGS[wizLang].notConfigured
+              : result.reason === "unsupported"
+                ? NOTIF_LANGS[wizLang].unsupported
+                : NOTIF_LANGS[wizLang].notConfigured;
+        setNotifMsg({ kind: "muted", text });
         setNotifAskPass(false);
         setNotifPassword("");
         return;
       }
-      await subscribePush(token, sub);
-      setNotifEndpoint(sub.endpoint);
+      await subscribePush(token, result.sub);
+      setNotifEndpoint(result.sub.endpoint);
       setNotifState("on");
       setNotifAskPass(false);
       setNotifPassword("");
