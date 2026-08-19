@@ -38,10 +38,10 @@ interface PruneResult {
 const section: React.CSSProperties = {
   marginTop: 26,
   paddingTop: 18,
-  borderTop: "1px solid #eee",
+  borderTop: "1px solid var(--nv-border-soft)",
 };
-const h2: React.CSSProperties = { fontSize: 18, margin: "0 0 10px" };
-const sub: React.CSSProperties = { fontSize: 14, fontWeight: 700, margin: "14px 0 6px", color: "#444" };
+const h2: React.CSSProperties = { fontSize: 18, margin: "0 0 10px", color: "var(--nv-text)" };
+const sub: React.CSSProperties = { fontSize: 14, fontWeight: 700, margin: "14px 0 6px", color: "var(--nv-text-soft)" };
 const button: React.CSSProperties = {
   background: "linear-gradient(120deg,#7c3aed,#2ec4b2)",
   border: "none",
@@ -64,7 +64,7 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
           width: 180,
           textAlign: "right",
           fontSize: 12,
-          color: "#667",
+          color: "var(--nv-muted)",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -72,7 +72,7 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
       >
         {label}
       </div>
-      <div style={{ flex: 1, background: "#f1eefc", borderRadius: 6, height: 16 }}>
+      <div style={{ flex: 1, background: "var(--nv-surface)", borderRadius: 6, height: 16 }}>
         <div
           style={{
             width: `${pct}%`,
@@ -82,7 +82,7 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
           }}
         />
       </div>
-      <div style={{ width: 52, fontSize: 12, color: "#444" }}>{value}</div>
+      <div style={{ width: 52, fontSize: 12, color: "var(--nv-text)" }}>{value}</div>
     </div>
   );
 }
@@ -105,7 +105,7 @@ function DayTrend({ data }: { data: Array<{ date: string; stories: number }> }) 
             justifyContent: "flex-end",
           }}
         >
-          <div style={{ fontSize: 11, color: "#667", marginBottom: 2 }}>{d.stories || ""}</div>
+          <div style={{ fontSize: 11, color: "var(--nv-muted)", marginBottom: 2 }}>{d.stories || ""}</div>
           <div
             style={{
               width: "100%",
@@ -118,7 +118,7 @@ function DayTrend({ data }: { data: Array<{ date: string; stories: number }> }) 
           <div
             style={{
               fontSize: 10,
-              color: "#999",
+              color: "var(--nv-muted)",
               marginTop: 4,
               writingMode: "vertical-rl",
               transform: "rotate(180deg)",
@@ -186,7 +186,7 @@ export default function StoryHealth() {
       <h2 style={h2}>📚 Kotha story health</h2>
 
       {err && <div style={{ color: "#c62828", marginBottom: 12 }}>{err}</div>}
-      {!health && !err && <div style={{ color: "#888", padding: "10px 0" }}>Loading story health…</div>}
+      {!health && !err && <div style={{ color: "var(--nv-muted)", padding: "10px 0" }}>Loading story health…</div>}
 
       {health && (
         <>
@@ -215,13 +215,13 @@ export default function StoryHealth() {
           {/* #844 — runaway-sync flags. */}
           <div style={sub}>🚨 High-velocity kids (last hour)</div>
           {health.high_velocity_kids.length === 0 ? (
-            <div style={{ color: "#888", fontSize: 13 }}>
+            <div style={{ color: "var(--nv-muted)", fontSize: 13 }}>
               None — every kid is under {health.rate_limit_per_hour} stories/hour.
             </div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ textAlign: "left", color: "#888", fontSize: 12, textTransform: "uppercase" }}>
+                <tr style={{ textAlign: "left", color: "var(--nv-muted)", fontSize: 12, textTransform: "uppercase" }}>
                   <th style={{ padding: "6px 4px" }}>Kid</th>
                   <th style={{ padding: "6px 4px" }}>Last hour</th>
                   <th style={{ padding: "6px 4px" }}>Over budget by</th>
@@ -241,14 +241,14 @@ export default function StoryHealth() {
 
           <div style={sub}>📈 14-day ingest trend</div>
           {health.charts.by_day.length === 0 ? (
-            <div style={{ color: "#888", fontSize: 13 }}>No stories in the last 14 days.</div>
+            <div style={{ color: "var(--nv-muted)", fontSize: 13 }}>No stories in the last 14 days.</div>
           ) : (
             <DayTrend data={health.charts.by_day} />
           )}
 
           <div style={sub}>🐞 Stories by error kind</div>
           {health.charts.by_error_kind.length === 0 ? (
-            <div style={{ color: "#888", fontSize: 13 }}>No error-kind data yet.</div>
+            <div style={{ color: "var(--nv-muted)", fontSize: 13 }}>No error-kind data yet.</div>
           ) : (
             <div>
               {health.charts.by_error_kind.slice(0, 8).map((e) => (
@@ -264,7 +264,7 @@ export default function StoryHealth() {
 
           <div style={sub}>🧭 Stories by action</div>
           {health.charts.by_action.length === 0 ? (
-            <div style={{ color: "#888", fontSize: 13 }}>No action data yet.</div>
+            <div style={{ color: "var(--nv-muted)", fontSize: 13 }}>No action data yet.</div>
           ) : (
             <div>
               {health.charts.by_action.slice(0, 8).map((a) => (
@@ -280,7 +280,7 @@ export default function StoryHealth() {
 
           <div style={sub}>🧒 Stories per kid (anonymous rank)</div>
           {health.charts.by_kid.length === 0 ? (
-            <div style={{ color: "#888", fontSize: 13 }}>No per-kid story data yet.</div>
+            <div style={{ color: "var(--nv-muted)", fontSize: 13 }}>No per-kid story data yet.</div>
           ) : (
             <div>
               {health.charts.by_kid.slice(0, 8).map((k) => (

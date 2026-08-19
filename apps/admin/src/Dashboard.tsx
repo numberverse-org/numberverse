@@ -5,6 +5,7 @@ import { API } from "./apiBase";
 // of hand-rolling `fetch` + an Authorization header.
 import { httpClient } from "./httpClient";
 import StoryHealth from "./StoryHealth";
+import { useDarkMode } from "./useDarkMode";
 
 interface Stats {
   profiles: number;
@@ -22,30 +23,13 @@ interface Stats {
   }>;
 }
 
-const card: React.CSSProperties = {
-  background: "linear-gradient(150deg, rgba(124,58,237,0.18), rgba(46,196,182,0.12))",
-  border: "1px solid rgba(124,58,237,0.3)",
-  borderRadius: 20,
-  padding: "18px 16px",
-  textAlign: "center",
-};
-const num: React.CSSProperties = { fontSize: 30, fontWeight: 800, margin: "6px 0 2px" };
-const label: React.CSSProperties = { fontSize: 13, color: "#667", fontWeight: 600 };
-const box: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #eee",
-  borderRadius: 18,
-  padding: 20,
-  margin: 16,
-  boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
-};
-
 export default function Dashboard() {
   const { identity } = useGetIdentity();
   // #1885 — surface "sign out everywhere": authProvider.logout({logoutAll})
   // revokes every session the API mints (not just this device's), so an admin
   // who lost a device can kill the leaked token from here.
   const logout = useLogout();
+  const { dark, toggle } = useDarkMode();
   const [stats, setStats] = useState<Stats | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -70,70 +54,66 @@ export default function Dashboard() {
   ];
 
   return (
-    <div style={box}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+    <div className="nv-console">
+      <div className="nv-console-header">
         <div>
-          <h1 style={{ fontSize: 22, marginBottom: 4 }}>Numberverse Console</h1>
-          <div style={{ color: "#888" }}>
+          <h1 className="nv-console-title">Numberverse Console</h1>
+          <div className="nv-console-subtitle">
             {identity?.fullName ? `Signed in as ${identity.fullName}` : "Platform overview"}
           </div>
         </div>
-        <button
-          onClick={() => {
-            if (window.confirm("Sign out on EVERY device? This revokes all active sessions.")) {
-              logout({ logoutAll: true });
-            }
-          }}
-          style={{
-            background: "none",
-            border: "1px solid #ccc",
-            color: "#555",
-            borderRadius: 10,
-            padding: "8px 12px",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          👋 Sign out everywhere
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="nv-btn" onClick={toggle} title="Toggle dark/light theme">
+            {dark ? "☀️" : "🌙"}
+          </button>
+          <button
+            className="nv-btn"
+            onClick={() => {
+              if (window.confirm("Sign out on EVERY device? This revokes all active sessions.")) {
+                logout({ logoutAll: true });
+              }
+            }}
+          >
+            👋 Sign out everywhere
+          </button>
+        </div>
       </div>
 
-      {err && <div style={{ color: "#c62828", marginBottom: 12 }}>{err}</div>}
-      {!stats && !err && <div style={{ color: "#888", padding: 30 }}>Loading stats…</div>}
+      {err && <div style={{ color: "var(--nv-err)", marginBottom: 12 }}>{err}</div>}
+      {!stats && !err && <div className="nv-loading">Loading stats…</div>}
 
       {stats && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12 }}>
+          <div className="nv-tiles">
             {tiles.map((t) => (
-              <div key={t.title} style={card}>
-                <div style={{ fontSize: 28 }}>{t.emoji}</div>
-                <div style={num}>{t.value ?? "—"}</div>
-                <div style={label}>{t.title}</div>
+              <div key={t.title} className="nv-tile">
+                <div className="nv-tile-emoji">{t.emoji}</div>
+                <div className="nv-tile-num">{t.value ?? "—"}</div>
+                <div className="nv-tile-label">{t.title}</div>
               </div>
             ))}
           </div>
 
-          <h2 style={{ fontSize: 18, margin: "22px 0 8px" }}>Recent rounds</h2>
+          <h2 className="nv-section-title">Recent rounds</h2>
           {(stats.recent_events ?? []).length === 0 ? (
-            <div style={{ color: "#888" }}>No rounds recorded yet.</div>
+            <div className="nv-muted">No rounds recorded yet.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="nv-table">
               <thead>
-                <tr style={{ textAlign: "left", color: "#888", fontSize: 12, textTransform: "uppercase" }}>
-                  <th style={{ padding: "6px 4px" }}>Game</th>
-                  <th style={{ padding: "6px 4px" }}>Skill</th>
-                  <th style={{ padding: "6px 4px" }}>Result</th>
-                  <th style={{ padding: "6px 4px" }}>Time</th>
+                <tr>
+                  <th>Game</th>
+                  <th>Skill</th>
+                  <th>Result</th>
+                  <th>Time</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.recent_events.map((e) => (
-                  <tr key={e.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                    <td style={{ padding: "6px 4px" }}>{e.game_id}</td>
-                    <td style={{ padding: "6px 4px" }}>{e.skill_id}</td>
-                    <td style={{ padding: "6px 4px" }}>{e.correct ? "✅" : "❌"}</td>
-                    <td style={{ padding: "6px 4px", color: "#888" }}>
+                  <tr key={e.id}>
+                    <td>{e.game_id}</td>
+                    <td>{e.skill_id}</td>
+                    <td>{e.correct ? "✅" : "❌"}</td>
+                    <td className="nv-muted">
                       {e.created_at ? new Date(e.created_at).toLocaleString() : "—"}
                     </td>
                   </tr>
