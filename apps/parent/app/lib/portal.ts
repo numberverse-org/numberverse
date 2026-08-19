@@ -878,10 +878,9 @@ export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
           : `${n} total`
       }`
     : "🌱 Still growing — we keep playing every day!";
-  // #8 — honest coins line: the WALLET balance (a real number), never a made-up
-  // "earned this week" figure — we don't keep a per-week coin ledger.
-  // #1549 — no kid's name here: the share flow is aggregate-only.
-  const coins = w.coins && w.coins > 0 ? `🪙 ${w.coins} coins in the wallet` : null;
+  // #3063 — no coins line: the shared snapshot (ShareSnapshotOut, #867) carries
+  // no coins field, so a coins mention in the caption promised a number the
+  // linked page could never show. Dropped so the caption and card agree.
   // #3058 — the shared link is a LIVE rolling window, so the parent's message
   // should name the actual date range rather than a bare "this week". The weekly
   // report's `days` carry the concrete dates the card aggregates.
@@ -894,7 +893,6 @@ export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
     `🎮 ${w.rounds} rounds · ${w.minutes} min · ${w.active_days} day${w.active_days === 1 ? "" : "s"} active`,
     `🎯 ${w.correct_pct}% correct`,
     mastered,
-    ...(coins ? [coins] : []),
   ].join("\n");
 }
 
@@ -2290,7 +2288,6 @@ export const SHARE_LANGS = {
     min: "min",
     daysActive: "days active",
     skillsMastered: "skills mastered",
-    coinsInWallet: "coins in wallet",
     favoriteGame: "Favorite game",
     madeWith: "Made with 💜 by Numberverse · numberverse.org",
     lang: "EN / বাংলা",
@@ -2309,7 +2306,6 @@ export const SHARE_LANGS = {
     min: "মিনিট",
     daysActive: "সক্রিয় দিন",
     skillsMastered: "আয়ত্ত করা দক্ষতা",
-    coinsInWallet: "ওয়ালেটে কয়েন",
     favoriteGame: "প্রিয় খেলা",
     madeWith: "💜 দিয়ে বানিয়েছে Numberverse · numberverse.org",
     lang: "EN / বাংলা",

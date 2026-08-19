@@ -119,12 +119,8 @@ export default function ShareClient() {
                 <span className="tile-num">{snap.mastered_count}</span>
                 <span className="tile-label">{t.skillsMastered}</span>
               </div>
-              {typeof snap.coins === "number" && snap.coins > 0 && (
-                <div className="tile">
-                  <span className="tile-num">🪙 {snap.coins}</span>
-                  <span className="tile-label">{t.coinsInWallet}</span>
-                </div>
-              )}
+              {/* #3063 — no coins tile: ShareSnapshotOut has no coins field by
+                  design (#867), so a coins tile could never render. Removed. */}
             </div>
             {snap.minutes_by_day && snap.minutes_by_day.some((m) => m > 0) && (
               <div className="share-minbars" aria-label={t.minutesPlayed}>

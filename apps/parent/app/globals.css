@@ -668,6 +668,9 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   padding: 3px 10px;
   border-radius: 999px;
   cursor: pointer;
+  /* #2994 — 3px/10px padding at 11.5px lands ~24px tall; the manual-sync button
+     is a frequently tapped topbar control, so raise it to a 44px hit box. */
+  min-height: 44px;
 }
 .sync-btn:disabled { opacity: 0.6; cursor: wait; }
 
@@ -732,6 +735,9 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   border: 1px solid var(--nv-border);
   border-radius: 999px;
   padding: 6px 12px;
+  /* #2994 — 6px/12px padding with a 13px font lands well under 44px; give the
+     a11y toggles a full 44px hit box for one-handed phone taps. */
+  min-height: 44px;
   color: var(--nv-text);
   font-size: 13px;
   font-weight: 700;
@@ -1170,8 +1176,10 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  /* #2994 — 34px fell short of the 44px tap-target baseline; the +/− steppers
+     are frequently tapped on a phone, so give them a full 44×44 hit box. */
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 10px;
   border: 1px solid var(--nv-border);
   background: var(--nv-chip);
@@ -1217,7 +1225,7 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   color: var(--nv-muted-strong);
 }
 .weekday-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.weekday-chips .toggle-chip { padding: 6px 12px; font-size: 12.5px; }
+.weekday-chips .toggle-chip { padding: 6px 12px; font-size: 12.5px; /* #2994 — expand the hit box to 44px without losing the compact look */ min-height: 44px; }
 .weekday-presets { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .btn.ghost.small { padding: 8px 14px; font-size: 12.5px; }
 /* 🎯 #256 — gentle daily goal editor (minutes/day) */
@@ -1368,7 +1376,10 @@ label { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
   position: sticky;
   bottom: 0;
   z-index: 5;
-  padding: 10px 12px;
+  /* #2992 — the sticky save bar sits at the very bottom of the viewport, where
+     the iPhone home indicator lives in standalone-mode PWA; nudge its inner
+     padding up by the safe-area so the Save button is never occluded. */
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   margin-top: 18px;
   background: var(--nv-bg-card, #fff);
   border: 1px solid var(--nv-border-soft);

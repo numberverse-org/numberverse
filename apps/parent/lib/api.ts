@@ -464,8 +464,8 @@ export async function getWeekly(token: string, kidId: string): Promise<WeeklyRep
 
 /** #245 — the anonymized weekly snapshot a share-card link opens. Deliberately
  *  carries NO identity: rounds/minutes/accuracy/days, mastered count, top game.
- *  `coins` is the wallet balance (no history) and `minutes_by_day` is a 7-float
- *  minute curve (no dates) — both aggregate-only. */
+ *  `minutes_by_day` is a 7-float minute curve (no dates), aggregate-only.
+ *  #3063 — no `coins`: ShareSnapshotOut (#867) omits it by design. */
 export interface ShareSnapshot {
   rounds: number;
   minutes: number;
@@ -474,8 +474,9 @@ export interface ShareSnapshot {
   mastered_count: number;
   top_game: string | null;
   week_of: string;
-  /** #8 — current Nova wallet balance. */
-  coins?: number;
+  /** #3063 — ShareSnapshotOut (shares.py #867) deliberately carries NO coins
+   *  field, so a coins tile on the public share page could never render. The
+   *  field is removed so the caption and payload can't drift out of sync. */
   /** #8 — 7-day minute curve (oldest → newest, zero-filled). */
   minutes_by_day?: number[];
 }

@@ -44,6 +44,11 @@ interface LearningControlsProps {
   /** #3048 — inline save-failure message (session-ended / generic), rendered
    *  right next to the Save button so it can't be missed below the fold. */
   saveError: string | null;
+  /** #3044 — false while the kid's real settings never loaded. When false, the
+   *  Save button is disabled and the save row explains that settings aren't
+   *  loaded yet, so a parent can't persist the empty placeholder (which would
+   *  wipe the kid's real configuration server-side). */
+  settingsLoaded: boolean;
 }
 
 export default function LearningControls({
@@ -56,6 +61,7 @@ export default function LearningControls({
   savedTick,
   onTogglePause,
   saveError,
+  settingsLoaded,
 }: LearningControlsProps) {
   // #1593/#1602 — armed pause/resume confirmation (accessible modal).
   const [pauseConfirm, setPauseConfirm] = useState<"pause" | "resume" | null>(null);
@@ -740,11 +746,21 @@ export default function LearningControls({
       it isn't persisted yet (previously the Save button was below the fold and
       edits silently vanished on reload). */}
   <div className={`row-buttons save-row${unsaved ? " save-row-sticky" : ""}`}>
-    <button className="btn primary" disabled={busy} onClick={handleSaveSettings}>
+    <button
+      className="btn primary"
+      disabled={busy || !settingsLoaded}
+      onClick={handleSaveSettings}
+      title={!settingsLoaded ? "Settings haven't loaded yet" : undefined}
+    >
       {busy ? LEARNING_LANGS[wizLang].saving : LEARNING_LANGS[wizLang].saveSettings}
     </button>
     {savedTick > 0 && !unsaved && <span className="saved-note">{LEARNING_LANGS[wizLang].saved}</span>}
     {unsaved && <span className="muted small unsaved-note">{LEARNING_LANGS[wizLang].unsavedBadge}</span>}
+    {!settingsLoaded && (
+      <span className="muted small unsaved-note" role="status">
+        Settings haven't loaded — can't save yet.
+      </span>
+    )}
   </div>
   {/* #3048 — inline save-failure, adjacent to the Save button (the global banner
       is far above the fold and easy to miss from here). */}

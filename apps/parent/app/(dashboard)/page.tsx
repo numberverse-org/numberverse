@@ -214,6 +214,10 @@ export default function ParentDashboard() {
   const [kids, setKids] = useState<Kid[]>([]);
   const [mastery, setMastery] = useState<Record<string, MasteryRow[]>>({});
   const [settings, setSettings] = useState<Record<string, KidSettingsT>>({});
+  // #3044 — whether each kid's settings actually fetched (vs DEFAULT_SETTINGS
+  // placeholder). Save/Pause must NOT persist the placeholder, which would wipe
+  // the kid's real row server-side. Tracked per kid id, set on every fetch.
+  const [settingsLoaded, setSettingsLoaded] = useState<Record<string, boolean>>({});
   const [activity, setActivity] = useState<Record<string, ActivityRow[]>>({});
   const [weekly, setWeekly] = useState<Record<string, WeeklyReport>>({});
   const [stories, setStories] = useState<Record<string, LearningStoryRow[]>>({});
@@ -586,7 +590,11 @@ export default function ParentDashboard() {
               // #1504 — mastery degrades to [] like its siblings so one kid's
               // mastery failure can no longer reject the whole Promise.all.
               getMastery(tok, kid.id).catch(() => []),
-              getKidSettings(tok, kid.id).catch(() => DEFAULT_SETTINGS),
+              // #3044 — a failed settings fetch must map to a sentinel (null),
+              // NOT DEFAULT_SETTINGS, so a later Save/Pause can't persist the
+              // placeholder and wipe the kid's real row. Loaded-ness is tracked
+              // separately in settingsLoaded below.
+              getKidSettings(tok, kid.id).catch(() => null),
               getWeekly(tok, kid.id).catch(() => null),
               getStories(tok, kid.id).catch(() => []),
               getStoryStats(tok, kid.id).catch(() => null),
@@ -597,13 +605,22 @@ export default function ParentDashboard() {
         );
         const mm: Record<string, MasteryRow[]> = {};
         const ss: Record<string, KidSettingsT> = {};
+        const sl: Record<string, boolean> = {};
         const ww: Record<string, WeeklyReport> = {};
         const stt: Record<string, LearningStoryRow[]> = {};
         const sst: Record<string, StoryStats | null> = {};
         const acc: Record<string, AccelerationRow[]> = {};
         for (const [id, { m, s, w, st, sts, ac }] of entries) {
           mm[id] = m;
-          ss[id] = s;
+          if (s !== null) {
+            ss[id] = s;
+            sl[id] = true;
+          } else {
+            // #3044 — settings fetch failed: leave the entry unset so
+            // activeSettings falls back to the explicit placeholder for DISPLAY
+            // only, and settingsLoaded[id] stays false so Save/Pause bail.
+            sl[id] = false;
+          }
           if (w) ww[id] = w;
           stt[id] = st;
           sst[id] = sts;
@@ -611,6 +628,7 @@ export default function ParentDashboard() {
         }
         setMastery(mm);
         setSettings(ss);
+        setSettingsLoaded(sl);
         setWeekly(ww);
         setStories(stt);
         setStoryStats(sst);
@@ -870,7 +888,9 @@ export default function ParentDashboard() {
         const needActivityFallback = !archActivity[id] && archStatus[id] !== "loading";
         const [m, s, a, w, st, sts, ac] = await Promise.all([
           getMastery(token, id),
-          getKidSettings(token, id).catch(() => DEFAULT_SETTINGS),
+          // #3044 — sentinel null on failure (see refreshAll) so Save/Pause can't
+          // persist the DEFAULT_SETTINGS placeholder and wipe the real row.
+          getKidSettings(token, id).catch(() => null),
           needActivityFallback
             ? getActivity(token, id).catch(() => [])
             : Promise.resolve<ActivityRow[] | null>(null),
@@ -880,7 +900,12 @@ export default function ParentDashboard() {
           getAcceleration(token, id).catch(() => []),
         ]);
         setMastery((prev) => ({ ...prev, [id]: m }));
-        setSettings((prev) => ({ ...prev, [id]: s }));
+        if (s !== null) {
+          setSettings((prev) => ({ ...prev, [id]: s }));
+          setSettingsLoaded((prev) => ({ ...prev, [id]: true }));
+        } else {
+          setSettingsLoaded((prev) => ({ ...prev, [id]: false }));
+        }
         if (needActivityFallback && a) setActivity((prev) => ({ ...prev, [id]: a }));
         if (w) setWeekly((prev) => ({ ...prev, [id]: w }));
         setStories((prev) => ({ ...prev, [id]: st }));
@@ -1001,13 +1026,24 @@ export default function ParentDashboard() {
 
   async function handleSaveSettings() {
     if (!token || !activeId) return;
+    // #3044 — never persist the DEFAULT_SETTINGS placeholder: if the kid's real
+    // settings never loaded, bailing here (with a clear inline message) stops the
+    // PUT from overwriting every column of the kid_settings row with all-nulls.
+    if (!settingsLoaded[activeId]) {
+      setSaveError("Settings didn't load — check your connection and reload, then try again.");
+      return;
+    }
     // #1617 — local-only adoption signal (nothing leaves the device).
     nvTrackParent("save_settings");
     setBusy(true);
     setSaveError(null);
     setError(null);
     try {
-      const s = settings[activeId] ?? DEFAULT_SETTINGS;
+      const s = settings[activeId];
+      if (!s) {
+        setSaveError("Settings didn't load — check your connection and reload, then try again.");
+        return;
+      }
       const saved = await saveKidSettings(token, activeId, s);
       // #1513 — the server response becomes the new last-saved snapshot, so the
       // dirty badge clears exactly when the save has landed.
@@ -1041,14 +1077,22 @@ export default function ParentDashboard() {
    *  every device. */
   async function handleTogglePause() {
     if (!token || !activeId) return;
+    // #3044 — the pause PUT also sends the whole settings object; if the kid's
+    // real settings never loaded, persisting DEFAULT_SETTINGS would wipe the row.
+    // Bail with the same explicit message instead of a silent destructive write.
+    const base = settingsLoaded[activeId] ? settings[activeId] : undefined;
+    if (!base) {
+      setError("Settings didn't load — reload the page, then try pausing again.");
+      return;
+    }
     // #1617 — local-only adoption signal (nothing leaves the device).
     nvTrackParent("pause_toggle");
     setBusy(true);
     setError(null);
     try {
-      const next = !((settings[activeId] ?? DEFAULT_SETTINGS).paused ?? false);
+      const next = !(base.paused ?? false);
       const saved = await saveKidSettings(token, activeId, {
-        ...(settings[activeId] ?? DEFAULT_SETTINGS),
+        ...base,
         paused: next,
       });
       setSettings((prev) => ({ ...prev, [activeId]: saved }));
@@ -2533,6 +2577,7 @@ export default function ParentDashboard() {
               savedTick={savedTick}
               onTogglePause={() => void handleTogglePause()}
               saveError={saveError}
+              settingsLoaded={activeId ? settingsLoaded[activeId] === true : false}
             />
           </SectionErr>
 
