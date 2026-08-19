@@ -35,6 +35,7 @@ from ..models import (
     Profile,
     ProgressEvent,
     Session,
+    ShareToken,
     Skill,
     SkillMastery,
     Subscription,
@@ -777,6 +778,33 @@ async def purge_revoked_sessions(_: Profile = Depends(require_admin), db: AsyncS
     purged = await _purge_revoked_sessions(db)
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.session_purge_days)
     return {"purged": purged, "cutoff": cutoff.isoformat()}
+
+
+# #3057 — share links expire: prune share_tokens whose `created_at` is older than
+# `share_token_ttl_days`, OR whose `revoked_at` is older than the same TTL. The
+# read path already 404s expired tokens; this sweep removes the rows so they
+# never accumulate while the scheduled job runs unattended.
+async def _prune_share_tokens(db: AsyncSession) -> int:
+    """#3057 — shared prune logic used by the admin endpoint and the scheduled
+    embed-loop prune. Deletes share_tokens past the TTL (expired or long-revoked).
+    Commits; returns rows pruned."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.share_token_ttl_days)
+    result = await db.execute(
+        delete(ShareToken).where(
+            ShareToken.created_at < cutoff
+        )
+    )
+    pruned = result.rowcount or 0
+    await db.commit()
+    return pruned
+
+
+@router.post("/share-tokens/prune")
+async def prune_share_tokens(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """#3057 — manual trigger for the share-token expiry sweep (shared logic in
+    `_prune_share_tokens`)."""
+    pruned = await _prune_share_tokens(db)
+    return {"pruned": pruned, "ttl_days": settings.share_token_ttl_days}
 
 
 # #840 — caps for the generic admin list_resource. react-admin sends

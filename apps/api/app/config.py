@@ -129,6 +129,11 @@ class Settings(BaseSettings):
     max_progress_events_per_kid: int = 5000
     # #984 — hard-delete revoked sessions older than this many days.
     session_purge_days: int = 30
+    # #3057 — share links expire: a minted share token stops resolving this many
+    # days after its `share_token_created_at`. Enforced on every public snapshot
+    # read and swept by the scheduled admin prune so old links can't rotate into
+    # live weekly data forever.
+    share_token_ttl_days: int = 90
     # #1755 — operator token for /metrics (NV_METRICS_TOKEN). Empty in dev: the
     # /metrics gate then falls back to an admin/super_admin JWT. Set a strong
     # token on any reachable deployment so traffic shape isn't public.

@@ -6,11 +6,12 @@ that returns ONLY anonymized aggregates — no name, avatar, kid id, email or
 skill ids — so a friend/relative sees the week's numbers and nothing personal.
 The public page makes one fetch and no tracking pixels: zero analytics.
 
-Four routes:
-  · GET    /kids/{kid_id}/share-token          (auth) — mint (or return) the opaque token
-  · POST   /kids/{kid_id}/share-token/rotate   (auth) — regenerate the token, killing old links
-  · DELETE /kids/{kid_id}/share-token          (auth) — revoke the link (token is nulled)
-  · GET    /share/{token}                      (public) — the anonymized weekly snapshot
+Routes:
+  · GET    /kids/{kid_id}/share-token             (auth) — mint a NEW per-recipient token
+  · POST   /kids/{kid_id}/share-token/rotate      (auth) — revoke all links, mint one fresh
+  · DELETE /kids/{kid_id}/share-token             (auth) — revoke ALL links for the kid
+  · DELETE /kids/{kid_id}/share-token/{token}     (auth) — revoke ONE link (others stay live)
+  · GET    /share/{token}                         (public) — the anonymized weekly snapshot
 """
 import asyncio
 import hashlib
@@ -21,12 +22,14 @@ from datetime import datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import func, insert, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..db import get_db
 from ..deps import get_current_profile
-from ..models import ContentItem, Kid, KidSettings, ParentEvent, Profile, ProgressEvent, SkillMastery
+from ..models import ContentItem, Kid, KidSettings, ParentEvent, Profile, ProgressEvent, ShareToken, SkillMastery
 from ..ratelimit import ip_rate_limit, read_rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["share"])
@@ -54,6 +57,20 @@ _SHARE_TOKEN_MINT_SQL = text(
     "UPDATE kids SET share_token_created_at = now(), "
     "share_token_revoked_at = NULL WHERE id = CAST(:kid_id AS uuid)"
 )
+
+
+def _share_token_expired(created_at: datetime | None) -> bool:
+    """#3057 — a minted token expires `settings.share_token_ttl_days` after it
+    was created. A missing `created_at` is treated as expired (fail closed): an
+    unknown-age link can't be trusted to stay open forever."""
+    if created_at is None:
+        return True
+    if created_at.tzinfo is None:
+        # #906 — legacy naive stamps are treated as UTC; anything naive is
+        # necessarily older than a full TTL, so this is only a safety net.
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.share_token_ttl_days)
+    return created_at < cutoff
 
 
 async def _share_not_found() -> None:
@@ -334,6 +351,9 @@ def _top_game_scene(events: list[ProgressEvent]) -> tuple[str, str] | None:
 
 class ShareTokenOut(BaseModel):
     token: str
+    # #3057 — the moment this link stops resolving, so the parent card can show
+    # "expires in N days" (or omit nothing — the field is informational only).
+    expires_at: str | None = None
 
 
 class ShareSnapshotOut(BaseModel):
@@ -364,51 +384,48 @@ async def get_share_token(
     db: AsyncSession = Depends(get_db),
     _rl: Profile = Depends(SHARE_READ_RATE_LIMIT),
 ):
-    """Mint (or return) the kid's share token. Auth-protected + ownership-checked:
-    only the parent can read their own kid's token, so the unguessable string
+    """MINT a fresh per-recipient token (#3061). Auth-protected + ownership-checked:
+    only the parent can mint a token for their own kid, so the unguessable string
     never leaks through a guessed URL.
 
-    #1777 — the DB stores ONLY the sha256 fingerprint of the url-safe token;
-    the raw token lives solely in this response. A pre-migration plaintext row
-    is migrated in place so the parent keeps the SAME link. A row that already
-    stores only a hash cannot recover the raw token, so re-reading it re-mints
-    (rotates) a fresh link — the same semantics as an explicit /rotate. The
-    parent portal calls this only on a user "share" tap, so this is safe."""
+    Every call INSERTs a NEW `share_tokens` row (never reuses the previous
+    token), so a parent sharing the week to a school group gets a link distinct
+    from the one they already sent grandma — and can later revoke one audience
+    without killing the other.
+
+    #1777 — the DB stores ONLY the sha256 fingerprint of the url-safe token; the
+    raw token lives solely in this response. #3062 — the mint is an atomic
+    INSERT of a unique random fingerprint, so two concurrent first-share taps
+    each produce their own valid token with no SELECT-then-UPDATE race and no
+    last-writer-wins dead link."""
     owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
-    if not owned.share_token:
-        # Fresh mint: persist only the fingerprint.
-        raw = secrets.token_urlsafe(24)
-        owned.share_token = _share_token_hash(raw)
-        # #1550 — audit when this token was minted (stored via migrations.py;
-        # kept off the ORM model so another wave can own the column addition).
-        await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
-        await db.commit()
-        await db.refresh(owned)
-    elif _is_legacy_raw(owned.share_token):
-        # #1777 — pre-migration plaintext row: migrate it in place and hand back
-        # the SAME raw token, so the previously-minted link keeps resolving.
-        raw = owned.share_token
-        owned.share_token = _share_token_hash(raw)
-        await db.commit()
-    else:
-        # #1777 — only a hash is stored; the raw is unrecoverable, so re-reading
-        # re-mints (rotates) exactly like the /rotate endpoint.
-        raw = secrets.token_urlsafe(24)
-        owned.share_token = _share_token_hash(raw)
-        await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
-        await db.commit()
-        await db.refresh(owned)
-    # #1843 — audit the share-link access/mint on the parent's account.
+    raw = secrets.token_urlsafe(24)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.share_token_ttl_days)
+    # #3062 — atomic mint: INSERT (not SELECT-then-UPDATE). A random 24-byte
+    # url-safe token can't collide in practice, and even if it somehow did the
+    # unique constraint on token_hash would raise rather than hand out a dead link.
+    await db.execute(
+        insert(ShareToken).values(
+            id=uuid.uuid4(), kid_id=kid_id, token_hash=_share_token_hash(raw)
+        )
+    )
+    # #1550 — audit when this token was minted (stored via migrations.py; the
+    # legacy kids.share_token_created_at stays for the pre-#3057 column backfill).
+    await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
+    # #3062 — commit the mint before the audit row so a concurrent share-token
+    # GET can't observe a half-minted state on a real session.
+    await db.commit()
+    # #1843 — audit the share-link mint on the parent's account.
     db.add(ParentEvent(profile_id=profile.id, action="share_mint", event_type="share", target=str(kid_id)))
     await db.commit()
-    return ShareTokenOut(token=raw)
+    return ShareTokenOut(token=raw, expires_at=expires_at.isoformat())
 
 
-# #1550 — rotate a leaked/outdated share link: regenerate the token so every
-# previously-shared URL stops resolving immediately. Auth + ownership-checked
-# exactly like GET /share-token.
+# #1550 — rotate a leaked/outdated share-link set: revoke EVERY active token for
+# the kid (so all previously-shared URLs stop resolving immediately) and mint ONE
+# fresh replacement. Auth + ownership-checked exactly like GET /share-token.
 @router.post("/kids/{kid_id}/share-token/rotate", response_model=ShareTokenOut)
 async def rotate_share_token(
     kid_id: uuid.UUID,
@@ -418,22 +435,27 @@ async def rotate_share_token(
     owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
-    raw = secrets.token_urlsafe(24)
-    # #1777 — the DB stores only the sha256 fingerprint; the raw token is
-    # returned exactly once, in this response.
-    owned.share_token = _share_token_hash(raw)
+    # #3061 — revoke every active row at once (the "kill all prior links" flip
+    # side of per-recipient minting).
     await db.execute(
-        text(
-            "UPDATE kids SET share_token_created_at = now(), "
-            "share_token_revoked_at = NULL WHERE id = CAST(:kid_id AS uuid)"
-        ),
-        {"kid_id": str(kid_id)},
+        update(ShareToken)
+        .where(ShareToken.kid_id == kid_id, ShareToken.revoked_at.is_(None))
+        .values(revoked_at=func.now())
     )
+    raw = secrets.token_urlsafe(24)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.share_token_ttl_days)
+    # #1777/#3062 — the DB stores only the sha256 fingerprint; the raw token is
+    # returned exactly once, in this response. INSERT is atomic.
+    await db.execute(
+        insert(ShareToken).values(
+            id=uuid.uuid4(), kid_id=kid_id, token_hash=_share_token_hash(raw)
+        )
+    )
+    await db.execute(_SHARE_TOKEN_MINT_SQL, {"kid_id": str(kid_id)})
     # #1843 — audit the rotation on the parent's account.
     db.add(ParentEvent(profile_id=profile.id, action="share_rotate", event_type="share", target=str(kid_id)))
     await db.commit()
-    await db.refresh(owned)
-    return ShareTokenOut(token=raw)
+    return ShareTokenOut(token=raw, expires_at=expires_at.isoformat())
 
 
 # #852 — same UUID path-param typing as GET above: malformed ids 422 before the
@@ -444,19 +466,52 @@ async def revoke_share_token(
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
 ):
-    """#866 — revoke a kid's share link. Nulls the opaque token so the public
-    snapshot stops resolving immediately. The next mint (GET) rotates a fresh
-    token, so the parent can share again without ever reusing a dead link."""
+    """#866 — revoke EVERY active share link for a kid. Stamps `revoked_at` on
+    every live `share_tokens` row so the public snapshot stops resolving
+    immediately. The next share mints a fresh token, so the parent can share
+    again without ever reusing a dead link."""
     owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
-    owned.share_token = None
+    # #3061 — revoke all active rows (the parent's "stop sharing" kills every
+    # audience at once).
+    await db.execute(
+        update(ShareToken)
+        .where(ShareToken.kid_id == kid_id, ShareToken.revoked_at.is_(None))
+        .values(revoked_at=func.now())
+    )
     # #1550 — audit when this token was revoked (migrations.py column).
     await db.execute(
         text("UPDATE kids SET share_token_revoked_at = now() WHERE id = CAST(:kid_id AS uuid)"),
         {"kid_id": str(kid_id)},
     )
     # #1843 — audit the revocation on the parent's account.
+    db.add(ParentEvent(profile_id=profile.id, action="share_revoke", event_type="share", target=str(kid_id)))
+    await db.commit()
+
+
+# #3061 — revoke ONE token without killing the others. The `token` path param is
+# the raw url-safe token (hashed before lookup, same #1777 scheme); the parent
+# can drop a single leaked/outdated link while every other audience keeps theirs.
+@router.delete("/kids/{kid_id}/share-token/{token}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_one_share_token(
+    kid_id: uuid.UUID,
+    token: str = Path(max_length=64),
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    owned = await db.scalar(select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id))
+    if not owned:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
+    await db.execute(
+        update(ShareToken)
+        .where(
+            ShareToken.kid_id == kid_id,
+            ShareToken.token_hash == _share_token_hash(token),
+            ShareToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
     db.add(ParentEvent(profile_id=profile.id, action="share_revoke", event_type="share", target=str(kid_id)))
     await db.commit()
 
@@ -481,18 +536,38 @@ async def get_share_snapshot(
     # #1777 — new-form lookup: the DB stores only the sha256 fingerprint, so
     # hash the inbound token before comparing.
     token_hash = _share_token_hash(token)
-    kid = await db.scalar(select(Kid).where(Kid.share_token == token_hash))
-    if not kid:
-        # #1777 — legacy fallback: a pre-migration row stores the url-safe raw
-        # verbatim. Match it directly and lazily migrate it to the fingerprint
-        # so previously-minted plaintext links keep resolving (Done-when #2).
-        legacy = await db.scalar(select(Kid).where(Kid.share_token == token))
+    # #3057/#3061 — resolve against the per-recipient `share_tokens` table first.
+    # A revoked_or_expired row is a miss (404); `created_at` past the TTL is
+    # rejected below.
+    token_row = await db.scalar(
+        select(ShareToken).where(
+            ShareToken.token_hash == token_hash,
+            ShareToken.revoked_at.is_(None),
+        )
+    )
+    # #3057 — expire: a minted token older than the TTL stops resolving.
+    if token_row is not None and _share_token_expired(token_row.created_at):
+        await _share_not_found()
+
+    kid: Kid | None = None
+    if token_row is not None:
+        kid = await db.get(Kid, token_row.kid_id)
+    else:
+        # #1777 — legacy fallback: a pre-#3057 row stores its single token on
+        # `kids.share_token` (verbatim or hashed). Match it directly and lazily
+        # migrate it into `share_tokens` (fresh created_at → full TTL) so
+        # previously-minted links keep resolving AND now expire like new ones.
+        legacy = await db.scalar(select(Kid).where(Kid.share_token == token_hash))
+        if not legacy:
+            legacy = await db.scalar(select(Kid).where(Kid.share_token == token))
         if legacy:
-            _, needs_migration = resolve_share_token(legacy.share_token, token)
-            if needs_migration:
-                kid = legacy
-                legacy.share_token = token_hash
-                await db.commit()
+            kid = legacy
+            await db.execute(
+                pg_insert(ShareToken)
+                .values(id=uuid.uuid4(), kid_id=legacy.id, token_hash=token_hash)
+                .on_conflict_do_nothing(index_elements=["token_hash"])
+            )
+            await db.commit()
     if not kid:
         await _share_not_found()
 

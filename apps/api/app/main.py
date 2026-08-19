@@ -619,6 +619,7 @@ async def _embed_loop():
                         from .ratelimit import prune_rate_limit_buckets
                         from .routers.admin import (
                             _prune_progress_events,
+                            _prune_share_tokens,
                             _prune_stories,
                             _purge_revoked_sessions,
                         )
@@ -626,6 +627,9 @@ async def _embed_loop():
                         stories = await _prune_stories(db)
                         progress = await _prune_progress_events(db)
                         sessions = await _purge_revoked_sessions(db)
+                        # #3057 — sweep expired share links alongside the other
+                        # hourly retention jobs so old cards never pile up.
+                        share_tokens = await _prune_share_tokens(db)
                         # #1767 — rate_limit_buckets is otherwise append-only:
                         # every XFF-rotating IP / login-email probing key leaves
                         # a row forever. Same hourly tick keeps the table bounded.
@@ -636,6 +640,8 @@ async def _embed_loop():
                         log.info("Progress-event scheduled prune: removed %d rows", progress)
                     if sessions:
                         log.info("Revoked-session scheduled purge: removed %d rows", sessions)
+                    if share_tokens:
+                        log.info("Expired share-token prune: removed %d rows", share_tokens)
                     if buckets:
                         log.info("Rate-limit bucket prune: removed %d stale rows", buckets)
                 except Exception as exc:  # noqa: BLE001

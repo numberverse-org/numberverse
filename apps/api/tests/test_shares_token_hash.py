@@ -204,6 +204,11 @@ class FakeShareSession:
             return self.settings
         return None
 
+    async def execute(self, stmt, params=None):
+        # #3057/#3061 — legacy lazy-migration INSERT (and raw audit UPDATEs) are
+        # no-ops here; only get_share_snapshot's lookup paths are under test.
+        return None
+
     async def commit(self):
         self.commits += 1
 

@@ -107,6 +107,35 @@ class Kid(Base):
     settings: Mapped["KidSettings | None"] = relationship(back_populates="kid", cascade="all, delete-orphan")
 
 
+class ShareToken(Base):
+    """#3057/#3061/#3062 — per-recipient share-link tokens.
+
+    A kid can hold a small set of ACTIVE share tokens at once, each with its own
+    `created_at` (the TTL basis) and `revoked_at` (NULL until the parent revokes
+    that one link). This replaces the old single bearer `kids.share_token`
+    column: a parent can now share a fresh card to a new audience without
+    killing prior links, and can revoke one audience without killing all others.
+
+    `token_hash` is the sha256 fingerprint of the url-safe token (same #1777
+    scheme as the legacy column); the raw token lives only in the minting
+    response. Mints are INSERTs of a unique random hash — atomic by
+    construction, so the SELECT-then-UPDATE race that produced dead links on the
+    old single-column model is gone (#3062).
+    """
+
+    __tablename__ = "share_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kid_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kids.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # #3057 — token expiry basis. Enforced on read (get_share_snapshot) against
+    # `settings.share_token_ttl_days` and swept by the scheduled admin prune.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class KidSettings(Base):
     """Per-kid parent controls — the single source of truth for what a kid
     can play and how long. A missing row means defaults (everything on,

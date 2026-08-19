@@ -207,6 +207,30 @@ async def apply_column_migrations() -> list[str]:
         added.append("parent_events")
         added.append("parent_events.profile_id")
 
+    # #3057/#3061/#3062 — per-recipient share tokens. Fresh DBs get it from the
+    # ShareToken model via create_all; existing DBs from this idempotent CREATE
+    # TABLE IF NOT EXISTS + index, mirroring push_subscriptions/parent_events.
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS share_tokens ("
+                "id UUID PRIMARY KEY, "
+                "kid_id UUID NOT NULL REFERENCES kids(id) ON DELETE CASCADE, "
+                "token_hash VARCHAR(64) NOT NULL UNIQUE, "
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), "
+                "revoked_at TIMESTAMPTZ"
+                ")"
+            )
+        )
+        await conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_share_tokens_kid_id "
+                "ON share_tokens (kid_id)"
+            )
+        )
+        added.append("share_tokens")
+        added.append("share_tokens.kid_id")
+
     return added
 
 
