@@ -335,6 +335,8 @@ export class TraceScene extends Phaser.Scene {
 
   private markNear(x: number, y: number) {
     let changed = false;
+    let firstNew = -1;
+    let lastNew = -1;
     const nearSq = this.nearDist * this.nearDist;
     for (let i = 0; i < this.displayPts.length; i++) {
       if (this.covered[i]) continue;
@@ -344,20 +346,31 @@ export class TraceScene extends Phaser.Scene {
         this.covered[i] = true;
         this.coveredCount++;
         changed = true;
+        if (firstNew < 0) firstNew = i;
+        lastNew = i;
       }
     }
     if (changed) {
-      this.redrawGold();
+      this.extendGold(firstNew, lastNew);
       this.updateProgress();
     }
   }
 
-  private redrawGold() {
-    this.traceG.clear();
-    if (!this.displayPts.length) return;
+  /** #3124 — append only the newly-covered segment to the gold stroke instead of
+   *  clearing and re-buffering the whole path every move. The glyph is traced in
+   *  array order, so a move only ever covers a tight cluster near the pointer;
+   *  drawing just that delta (with a one-point lookback to bridge a gap) keeps
+   *  the `Graphics` command buffer growing incrementally instead of restarting
+   *  from zero each `pointermove`. Solid gold overdraw is visually idempotent,
+   *  so the lookback never leaves a visual seam. A full clear still happens on
+   *  reset (new stroke) and glyph completion in resetStrokeCoverage/drawGlyph. */
+  private extendGold(firstNew: number, lastNew: number) {
+    if (!this.displayPts.length || firstNew < 0) return;
     this.traceG.lineStyle(this.goldWidth, TRACE_COLOR, 1);
+    // Look back one point so a newly-covered point that bridges a small gap
+    // still connects to the already-drawn stroke.
     let pen = false;
-    for (let i = 0; i < this.displayPts.length; i++) {
+    for (let i = Math.max(0, firstNew - 1); i <= lastNew; i++) {
       const on = this.covered[i];
       const connect = on && i > 0 && this.covered[i - 1] && this.sampleStroke[i] === this.sampleStroke[i - 1];
       if (connect) {

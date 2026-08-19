@@ -123,9 +123,20 @@ function makeGradient(
   top: number,
   bottom: number
 ): Phaser.Textures.CanvasTexture {
-  if (scene.textures.exists(key)) scene.textures.remove(key);
   const cw = Math.max(1, Math.round(w));
   const ch = Math.max(1, Math.round(h));
+  // #3122 — the RESIZE handler fires in bursts while a phone rotates, and each
+  // fire used to remove + re-rasterize the full screen-sized canvas. Reuse the
+  // existing texture when its dimensions haven't actually changed, so repeated
+  // same-size resizes cost nothing and a rotation rasterizes once per distinct
+  // size instead of once per event.
+  const current = scene.textures.exists(key)
+    ? (scene.textures.get(key) as Phaser.Textures.CanvasTexture)
+    : null;
+  if (current && current.canvas && current.width === cw && current.height === ch) {
+    return current;
+  }
+  if (current) scene.textures.remove(key);
   const tex = scene.textures.createCanvas(key, cw, ch)!;
   const ctx = tex.getContext();
   // One true linear gradient — a single CSS fill, so NO visible banding.
@@ -695,7 +706,12 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
   // restarting the scene — kill/restart ambient motion immediately.
   state.offReducedMotion = onReducedMotionChange(() => startBgMotion(scene, state));
 
-  const onResize = () => {
+  // #3122 — a rotation fires RESIZE in a burst (multiple events per frame);
+  // rAF-coalesce so the (expensive) gradient re-rasterize + motion restart runs
+  // at most once per animation frame with the final dimensions of the burst.
+  let resizeRaf = 0;
+  const applyResize = () => {
+    resizeRaf = 0;
     const { width: w, height: h } = scene.scale;
     const newTex = makeGradient(scene, gradKey, w, h, pal.top, pal.bottom);
     state.grad.setTexture(gradKey).setDisplaySize(w, h);
@@ -714,6 +730,10 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
     if (state.cameo) positionNovaCameo(scene, state.cameo);
     startBgMotion(scene, state);
   };
+  const onResize = () => {
+    if (resizeRaf !== 0) return; // already scheduled this frame
+    resizeRaf = requestAnimationFrame(() => applyResize());
+  };
   scene.scale.on(Phaser.Scale.Events.RESIZE, onResize);
   resizeFns.set(scene, onResize);
 
@@ -728,6 +748,8 @@ function buildBg(scene: Phaser.Scene, theme: BgTheme): BgState {
     if (tornDown) return;
     tornDown = true;
     state.offReducedMotion?.();
+    if (resizeRaf !== 0) cancelAnimationFrame(resizeRaf);
+    resizeRaf = 0;
     const rf = resizeFns.get(scene);
     if (rf) scene.scale.off(Phaser.Scale.Events.RESIZE, rf);
     scene.tweens.killTweensOf(state.blobs.map((b) => b.img));

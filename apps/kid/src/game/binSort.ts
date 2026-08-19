@@ -97,6 +97,10 @@ export abstract class BinSortScene extends Phaser.Scene {
   private timeBar!: Phaser.GameObjects.Graphics;
   private timerTween?: Phaser.Tweens.Tween;
   private bins: { c: Phaser.GameObjects.Container; bin: SortBin }[] = [];
+  /** #3120 — the bin geometry the current bins were built with, so a resize that
+   *  changes cardW/cardH forces a rebuild while steady-state rounds reuse the
+   *  same containers (zero new GameObject allocations per question). */
+  private binsBuiltAt = { w: -1, h: -1 };
   private itemBox!: Phaser.GameObjects.Container;
   private itemEmoji!: Phaser.GameObjects.Text;
   private itemName!: Phaser.GameObjects.Text;
@@ -263,9 +267,16 @@ export abstract class BinSortScene extends Phaser.Scene {
   }
 
   private spawnBins() {
-    this.clearBins();
     const cfg = this.cfg();
     const { cardW, cardH, startX, c0, c1 } = this.binGeom;
+    // #3120 — the bins are scene-constant (same cfg.bins every question), so
+    // build them ONCE and reuse across rounds. Only a resize that changes the
+    // bin geometry (cardW/cardH) triggers a rebuild; the old code destroyed and
+    // re-allocated every bin container ~1s apart every round.
+    if (this.bins.length === cfg.bins.length && this.binsBuiltAt.w === cardW && this.binsBuiltAt.h === cardH) {
+      return;
+    }
+    this.clearBins();
     const GAP = 14;
     cfg.bins.forEach((bin, i) => {
       let x: number;
@@ -283,6 +294,7 @@ export abstract class BinSortScene extends Phaser.Scene {
       }
       this.bins.push({ c: this.makeBin(x, y, bin), bin });
     });
+    this.binsBuiltAt = { w: cardW, h: cardH };
   }
 
   private makeBin(x: number, y: number, bin: SortBin): Phaser.GameObjects.Container {
@@ -508,10 +520,12 @@ export abstract class BinSortScene extends Phaser.Scene {
   private clearBins() {
     this.bins.forEach((b) => b.c.destroy());
     this.bins = [];
+    this.binsBuiltAt = { w: -1, h: -1 };
   }
 
   private clearRound() {
-    this.clearBins();
+    // #3120 — bins are persistent now (rebuilt only on geometry change), so a
+    // new round no longer destroys + re-allocates every bin container.
     this.queue = [];
   }
 }

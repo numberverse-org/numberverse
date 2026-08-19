@@ -86,6 +86,10 @@ export abstract class TapChoiceScene extends Phaser.Scene {
   private timeBar!: Phaser.GameObjects.Graphics;
   private timerTween?: Phaser.Tweens.Tween;
   private cards: { c: Phaser.GameObjects.Container; choice: TapChoice }[] = [];
+  /** #3120 — the choice-grid geometry the cards were built with, so a resize that
+   *  changes cardW/cardH forces a rebuild while steady-state rounds reuse the
+   *  same containers (zero new GameObject allocations per question). */
+  private cardsBuiltAt = { w: -1, h: -1 };
   /** Soft bubble behind the item emoji so it reads as "the thing" — visually
    *  distinct from the flat rectangular choice cards below (#1238). */
   private itemBubble!: Phaser.GameObjects.Graphics;
@@ -229,15 +233,23 @@ export abstract class TapChoiceScene extends Phaser.Scene {
   }
 
   private spawnCards() {
-    this.clearCards();
     const cfg = this.cfg();
     const { cardW, cardH, startX, topY, gap } = this.geom;
     const cols = cfg.cols;
+    // #3120 — the choice cards are scene-constant (same cfg.choices every
+    // question), so build them ONCE and reuse across rounds. Only a resize that
+    // changes the grid geometry triggers a rebuild; the old code destroyed and
+    // re-allocated every card ~1s apart every question.
+    if (this.cards.length === cfg.choices.length && this.cardsBuiltAt.w === cardW && this.cardsBuiltAt.h === cardH) {
+      return;
+    }
+    this.clearCards();
     cfg.choices.forEach((ch, i) => {
       const row = Math.floor(i / cols);
       const col = i % cols;
       this.cards.push({ c: this.makeCard(startX + col * (cardW + gap) + cardW / 2, topY + row * (cardH + gap) + cardH / 2, ch), choice: ch });
     });
+    this.cardsBuiltAt = { w: cardW, h: cardH };
   }
 
   private makeCard(x: number, y: number, ch: TapChoice): Phaser.GameObjects.Container {
@@ -445,10 +457,12 @@ export abstract class TapChoiceScene extends Phaser.Scene {
   private clearCards() {
     this.cards.forEach((c) => c.c.destroy());
     this.cards = [];
+    this.cardsBuiltAt = { w: -1, h: -1 };
   }
 
   private clearRound() {
-    this.clearCards();
+    // #3120 — choice cards are persistent now (rebuilt only on geometry change),
+    // so a new question no longer destroys + re-allocates every card container.
     this.queue = [];
   }
 }
