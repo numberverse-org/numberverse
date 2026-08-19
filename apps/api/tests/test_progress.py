@@ -155,7 +155,18 @@ class FakeSession:
                 self._inserted_uid_keys.add(key)
                 # #1616 — the returning() clause now also surfaces the event
                 # kind so the handler can split BKT rounds from engagement rows.
-                inserted.append((r["kid_id"], r["skill_id"], r["correct"], r.get("kind") or "round"))
+                # #3079 — it also surfaces client_ts + timestamp so the handler
+                # derives last_practice from the client-observed instant.
+                inserted.append(
+                    (
+                        r["kid_id"],
+                        r["skill_id"],
+                        r["correct"],
+                        r.get("kind") or "round",
+                        r.get("client_ts"),
+                        r.get("timestamp"),
+                    )
+                )
             return FakeResult(inserted)
         # Update (coins) — the handler only commits, never reads the result.
         return FakeResult([])
@@ -166,6 +177,12 @@ class FakeSession:
     def add(self, obj):
         if isinstance(obj, SkillMastery):
             self.skill_mastery[(obj.kid_id, obj.skill_id)] = obj
+
+    async def scalars(self, stmt):
+        if isinstance(stmt, Select):
+            # Snapshot/mastery routes read SkillMastery; return them all.
+            return list(self.skill_mastery.values())
+        return []
 
     async def commit(self):
         self.committed = True
@@ -183,7 +200,7 @@ async def post_progress(fake, kid_id, events, coins=None):
     return await P.record_progress(body, profile=_FakeProfile(), db=fake)
 
 
-def ev(kid_id, skill_id, *, correct=True, uid=None, timestamp=None):
+def ev(kid_id, skill_id, *, correct=True, uid=None, timestamp=None, client_ts=None):
     return ProgressEventIn(
         kid_id=kid_id,
         skill_id=skill_id,
@@ -191,6 +208,7 @@ def ev(kid_id, skill_id, *, correct=True, uid=None, timestamp=None):
         correct=correct,
         uid=uid,
         timestamp=timestamp,
+        client_ts=client_ts,
     )
 
 
@@ -211,6 +229,7 @@ class FakeAccelSession:
         self.rows: list[dict] = []  # stored acceleration rows (deduped)
         self._seen_uids: set[tuple] = set()
         self.last_insert_rows: list[dict] | None = None
+        self.skill_mastery: dict[tuple, SkillMastery] = {}
         self.committed = False
 
     def add_kid(self, *, max_band: int | None = None) -> Kid:
@@ -243,9 +262,23 @@ class FakeAccelSession:
                     continue  # ON CONFLICT DO NOTHING → not re-counted
                 self._seen_uids.add(key)
                 self.rows.append(r)
-                inserted.append(r)
+                # #3076 — the returning() clause surfaces (kid_id, skill_id) so
+                # the handler upserts SkillMastery for each NEW skip.
+                inserted.append((r["kid_id"], r["skill_id"]))
             return FakeResult(inserted)  # rowcount == number actually inserted
         return FakeResult([])
+
+    async def get(self, model, pk):
+        return self.skill_mastery.get(tuple(pk))
+
+    def add(self, obj):
+        if isinstance(obj, SkillMastery):
+            self.skill_mastery[(obj.kid_id, obj.skill_id)] = obj
+
+    async def scalars(self, stmt):
+        if isinstance(stmt, Select):
+            return list(self.skill_mastery.values())
+        return []
 
     async def commit(self):
         self.committed = True
@@ -583,6 +616,66 @@ async def main():
     check("replayed acceleration entry records 0", r2["recorded"], 0)
     check("replay counted as duplicate", r2["duplicates_skipped"], 1)
     check("acceleration row count stays 1 after replay", len(fake.rows), 1)
+
+    # #3076 — a skipped-ahead skill must upsert SkillMastery to the mastered
+    # threshold so GET /snapshot reflects the skip on a second device (the
+    # journey must never re-introduce it). A fresh skip creates a mastered row;
+    # a replayed skip is a dedup no-op that must NOT re-create/overwrite it.
+    fake = FakeAccelSession()
+    kid = fake.add_kid(max_band=5)
+    r = await post_acceleration(fake, [accel(kid.id, "count-to-50", uid="skip-1")])
+    check("skip records", r["recorded"], 1)
+    sm = fake.skill_mastery.get((kid.id, "count-to-50"))
+    check("skip created a SkillMastery row", sm is not None, True)
+    check("skip mastery meets the mastered threshold", sm.mastery >= DEFAULT_PARAMS["mastery_threshold"], True)
+    check("skip correct >= 3", sm.correct >= 3, True)
+    check("skip attempts >= 3", sm.attempts >= 3, True)
+    check("skip mastered_at stamped", sm.mastered_at is not None, True)
+    # GET /snapshot surfaces the skipped skill (a second device restores it).
+    snap = await P.get_kid_snapshot(kid.id, profile=_FakeProfile(), db=fake)
+    snap_ids = {m.skill_id for m in snap.mastery}
+    check("snapshot includes the skipped skill", "count-to-50" in snap_ids, True)
+    skipped = next(m for m in snap.mastery if m.skill_id == "count-to-50")
+    check("snapshot skip mastery >= 0.8", skipped.mastery >= 0.8, True)
+
+    # A replayed skip (same uid) must NOT lower/duplicate the mastered row.
+    fake2 = FakeAccelSession()
+    kid2 = fake2.add_kid(max_band=5)
+    await post_acceleration(fake2, [accel(kid2.id, "count-1-10", uid="s2")])
+    sm2 = fake2.skill_mastery[(kid2.id, "count-1-10")]
+    before = (sm2.mastery, sm2.correct, sm2.attempts)
+    r3 = await post_acceleration(fake2, [accel(kid2.id, "count-1-10", uid="s2")])
+    check("replayed skip dedups (records 0)", r3["recorded"], 0)
+    check("replayed skip does not perturb the mastery row",
+          (sm2.mastery, sm2.correct, sm2.attempts), before)
+
+    # #3079 — last_practice must be the client-observed round instant (client_ts,
+    # else epoch-ms), NOT the server sync time, so the weekly mastered-this-week
+    # bucket keys on the day the round was PLAYED, not the day it synced.
+    fake = FakeSession()
+    kid = fake.add_kid(max_band=5)
+    six_days_ago = NOW - timedelta(days=6)
+    await post_progress(fake, kid.id, [
+        ev(kid.id, "count-to-50", correct=True, uid="off1", client_ts=six_days_ago)
+    ])
+    sm = fake.skill_mastery[(kid.id, "count-to-50")]
+    check("last_practice adopts the client_ts (not sync time)",
+          sm.last_practice.timestamp(), six_days_ago.timestamp())
+    # Fallback: a legacy row with neither client_ts nor timestamp keeps sync time.
+    fake = FakeSession()
+    kid = fake.add_kid(max_band=5)
+    await post_progress(fake, kid.id, [ev(kid.id, "count-to-50", correct=True, uid="legacy")])
+    sm = fake.skill_mastery[(kid.id, "count-to-50")]
+    check("legacy (no client ts) last_practice falls back to ~now",
+          abs((sm.last_practice - NOW).total_seconds()) < 60, True)
+
+    # #3075 — an extreme adaptive param must NOT ZeroDivisionError; the guard
+    # returns p unchanged and keeps the posterior bounded in [0, 1].
+    for p_guess in (0.99, 1.0, 2.0):
+        for p_slip in (0.99, 1.0, 2.0):
+            v = _bkt_update(0.5, False, p_guess=p_guess, p_slip=p_slip)
+            check(f"no ZeroDivisionError at p_guess={p_guess} p_slip={p_slip}",
+                  0.0 <= v <= 1.0, True)
 
     await _run_story_cap()
 

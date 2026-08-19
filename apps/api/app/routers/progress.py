@@ -106,6 +106,25 @@ def _client_ts_from(e) -> datetime | None:
     return None
 
 
+def _occurred_from_columns(client_ts, timestamp_ms) -> datetime | None:
+    """#3079 — the client-observed instant from the stored columns (client_ts,
+    else the epoch-ms ``timestamp``) — the same precedence as ``_client_ts_from``
+    but for values already read back from the DB (the progress INSERT's
+    RETURNING clause). None when neither column is usable, so the caller falls
+    back to the server-stamped sync time."""
+    if client_ts is not None:
+        cts = client_ts
+        if cts.tzinfo is None:
+            cts = cts.replace(tzinfo=timezone.utc)
+        return cts
+    if timestamp_ms is not None:
+        try:
+            return datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            return None
+    return None
+
+
 def _synthetic_event_uid(e) -> str:
     """#3071 — deterministic server-side uid for a None-uid progress event.
 
@@ -166,6 +185,18 @@ DEFAULT_PARAMS: dict = {
     "decay_per_day": 0.02,
     "mastery_threshold": 0.8,
 }
+
+
+def _surfaced_mastery(m: "SkillMastery", now_utc: datetime) -> float:
+    """#3082 — the mastery value the READ paths (snapshot/mastery) surface.
+
+    The stored ``mastery`` is fresh as of ``last_decay``. Apply the same idle
+    decay the kid's DEVICE applies (packages/core/src/adaptive.ts ``decay``) for
+    the days since, so a long gap only LOWERS — never resurrects — a skill the
+    device already decayed below the bar. Without this the server's raw (higher)
+    value overwrote the client's decayed value on restore."""
+
+    return _clamp01(_decay(m.mastery, m.last_decay, now_utc, DEFAULT_PARAMS["decay_per_day"]))
 
 
 async def _adaptive_params(db: AsyncSession) -> dict:
@@ -311,7 +342,12 @@ async def record_progress(
         ]
         stmt = pg_insert(ProgressEvent).values(rows)
         stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"]).returning(
-            ProgressEvent.kid_id, ProgressEvent.skill_id, ProgressEvent.correct, ProgressEvent.kind
+            ProgressEvent.kid_id,
+            ProgressEvent.skill_id,
+            ProgressEvent.correct,
+            ProgressEvent.kind,
+            ProgressEvent.client_ts,
+            ProgressEvent.timestamp,
         )
         result = await db.execute(stmt)
         inserted = result.all()
@@ -325,10 +361,24 @@ async def record_progress(
         # (kid_id, skill_id) in the inserted ROUND rows BEFORE the read-modify-
         # write below, so two concurrent POSTs on the same skill serialize (the
         # lock is held until the handler's commit at the end of this function).
-        round_rows = [(k, s, c) for k, s, c, knd in inserted if knd in (None, "round")]
-        pairs = {(k, s) for k, s, _ in round_rows}
+        round_rows = [
+            (k, s, c, cts, ts) for k, s, c, knd, cts, ts in inserted if knd in (None, "round")
+        ]
+        pairs = {(k, s) for k, s, *_ in round_rows}
         await _lock_mastery_keys(db, pairs)
-        for kid_id, skill_id, correct in round_rows:
+        # #3079 — the practice instant (for last_practice) is the NEWEST round's
+        # client-observed timestamp (client_ts, else epoch-ms), NOT the server's
+        # sync time. An offline-delayed round mastered on Monday but synced
+        # Friday must bucket into Monday's week, not "mastered today"/"this week"
+        # on the sync day. Fall back to now for a legacy row with neither.
+        now_utc = datetime.now(timezone.utc)
+        latest_occurred: dict[tuple, datetime] = {}
+        for kid_id, skill_id, _c, cts, ts in round_rows:
+            occ = _occurred_from_columns(cts, ts) or now_utc
+            key = (kid_id, skill_id)
+            if key not in latest_occurred or occ > latest_occurred[key]:
+                latest_occurred[key] = occ
+        for kid_id, skill_id, correct, _cts, _ts in round_rows:
             sm = await db.get(SkillMastery, (kid_id, skill_id))
             if sm is None:
                 sm = SkillMastery(
@@ -340,7 +390,6 @@ async def record_progress(
                     streak=0,
                 )
                 db.add(sm)
-            now_utc = datetime.now(timezone.utc)
             prev_mastery = sm.mastery
             # #1 — idle decay FIRST (same as the device: observe(decay(prev),
             # ...)) so idle days drop the parent-facing mastery in lockstep with
@@ -353,7 +402,7 @@ async def record_progress(
             sm.correct = sm.correct + (1 if correct else 0)
             sm.attempts = sm.attempts + 1
             sm.streak = sm.streak + 1 if correct else 0
-            sm.last_practice = now_utc
+            sm.last_practice = latest_occurred[(kid_id, skill_id)]
             sm.last_decay = now_utc
             # #79/#11 — stamp the FIRST crossing of ≥ threshold once (never
             # overwritten), and clear the stamp when decay pulls mastery back
@@ -412,10 +461,11 @@ async def get_mastery(
     if not owned:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kid not found")
     result = await db.scalars(select(SkillMastery).where(SkillMastery.kid_id == kid_id).order_by(SkillMastery.skill_id))
+    now_utc = datetime.now(timezone.utc)
     return [
         MasteryOut(
             skill_id=m.skill_id,
-            mastery=round(_clamp01(m.mastery), 4),
+            mastery=round(_surfaced_mastery(m, now_utc), 4),
             correct=m.correct,
             attempts=m.attempts,
             streak=m.streak,
@@ -445,6 +495,7 @@ async def get_kid_snapshot(
     mastery = await db.scalars(
         select(SkillMastery).where(SkillMastery.kid_id == kid_id).order_by(SkillMastery.skill_id)
     )
+    now_utc = datetime.now(timezone.utc)
     return KidSnapshotOut(
         kid_id=kid_id,
         name=owned.name,
@@ -454,7 +505,7 @@ async def get_kid_snapshot(
         mastery=[
             MasteryOut(
                 skill_id=m.skill_id,
-                mastery=round(_clamp01(m.mastery), 4),
+                mastery=round(_surfaced_mastery(m, now_utc), 4),
                 correct=m.correct,
                 attempts=m.attempts,
                 streak=m.streak,
@@ -663,10 +714,47 @@ async def record_acceleration(
     band_skipped = len(body) - len(rows)
     if rows:
         stmt = pg_insert(AccelerationLog).values(rows)
-        stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"])
+        stmt = stmt.on_conflict_do_nothing(index_elements=["kid_id", "uid"]).returning(
+            AccelerationLog.kid_id, AccelerationLog.skill_id
+        )
         result = await db.execute(stmt)
+        inserted_rows = result.all()
+        inserted = len(inserted_rows)
+        # #3076 — a skipped-ahead skill is a MASTERED skill. The kid app marks it
+        # mastered locally (accelSkip → pMastered=1, correct/attempts=3) but the
+        # server only stored an AccelerationLog row, so a second device's
+        # /snapshot restore found no SkillMastery and the journey re-introduced
+        # the skipped skill. Upsert SkillMastery to the mastered threshold for
+        # every NEWLY-inserted skip (dedup replays are a no-op) so the snapshot
+        # reflects the skip and the journey never resurrects it cross-device.
+        now_utc = datetime.now(timezone.utc)
+        threshold = DEFAULT_PARAMS["mastery_threshold"]
+        for kid_id, skill_id in inserted_rows:
+            sm = await db.get(SkillMastery, (kid_id, skill_id))
+            if sm is None:
+                db.add(
+                    SkillMastery(
+                        kid_id=kid_id,
+                        skill_id=skill_id,
+                        mastery=threshold,
+                        correct=3,
+                        attempts=3,
+                        streak=0,
+                        last_practice=now_utc,
+                        last_decay=now_utc,
+                        mastered_at=now_utc,
+                    )
+                )
+            else:
+                prev = sm.mastery
+                sm.mastery = max(sm.mastery, threshold)
+                sm.correct = max(sm.correct, 3)
+                sm.attempts = max(sm.attempts, 3)
+                sm.last_practice = now_utc
+                sm.last_decay = now_utc
+                # Stamp the first crossing only; never overwrite an older stamp.
+                sm.mastered_at = _next_mastered_at(prev, sm.mastery, sm.mastered_at, threshold, now_utc)
         await db.commit()
-        inserted = result.rowcount if result.rowcount is not None else len(rows)
     else:
         inserted = 0
     return {"recorded": inserted, "duplicates_skipped": len(rows) - inserted, "band_skipped": band_skipped}

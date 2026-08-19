@@ -140,7 +140,18 @@ class FakeSession:
                 if key in self._inserted_uid_keys:
                     continue
                 self._inserted_uid_keys.add(key)
-                inserted.append((r["kid_id"], r["skill_id"], r["correct"], r.get("kind") or "round"))
+                # #3079 — returns client_ts + timestamp too so last_practice
+                # derives from the client-observed instant.
+                inserted.append(
+                    (
+                        r["kid_id"],
+                        r["skill_id"],
+                        r["correct"],
+                        r.get("kind") or "round",
+                        r.get("client_ts"),
+                        r.get("timestamp"),
+                    )
+                )
             return FakeResult(inserted)
         return FakeResult([])
 

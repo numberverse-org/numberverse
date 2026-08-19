@@ -18,16 +18,18 @@ Run:  cd apps/api && python3 tests/test_progress_sync.py
 import asyncio
 import sys
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import Select, Table, Update
 from sqlalchemy.dialects.postgresql.dml import Insert as PGInsert
+from sqlalchemy.sql.expression import TextClause
 
 from app.models import Kid, KidSettings, SkillMastery, Subscription
 from app.routers import progress as P
-from app.routers.progress import _lock_mastery_keys
+from app.routers.progress import _bkt_update, _lock_mastery_keys
 from app.schemas import ProgressBatchIn, ProgressEventIn
 
 passes = 0
@@ -128,7 +130,18 @@ class FakeSession:
                 self._inserted_uid_keys.add(key)
                 # #1616 — the returning() clause now also surfaces the event
                 # kind so the handler can split BKT rounds from engagement rows.
-                inserted.append((r["kid_id"], r["skill_id"], r["correct"], r.get("kind") or "round"))
+                # #3079 — it also surfaces client_ts + timestamp so the handler
+                # derives last_practice from the client-observed instant.
+                inserted.append(
+                    (
+                        r["kid_id"],
+                        r["skill_id"],
+                        r["correct"],
+                        r.get("kind") or "round",
+                        r.get("client_ts"),
+                        r.get("timestamp"),
+                    )
+                )
             return FakeResult(inserted)
         if isinstance(stmt, Update):
             table = stmt.table
@@ -176,6 +189,36 @@ class FakeSession:
 
 class _FakeProfile:
     id = uuid.uuid4()
+
+
+class ConcurrentProgressSession(FakeSession):
+    """#3094 — models `pg_advisory_xact_lock` as a real per-key asyncio.Lock so a
+    genuinely CONCURRENT /progress write to the same (kid, skill) serializes on
+    the read-modify-write, and no BKT increment is lost. The lock is acquired in
+    the advisory-lock `execute` and released at commit (transaction scope)."""
+
+    def __init__(self):
+        super().__init__()
+        self._locks: dict[str, asyncio.Lock] = {}
+
+    async def execute(self, stmt, params=None):
+        if isinstance(stmt, TextClause):
+            key = None
+            for _, bp in getattr(stmt, "_bindparams", {}).items():
+                key = str(bp.value)
+            if key:
+                self.advisory_locks.append(key)
+                lock = self._locks.setdefault(key, asyncio.Lock())
+                await lock.acquire()
+                self._held = lock
+            return FakeResult([])
+        return await super().execute(stmt, params)
+
+    async def commit(self):
+        await super().commit()
+        if getattr(self, "_held", None) is not None:
+            self._held.release()
+            self._held = None
 
 
 async def post_progress(fake, kid_id, events, coins=None, wallet_seq=None):
@@ -278,6 +321,50 @@ async def main():
     fake = FakeSession()
     await _lock_mastery_keys(fake, {})
     check("empty pair set → zero locks", len(fake.advisory_locks), 0)
+
+    # #3082 — the snapshot surfaces the IDLE-DECAYED mastery, not the raw stored
+    # value. A skill mastered at 0.85 with last_decay 7 days old must surface as
+    # 0.85·0.98^7 ≈ 0.74 (below the 0.8 bar), so a second-device restore does NOT
+    # resurrect the skill the kid's device already decayed below mastery.
+    fake = FakeSession()
+    kid = fake.add_kid(max_band=5)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    fake.skill_mastery[(kid.id, "count-to-50")] = SkillMastery(
+        kid_id=kid.id, skill_id="count-to-50", mastery=0.85, correct=3, attempts=10,
+        streak=0, last_decay=seven_days_ago, mastered_at=seven_days_ago,
+    )
+    snap = await P.get_kid_snapshot(kid.id, profile=_FakeProfile(), db=fake)
+    sm = next(m for m in snap.mastery if m.skill_id == "count-to-50")
+    want_decayed = 0.85 * (0.98 ** 7)
+    check("snapshot surfaces decayed mastery (~0.85·0.98^7)",
+          abs(sm.mastery - want_decayed) < 1e-3, True)
+    check("7 idle days drop the skill below the 0.8 bar", sm.mastery < 0.8, True)
+    check("snapshot does NOT resurrect the raw 0.85", sm.mastery < 0.85, True)
+
+    # A fresh row (last_decay just now) surfaces its mastery unchanged (no decay).
+    fake = FakeSession()
+    kid = fake.add_kid(max_band=5)
+    fake.skill_mastery[(kid.id, "count-1-10")] = SkillMastery(
+        kid_id=kid.id, skill_id="count-1-10", mastery=0.9, correct=4, attempts=10,
+        streak=0, last_decay=datetime.now(timezone.utc), mastered_at=datetime.now(timezone.utc),
+    )
+    snap = await P.get_kid_snapshot(kid.id, profile=_FakeProfile(), db=fake)
+    sm = next(m for m in snap.mastery if m.skill_id == "count-1-10")
+    check("fresh row (just stamped) surfaces ~0.9", abs(sm.mastery - 0.9) < 1e-3, True)
+
+    # #3094 — two CONCURRENT /progress batches (distinct uids) on the same
+    # (kid, skill) serialize on the advisory lock, so no BKT increment is lost:
+    # attempts == 2 and mastery == the sequential two-correct BKT composition.
+    fake = ConcurrentProgressSession()
+    kid = fake.add_kid(max_band=5)
+    f1 = post_progress(fake, kid.id, [ev(kid.id, "count-to-50", correct=True, uid="conc-1")])
+    f2 = post_progress(fake, kid.id, [ev(kid.id, "count-to-50", correct=True, uid="conc-2")])
+    await asyncio.gather(f1, f2)
+    sm = fake.skill_mastery[(kid.id, "count-to-50")]
+    seq = _bkt_update(_bkt_update(0.0, True), True)
+    check("concurrent batches both landed (attempts == 2)", sm.attempts, 2)
+    check("concurrent batches composed to the sequential BKT value",
+          abs(sm.mastery - seq) < 1e-9, True)
 
 
 asyncio.run(main())
