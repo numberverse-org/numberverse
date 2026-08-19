@@ -360,9 +360,15 @@ function synth(text: string, spk: number): Promise<Blob> {
 
 /** Low-priority variant of synth() used by warmCommonPhrases(). Runs on
  *  warmChain (separate from jobChain) so pre-synthesis never delays a real
- *  speech line — warm items execute only when jobChain is idle. */
+ *  speech line — warm items execute only when jobChain is idle.
+ *
+ *  #3087 — the two chains must actually WAIT on each other: a warm item now
+ *  serializes behind the CURRENT jobChain (any in-flight real speech) *and*
+ *  behind warmChain, so a warm phrase can never post a worker init while a real
+ *  line's init is still in flight. Real speech (synth → jobChain) still jumps
+ *  ahead because it never waits on warmChain. */
 function synthWarm(text: string, spk: number): Promise<Blob> {
-  const result = warmChain.then(() => synthNow(text, spk));
+  const result = jobChain.then(() => warmChain.then(() => synthNow(text, spk)));
   warmChain = result.then(
     () => undefined,
     () => undefined

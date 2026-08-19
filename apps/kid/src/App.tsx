@@ -1121,9 +1121,18 @@ export default function App() {
     let alive = true;
     // rehydrate() is typed void | Promise<void> — when void (already hydrated),
     // resolve immediately; when a promise, await the merge before arming sync.
-    Promise.resolve(useKidStore.persist.rehydrate()).then(() => {
-      if (alive) setStoreHydrated(true);
-    });
+    // #3090 — a rejected hydration must NOT permanently disable the sync engine:
+    // settle the flag on BOTH outcomes so startAutoSync still arms against the
+    // default store state, and the rejection surfaces via the persist-error event.
+    Promise.resolve(useKidStore.persist.rehydrate())
+      .then(
+        () => {
+          if (alive) setStoreHydrated(true);
+        },
+        () => {
+          if (alive) setStoreHydrated(true);
+        }
+      );
     return () => {
       alive = false;
     };

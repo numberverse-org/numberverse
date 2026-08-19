@@ -19,10 +19,19 @@ const appLoaded = new Promise<void>((r) => {
   appLoadedResolve = r;
 });
 const App = lazy(() =>
-  import("./App").then((m) => {
-    appLoadedResolve?.(); // splash countdown starts when the graph is in
-    return m;
-  })
+  import("./App").then(
+    (m) => {
+      appLoadedResolve?.(); // splash countdown starts when the graph is in
+      return m;
+    },
+    (err) => {
+      // #3086 — settle appLoaded on failure too: a rejected chunk load must not
+      // leave the splash (z-index 99998) covering the BootErrorBoundary's retry
+      // button forever. Resolve so the splash dismisses and retry stays tappable.
+      appLoadedResolve?.();
+      throw err; // re-throw so React lazy still surfaces the boundary
+    }
+  )
 );
 
 /**

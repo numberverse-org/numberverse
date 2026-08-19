@@ -106,7 +106,9 @@ export function requestFullscreen() {
   if (!req) return;
   if (document.fullscreenElement) return;
   try {
-    void req();
+    // #3088 — rejections (NotAllowedError/AbortError in iframes/WebViews) are
+    // async and would become unhandled; swallow deliberately, matching App.tsx:3717.
+    void req()?.catch?.(() => {});
   } catch {
     /* some browsers reject programmatic fullscreen (permissions / iframes) */
   }
@@ -120,7 +122,7 @@ export function exitFullscreen() {
   if (!d.fullscreenElement) return;
   try {
     const ex = d.exitFullscreen?.bind(d) || d.webkitExitFullscreen?.bind(d);
-    if (ex) void ex();
+    if (ex) void ex()?.catch?.(() => {});
   } catch {
     /* ignore */
   }

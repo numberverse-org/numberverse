@@ -254,7 +254,9 @@ function ensureIdentity(): Promise<SyncIdentity | null> {
   const p = (async (): Promise<SyncIdentity | null> => {
     // 1. PARENT-GATED (the parent signed in on first load) — every local kid
     //    syncs to the parent's portal account.
-    const parentToken = localStorage.getItem(LS.parentToken);
+    // #3084 — read via readLS() so a storage-denied getItem never throws and
+    // rejects this IIFE (the whole body must stay rejection-free).
+    const parentToken = readLS(LS.parentToken);
     if (parentToken) {
       try {
         const map = await mapLocalKidsToServer(parentToken);
@@ -266,7 +268,9 @@ function ensureIdentity(): Promise<SyncIdentity | null> {
 
     // 2. Device account (standalone guest / kid URL).
     try {
-      let deviceId = localStorage.getItem(LS.deviceId);
+      // #3084 — read via readLS() (storage-denied safe); the setItem is already
+      // guarded by the surrounding try/catch, which returns null on throw.
+      let deviceId = readLS(LS.deviceId);
       if (!deviceId) {
         deviceId = genId();
         localStorage.setItem(LS.deviceId, deviceId);
@@ -279,10 +283,19 @@ function ensureIdentity(): Promise<SyncIdentity | null> {
     }
   })();
   identityPromise = p;
-  // Forget the cache once settled so a later failure retries fresh.
-  void p.then(() => {
-    identityPromise = null;
-  });
+  // #3084 — forget the cache once settled so a later failure retries fresh.
+  // Guard the clear with an identity check (so a resetIdentity() that cached a
+  // NEW promise before this stale .then runs doesn't get its fresh cache wiped)
+  // and give the discarded chain a rejection handler so a storage-denied throw
+  // can't become an unhandled rejection.
+  void p.then(
+    () => {
+      if (identityPromise === p) identityPromise = null;
+    },
+    () => {
+      if (identityPromise === p) identityPromise = null;
+    }
+  );
   return p;
 }
 
@@ -832,9 +845,15 @@ async function handleRejectedAuth(channel: SyncChannel): Promise<void> {
  *  heartbeat is only the safety net for a failed/offline send. */
 export async function syncProgress(): Promise<void> {
   if (syncing) return;
+  // #3096 — acquire the drain lock BEFORE the first await (ensureIdentity).
+  // Taking it late let two back-to-back calls both pass the `if (syncing)`
+  // guard and both POST the same batch. Set it first, release it in `finally`,
+  // so concurrent callers see the lock the moment they enter.
+  syncing = true;
   const { pending, setChannelSyncState } = useKidStore.getState();
   if (pending.length === 0) {
     setChannelSyncState("progress", "idle");
+    syncing = false;
     return;
   }
   // #264 — offline-first contract: never let the sync path fire network
@@ -847,6 +866,7 @@ export async function syncProgress(): Promise<void> {
     // outbox is not draining (offline), not silently idle.
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
+    syncing = false;
     return;
   }
   const identity = await ensureIdentity();
@@ -854,6 +874,7 @@ export async function syncProgress(): Promise<void> {
     setChannelSyncState("progress", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
+    syncing = false;
     return;
   }
   // #1029 — a sign-out/in may have raced the heartbeat: the captured identity
@@ -861,9 +882,9 @@ export async function syncProgress(): Promise<void> {
   // the next heartbeat re-resolve against the currently-active token.
   if (currentAuthToken() !== identity.token) {
     dropStaleIdentity("progress");
+    syncing = false;
     return;
   }
-  syncing = true;
   let drained = false;
   try {
     const batch = pending.slice(0, SYNC_LIMIT);
@@ -966,10 +987,14 @@ let storySyncing = false;
  *  lets the heartbeat/online/visibility events retry what was missed. */
 export async function syncStories(): Promise<void> {
   if (storySyncing) return;
+  // #3096 — same early-lock fix as syncProgress: take the flag before the
+  // first await so concurrent callers can't both drain the same batch.
+  storySyncing = true;
   const { stories, setChannelSyncState } = useKidStore.getState();
   if (stories.length === 0) {
     // #1027 — empty channel: nothing in flight, never leave a stale 'syncing'.
     setChannelSyncState("stories", "idle");
+    storySyncing = false;
     return;
   }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -978,6 +1003,7 @@ export async function syncStories(): Promise<void> {
     // channel state: the durable sync signal must reflect it.
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
+    storySyncing = false;
     return;
   }
   const identity = await ensureIdentity();
@@ -985,13 +1011,14 @@ export async function syncStories(): Promise<void> {
     setChannelSyncState("stories", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
+    storySyncing = false;
     return;
   }
   if (currentAuthToken() !== identity.token) {
     dropStaleIdentity("stories");
+    storySyncing = false;
     return;
   }
-  storySyncing = true;
   try {
     const batch = stories.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((st) => identity.kidFor(st.kidId) !== null);
@@ -1067,10 +1094,14 @@ let accelSyncing = false;
  *  heartbeat/online/visibility events retry what was missed. */
 export async function syncAccel(): Promise<void> {
   if (accelSyncing) return;
+  // #3096 — same early-lock fix as syncProgress: take the flag before the
+  // first await so concurrent callers can't both drain the same batch.
+  accelSyncing = true;
   const { accel, setChannelSyncState } = useKidStore.getState();
   if (accel.length === 0) {
     // #1027 — empty channel: never leave a stale 'syncing'.
     setChannelSyncState("accel", "idle");
+    accelSyncing = false;
     return;
   }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -1078,6 +1109,7 @@ export async function syncAccel(): Promise<void> {
     // #1612 — a stuck /acceleration outbox is parent-visible too.
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
+    accelSyncing = false;
     return;
   }
   const identity = await ensureIdentity();
@@ -1085,13 +1117,14 @@ export async function syncAccel(): Promise<void> {
     setChannelSyncState("accel", "offline");
     useKidStore.getState().setSyncSignal({ lastError: "offline" });
     reportSyncOutcome(false);
+    accelSyncing = false;
     return;
   }
   if (currentAuthToken() !== identity.token) {
     dropStaleIdentity("accel");
+    accelSyncing = false;
     return;
   }
-  accelSyncing = true;
   try {
     const batch = accel.slice(0, SYNC_LIMIT);
     const mapped = batch.filter((a) => identity.kidFor(a.kidId) !== null);

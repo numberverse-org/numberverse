@@ -18,6 +18,9 @@ let recorder: MediaRecorder | null = null;
 let chunks: Blob[] = [];
 let blobUrl: string | null = null;
 let maxTimer: ReturnType<typeof setTimeout> | null = null;
+// #3091 — the in-flight stop promise, so a 30s auto-stop racing a manual stop
+// returns the SAME promise (no orphaned onstop handler, no double recorder.stop()).
+let pendingStop: Promise<RecordedClip> | null = null;
 
 export type RecordState = "idle" | "recording" | "denied" | "unsupported";
 export type RecordedClip = { url: string | null; seconds: number };
@@ -67,7 +70,11 @@ export function stopRecording(): Promise<RecordedClip> {
     clearTimeout(maxTimer);
     maxTimer = null;
   }
-  return new Promise((resolve) => {
+  // #3091 — if a stop is already in flight (e.g. the 30s auto-stop timer fired
+  // while a manual stop is pending), return the SAME promise instead of starting
+  // a second stop that would overwrite the first caller's onstop handler.
+  if (pendingStop) return pendingStop;
+  pendingStop = new Promise((resolve) => {
     if (!recorder) {
       resolve({ url: null, seconds: 0 });
       return;
@@ -92,9 +99,17 @@ export function stopRecording(): Promise<RecordedClip> {
       chunks = [];
       resolve(out);
     };
-    recorder.stop();
+    // #3091 — stop() on an already-inactive recorder throws a DOMException
+    // synchronously; only stop a recorder that is actively capturing.
+    if (recorder.state === "recording") recorder.stop();
     recorder.stream?.getTracks().forEach((t) => t.stop());
   });
+  // Release the pending-stop slot once the stop settles so a later recording
+  // can start a fresh stop.
+  void pendingStop.then(() => {
+    pendingStop = null;
+  });
+  return pendingStop;
 }
 
 /** Delete a finished clip and release its object URL (the local review path). */
