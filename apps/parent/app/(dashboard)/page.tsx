@@ -98,6 +98,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import PortalHeader from "../components/PortalHeader";
 import OnboardingCard from "../components/OnboardingCard";
 import EmptyState from "../components/EmptyState";
+import NextStepsCard from "../components/NextStepsCard";
 import KidSwitcher from "../components/KidSwitcher";
 import SummaryCard from "../components/SummaryCard";
 import AuthGate from "../components/AuthGate";
@@ -264,6 +265,23 @@ export default function ParentDashboard() {
   const [onboardBusy, setOnboardBusy] = useState(false);
   const [onboardErr, setOnboardErr] = useState<string | null>(null);
   const [wizLang, setWizLang] = useState<WizardLang>("en");
+  // #3023 — dismissible first-run "next steps" checklist. Persisted per browser
+  // (nv_parent_next_steps_dismissed) so it collapses once a parent opts out.
+  const [showNextSteps, setShowNextSteps] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("nv_parent_next_steps_dismissed") !== "1";
+    } catch {
+      return true;
+    }
+  });
+  const dismissNextSteps = useCallback(() => {
+    setShowNextSteps(false);
+    try {
+      localStorage.setItem("nv_parent_next_steps_dismissed", "1");
+    } catch {
+      /* private browsing — in-memory only */
+    }
+  }, []);
   useEffect(() => {
     const saved = localStorage.getItem("nv_parent_lang");
     if (saved === "en" || saved === "bn") setWizLang(saved);
@@ -2047,25 +2065,47 @@ export default function ParentDashboard() {
         </SectionErr>
       )}
 
-      {/* After onboarding (or skipped): a plain empty state with a fast path in.
-          #1591 — "Not now" never permanently dismisses: a "Re-run setup guide"
-          affordance keeps the wizard reachable. */}
-      {kids.length === 0 && onboarding === "done" && !error && (
-        <SectionErr label="empty-state">
-          <EmptyState
-            wizLang={wizLang}
-            onAddFirst={() => {
-              setShowAdd(true);
-              setEditName("");
-              setEditAvatar("🦊");
-              setEditBirthYear(defaultBirthYear());
-            }}
-            onRerunSetup={() => {
-              setOnboarding("open");
-              setShowAdd(false);
-            }}
-          />
-        </SectionErr>
+      {/* #3016/#3017 — zero-kid fallback: render for empty-AND-onboarded-done
+          or empty-AND-init (already-onboarded browser), and give the "add first
+          kid" path a real AddKidCard below (outside the kids.length layout). */}
+      {kids.length === 0 && !initialLoading && !error && onboarding !== "open" && (
+        <div className="empty-state-wrap">
+          <SectionErr label="empty-state">
+            <EmptyState
+              wizLang={wizLang}
+              onAddFirst={() => {
+                setShowAdd(true);
+                setEditName("");
+                setEditAvatar("🦊");
+                setEditBirthYear(defaultBirthYear());
+              }}
+              onRerunSetup={() => {
+                setOnboarding("open");
+                setShowAdd(false);
+              }}
+            />
+          </SectionErr>
+          {/* #3017 — the add-kid form must be reachable with ZERO kids, so it
+              renders here (outside the kids.length > 0 portal-layout) and also
+              there (for accounts that already have kids). */}
+          {showAdd && (
+            <SectionErr label="add-kid-form">
+              <AddKidCard
+                showAdd={showAdd}
+                busy={busy}
+                editName={editName}
+                editAvatar={editAvatar}
+                editBirthYear={editBirthYear}
+                wizLang={wizLang}
+                handleCreate={handleCreate}
+                setEditName={setEditName}
+                setEditAvatar={setEditAvatar}
+                setEditBirthYear={setEditBirthYear}
+                setShowAdd={setShowAdd}
+              />
+            </SectionErr>
+          )}
+        </div>
       )}
 
       {/* #619 — persistent section navigation (sticky sidebar on desktop,
@@ -2121,6 +2161,15 @@ export default function ParentDashboard() {
           <span className="spinner" aria-hidden /> {LOADING_LANGS[wizLang].refreshing}
         </p>
       )}
+      {/* #3023 — first-run "what's next" checklist. Only when the account has a
+          kid but zero rounds played yet (the ~26 sections below are all empty),
+          and never after the parent dismisses it. */}
+      {!initialLoading && kids.length > 0 && showNextSteps && famRounds === 0 && (
+        <SectionErr label="next-steps">
+          <NextStepsCard wizLang={wizLang} onDismiss={dismissNextSteps} />
+        </SectionErr>
+      )}
+
       {/* ── family overview ── */}
       <SectionErr label="family-overview">
         <FamilyOverview

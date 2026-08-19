@@ -26,6 +26,20 @@ export default function LoginPage() {
     if (saved === "en" || saved === "bn") setLang(saved);
   }, []);
 
+  // #3020 — flip locale AND persist nv_parent_lang so the Dashboard (and a
+  // reload / the signup page) inherit the choice, matching the wizard's toggle.
+  function toggleLang() {
+    setLang((prev) => {
+      const next = prev === "en" ? "bn" : "en";
+      try {
+        localStorage.setItem("nv_parent_lang", next);
+      } catch {
+        /* private browsing — the in-memory choice still applies this session */
+      }
+      return next;
+    });
+  }
+
   const t = LOGIN_LANGS[lang];
 
   async function submit(e: React.FormEvent) {
@@ -129,7 +143,7 @@ export default function LoginPage() {
             <button
               type="button"
               className="ghost-btn small"
-              onClick={() => setLang((prev) => (prev === "en" ? "bn" : "en"))}
+              onClick={toggleLang}
             >
               EN / বাংলা
             </button>

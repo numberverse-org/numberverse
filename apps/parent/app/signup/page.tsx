@@ -15,6 +15,9 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // #3018 — track a 409 (email already registered) separately so we can render
+  // an inline "Sign in instead" nudge right where the parent hit the wall.
+  const [conflict, setConflict] = useState(false);
   const [ok, setOk] = useState<LoginResponse | null>(null);
 
   useEffect(() => {
@@ -22,11 +25,26 @@ export default function SignupPage() {
     if (saved === "en" || saved === "bn") setLang(saved);
   }, []);
 
+  // #3020 — flip locale AND persist nv_parent_lang so the Dashboard (and a
+  // reload / the login page) inherit the choice, matching the wizard's toggle.
+  function toggleLang() {
+    setLang((prev) => {
+      const next = prev === "en" ? "bn" : "en";
+      try {
+        localStorage.setItem("nv_parent_lang", next);
+      } catch {
+        /* private browsing — the in-memory choice still applies this session */
+      }
+      return next;
+    });
+  }
+
   const t = SIGNUP_LANGS[lang];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setConflict(false);
     if (password.length < 8) {
       setError(t.pwTooShort);
       return;
@@ -42,13 +60,14 @@ export default function SignupPage() {
       nvTrackParent("signup");
       setOk(res);
     } catch (e) {
-      // #1587 — surface the real cause: already-registered email (409), rate
-      // limit (429), network failure, or unknown server error.
+      // #1587/#3018 — surface the real cause: already-registered email (409),
+      // rate limit (429), network failure, or unknown server error.
       const err = e as { status?: unknown; message?: unknown } | null;
       const status = typeof err?.status === "number" ? err.status : null;
       const msg = typeof err?.message === "string" && err.message ? err.message : null;
       if (status === 409) {
         setError(t.errConflict);
+        setConflict(true);
       } else if (status === 429) {
         setError(t.errRateLimited);
       } else if (msg && /fetch|network/i.test(msg)) {
@@ -112,6 +131,13 @@ export default function SignupPage() {
             />
           </label>
           {error && <p className="err" role="alert">{error}</p>}
+          {/* #3018 — a 409 names the exact problem and offers the right next
+              step inline (sign in) instead of a dead end above the fold. */}
+          {conflict && (
+            <Link className="btn" href="/login">
+              {t.signInLink}
+            </Link>
+          )}
           <button className="btn" type="submit" disabled={!name.trim() || !email.trim() || !password}>
             {t.submit}
           </button>
@@ -122,7 +148,7 @@ export default function SignupPage() {
             <button
               type="button"
               className="ghost-btn small"
-              onClick={() => setLang((prev) => (prev === "en" ? "bn" : "en"))}
+              onClick={toggleLang}
             >
               EN / বাংলা
             </button>

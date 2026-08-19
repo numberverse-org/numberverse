@@ -445,6 +445,30 @@ export const SESSION_LANGS = {
   },
 } as const;
 
+/** #3023 — first-run "what's next" checklist. Shown above the ~26 (mostly
+ *  empty) report sections for a new account until the kid plays a little, then
+ *  collapsed once the parent dismisses it (localStorage). Guides the three
+ *  setup steps the empty dashboard cannot infer for them. */
+export const NEXT_STEPS_LANGS = {
+  en: {
+    title: "👋 Let's get started",
+    intro: "Your kid's progress will appear here — right now there's nothing to chart yet. Three small steps and the dashboard lights up:",
+    step1: "Open the Numberverse kid app on your child's device and sign in with this same parent account.",
+    step2: "Set a daily play limit so learning stays balanced.",
+    step3: "Share their first weekly report with the family once they've played.",
+    dismiss: "Got it — hide this",
+  },
+  bn: {
+    title: "👋 শুরু করা যাক",
+    intro: "বাচ্চার অগ্রগতি এখানে দেখা যাবে — এখনো দেখানোর মতো কিছুই নেই। তিনটি ছোট ধাপেই ড্যাশবোর্ড সচল হয়ে উঠবে:",
+    step1: "বাচ্চার ডিভাইসে Numberverse কিড অ্যাপ খুলে এই একই অভিভাবক অ্যাকাউন্টে সাইন ইন করুন।",
+    step2: "শেখা যেন ভারসাম্যপূর্ণ থাকে, তাই দৈনিক খেলার সীমা ঠিক করুন।",
+    step3: "ওরা একটু খেলার পর পরিবারের সাথে প্রথম সাপ্তাহিক রিপোর্ট শেয়ার করুন।",
+    dismiss: "বুঝেছি — এটা লুকান",
+  },
+} as const;
+export type NextStepsLang = keyof typeof NEXT_STEPS_LANGS;
+
 /** #1487/#1490/#1491/#1545-#1548 — account & security card strings (EN + BN).
  *  Same country-pack seam as the maps above: a new locale = a new key here,
  *  keyed by `wizLang`, and the AccountCard follows without a component rewrite. */
