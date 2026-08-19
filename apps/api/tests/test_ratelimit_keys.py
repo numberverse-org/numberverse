@@ -79,9 +79,9 @@ class _FakeGuard:
 
     async def raise_if_locked(self, db, *keys):
         if self.locked:
-            raise HTTPException(429, "Too many attempts — try again in 1 minutes")
+            raise HTTPException(429, "Too many attempts — try again later")
 
-    async def record_failure(self, db, *keys):
+    async def record_failure(self, db, *keys, **kwargs):
         self.recorded = keys
 
     async def reset(self, db, *keys):
@@ -272,7 +272,7 @@ def _run():
     finally:
         logger.removeHandler(cap)
 
-    check("key includes endpoint tag", captured_keys.get("key"), "p123:1.2.3.4:export")
+    check("key includes endpoint tag (account-only key, #3110)", captured_keys.get("key"), "acct:p123:export")
     warns = [r for r in cap.records if r.levelno >= logging.WARNING]
     check("WARNING emitted", len(warns) >= 1, True)
     msg = warns[0].getMessage() if warns else ""
@@ -300,13 +300,22 @@ def _run():
 
     print("⑤  burn isolation — a flood on one endpoint can't burn another (#1770)…")
     captured = asyncio.run(_call_burn_isolation())
-    check("two distinct endpoint buckets", len(set(captured)), 2)
-    check("progress bucket", captured[0], "p123:1.2.3.4:progress")
-    check("export bucket", captured[1], "p123:1.2.3.4:export")
+    # #3110 — each rate_limit call now checks TWO keys (acct + wip), so two
+    # endpoints produce four bucket keys. The endpoint tag still isolates them:
+    # /progress and /export never share a bucket.
+    check("two distinct endpoints → four bucket keys (2 buckets each, #3110)",
+          len(set(captured)), 4)
+    check("progress acct bucket", "acct:p123:progress" in captured, True)
+    check("progress wip bucket", "wip:progress:1.2.3.4" in captured, True)
+    check("export acct bucket", "acct:p123:export" in captured, True)
+    check("export wip bucket", "wip:export:1.2.3.4" in captured, True)
 
-    print("⑥  no-IP fallback granularity (#1769)…")
+    print("⑥  no-IP fallback granularity (#1769/#3110)…")
     captured = asyncio.run(_call_no_ip_fallback())
-    check("rate_limit no-ip key drops the ip component", captured[0], "p123:progress")
+    # With no client socket, rate_limit keys account-only (no ip half to drop),
+    # read_rate_limit keeps its :read suffix, and ip_rate_limit still falls back
+    # to the rightmost XFF hop.
+    check("rate_limit no-ip key = account-only (no ip component)", captured[0], "acct:p123:progress")
     check("read_rate_limit no-ip key keeps :read", captured[1], "p123:progress:read")
     check("ip_rate_limit no-ip + XFF → rightmost hop", captured[2], "ip:1.2.3.4")
     check("ip_rate_limit no-ip, no XFF → ip:unknown residual", captured[3], "ip:unknown")

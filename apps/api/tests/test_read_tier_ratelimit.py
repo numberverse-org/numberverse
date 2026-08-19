@@ -138,14 +138,17 @@ def _run():
 
     print("②  key namespace — :read suffix, distinct from the write-tier key…")
     keys = asyncio.run(_capture_read_and_write_keys())
-    check("both deps captured two distinct keys", len(keys), 2)
+    # #3110 — rate_limit now checks TWO independent buckets (account-only +
+    # per-IP flood) under separate key namespaces, while read_rate_limit still
+    # keys one :read bucket. So one read dep + one write dep = 3 captured keys.
     read_keys = [k for k in keys if k.endswith(":read")]
     write_keys = [k for k in keys if not k.endswith(":read")]
     check("read key carries the :read suffix", len(read_keys), 1)
-    check("write key has NO :read suffix", len(write_keys), 1)
-    check("read key differs from write key for the same request", len(set(keys)), 2)
+    check("write dep emits two buckets (#3110: acct + wip)", len(write_keys), 2)
+    check("read key differs from write key for the same request", len(set(keys)), 3)
     check("read key shape", read_keys[0], "p123:1.2.3.4:export:read")
-    check("write key shape", write_keys[0], "p123:1.2.3.4:export")
+    check("write acct key shape", "acct:p123:export" in write_keys, True)
+    check("write wip key shape", "wip:export:1.2.3.4" in write_keys, True)
 
     print("③  read-tier 429 → WARNING with a REDACTED key (#1751 pattern)…")
     rl._logged_throttle_windows.clear()

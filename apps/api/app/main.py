@@ -24,6 +24,7 @@ from .security import decode_token
 from .routers.import_data import MAX_IMPORT_BODY_BYTES
 from .scrub import ScrubFilter
 from .seed import create_tables, seed
+from .ratelimit import _allow_fixed_window, _is_trusted_proxy, _log_429
 
 logging.basicConfig(level=logging.INFO)
 # #266 — every log line is scrubbed for PII before it's written.
@@ -228,6 +229,104 @@ class RequestBodySizeLimitMiddleware:
 # 64 chars. Anything else falls back to a minted uuid4 hex id.
 _REQUEST_ID_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _REQUEST_ID_MAX_LEN = 64
+
+
+# #3111 — every per-request limiter sits BEHIND get_current_profile, so a raw
+# flood of un/under-authenticated requests is processed all the way to the auth
+# boundary before anything counts it. This middleware is the API's global, early
+# per-IP request cap: it runs OUTSIDE routing/auth and returns 429 on raw
+# request rate before the framework touches a bearer token, a DB user query, or
+# a route. It keys on the durable `rate_limit_buckets` table (shared across
+# workers, survives restart) via the same `_allow_fixed_window` helper the
+# per-account dependencies use.
+_GLOBAL_IP_REQUEST_LIMIT = 600
+_GLOBAL_IP_REQUEST_WINDOW_SECONDS = 60
+
+
+def _scope_client_ip(scope) -> str:
+    """Resolve the REAL client IP from an ASGI scope, mirroring ratelimit._request_ip.
+
+    The leftmost X-Forwarded-For hop is attacker-controlled; only trust an XFF
+    when the socket peer is one of OUR trusted proxy ranges (nginx on the docker
+    bridge), and then take the RIGHTMOST hop. Otherwise the socket peer is the
+    client. `unknown` when there is no peer at all (still countable, keyed
+    literally).
+    """
+    client = scope.get("client")
+    peer = client[0] if client else "unknown"
+    headers = scope.get("headers", [])
+    xff = None
+    for name, value in headers:
+        if name.lower() == b"x-forwarded-for":
+            xff = value.decode("latin-1")
+            break
+    if xff and _is_trusted_proxy(peer):
+        hops = [h.strip() for h in xff.split(",") if h.strip()]
+        if hops:
+            return hops[-1]
+    return peer
+
+
+class RequestRateLimitMiddleware:
+    """#3111 — global per-IP request cap before routing/auth.
+
+    Pure ASGI; uses a short-lived ``SessionLocal()`` to increment one durable
+    ``ip:global:<ip>`` bucket per request. On breach it emits a bare 429 JSON
+    (with CORS context, like the body-size guard, since it also sits outside
+    CORSMiddleware). Only HTTP scopes are counted; lifespan/websockets pass
+    through.
+    """
+
+    def __init__(
+        self,
+        app,
+        *,
+        limit: int = _GLOBAL_IP_REQUEST_LIMIT,
+        window_seconds: int = _GLOBAL_IP_REQUEST_WINDOW_SECONDS,
+    ):
+        self.app = app
+        self.limit = limit
+        self.window_seconds = window_seconds
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        ip = _scope_client_ip(scope)
+        key = f"ip:global:{ip}"
+        try:
+            async with SessionLocal() as db:
+                allowed = await _allow_fixed_window(
+                    db, key, self.limit, self.window_seconds
+                )
+        except Exception:  # noqa: BLE001 — the rate cap must never take the API down
+            # #3111 — if the bucket store is unreachable, fail OPEN: a transient
+            # DB blip must not 429 every request. The per-account dependencies
+            # still guard authenticated traffic once the DB recovers.
+            allowed = True
+
+        if not allowed:
+            _log_429("global", key, self.limit, self.window_seconds)
+            origin = _first_header(scope, b"origin")
+            body = b'{"detail":"Too many requests - try again later"}'
+            headers = [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode("ascii")),
+            ]
+            if origin:
+                headers.append((b"access-control-allow-origin", origin.encode("latin-1")))
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": status.HTTP_429_TOO_MANY_REQUESTS,
+                    "headers": headers,
+                }
+            )
+            await send({"type": "http.response.body", "body": body})
+            return
+        await self.app(scope, receive, send)
+
 
 
 def _sanitize_request_id(value: str | None) -> str | None:
@@ -611,7 +710,8 @@ app.add_middleware(
 # list, so the runtime stack (outermost → innermost) is the reverse of the
 # declaration order below:
 #
-#   RequestID → RequestBodySizeLimit → AccessLog → Metrics → SameOrigin → CORS → app
+#   RequestID → RequestBodySizeLimit → RequestRateLimit → AccessLog → Metrics
+#   → SameOrigin → CORS → app
 #
 # RequestID stays OUTERMOST (#1749, added LAST) so request_id_ctx is set for
 # every layer beneath it — including RequestBodySizeLimit's 413 rejection
@@ -645,6 +745,12 @@ app.add_middleware(AccessLogMiddleware)
 
 # Must be outermost so oversized bodies are rejected before CORS/framework work.
 app.add_middleware(RequestBodySizeLimitMiddleware)
+
+# #3111 — global per-IP request cap. Declared just inside the body-size guard so
+# it runs OUTSIDE CORS/SameOrigin/routing/auth: a raw flood of bogus-Authorization
+# requests is 429'd before the framework touches a bearer token or a DB user
+# lookup. Inside RequestID, so its 429 also carries an X-Request-ID.
+app.add_middleware(RequestRateLimitMiddleware)
 
 # #1749 — outermost layer (added LAST): mints/propagates X-Request-ID so every
 # structured WARNING+/ERROR record and every response carries a correlation id.

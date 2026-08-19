@@ -14,6 +14,7 @@ from ..db import get_db
 from ..deps import get_current_profile, resolve_plan
 from ..models import Profile, Session
 from ..ratelimit import AuthAttemptGuard, _request_ip, ip_rate_limit, redact_key
+from ..deps import MAX_ACTIVE_SESSIONS_PER_PROFILE, _cap_active_sessions
 from ..schemas import (
     ChangePasswordIn,
     DeleteAccountIn,
@@ -66,13 +67,13 @@ _SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10, tag="signup")
 # credential), so it gets a throughput cap per IP to stop cookie-replay brute
 # force and endpoint abuse. 60/min is far above a real browser's refresh cadence.
 _REFRESH_RATE_LIMIT = ip_rate_limit(limit=60, tag="refresh")
-# #1669 — /auth/google verifies a Google ID token on EVERY call (a server-side
-# network+CPU round-trip to Google's certificate endpoint) with no account to
-# key on, so an unauthenticated attacker could hammer it for free. It gets the
-# same per-IP throughput treatment as signup/refresh; 20/min is generous for a
-# parent finishing one Google sign-in. The dep rides the route, not the shared
-# _verify_google_token helper (#1669).
-_GOOGLE_RATE_LIMIT = ip_rate_limit(limit=20, tag="google")
+# #1669 / #3109 — /auth/google verifies a Google ID token on EVERY call (a
+# server-side network+CPU round-trip to Google's certificate endpoint) and, on
+# a FIRST login for a new email, AUTO-CREATES a Profile — the same mass-account-
+# creation path signup exposes. It must therefore be throttled at the same 10/min
+# per-IP budget as signup (#3109), not the looser 20/min it previously had. The
+# dep rides the route, not the shared _verify_google_token helper (#1669).
+_GOOGLE_RATE_LIMIT = ip_rate_limit(limit=10, tag="google")
 # #1676 — /auth/set-password is the password-RECOVERY path: a Google-only
 # account proves it still owns the Google account with a fresh ID token, then
 # sets a real password. Recovery must be locked down HARDER than login — a
@@ -80,6 +81,21 @@ _GOOGLE_RATE_LIMIT = ip_rate_limit(limit=20, tag="google")
 # token-replay / verification abuse without touching the AuthAttemptGuard
 # semantics on login/change-password (guard untouched, #1676).
 _SET_PASSWORD_RATE_LIMIT = ip_rate_limit(limit=10, tag="set-password")
+# #3119 — successful logins were throughput-unlimited: a compromised credential
+# could mint unbounded Session rows (each lingering until the 30-day purge) and
+# drive bcrypt cost without limit. A per-IP throughput cap stops the bcrypt/session
+# mint flood. 20/min is generous for a real parent signing in on a couple of
+# devices.
+_LOGIN_RATE_LIMIT = ip_rate_limit(limit=20, tag="login")
+# #3108 — DELETE /auth/me is a destructive WRITE that also performs a bcrypt
+# password verification. It previously had NO throughput limiter, so an attacker
+# holding a token could hammer the password check. 10/min per IP matches the
+# retry budget a legitimate user needs while bounding the brute-force surface.
+_DELETE_ACCOUNT_RATE_LIMIT = ip_rate_limit(limit=10, tag="delete-account")
+# #3112 — the most distinct victim accounts a single IP may lock out per hour
+# (each lockout = 5 wrong-password requests). Attacker who knows N emails can
+# otherwise knock each one offline forever.
+_MAX_LOCKOUTS_PER_IP_PER_HOUR = 3
 
 
 def _check_password_bytes(password: str) -> None:
@@ -252,6 +268,7 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db),
     response: Annotated[Response, "response"] = None,  # #1773 — injected by FastAPI; None in direct unit calls
+    _login_limit: None = Depends(_LOGIN_RATE_LIMIT),  # #3119 — per-IP cap on successful + failed logins
 ):
     email = body.email.lower()
     ip = _request_ip(request)
@@ -259,7 +276,16 @@ async def login(
     await _LOGIN_GUARD.raise_if_locked(db, f"login:email:{email}", f"login:ip:{ip}")
     profile = await db.scalar(select(Profile).where(Profile.email == email))
     if not profile or not verify_password(body.password, profile.password_hash):
-        await _LOGIN_GUARD.record_failure(db, f"login:email:{email}", f"login:ip:{ip}")
+        # #3112 — cap how many DISTINCT account lockouts this one IP may arm
+        # (3/hour), so a single attacker can't lock out a list of known victims
+        # indefinitely.
+        await _LOGIN_GUARD.record_failure(
+            db,
+            f"login:email:{email}",
+            f"login:ip:{ip}",
+            ip=ip,
+            max_distinct_lockouts=_MAX_LOCKOUTS_PER_IP_PER_HOUR,
+        )
         # #1751 — credential-stuffing must leave a trace. Hash the email, never
         # log the raw address (the ip is redacted too).
         logger.warning(
@@ -268,6 +294,9 @@ async def login(
         )
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     await _LOGIN_GUARD.reset(db, f"login:email:{email}", f"login:ip:{ip}")
+    # #3119 — bound a profile's active sessions before minting a new row, so a
+    # compromised credential cannot mint unbounded Session rows.
+    await _cap_active_sessions(db, profile.id)
     token, refresh_token = await _issue_session(profile, request, db)
     if response is not None:
         set_refresh_cookie(response, request, refresh_token)
@@ -568,6 +597,7 @@ async def delete_account(
     request: Request,
     profile: Profile = Depends(get_current_profile),
     db: AsyncSession = Depends(get_db),
+    _delete_limit: None = Depends(_DELETE_ACCOUNT_RATE_LIMIT),  # #3108 — per-IP cap on the destructive endpoint
 ):
     """Permanently delete the parent account and ALL associated data.
 
@@ -615,8 +645,24 @@ async def delete_account(
         # #1675 — the confirming password is bcrypt-CHECKED below and must fit
         # bcrypt's 72-byte window; reject before any bcrypt work.
         _check_password_bytes(body.password)
+        ip = _request_ip(request)
+        # #3108 — the confirming password is a credential gate with NO failure
+        # guard historically: a token-holder could brute-force the parent
+        # password at full bcrypt speed and the first correct guess deleted the
+        # entire account. Arm the SAME credential lockout login/change-password
+        # use — raise_if_locked BEFORE bcrypt, record_failure/reset after —
+        # keyed on pw:profile + pw:ip (the pw: namespace is already shared, so a
+        # token-holder running out of wrong guesses here also burns the
+        # change-password lockout budget and vice-versa).
+        await _PASSWORD_GUARD.raise_if_locked(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
         if not verify_password(body.password, profile.password_hash):
+            await _PASSWORD_GUARD.record_failure(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+            logger.warning(
+                "auth 401 route=delete-account account_key=pw:profile:%s ip=%s",
+                redact_key(str(profile.id)), redact_key(ip),
+            )
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Password is incorrect")
+        await _PASSWORD_GUARD.reset(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
 
     # ── enumerate summary quantities BEFORE deletion ─────────────────────
     kids = (await db.scalars(select(Kid).where(Kid.profile_id == profile.id))).all()

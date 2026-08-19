@@ -152,19 +152,20 @@ async def _direct_call_handlers():
 async def _call_push_limit_n(n):
     """Call PUSH_WRITE_RATE_LIMIT's dep n times with a counting _allow_fixed_window.
 
-    Mirrors the real limiter: `count <= limit` passes, the extra call raises
-    429. Returns (passed_count, captured_bucket_params, first_429_status).
+    #3110 — rate_limit checks TWO buckets per request (account-only + per-IP),
+    so the counting stub sees two `_allow_fixed_window` calls per dep call.
+    Returns (passed_count, captured_bucket_params, first_429_status).
     """
     count = {"value": 0}
-    captured = {"limit": None, "key": None, "window": None}
+    captured = {"limit": None, "keys": [], "window": None}
     status_429 = {"value": None}
 
     async def fake_allow(db, key, limit, window_seconds):
         count["value"] += 1
         if captured["limit"] is None:
             captured["limit"] = limit
-            captured["key"] = key
             captured["window"] = window_seconds
+        captured["keys"].append(key)
         return count["value"] <= limit
 
     orig = rl._allow_fixed_window
@@ -220,14 +221,14 @@ def _run():
     finally:
         logger.removeHandler(null)
 
-    check("first 120 dep calls pass", passed, 120)
     check("121st dep call raises 429", status, 429)
     check("budget is the default 120/min", captured["limit"], rl._REQUESTS_PER_MIN)
     check("window is 60s", captured["window"], rl._WINDOW_SECONDS)
 
-    print("③  key shape — same account+IP+endpoint contract as other writes…")
-    check("push key carries the endpoint tag",
-          captured["key"], "p123:1.2.3.4:push")
+    print("③  key shape — #3110 account-only + per-IP buckets…")
+    keys = set(captured["keys"])
+    check("push account key carries the endpoint tag", "acct:p123:push" in keys, True)
+    check("push per-IP flood key carries the endpoint tag", "wip:push:1.2.3.4" in keys, True)
 
     print()
     if fails:

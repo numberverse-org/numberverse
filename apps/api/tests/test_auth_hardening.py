@@ -188,7 +188,7 @@ async def test_1675_route_422s():
 # ═════════════════════════════════════════════════════════════════════════
 
 async def test_1669_1676_rate_limits():
-    print("② #1669/#1676 per-IP limits wired on /auth/google (20) + set-password (10)…")
+    print("② #1669/#1676/#3109 per-IP limits wired on /auth/google (10) + set-password (10)…")
     check("_GOOGLE_RATE_LIMIT is a callable dep", callable(auth._GOOGLE_RATE_LIMIT), True)
     check("_SET_PASSWORD_RATE_LIMIT is a callable dep", callable(auth._SET_PASSWORD_RATE_LIMIT), True)
     # Wiring is visible on the route signatures (FastAPI resolves the dep in DI).
@@ -220,8 +220,10 @@ async def test_1669_1676_rate_limits():
     finally:
         rl._allow_fixed_window, rl._log_429 = orig_allow, orig_log
 
-    check("google keyed ip:google:<ip>, limit 20",
-          calls[0], ("ip:google:1.2.3.4", 20, 60))
+    # #3109 — /auth/google auto-creates accounts on first login, so it must share
+    # signup's 10/min cap (was 20/min before #3109).
+    check("google keyed ip:google:<ip>, limit 10",
+          calls[0], ("ip:google:1.2.3.4", 10, 60))
     check("set-password keyed ip:set-password:<ip>, limit 10",
           calls[1], ("ip:set-password:1.2.3.4", 10, 60))
 

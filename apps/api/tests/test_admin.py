@@ -803,18 +803,30 @@ async def _run_rate_limit_deps():
     except HTTPException as exc:
         check("rate_limit blocks over threshold", exc.status_code, 429)
 
-    # per-key isolation across different IPs
+    # per-ACCOUNT isolation (#3110): the account-only bucket is keyed on the
+    # profile, so a DIFFERENT IP on the SAME account no longer gets a fresh
+    # window — the per-account budget is the point. A different ACCOUNT does.
     db2 = _FakeDB()
     dep2 = rate_limit(limit=1)
     req_a = SimpleNamespace(client=SimpleNamespace(host="10.0.0.1"))
     req_b = SimpleNamespace(client=SimpleNamespace(host="10.0.0.2"))
+    prof2 = _profile()
     await dep2(request=req_a, profile=prof, db=db2)
-    check("rate_limit isolated per IP", await _rate_dep_allowed(dep2, req_b, prof, db2), True)
+    # #3110 — same account, different IP → NOT allowed (per-account bucket shared).
+    check("rate_limit NOT isolated per IP (account bucket shared, #3110)",
+          await _rate_dep_allowed(dep2, req_b, prof, db2), False)
+    # A DIFFERENT account on a fresh db is allowed (per-account isolation holds).
+    db2b = _FakeDB()
+    dep2b = rate_limit(limit=1)
+    await dep2b(request=req_a, profile=prof, db=db2b)
+    req_c = SimpleNamespace(client=SimpleNamespace(host="10.0.0.3"))
+    check("rate_limit isolated per ACCOUNT (different profile allowed)",
+          await _rate_dep_allowed(dep2b, req_c, prof2, db2b), True)
     try:
         await dep2(request=req_a, profile=prof, db=db2)
-        check("rate_limit blocks same IP again", "no-429", "429")
+        check("rate_limit blocks same account again", "no-429", "429")
     except HTTPException as exc:
-        check("rate_limit blocks same IP again", exc.status_code, 429)
+        check("rate_limit blocks same account again", exc.status_code, 429)
 
     # ip_rate_limit: IP-only key for public reads
     db3 = _FakeDB()

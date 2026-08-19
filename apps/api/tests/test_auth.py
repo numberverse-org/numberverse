@@ -97,7 +97,7 @@ class FakeGuard:
                 429, "Too many attempts — try again in 1 minutes"
             )
 
-    async def record_failure(self, db, *keys):
+    async def record_failure(self, db, *keys, **kwargs):
         self.recorded_failures.append(keys)
 
     async def reset(self, db, *keys):

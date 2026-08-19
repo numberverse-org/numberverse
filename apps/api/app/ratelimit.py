@@ -105,16 +105,17 @@ async def delete_profile_rate_limit_buckets(
 
       ``login:email:{email}``        — login failure/lockout on the email;
       ``pw:profile:{profile_id}``    — change-password failure/lockout;
-      ``{profile_id}:...``           — account+IP write/read windows, incl.
+      ``{profile_id}:...``           — legacy account+IP write/read windows, incl.
                                        ``{profile_id}:{ip}:{endpoint}``,
                                        ``{profile_id}:{endpoint}`` and the
                                        ``:read`` variants.
+      ``acct:{profile_id}:...``      — #3110 account-only write buckets.
 
     ``_``/``%`` in an email local-part are LIKE metacharacters; a match on a
     DIFFERENT (already-deleted) account's bucket is harmless, and no other
     account shares this profile's ``{profile_id}:`` prefix. Returns the number
     of rows removed. Does NOT commit — the caller commits with the deletion."""
-    prefixes = [f"{profile_id}:"]
+    prefixes = [f"{profile_id}:", f"acct:{profile_id}:"]
     if email:
         prefixes.append(f"login:email:{email}")
     prefixes.append(f"pw:profile:{profile_id}")
@@ -268,23 +269,32 @@ def rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:
         # 120/min bucket across catalog reads, progress sync, kid writes,
         # export and import; each route group gets its own budget.
         endpoint = _endpoint_tag(request)
-        # #1769 — when there is no client socket (request.client is None),
-        # _request_ip falls back to the literal "unknown". Keying on
-        # profile.id alone then gives every no-IP client its own per-account
-        # bucket (the account key disambiguates; the ip half contributes
-        # nothing when there is no ip) instead of collapsing them all into one
-        # shared {profile.id}:unknown bucket that a few no-IP requests could
-        # lock out.
+        # #3110 — the old composite key f"{profile.id}:{ip}:{endpoint}" was a
+        # per-(account, IP) cap, NOT a per-account cap: a breached token run
+        # across a small botnet (or a legit multi-device account behind
+        # rotating CGNAT) got a FRESH 120/min bucket per IP and could drive
+        # arbitrary write volume on one account. Enforce TWO independent
+        # buckets now — a hard account-only key for the strict per-account
+        # budget, and an ip-only key for flood control — raising 429 if EITHER
+        # is breached, exactly the way the credential guard's record_failure
+        # already splits account-key and ip-key into two buckets.
+        account_key = f"acct:{profile.id}:{endpoint}"
         if ip == "unknown":
-            key = f"{profile.id}:{endpoint}"
+            # #1769 — no client socket: there is no per-IP dimension at all, so
+            # the account-only bucket alone carries the limit.
+            keys = [account_key]
         else:
-            key = f"{profile.id}:{ip}:{endpoint}"
-        if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
-            _log_429("account", key, limit, _WINDOW_SECONDS)
-            raise HTTPException(
-                status.HTTP_429_TOO_MANY_REQUESTS,
-                "Too many requests — try again in a moment",
-            )
+            # `wip:` namespaces the write-IP flood-control bucket apart from the
+            # `ip:{tag}:...` public-surface buckets minted by ip_rate_limit, so a
+            # write endpoint and a public surface can never share a budget.
+            keys = [account_key, f"wip:{endpoint}:{ip}"]
+        for key in keys:
+            if not await _allow_fixed_window(db, key, limit, _WINDOW_SECONDS):
+                _log_429("account", key, limit, _WINDOW_SECONDS)
+                raise HTTPException(
+                    status.HTTP_429_TOO_MANY_REQUESTS,
+                    "Too many requests — try again in a moment",
+                )
         return profile
 
     return dep
@@ -434,8 +444,14 @@ class AuthAttemptGuard:
             row.count = 0
             row.window_start = now
         if row.locked_until is not None and now >= row.locked_until:
+            # #3107 — do NOT zero the failure count on cooldown expiry. The
+            # escalation ladder (2x/4x/8x… up to 30 min) is driven by
+            # `_lockout_seconds(count)`, which can only grow past the 60s base
+            # if the count survives the cooldown. Carry the prior breach forward
+            # (count = max(count, max_attempts)) so the NEXT arming doubles the
+            # lockout; only the window clock resets here.
             row.locked_until = None
-            row.count = 0
+            row.count = max(row.count, self.max_attempts)
             row.window_start = now
         return row
 
@@ -443,8 +459,17 @@ class AuthAttemptGuard:
         """Raise 429 if ANY key is in its cooldown. Call before bcrypt."""
         now = _naive_utcnow()
         for key in keys:
+            # #3115 — take the SAME FOR UPDATE row lock record_failure uses, so
+            # the pre-bcrypt check and the post-bcrypt increment are one atomic
+            # read-modify-write. A plain SELECT here let N concurrent attempts
+            # all read an unlocked/expired row before any of them recorded a
+            # failure, each then incrementing past max_attempts in a single
+            # burst. With the lock, the failure counter stays monotonic and the
+            # lockout arms exactly at max_attempts.
             row = await db.scalar(
-                select(RateLimitBucket).where(RateLimitBucket.key == key)
+                select(RateLimitBucket)
+                .where(RateLimitBucket.key == key)
+                .with_for_update()
             )
             if row is None or row.locked_until is None:
                 continue
@@ -452,23 +477,72 @@ class AuthAttemptGuard:
                 # #1751 — log the lockout with the redacted key so credential-
                 # stuffing leaves a trace. Dedup by kind+key+window.
                 _log_429("lockout", key, self.max_attempts, self.window_seconds)
-                remaining = (row.locked_until - now).total_seconds()
-                minutes = max(1, math.ceil(remaining / 60))
+                # #3112 — return a GENERIC message so the lockout state is not
+                # advertised to an attacker (the old "try again in N minutes"
+                # body told them exactly when the cooldown would lapse and which
+                # of their guesses weren't the target account).
                 raise HTTPException(
                     status.HTTP_429_TOO_MANY_REQUESTS,
-                    f"Too many attempts — try again in {minutes} minutes",
+                    "Too many attempts — try again later",
                 )
 
-    async def record_failure(self, db: AsyncSession, *keys: str) -> None:
-        """Record a failed secret for every key and arm the next lockout."""
+    async def _record_ip_lockout(self, db: AsyncSession, ip: str, *, max_distinct: int) -> None:
+        """#3112 — cap how many DISTINCT account lockouts a single IP may arm.
+
+        Maintains a per-IP fixed-window counter (1 hour) of account-lockout arm
+        events. This bounds the weaponization where one IP locks N known victim
+        emails in a row (5 wrong-password requests each), holding every victim
+        offline. When the budget is exhausted, raising here aborts BEFORE the
+        account-key lockout is armed. Returns normally (and arms nothing of its
+        own) once the counter is incremented within budget.
+        """
+        if not await _allow_fixed_window(db, f"lockout-armed:{ip}", max_distinct, 3600):
+            _log_429("lockout-armed", ip, max_distinct, 3600)
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Too many attempts — try again later",
+            )
+
+    async def record_failure(
+        self,
+        db: AsyncSession,
+        *keys: str,
+        ip: str | None = None,
+        max_distinct_lockouts: int | None = None,
+    ) -> None:
+        """Record a failed secret for every key and arm the next lockout.
+
+        #3112 — when ``ip`` and ``max_distinct_lockouts`` are supplied, arming a
+        NEW account-key lockout is gated so a single IP cannot weaponize the
+        lockout against many distinct victim accounts (see
+        ``_record_ip_lockout``). The first key in ``*keys`` is treated as the
+        account key; the rest are presumed to be the ip/auxiliary keys.
+        """
         now = _naive_utcnow()
-        for key in keys:
+        account_key = keys[0] if keys else None
+        for i, key in enumerate(keys):
             row = await self._load_for_update(db, key, now)
+            # Already locked (a previous attempt armed it): no new arming event,
+            # and the failure record still increments nothing — the key is in its
+            # cooldown. Just skip the increment; the caller already checks the
+            # lock via raise_if_locked before bcrypt, so this is a re-entry guard.
+            if row.locked_until is not None:
+                continue
             row.count += 1
-            if row.count >= self.max_attempts:
-                row.locked_until = now + timedelta(
-                    seconds=self._lockout_seconds(row.count)
-                )
+            if row.count < self.max_attempts:
+                continue
+            # About to arm a lockout. For the ACCOUNT key, enforce the per-IP
+            # distinct-lockout budget first (#3112).
+            if (
+                i == 0
+                and account_key is not None
+                and ip is not None
+                and max_distinct_lockouts is not None
+            ):
+                await self._record_ip_lockout(db, ip, max_distinct=max_distinct_lockouts)
+            row.locked_until = now + timedelta(
+                seconds=self._lockout_seconds(row.count)
+            )
         await db.commit()
 
     async def reset(self, db: AsyncSession, *keys: str) -> None:
