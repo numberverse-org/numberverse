@@ -41,6 +41,7 @@ export default function PortalHeader({
   profile,
   onSignOut,
   wizLang,
+  onChangeLang,
 }: {
   a11y: { bigText: boolean; highContrast: boolean };
   setA11y: (p: { bigText: boolean; highContrast: boolean }) => void;
@@ -66,6 +67,8 @@ export default function PortalHeader({
   profile: Profile | null;
   onSignOut: () => void;
   wizLang: WizardLang;
+  /** #3046 — switch the portal chrome + every section to EN/Bangla after onboarding. */
+  onChangeLang: (next: WizardLang) => void;
 }) {
   const top = TOPBAR_LANGS[wizLang];
   const S = SYNC_LANGS[wizLang];
@@ -118,6 +121,19 @@ export default function PortalHeader({
         >
           {theme === "light" ? "☀️" : "🌙"}{" "}
           <span className="a11y-toggle-label">{T[theme]}</span>
+        </button>
+        {/* 🌐 #3046 — persistent EN/Bangla toggle. Mirrors the onboarding
+            wizard toggle so a parent who finished or skipped onboarding can
+            still switch the whole portal language. */}
+        <button
+          className="a11y-toggle"
+          onClick={() => onChangeLang(wizLang === "en" ? "bn" : "en")}
+          aria-pressed={wizLang === "bn"}
+          title="EN / বাংলা"
+          aria-label="EN / বাংলা"
+        >
+          {"🌐 "}
+          <span className="a11y-toggle-label">{wizLang === "en" ? "বাংলা" : "EN"}</span>
         </button>
       </span>
       {/* #85 — sync status chip + manual sync. */}

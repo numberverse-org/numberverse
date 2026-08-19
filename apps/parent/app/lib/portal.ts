@@ -2148,11 +2148,13 @@ export const NAV_GROUPS: {
   {
     label: "Account",
     items: [
-      { id: "account", label: "Account & security", needsKid: true },
+      // #3047 — these sections are profile/session-only (no kid data), so they
+      // stay reachable from the sidebar even when the account has zero kids.
+      { id: "account", label: "Account & security" },
       // #1499 — make the diagnostics card reachable from the sidebar.
-      { id: "diagnostics", label: "Diagnostics", bn: "ডায়াগনস্টিকস", needsKid: true },
-      { id: "help", label: "Help & setup", needsKid: true },
-      { id: "on-device", label: "On-device data", needsKid: true },
+      { id: "diagnostics", label: "Diagnostics", bn: "ডায়াগনস্টিকস" },
+      { id: "help", label: "Help & setup" },
+      { id: "on-device", label: "On-device data" },
     ],
   },
 ];

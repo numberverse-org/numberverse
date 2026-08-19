@@ -235,6 +235,10 @@ export default function ParentDashboard() {
   const [archiveByKid, setArchiveByKid] = useState<Record<string, MonthSummary[]>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // #3048 — settings save-failure surface lives INLINE next to the Save button
+  // (not the top-of-shell banner), because the Save row is ~500 lines below the
+  // global banner and a parent there would otherwise never see the failure.
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [savedTick, setSavedTick] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
@@ -954,6 +958,7 @@ export default function ParentDashboard() {
     // #1617 — local-only adoption signal (nothing leaves the device).
     nvTrackParent("save_settings");
     setBusy(true);
+    setSaveError(null);
     setError(null);
     try {
       const s = settings[activeId] ?? DEFAULT_SETTINGS;
@@ -965,7 +970,9 @@ export default function ParentDashboard() {
       setSavedTick((t) => t + 1);
     } catch (e) {
       const status = (e as { status?: unknown } | null)?.status;
-      setError(
+      // #3048 — surface the failure INLINE (near the Save button) instead of the
+      // global top-of-shell banner, which is far above the parent's viewport.
+      setSaveError(
         status === 401 || status === 403
           ? ACCOUNT_LANGS[wizLang].sessionEnded
           : "Failed to save settings."
@@ -1907,6 +1914,14 @@ export default function ParentDashboard() {
         profile={profile}
         onSignOut={requestSignout}
         wizLang={wizLang}
+        onChangeLang={(next) => {
+          setWizLang(next);
+          try {
+            localStorage.setItem("nv_parent_lang", next);
+          } catch {
+            /* ignore */
+          }
+        }}
       />
 
       {error && (
@@ -2354,6 +2369,7 @@ export default function ParentDashboard() {
               handleSaveSettings={handleSaveSettings}
               savedTick={savedTick}
               onTogglePause={() => void handleTogglePause()}
+              saveError={saveError}
             />
           </SectionErr>
 
@@ -2384,32 +2400,6 @@ export default function ParentDashboard() {
             />
           </SectionErr>
 
-          {/* ── account & security ── */}
-          <SectionErr label="account">
-            <AccountCard
-              profile={profile}
-              displayName={displayName}
-              setDisplayName={setDisplayName}
-              pwCurrent={pwCurrent}
-              setPwCurrent={setPwCurrent}
-              pwNew={pwNew}
-              setPwNew={setPwNew}
-              pwConfirm={pwConfirm}
-              setPwConfirm={setPwConfirm}
-              handleSaveName={handleSaveName}
-              handleChangePw={handleChangePw}
-              handleSignoutAll={handleSignoutAll}
-              sessions={sessions}
-              handleRevoke={handleRevoke}
-              acctBusy={acctBusy}
-              acctMsg={acctMsg}
-              onSetPassword={handleSetPassword}
-              sessionsLoading={sessionsLoading}
-              onDeleteAccount={(confirmation, password) => void handleDeleteAccount(confirmation, password)}
-              wizLang={wizLang}
-            />
-          </SectionErr>
-
           {/* ── edit + danger zone ── */}
           <SectionErr label="edit-kid">
             <EditKidCard
@@ -2431,53 +2421,88 @@ export default function ParentDashboard() {
               handleDelete={handleDelete}
             />
           </SectionErr>
-
-          {/* #7 — 🩺 local-only diagnostics (never leaves the device).
-              #1499 — wrapped in a stable id so the sidebar can jump here. */}
-          <SectionErr label="diagnostics">
-            <section id="diagnostics">
-              <DiagnosticsCard
-                debugOpen={debugOpen}
-                setDebugOpen={setDebugOpen}
-                wizLang={wizLang}
-                lastSync={lastSync}
-                swVersion={swVersion}
-                diagCopied={diagCopied}
-                exportDiagnostics={exportDiagnostics}
-              />
-              {/* #1617 — export the local-only feature-usage ring beside the
-                  diagnostics buffer. Never leaves the device. */}
-              <div className="card" style={{ marginTop: 12 }}>
-                <h2>{DEBUG_LANGS[wizLang].usageExport}</h2>
-                <p className="hint">{DEBUG_LANGS[wizLang].hint}</p>
-                <button
-                  className="btn btn-small"
-                  type="button"
-                  onClick={() => void exportUsage()}
-                >
-                  {usageCopied ? DEBUG_LANGS[wizLang].usageExported : DEBUG_LANGS[wizLang].usageExport}
-                </button>
-              </div>
-            </section>
-          </SectionErr>
-
-          {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}
-          <SectionErr label="help">
-            <HelpCard
-              helpOpen={helpOpen}
-              setHelpOpen={setHelpOpen}
-              wizLang={wizLang}
-            />
-          </SectionErr>
-
-          {/* ── #262 on-device data review (localStorage, offline) ── */}
-          <SectionErr label="on-device">
-            <div id="on-device">
-              <OnDeviceData />
-            </div>
-          </SectionErr>
         </>
       )}
+          </div>
+        </div>
+      )}
+
+      {/* #3047 — account & security / diagnostics / help / on-device data are
+          profile/session-only (no kid data), so they render OUTSIDE the kid
+          gate above and stay reachable even when the account has zero kids. */}
+      {!initialLoading && (
+        <div className="portal-layout">
+          <div className="portal-content">
+            {/* ── account & security ── */}
+            <SectionErr label="account">
+              <AccountCard
+                profile={profile}
+                displayName={displayName}
+                setDisplayName={setDisplayName}
+                pwCurrent={pwCurrent}
+                setPwCurrent={setPwCurrent}
+                pwNew={pwNew}
+                setPwNew={setPwNew}
+                pwConfirm={pwConfirm}
+                setPwConfirm={setPwConfirm}
+                handleSaveName={handleSaveName}
+                handleChangePw={handleChangePw}
+                handleSignoutAll={handleSignoutAll}
+                sessions={sessions}
+                handleRevoke={handleRevoke}
+                acctBusy={acctBusy}
+                acctMsg={acctMsg}
+                onSetPassword={handleSetPassword}
+                sessionsLoading={sessionsLoading}
+                onDeleteAccount={(confirmation, password) => void handleDeleteAccount(confirmation, password)}
+                wizLang={wizLang}
+              />
+            </SectionErr>
+
+            {/* #7 — 🩺 local-only diagnostics (never leaves the device).
+                #1499 — wrapped in a stable id so the sidebar can jump here. */}
+            <SectionErr label="diagnostics">
+              <section id="diagnostics">
+                <DiagnosticsCard
+                  debugOpen={debugOpen}
+                  setDebugOpen={setDebugOpen}
+                  wizLang={wizLang}
+                  lastSync={lastSync}
+                  swVersion={swVersion}
+                  diagCopied={diagCopied}
+                  exportDiagnostics={exportDiagnostics}
+                />
+                {/* #1617 — export the local-only feature-usage ring beside the
+                    diagnostics buffer. Never leaves the device. */}
+                <div className="card" style={{ marginTop: 12 }}>
+                  <h2>{DEBUG_LANGS[wizLang].usageExport}</h2>
+                  <p className="hint">{DEBUG_LANGS[wizLang].hint}</p>
+                  <button
+                    className="btn btn-small"
+                    type="button"
+                    onClick={() => void exportUsage()}
+                  >
+                    {usageCopied ? DEBUG_LANGS[wizLang].usageExported : DEBUG_LANGS[wizLang].usageExport}
+                  </button>
+                </div>
+              </section>
+            </SectionErr>
+
+            {/* #18 — ❓ Help & setup (iOS install + Bangla voice + build check) */}
+            <SectionErr label="help">
+              <HelpCard
+                helpOpen={helpOpen}
+                setHelpOpen={setHelpOpen}
+                wizLang={wizLang}
+              />
+            </SectionErr>
+
+            {/* ── #262 on-device data review (localStorage, offline) ── */}
+            <SectionErr label="on-device">
+              <div id="on-device">
+                <OnDeviceData />
+              </div>
+            </SectionErr>
           </div>
         </div>
       )}

@@ -41,6 +41,9 @@ interface LearningControlsProps {
   /** #1593 — persist the parent's pause decision SERVER-SIDE. page.tsx owns the
    *  API call; this component shows the two-tap confirm + the real state. */
   onTogglePause: () => void;
+  /** #3048 — inline save-failure message (session-ended / generic), rendered
+   *  right next to the Save button so it can't be missed below the fold. */
+  saveError: string | null;
 }
 
 export default function LearningControls({
@@ -52,6 +55,7 @@ export default function LearningControls({
   handleSaveSettings,
   savedTick,
   onTogglePause,
+  saveError,
 }: LearningControlsProps) {
   // #1593/#1602 — armed pause/resume confirmation (accessible modal).
   const [pauseConfirm, setPauseConfirm] = useState<"pause" | "resume" | null>(null);
@@ -742,6 +746,13 @@ export default function LearningControls({
     {savedTick > 0 && !unsaved && <span className="saved-note">{LEARNING_LANGS[wizLang].saved}</span>}
     {unsaved && <span className="muted small unsaved-note">{LEARNING_LANGS[wizLang].unsavedBadge}</span>}
   </div>
+  {/* #3048 — inline save-failure, adjacent to the Save button (the global banner
+      is far above the fold and easy to miss from here). */}
+  {saveError && (
+    <p className="hint center" role="alert" aria-live="assertive" style={{ marginTop: 6, color: "var(--nv-err, #ef4444)" }}>
+      {saveError}
+    </p>
+  )}
   {unsaved && (
     <p className="hint center" role="status" style={{ marginTop: 6 }}>
       {LEARNING_LANGS[wizLang].unsavedSticky}
