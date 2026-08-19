@@ -28,9 +28,10 @@ export const metadata: Metadata = {
     url: `${SITE_URL}${base}/share/`,
     images: [
       {
-        url: `${SITE_URL}${base}/og-share-card.svg`,
+        url: `${SITE_URL}${base}/og-share-card.png`,
         width: 1200,
         height: 630,
+        type: "image/png",
         alt: "This week in Numberverse",
       },
     ],
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: [`${SITE_URL}${base}/og-share-card.svg`],
+    images: [`${SITE_URL}${base}/og-share-card.png`],
   },
 };
 
