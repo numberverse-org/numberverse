@@ -819,6 +819,21 @@ export function weekdayShort(iso: string): string {
   }
 }
 
+/** #3058 — the share snapshot's `week_of` is the day the (rolling, live) window
+ *  ENDS on; the card spans the 7 days ending there. The API returns the window
+ *  as a single ISO date with no accompanying range, so the parent portal derives
+ *  the human-readable "Mon D – Sun D" span locally — no API round-trip, no
+ *  date-native tz surprises (we parse the fields, never the wall-clock string). */
+export function shareWeekRangeLabel(weekOf: string): string {
+  const end = new Date(weekOf + "T00:00:00");
+  if (Number.isNaN(end.getTime())) return "";
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  // Same day/month (e.g. a short window display in transit) collapses sensibly.
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
 /** Privacy-safe share blurb — only aggregates, never a kid's name/device data
  *  unless the parent types the name into the share line themselves. */
 export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
@@ -838,8 +853,15 @@ export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
   // "earned this week" figure — we don't keep a per-week coin ledger.
   // #1549 — no kid's name here: the share flow is aggregate-only.
   const coins = w.coins && w.coins > 0 ? `🪙 ${w.coins} coins in the wallet` : null;
+  // #3058 — the shared link is a LIVE rolling window, so the parent's message
+  // should name the actual date range rather than a bare "this week". The weekly
+  // report's `days` carry the concrete dates the card aggregates.
+  const range = w.days?.length
+    ? shareWeekRangeLabel(w.days[w.days.length - 1].date)
+    : "";
+  const headline = range ? `📊 Numberverse learning — ${range}` : "📊 This week's learning on Numberverse";
   return [
-    `📊 This week's learning on Numberverse`,
+    headline,
     `🎮 ${w.rounds} rounds · ${w.minutes} min · ${w.active_days} day${w.active_days === 1 ? "" : "s"} active`,
     `🎯 ${w.correct_pct}% correct`,
     mastered,
@@ -2144,6 +2166,9 @@ export const SHARE_LANGS = {
     unavailable: "Couldn't load this week right now. Please try again later.",
     loading: "Loading this week…",
     intro: "A week of learning, shared by the family. No names, no personal details — just the numbers. ✨",
+    // #3058 — the snapshot is a LIVE rolling window ending today (not a frozen
+    // week), so the card labels it honestly with the rendered date range.
+    windowLabel: "Live this week — {range}",
     rounds: "rounds this week",
     correct: "correct",
     minutesPlayed: "minutes played",
@@ -2160,6 +2185,8 @@ export const SHARE_LANGS = {
     unavailable: "এই মুহূর্তে এই সপ্তাহের তথ্য লোড করা যাচ্ছে না। পরে আবার চেষ্টা করুন।",
     loading: "এই সপ্তাহের তথ্য লোড হচ্ছে…",
     intro: "পরিবারের পক্ষ থেকে শেয়ার করা শেখার এক সপ্তাহ। কোনো নাম নেই, ব্যক্তিগত তথ্য নেই — শুধু সংখ্যা। ✨",
+    // #3058 — live rolling window label with the rendered date range (BN).
+    windowLabel: "লাইভ — এই সপ্তাহ {range}",
     rounds: "এই সপ্তাহের রাউন্ড",
     correct: "সঠিক",
     minutesPlayed: "মিনিট খেলা হয়েছে",

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ErrorBoundary, { logBoundaryError } from "../../../kid/src/components/ErrorBoundary";
 import { fetchShareSnapshot, type ShareSnapshot } from "../../lib/api";
-import { SHARE_LANGS, type ShareLang } from "../lib/portal";
+import { SHARE_LANGS, shareWeekRangeLabel, type ShareLang } from "../lib/portal";
 
 /**
  * #245 + #1597 — client half of the public share-card route. The server shell
@@ -89,6 +89,14 @@ export default function ShareClient() {
       ) : (
         <>
           <p className="center muted small">{t.intro}</p>
+          {/* #3058 — the snapshot is a LIVE rolling window, so render its actual
+              date range so a recipient opening an old link sees exactly which
+              week they're looking at (week_of = the window's end day). */}
+          {snap.week_of && shareWeekRangeLabel(snap.week_of) && (
+            <p className="center muted small">
+              {t.windowLabel.replace("{range}", shareWeekRangeLabel(snap.week_of))}
+            </p>
+          )}
           <section className="card">
             <div className="stat-tiles">
               <div className="tile">
