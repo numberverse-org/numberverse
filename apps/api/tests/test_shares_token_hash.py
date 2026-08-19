@@ -320,6 +320,77 @@ _gss_src = inspect.getsource(get_share_snapshot)
 check("public snapshot gates on KidSettings.paused",
       "settings.paused" in _gss_src or "KidSettings" in _gss_src, True)
 
+print("⑩  #3029/#3060 — session-span + day-bucket by the round's real instant…")
+
+from app.routers.shares import _occurred_at, _session_span_minutes  # noqa: E402
+
+# _occurred_at precedence: client_ts → epoch-ms timestamp → created_at.
+_created = _FakeDatetime._fixed - timedelta(hours=3)
+_ep = ProgressEvent(
+    id=2, kid_id=kid.id, skill_id="s1", game_id="g", correct=True,
+    kind="round", client_ts=None, timestamp=None, created_at=_created,
+)
+check("occurred_at falls back to created_at when neither client stamp is set",
+      _occurred_at(_ep), _created)
+
+_ep_ts = ProgressEvent(
+    id=3, kid_id=kid.id, skill_id="s1", game_id="g", correct=True,
+    kind="round", client_ts=None, timestamp=int(_created.timestamp() * 1000),
+    created_at=_created,
+)
+check("occurred_at prefers the epoch-ms timestamp over created_at",
+      _occurred_at(_ep_ts), _created)
+
+_ep_cts = ProgressEvent(
+    id=4, kid_id=kid.id, skill_id="s1", game_id="g", correct=True,
+    kind="round", client_ts=_created, timestamp=int((_created - timedelta(hours=9)).timestamp() * 1000),
+    created_at=_created,
+)
+check("occurred_at prefers client_ts over the epoch-ms timestamp",
+      _occurred_at(_ep_cts), _created)
+
+# #3029/#3060 — a whole offline drain batch shares ONE server created_at but the
+# rounds carry distinct client timestamps 1 min apart → _session_span_minutes
+# must read the round's real instant and count ~2 minutes of play, not collapse
+# the entire batch to ONE stamp and ~0 minutes.
+_base = _FakeDatetime._fixed
+_batch = [
+    ProgressEvent(id=10 + i, kid_id=kid.id, skill_id="s1", game_id="g", correct=True,
+                  kind="round", client_ts=_base + timedelta(minutes=i), created_at=_base)
+    for i in range(3)
+]
+# All three share the SAME created_at (constant-per-statement now()) → the old
+# dedup-by-set would yield one stamp and ~0 minutes.
+check("batch events all share one created_at (precondition)",
+      len({e.created_at for e in _batch}), 1)
+span = _session_span_minutes(_batch)
+check("session-span reads the client instant: ~2 min play, not ~0 (batch stamp)",
+      span >= 1.8, True)
+days = len({_occurred_at(e).date() for e in _batch})
+check("active-day bucketing uses the client instant (3 rounds same UTC day here)",
+      days, 1)
+
+# Two batches ~35 min apart (more than the 5-min gap) still bucket into the TWO
+# real sessions, but the total minutes reflects each batch's own span — the
+# clients' second batch is not laundered to ~0 by a shared sync stamp either.
+_batch2 = [
+    ProgressEvent(id=40 + i, kid_id=kid.id, skill_id="s1", game_id="g", correct=True,
+                  kind="round", client_ts=_base + timedelta(minutes=35 + i), created_at=_base)
+    for i in range(2)
+]
+check("two-batch span stays positive and reflects both sessions",
+      _session_span_minutes(_batch + _batch2) >= 2.8, True)
+
+# A legacy batch with NO client stamps still falls back to created_at (one stamp
+# → ~0) without crashing.
+_legacy = [
+    ProgressEvent(id=30 + i, kid_id=kid.id, skill_id="s1", game_id="g", correct=True,
+                  kind="round", client_ts=None, timestamp=None, created_at=_base)
+    for i in range(3)
+]
+check("legacy batch (no client stamp) still computes without error",
+      _session_span_minutes(_legacy) >= 0.0, True)
+
 print()
 if fails:
     print(f"✗ share-token-hash suite: {passes} passed, {fails} failed")

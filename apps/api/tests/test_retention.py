@@ -55,13 +55,21 @@ def _run():
     check("age prune targets progress_events", "DELETE FROM progress_events" in age_sql, True)
     check("age prune bounds created_at", "progress_events.created_at <" in age_sql, True)
 
-    # #983 volume guard — keep only the most recent `cap` per kid.
+    # #983 volume guard — keep only the most recent `cap` per kid, ranked by the
+    # round's ACTUAL play time (#3074): a long-offline backlog gets INSERTed with
+    # the highest ids yet is the OLDEST by round time, so ranking by id would
+    # evict genuinely-fresh rounds and keep the stale backlog.
+    occurred = func.coalesce(
+        ProgressEvent.client_ts,
+        func.to_timestamp(ProgressEvent.timestamp / 1000.0),
+        ProgressEvent.created_at,
+    )
     ranked = (
         select(
             ProgressEvent.id,
             func.row_number().over(
                 partition_by=ProgressEvent.kid_id,
-                order_by=ProgressEvent.id.desc(),
+                order_by=(occurred.desc(), ProgressEvent.id.desc()),
             ).label("rn"),
         ).subquery()
     )
@@ -93,6 +101,17 @@ def _run():
     for helper in ("_prune_stories", "_prune_progress_events", "_purge_revoked_sessions"):
         check(f"admin defines {helper}", f"async def {helper}" in admin_src, True)
         check(f"scheduled loop calls {helper}", helper in main_src, True)
+
+    # #3074 — the progress volume guard + age prune MUST rank/age by the round's
+    # actual play time (coalesced client_ts → timestamp → created_at), not
+    # insertion order, so a long-offline backlog doesn't evict fresh rounds.
+    prune_src = (Path(__file__).resolve().parents[1] / "app" / "routers" / "admin.py").read_text()
+    check("progress prune coalesces client_ts for the age/rank key",
+          "func.coalesce(" in prune_src and "ProgressEvent.client_ts" in prune_src, True)
+    check("progress prune ranks by occurred DESC, id DESC (not bare id)",
+          "occurred.desc(), ProgressEvent.id.desc()" in prune_src, True)
+    check("progress prune no longer ranks by bare id DESC alone",
+          "order_by=ProgressEvent.id.desc()" not in prune_src, True)
 
     print(f"✓ {passes} checks passed")
     if fails:

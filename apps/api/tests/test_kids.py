@@ -271,6 +271,36 @@ check("WeeklyOut.minutes documented as SESSION minutes (not unlabelled minutes)"
 check("legacy minutes fallback labelled a response_ms proxy (not 'learning minutes')",
       "response_ms proxy" in _schemas_src.lower() or "response-time proxy" in _schemas_src.lower(), True)
 
+# #3029 — ActivityOut exposes the client's raw round `timestamp` (epoch ms) so the
+# portal's session timeline splits offline play into real sessions instead of
+# collapsing a 30-min session into ~0 minutes off the shared sync stamp.
+from app.schemas import ActivityOut  # noqa: E402
+check("#3029 — ActivityOut exposes the client round `timestamp` field",
+      "timestamp" in ActivityOut.model_fields, True)
+check("#3029 — ActivityOut retains client_ts (occurred-at) alongside timestamp",
+      "client_ts" in ActivityOut.model_fields, True)
+
+# ⑥  #3034 — "mastered this week" bases the weekly list on the FIRST crossing
+#     stamp (`mastered_at`), not "currently ≥80% AND re-practiced this week". A
+#     skill mastered months ago and merely touched this week must NOT read as
+#     newly-mastered. Only legacy rows with `mastered_at IS NULL` fall back to
+#     the old last_practice signal.
+import app.routers.kids as _kids_mod  # noqa: E402
+
+_weekly_src = _inspect.getsource(_kids_mod.get_kid_weekly)
+check("#3034 — weekly mastery keys on mastered_at (first crossing) inside window",
+      "SkillMastery.mastered_at >= start_dt" in _weekly_src, True)
+check("#3034 — legacy fallback keeps last_practice only when mastered_at is NULL",
+      "SkillMastery.mastered_at.is_(None)" in _weekly_src
+      and "SkillMastery.last_practice >= start_dt" in _weekly_src, True)
+# The last_practice condition is inside an and_(mastered_at IS NULL, ...) arm,
+# never the standalone "≥80% AND re-practiced" signal it used to be.
+check("#3034 — mastered_at first-crossing is the PRIMARY weekly criterion",
+      "SkillMastery.mastered_at >= start_dt" in _weekly_src
+      and "SkillMastery.last_practice >= start_dt" in _weekly_src
+      and _weekly_src.index("SkillMastery.mastered_at >= start_dt")
+      < _weekly_src.index("SkillMastery.last_practice >= start_dt"), True)
+
 print()
 print(f"✓ kids helper matrix: {passes} passed, {fails} failed")
 print(f"SUMMARY kids: {passes} checks, findings #9/#10 closed, real bugs: none")

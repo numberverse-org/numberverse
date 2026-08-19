@@ -113,16 +113,37 @@ def resolve_share_token(stored: str | None, inbound: str) -> tuple[str | None, b
 
 # #1552 — ProgressEvent has no session/duration column; `response_ms` is
 # per-answer latency (models.py:265), NOT play time. The best available timing
-# data is `created_at`, so cluster event stamps into play sessions (a gap over
-# 5 minutes starts a new session) and sum each session's elapsed span. This is
-# still an estimate (server-stamped batches share one transaction timestamp),
-# so the public payload sets `minutes_approx: true`.
+# data is the round's own time, so cluster event stamps into play sessions (a
+# gap over 5 minutes starts a new session) and sum each session's elapsed span.
+# This is still an estimate, so the public payload sets `minutes_approx: true`.
 _SESSION_GAP_SECONDS = 5 * 60
+
+
+def _occurred_at(e: ProgressEvent) -> datetime:
+    """#3029/#3060 — the effective occurred-at instant of a progress event.
+
+    Session-span clustering and day-bucketing use the client-observed
+    ``client_ts`` when present, else the integer epoch-ms ``timestamp`` (#1024),
+    else the server-stamped ``created_at``. Without this, a whole offline
+    drain batch carries one ``func.now()`` stamp (constant per statement) so
+    every round collapses to one timestamp → minutes ≈ 0 and active_days = 1,
+    exactly the audience an offline-first kid is. Mirrors ``_occurred_at`` in
+    kids.py; kept local to avoid a kids↔shares import cycle.
+    """
+    if e.client_ts is not None:
+        return e.client_ts
+    ts = getattr(e, "timestamp", None)
+    if ts is not None:
+        try:
+            return datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            pass
+    return e.created_at
 
 
 def _session_span_minutes(events: list[ProgressEvent]) -> float:
     """Best-available play-time estimate for a set of progress events."""
-    stamps = sorted({e.created_at for e in events if e.created_at is not None})
+    stamps = sorted({_occurred_at(e) for e in events if e.created_at is not None})
     if not stamps:
         return 0.0
     total = 0.0
@@ -598,9 +619,14 @@ async def get_share_snapshot(
     rounds = len(events)
     correct = sum(1 for e in events if e.correct)
     # #1552 — minutes is a timestamp-derived session-span estimate, NOT Σ
-    # response_ms (which is per-answer latency, not play time).
+    # response_ms (which is per-answer latency, not play time). #3060 — the
+    # session-span clusters on the round's client-observed instant so a batch
+    # of distinct rounds doesn't collapse to one `func.now()` stamp.
     minutes = _session_span_minutes(events)
-    active_days = len({e.created_at.date() for e in events})
+    # #3060 — day-bucket by the round's real play time (client_ts → epoch-ms
+    # timestamp → created_at), not the shared server sync stamp, so an offline
+    # drain batch spreads across its true UTC days instead of one sync day.
+    active_days = len({_occurred_at(e).date() for e in events})
     # #1846 — aggregate by SCENE key so CountPop/FruitAdd tiers collapse into one
     # favorite instead of fragmenting the week into several tiny per-tier counts.
     hit = _top_game_scene(events)
@@ -636,7 +662,7 @@ async def get_share_snapshot(
     min_by_day: list[float] = []
     for i in range(7):
         d = start + timedelta(days=i)
-        min_by_day.append(_session_span_minutes([x for x in events if x.created_at.date() == d]))
+        min_by_day.append(_session_span_minutes([x for x in events if _occurred_at(x).date() == d]))
 
     return ShareSnapshotOut(
         rounds=rounds,

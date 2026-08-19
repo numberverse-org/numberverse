@@ -14,7 +14,7 @@ import uuid
 from datetime import date, datetime, timedelta, time, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -585,13 +585,25 @@ async def get_kid_weekly(
         streak += 1
         cursor -= timedelta(days=1)
 
-    # "mastered this week" = currently ≥80% AND last practiced inside the window
+    # #3034 — "mastered this week" = the FIRST crossing of ≥80% fell inside the
+    # window (`mastered_at`, progress.py:229). A skill mastered months ago and
+    # merely re-practiced this week must NOT read as "newly mastered" — its
+    # mastered_at is old. Only for legacy rows with `mastered_at IS NULL` do we
+    # fall back to the old "currently ≥80% AND last practiced this week" signal,
+    # and only when that practice looked fresh enough to plausibly be a first
+    # crossing (no stamp = we can't know, so keep the prior behavior).
     mastered = (
         await db.scalars(
             select(SkillMastery).where(
                 SkillMastery.kid_id == kid_id,
                 SkillMastery.mastery >= 0.8,
-                SkillMastery.last_practice >= start_dt,
+                or_(
+                    SkillMastery.mastered_at >= start_dt,
+                    and_(
+                        SkillMastery.mastered_at.is_(None),
+                        SkillMastery.last_practice >= start_dt,
+                    ),
+                ),
             )
         )
     ).all()

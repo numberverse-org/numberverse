@@ -711,9 +711,23 @@ async def _prune_progress_events(db: AsyncSession) -> int:
     cap = settings.max_progress_events_per_kid
     age_cutoff = now - retention
 
+    # #3074 — rank and age-prune by the round's ACTUAL play time, not insertion
+    # order. Events synced from a long offline backlog are INSERTed with the
+    # highest `id`s even though they are the OLDEST by round time; ranking by
+    # `id DESC` would keep those stale rows and evict genuinely-fresher rounds
+    # that happened to be inserted earlier. Coalesce client_ts → epoch-ms
+    # timestamp → created_at (the same precedence the read paths use) so the
+    # cap keeps the most-recent BY PLAY TIME and the 90-day window drops the
+    # oldest-by-round-time events, not the oldest-by-sync-time ones.
+    occurred = func.coalesce(
+        ProgressEvent.client_ts,
+        func.to_timestamp(ProgressEvent.timestamp / 1000.0),
+        ProgressEvent.created_at,
+    )
+
     # 1) Age prune
     age_result = await db.execute(
-        delete(ProgressEvent).where(ProgressEvent.created_at < age_cutoff)
+        delete(ProgressEvent).where(occurred < age_cutoff)
     )
     age_pruned = age_result.rowcount or 0
 
@@ -723,7 +737,7 @@ async def _prune_progress_events(db: AsyncSession) -> int:
             ProgressEvent.id,
             func.row_number().over(
                 partition_by=ProgressEvent.kid_id,
-                order_by=ProgressEvent.id.desc(),
+                order_by=(occurred.desc(), ProgressEvent.id.desc()),
             ).label("rn"),
         ).subquery()
     )

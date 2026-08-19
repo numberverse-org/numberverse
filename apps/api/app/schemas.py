@@ -402,6 +402,11 @@ class ActivityOut(BaseModel):
     # that predate the column). The parent feed keeps rendering `created_at`
     # (server-stamp) for legacy; new rows carry the real round time here.
     client_ts: datetime | None = None
+    # #3029 — the client's raw round timestamp (epoch ms, #1024). The portal's
+    # session timeline splits offline play into real sessions using THIS when
+    # present (an offline-first kid playing 30 min then syncing once would
+    # otherwise collapse to one ~0-duration session built from sync time).
+    timestamp: int | None = None
     # #1616 — event kind (round|coins|quest|garden|challenge|session-*). The
     # parent feed can filter engagement rows out of the "rounds" list if it
     # wants; rounds-only clients can ignore the new field.
