@@ -280,6 +280,28 @@ registerRoute(
   "GET"
 );
 
+// #3145 — the lazy nova3d island's assets (nova.glb 460 KB + basis_transcoder
+// .js/.wasm 584 KB) are NOT in the static precache (glb/wasm dropped from the
+// glob; /assets/basis/** and /assets/nova.glb globIgnored — see vite.config.ts).
+// Most installs never open the 3D island, so they shouldn't pay ~1 MB up front.
+// CacheFirst on first use (mirrors /voice + the Bengali faces) so the island
+// works fully offline after one SW-controlled online load once a kid has
+// visited it. The island is lazy in App.tsx (#880), so this route stays cold
+// for the majority who only ever play the 2D lessons.
+registerRoute(
+  /\/assets\/(?:nova\.glb|basis\/.*)$/,
+  new CacheFirst({
+    cacheName: "nv-glb",
+    plugins: [
+      // basis_transcoder.js+wasm + nova.glb = ~4 entries (js, wasm, glb) plus
+      // headroom for a future model; a short cap keeps the cache from ballooning.
+      new ExpirationPlugin({ maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 30 }),
+      new CacheableResponsePlugin({ statuses: [200] }),
+    ],
+  }),
+  "GET"
+);
+
 /* ── /api — the offline-first network boundary (#264) ─────────────────── */
 const API_CACHE = "nv-api";
 

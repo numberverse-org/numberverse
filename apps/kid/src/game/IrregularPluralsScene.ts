@@ -27,7 +27,7 @@ const PAIRS: Pair[] = [
   { id: 4, one: "child", many: "children", emoji: "👶" },
   { id: 5, one: "man", many: "men", emoji: "👨" },
   { id: 6, one: "woman", many: "women", emoji: "👩" },
-  { id: 7, one: "person", many: "people", emoji: "🧑‍🤝‍🧑" },
+  { id: 7, one: "person", many: "people", emoji: "👥" },
   { id: 8, one: "goose", many: "geese", emoji: "🪿" },
   { id: 9, one: "sheep", many: "sheep", emoji: "🐑" },
   { id: 10, one: "fish", many: "fish", emoji: "🐟" },

@@ -49,7 +49,7 @@ const CFG: BinSortConfig = {
     { id: "Henna", emoji: "🌿", value: "eid", tier: 2 },
     // Durga Puja
     { id: "Dhak", emoji: "🥁", value: "durga", tier: 1 },
-    { id: "Shari", emoji: "🥻", value: "durga", tier: 1 },
+    { id: "Shari", emoji: "👗", value: "durga", tier: 1 },
     { id: "Mishti", emoji: "🍮", value: "durga", tier: 2 },
     { id: "Pandal", emoji: "🎪", value: "durga", tier: 2 },
     { id: "FamilyVisit", emoji: "👨‍👩‍👧‍👦", value: "durga", tier: 3 },

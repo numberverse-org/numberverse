@@ -205,7 +205,7 @@ export const NOVA_OUTFITS: NovaOutfit[] = [
   // + name carry the festival look. Availability is config from the locale pack.
   { id: "eid-panjabi", emoji: "👔", name: "Eid Panjabi", nameBn: "ঈদের পাঞ্জাবি", cost: 25, kind: "tunic", festival: "eid_fitr" },
   { id: "eid-topi", emoji: "🧢", name: "Eid Prayer Cap", nameBn: "ঈদের টুপি", cost: 20, kind: "hat", festival: "eid_fitr" },
-  { id: "boishakh-sharee", emoji: "🥻", name: "Boishakh Sharee", nameBn: "বৈশাখের শাড়ি", cost: 30, kind: "tunic", festival: "boishakh" },
+  { id: "boishakh-sharee", emoji: "👗", name: "Boishakh Sharee", nameBn: "বৈশাখের শাড়ি", cost: 30, kind: "tunic", festival: "boishakh" },
   { id: "boishakh-fan", emoji: "🪭", name: "Boishakh Fan", nameBn: "বৈশাখের পাখা", cost: 20, kind: "bow", festival: "boishakh" },
 ];
 
@@ -323,7 +323,7 @@ export interface NovaSpecies {
 
 export const NOVA_SPECIES: NovaSpecies[] = [
   { id: "owl", name: "Owl", nameBn: "প্যাঁচা", cost: 0, unlockStage: 0, stages: ["🥚", "🐣", "🦉", "🦉"] },
-  { id: "cat", name: "Cat", nameBn: "বিড়াল", cost: 40, unlockStage: 1, stages: ["🥚", "🐱", "🐈", "🐈‍⬛"] },
+  { id: "cat", name: "Cat", nameBn: "বিড়াল", cost: 40, unlockStage: 1, stages: ["🥚", "🐱", "🐈", "🐈"] },
   { id: "peacock", name: "Peacock", nameBn: "ময়ূর", cost: 80, unlockStage: 2, stages: ["🥚", "🐤", "🐓", "🦚"] },
   { id: "dragon", name: "Dragon", nameBn: "ড্রাগন", cost: 120, unlockStage: 3, stages: ["🥚", "🐲", "🐲", "🐉"] },
 ];

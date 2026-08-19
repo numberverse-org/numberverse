@@ -71,14 +71,33 @@ export default defineConfig({
         // for the og-card.webp/.avif alternatives (#1727) and any future
         // og-card format without a config edit. The glob only lists files that
         // exist in dist, so nothing stale ever enters the precache.
-        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,avif,svg,ico,json,glb,wasm}"],
+        // #3145 — glb/wasm dropped: the lazy nova3d island's nova.glb (460 KB)
+        // + basis_transcoder.js/.wasm (584 KB) are runtime CacheFirst-served
+        // (src/sw.ts nv-glb route), not precached — most installs never open
+        // the 3D island, so they shouldn't pay ~1 MB up front.
+        globPatterns: ["**/*.{js,css,html,woff2,woff,ttf,otf,png,jpg,jpeg,webp,avif,svg,ico,json}"],
         // #1722 — the 5 Bengali faces (~235KB total) are NOT precached: an
         // en-only install must not download Bangla weights it never renders.
         // They're served by the runtime CacheFirst route in src/sw.ts
         // (nv-fonts-bn) on first use, so a bn install works fully offline after
         // one SW-controlled online load. The Latin faces (Baloo 2 / Nunito)
         // stay in the precache (offline-first for the majority script).
-        globIgnores: ["**/fonts/NotoSansBengali-*.woff2"],
+        //
+        // #3145 — splash + 3D ignored (in addition to the glb/wasm glob drop):
+        //   · splash/ — 19 iOS startup PNGs (~1 MB). A device fetches exactly
+        //     ONE at add-to-home-screen time (online); precaching all 19 on
+        //     every install is pure waste. iOS reads these <link> tags directly
+        //     and never goes through the SW precache.
+        //   · assets/basis/** + assets/nova.glb — the 3D transcoder + model
+        //     (the `js` glob would still sweep basis_transcoder.js, and the
+        //     `json`/favicon sweep shouldn't grab the model), served lazy by
+        //     the nv-glb CacheFirst route in src/sw.ts.
+        globIgnores: [
+          "**/fonts/NotoSansBengali-*.woff2",
+          "**/splash/**",
+          "**/assets/basis/**",
+          "**/assets/nova.glb",
+        ],
         // #991 — the 5 MiB cap applies ONLY to the precache glob above (the
         // ~2.2 MB index chunk, app shell, fonts, icons, etc.). The ~110 MB
         // neural voice model and other /voice/ runtime assets deliberately
