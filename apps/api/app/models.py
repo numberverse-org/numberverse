@@ -258,6 +258,11 @@ class RateLimitBucket(Base):
     key: Mapped[str] = mapped_column(String, primary_key=True)
     window_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # #3114 — the count from the immediately PREVIOUS window, carried forward so
+    # the fixed window becomes a sliding window: requests just before a boundary
+    # still count against the next window (see ratelimit._allow_fixed_window).
+    # Nullable so a populated table gains the column without a backfill.
+    prev_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 

@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     kotha_retention_days: int = 90
     kotha_active_skill_days: int = 7
     kotha_max_stories_per_kid: int = 1000
+    # #3113 — per-kid story throughput bucket: the account+IP write limiter lets
+    # a single account with many kids drive up to 120 rows/min into ONE kid's
+    # story table across those kids' batches. This independent kid-scoped
+    # per-minute cap bounds any one kid's story flood regardless of how many
+    # kids the account owns.
+    kotha_max_stories_per_kid_per_minute: int = 100
     # #329 — how often the background batch-embed job runs (minutes).
     kotha_embed_interval_minutes: int = 15
     # #948 — single source of truth for the embedding model name and

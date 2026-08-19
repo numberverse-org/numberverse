@@ -183,19 +183,23 @@ class _FakeDB:
         # path's 409 handling can be asserted without Postgres.
         self.raise_on_commit = False
 
-    # ── rate-limit fixed-window upsert (INSERT ... ON CONFLICT) ──
+    # ── rate-limit first-use guard (INSERT ... ON CONFLICT DO NOTHING) ──
     async def execute(self, stmt):
         params = stmt.compile().params
         key = params.get("key")
         if key is None:  # not a bucket upsert
             return _FakeResult(scalar=0)
-        now = params.get("window_start")
-        bucket = self.storage.buckets.get(key)
-        if bucket is None:
-            bucket = {"count": 0, "window_start": now, "locked_until": None}
-            self.storage.buckets[key] = bucket
-        bucket["count"] += 1
-        return _FakeResult(scalar=bucket["count"])
+        # #3114 — ensure the row exists (as the real ON CONFLICT DO NOTHING does);
+        # the increment itself now happens in the SELECT FOR UPDATE Python path,
+        # so this must NOT bump the count (that would double-count).
+        if key not in self.storage.buckets:
+            self.storage.buckets[key] = {
+                "count": 0,
+                "window_start": params.get("window_start"),
+                "prev_count": 0,
+                "locked_until": None,
+            }
+        return _FakeResult(scalar=0)
 
     # ── AuthAttemptGuard selects + admin list count + org-scoped fetches ──
     async def scalar(self, stmt):
@@ -208,6 +212,7 @@ class _FakeDB:
                     key=key,
                     window_start=b["window_start"],
                     count=b["count"],
+                    prev_count=b.get("prev_count"),
                     locked_until=b["locked_until"],
                 )
             return self._bucket_objs[key]
@@ -271,6 +276,7 @@ class _FakeDB:
             self.storage.buckets[key] = {
                 "count": obj.count,
                 "window_start": obj.window_start,
+                "prev_count": getattr(obj, "prev_count", None),
                 "locked_until": obj.locked_until,
             }
 

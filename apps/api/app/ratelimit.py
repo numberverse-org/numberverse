@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy import case, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -212,12 +212,17 @@ def _log_429(kind: str, key: str, limit: int, window_seconds: float) -> None:
 async def _allow_fixed_window(
     db: AsyncSession, key: str, limit: int, window_seconds: int
 ) -> bool:
-    """Atomically increment a fixed-window bucket and return whether allowed.
+    """Atomically increment a sliding-window bucket and return whether allowed.
 
-    The `INSERT ... ON CONFLICT` increments the current window in one statement
-    (resetting the window when it has expired), so two workers can't both pass
-    a request on a stale count. The increment is committed immediately so a
-    later route failure can't roll the limit back.
+    #3114 — a naive fixed window resetting at the boundary let one window's full
+    quota AND the next window's quota be spent in a two-second burst (e.g. 9 at
+    second :59 + 10 more at second :60 on the 10/min signup cap). The bucket now
+    keeps the PREVIOUS window's count (`prev_count`) and weights it by how much
+    of that window still overlaps the trailing `window_seconds` span, so the
+    effective count is the SLIDING sum — spending the whole quota right before a
+    boundary no longer buys a fresh quota right after. Enforced with `FOR UPDATE`
+    so two workers can't both pass on a stale count (the same lock AuthAttemptGuard
+    uses #3115).
 
     #1770 — the pre-commit is intentional: the durable cross-worker count must
     survive a route that fails afterwards (422/413), or a second worker could
@@ -227,28 +232,60 @@ async def _allow_fixed_window(
     bucket, so one bad surface cannot starve another.
     """
     now = _naive_utcnow()
-    cutoff = now - timedelta(seconds=window_seconds)
-    stmt = (
+    # Grid-aligned window: `window_start` is floored to the window boundary so
+    # the previous/current split is exact, and `elapsed` gives the fraction of
+    # the current window already elapsed (used to weight the previous count).
+    window_seconds = max(1, int(window_seconds))
+    # `now` is NAIVE UTC by construction (_naive_utcnow) — `.timestamp()` on a
+    # naive datetime would interpret it as LOCAL time, skewing the window on any
+    # host whose TZ isn't UTC. Attach tz=utc for the epoch math, then go back to
+    # naive for the column (Postgres stores naive TIMESTAMP, same convention as
+    # the rest of this module).
+    epoch = now.replace(tzinfo=timezone.utc).timestamp()
+    current_start = datetime.fromtimestamp(
+        (int(epoch) // window_seconds) * window_seconds, tz=timezone.utc
+    ).replace(tzinfo=None)
+    prev_start = current_start - timedelta(seconds=window_seconds)
+    elapsed = (now - current_start).total_seconds()  # 0 .. window_seconds (naive UTC subtraction)
+    weight = (window_seconds - elapsed) / window_seconds  # 1.0 → 0.0
+
+    # #3114 — the read-modify-write is a sliding window over a FOR-UPDATE locked
+    # row (same lock pattern as AuthAttemptGuard #3115). First-use is made atomic
+    # by the INSERT … ON CONFLICT DO NOTHING below: two concurrent requests for a
+    # never-seen key both run the insert, one wins, the other is a no-op — so the
+    # row ALWAYS exists by the time the SELECT FOR UPDATE runs. Without this, both
+    # would see no row, both `add`, and one would blow up on the PK constraint.
+    await db.execute(
         pg_insert(RateLimitBucket)
-        .values(key=key, window_start=now, count=1, locked_until=None)
-        .on_conflict_do_update(
-            index_elements=[RateLimitBucket.key],
-            set_={
-                "window_start": case(
-                    (RateLimitBucket.window_start < cutoff, now),
-                    else_=RateLimitBucket.window_start,
-                ),
-                "count": case(
-                    (RateLimitBucket.window_start < cutoff, 1),
-                    else_=RateLimitBucket.count + 1,
-                ),
-            },
-        )
-        .returning(RateLimitBucket.count)
+        .values(key=key, window_start=current_start, count=0, prev_count=0, locked_until=None)
+        .on_conflict_do_nothing(index_elements=[RateLimitBucket.key])
     )
-    count = (await db.execute(stmt)).scalar_one()
+
+    row = await db.scalar(
+        select(RateLimitBucket).where(RateLimitBucket.key == key).with_for_update()
+    )
+    if row is None:  # defensive — the insert above guarantees a row in real PG
+        row = RateLimitBucket(
+            key=key, window_start=current_start, count=0, prev_count=0, locked_until=None
+        )
+        db.add(row)
+        await db.flush()
+    if row.window_start == current_start:
+        row.count += 1
+    elif row.window_start == prev_start:
+        # One boundary crossed: the current window becomes the previous one.
+        row.prev_count = row.count
+        row.count = 1
+        row.window_start = current_start
+    else:
+        # Gap of two or more windows: nothing from the distant past still applies.
+        row.prev_count = 0
+        row.count = 1
+        row.window_start = current_start
+
+    sliding = (row.prev_count or 0) * weight + row.count
     await db.commit()
-    return count <= limit
+    return math.ceil(sliding) <= limit
 
 
 def rate_limit(limit: int = _REQUESTS_PER_MIN) -> Callable:

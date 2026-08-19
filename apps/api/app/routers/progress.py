@@ -13,7 +13,7 @@ from ..db import get_db
 from ..deps import get_current_profile, org_scoped, resolve_org_id, resolve_plan
 from ..premium_gate import skill_allowed as premium_skill_allowed
 from ..models import AccelerationLog, Kid, KidSettings, LearningStory, ProgressEvent, Profile, SkillMastery
-from ..ratelimit import read_rate_limit, rate_limit
+from ..ratelimit import _allow_fixed_window, read_rate_limit, rate_limit
 from ..schemas import AccelerationIn, AccelerationOut, KidSnapshotOut, LearningStoryIn, LearningStoryOut, MasteryOut, ProgressBatchIn, StoryStatsOut
 from ..scrub import redact_context
 from ..seed import SKILLS_SEED
@@ -57,6 +57,13 @@ def _bkt_update(mastery: float, correct: bool, p_learn=0.10, p_guess=0.15, p_sli
     p = mastery
     p_correct = p * (1 - p_slip) + (1 - p) * p_guess
     if p_correct <= 0:
+        return p
+    # #3075 — when a misconfigured adaptive param drives p_correct to 1.0 (e.g.
+    # p_guess >= 1.0), `1 - p_correct` is zero and the incorrect-answer branch
+    # would ZeroDivisionError and 500 the whole /progress batch. Clamp both
+    # denominators away from zero so a bad config degrades gracefully instead of
+    # wedging the client's durable outbox.
+    if 1 - p_correct <= 0:
         return p
     p_given = (p * (1 - p_slip)) / p_correct if correct else (p * p_slip) / (1 - p_correct)
     p_given = min(1.0, max(0.0, p_given))
@@ -469,6 +476,18 @@ async def record_stories(
     # adversarial or buggy client from flooding the table past the configured
     # cap even when the per-hour rate limit hasn't tripped.
     cap = settings.kotha_max_stories_per_kid
+    # #3113 — the account+IP WRITE_RATE_LIMIT does not bound how fast ONE kid's
+    # story table grows when a single account owns many kids. Add an independent
+    # kid-scoped per-minute bucket so one kid's story volume is bounded no matter
+    # how many kids the account floods across.
+    kid_budget = settings.kotha_max_stories_per_kid_per_minute
+    for kid_id in kid_ids:
+        if not await _allow_fixed_window(db, f"kidstory:{kid_id}", kid_budget, 60):
+            logger.warning("kid story throughput breached: kid=%s budget=%s", kid_id, kid_budget)
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Story throughput limit reached — try again in a moment",
+            )
     # #1808 — acquire the per-kid advisory transaction lock BEFORE the count+insert
     # so two concurrent batches can't both read under the cap and overshoot. Held
     # until the commit at the end of this handler.

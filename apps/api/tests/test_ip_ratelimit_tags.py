@@ -54,23 +54,57 @@ class _FakeResult:
 
 
 class _FakeDB:
-    """Minimal AsyncSession stand-in for the ip_rate_limit upsert path.
+    """Minimal AsyncSession stand-in for the ip_rate_limit sliding-window path.
 
-    execute() extracts the bucket key from the compiled statement and returns
-    the incremented per-key count — exactly the surface the limiter touches.
+    #3114 — `_allow_fixed_window` is now a FOR-UPDATE read-modify-write, so this
+    fake models `scalar` (the locked select), `add`/`flush` (new bucket) and
+    `commit` (persist count/prev_count/window_start) — mirroring the bucket
+    surface test_admin.py's _FakeDB provides, minus the CRUD.
     """
 
     def __init__(self):
-        self.storage = {}  # key -> count
+        self.storage = {}  # key -> dict(count, prev_count, window_start)
+        self._objs = {}  # key -> RateLimitBucket (identity map)
+        self._added = []
 
     async def execute(self, stmt):
+        # #3114 — INSERT … ON CONFLICT DO NOTHING first-use guard; a no-op in the
+        # fake (scalar + add/flush already materialise the first row).
+        return None
+
+    async def scalar(self, stmt):
         params = stmt.compile().params
-        key = params.get("key")
-        self.storage[key] = self.storage.get(key, 0) + 1
-        return _FakeResult(scalar=self.storage[key])
+        key = params.get("key_1") or params.get("key")
+        if key is not None and key in self.storage:
+            if key not in self._objs:
+                b = self.storage[key]
+                self._objs[key] = rl.RateLimitBucket(
+                    key=key,
+                    window_start=b["window_start"],
+                    count=b["count"],
+                    prev_count=b.get("prev_count"),
+                    locked_until=None,
+                )
+            return self._objs[key]
+        return None
+
+    def add(self, obj):
+        self._added.append(obj)
+        if obj.key is not None:
+            self._objs[obj.key] = obj
+
+    async def flush(self):
+        for obj in self._added:
+            self._objs[obj.key] = obj
+        self._added = []
 
     async def commit(self):
-        pass
+        for key, obj in self._objs.items():
+            self.storage[key] = {
+                "count": obj.count,
+                "prev_count": getattr(obj, "prev_count", None),
+                "window_start": obj.window_start,
+            }
 
 
 def _req(ip="1.2.3.4"):

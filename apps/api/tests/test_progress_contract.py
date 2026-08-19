@@ -84,6 +84,14 @@ class CapDB:
     async def execute(self, stmt):
         return _EmptyResult()
 
+    def add(self, obj):
+        # #3113 — record_stories now mints a kid-scoped throughput bucket via
+        # _allow_fixed_window before the cap check; accept the row, no-op.
+        pass
+
+    async def flush(self):
+        pass
+
     async def commit(self):
         pass
 

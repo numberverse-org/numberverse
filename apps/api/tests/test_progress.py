@@ -325,6 +325,12 @@ class FakeStorySession:
             return FakeResult([])
         if isinstance(stmt, PGInsert):
             rows = _extract_insert_rows(stmt)
+            # #3114 — a RateLimitBucket insert (key column) is the rate-limit
+            # first-use guard, not a story/progress event; it's a no-op in the
+            # fake (the bucket FOR-UPDATE read-modify-write is exercised by the
+            # dedicated test_ratelimit.py, not here).
+            if rows and "key" in rows[0] and "kid_id" not in rows[0]:
+                return FakeResult([])
             self.op_log.append(("insert", len(rows)))
             inserted = []
             for r in rows:
@@ -344,6 +350,18 @@ class FakeStorySession:
         if self._held is not None:
             self._held.release()
             self._held = None
+
+    # #3113 — record_stories mints a kid-scoped throughput bucket via
+    # _allow_fixed_window (a FOR-UPDATE read-modify-write) BEFORE the cap check.
+    # The RateLimitBucket select falls through scalar() as None (not Kid/
+    # Subscription/count), so _allow_fixed_window issues add()+flush(); accept
+    # the row as a no-op so the cap tests below still exercise the ORIGINAL
+    # story-cap path untouched.
+    def add(self, obj):
+        pass
+
+    async def flush(self):
+        pass
 
 
 def story(kid_id, skill_id, *, uid=None, outcome=True):
