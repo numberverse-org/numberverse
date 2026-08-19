@@ -812,7 +812,48 @@ export const GAME_LABELS: Record<string, string> = {
   "game-bgs": "Bangladesh Facts",
 };
 
-export function gameLabel(id: string): string {
+/** #2968 — curated Bangla game names for the same `game-*` ids GAME_LABELS
+ *  maps, so a Bangla parent sees natural Bangla (not English) in the activity
+ *  feed and missed-card. Reuses the kid app's natural spoken-Bangla titles. */
+export const GAME_LABELS_BN: Record<string, string> = {
+  "game-countpop": "গুনে ফাটাও",
+  "game-countpop20": "গুনে ফাটাও – ২০ পর্যন্ত",
+  "game-growcount": "গাছ লাগিয়ে গুনো",
+  "game-shapecatcher": "আকৃতি ধরো",
+  "game-bnletters": "বাংলা বর্ণমালা",
+  "game-enletters": "ইংরেজি বর্ণমালা",
+  "game-fruitadd-10": "ফলের যোগ (১০ পর্যন্ত)",
+  "game-fruitsub-10": "ফলের বিয়োগ (১০ পর্যন্ত)",
+  "game-fruitadd-20": "ফলের যোগ (২০ পর্যন্ত)",
+  "game-fruitsub-20": "ফলের বিয়োগ (২০ পর্যন্ত)",
+  "game-fruittree": "ফলের গাছ",
+  "game-bnbonds": "সংখ্যা বন্ধন",
+  "game-bncolors": "রঙ চিনি",
+  "game-enphonics": "বর্ণের উচ্চারণ",
+  "game-rocketmult": "রকেট গুণ",
+  "game-pizzafrac": "পিৎজার ভাগ",
+  "game-addsub100": "যোগ ও বিয়োগ (১০০)",
+  "game-bnwords": "বাংলা শব্দ",
+  "game-cvc": "শব্দের ছবি",
+  "game-div-23": "২ ও ৩ দিয়ে ভাগ",
+  "game-division": "ভাগ করা",
+  "game-fracmatch": "ভগ্নাংশ মেলানো",
+  "game-placevalue": "ঘরের মান",
+  "game-bnmatras": "বাংলা কার",
+  "game-sightwords": "দেখে পড়া শব্দ",
+  "game-animalhome": "প্রাণীর বাসা",
+  "game-decimals": "দশমিক খেলা",
+  "game-percent": "শতাংশ খেলা",
+  "game-area": "জায়গা ও পরিসীমা",
+  "game-bnsentence": "বাক্য তৈরি",
+  "game-grammar": "বিশেষ্য ও ক্রিয়া",
+  "game-bgs": "বাংলাদেশ চিনি",
+};
+
+export function gameLabel(id: string, lang: "en" | "bn" = "en"): string {
+  if (lang === "bn") {
+    return GAME_LABELS_BN[id] ?? GAME_LABELS[id] ?? id.replace("game-", "").replace(/-/g, " ");
+  }
   return GAME_LABELS[id] ?? id.replace("game-", "").replace(/-/g, " ");
 }
 
@@ -1503,8 +1544,16 @@ export async function buildMissedQuestions(stories: LearningStoryRow[]): Promise
   return promise;
 }
 
-/** #89 — humanize a skill id ("count-pop-to-10" → "count pop to 10"). */
-export function skillLabel(id: string): string {
+/** #89 — humanize a skill id ("count-pop-to-10" → "count pop to 10").
+ *  #2968 — in bn mode prefer the catalog's curated Bangla title (narrTitleBn),
+ *  falling back to the English title; keep the slug fallback only as a last
+ *  resort so BN surfaces never render a derived English title-case slug. */
+export function skillLabel(id: string, lang: "en" | "bn" = "en"): string {
+  if (lang === "bn") {
+    const bn = narrTitleBn(id);
+    if (bn && bn !== narrTitleEn(id)) return bn;
+    return narrTitleEn(id);
+  }
   return id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

@@ -292,6 +292,15 @@ export default function ParentDashboard() {
     if (saved === "en" || saved === "bn") setWizLang(saved);
   }, []);
 
+  // #2974 — keep the narrative/report language in sync with the parent's
+  // chosen language. When the parent flips the global EN/বাংলা toggle, the
+  // weekly narrative and the narrLang-driven report cards follow. The manual
+  // per-card narrative toggle (WeekWordsCard's setNarrLang) is untouched: it
+  // only changes narrLang without touching wizLang, so it isn't reverted here.
+  useEffect(() => {
+    setNarrLang(wizLang);
+  }, [wizLang]);
+
   // 🧏 #250 — GLOBAL accessibility toggles. One localStorage key (`nv_a11y`,
   // same origin as the kid app) → toggling here applies to BOTH areas; a
   // `storage` listener live-syncs the portal to the kid app and vice-versa.
@@ -383,7 +392,17 @@ export default function ParentDashboard() {
   }, []);
 
   // #238 — weekly narrative language + editable draft (localStorage only).
-  const [narrLang, setNarrLang] = useState<"en" | "bn">("en");
+  // #2974 — initialize from the parent's chosen language (nv_parent_lang) so a
+  // Bangla parent lands on Bengali prose without hunting for the card toggle,
+  // instead of always defaulting to English.
+  const [narrLang, setNarrLang] = useState<"en" | "bn">(() => {
+    try {
+      const saved = localStorage.getItem("nv_parent_lang");
+      return saved === "bn" ? "bn" : "en";
+    } catch {
+      return "en";
+    }
+  });
   const [narrDraft, setNarrDraft] = useState<{ en: string; bn: string; edited: boolean } | null>(null);
   const [narrCopied, setNarrCopied] = useState(false);
   // #1558 — two-tap inline confirm before regeneration discards an edited draft.
@@ -1323,10 +1342,13 @@ export default function ParentDashboard() {
     setBusy(true);
     setError(null);
     try {
+      // #2975 — only send the fields the Edit card actually edits (name/avatar).
+      // Sending birth_year unconditionally would let a stale form default silently
+      // overwrite the kid's real birth year on the server. The Edit card's
+      // birth-year field is display/seed only — Avatar + Name are what "Edit" saves.
       await updateKid(token, activeId, {
         name: editName.trim(),
         avatar: editAvatar,
-        birth_year: editBirthYear,
       } satisfies NewKid);
       // #1589 — don't blank the edit form; the prefill effect re-syncs it to
       // the freshly-renamed kid after refreshAll.

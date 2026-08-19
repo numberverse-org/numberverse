@@ -229,7 +229,7 @@ export function WeeklyCard({
       {/* #1557 — surface the server-computed most-played game (already in WeeklyReport) */}
       {activeWeekly.top_game && (
         <p className="muted small mt-10">
-          {STREAK_LANGS[wizLang].mostPlayed}: <strong>{gameLabel(activeWeekly.top_game)}</strong>
+          {STREAK_LANGS[wizLang].mostPlayed}: <strong>{gameLabel(activeWeekly.top_game, wizLang)}</strong>
         </p>
       )}
       {todayCap > 0 && (

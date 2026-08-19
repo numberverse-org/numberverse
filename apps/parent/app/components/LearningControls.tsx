@@ -277,7 +277,7 @@ export default function LearningControls({
                 title={MONI_DELTA_LANGS[wizLang].rangeHint(delta)}
                 onClick={() => patchDelta(s.id, 0)}
               >
-                {delta > 0 ? `+${delta}` : delta}
+                {delta > 0 ? `+${fmtNum(delta)}` : fmtNum(delta)}
               </button>
               <button
                 type="button"
@@ -387,7 +387,7 @@ export default function LearningControls({
             })
           }
         >
-          World {b}
+          World {fmtNum(b)}
         </button>
       ))}
     </div>
@@ -415,7 +415,7 @@ export default function LearningControls({
                     patchSettings(writeWeekdayLimits(activeSettings, arr));
                   }}
                 >
-                  {m === 0 ? LEARNING_LANGS[wizLang].off : `${m}m`}
+                  {m === 0 ? LEARNING_LANGS[wizLang].off : `${fmtNum(m)}m`}
                 </button>
               ))}
             </div>
@@ -516,7 +516,7 @@ export default function LearningControls({
             className={`toggle-chip${activeSettings.focus_band === b ? " on" : ""}`}
             onClick={() => patchSettings({ focus_band: b })}
           >
-            World {b}
+            World {fmtNum(b)}
           </button>
         ))}
       </div>

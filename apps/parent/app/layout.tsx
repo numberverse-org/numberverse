@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaBoot from "./PwaBoot";
+import LocaleDocument from "./LocaleDocument";
 
 // basePath is /parent in the demo build (empty in local dev), and metadata
 // URLs are NOT auto-prefixed by Next — so build every asset path from it.
@@ -49,6 +50,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <PwaBoot />
+        {/* #2962 — client-side locale sync: overwrites the server-rendered
+            lang="en" with the portal's chosen locale + text direction. */}
+        <LocaleDocument />
       </body>
     </html>
   );

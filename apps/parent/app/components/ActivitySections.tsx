@@ -66,11 +66,11 @@ export function ActivityFeed({ active, activity, wizLang }: {
           <li key={a.id} className={`activity-item ${a.correct ? "ok" : "no"}`}>
             <span className="activity-badge">{a.correct ? "✓" : "✗"}</span>
             <span className="activity-game">
-              {gameLabel(a.game_id)}
+              {gameLabel(a.game_id, wizLang)}
               {/* #1494 — surface the skill/subject context like MissedCard does */}
-              {skillLabel(a.skill_id) ? (
+              {skillLabel(a.skill_id, wizLang) ? (
                 <span className="muted small">
-                  {" "}· {subjectEmoji(subjectOf(a.skill_id))} {skillLabel(a.skill_id)}
+                  {" "}· {subjectEmoji(subjectOf(a.skill_id))} {skillLabel(a.skill_id, wizLang)}
                 </span>
               ) : null}
             </span>
@@ -112,7 +112,7 @@ export function MissedCard({ active, missedSkills, wizLang }: {
       {missedSkills.map((ms) => (
         <details key={ms.skillId} className="missed-skill" open>
           <summary>
-            <span className="missed-skill-name">{skillLabel(ms.skillId)}</span>
+            <span className="missed-skill-name">{skillLabel(ms.skillId, wizLang)}</span>
             <span className="missed-count">{ms.misses.length}</span>
             {ms.misses.some((m) => m.reteaching) && (
               <span className="reteach-badge">{MISSED_LANGS[wizLang].reteaching}</span>
@@ -121,7 +121,7 @@ export function MissedCard({ active, missedSkills, wizLang }: {
           <ul className="missed-rows">
             {ms.misses.map((m, i) => (
               <li key={i} className="missed-row">
-                <span className="missed-game">{gameLabel(m.gameId)}</span>
+                <span className="missed-game">{gameLabel(m.gameId, wizLang)}</span>
                 <span className="missed-time">{fmtTime(m.at)}</span>
                 <span className="missed-detail">
                   {m.wrongAnswer != null && `${MISSED_LANGS[wizLang].picked} ${m.wrongAnswer}`}
