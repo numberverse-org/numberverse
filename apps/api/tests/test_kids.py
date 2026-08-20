@@ -93,6 +93,8 @@ def make_kid(**kw):
         name=kw.get("name", "Kid"),
         avatar=kw.get("avatar", "🦉"),
         birth_year=kw.get("birth_year"),
+        birth_month=kw.get("birth_month"),
+        birth_day=kw.get("birth_day"),
         created_at=kw.get("created_at", datetime.now()),
     )
 
@@ -118,6 +120,37 @@ for age, want in [
     check(f"age {age} → cap {want}", _age_band_cap(byr(age)), want)
 check("no birth_year → None (parent sets manually)", _age_band_cap(None), None)
 check("birth_year == this year (age 0) → cap 1 (youngest surface)", _age_band_cap(date.today().year), 1)
+
+print("①b  #2981 — _age_band_cap is MONTH/DAY-aware (mirrors the kid app's kidBand)…")
+today = date.today()
+# A kid whose birthday is LATER this year is still (calendar_year - 1) years old.
+# Pick a birth date in the future of today (month/day strictly after today) so
+# month-aware age = calendar age − 1.
+_birthday_upcoming = today.replace(year=today.year - 7)
+if _birthday_upcoming > today:
+    # Born 7 calendar-years ago but with an upcoming birthday this year → age 6.
+    check("upcoming birthday → age = calendar − 1 (7 y/o reads as 6, cap 3)",
+          _age_band_cap(today.year - 7, _birthday_upcoming.month, _birthday_upcoming.day),
+          _age_band_cap(today.year - 6))
+else:
+    # Pick a date guaranteed later this year: Dec 31 (unless today IS Dec 31).
+    _mm, _dd = (12, 31) if (today.month, today.day) != (12, 31) else (12, 30)
+    check("upcoming birthday → age = calendar − 1 (7 y/o reads as 6, cap 3)",
+          _age_band_cap(today.year - 7, _mm, _dd),
+          _age_band_cap(today.year - 6))
+# A kid whose birthday ALREADY passed this year uses the calendar-year age.
+_past_birthday = today.replace(year=today.year - 7, month=1, day=1)
+check("already-passed birthday → calendar age (7 y/o → cap 3)",
+      _age_band_cap(today.year - 7, _past_birthday.month, _past_birthday.day),
+      _age_band_cap(today.year - 7))
+check("year-only still uses calendar-year age (legacy profiles)", _age_band_cap(byr(6)), 3)
+# A lone month (no day) is ignored → year-only calc (matches kid app's guard).
+check("month-only → year-only age (no full-date adjustment)",
+      _age_band_cap(today.year - 7, 12), _age_band_cap(today.year - 7))
+# Negative age (future year) is clamped to the youngest surface, not band 2.
+check("future birth_year + future month/day → clamped to band 1 (not negative)",
+      _age_band_cap(today.year + 1, 12, 31), 1)
+
 
 print("②  update_kid — birth_year re-derives the age-appropriate max_band (#9/#1044)…")
 
@@ -189,6 +222,45 @@ kid = make_kid(avatar="🦉", birth_year=byr(6), name="Old")
 out, db = run_update_scenario(kid, None, KidUpdateIn(name="Renamed"))
 check("J: omitted avatar unchanged", out.avatar, "🦉")
 check("J: omitted birth_year unchanged", out.birth_year, byr(6))
+
+# K—M: #2981 — birth_month/birth_day are settable AND clearable via PATCH.
+print("K—M:  #2981 — update_kid birth_month/birth_day set + clear…")
+
+# K: setting birth_month/birth_day via PATCH persists both halves.
+kid = make_kid(birth_year=byr(6))
+out, db = run_update_scenario(kid, None, KidUpdateIn(birth_month=12, birth_day=31))
+check("K: birth_month set", out.birth_month, 12)
+check("K: birth_day set", out.birth_day, 31)
+
+# L: explicit null CLEARS a previously-set birth_month/birth_day.
+kid = make_kid(birth_year=byr(6), birth_month=12, birth_day=31)
+out, db = run_update_scenario(kid, None, KidUpdateIn(birth_month=None, birth_day=None))
+check("L: explicit null clears birth_month", out.birth_month, None)
+check("L: explicit null clears birth_day", out.birth_day, None)
+
+# M: an OMITTED birth_month/birth_day key does not change the stored value.
+kid = make_kid(birth_year=byr(6), birth_month=12, birth_day=31)
+out, db = run_update_scenario(kid, None, KidUpdateIn(name="Renamed"))
+check("M: omitted birth_month unchanged", out.birth_month, 12)
+check("M: omitted birth_day unchanged", out.birth_day, 31)
+
+print("N—O:  #2985 — _get_owned_kid is parent-scoped only (org branch removed)…")
+from app.routers.kids import _get_owned_kid as _gok  # noqa: E402
+import inspect as _insp  # noqa: E402
+_gok_sig = _insp.signature(_gok)
+check("#2985 _get_owned_kid no longer accepts org_id", "org_id" in _gok_sig.parameters, False)
+_gok_src = _insp.getsource(_gok)
+check("#2985 _get_owned_kid drops the org_scoped call", "org_scoped(" not in _gok_src, True)
+check("#2985 _get_owned_kid scopes to profile_id only",
+      "Kid.profile_id == profile.id" in _gok_src, True)
+
+print("P:  #3026 — create_kid enforces MAX_KIDS_PER_ACCOUNT server-side…")
+import app.routers.kids as _kids_mod  # noqa: E402
+_kids_src = _insp.getsource(_kids_mod)
+check("#3026 MAX_KIDS_PER_ACCOUNT declared", "MAX_KIDS_PER_ACCOUNT" in _kids_src, True)
+_create_src = _insp.getsource(_kids_mod.create_kid)
+check("#3026 create_kid counts existing kids", "func.count" in _create_src, True)
+check("#3026 create_kid raises 409 at the cap", "HTTP_409_CONFLICT" in _create_src, True)
 
 print("③  _weekly_trigger — #1536 signal selection + no double-fire…")
 check("rounds=0 → reminder", _weekly_trigger(mastered_today=[], mastered_this_week=[], streak=0, rounds=0), "reminder")

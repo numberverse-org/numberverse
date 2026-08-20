@@ -219,6 +219,36 @@ def accel(**kw):
 check("#1642 AccelerationIn accepts a normal skill_id", accepts(AccelerationIn, **accel()), True)
 check("#1642 AccelerationIn rejects a 65-char skill_id", rejects(AccelerationIn, **accel(skill_id="s" * 65)), True)
 
+print("②b  #3036 — AccelerationIn band bounds raised 1..8 + band_to ≥ band_from…")
+from datetime import date as _d  # noqa: E402
+check("#3036 accepts band_from=5 → band_to=6 (was 422 at le=5)",
+      accepts(AccelerationIn, **accel(band_from=5, band_to=6)), True)
+check("#3036 accepts band_from=7 → band_to=8 (top of catalog)",
+      accepts(AccelerationIn, **accel(band_from=7, band_to=8)), True)
+check("#3036 accepts band_from=8 → band_to=8 (stay at Summit Peaks)",
+      accepts(AccelerationIn, **accel(band_from=8, band_to=8)), True)
+check("#3036 rejects band 9 (catalog has 8 bands)", rejects(AccelerationIn, **accel(band_from=8, band_to=9)), True)
+check("#3036 rejects band 0", rejects(AccelerationIn, **accel(band_from=0, band_to=1)), True)
+check("#3036 rejects backwards skip band_from=3 → band_to=2",
+      rejects(AccelerationIn, **accel(band_from=3, band_to=2)), True)
+check("#3036 accepts a forward (equal) skip band_from=3 → band_to=3",
+      accepts(AccelerationIn, **accel(band_from=3, band_to=3)), True)
+
+print("②c  #2981 — birth_year capped at the current year (no future birth years)…")
+_cur_year = _d.today().year
+check("#2981 KidIn rejects birth_year next year (was accepted up to 2030)",
+      rejects(KidIn, name="Aarif", avatar="🦉", birth_year=_cur_year + 1), True)
+check("#2981 KidIn accepts birth_year == current year",
+      accepts(KidIn, name="Aarif", avatar="🦉", birth_year=_cur_year), True)
+check("#2981 KidUpdateIn rejects a future birth_year",
+      rejects(KidUpdateIn, birth_year=_cur_year + 1), True)
+check("#2981 KidUpdateIn accepts birth_year == current year",
+      accepts(KidUpdateIn, birth_year=_cur_year), True)
+check("#2981 KidIn accepts birth_month 1..12",
+      accepts(KidIn, name="Aarif", avatar="🦉", birth_month=12, birth_day=31), True)
+check("#2981 KidIn rejects birth_month 13", rejects(KidIn, name="Aarif", birth_month=13), True)
+check("#2981 KidIn rejects birth_day 32", rejects(KidIn, name="Aarif", birth_day=32), True)
+
 # ── #1643 KidSettingsIn.enabled_subjects: list ≤ 32, each item ≤ 16 ──
 check("#1643 enabled_subjects None stays None", KidSettingsIn(enabled_subjects=None).enabled_subjects, None)
 check("#1643 enabled_subjects accepts a 6-subject list",

@@ -3,10 +3,10 @@ import math
 import re
 import unicodedata
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, EmailStr, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, EmailStr, Field, field_validator, model_validator
 
 
 # #696 — the kid app times rounds with Phaser's high-res clock, so a serialized
@@ -123,6 +123,31 @@ def _validate_avatar(value: str | None) -> str | None:
     if len(v) > AVATAR_MAX_LENGTH:
         raise ValueError(f"avatar must be at most {AVATAR_MAX_LENGTH} characters")
     return v
+
+
+# #3036 — the acceleration catalog ships eight bands (see seed.py's band-8
+# Summit Peaks skills and the kid app's BANDS.length). The old schema clamped
+# band_from/band_to at 5, so any jump to/from band 6+ would 422 and the parent's
+# acceleration plan would silently lose high-band skips. Keep the ceiling in
+# sync with the catalog here.
+MAX_CATALOG_BAND = 8
+
+
+def _clamp_birth_year(value: int | None) -> int | None:
+    """#2981 — reject/clamp a future birth_year at the schema boundary.
+
+    The old static `le=2030` bound let a future-dated year through, which the
+    age calc turned into a negative age → the strictest band-2 cap (and the kid
+    app's `kidBand` would disagree with the server). The earliest allowed year
+    stays a static `ge` (the `ge=2010` Field bound below); this validator only
+    reins in the upper edge to the CURRENT year so a 2026 caller can't submit
+    `birth_year=2030` and get a nonsense negative age."""
+    if value is None:
+        return None
+    current_year = date.today().year
+    if value > current_year:
+        raise ValueError(f"birth_year must not be in the future (got {value}, current year {current_year})")
+    return value
 
 
 class SignupIn(BaseModel):
@@ -243,7 +268,14 @@ class SessionOut(BaseModel):
 class KidIn(BaseModel):
     name: str = Field(min_length=1, max_length=KID_NAME_MAX_LENGTH, pattern=NAME_PATTERN)
     avatar: str | None = None
-    birth_year: int | None = Field(default=None, ge=2010, le=2030)
+    birth_year: int | None = Field(default=None, ge=2010)
+    # #2981 — optional birth month/day so the server can compute the SAME
+    # full-date age the kid app's `kidBand` uses (a Dec-31-born kid isn't a year
+    # older on Jan 1). Month 1..12, day 1..31; both or neither (a lone value is
+    # ignored, matching the kid app's `typeof birthMonth === 'number' && ...`
+    # guard which needs both halves).
+    birth_month: int | None = Field(default=None, ge=1, le=12)
+    birth_day: int | None = Field(default=None, ge=1, le=31)
 
     @field_validator("name")
     @classmethod
@@ -255,11 +287,18 @@ class KidIn(BaseModel):
     def _kid_avatar(cls, v: str | None) -> str | None:
         return _validate_avatar(v)
 
+    @field_validator("birth_year")
+    @classmethod
+    def _kid_birth_year(cls, v: int | None) -> int | None:
+        return _clamp_birth_year(v)
+
 
 class KidUpdateIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=KID_NAME_MAX_LENGTH, pattern=OPTIONAL_NAME_PATTERN)
     avatar: str | None = None
-    birth_year: int | None = Field(default=None, ge=2010, le=2030)
+    birth_year: int | None = Field(default=None, ge=2010)
+    birth_month: int | None = Field(default=None, ge=1, le=12)
+    birth_day: int | None = Field(default=None, ge=1, le=31)
 
     @field_validator("name")
     @classmethod
@@ -270,6 +309,11 @@ class KidUpdateIn(BaseModel):
     @classmethod
     def _kid_update_avatar(cls, v: str | None) -> str | None:
         return _validate_avatar(v)
+
+    @field_validator("birth_year")
+    @classmethod
+    def _kid_update_birth_year(cls, v: int | None) -> int | None:
+        return _clamp_birth_year(v)
 
 
 class DeleteAccountIn(BaseModel):
@@ -285,6 +329,8 @@ class KidOut(BaseModel):
     name: str
     avatar: str | None = None
     birth_year: int | None = None
+    birth_month: int | None = None
+    birth_day: int | None = None
     created_at: datetime
     coins: int = 0  # #987 — wallet balance surfaced in API
     # #1804 — monotonic wallet version (last-write-wins spend sync).
@@ -774,9 +820,23 @@ class AccelerationIn(BaseModel):
     skill_id: str = Field(max_length=64)
     # easy | know | moving-on | parent — why this skill was skipped.
     reason: str = Field(pattern=r"^(easy|know|moving-on|parent)$")
-    band_from: RoundedIntRequired = Field(ge=1, le=5)
-    band_to: RoundedIntRequired = Field(ge=1, le=5)
+    # #3036 — raised from the old 1..5 clamp to 1..8 so a jump to/from any of
+    # the catalog's band 6–8 skills (seed.py Summit/Polar Peaks) is accepted
+    # instead of 422-ing and silently dropping the parent's high-band skip plan.
+    band_from: RoundedIntRequired = Field(ge=1, le=MAX_CATALOG_BAND)
+    band_to: RoundedIntRequired = Field(ge=1, le=MAX_CATALOG_BAND)
     uid: str | None = None
+
+    @model_validator(mode="after")
+    def _band_order(self) -> "AccelerationIn":
+        """#3036 — a skip must move the kid forward (or stay put), never back.
+        The old schema accepted band_from=3, band_to=2 and persisted a
+        nonsense "skipped backwards" entry."""
+        if self.band_to < self.band_from:
+            raise ValueError(
+                f"band_to ({self.band_to}) must not be lower than band_from ({self.band_from})"
+            )
+        return self
 
 
 class AccelerationOut(BaseModel):

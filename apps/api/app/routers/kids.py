@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..deps import get_current_profile, org_scoped, resolve_org_id
+from ..deps import get_current_profile
 from ..models import (
     AccelerationLog,
     ContentItem,
@@ -130,6 +130,13 @@ def _weekly_minutes(evs: list[ProgressEvent]) -> float:
 # script profile-mutating calls. Reads stay auth-only (get_current_profile).
 KID_WRITE_RATE_LIMIT = rate_limit()
 
+# #3026 — server-side family-size cap. The portal only shows a soft, confirm-
+# behind blocking warning (page.tsx:914-916), which a scripted or leaked-token
+# caller can bypass to grow the roster without bound (and the portal then renders
+# every kid in full on each load). Enforce a documented ceiling here so a
+# breached token can't mint an unbounded family.
+MAX_KIDS_PER_ACCOUNT = 12
+
 # #1764 — expensive read endpoints in this router (activity up to 2000 rows,
 # weekly aggregates + streak walk) get their OWN read-tier budget so a heavy
 # reader can't starve the write tier or the DB pool.
@@ -140,27 +147,27 @@ async def _get_owned_kid(
     kid_id: uuid.UUID,
     profile: Profile,
     db: AsyncSession,
-    org_id: uuid.UUID | None = None,
     *,
     for_update: bool = False,
 ) -> Kid:
-    """Resolve a kid the caller owns.
+    """Resolve a kid the caller owns (consumer/parent scope only).
 
-    For the consumer (parent) path, scopes to ``Kid.profile_id == profile.id``.
-    For the org path (teacher/org-admin), scopes to ``Kid.org_id == org_id``
-    via the ``org_scoped`` helper.  When both profile and org are provided,
-    the kid must satisfy BOTH scopes (a parent who is also an org member sees
-    only their own kids within that org).
+    Scopes to ``Kid.profile_id == profile.id`` — a parent manages exactly their
+    own kids.
+
+    #2985 — the former ``org_id`` parameter and its ``org_scoped`` branch were
+    DEAD CODE: no kids-router route ever resolved or passed an org_id (a caller's
+    X-Org-ID header was silently ignored on every kid route), so the documented
+    "teacher/org-admin" path was unreachable and misleading. Org-scoped kid
+    management lives in the admin router (ORG_SCOPED_MODELS / _org_scoped_get),
+    not here — this router is the consumer/family surface. Removing the branch
+    keeps the intent honest instead of promising a scope that never runs.
 
     #3100 — when ``for_update``, take a Postgres ``FOR UPDATE`` row lock on the
     Kid so this handler serializes against other writers for the same kid (e.g.
     reset vs /progress). The lock is held until the handler's commit.
     """
-    stmt = select(Kid).where(Kid.id == kid_id)
-    # Parent scope: consumer owns the kid via profile_id.
-    stmt = stmt.where(Kid.profile_id == profile.id)
-    # Additional org scope when the request carries an org context (#962).
-    stmt = org_scoped(stmt, org_id)
+    stmt = select(Kid).where(Kid.id == kid_id, Kid.profile_id == profile.id)
     if for_update:
         stmt = stmt.with_for_update()
     kid = await db.scalar(stmt)
@@ -169,8 +176,8 @@ async def _get_owned_kid(
     return kid
 
 
-def _age_band_cap(birth_year: int | None) -> int | None:
-    """#986/#1044 — derive the default max_band from the kid's birth year.
+def _age_band_cap(birth_year: int | None, birth_month: int | None = None, birth_day: int | None = None) -> int | None:
+    """#986/#1044/#2981 — derive the default max_band from the kid's birth date.
 
     This must MIRROR the kid app's `bandForAge` (apps/kid/src/lib/journey.ts)
     exactly: the server uses max_band to flag band_skipped progress, so a cap
@@ -185,11 +192,26 @@ def _age_band_cap(birth_year: int | None) -> int | None:
       (band 7 is deliberately skipped for age placement, matching the client —
        Summit Peaks band 8 is where the oldest cohort lands by age.)
 
+    #2981 — age is now MONTH/DAY-aware when a birth_month AND birth_day are both
+    present (mirroring the kid app's `kidBand`: a kid born Dec 2019 is still 6 on
+    Jan 1 2026 until their birthday, not 7 the moment the year flips). A year-only
+    profile keeps the legacy calendar-year calc; a missing/zero/future year (or a
+    month/day combination that makes the adjusted age negative) is clamped to the
+    youngest surface, exactly like the kid app's `age < 0 → 1` fallback.
+
     None birth_year returns None (parent can set manually)."""
     if birth_year is None:
         return None
-    current_year = date.today().year
-    age = current_year - birth_year
+    today = date.today()
+    age = today.year - birth_year
+    if birth_month is not None and birth_day is not None:
+        before_birthday = (today.month, today.day) < (birth_month, birth_day)
+        if before_birthday:
+            age -= 1
+    if age < 0:
+        # A future birth_year (or a just-now invalid month/day) shouldn't yield a
+        # negative age → the kid app's `kidBand` maps that to band 1.
+        age = 0
     if age < 4:
         return 1
     if age < 6:
@@ -209,7 +231,24 @@ def _age_band_cap(birth_year: int | None) -> int | None:
 
 @router.post("", response_model=KidOut, status_code=status.HTTP_201_CREATED)
 async def create_kid(body: KidIn, profile: Profile = Depends(KID_WRITE_RATE_LIMIT), db: AsyncSession = Depends(get_db)):
-    kid = Kid(profile_id=profile.id, name=body.name, avatar=body.avatar, birth_year=body.birth_year)
+    # #3026 — enforce the family-size cap SERVER-side (the portal's 8-kid
+    # warning is a soft client hint). A scripted/leaked-token caller would
+    # otherwise grow the roster without bound; reject the 13th kid with a 409
+    # the client can surface as "contact support".
+    existing = await db.scalar(select(func.count()).select_from(Kid).where(Kid.profile_id == profile.id))
+    if existing is not None and existing >= MAX_KIDS_PER_ACCOUNT:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Account already has {MAX_KIDS_PER_ACCOUNT} kids (the family-size limit)",
+        )
+    kid = Kid(
+        profile_id=profile.id,
+        name=body.name,
+        avatar=body.avatar,
+        birth_year=body.birth_year,
+        birth_month=body.birth_month,
+        birth_day=body.birth_day,
+    )
     # #985 — stamp per-kid consent acknowledgment at creation
     kid.consent_version = "1.0"
     kid.consent_at = datetime.now(timezone.utc)
@@ -217,7 +256,7 @@ async def create_kid(body: KidIn, profile: Profile = Depends(KID_WRITE_RATE_LIMI
     # #986 — wire birth_year into an age-appropriate default max_band (parent
     # can override via settings). If birth_year suggests a very young kid, cap
     # the band so they're not dropped into hard content.
-    cap = _age_band_cap(body.birth_year)
+    cap = _age_band_cap(body.birth_year, body.birth_month, body.birth_day)
     if cap is not None:
         ks = KidSettings(kid_id=kid.id, max_band=cap)
         db.add(ks)
@@ -253,21 +292,32 @@ async def update_kid(
     # silently ignored it — those fields could never be cleared via PATCH).
     # `name` is NOT NULL in the DB, so a sent-as-null name must NOT reach the
     # column (skip None for name only; avatar/birth_year clear on null).
-    for field in ("name", "avatar", "birth_year"):
+    for field in ("name", "avatar", "birth_year", "birth_month", "birth_day"):
         if field not in body.model_fields_set:
             continue
         val = getattr(body, field)
         if val is None and field == "name":
             continue
         setattr(kid, field, val)
-    # #1044 — a birth_year edit changes the age-derived default max_band, so
-    # recompute the cap. A kid created capped at band 2 who is now 9+ must be
-    # cleared/raised to the new age's surface — otherwise their legit progress
-    # keeps getting band_skipped server-side. Only overwrite when the cap CHANGES
-    # so a parent who hand-widened settings after creation isn't clobbered back
-    # to a narrower default on an unrelated field edit (name/avatar).
-    if body.birth_year is not None:
-        new_cap = _age_band_cap(body.birth_year)
+    # #1044/#2981 — a birth_date edit changes the age-derived default max_band,
+    # so recompute the cap from the month/day-aware age. A kid created capped at
+    # band 2 who is now 9+ must be cleared/raised to the new age's surface —
+    # otherwise their legit progress keeps getting band_skipped server-side. Only
+    # overwrite when the cap CHANGES so a parent who hand-widened settings after
+    # creation isn't clobbered back to a narrower default on an unrelated field
+    # edit (name/avatar). Recompute when ANY birth field was touched (year OR
+    # month/day), since a month/day edit alone can move a kid across a band
+    # boundary exactly like a year edit does.
+    _birth_touched = "birth_year" in body.model_fields_set or {
+        "birth_month",
+        "birth_day",
+    } & body.model_fields_set
+    if body.birth_year is not None and _birth_touched:
+        new_cap = _age_band_cap(
+            body.birth_year,
+            getattr(kid, "birth_month", None),
+            getattr(kid, "birth_day", None),
+        )
         s = await db.get(KidSettings, kid_id)
         if new_cap is None and s is not None:
             s.max_band = None

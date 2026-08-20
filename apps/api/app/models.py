@@ -76,6 +76,12 @@ class Kid(Base):
     name: Mapped[str] = mapped_column(String)
     avatar: Mapped[str | None] = mapped_column(String, nullable=True)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # #2981 — optional birth month/day so the server's age cap matches the kid
+    # app's `kidBand` full-date age (a Dec-31-born kid isn't a year older on Jan
+    # 1). Both NULL for legacy rows → year-only age fallback. Auto-migrated by
+    # migrations.apply_column_migrations (new nullable columns).
+    birth_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    birth_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # #9 — multi-device sync: the aggregate Nova coin balance (newest-wins max),
     # carried so a kid's wallet follows them across devices. Auto-migrated on
@@ -418,6 +424,17 @@ class AccelerationLog(Base):
     __tablename__ = "acceleration_log"
     __table_args__ = (
         UniqueConstraint("kid_id", "uid", name="uq_accel_kid_uid"),
+        # #3036 — mirror the schema bounds at the DB layer so a direct row write
+        # (import, admin CRUD, future code paths) can't persist a band outside
+        # the 8-band catalog or a backwards "skip".
+        CheckConstraint(
+            "band_from >= 1 AND band_from <= 8 AND band_to >= 1 AND band_to <= 8",
+            name="ck_acceleration_log_band_range",
+        ),
+        CheckConstraint(
+            "band_to >= band_from",
+            name="ck_acceleration_log_band_order",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
