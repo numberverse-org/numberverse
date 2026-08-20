@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { signup, type LoginResponse } from "../../lib/api";
 import { SIGNUP_LANGS, type SignupLang, nvTrackParent } from "../lib/portal";
@@ -10,7 +10,15 @@ import { SIGNUP_LANGS, type SignupLang, nvTrackParent } from "../lib/portal";
  *  returned token and deep-links the dashboard with ?welcome=1 so the #246
  *  first-run wizard opens for the brand-new (kid-less) account. */
 export default function SignupPage() {
-  const [lang, setLang] = useState<SignupLang>("en");
+  // #3024 — lazily read the stored language so a Bangla-preferring parent never
+  // sees an English signup form flash for one frame before the effect fires.
+  const [lang, setLang] = useState<SignupLang>(() => {
+    try {
+      return localStorage.getItem("nv_parent_lang") === "bn" ? "bn" : "en";
+    } catch {
+      return "en";
+    }
+  });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,11 +27,6 @@ export default function SignupPage() {
   // an inline "Sign in instead" nudge right where the parent hit the wall.
   const [conflict, setConflict] = useState(false);
   const [ok, setOk] = useState<LoginResponse | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("nv_parent_lang");
-    if (saved === "en" || saved === "bn") setLang(saved);
-  }, []);
 
   // #3020 — flip locale AND persist nv_parent_lang so the Dashboard (and a
   // reload / the login page) inherit the choice, matching the wizard's toggle.

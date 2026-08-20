@@ -250,7 +250,10 @@ export default function ParentDashboard() {
   // global banner and a parent there would otherwise never see the failure.
   const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [savedTick, setSavedTick] = useState(0);
+  // #3053 — track the "saved" tick PER KID so the "✓ Saved" badge only shows on
+  // the kid that was actually saved (not every kid after saving just one), and
+  // so the snapshot re-seed is scoped to the right kid. Keyed by kid id.
+  const [savedTick, setSavedTick] = useState<Record<string, number>>({});
   const [showAdd, setShowAdd] = useState(false);
 
   const [editName, setEditName] = useState("");
@@ -269,7 +272,16 @@ export default function ParentDashboard() {
   const [onboarding, setOnboarding] = useState<"init" | "open" | "done">("init");
   const [onboardBusy, setOnboardBusy] = useState(false);
   const [onboardErr, setOnboardErr] = useState<string | null>(null);
-  const [wizLang, setWizLang] = useState<WizardLang>("en");
+  // #3024 — lazily initialize the wizard language from localStorage so a
+  // Bangla-preferring parent never sees an English wizard for one frame (the
+  // a11y/theme/narrLang states already use this same initializer pattern).
+  const [wizLang, setWizLang] = useState<WizardLang>(() => {
+    try {
+      return localStorage.getItem("nv_parent_lang") === "bn" ? "bn" : "en";
+    } catch {
+      return "en";
+    }
+  });
   // #3023 — dismissible first-run "next steps" checklist. Persisted per browser
   // (nv_parent_next_steps_dismissed) so it collapses once a parent opts out.
   const [showNextSteps, setShowNextSteps] = useState<boolean>(() => {
@@ -286,10 +298,6 @@ export default function ParentDashboard() {
     } catch {
       /* private browsing — in-memory only */
     }
-  }, []);
-  useEffect(() => {
-    const saved = localStorage.getItem("nv_parent_lang");
-    if (saved === "en" || saved === "bn") setWizLang(saved);
   }, []);
 
   // #2974 — keep the narrative/report language in sync with the parent's
@@ -706,9 +714,19 @@ export default function ParentDashboard() {
   // accounts with many kids because it's the ONLY big activity fetch).
   // #1518 — gate per activeId on archStatus, so a second kid's fetch is never
   // blocked by another kid's in-flight request.
+  // #3027 — skip the 2000-row full-history fetch for a brand-new kid until they
+  // have actually played (mastery shows attempts). `mastery` is a dep so the
+  // archive loads on its own once the kid has activity.
   useEffect(() => {
-    if (activeId && token && !archStatus[activeId]) void loadArchive(activeId);
-  }, [activeId, token, archStatus, loadArchive]);
+    if (!activeId || !token || archStatus[activeId]) return;
+    const m = mastery[activeId];
+    // If mastery isn't loaded yet (e.g. a just-switched kid), proceed — the
+    // `switchKid` fallback path owns a small 40-row fetch anyway. Only skip
+    // when we know the kid has zero attempts.
+    const hasPlayed = m ? m.some((row) => row.attempts > 0) : true;
+    if (!hasPlayed) return;
+    void loadArchive(activeId);
+  }, [activeId, token, archStatus, loadArchive, mastery]);
 
   // #1532 — restore the last selected kid on reload (client-only). refreshAll's
   // functional activeId updater already keeps `prev` when it still exists in the
@@ -732,14 +750,15 @@ export default function ParentDashboard() {
     refreshSession().then((fresh) => {
       if (fresh) {
         localStorage.setItem("nv_parent_token", fresh);
-        // #1538 — ?welcome=1 (from signup or first-run login) opens the #246
-        // onboarding wizard once, then cleans the URL so a reload doesn't
-        // re-trigger it. Matches the empty-kids onboarding logic in refreshAll.
+        // #1538 — ?welcome=1 (from signup or first-run login) cleans the URL so
+        // a reload doesn't re-trigger it. #3021 — the wizard is opened ONLY by
+        // refreshAll's empty-roster gate (kids.length===0 AND flag unset), so a
+        // parent who already has kids never gets the add-kid wizard dumped over
+        // their real dashboard just because this browser is fresh.
         if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("welcome") === "1") {
           const url = new URL(window.location.href);
           url.searchParams.delete("welcome");
           window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-          if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
         }
         // Only a token the API accepts unlocks the dashboard. This is the real
         // gate: presence of ANY string in nv_parent_token (shared, stale, or
@@ -773,14 +792,13 @@ export default function ParentDashboard() {
       }
       validateToken(tok).then((verdict) => {
         if (verdict === "ok") {
-          // #1538 — ?welcome=1 (from signup or first-run login) opens the #246
-          // onboarding wizard once, then cleans the URL so a reload doesn't
-          // re-trigger it. Matches the empty-kids onboarding logic in refreshAll.
+          // #1538 — ?welcome=1 cleans the URL so a reload doesn't re-trigger it.
+          // #3021 — the wizard itself is opened only by refreshAll's empty-roster
+          // gate, so an existing roster lands on the dashboard directly.
           if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("welcome") === "1") {
             const url = new URL(window.location.href);
             url.searchParams.delete("welcome");
             window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-            if (!localStorage.getItem("nv_parent_onboarded")) setOnboarding("open");
           }
           setToken(tok);
           setAuthState("ok");
@@ -1068,7 +1086,7 @@ export default function ParentDashboard() {
       // dirty badge clears exactly when the save has landed.
       setSettings((prev) => ({ ...prev, [activeId]: saved }));
       setSavedSettings((prev) => ({ ...prev, [activeId]: saved }));
-      setSavedTick((t) => t + 1);
+      setSavedTick((prev) => ({ ...prev, [activeId]: (prev[activeId] ?? 0) + 1 }));
     } catch (e) {
       const status = (e as { status?: unknown } | null)?.status;
       // #3048 — surface the failure INLINE (near the Save button) instead of the
@@ -1116,7 +1134,7 @@ export default function ParentDashboard() {
       });
       setSettings((prev) => ({ ...prev, [activeId]: saved }));
       setSavedSettings((prev) => ({ ...prev, [activeId]: saved }));
-      setSavedTick((t) => t + 1);
+      setSavedTick((prev) => ({ ...prev, [activeId]: (prev[activeId] ?? 0) + 1 }));
     } catch {
       setError("Failed to save pause state.");
     } finally {
@@ -1132,7 +1150,7 @@ export default function ParentDashboard() {
       await resetKidProgress(token, activeId);
       setConfirmReset(false);
       await refreshAll(token);
-      setSavedTick((t) => t + 1);
+      setSavedTick((prev) => ({ ...prev, [activeId]: (prev[activeId] ?? 0) + 1 }));
     } catch {
       setError("Failed to reset progress.");
     } finally {
@@ -1235,7 +1253,7 @@ export default function ParentDashboard() {
     setError(null);
     setOnboardErr(null);
     try {
-      await createKid(token, payload);
+      const created = await createKid(token, payload);
       if (via === "onboard") {
         // #1508 — clear the birth year so the next add starts fresh, not with
         // the previous kid's year silently carried over.
@@ -1248,7 +1266,9 @@ export default function ParentDashboard() {
         setPrefillTick((t) => t + 1);
       }
       await refreshAll(token);
-      setSavedTick((t) => t + 1);
+      // #3053 — bump the new kid's own save tick (not a global counter), so its
+      // snapshot re-seeds without leaking a "✓ Saved" badge onto other kids.
+      setSavedTick((prev) => ({ ...prev, [created.id]: (prev[created.id] ?? 0) + 1 }));
     } catch {
       if (via === "onboard") {
         // Keep the form values so "Add kid" is a one-click retry once online.
@@ -1353,7 +1373,7 @@ export default function ParentDashboard() {
       // #1589 — don't blank the edit form; the prefill effect re-syncs it to
       // the freshly-renamed kid after refreshAll.
       await refreshAll(token);
-      setSavedTick((t) => t + 1);
+      setSavedTick((prev) => ({ ...prev, [activeId]: (prev[activeId] ?? 0) + 1 }));
     } catch {
       setError("Failed to save changes.");
     } finally {

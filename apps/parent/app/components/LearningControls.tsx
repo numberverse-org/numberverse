@@ -38,7 +38,9 @@ interface LearningControlsProps {
   wizLang: WizardLang;
   busy: boolean;
   handleSaveSettings: () => void;
-  savedTick: number;
+  /** #3053 — save tick keyed by kid id (not a single global counter), so the
+   *  "✓ Saved" badge shows only on the kid that was actually saved. */
+  savedTick: Record<string, number>;
   /** #1593 — persist the parent's pause decision SERVER-SIDE. page.tsx owns the
    *  API call; this component shows the two-tap confirm + the real state. */
   onTogglePause: () => void;
@@ -69,7 +71,11 @@ export default function LearningControls({
   // #1513 — track the last-saved settings snapshot per kid so the save row can
   // show a subtle "Unsaved changes" badge while edits are still pending.
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, KidSettingsT>>({});
-  const [lastSavedTick, setLastSavedTick] = useState(savedTick);
+  // #3053 — the save tick is now keyed by kid id (page.tsx). Track the last
+  // value we observed per kid, plus which kid just saved (for the "✓ Saved"
+  // badge's cross-kid isolation + auto-dismiss).
+  const [lastSavedTicks, setLastSavedTicks] = useState<Record<string, number>>({});
+  const [recentSave, setRecentSave] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Don't seed the snapshot while the kid's settings are still the loading
@@ -81,14 +87,24 @@ export default function LearningControls({
   }, [active.id, activeSettings]);
 
   useEffect(() => {
-    if (savedTick !== lastSavedTick) {
+    const tick = savedTick[active.id];
+    if (tick !== undefined && tick !== lastSavedTicks[active.id]) {
       setSavedSnapshots((prev) => ({ ...prev, [active.id]: activeSettings }));
-      setLastSavedTick(savedTick);
+      setLastSavedTicks((prev) => ({ ...prev, [active.id]: tick }));
+      // #3053 — show "✓ Saved" only for this kid, and fade it after a few
+      // seconds so it can't linger permanently (or leak onto another kid).
+      setRecentSave((prev) => ({ ...prev, [active.id]: true }));
+      const t = window.setTimeout(() => {
+        setRecentSave((prev) => ({ ...prev, [active.id]: false }));
+      }, 4000);
+      return () => window.clearTimeout(t);
     }
-  }, [savedTick, lastSavedTick, active.id, activeSettings]);
+  }, [savedTick, lastSavedTicks, active.id, activeSettings]);
 
   const snapshot = savedSnapshots[active.id];
   const unsaved = snapshot ? JSON.stringify(snapshot) !== JSON.stringify(activeSettings) : false;
+  // #3053 — the badge reflects THIS kid's most recent save only.
+  const showSaved = recentSave[active.id] === true;
 
   // #762 — unsaved-changes guard: warn before the tab closes / navigates while
   // edits are pending, so a parent who tweaked controls can't lose them
@@ -755,7 +771,7 @@ export default function LearningControls({
     >
       {busy ? LEARNING_LANGS[wizLang].saving : LEARNING_LANGS[wizLang].saveSettings}
     </button>
-    {savedTick > 0 && !unsaved && <span className="saved-note">{LEARNING_LANGS[wizLang].saved}</span>}
+    {showSaved && !unsaved && <span className="saved-note">{LEARNING_LANGS[wizLang].saved}</span>}
     {unsaved && <span className="muted small unsaved-note">{LEARNING_LANGS[wizLang].unsavedBadge}</span>}
     {!settingsLoaded && (
       <span className="muted small unsaved-note" role="status">

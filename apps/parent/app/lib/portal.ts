@@ -1563,8 +1563,12 @@ export function skillLabel(id: string, lang: "en" | "bn" = "en"): string {
   return id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** #257 — world bands a focus pin can target (1..7). */
-export const FOCUS_BANDS = [1, 2, 3, 4, 5, 6, 7];
+/** #257 — world bands a focus pin can target (1..8).
+ *  #3042 — Summit Peaks is band 8 and the catalog runs to 8 (packages/core
+ *  skills.ts), so the picker must offer it to a band-8 parent. LearningControls
+ *  already filters to `b <= max_band`, so the cap still holds (a max_band=7
+ *  kid can never pin band 8). */
+export const FOCUS_BANDS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 /** #258 — per-kid VOICE preference. Tones are stable non-i18n handles that
  *  mirror the kid app's neural picker (warm female = the default); speed is a
