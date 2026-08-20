@@ -37,16 +37,34 @@ router = APIRouter(prefix="/api/v1", tags=["share"])
 # #832 — /share/{token} is auth-free, so rate-limit by client IP only (there is
 # no account to key on). 30 req/min is far more than a shared link gets opened
 # while still blunting token-guessing hammering.
-SHARE_SNAPSHOT_RATE_LIMIT = ip_rate_limit(limit=30, tag="share")
+# #3117 — the budget is deployment-configurable (`settings.share_snapshot_ip_per_minute`)
+# because share cards open on classroom/school Wi-Fi: many distinct families
+# share one public IP (CGNAT), so a hard 30/min would false-positive 429 a whole
+# classroom. The token itself carries 192 bits of entropy (token_urlsafe(24)),
+# which is the real unguessability barrier, not the IP rate cap.
+SHARE_SNAPSHOT_RATE_LIMIT = ip_rate_limit(limit=settings.share_snapshot_ip_per_minute, tag="share")
 
 # #1764 — the authenticated share-token GET joins the read tier: minting/reading
 # the opaque token is a read (no DB write), so it shares the higher read budget
 # rather than the 120/min write budget.
 SHARE_READ_RATE_LIMIT = read_rate_limit()
 
-# Small fixed floor for public 404s so a guessed link isn't distinguishable from
-# a valid-but-paused link by response time alone (approximate, not exact).
-_SHARE_404_DELAY_SECONDS = 0.02
+# #832 — a constant-cost delay so a guessed link isn't distinguishable from a
+# valid-but-paused link (or a valid live link) by response time alone. Applied
+# to BOTH the failure path (404) and the success path (200) — the aggregate
+# queries on a live link are cheap, so a valid token would otherwise return
+# measurably faster than the uniformly-delayed 404 and leak the liveness of a
+# candidate token (the opposite of the stated goal).
+_SHARE_TIMING_DELAY_SECONDS = 0.02
+
+
+async def _share_timing_delay() -> None:
+    """#3065 — the constant small delay applied to every public-share-path
+    response (404 and 200 alike) so timing side channels don't classify tokens.
+
+    Kept tiny (20 ms) so a real share-card open is not noticeably slowed while
+    still washing out the query-cost gap between a dead and a live link."""
+    await asyncio.sleep(_SHARE_TIMING_DELAY_SECONDS)
 
 # #1800 — the mint/rotate audit timestamps live in migrations-owned columns
 # (`share_token_created_at` / `share_token_revoked_at`) that are deliberately
@@ -74,7 +92,7 @@ def _share_token_expired(created_at: datetime | None) -> bool:
 
 
 async def _share_not_found() -> None:
-    await asyncio.sleep(_SHARE_404_DELAY_SECONDS)
+    await _share_timing_delay()
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Link not found")
 
 
@@ -139,6 +157,21 @@ def _occurred_at(e: ProgressEvent) -> datetime:
         except (ValueError, OverflowError, OSError):
             pass
     return e.created_at
+
+
+def _minutes_are_approximate(events: list[ProgressEvent]) -> bool:
+    """#3070 — the `minutes_approx` flag, computed HONESTLY instead of hardcoded.
+
+    `_occurred_at` prefers the client-observed instant (`client_ts`, then the
+    integer epoch-ms `timestamp`) and only falls back to the server-stamped
+    `created_at` when neither is present. When ANY event in the window had to
+    rely on that `created_at` collapse — the classic offline-drain case where a
+    whole batch carries one `func.now()` stamp — the session-span minutes are a
+    genuine estimate and the flag is True. When every event carried a reliable
+    client timestamp, the span is measured, not estimated, so the flag is False."""
+    if not events:
+        return True  # empty window: there is no timing data at all, so "0" is a guess
+    return any(_occurred_at(e) is e.created_at for e in events)
 
 
 def _session_span_minutes(events: list[ProgressEvent]) -> float:
@@ -385,7 +418,11 @@ class ShareSnapshotOut(BaseModel):
     the public card."""
     rounds: int
     # #1552 — `minutes` is a timestamp-derived session-span ESTIMATE, not a
-    # measured session duration. The payload flags that with `minutes_approx`.
+    # measured session duration. #3070 — `minutes_approx` is now computed
+    # HONESTLY on each snapshot: True only when the estimate relied on the
+    # server-stamped `created_at` collapse (an offline drain batch with no
+    # client timestamps); False when every event carried a client-observed
+    # instant, so the span is measured rather than guessed.
     minutes: float
     minutes_approx: bool = True
     correct_pct: int  # intentional rounded int: round(100 * correct / rounds)
@@ -664,10 +701,16 @@ async def get_share_snapshot(
         d = start + timedelta(days=i)
         min_by_day.append(_session_span_minutes([x for x in events if _occurred_at(x).date() == d]))
 
+    # #3065 — the SAME constant timing delay as the 404 path, applied to the
+    # success return so a valid live link and a dead/guessed link are
+    # indistinguishable by response time (the aggregate queries on a live link
+    # are cheap, so an un-delayed success would stand out).
+    await _share_timing_delay()
+
     return ShareSnapshotOut(
         rounds=rounds,
         minutes=minutes,
-        minutes_approx=True,
+        minutes_approx=_minutes_are_approximate(events),
         correct_pct=round(100 * correct / rounds) if rounds else 0,
         active_days=active_days,
         mastered_count=mastered_count,

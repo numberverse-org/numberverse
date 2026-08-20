@@ -63,7 +63,14 @@ _PASSWORD_GUARD = AuthAttemptGuard()
 # #771 — signup has no secret to fail on, so it gets a hard per-IP request cap
 # (rather than the failure-aware guard above) to stop email enumeration and
 # mass account creation. Signup is a rare one-time action; 10/min is generous.
-_SIGNUP_RATE_LIMIT = ip_rate_limit(limit=10, tag="signup")
+# #3117 — the budget is deployment-configurable (`settings.signup_ip_per_minute`)
+# because the kid app auto-creates one anonymous device account per install and
+# share cards open on classroom Wi-Fi: many distinct families sit behind ONE
+# shared public IP (CGNAT), so a hard-coded 10/min would false-positive 429 a
+# whole classroom. Schools/Wi-Fi-heavy rollouts raise the value in env without
+# a code change; account-creation volume is still independently bounded by the
+# device-derived per-install id + the email-unique constraint.
+_SIGNUP_RATE_LIMIT = ip_rate_limit(limit=settings.signup_ip_per_minute, tag="signup")
 # #1773 — refresh-rotation is an unauthenticated endpoint (the cookie is the
 # credential), so it gets a throughput cap per IP to stop cookie-replay brute
 # force and endpoint abuse. 60/min is far above a real browser's refresh cadence.

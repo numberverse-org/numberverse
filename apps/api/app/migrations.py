@@ -168,7 +168,8 @@ async def apply_column_migrations() -> list[str]:
                 "endpoint TEXT NOT NULL UNIQUE, "
                 "p256dh TEXT NOT NULL, "
                 "auth TEXT NOT NULL, "
-                "created_at TIMESTAMPTZ NOT NULL DEFAULT now()"
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), "
+                "gone_at TIMESTAMPTZ"
                 ")"
             )
         )

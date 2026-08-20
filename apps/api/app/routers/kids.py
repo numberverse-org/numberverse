@@ -690,6 +690,7 @@ async def _dispatch_weekly_notifications(
     )
     sent = 0
     failed = 0
+    gone = 0
     not_configured = False
     for sub in subs:
         status = await send_notification(
@@ -701,11 +702,20 @@ async def _dispatch_weekly_notifications(
         )
         if status == "sent":
             sent += 1
+        elif status == "gone":
+            # #3012 — the push service answered 410/404: this subscription is
+            # permanently dead (the browser dropped/rotated it). Stamp `gone_at`
+            # so the scheduled stale-subscription sweep removes it; a future
+            # sender stops re-failing on this endpoint.
+            gone += 1
+            sub.gone_at = datetime.now(timezone.utc)
         elif status == "failed":
             failed += 1
         else:  # not_configured (no VAPID) — nothing in flight
             not_configured = True
-    return {"sent": sent, "failed": failed, "not_configured": not_configured, "total": len(subs)}
+    if gone:
+        await db.commit()
+    return {"sent": sent, "failed": failed, "gone": gone, "not_configured": not_configured, "total": len(subs)}
 
 
 

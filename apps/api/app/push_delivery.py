@@ -169,9 +169,11 @@ async def send_notification(
     httpx_client=None,
 ) -> str:
     """Send ONE notification to a stored subscription endpoint; returns a
-    status string ("sent" | "failed" | "not_configured"). Raises nothing.
+    status string ("sent" | "gone" | "failed" | "not_configured"). Raises nothing.
 
-    The DB handle is accepted for signature compatibility with future
+    "gone" (#3012) means the push service answered 410/404 — the browser has
+    dropped or rotated the subscription, so the stored row is dead and should be
+    swept. The DB handle is accepted for signature compatibility with future
     pywebpush-backed sends (which re-read `p256dh`/`auth`); the plaintext stub
     below only needs the endpoint + VAPID keys.
     """
@@ -186,8 +188,10 @@ async def send_notification(
     own_client = httpx_client is None
     client = httpx_client or httpx.AsyncClient(timeout=10.0)
     try:
-        ok = await _send_webpush(client, endpoint, title, body, tag, authorization, crypto_key)
-        return "sent" if ok else "failed"
+        result = await _send_webpush(client, endpoint, title, body, tag, authorization, crypto_key)
+        if result == "gone":
+            return "gone"
+        return "sent" if result else "failed"
     except Exception as exc:  # per-subscription isolation
         logger.warning("push delivery send failed endpoint=%s error=%r", endpoint, exc)
         return "failed"
@@ -198,9 +202,13 @@ async def send_notification(
 
 async def _send_webpush(
     client, endpoint: str, title: str, body: str, tag: str, authorization: str, crypto_key: str
-) -> bool:
+) -> bool | str:
     """The REAL wire call to the push endpoint. Currently plaintext-only (see
-    scope note) — a follow-up swaps this body for pywebpush's encrypted send."""
+    scope note) — a follow-up swaps this body for pywebpush's encrypted send.
+
+    Returns True on 2xx, "gone" on 410/404 (#3012 — the subscription is dead and
+    must be pruned), False on any other status (transient failure).
+    """
     payload = json.dumps({"title": title, "body": body, "tag": tag}, separators=(",", ":"))
     headers = {
         "Content-Type": "application/octet-stream",
@@ -210,4 +218,12 @@ async def _send_webpush(
         "Crypto-Key": crypto_key,
     }
     resp = await client.post(endpoint, content=payload.encode(), headers=headers)
-    return resp.status_code in (200, 201, 202, 204)
+    if resp.status_code in (200, 201, 202, 204):
+        return True
+    # #3012 — 410 Gone is the push service's permanent "this subscription no
+    # longer exists" signal (the browser expired/rotated it); 404 from some push
+    # services is equivalent. Surface it distinctly so the caller can mark the
+    # row for the stale-subscription sweep instead of treating it as retryable.
+    if resp.status_code in (410, 404):
+        return "gone"
+    return False

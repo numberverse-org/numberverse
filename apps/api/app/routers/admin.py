@@ -34,6 +34,7 @@ from ..models import (
     OrgSyllabus,
     Profile,
     ProgressEvent,
+    PushSubscription,
     Session,
     ShareToken,
     Skill,
@@ -830,6 +831,42 @@ async def prune_share_tokens(_: Profile = Depends(require_admin), db: AsyncSessi
     `_prune_share_tokens`)."""
     pruned = await _prune_share_tokens(db)
     return {"pruned": pruned, "ttl_days": settings.share_token_ttl_days}
+
+
+# #3012 — a push subscription whose service answered 410 Gone is permanently
+# dead (the browser dropped/rotated it). The weekly delivery loop stamps
+# `gone_at` when it sees the Gone signal; this sweep hard-deletes rows whose
+# Gone was seen more than N days ago so the table doesn't accumulate dead
+# endpoints a future sender would keep re-failing on.
+async def _prune_gone_push_subscriptions(db: AsyncSession) -> int:
+    """#3012 — shared prune logic used by the admin endpoint and the scheduled
+    embed-loop prune. Deletes `push_subscriptions` rows whose `gone_at` is older
+    than `push_subscription_gone_retention_days`. Commits; returns rows pruned."""
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        days=settings.push_subscription_gone_retention_days
+    )
+    result = await db.execute(
+        delete(PushSubscription).where(
+            PushSubscription.gone_at.is_not(None),
+            PushSubscription.gone_at < cutoff,
+        )
+    )
+    pruned = result.rowcount or 0
+    await db.commit()
+    return pruned
+
+
+@router.post("/push-subscriptions/prune-gone")
+async def prune_gone_push_subscriptions(
+    _: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)
+):
+    """#3012 — manual trigger for the stale-push-subscription sweep (shared logic
+    in `_prune_gone_push_subscriptions`)."""
+    pruned = await _prune_gone_push_subscriptions(db)
+    return {
+        "pruned": pruned,
+        "retention_days": settings.push_subscription_gone_retention_days,
+    }
 
 
 # #840 — caps for the generic admin list_resource. react-admin sends

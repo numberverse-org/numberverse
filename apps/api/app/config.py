@@ -134,6 +134,25 @@ class Settings(BaseSettings):
     # read and swept by the scheduled admin prune so old links can't rotate into
     # live weekly data forever.
     share_token_ttl_days: int = 90
+    # ── Per-IP public/signup surface budgets (#3117) ────────────────────────
+    # The kid app auto-creates an anonymous device account per install via
+    # /auth/signup, and share cards are opened on classroom/school Wi-Fi. In the
+    # Bangladesh market the product targets schools and shared routers, so many
+    # distinct families sit behind ONE public IP (CGNAT). A hard 10/min signup
+    # cap 429s legitimate users the moment a classroom reaches the shared budget
+    # because the per-IP limiter cannot tell one NAT household from an attacker.
+    # These budgets are deployment-configurable so a school/Wi-Fi-heavy rollout
+    # can raise them without a code change. Device-derived entropy on the kid
+    # install sid still bounds mass account creation even when the IP budget is
+    # loosened.
+    signup_ip_per_minute: int = 10
+    share_snapshot_ip_per_minute: int = 30
+    # #3012 — web-push stale-subscription sweep. A push service answers 410 Gone
+    # for a subscription the browser dropped/rotated; those `push_subscriptions`
+    # rows are never pruned by anything except account deletion, so a future
+    # sender would keep failing on the dead endpoint forever. The sweep deletes
+    # rows marked failed-with-410 older than this many days (see push_delivery).
+    push_subscription_gone_retention_days: int = 7
     # #1755 — operator token for /metrics (NV_METRICS_TOKEN). Empty in dev: the
     # /metrics gate then falls back to an admin/super_admin JWT. Set a strong
     # token on any reachable deployment so traffic shape isn't public.

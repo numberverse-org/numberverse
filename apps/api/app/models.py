@@ -528,6 +528,10 @@ class PushSubscription(Base):
     p256dh: Mapped[str] = mapped_column(Text)
     auth: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # #3012 — stamped when the push service answered 410 Gone (the browser dropped
+    # or rotated this subscription). Drives the scheduled dead-endpoint sweep so a
+    # future sender stops failing on the stale endpoint. NULL = never seen Gone.
+    gone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     profile: Mapped[Profile] = relationship()
 
