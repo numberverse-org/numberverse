@@ -30,6 +30,14 @@ logging.basicConfig(level=logging.INFO)
 # #266 — every log line is scrubbed for PII before it's written.
 for _h in logging.getLogger().handlers:
     _h.addFilter(ScrubFilter())
+# #2861 — uvicorn's default logging config gives `uvicorn.access` (and
+# `uvicorn.error`) their OWN stdout handlers with `propagate=False`, so access
+# records NEVER pass through the root filters above and a real client IP / a
+# share-token bearer URL can land UNREDACTED on stdout. Attach the scrubber to
+# those handlers too, so even the uvicorn-native access/error lines are PII-free.
+for _uvicheck in ("uvicorn.access", "uvicorn.error", "uvicorn"):
+    for _h in logging.getLogger(_uvicheck).handlers:
+        _h.addFilter(ScrubFilter())
 # #124 — WARNING+ records also land in a rotating, PII-redacted JSON-lines
 # file (data/error.log) for local debugging. Zero analytics — nothing leaves
 # the box. Attaches at most once (uvicorn reload, tests).
@@ -651,9 +659,13 @@ async def _embed_loop():
                     if buckets:
                         log.info("Rate-limit bucket prune: removed %d stale rows", buckets)
                 except Exception as exc:  # noqa: BLE001
-                    log.warning("Scheduled prune/purge failed: %s", exc)
+                    # #2864 — pass exc_info so the structured error log captures
+                    # the rendered (redacted) frame that raised, not just str().
+                    log.warning("Scheduled prune/purge failed: %s", exc, exc_info=True)
         except Exception as exc:  # noqa: BLE001 — a scheduler must never die
-            log.warning("Kotha embed tick failed: %s", exc)
+            # #2864 — scheduler failures are recurring; the one artifact operators
+            # need is the traceback, so land it in data/error.log (PII-redacted).
+            log.warning("Kotha embed tick failed: %s", exc, exc_info=True)
         await asyncio.sleep(interval)
 
 

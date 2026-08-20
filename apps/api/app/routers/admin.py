@@ -401,6 +401,26 @@ async def stats(_: Profile = Depends(require_admin), db: AsyncSession = Depends(
     }
 
 
+# #2885 — migration-failure health signal. When a boot-time constraint migration
+# is defeated by legacy data (e.g. a UNIQUE over a populated table with duplicate
+# non-NULL uids), apply_constraint_migrations records the failure in the
+# `schema_migrations` ledger instead of crash-looping, and the API stays
+# degraded-but-up. This endpoint surfaces those rows so an operator can see the
+# drift without reading container logs or restarting the box.
+@router.get("/migrations/status")
+async def migrations_status(_: Profile = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    try:
+        rows = (await db.execute(
+            text("SELECT key, status, detail, at FROM schema_migrations ORDER BY at DESC")
+        )).all()
+    except Exception:  # noqa: BLE001 — the ledger is created at boot; if absent, report empty
+        return {"failures": [], "note": "schema_migrations ledger not yet present"}
+    return {"failures": [
+        {"key": r[0], "status": r[1], "detail": r[2], "at": r[3].isoformat() if r[3] else None}
+        for r in rows
+    ]}
+
+
 # ── 📚 KOTHA story health dashboard (#336) ────────────────────────────────
 # One admin view over the learning-story lake: counts + breakdown + sanity.
 # Charts are deliberately PII-free (anonymous rank buckets, skill/error kinds).

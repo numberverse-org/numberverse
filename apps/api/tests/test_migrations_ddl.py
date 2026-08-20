@@ -42,9 +42,13 @@ from app.migrations import (  # noqa: E402
     _check_sqltext_ok,
     _column_ddl,
     _constraint_name,
+    _fk_constraint_ddl,
     _fk_ondelete,
     _index_ddl,
+    _lit,
+    _nullable_contract_violations,
     _q,
+    _unique_constraint_ddl,
 )
 
 # #907/#908 — the models carry composite / created_at indexes in __table_args__
@@ -161,6 +165,39 @@ check(
     _story_indexes.get("ix_learning_stories_kid_id_created_at"),
     ("kid_id", "created_at"),
 )
+
+# ── _unique_constraint_ddl (#2882/#2885) ─────────────────────────────────────
+_uniq = _unique_constraint_ddl("progress_events", "uq_progress_events_kid_uid", 'kid_id, "uid"')
+check("unique DDL wraps ADD CONSTRAINT in DO block", _uniq.startswith("DO $$"), True)
+check("unique DDL has the ADD CONSTRAINT UNIQUE", "ADD CONSTRAINT \"uq_progress_events_kid_uid\" UNIQUE" in _uniq, True)
+check("unique DDL swallows duplicate_object (#2882)", "WHEN duplicate_object THEN NULL" in _uniq, True)
+check("unique DDL records unique_violation (#2885)", "WHEN unique_violation THEN" in _uniq, True)
+check("unique DDL writes schema_migrations ledger (#2885)", "INSERT INTO schema_migrations" in _uniq, True)
+
+# ── _fk_constraint_ddl (#2882) ───────────────────────────────────────────────
+_fkddl = _fk_constraint_ddl(
+    "kids", "fk_kids_profile_id_ref_profiles",
+    ("profile_id",), "profiles", ("id",), " ON DELETE CASCADE",
+)
+check("fk DDL wraps ADD CONSTRAINT in DO block", _fkddl.startswith("DO $$"), True)
+check("fk DDL carries ON DELETE CASCADE (#2883)", " ON DELETE CASCADE" in _fkddl, True)
+check("fk DDL swallows duplicate_object (#2882)", "WHEN duplicate_object THEN NULL" in _fkddl, True)
+
+# ── _lit (#2885 literal escaping) ────────────────────────────────────────────
+check('_lit plain', _lit("kids.email"), "'kids.email'")
+check('_lit escapes a quote', _lit("a'b"), "'a''b'")
+
+# ── _nullable_contract_violations (#2888) ────────────────────────────────────
+# A NOT NULL, no-server_default model column whose LIVE column is NULLABLE is a
+# violation. `share_tokens.kid_id` is `nullable=False` with no server_default
+# (see models.py), so flag it when the live schema reports it nullable; a clean
+# schema (no nullable=True on any NOT NULL column) reports nothing.
+_no_viol = _nullable_contract_violations({})
+check("no tables → no violations", _no_viol, [])
+_drift = _nullable_contract_violations({"share_tokens": {"kid_id": True}})
+check("share_tokens.kid_id weakened to nullable → detected", "share_tokens.kid_id" in _drift, True)
+_clean = _nullable_contract_violations({"share_tokens": {"kid_id": False}})
+check("share_tokens.kid_id properly NOT NULL → clean", _clean, [])
 
 print("─" * 30)
 if fails:

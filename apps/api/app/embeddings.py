@@ -84,8 +84,9 @@ def embed_text(text: str) -> list[float] | None:
         # success followed by an encode-time failure (a corrupt/half-downloaded
         # model, a CUDA/OOM hiccup) 500'd the admin semantic-search route.
         # Fold it in: same None + WARNING contract as the load-failure path, so
-        # the admin route's `None` check surfaces the clean 503.
-        log.warning("embed model unavailable for search: %s", exc)
+        # the admin route's `None` check surfaces the clean 503. #2864 — carry
+        # the traceback so the structured error log records the failing frame.
+        log.warning("embed model unavailable for search: %s", exc, exc_info=True)
         return None
     return vec[0].tolist()
 
@@ -97,7 +98,7 @@ async def embed_stories(db: AsyncSession, limit: int = EMBED_MAX_PER_RUN) -> dic
     try:
         encoder = _load_encoder()
     except Exception as exc:  # noqa: BLE001 — a missing ML stack must not crash
-        log.warning("embed model unavailable: %s", exc)
+        log.warning("embed model unavailable: %s", exc, exc_info=True)
         return {"status": "skipped", "reason": f"embedding model unavailable ({EMBED_MODEL})"}
 
     # The Postgres vector extension is a server-side requirement — ensure it
@@ -105,7 +106,7 @@ async def embed_stories(db: AsyncSession, limit: int = EMBED_MAX_PER_RUN) -> dic
     try:
         await db.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     except Exception as exc:  # noqa: BLE001
-        log.warning("pgvector extension unavailable: %s", exc)
+        log.warning("pgvector extension unavailable: %s", exc, exc_info=True)
         return {"status": "skipped", "reason": "pgvector extension unavailable in database"}
 
     # The story_embeddings table is NOT part of Base.metadata (it lives on its
@@ -114,7 +115,7 @@ async def embed_stories(db: AsyncSession, limit: int = EMBED_MAX_PER_RUN) -> dic
     try:
         await db.execute(CreateTable(StoryEmbedding.__table__, if_not_exists=True))
     except Exception as exc:  # noqa: BLE001
-        log.warning("story_embeddings table unavailable: %s", exc)
+        log.warning("story_embeddings table unavailable: %s", exc, exc_info=True)
         return {"status": "skipped", "reason": "story_embeddings table unavailable"}
 
     embedded_ids = select(StoryEmbedding.story_id)

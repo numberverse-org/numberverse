@@ -30,6 +30,32 @@ from .db import Base, engine
 
 log = logging.getLogger(__name__)
 
+# #2882 — a single global advisory-lock key serializes ALL boot-time migration
+# DDL across API processes. Two boots racing an overlapping container recreate /
+# crash-restart / future multi-worker setup can both pass the inspector check and
+# then both issue the same `ADD CONSTRAINT`; the loser aborts with DuplicateObject
+# and the API 502s on every boot until the constraint exists. `pg_advisory_xact_lock`
+# is a transaction-scoped lock: the boot that holds it checks + applies, commits,
+# and releases; the next boot then inspects a schema that already has the object
+# and skips it. The value is an arbitrary app-wide constant (no collision with the
+# transaction-level advisory locks other code may take).
+_MIGRATION_ADVISORY_LOCK_KEY = 7_477_199  # stable, app-wide numeral
+
+# #2885 — migration failures that are NOT fatal (legacy data defeats a UNIQUE
+# constraint, an FK can't be added) are recorded in this table instead of killing
+# the boot, so the API starts degraded-but-up and the operator can inspect
+# `/admin/migrations/status` rather than reading a crash-loop from container logs.
+# The table is created idempotently by apply_migrations (never part of
+# Base.metadata / create_all, so it has no ORM model to fall out of sync).
+_SCHEMA_MIGRATIONS_DDL = (
+    "CREATE TABLE IF NOT EXISTS schema_migrations ("
+    "key TEXT PRIMARY KEY, "
+    "status TEXT NOT NULL, "
+    "detail TEXT, "
+    "at TIMESTAMPTZ NOT NULL DEFAULT now()"
+    ")"
+)
+
 
 # ── pure DDL-string helpers (#1793–#1798) ────────────────────────────────────
 # Every interpolated identifier is routed through `_q` so a table/constraint/
@@ -90,6 +116,36 @@ def _fk_ondelete(constraint: ForeignKeyConstraint) -> str | None:
     return None
 
 
+def _nullable_contract_violations(live_schema: dict[str, dict[str, bool]]) -> list[str]:
+    """#2888 — detect the NOT NULL/no-default drift the column-migration safety
+    net can introduce.
+
+    `apply_column_migrations` deliberately adds a model column that is
+    `nullable=False` with no `server_default` as NULLABLE (so it never fails on a
+    populated table), but nothing afterwards enforced the contract — the next
+    boot saw the column exists and skipped it forever, leaving the app believing
+    NOT NULL while the DB holds NULLs for every pre-existing row.
+
+    `live_schema` maps table name → (column name → live `nullable`), the same
+    shape `_existing` produces. Returns a list of `table.column` entries whose
+    model is NOT NULL + no server_default but whose live column is NULLABLE —
+    i.e. the columns the safety net silently weakened. Pure function; the DDL
+    tests exercise it without a database by passing a hand-built dict.
+    """
+    violations: list[str] = []
+    for table in Base.metadata.sorted_tables:
+        cols = live_schema.get(table.name)
+        if cols is None:
+            continue
+        for col in table.columns:
+            if col.primary_key:
+                continue
+            if col.nullable is False and col.server_default is None:
+                if cols.get(col.name) is True:
+                    violations.append(f"{table.name}.{col.name}")
+    return violations
+
+
 _CHECK_SQLTEXT_ALLOWLIST: dict[str, set[str]] = {
     # #1793 — every CheckConstraint a model declares must be registered here
     # VERBATIM (extract each `str(c.sqltext)` from models.py at write time and
@@ -108,6 +164,70 @@ def _check_sqltext_ok(table_name: str, sqltext: str) -> bool:
     return sqltext in _CHECK_SQLTEXT_ALLOWLIST.get(table_name, set())
 
 
+def _unique_constraint_ddl(table_name: str, name: str, col_sql: str) -> str:
+    """#2882/#2885 — add a UNIQUE constraint idempotently and with a circuit
+    breaker. PostgreSQL has no `ADD CONSTRAINT ... IF NOT EXISTS`, so wrap the
+    `ALTER TABLE` in a `DO $$` block:
+
+      · `duplicate_object` (42710) — a concurrent boot already added it → NO-OP
+        (the #2882 race, made harmless);
+      · `unique_violation` (23505) — legacy data defeats the dedupe → the boot
+        records the failure in `schema_migrations` and CONTINUES degraded (#2885)
+        instead of crash-looping the API.
+
+    Every identifier is already quoted by the caller via `_q`.
+    """
+    stmt = f"ALTER TABLE {_q(table_name)} ADD CONSTRAINT {_q(name)} UNIQUE ({col_sql})"
+    # Quote the name/key for the INSERT's literal; `key` is synthesized from
+    # `table.name` so it is a stable, operator-readable identifier.
+    err_key = f"{table_name}.{name}"
+    return (
+        "DO $$\n"
+        "BEGIN\n"
+        f"  {stmt};\n"
+        "EXCEPTION\n"
+        "  WHEN duplicate_object THEN NULL;\n"
+        "  WHEN unique_violation THEN\n"
+        f"    INSERT INTO schema_migrations (key, status, detail) "
+        f"VALUES ({_lit(err_key)}, 'failed_unique', 'legacy data violates the unique constraint');\n"
+        "END\n"
+        "$$;"
+    )
+
+
+def _fk_constraint_ddl(
+    table_name: str,
+    name: str,
+    cols: tuple[str, ...],
+    referred_table: str,
+    referred_cols: tuple[str, ...],
+    ondelete_clause: str,
+) -> str:
+    """#2882 — add a FK constraint idempotently (no IF NOT EXISTS for FKs
+    either), swallowing `duplicate_object` from a concurrent boot. The ON DELETE
+    action (#2883) is embedded in the emitted DDL so the FK matches the model."""
+    stmt = (
+        f"ALTER TABLE {_q(table_name)} ADD CONSTRAINT {_q(name)} "
+        f"FOREIGN KEY ({', '.join(_q(c) for c in cols)}) "
+        f"REFERENCES {_q(referred_table)} ({', '.join(_q(c) for c in referred_cols)})"
+        f"{ondelete_clause}"
+    )
+    return (
+        "DO $$\n"
+        "BEGIN\n"
+        f"  {stmt};\n"
+        "EXCEPTION WHEN duplicate_object THEN NULL;\n"
+        "END\n"
+        "$$;"
+    )
+
+
+def _lit(s: str) -> str:
+    """Escape a string as a PostgreSQL single-quoted literal (double any
+    embedded single quote). Used only for `schema_migrations` failure values."""
+    return "'" + s.replace("'", "''") + "'"
+
+
 async def apply_column_migrations() -> list[str]:
     """Add any columns the models declare that the DB doesn't have. Returns the
     list of `table.column` names added (empty when up to date). Never raises on
@@ -115,23 +235,39 @@ async def apply_column_migrations() -> list[str]:
     dialect = postgresql.dialect()
     added: list[str] = []
 
-    def _existing(sync_conn) -> dict[str, set[str]]:
+    # #2889 — the whole diff is computed once against a single inspector snapshot
+    # taken under the advisory lock, so every subsequent gate (kids ALTERs, the
+    # push/parent/share CREATE TABLE + index) only fires when the object is
+    # actually missing. An up-to-date DB costs one inspector query and zero DDL.
+    def _snapshot(sync_conn) -> dict[str, dict[str, set[str]]]:
         insp = inspect(sync_conn)
-        return {t: {c["name"] for c in insp.get_columns(t)} for t in insp.get_table_names()}
+        out: dict[str, dict[str, set[str]]] = {}
+        for t in insp.get_table_names():
+            out[t] = {
+                "columns": {c["name"] for c in insp.get_columns(t)},
+                "indexes": {ix["name"] for ix in insp.get_indexes(t)},
+            }
+        return out
 
     async with engine.begin() as conn:
-        existing = await conn.run_sync(_existing)
+        await conn.execute(text(f"SELECT pg_advisory_xact_lock({_MIGRATION_ADVISORY_LOCK_KEY})"))
+        # #2885 — the failure ledger must exist before any constraint path can
+        # record into it; create it under the same advisory lock.
+        await conn.execute(text(_SCHEMA_MIGRATIONS_DDL))
+        snap = await conn.run_sync(_snapshot)
+
         for table in Base.metadata.sorted_tables:
-            have = existing.get(table.name)
+            have = snap.get(table.name)
             if have is None:
                 continue  # brand-new table — create_all already made it
             for col in table.columns:
-                if col.name in have or col.primary_key:
+                if col.name in have["columns"] or col.primary_key:
                     continue
                 # A NOT NULL column with no server_default would fail on a
                 # table that already has rows — add it NULLABLE (safe; the app
                 # treats None as the default). The models that are NOT NULL
-                # carry a server_default, so this is only a safety net.
+                # carry a server_default, so this is only a safety net. #2888 —
+                # the contract pass below now detects and rejects this drift.
                 force_nullable = col.nullable is False and col.server_default is None
                 ddl = (
                     f"ALTER TABLE {_q(table.name)} "
@@ -141,27 +277,28 @@ async def apply_column_migrations() -> list[str]:
                 added.append(f"{table.name}.{col.name}")
                 log.warning("migrated missing column %s.%s", table.name, col.name)
 
-    # #1550 — share-token rotation audit columns. Added here as idempotent ALTERs
-    # (not on the Kid ORM model, which a sibling change owns) so an existing
-    # `kids` table gains the timestamps without a hand-written migration file.
-    # #1797 — identifier interpolations still use f-strings but are routed through
-    # the quoting helper so they can never become an injection vector.
-    async with engine.begin() as conn:
+        # #1550 — share-token rotation audit columns. Idempotent ALTERs (not on
+        # the Kid ORM model, which a sibling change owns) so an existing `kids`
+        # table gains the timestamps without a hand-written migration file.
+        # #2889 — gate each column on the snapshot: only ALTER `kids` when the
+        # column is actually missing, and only `append` when the ALTER ran.
+        kids_cols = snap.get("kids", {"columns": set()})["columns"]
         for name in ("share_token_created_at", "share_token_revoked_at"):
+            if name in kids_cols:
+                continue
             await conn.execute(
                 text(f'ALTER TABLE {_q("kids")} ADD COLUMN IF NOT EXISTS {_q(name)} TIMESTAMPTZ')
             )
             added.append(f"kids.{name}")
 
-    # #1534 — Web Push subscription storage. `create_all` already creates this
-    # table from the PushSubscription model on a fresh DB (and on an existing DB
-    # that lacks the table), but issue the same DDL here explicitly so the table
-    # and its profile_id index are idempotently present even if create_all ever
-    # changes behavior. The billing `subscriptions` table is intentionally left
-    # untouched; Web Push lives in this separate `push_subscriptions` table.
-    async with engine.begin() as conn:
-        await conn.execute(
-            text(
+        # #1534/#1843/#3057 — push_subscriptions, parent_events, share_tokens and
+        # their indexes. On a fresh DB `create_all` already made each of these from
+        # its ORM model; the explicit DDL here is a belt-and-suspenders fallback
+        # for an existing DB. #2889 — gate CREATE TABLE on table absence and
+        # CREATE INDEX on index absence so a pristine table emits zero DDL and
+        # `added` stays empty.
+        extra_tables = [
+            ("push_subscriptions", (
                 "CREATE TABLE IF NOT EXISTS push_subscriptions ("
                 "id UUID PRIMARY KEY, "
                 "profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, "
@@ -171,24 +308,8 @@ async def apply_column_migrations() -> list[str]:
                 "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), "
                 "gone_at TIMESTAMPTZ"
                 ")"
-            )
-        )
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_profile_id "
-                "ON push_subscriptions (profile_id)"
-            )
-        )
-        added.append("push_subscriptions")
-        added.append("push_subscriptions.profile_id")
-
-    # #1843 — parent account-action audit (share mint/rotate/revoke, export).
-    # Same create_all + explicit-DDL belt-and-suspenders pattern as
-    # push_subscriptions above: fresh DBs get it from the ParentEvent model,
-    # existing DBs from this idempotent CREATE TABLE IF NOT EXISTS + index.
-    async with engine.begin() as conn:
-        await conn.execute(
-            text(
+            ), "ix_push_subscriptions_profile_id", "ON push_subscriptions (profile_id)"),
+            ("parent_events", (
                 "CREATE TABLE IF NOT EXISTS parent_events ("
                 "id UUID PRIMARY KEY, "
                 "profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, "
@@ -197,23 +318,8 @@ async def apply_column_migrations() -> list[str]:
                 "target VARCHAR(64), "
                 "created_at TIMESTAMPTZ NOT NULL DEFAULT now()"
                 ")"
-            )
-        )
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_parent_events_profile_id_created_at "
-                "ON parent_events (profile_id, created_at)"
-            )
-        )
-        added.append("parent_events")
-        added.append("parent_events.profile_id")
-
-    # #3057/#3061/#3062 — per-recipient share tokens. Fresh DBs get it from the
-    # ShareToken model via create_all; existing DBs from this idempotent CREATE
-    # TABLE IF NOT EXISTS + index, mirroring push_subscriptions/parent_events.
-    async with engine.begin() as conn:
-        await conn.execute(
-            text(
+            ), "ix_parent_events_profile_id_created_at", "ON parent_events (profile_id, created_at)"),
+            ("share_tokens", (
                 "CREATE TABLE IF NOT EXISTS share_tokens ("
                 "id UUID PRIMARY KEY, "
                 "kid_id UUID NOT NULL REFERENCES kids(id) ON DELETE CASCADE, "
@@ -221,18 +327,53 @@ async def apply_column_migrations() -> list[str]:
                 "created_at TIMESTAMPTZ NOT NULL DEFAULT now(), "
                 "revoked_at TIMESTAMPTZ"
                 ")"
-            )
+            ), "ix_share_tokens_kid_id", "ON share_tokens (kid_id)"),
+        ]
+        for table_name, create_ddl, index_name, index_suffix in extra_tables:
+            if table_name not in snap:
+                await conn.execute(text(create_ddl))
+                added.append(table_name)
+            # NOTE: after creating a fresh table, the snapshot still says the
+            # index is absent (snapshot was taken before the CREATE), so only
+            # consult the live table's indexes via a re-inspection-free shortcut:
+            # create_all already indexes these on a fresh DB, so skip the index
+            # only when the table pre-existed AND the index was already present.
+            preexisting = snap.get(table_name)
+            if preexisting is not None and index_name in preexisting["indexes"]:
+                continue
+            await conn.execute(text(f"CREATE INDEX IF NOT EXISTS {_q(index_name)} {index_suffix}"))
+            added.append(f"{table_name}.{index_name}")
+
+        # #2888 — after all column adds, detect any NOT NULL/no-default column the
+        # safety net weakened to NULLABLE and refuse to boot silently drifting.
+        # Build the live nullable map from the snapshot (columns only — nullable
+        # per column comes from a second inspector pass).
+        violations = await conn.run_sync(
+            _nullable_violations_sync, snap,
         )
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_share_tokens_kid_id "
-                "ON share_tokens (kid_id)"
+        if violations:
+            raise RuntimeError(
+                "NOT NULL column drift detected: the migration safety net added the "
+                "following NOT NULL (no server_default) columns as NULLABLE and no "
+                "backfill default exists to enforce the contract — add a server_default "
+                "or a one-shot backfill: " + ", ".join(violations)
             )
-        )
-        added.append("share_tokens")
-        added.append("share_tokens.kid_id")
 
     return added
+
+
+def _nullable_violations_sync(sync_conn, snap: dict[str, dict[str, set[str]]]) -> list[str]:
+    """Inspect live column nullability and return the #2888 NOT NULL drift list.
+
+    Runs inside the same advisory-lock transaction as apply_column_migrations so
+    the nullability read is consistent with the columns just added. Reuses the
+    table/column snapshot for existence; only the `nullable` flag is re-read.
+    """
+    insp = inspect(sync_conn)
+    live: dict[str, dict[str, bool]] = {}
+    for t in snap:
+        live[t] = {c["name"]: bool(c.get("nullable", True)) for c in insp.get_columns(t)}
+    return _nullable_contract_violations(live)
 
 
 async def apply_type_migrations() -> list[str]:
@@ -250,6 +391,7 @@ async def apply_type_migrations() -> list[str]:
         return out
 
     async with engine.begin() as conn:
+        await conn.execute(text(f"SELECT pg_advisory_xact_lock({_MIGRATION_ADVISORY_LOCK_KEY})"))
         existing = await conn.run_sync(_existing)
         for table in Base.metadata.sorted_tables:
             live = existing.get(table.name)
@@ -332,6 +474,9 @@ async def apply_constraint_migrations() -> list[str]:
         return out
 
     async with engine.begin() as conn:
+        # #2882 — serialize constraint DDL against concurrent boots (the check
+        # below is re-run under this lock, so the loser sees the winner's result).
+        await conn.execute(text(f"SELECT pg_advisory_xact_lock({_MIGRATION_ADVISORY_LOCK_KEY})"))
         await _dedupe_subscriptions(conn)
         existing = await conn.run_sync(_existing)
         for table in Base.metadata.sorted_tables:
@@ -349,12 +494,10 @@ async def apply_constraint_migrations() -> list[str]:
                         continue
                     name = constraint.name or _constraint_name("uq", [table.name, *cols])
                     col_sql = ", ".join(_q(c) for c in cols)
-                    await conn.execute(
-                        text(
-                            f"ALTER TABLE {_q(table.name)} "
-                            f"ADD CONSTRAINT {_q(name)} UNIQUE ({col_sql})"
-                        )
-                    )
+                    # #2882/#2885 — idempotent (duplicate_object no-op) with a
+                    # circuit breaker: legacy duplicate data records a failure in
+                    # schema_migrations and lets the boot continue degraded.
+                    await conn.execute(text(_unique_constraint_ddl(table.name, name, col_sql)))
                     added.append(f"{table.name}.{name}")
                     log.warning("migrated missing unique constraint %s.%s", table.name, name)
                 elif isinstance(constraint, CheckConstraint):
@@ -419,12 +562,13 @@ async def apply_constraint_migrations() -> list[str]:
                                 table.name, fk_name, db_ondelete, ondelete,
                             )
                         continue
+                    # #2882 — add the FK idempotently (no IF NOT EXISTS for FKs);
+                    # a concurrent boot already present is a duplicate_object no-op.
                     await conn.execute(
                         text(
-                            f"ALTER TABLE {_q(table.name)} ADD CONSTRAINT {_q(name)} "
-                            f"FOREIGN KEY ({', '.join(_q(c) for c in cols)}) "
-                            f"REFERENCES {_q(referred_table)} ({', '.join(_q(c) for c in referred_cols)})"
-                            f"{ondelete_clause}"
+                            _fk_constraint_ddl(
+                                table.name, name, cols, referred_table, referred_cols, ondelete_clause
+                            )
                         )
                     )
                     added.append(f"{table.name}.{name}")
@@ -443,6 +587,7 @@ async def apply_index_migrations() -> list[str]:
         return {t: {ix["name"] for ix in insp.get_indexes(t)} for t in insp.get_table_names()}
 
     async with engine.begin() as conn:
+        await conn.execute(text(f"SELECT pg_advisory_xact_lock({_MIGRATION_ADVISORY_LOCK_KEY})"))
         existing = await conn.run_sync(_existing)
         for table in Base.metadata.sorted_tables:
             have = existing.get(table.name)
