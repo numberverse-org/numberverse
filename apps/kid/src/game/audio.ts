@@ -17,7 +17,15 @@ export function ensureAudio(): AudioContext | null {
       if (!AC) return null;
       ctx = new AC();
     }
-    if (ctx.state === "suspended") void ctx.resume();
+    if (ctx.state === "suspended") {
+      // #3092 — fire-and-forget `void ctx.resume()` leaked a rejected resume
+      // (browsers reject under autoplay policy) as an unhandledrejection on
+      // EVERY sound effect. Attach a rejection handler: the context stays
+      // suspended and the next user gesture retries — no-op, never unhandled.
+      void ctx.resume().catch(() => {
+        /* suspended — next gesture retries */
+      });
+    }
     return ctx;
   } catch {
     return null;

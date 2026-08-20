@@ -163,6 +163,7 @@ describe("persist.worker (#1814/#1815)", () => {
       };
       expect(v0reply.state).toEqual({
         skills: { "k1:s1": state.skills["k1:s1"] },
+        masteryMeta: {},
         mistakes: {},
         stats: {},
         nova: { k1: state.nova.k1 },

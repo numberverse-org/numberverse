@@ -221,6 +221,21 @@ describe("syncProgress wire contract + outbox drain", () => {
     expect(useKidStore.getState().pending).toHaveLength(1);
     expect(useKidStore.getState().syncChannels.progress).toBe("offline");
   });
+
+  it("#3081 — a 200 with a malformed body does NOT clear the outbox (no band-skip loss)", async () => {
+    seedIdentity();
+    useKidStore.setState({ pending: [pendingEvent({ uid: "keep-me" }) as never] });
+    // 200 but unparseable JSON → we can't know what the server band-skipped,
+    // so the batch must stay queued (a later heartbeat retries) rather than be
+    // treated as fully-recorded and cleared.
+    const fetchMock = vi.fn(async () => new Response("<!doctype html><html>not json", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await syncProgress();
+
+    expect(useKidStore.getState().pending).toHaveLength(1);
+    expect(useKidStore.getState().syncChannels.progress).toBe("error");
+  });
 });
 
 describe("syncStories wire contract + outbox drain", () => {

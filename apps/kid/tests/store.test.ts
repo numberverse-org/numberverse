@@ -411,6 +411,34 @@ describe("restoreSnapshot newest-wins multi-device merge (#9)", () => {
     expect(s1.lastPractice).toBe(5000);
     expect(s1.lastDecay).toBe(1000); // local decay survives when snap omits it
   });
+
+  it("#3078 — mastered_at is preserved onto masteryMeta, not re-stamped at restore", () => {
+    seed();
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 40,
+      mastery: [
+        { skillId: "s1", mastery: 0.7, correct: 20, attempts: 25, streak: 8, lastPractice: 5000, lastDecay: 5000, masteredAt: 4000 },
+        { skillId: "s2", mastery: 0.8, correct: 9, attempts: 10, streak: 4, lastPractice: 6000, masteredAt: 5500 },
+      ],
+    });
+    expect(useKidStore.getState().masteryMeta["devA:s1"]).toEqual({ masteredAt: 4000 });
+    expect(useKidStore.getState().masteryMeta["devA:s2"]).toEqual({ masteredAt: 5500 });
+  });
+
+  it("#3078 — a snapshot with NO masteredAt keeps any local masteryMeta value", () => {
+    seed();
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 40,
+      mastery: [{ skillId: "s1", mastery: 0.7, correct: 20, attempts: 25, streak: 8, lastPractice: 5000, masteredAt: 4000 }],
+    });
+    expect(useKidStore.getState().masteryMeta["devA:s1"]).toEqual({ masteredAt: 4000 });
+    // a fresh second restore with no masteredAt must not clobber the preserved value
+    useKidStore.getState().restoreSnapshot("devA", {
+      coins: 40,
+      mastery: [{ skillId: "s1", mastery: 0.8, correct: 25, attempts: 30, streak: 9, lastPractice: 7000 }],
+    });
+    expect(useKidStore.getState().masteryMeta["devA:s1"]).toEqual({ masteredAt: 4000 });
+  });
 });
 
 describe("aggregateSyncState (#1812)", () => {
@@ -543,6 +571,42 @@ describe("persisted-store durability", () => {
       // partialize: only durable fields are persisted, never per-session score
       expect(parsed.state.score).toBeUndefined();
       expect(parsed.state.skills).toBeDefined();
+    } finally {
+      writes.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("#3105 — a throwing setItem retains the snapshot and retries the SAME blob", () => {
+    vi.useFakeTimers();
+    // First setItem for nv_store_v1 throws (QuotaExceeded-like); the SAME
+    // snapshot must be re-attempted on a short retry, not dropped. Subsequent
+    // writes succeed so we can observe the eventual durable write.
+    let storeAttempts = 0;
+    const origSetItem = memStorage.setItem.bind(memStorage);
+    const writes = vi.spyOn(memStorage, "setItem").mockImplementation((k, v) => {
+      if (k === STORE_KEY) {
+        storeAttempts += 1;
+        // the FIRST durable write throws (QuotaExceeded-like); later retries succeed
+        if (storeAttempts === 1) throw new DOMException("QuotaExceededError", "QuotaExceededError");
+      }
+      return origSetItem(k, v);
+    });
+    try {
+      resetStore();
+      const actions = useKidStore.getState();
+      actions.novaAwardRound("quota", true, 6);
+      // debounce fires → first write throws → retained + retry armed
+      vi.advanceTimersByTime(150);
+      // first attempt failed; nothing durable yet
+      expect(localStorage.getItem(STORE_KEY)).toBeNull();
+      // the short retry timer (500ms) fires the SAME snapshot
+      vi.advanceTimersByTime(500);
+      const blob = localStorage.getItem(STORE_KEY);
+      expect(blob).not.toBeNull();
+      const parsed = JSON.parse(blob!);
+      expect(parsed.state.nova.quota.coins).toBe(3); // the original snapshot survived (NOVA_COINS_PER_ROUND)
+      expect(storeAttempts).toBeGreaterThanOrEqual(2); // original + at least one retry
     } finally {
       writes.mockRestore();
       vi.useRealTimers();

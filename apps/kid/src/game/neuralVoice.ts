@@ -717,7 +717,7 @@ function openVoiceCache(): Promise<IDBDatabase | null> {
           store.createIndex("ts", "ts"); // LRU eviction by last-used
         }
       };
-      req.onsuccess = async () => {
+      req.onsuccess = () => {
         const db = req.result || null;
         if (blockedTimer) {
           clearTimeout(blockedTimer);
@@ -730,8 +730,16 @@ function openVoiceCache(): Promise<IDBDatabase | null> {
         // #1232 — ONE lightweight ledger seed per page load (keys/bytes/ts only,
         // walked via the 'ts' index cursor so it's already LRU-ordered); after
         // this, put/get touch the in-memory ledger — never a per-store getAll.
-        await seedLruLedger(db);
-        resolve(db);
+        // #3093 — resolve SYNCHRONOUSLY here (non-async handler) and settle the
+        // seed with an always-resolving .then: a future throw inside seedLruLedger
+        // (or a change to its error handling) must never leave cacheDbPromise
+        // pending forever — every voiceCacheGet/Put awaits it and would hang the
+        // speech queue. A ledger-seed failure falls back to an empty ledger (best
+        // effort cache), never blocks speech.
+        seedLruLedger(db).then(
+          () => resolve(db),
+          () => resolve(db)
+        );
       };
       req.onerror = () => {
         if (blockedTimer) {

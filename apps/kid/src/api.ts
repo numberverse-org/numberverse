@@ -959,7 +959,19 @@ export async function syncProgress(): Promise<void> {
       // lets them drain) instead of silently losing real progress. Only clear
       // exactly what the server persisted.
       const body = (await res.json().catch(() => null)) as { band_skipped_uids?: string[] } | null;
-      const skipped = new Set(body?.band_skipped_uids ?? []);
+      // #3081 — a 200 with an UNPARSEABLE body means we can't know which uids the
+      // server band-skipped. Treating `body === null` as "nothing skipped" would
+      // clear EVERY event (contradicting the #1026 guarantee), silently losing
+      // any band-skipped rounds on an encoding hiccup or a proxy-injected 200.
+      // Do NOT clear the batch: surface it as an error and let the heartbeat
+      // retry until we get a confirmed, parseable response.
+      if (body === null) {
+        setChannelSyncState("progress", "error");
+        useKidStore.getState().setSyncSignal({ lastError: "error" });
+        reportSyncOutcome(false);
+        return; // events stay queued; drained stays false → heartbeat retries
+      }
+      const skipped = new Set(body.band_skipped_uids ?? []);
       const recorded = mapped.filter((e) => !skipped.has(e.uid));
       const done = new Set(recorded.map((e) => e.uid));
       useKidStore.getState().clearPending(done);
@@ -1324,6 +1336,7 @@ async function fetchSnapshot(
     streak: number;
     lastPractice: number | null;
     lastDecay: number | null;
+    masteredAt: number | null;
   }>;
 } | null> {
   // #3103 — the identity is captured ONCE by the caller (restoreServerState) and
@@ -1348,6 +1361,7 @@ async function fetchSnapshot(
           streak: m.streak as number,
           lastPractice: toEpochMs(m.last_practice),
           lastDecay: toEpochMs(m.last_decay),
+          masteredAt: toEpochMs(m.mastered_at),
         }))
       : [];
     return {

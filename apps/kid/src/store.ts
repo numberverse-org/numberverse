@@ -620,6 +620,11 @@ interface KidState {
   planCheckedAt: number;
   /** Per-kid per-skill adaptive mastery state. Key `${kidId}:${skillId}`. */
   skills: Record<string, SkillState>;
+  /** #3078 — per-kid per-skill mastery-timeline metadata the core `SkillState`
+   *  can't carry (`mastered_at` from the server). Key `${kidId}:${skillId}`.
+   *  Preserved on restore so a second device's world-progression model can tell
+   *  "mastered long ago" from "just restored". Persisted via partialize. */
+  masteryMeta: Record<string, { masteredAt?: number | null }>;
   /** Wrong-answer ledger per kid+skill. Key `${kidId}:${skillId}`. */
   mistakes: Record<string, MistakeState>;
   /** Lifetime totals per kid. Key kidId. */
@@ -785,6 +790,8 @@ interface KidState {
         lastPractice?: number | null;
         /** #1813 — epoch ms of the server's last_decay. */
         lastDecay?: number | null;
+        /** #3078 — epoch ms of the server's mastered_at (first ≥80% hit). */
+        masteredAt?: number | null;
       }>;
     }
   ) => void;
@@ -833,6 +840,13 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   // right write instead of clobbering the newest with an older payload.
   let inFlight: Array<{ name: string; value: { state: S; version?: number } }> = [];
   let writeFailed = false;
+  // #3105 — retry bookkeeping. A failed setItem (QuotaExceeded) must NOT drop the
+  // pending snapshot: retain it and re-arm a SHORT retry timer instead of letting
+  // only a later set() re-queue a newer blob. Capped so a permanently-full
+  // storage can't spin a tight loop (each retry still emits the error event).
+  let writeRetries = 0;
+  const RETRY_MAX = 3;
+  const RETRY_DELAY_MS = 500;
   // #1814 — serialize off the main thread. JSON.stringify of the WHOLE blob
   // costs ~10–70ms on every trailing-edge write. The worker returns the state
   // string; only the final localStorage.setItem stays here. Guarded so an
@@ -854,7 +868,13 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
         if (!p) return;
         // Build the zustand envelope {"state":…,"version":…} WITHOUT re-stringifying
         // the state (that was the expensive part, now done off-thread).
-        writeBlob(p.name, `{"state":${ev.data},"version":${p.value.version ?? 0}}`);
+        if (!writeBlob(p.name, `{"state":${ev.data},"version":${p.value.version ?? 0}}`)) {
+          // #3105 — the worker serialized fine but the final setItem threw: retain
+          // the same snapshot and retry rather than dropping it (older code only
+          // re-queued on a LATER set()). scheduleRetry only fills `pending` when
+          // empty, so a newer set() that already superseded this write wins.
+          scheduleRetry(p);
+        }
       };
       worker.onerror = () => {
         // Worker failed at runtime — fall back to synchronous writes forever.
@@ -870,24 +890,45 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
   /** The ONE final write routine shared by both paths: worker reply AND the
    *  synchronous flush fallback. Only the localStorage.setItem stays on the
    *  main thread. */
-  const writeBlob = (name: string, blob: string) => {
+  const writeBlob = (name: string, blob: string): boolean => {
     try {
       localStorage.setItem(name, blob);
+      writeRetries = 0;
       if (writeFailed) {
         writeFailed = false;
         emitPersistSignal(PERSIST_OK_EVENT);
       }
+      return true;
     } catch {
-      // #1376 — storage-full / QuotaExceeded is no longer silent: surface it,
-      // and let the next set() re-queue the latest snapshot as before.
+      // #1376 — storage-full / QuotaExceeded is no longer silent: surface it.
       writeFailed = true;
       emitPersistSignal(PERSIST_ERROR_EVENT);
+      return false;
     }
   };
+  /** #3105 — the synchronous write attempted to flush a snapshot but the
+   *  setItem threw. Retain the failed snapshot and re-arm a SHORT retry (capped)
+   *  so a quota blip right before a kill isn't silently lost: the SAME snapshot
+   *  is re-attempted rather than replaced or dropped. A NEWER set() only
+   *  supersedes the retry if it lands before the timer fires (the timer itself
+   *  calls write(), which re-reads the latest pending — so the retry always
+   *  carries the freshest snapshot, never a stale re-post). */
+  const scheduleRetry = (p: { name: string; value: { state: S; version?: number } }) => {
+    if (!pending) pending = p;
+    if (writeRetries >= RETRY_MAX) return; // give up after a bounded number of attempts
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      writeRetries += 1;
+      write();
+    }, RETRY_DELAY_MS);
+  };
   /** Synchronous full-blob write (old path): used by the worker-fallback and
-   *  the pagehide/beforeunload durability flush. writeBlob handles the signal. */
-  const writeSync = (p: { name: string; value: { state: S; version?: number } }) => {
-    writeBlob(p.name, JSON.stringify(p.value));
+   *  the pagehide/beforeunload durability flush. Returns success so callers can
+   *  re-queue the snapshot on failure (the pagehide flush can't retire — it just
+   *  loses the write, which is the existing durability boundary). */
+  const writeSync = (p: { name: string; value: { state: S; version?: number } }): boolean => {
+    return writeBlob(p.name, JSON.stringify(p.value));
   };
   const write = () => {
     if (!pending) return;
@@ -900,10 +941,10 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
       } catch {
         const idx = inFlight.indexOf(p);
         if (idx >= 0) inFlight.splice(idx, 1);
-        writeSync(p);
+        if (!writeSync(p)) scheduleRetry(p);
       }
     } else {
-      writeSync(p);
+      if (!writeSync(p)) scheduleRetry(p);
     }
   };
   const flush = () => {
@@ -1024,6 +1065,7 @@ function debouncedPersistStorage<S>(): ReturnType<typeof createJSONStorage<S>> {
 function partializeKidState(s: KidState) {
   return {
     skills: s.skills,
+    masteryMeta: s.masteryMeta,
     mistakes: s.mistakes,
     stats: s.stats,
     nova: s.nova,
@@ -1098,6 +1140,7 @@ export function migrateKidState(persisted: unknown, version: number): PersistedK
       // undefined.
       return {
         skills: (s.skills as PersistedKidState["skills"]) ?? {},
+        masteryMeta: (s.masteryMeta as PersistedKidState["masteryMeta"]) ?? {},
         mistakes: (s.mistakes as PersistedKidState["mistakes"]) ?? {},
         stats: (s.stats as PersistedKidState["stats"]) ?? {},
         nova: (s.nova as PersistedKidState["nova"]) ?? {},
@@ -1143,6 +1186,7 @@ export const useKidStore = create<KidState>()(
         return { plan, planCheckedAt: checkedAt };
       },
       skills: {},
+      masteryMeta: {},
       mistakes: {},
       stats: {},
       nova: {},
@@ -1703,6 +1747,7 @@ export const useKidStore = create<KidState>()(
       restoreSnapshot: (kidId, snap) =>
         set((s) => {
           const skills = { ...s.skills };
+          const masteryMeta = { ...s.masteryMeta };
           for (const m of snap.mastery) {
             if (m.correct <= 0) continue;
             const key = keyOf(kidId, m.skillId);
@@ -1741,6 +1786,12 @@ export const useKidStore = create<KidState>()(
               lastPractice: m.lastPractice ?? local?.lastPractice ?? Date.now(),
               lastDecay: m.lastDecay ?? local?.lastDecay ?? Date.now(),
             };
+            // #3078 — carry the server's mastered_at (first ≥80% hit) so a second
+            // device's world-progression model preserves the mastery timeline
+            // instead of re-stamping it at the restore moment. masteryMeta already
+            // spreads any surviving local value, so a missing mastered_at keeps it;
+            // a present one adopts the server's authentic timestamp.
+            if (m.masteredAt != null) masteryMeta[key] = { masteredAt: m.masteredAt };
           }
           // #1804 — wallet last-write-wins on the monotonic wallet_seq, NOT a max
           // of coins. A spend lowers coins but bumps seq; taking Math.max would
@@ -1753,27 +1804,24 @@ export const useKidStore = create<KidState>()(
           // — the skills merge above is the main event.
           const cur = s.nova[kidId];
           const localSeq = cur?.walletSeq ?? 0;
+          let nova = s.nova;
           if (cur) {
             if (typeof snap.walletSeq === "number") {
               if (snap.walletSeq >= localSeq) {
-                return {
-                  skills,
-                  nova: { ...s.nova, [kidId]: { ...cur, coins: snap.coins, walletSeq: snap.walletSeq } },
-                };
+                nova = { ...s.nova, [kidId]: { ...cur, coins: snap.coins, walletSeq: snap.walletSeq } };
               }
-              return { skills };
+            } else {
+              const nextCoins = Math.max(cur.coins ?? 0, snap.coins);
+              nova = { ...s.nova, [kidId]: { ...cur, coins: nextCoins } };
             }
-            const nextCoins = Math.max(cur.coins ?? 0, snap.coins);
-            return { skills, nova: { ...s.nova, [kidId]: { ...cur, coins: nextCoins } } };
+          } else {
+            if (typeof snap.walletSeq === "number") {
+              if (snap.coins > 0) nova = { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins, walletSeq: snap.walletSeq } };
+            } else if (snap.coins > 0) {
+              nova = { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins } };
+            }
           }
-          if (typeof snap.walletSeq === "number") {
-            return snap.coins > 0
-              ? { skills, nova: { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins, walletSeq: snap.walletSeq } } }
-              : { skills };
-          }
-          return snap.coins > 0
-            ? { skills, nova: { ...s.nova, [kidId]: { ...defaultNova(), coins: snap.coins } } }
-            : { skills };
+          return { skills, masteryMeta, nova };
         }),
 
       /** Buy an outfit — instantly wears it (instant gratification). */
@@ -2198,6 +2246,7 @@ export const useKidStore = create<KidState>()(
 export function wipePersistedStore(): void {
   useKidStore.setState({
     skills: {},
+    masteryMeta: {},
     mistakes: {},
     stats: {},
     nova: {},
