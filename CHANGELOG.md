@@ -1,3 +1,14 @@
+## 20 Aug 2026 — 1.11.1 (release train (8 since 1.11.0))
+
+f00c224 fix(parent): responsive topbar + table overflow + compare-kids gate + quiet-hours grid
+d76478e fix(parent): complete Bangla i18n — worksheets, share caption, dates, explore cards
+f391b66 fix(api): export/import security — no-store, owner verification, full round-trip
+2e88ad7 fix(api): band schema + family cap + month-aware age + nullable birth + org dead-code
+f929195 fix(parent): flagged-skill reason + birth-year honesty + date locale + section order
+49102f0 fix(kid): persist retry + mastery timeline restore + audio unhandled rejections
+4bece6c fix(api): rate-limit NAT tuning + honest minutes_approx + timing side-channel + push cleanup
+d8eac0a fix(parent): onboarding/polish — no wizard over roster, per-kid saved badge, band-8 focus
+
 ## 20 Aug 2026 — 1.11.0 (Kids-get-stuck wave: crash recovery, tap-to-answer, un-stick games, nav + HUD, playability sweep, share-token expiry, rate-limit hardening, BKT decay, Bangla i18n, notifications)
 
 c486aff fix(release): sweep gate guards on Playwright browsers, not pnpm

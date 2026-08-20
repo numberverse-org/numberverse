@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "20 Aug 2026 · 1.11.0 (Kids-get-stuck wave: crash recovery, tap-to-answer, un-stick games, nav + HUD, playability sweep, share-token expiry, rate-limit hardening, BKT decay, Bangla i18n, notifications)";
-export const APP_VERSION = "1.11.0";
+export const APP_BUILD = "20 Aug 2026 · 1.11.1 (release train (8 since 1.11.0))";
+export const APP_VERSION = "1.11.1";
