@@ -10,6 +10,7 @@ these, and notification senders key on it to choose a message kind):
     state a parent should see). Aggregate-only; never raw answers.
 """
 
+import logging
 import uuid
 from datetime import date, datetime, timedelta, time, timezone
 
@@ -625,6 +626,32 @@ async def get_kid_weekly(
     ).all()
     mastered_today_ids = sorted(m.skill_id for m in mastered_today)
 
+    trigger = _weekly_trigger(
+        mastered_today=mastered_today_ids,
+        mastered_this_week=mastered_ids,
+        streak=streak,
+        rounds=rounds,
+    )
+
+    # #3002 — consume the trigger: dispatch to this profile's stored push
+    # subscriptions. Fire-safe and best-effort — a delivery failure (or an
+    # entirely unconfigured VAPID) never affects the weekly response itself.
+    try:
+        await _dispatch_weekly_notifications(
+            profile=profile,
+            kid=owned,
+            trigger=trigger,
+            rounds=rounds,
+            streak=streak,
+            db=db,
+        )
+    except Exception as exc:  # never let a notification fail the report
+        logging.getLogger("numberverse").warning(
+            "weekly notification dispatch failed profile=%s error=%r",
+            profile.id,
+            exc,
+        )
+
     return WeeklyOut(
         days=days,
         rounds=rounds,
@@ -636,13 +663,50 @@ async def get_kid_weekly(
         top_game=top_game,
         streak=streak,
         coins=owned.coins or 0,
-        trigger=_weekly_trigger(
-            mastered_today=mastered_today_ids,
-            mastered_this_week=mastered_ids,
-            streak=streak,
-            rounds=rounds,
-        ),
+        trigger=trigger,
     )
+
+
+# #3002 — the weekly `trigger` is the notification signal; this helper turns a
+# freshly computed trigger into a per-subscription send so the stored push rows
+# actually get consumed. It is best-effort and fire-safe: it never raises, logs
+# per-endpoint failures, and returns a DeliverResult the caller (and tests) can
+# inspect. See app/push_delivery.py.
+async def _dispatch_weekly_notifications(
+    *, profile: Profile, kid: Kid, trigger: str, rounds: int, streak: int, db: AsyncSession
+):
+    from ..models import PushSubscription
+    from ..push_delivery import build_weekly_payload, send_notification
+
+    subs = list(
+        await db.scalars(
+            select(PushSubscription).where(PushSubscription.profile_id == profile.id)
+        )
+    )
+    if not subs:
+        return None
+    title, body, tag = build_weekly_payload(
+        kid.display_name or "Your child", trigger=trigger, rounds=rounds, streak=streak
+    )
+    sent = 0
+    failed = 0
+    not_configured = False
+    for sub in subs:
+        status = await send_notification(
+            db=db,
+            endpoint=sub.endpoint,
+            title=title,
+            body=body,
+            tag=tag,
+        )
+        if status == "sent":
+            sent += 1
+        elif status == "failed":
+            failed += 1
+        else:  # not_configured (no VAPID) — nothing in flight
+            not_configured = True
+    return {"sent": sent, "failed": failed, "not_configured": not_configured, "total": len(subs)}
+
 
 
 # #858 — typed response model instead of an ad-hoc dict (schemas.ResetOut).

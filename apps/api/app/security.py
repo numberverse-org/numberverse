@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import secrets
 import uuid
@@ -49,6 +50,30 @@ def sha256_token(token: str) -> str:
     """One-way fingerprint of a signed token — used to look up (and revoke) a
     session without ever storing the raw JWT."""
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def sign_vapid_token(private_key_b64url: str, signing_input: str) -> bytes:
+    """#3002 — ES256-sign a VAPID JWT signing input (`b64url(header).b64url(payload)`)
+    with the API's VAPID private key (base64url-unpadded P-256 scalar).
+
+    Returns the raw signature bytes; the caller base64url-encodes them into the
+    JWT's third segment. A missing/invalid key or `cryptography` raises
+    (ImportError/ValueError) so the delivery caller treats the subscription as
+    unsignable rather than sending a broken VAPID header.
+    """
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+
+    s = private_key_b64url.strip()
+    s += "=" * (-len(s) % 4)
+    raw = base64.urlsafe_b64decode(s)
+    if len(raw) != 32:
+        raise ValueError("VAPID private key must be a 32-byte P-256 scalar")
+    key = ec.derive_private_key(int.from_bytes(raw, "big"), ec.SECP256R1())
+    return key.sign(
+        signing_input.encode(),
+        ec.ECDSA(hashes.SHA256()),
+    )
 
 
 def create_access_token(subject: str, role: str = "user", session_id: str | None = None) -> str:

@@ -171,6 +171,25 @@ class Settings(BaseSettings):
     plus_annual_bdt: int = 1499
     plus_annual_days: int = 365
 
+    # ── Web Push (VAPID) (#3003) ────────────────────────────────────────────
+    # The VAPID public/private keypair authenticates the API to push services
+    # (Web Push voluntary application server identification). The PUBLIC key is
+    # exposed to the parent build (NEXT_PUBLIC_VAPID_PUBLIC_KEY) so pushManager.
+    # subscribe() works; the PRIVATE key signs the Delivery:authorization header
+    # when the API sends. Both empty = push delivery disabled (the delivery
+    # module reports "not configured" instead of raising). The keys are infra
+    # owned (generated/deployed out-of-band, never committed): this module only
+    # CONSUMES them.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+
+    @property
+    def vapid_configured(self) -> bool:
+        """True only when BOTH halves of the VAPID keypair are present, so a
+        public key without its matching private signing key (or vice versa) is
+        never treated as a working push configuration."""
+        return bool(self.vapid_public_key.strip() and self.vapid_private_key.strip())
+
     @property
     def bkash_configured(self) -> bool:
         """True when all four bKash merchant credentials are present."""

@@ -27,6 +27,7 @@ from ..schemas import (
     SetPasswordIn,
     SignupIn,
     TokenOut,
+    VerifyPasswordIn,
 )
 from ..security import (
     REFRESH_COOKIE_NAME,
@@ -586,6 +587,46 @@ async def change_password(
     # revoke_other_sessions above.
     profile.legacy_sessions_revoked_at = now
     await db.commit()
+
+
+# #3004 — parent-gated re-confirm. The parent portal shows a "confirm your
+# password before enabling notifications" prompt; this endpoint is what the
+# UI calls to actually PROVE the parent (not a child/leaked-token holder) is
+# at the keyboard. It mirrors change-password's verify_password path and
+# reuses the SAME `_PASSWORD_GUARD` credential lockout (the pw: namespace is
+# shared across change-password/delete-account/verify, so a token-holder
+# brute-forcing one burns the same lockout budget as the others).
+@router.post("/verify", response_model=dict, status_code=status.HTTP_200_OK)
+async def verify_password_reconfirm(
+    body: VerifyPasswordIn,
+    request: Request,
+    profile: Profile = Depends(get_current_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-prove the parent's password (bearer token alone is NOT enough).
+
+    A Google-only account has no password the parent knows (its hash is a
+    random, un-knowable value) and must not be gated on a typed password — it
+    falls through to its own confirmation contract, so attempt no bcrypt there
+    (mirrors the #1487 change-password routing).
+    """
+    if profile.auth_provider == "google":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Google accounts have no password to verify — set one first",
+        )
+    _check_password_bytes(body.password)
+    ip = _request_ip(request)
+    await _PASSWORD_GUARD.raise_if_locked(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+    if not verify_password(body.password, profile.password_hash):
+        await _PASSWORD_GUARD.record_failure(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+        logger.warning(
+            "auth 401 route=verify-password account_key=pw:profile:%s ip=%s",
+            redact_key(str(profile.id)), redact_key(ip),
+        )
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Password is incorrect")
+    await _PASSWORD_GUARD.reset(db, f"pw:profile:{profile.id}", f"pw:ip:{ip}")
+    return {"verified": True}
 
 
 # #980 — right-to-erasure: DELETE /api/v1/auth/me removes the parent's

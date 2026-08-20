@@ -189,6 +189,16 @@ class ChangePasswordIn(BaseModel):
     new_password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
 
 
+class VerifyPasswordIn(BaseModel):
+    """#3004 — parent-gated re-confirm. The parent's password is re-entered
+    (and bcrypt-checked server-side) before a privileged action proceeds (e.g.
+    enabling Web Push). A Google-only account has NO password the parent knows,
+    so the same no-local-password contract as change-password/delete-account
+    applies."""
+
+    password: str = Field(max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+
+
 class ProfileUpdateIn(BaseModel):
     display_name: str | None = Field(default=None, max_length=PARENT_NAME_MAX_LENGTH, pattern=OPTIONAL_NAME_PATTERN)
     aggregate_opt_in: bool | None = None  # #330 parent privacy opt-in
