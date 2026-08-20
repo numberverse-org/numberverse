@@ -2408,7 +2408,7 @@ export function tryVoicePreview(tone: string, speed: number, lang: "en" | "bn") 
  *  their section lives inside the `active && (…)` block. */
 export const NAV_GROUPS: {
   label: string;
-  items: { id: string; label: string; bn?: string; needsKid?: boolean }[];
+  items: { id: string; label: string; bn?: string; needsKid?: boolean; minKids?: number }[];
 }[] = [
   {
     label: "Overview",
@@ -2434,7 +2434,7 @@ export const NAV_GROUPS: {
     label: "Resources",
     items: [
       { id: "games", label: "Games to try", needsKid: true },
-      { id: "compare", label: "Compare kids", needsKid: true },
+      { id: "compare", label: "Compare kids", needsKid: true, minKids: 2 },
       { id: "worksheet", label: "Printable worksheet", needsKid: true },
       { id: "flashcards", label: "Flashcard QR cards", needsKid: true },
     ],

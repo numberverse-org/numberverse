@@ -588,9 +588,24 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
 .quiet-time:disabled { opacity: 0.4; }
 .quiet-sep { color: var(--nv-muted-soft); text-align: center; }
 @media (max-width: 560px) {
-  .quiet-day { grid-template-columns: 1fr 48px; }
-  .quiet-day .quiet-time, .quiet-day .quiet-sep { grid-column: span 1; }
-  .quiet-time { width: 100%; box-sizing: border-box; }
+  /* #2995 — the old `1fr 48px` two-column grid auto-placed "start · sep" on
+     row 2 and left "end" orphaned alone on row 3, breaking the "20:00 – 07:00"
+     reading. Stack the day label on its own row, then put start/sep/end on one
+     row where the two times split a flexible `1fr auto 1fr` track and the dash
+     stays centered between them. */
+  .quiet-day {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas:
+      "name off off"
+      "start sep end";
+    row-gap: 6px;
+  }
+  .quiet-day-name { grid-area: name; }
+  .quiet-off { grid-area: off; justify-self: start; }
+  .quiet-day .quiet-time { width: 100%; box-sizing: border-box; }
+  .quiet-day .quiet-time:first-of-type { grid-area: start; }
+  .quiet-day .quiet-sep { grid-area: sep; }
+  .quiet-day .quiet-time:last-of-type { grid-area: end; }
 }
 
 /* #244 — daily play summary headline */
@@ -617,11 +632,34 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   flex-wrap: wrap;
   gap: 10px;
 }
+/* #2988 — the topbar is split into `.topbar-scroll` (brand + status chips) and
+   `.topbar-actions` (a11y/theme toggles + user + Sign out). On desktop both
+   groups sit inline on one row. On a phone the row splits into two: only the
+   brand + chips scroll horizontally; Sign out and the a11y toggles wrap onto
+   their own line so they are never pushed off-screen. */
+.topbar-scroll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 /* #1528 — compact single-row topbar on phones. The whole bar stays on one
    line (overflow scrolls instead of wrapping tall), and the sync timestamp
    collapses so the sticky section nav below stays near the first viewport. */
 @media (max-width: 760px) {
   .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .topbar-scroll {
     flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
@@ -629,7 +667,12 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
     padding-bottom: 2px;
     -webkit-overflow-scrolling: touch;
   }
-  .topbar > * { flex: none; }
+  .topbar-scroll > * { flex: none; }
+  .topbar-actions {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
   .sync-when { display: none; }
 }
 .brand b { color: var(--nv-brand); }
@@ -1379,6 +1422,34 @@ label { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
 .btn.ghost { background: var(--nv-ghost-bg); color: var(--nv-ghost-text); box-shadow: none; border: 1px solid var(--nv-border); }
 .btn.ghost:active { transform: scale(0.97); box-shadow: none; }
 .btn-small { padding: 9px 16px; font-size: 13px; }
+
+/* #2990 — `.ghost-btn` was applied across five components but never had a base
+   rule, so those buttons rendered as browser-default native buttons (tiny hit
+   area, no quiet-secondary look). Define it as a standalone quiet-outline
+   button mirroring `.btn.ghost` (no `.btn` blue gradient required), with a
+   full 44px tap target per the phone baseline. `.ghost-btn.small` compacts the
+   padding while `min-height` keeps the hit box intact. */
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--nv-ghost-bg);
+  color: var(--nv-ghost-text);
+  border: 1px solid var(--nv-border);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  min-height: 44px;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.ghost-btn:hover { background: var(--nv-chip-hover); }
+.ghost-btn:active { transform: scale(0.97); }
+.ghost-btn:disabled { opacity: 0.5; cursor: default; }
+.ghost-btn.small { padding: 6px 14px; font-size: 12.5px; }
 .row-buttons { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
 .save-row { margin-top: 18px; }
 .saved-note { color: var(--nv-ok); font-weight: 800; }
@@ -1433,10 +1504,24 @@ label { font-size: 13px; font-weight: 700; color: var(--nv-muted-strong); }
 
 /* tables */
 table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+/* #2989 — wrap data tables so a 375px phone scrolls the table itself (with a
+   visible edge-fade cue) instead of forcing the whole document sideways. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll table { margin-top: 0; }
+.table-scroll table th,
+.table-scroll table td { white-space: nowrap; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--nv-border); }
 th { color: var(--nv-muted); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
 td { font-size: 14px; }
 .bar { display: inline-block; width: 110px; height: 9px; background: var(--nv-border); border-radius: 999px; margin-right: 8px; vertical-align: middle; overflow: hidden; }
+/* #2989 — the mastery/progress bar's fixed 110px width made a 375px table
+   wider than the viewport. Let it shrink to its cell on small screens. */
+@media (max-width: 640px) {
+  .bar { width: 100%; max-width: 110px; min-width: 48px; display: block; }
+}
 .fill { height: 100%; background: linear-gradient(90deg, var(--nv-sky), var(--nv-mint)); border-radius: 999px; }
 .fill.done { background: linear-gradient(90deg, var(--nv-mint), var(--nv-gold)); }
 

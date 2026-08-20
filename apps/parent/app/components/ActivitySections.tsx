@@ -225,6 +225,7 @@ export function MasteryCard({ activeMastery }: {
           );
         })}
       </div>
+      <div className="table-scroll">
       <table>
         <thead>
           <tr>
@@ -269,6 +270,7 @@ export function MasteryCard({ activeMastery }: {
           ))}
         </tbody>
       </table>
+      </div>
     </>
   )}
 </section>

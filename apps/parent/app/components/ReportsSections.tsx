@@ -39,6 +39,7 @@ export function StoriesCard({ active, activeMastery }: { active: ActiveKid; acti
     <p className="muted">No story games in the catalog yet.</p>
   ) : (
     <>
+    <div className="table-scroll">
     <table>
       <thead>
         <tr>
@@ -83,6 +84,7 @@ export function StoriesCard({ active, activeMastery }: { active: ActiveKid; acti
         })}
       </tbody>
     </table>
+    </div>
     <p className="muted small mt-8">
       “Adaptive mastery” is the app's long-run estimate of how well {active.name} knows each
       story quiz (it grows with history, so it can lag recent play). “This week” is the raw

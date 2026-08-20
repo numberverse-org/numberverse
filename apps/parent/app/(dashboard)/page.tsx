@@ -2317,7 +2317,12 @@ export default function ParentDashboard() {
               // #1527 — omit pills whose section lives inside the `active &&`
               // block when no kid is selected; those anchors would scroll to
               // nothing.
-              const items = g.items.filter((it) => !it.needsKid || active);
+              // #2991 — "Compare kids" also needs ≥2 kids; CompareCard returns
+              // null below that, so a one-kid account would get a dead pill
+              // pointing at a non-existent #compare anchor.
+              const items = g.items.filter(
+                (it) => (!it.needsKid || active) && (!it.minKids || kids.length >= it.minKids)
+              );
               if (items.length === 0) return null;
               return (
                 <div className="portal-nav-group" key={g.label}>

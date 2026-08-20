@@ -88,186 +88,196 @@ export default function PortalHeader({
 
   return (
     <header className="topbar">
-      <span className="brand">
-        🔢 <b>Numberverse</b> <span className="muted">{top.parentPortal}</span>
-      </span>
-      {/* 🧏 #250 — global accessibility toggles (shared with the kid app). */}
-      <span className="a11y-toggle-group" role="group" aria-label={A.bigText}>
-        <button
-          className={`a11y-toggle${a11y.bigText ? " on" : ""}`}
-          onClick={() => toggleA11y({ bigText: !a11y.bigText })}
-          aria-pressed={a11y.bigText}
-          title={A.bigText}
-          aria-label={A.bigText}
-        >
-          🔍 <span className="a11y-toggle-label">{A.bigText}</span>
-        </button>
-        <button
-          className={`a11y-toggle${a11y.highContrast ? " on" : ""}`}
-          onClick={() => toggleA11y({ highContrast: !a11y.highContrast })}
-          aria-pressed={a11y.highContrast}
-          title={A.highContrast}
-          aria-label={A.highContrast}
-        >
-          🎨 <span className="a11y-toggle-label">{A.highContrast}</span>
-        </button>
-        {/* 🎨 #254 — dashboard light/dark theme toggle (portal-only, persisted). */}
-        <button
-          className={`a11y-toggle${theme === "light" ? " on" : ""}`}
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          aria-pressed={theme === "light"}
-          title={T[theme === "light" ? "lightOn" : "darkOn"]}
-          aria-label={T[theme === "light" ? "lightOn" : "darkOn"]}
-        >
-          {theme === "light" ? "☀️" : "🌙"}{" "}
-          <span className="a11y-toggle-label">{T[theme]}</span>
-        </button>
-        {/* 🌐 #3046 — persistent EN/Bangla toggle. Mirrors the onboarding
-            wizard toggle so a parent who finished or skipped onboarding can
-            still switch the whole portal language. */}
-        <button
-          className="a11y-toggle"
-          onClick={() => onChangeLang(wizLang === "en" ? "bn" : "en")}
-          aria-pressed={wizLang === "bn"}
-          title="EN / বাংলা"
-          aria-label="EN / বাংলা"
-        >
-          {"🌐 "}
-          <span className="a11y-toggle-label">{wizLang === "en" ? "বাংলা" : "EN"}</span>
-        </button>
-      </span>
-      {/* #85 — sync status chip + manual sync. */}
-      <span
-        className={`sync-chip${online ? " on" : " off"}`}
-        title={
-          lastSync && kidsCount > 0
-            ? `${S.portal} ${S.synced} ${relTime(lastSync, wizLang)} ${S.ago}`
-            : S.justNow
-        }
-      >
-        <span className={`sync-dot ${online ? "ok" : "bad"}`} aria-hidden="true" />
-        {online ? S.online : S.offline}
-        {lastSync && online && kidsCount > 0 && (
-          <span className="sync-when">
-            {" · "}
-            {S.portal} {S.synced} {relTime(lastSync, wizLang)}
-          </span>
-        )}
-        <button
-          className="sync-btn"
-          disabled={syncingNow}
-          onClick={() => manualSync()}
-          aria-label={S.syncNow}
-          title={S.syncNow}
-        >
-          {syncingNow ? S.syncing : S.syncNow}
-        </button>
-      </span>
-      {/* #1553 — the kid DEVICE's sync signal. */}
-      {deviceSync && (deviceSync.lastSuccessAt !== null || deviceSync.pendingCount > 0) && (
+      {/* #2988 — split the topbar into two groups so a phone keeps Sign out and
+          the a11y/theme toggles reachable: `.topbar-scroll` holds brand + status
+          chips (the only part that may scroll horizontally), `.topbar-actions`
+          holds the a11y toggles, user chip and Sign out on their own row. */}
+      <div className="topbar-scroll">
+        <span className="brand">
+          🔢 <b>Numberverse</b> <span className="muted">{top.parentPortal}</span>
+        </span>
+        {/* #85 — sync status chip + manual sync. */}
         <span
-          className="sync-chip"
+          className={`sync-chip${online ? " on" : " off"}`}
           title={
-            deviceSync.lastSuccessAt !== null
-              ? `${S.device} · ${S.deviceLastSynced} ⌁ ${relTime(deviceSync.lastSuccessAt, wizLang)} ${S.ago}`
-              : S.device
+            lastSync && kidsCount > 0
+              ? `${S.portal} ${S.synced} ${relTime(lastSync, wizLang)} ${S.ago}`
+              : S.justNow
           }
         >
-          <span aria-hidden="true">⌁</span>
-          <span className="sync-when">{S.device}</span>
-          {deviceSync.lastSuccessAt !== null && (
+          <span className={`sync-dot ${online ? "ok" : "bad"}`} aria-hidden="true" />
+          {online ? S.online : S.offline}
+          {lastSync && online && kidsCount > 0 && (
             <span className="sync-when">
               {" · "}
-              {S.deviceLastSynced} ⌁ {relTime(deviceSync.lastSuccessAt, wizLang)} {S.ago}
+              {S.portal} {S.synced} {relTime(lastSync, wizLang)}
             </span>
           )}
-          {deviceSync.pendingCount > 0 && (
-            <span style={{ color: "#fbbf24", fontWeight: 800 }}>
-              {" · "}⚠{" "}
-              {S.pending.replace(
-                "{n}",
-                wizLang === "bn" ? toBnNum(deviceSync.pendingCount) : String(deviceSync.pendingCount)
-              )}
-            </span>
-          )}
+          <button
+            className="sync-btn"
+            disabled={syncingNow}
+            onClick={() => manualSync()}
+            aria-label={S.syncNow}
+            title={S.syncNow}
+          >
+            {syncingNow ? S.syncing : S.syncNow}
+          </button>
         </span>
-      )}
-      {/* #1535 — parent-gated notifications opt-in. */}
-      <span className="notif-toggle-wrap">
-        {!notifSupported ? (
-          <span className="notif-muted">{N.unsupported}</span>
-        ) : notifState === "loading" ? (
-          <span className="notif-muted">{N.loading}</span>
-        ) : (
-          <>
-            <span className={`sync-chip${notifState === "on" ? " on" : ""}`}>
-              <span aria-hidden="true">🔔</span>
-              <span>{N.label}</span>
-              <button
-                className="sync-btn"
-                disabled={notifBusy}
-                aria-pressed={notifState === "on"}
-                onClick={() => onToggleNotif()}
-                title={notifState === "on" ? N.enabled : N.needParent}
-              >
-                {notifState === "on" ? N.on : N.off}
-              </button>
-            </span>
-            {notifAskPass && (
-              <div className="notif-prompt-overlay" role="dialog" aria-modal="true" aria-label={N.passwordLabel}>
-                <div className="notif-prompt">
-                  <span className="notif-prompt-title">{N.needParent}</span>
-                  <span>{N.passwordLabel}</span>
-                  <input
-                    type="password"
-                    value={notifPassword}
-                    onChange={(e) => setNotifPassword(e.target.value)}
-                    placeholder={N.passwordPlaceholder}
-                    aria-label={N.passwordLabel}
-                    autoFocus
-                  />
-                  <div className="notif-prompt-actions">
-                    <button
-                      className="btn btn-small"
-                      disabled={notifBusy}
-                      onClick={() => confirmEnableNotifications()}
-                    >
-                      {notifBusy ? N.verifying : N.confirm}
-                    </button>
-                    <button className="btn btn-small ghost" disabled={notifBusy} onClick={cancelNotifAsk}>
-                      {N.cancel}
-                    </button>
-                  </div>
-                </div>
-              </div>
+        {/* #1553 — the kid DEVICE's sync signal. */}
+        {deviceSync && (deviceSync.lastSuccessAt !== null || deviceSync.pendingCount > 0) && (
+          <span
+            className="sync-chip"
+            title={
+              deviceSync.lastSuccessAt !== null
+                ? `${S.device} · ${S.deviceLastSynced} ⌁ ${relTime(deviceSync.lastSuccessAt, wizLang)} ${S.ago}`
+                : S.device
+            }
+          >
+            <span aria-hidden="true">⌁</span>
+            <span className="sync-when">{S.device}</span>
+            {deviceSync.lastSuccessAt !== null && (
+              <span className="sync-when">
+                {" · "}
+                {S.deviceLastSynced} ⌁ {relTime(deviceSync.lastSuccessAt, wizLang)} {S.ago}
+              </span>
             )}
-            {notifMsg && (
-              <span
-                className={`notif-msg ${notifMsg.kind === "err" ? "err" : notifMsg.kind === "ok" ? "ok" : "muted"}`}
-                role="status"
-              >
-                {notifMsg.text}
-                {notifMsg.kind === "muted" && (
-                  <button
-                    onClick={dismissNotifMsg}
-                    aria-label={N.dismiss}
-                    title={N.dismiss}
-                    style={{ border: "none", background: "transparent", color: "inherit", cursor: "pointer", marginLeft: 8, fontSize: 14 }}
-                  >
-                    ×
-                  </button>
+            {deviceSync.pendingCount > 0 && (
+              <span style={{ color: "#fbbf24", fontWeight: 800 }}>
+                {" · "}⚠{" "}
+                {S.pending.replace(
+                  "{n}",
+                  wizLang === "bn" ? toBnNum(deviceSync.pendingCount) : String(deviceSync.pendingCount)
                 )}
               </span>
             )}
-          </>
+          </span>
         )}
-      </span>
-      <span className="topbar-user" title={profile?.email ?? "signed in"}>
-        {profile?.display_name ?? "Parent"} 👨‍👩‍👧
-      </span>
-      <button className="btn btn-small ghost" onClick={onSignOut}>
-        {top.signOut}
-      </button>
+        {/* #1535 — parent-gated notifications opt-in. */}
+        <span className="notif-toggle-wrap">
+          {!notifSupported ? (
+            <span className="notif-muted">{N.unsupported}</span>
+          ) : notifState === "loading" ? (
+            <span className="notif-muted">{N.loading}</span>
+          ) : (
+            <>
+              <span className={`sync-chip${notifState === "on" ? " on" : ""}`}>
+                <span aria-hidden="true">🔔</span>
+                <span>{N.label}</span>
+                <button
+                  className="sync-btn"
+                  disabled={notifBusy}
+                  aria-pressed={notifState === "on"}
+                  onClick={() => onToggleNotif()}
+                  title={notifState === "on" ? N.enabled : N.needParent}
+                >
+                  {notifState === "on" ? N.on : N.off}
+                </button>
+              </span>
+              {notifAskPass && (
+                <div className="notif-prompt-overlay" role="dialog" aria-modal="true" aria-label={N.passwordLabel}>
+                  <div className="notif-prompt">
+                    <span className="notif-prompt-title">{N.needParent}</span>
+                    <span>{N.passwordLabel}</span>
+                    <input
+                      type="password"
+                      value={notifPassword}
+                      onChange={(e) => setNotifPassword(e.target.value)}
+                      placeholder={N.passwordPlaceholder}
+                      aria-label={N.passwordLabel}
+                      autoFocus
+                    />
+                    <div className="notif-prompt-actions">
+                      <button
+                        className="btn btn-small"
+                        disabled={notifBusy}
+                        onClick={() => confirmEnableNotifications()}
+                      >
+                        {notifBusy ? N.verifying : N.confirm}
+                      </button>
+                      <button className="btn btn-small ghost" disabled={notifBusy} onClick={cancelNotifAsk}>
+                        {N.cancel}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {notifMsg && (
+                <span
+                  className={`notif-msg ${notifMsg.kind === "err" ? "err" : notifMsg.kind === "ok" ? "ok" : "muted"}`}
+                  role="status"
+                >
+                  {notifMsg.text}
+                  {notifMsg.kind === "muted" && (
+                    <button
+                      onClick={dismissNotifMsg}
+                      aria-label={N.dismiss}
+                      title={N.dismiss}
+                      style={{ border: "none", background: "transparent", color: "inherit", cursor: "pointer", marginLeft: 8, fontSize: 14 }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              )}
+            </>
+          )}
+        </span>
+      </div>
+      {/* a11y/theme toggles + identity + sign-out: kept out of the scrollable
+          row so they are always reachable on a phone. */}
+      <div className="topbar-actions">
+        {/* 🧏 #250 — global accessibility toggles (shared with the kid app). */}
+        <span className="a11y-toggle-group" role="group" aria-label={A.bigText}>
+          <button
+            className={`a11y-toggle${a11y.bigText ? " on" : ""}`}
+            onClick={() => toggleA11y({ bigText: !a11y.bigText })}
+            aria-pressed={a11y.bigText}
+            title={A.bigText}
+            aria-label={A.bigText}
+          >
+            🔍 <span className="a11y-toggle-label">{A.bigText}</span>
+          </button>
+          <button
+            className={`a11y-toggle${a11y.highContrast ? " on" : ""}`}
+            onClick={() => toggleA11y({ highContrast: !a11y.highContrast })}
+            aria-pressed={a11y.highContrast}
+            title={A.highContrast}
+            aria-label={A.highContrast}
+          >
+            🎨 <span className="a11y-toggle-label">{A.highContrast}</span>
+          </button>
+          {/* 🎨 #254 — dashboard light/dark theme toggle (portal-only, persisted). */}
+          <button
+            className={`a11y-toggle${theme === "light" ? " on" : ""}`}
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            aria-pressed={theme === "light"}
+            title={T[theme === "light" ? "lightOn" : "darkOn"]}
+            aria-label={T[theme === "light" ? "lightOn" : "darkOn"]}
+          >
+            {theme === "light" ? "☀️" : "🌙"}{" "}
+            <span className="a11y-toggle-label">{T[theme]}</span>
+          </button>
+          {/* 🌐 #3046 — persistent EN/Bangla toggle. Mirrors the onboarding
+              wizard toggle so a parent who finished or skipped onboarding can
+              still switch the whole portal language. */}
+          <button
+            className="a11y-toggle"
+            onClick={() => onChangeLang(wizLang === "en" ? "bn" : "en")}
+            aria-pressed={wizLang === "bn"}
+            title="EN / বাংলা"
+            aria-label="EN / বাংলা"
+          >
+            {"🌐 "}
+            <span className="a11y-toggle-label">{wizLang === "en" ? "বাংলা" : "EN"}</span>
+          </button>
+        </span>
+        <span className="topbar-user" title={profile?.email ?? "signed in"}>
+          {profile?.display_name ?? "Parent"} 👨‍👩‍👧
+        </span>
+        <button className="btn btn-small ghost" onClick={onSignOut}>
+          {top.signOut}
+        </button>
+      </div>
     </header>
   );
 }
