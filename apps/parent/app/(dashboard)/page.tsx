@@ -1765,9 +1765,13 @@ export default function ParentDashboard() {
   // 🧵 #255 — session timeline, derived client-side from the SAME full-history
   // feed as the archive (offline after load). Day filter is remembered per kid.
   const activeSessions = activeId ? buildSessionTimeline(archActivity[activeId] ?? [], activeMastery) : [];
-  const sessionDays = [...new Set(activeSessions.map((s) => s.date))]
-    .sort((a, b) => (a < b ? 1 : -1))
-    .slice(0, 14);
+  // #3041 — keep the FULL distinct-day list so a parent can reach sessions on
+  // any active day, not just the 14 most recent. The card caps the visible
+  // chips and offers a "more…" affordance for the rest, leaving "All days" as
+  // the complete source.
+  const allSessionDays = [...new Set(activeSessions.map((s) => s.date))]
+    .sort((a, b) => (a < b ? 1 : -1));
+  const sessionDays = allSessionDays.slice(0, 14);
   const selSessionDay = activeId ? (sessionDay[activeId] ?? "all") : "all";
   const visibleSessions =
     selSessionDay === "all" ? activeSessions : activeSessions.filter((s) => s.date === selSessionDay);
@@ -2531,6 +2535,7 @@ export default function ParentDashboard() {
               activeId={activeId}
               activeSessions={activeSessions}
               sessionDays={sessionDays}
+              allSessionDays={allSessionDays}
               selSessionDay={selSessionDay}
               setSessionDay={setSessionDay}
               visibleSessions={visibleSessions}

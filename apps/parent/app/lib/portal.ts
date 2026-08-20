@@ -429,6 +429,9 @@ export const SESSION_LANGS = {
     loading: "Loading full history…",
     notLoaded: "The session timeline loads with the archive.",
     empty: "No sessions yet — play a few rounds and they’ll show up here.",
+    // #3041 — reveal older active days (the 14 most recent render first).
+    more: "more",
+    fewer: "fewer",
   },
   bn: {
     title: "🧵 সেশন টাইমলাইন",
@@ -442,6 +445,9 @@ export const SESSION_LANGS = {
     loading: "সম্পূর্ণ ইতিহাস লোড হচ্ছে…",
     notLoaded: "সেশন টাইমলাইন আর্কাইভের সাথে লোড হয়।",
     empty: "এখনো কোনো সেশন নেই — কিছু রাউন্ড খেলুন, এখানে দেখা যাবে।",
+    // #3041 — পুরনো সক্রিয় দিনগুলো দেখানো (সাম্প্রতিক ১৪ দিন আগে দেখায়)।
+    more: "আরও",
+    fewer: "কম",
   },
 } as const;
 
@@ -1622,6 +1628,59 @@ export function weekdayLimits(s: KidSettingsT): number[] {
 }
 export function writeWeekdayLimits(s: KidSettingsT, arr: number[]): KidSettingsT {
   return { ...s, weekday_limits_min: arr.join(",") };
+}
+
+/** #3052 — derive the playtime caption from the CURRENT per-day limits so it
+ *  never claims the 45/90 defaults after a parent chose "No limit" or a custom
+ *  value. Reports the real state (all days off / no limit / a named value) so
+ *  the text always agrees with the controls below it. */
+export function playtimeCaption(
+  lang: WizardLang,
+  name: string,
+  limits: number[]
+): string {
+  const bn = lang === "bn";
+  const fmt = (n: number) =>
+    bn ? String(n).replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]) : String(n);
+  // WEEKDAY_DEFAULTS is Mon..Sun: [45,45,45,45,45,90,90] — school = Mon..Fri,
+  // weekend = Sat..Sun. Split on the same boundary so the caption names the
+  // two groups the parent actually sees in the editor.
+  const school = limits.slice(0, 5); // Mon..Fri (school days)
+  const weekend = limits.slice(5); // Sat..Sun
+  const uniq = [...new Set(limits)];
+  const allOff = limits.every((n) => n === 0);
+
+  if (allOff) {
+    return bn
+      ? `${name}-এর জন্য সব দিন "বন্ধ" — এখন কোনো খেলার সময় সীমা নেই।`
+      : `${name} is set to Off every day — play time is not limited right now.`;
+  }
+  // Distinct rules for school days vs weekend (the default shape).
+  const schoolVal = school[0];
+  const weekendVal = weekend[0];
+  const schoolUniform = school.every((n) => n === schoolVal);
+  const weekendUniform = weekend.every((n) => n === weekendVal);
+  if (schoolUniform && weekendUniform && schoolVal !== weekendVal) {
+    const sStr = schoolVal === 0 ? (bn ? '"বন্ধ"' : '"Off"') : `${fmt(schoolVal)} ${bn ? "মিনিট" : "min"}`;
+    const wStr = weekendVal === 0 ? (bn ? '"বন্ধ"' : '"Off"') : `${fmt(weekendVal)} ${bn ? "মিনিট" : "min"}`;
+    return bn
+      ? `বর্তমানে: স্কুল দিনে ${sStr}, ছুটির দিনে ${wStr}।`
+      : `Currently: ${sStr} on school days, ${wStr} on weekends.`;
+  }
+  // Single uniform value (all same, incl. a flat "No limit" 90-style custom).
+  if (uniq.length === 1) {
+    const v = uniq[0];
+    if (v === 0) {
+      return bn ? `বর্তমানে: সব দিন "বন্ধ"।` : `Currently: Off every day.`;
+    }
+    return bn
+      ? `বর্তমানে: প্রতিদিন ${fmt(v)} মিনিট।`
+      : `Currently: ${fmt(v)} min every day.`;
+  }
+  // Mixed per-day values — summarize honestly rather than enumerate.
+  return bn
+    ? `বর্তমানে: দিন অনুযায়ী আলাদা সীমা সেট করা আছে।`
+    : `Currently: a custom per-day limit is set (see the rows above).`;
 }
 
 /** #248 — per-day quiet windows (Mon..Sun). Each entry is "HH:MM-HH:MM" or "-"

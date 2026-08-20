@@ -14,6 +14,7 @@ import {
   MONI_DELTA_LANGS,
   MONI_LANGS,
   PAUSE_LANGS,
+  playtimeCaption,
   SUBJECTS,
   VOICE_LANGS,
   VOICE_SPEEDS,
@@ -396,7 +397,7 @@ export default function LearningControls({
   <div className="ctrl-block">
     <h3>{LEARNING_LANGS[wizLang].playtimeTitle}</h3>
     <p className="muted small">
-      {LEARNING_LANGS[wizLang].playtimeHint.replace("{name}", active.name)}
+      {playtimeCaption(wizLang, active.name, weekdayLimits(activeSettings))}
     </p>
     <div className="weekday-limits">
       {WEEKDAYS.map((d, i) => {

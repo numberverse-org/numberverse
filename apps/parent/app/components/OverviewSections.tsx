@@ -247,12 +247,24 @@ export function WeeklyCard({
         </div>
       )}
       <div className="week-bars">
-        {activeWeekly.days.map((d) => (
-          <div key={d.date} className="week-col" title={`${weekdayShort(d.date)}: ${d.rounds} rounds`}>
-            <div className="week-bar" style={{ height: `${activeWeekly.days.length ? Math.max(4, Math.round((d.rounds / Math.max(1, ...activeWeekly.days.map((x) => x.rounds))) * 60)) : 0}px` }} />
-            <span className="week-day">{weekdayShort(d.date)}</span>
-          </div>
-        ))}
+        {activeWeekly.days.map((d) => {
+          // #3040 — a zero-round day must not keep the 4px floor, or an idle day
+          // looks identical to a light one. Render 0px / idle marker for 0 rounds
+          // and keep the floor only for nonzero bars.
+          const maxRounds = Math.max(1, ...activeWeekly.days.map((x) => x.rounds));
+          const idle = d.rounds === 0;
+          const h = idle ? 0 : Math.max(4, Math.round((d.rounds / maxRounds) * 60));
+          return (
+            <div key={d.date} className={`week-col${idle ? " idle" : ""}`} title={`${weekdayShort(d.date)}: ${d.rounds === 0 ? "no play" : `${d.rounds} rounds`}`}>
+              {idle ? (
+                <span className="week-idle" aria-hidden="true">·</span>
+              ) : (
+                <div className="week-bar" style={{ height: `${h}px` }} />
+              )}
+              <span className="week-day">{weekdayShort(d.date)}</span>
+            </div>
+          );
+        })}
       </div>
       {activeWeekly.mastered_this_week.length > 0 && (
         <p className="muted small mt-10">

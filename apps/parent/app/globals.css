@@ -1130,6 +1130,19 @@ hr { border: 0; border-top: 1px solid var(--nv-hr); margin: 20px 0; }
   border-radius: 7px 7px 3px 3px;
   background: linear-gradient(180deg, var(--nv-sky), var(--nv-mint));
 }
+/* #3040 — idle marker for zero-round days: a slim dot where the bar would be,
+   so "no play" can't be confused with a light (4px) day. */
+.week-idle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 30px;
+  min-height: 8px;
+  font-size: 16px;
+  line-height: 8px;
+  color: var(--nv-muted-soft, #9aa0a6);
+}
 .week-day {
   font-size: 10.5px;
   color: var(--nv-muted-soft);

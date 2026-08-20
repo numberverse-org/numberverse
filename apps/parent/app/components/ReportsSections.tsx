@@ -3,7 +3,7 @@
    Add locale keys to those maps in lib/portal and these cards follow. */
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { AccelerationRow, MasteryRow } from "../../lib/api";
 import {
   ACCEL_REASONS,
@@ -37,12 +37,13 @@ export function StoriesCard({ active, activeMastery }: { active: ActiveKid; acti
   {readingSkills.length === 0 ? (
     <p className="muted">No story games in the catalog yet.</p>
   ) : (
+    <>
     <table>
       <thead>
         <tr>
           <th>Story</th>
-          <th>Progress</th>
-          <th>Score</th>
+          <th>Adaptive mastery</th>
+          <th>This week</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -50,6 +51,11 @@ export function StoriesCard({ active, activeMastery }: { active: ActiveKid; acti
         {readingSkills.map((s) => {
           const m = activeMastery.find((x) => x.skill_id === s.id);
           const pct = m ? Math.min(100, Math.round(m.mastery * 100)) : 0;
+          // #3037 — this-week raw accuracy, separate from the BKT mastery bar so
+          // the two columns can't be read as the same number. A kid with little
+          // history can show high recent accuracy but low mastery — that's real
+          // signal, not contradiction, once the columns are labelled honestly.
+          const rawPct = m && m.attempts > 0 ? Math.round((m.correct / m.attempts) * 100) : null;
           const status = !m ? "🌱 Not started" : m.mastery >= 0.8 ? "✅ Finished" : "🔶 In progress";
           return (
             <tr key={s.id}>
@@ -69,13 +75,19 @@ export function StoriesCard({ active, activeMastery }: { active: ActiveKid; acti
                   "—"
                 )}
               </td>
-              <td>{m ? `${m.correct}/${m.attempts}` : "—"}</td>
+              <td>{rawPct === null ? "—" : `${rawPct}%`}</td>
               <td>{status}</td>
             </tr>
           );
         })}
       </tbody>
     </table>
+    <p className="muted small mt-8">
+      “Adaptive mastery” is the app's long-run estimate of how well {active.name} knows each
+      story quiz (it grows with history, so it can lag recent play). “This week” is the raw
+      share of this week's answers they got right.
+    </p>
+    </>
   )}
 </section>
   );
@@ -422,6 +434,7 @@ export function SessionsCard({
   activeId,
   activeSessions,
   sessionDays,
+  allSessionDays,
   selSessionDay,
   setSessionDay,
   visibleSessions,
@@ -432,6 +445,9 @@ export function SessionsCard({
   activeId: string | null;
   activeSessions: TimelineSession[];
   sessionDays: string[];
+  /** #3041 — the complete distinct-day list (sessionDays is the 14 most recent);
+   *  drives the "more…" chip so older days stay reachable. */
+  allSessionDays: string[];
   selSessionDay: string;
   setSessionDay: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
   visibleSessions: TimelineSession[];
@@ -439,6 +455,10 @@ export function SessionsCard({
   archiveLoaded: boolean;
   wizLang: WizardLang;
 }) {
+  // #3041 — reveal the full day list on demand; default to the 14 most recent.
+  const [showAllDays, setShowAllDays] = useState(false);
+  const displayedDays = showAllDays ? allSessionDays : sessionDays;
+  const olderCount = allSessionDays.length - sessionDays.length;
   return (
 <section className="card timeline-card" id="sessions">
   <h2>{SESSION_LANGS[wizLang].title}</h2>
@@ -459,7 +479,7 @@ export function SessionsCard({
         >
           {SESSION_LANGS[wizLang].allDays}
         </button>
-        {sessionDays.map((d) => (
+        {displayedDays.map((d) => (
           <button
             key={d}
             className={`timeline-chip${selSessionDay === d ? " on" : ""}`}
@@ -472,6 +492,15 @@ export function SessionsCard({
             })}
           </button>
         ))}
+        {olderCount > 0 && (
+          <button
+            className="timeline-chip more"
+            onClick={() => setShowAllDays((v) => !v)}
+            aria-expanded={showAllDays}
+          >
+            {showAllDays ? SESSION_LANGS[wizLang].fewer : `${SESSION_LANGS[wizLang].more} (${olderCount})`}
+          </button>
+        )}
       </div>
       <ul className="timeline-list">
         {visibleSessions.map((s) => {
