@@ -9,6 +9,7 @@ import {
   STREAK_LANGS,
   TIMELINE_LANGS,
   gameLabel,
+  longDateLabel,
   narrTitleBn,
   narrTitleEn,
   shortDate,
@@ -90,7 +91,7 @@ export function TodayCard({
   <div className="daily-head">
     <h2>{L.todayTitle}</h2>
     <span className="muted small">
-      {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+      {longDateLabel(new Date(), wizLang)}
     </span>
   </div>
   {todayRounds === 0 && todayMastered.length === 0 ? (

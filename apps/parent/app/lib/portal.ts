@@ -346,6 +346,9 @@ export const KID_FORM_LANGS = {
     namePlaceholder: "e.g. Aria",
     birthLabel: "Birth year",
     birthPlaceholder: "e.g. 2019",
+    // #3055 — clearing the field is ignored: the current year stays. Say so
+    // inline instead of silently leaving a blank field that submits a stale value.
+    birthClearHint: "Left empty, the year {year} stays — type a year to change it.",
     adding: "Adding…",
     addKid: "Add kid",
     saving: "Saving…",
@@ -373,6 +376,8 @@ export const KID_FORM_LANGS = {
     namePlaceholder: "যেমন: আরিয়া",
     birthLabel: "জন্মসাল",
     birthPlaceholder: "যেমন: ২০১৯",
+    // #3055 — ফাঁকা রাখলে পুরনো সালই বহাল থাকে; তা স্পষ্ট করে বলা হচ্ছে।
+    birthClearHint: "ফাঁকা রাখলে {year} সালই থেকে যাবে — বদলাতে চাইলে সাল টাইপ করুন।",
     adding: "যোগ হচ্ছে…",
     addKid: "বাচ্চা যোগ করুন",
     saving: "সংরক্ষণ হচ্ছে…",
@@ -1887,15 +1892,41 @@ export function toBnNum(n: number): string {
   return String(n).replace(/[0-9]/g, (x) => "০১২৩৪৫৬৭৮৯"[Number(x)]);
 }
 
+/** Bangla abbreviated month names (0-indexed by JS Date.getMonth). */
+const BN_M = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"];
+
+/** Bangla weekday names (0=Sunday, matching JS Date.getDay). */
+const BN_WD = ["রবি", "সোম", "মঙ্গল", "বুধ", "বৃহঃ", "শুক্র", "শনি"];
+
 /** #79 — short "12 Aug" / "১২ আগস্ট" date for the mastery timeline. */
 export function shortDate(iso: string, lang: "en" | "bn"): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   if (lang === "bn") {
-    const BN_M = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"];
     return `${toBnNum(d.getDate())} ${BN_M[d.getMonth()]}`;
   }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** #3000 — weekday+month+day date label honoring the portal language, not the
+ *  device locale (a Bangla-first parent on a non-BN phone sees Bangla dates).
+ *  Used by the session-day filter chips. */
+export function localDayLabel(iso: string, lang: "en" | "bn"): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  if (lang === "bn") {
+    return `${BN_WD[d.getDay()]}, ${toBnNum(d.getDate())} ${BN_M[d.getMonth()]}`;
+  }
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+/** #3000 — full "weekday, month day" date (e.g. Today's date) honoring the
+ *  portal language. */
+export function longDateLabel(d: Date, lang: "en" | "bn"): string {
+  if (lang === "bn") {
+    return `${BN_WD[d.getDay()]}, ${toBnNum(d.getDate())} ${BN_M[d.getMonth()]}`;
+  }
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
 
 /** #85 — "2m ago" / "৩মি আগে" for the sync chip. */
@@ -2172,15 +2203,19 @@ export function buildFlaggedSkills(stories: LearningStoryRow[]): FlaggedSkill[] 
   const week = stories.filter((s) => !s.outcome && Date.now() - new Date(s.created_at).getTime() <= WEEK_MS);
   if (week.length === 0) return [];
 
-  const bySkill = new Map<string, { wrong: number; fatigue: number; mis: number; gap: number; guessing: number; misCode?: string }>();
+  const bySkill = new Map<string, { wrong: number; fatigue: number; mis: number; gap: number; guessing: number; misCodes: Map<string, number> }>();
   for (const s of week) {
-    const e = bySkill.get(s.skill_id) ?? { wrong: 0, fatigue: 0, mis: 0, gap: 0, guessing: 0 };
+    const e = bySkill.get(s.skill_id) ?? { wrong: 0, fatigue: 0, mis: 0, gap: 0, guessing: 0, misCodes: new Map() };
     e.wrong++;
     if (s.error_kind === "fatigue") e.fatigue++;
     else if (s.error_kind === "misconception") e.mis++;
     else if (s.error_kind === "gap") e.gap++;
     else if (s.error_kind === "guessing") e.guessing++;
-    if (s.misconception_code) e.misCode = s.misconception_code;
+    // #3039 — count per misconception_code, not the last code seen, so the
+    // reason names the RECURRING misconception and counts THAT code's stories.
+    if (s.misconception_code) {
+      e.misCodes.set(s.misconception_code, (e.misCodes.get(s.misconception_code) ?? 0) + 1);
+    }
     bySkill.set(s.skill_id, e);
   }
 
@@ -2194,10 +2229,20 @@ export function buildFlaggedSkills(stories: LearningStoryRow[]): FlaggedSkill[] 
     .slice(0, 3);
 
   const reason = (f: (typeof scored)[number]): { en: string; bn: string } => {
-    if (f.mis > 0 && f.misCode && NARR_MIS[f.misCode]) {
+    // #3039 — most-frequent misconception code for this skill (ties keep the
+    // first-encountered code, which is stable enough for prose).
+    let topMisCode: string | null = null;
+    let topMisCount = 0;
+    for (const [code, count] of f.misCodes) {
+      if (count > topMisCount) {
+        topMisCode = code;
+        topMisCount = count;
+      }
+    }
+    if (f.mis > 0 && topMisCode && NARR_MIS[topMisCode]) {
       return {
-        en: `Moni spotted a pattern — ${NARR_MIS[f.misCode].en} (${f.mis}×). A side-by-side reteach will crack it.`,
-        bn: `মনি একটি ধাঁচ ধরেছে — ${NARR_MIS[f.misCode].bn} (${f.mis} বার)। পাশাপাশি দেখিয়ে শেখালে সহজেই ঠিক হবে।`,
+        en: `Moni spotted a pattern — ${NARR_MIS[topMisCode].en} (${topMisCount}×). A side-by-side reteach will crack it.`,
+        bn: `মনি একটি ধাঁচ ধরেছে — ${NARR_MIS[topMisCode].bn} (${topMisCount} বার)। পাশাপাশি দেখিয়ে শেখালে সহজেই ঠিক হবে।`,
       };
     }
     if (f.fatigue > 0) {

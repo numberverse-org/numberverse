@@ -136,7 +136,7 @@ export default function ShareClient() {
             )}
             {snap.top_game && (
               <p className="muted small center" style={{ marginTop: 14 }}>
-                {t.favoriteGame}: {snap.top_game.replace("game-", "").replace(/-/g, " ")}
+                {t.favoriteGame}: {snap.top_game}
               </p>
             )}
           </section>

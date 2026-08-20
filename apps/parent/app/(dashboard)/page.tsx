@@ -2445,6 +2445,25 @@ export default function ParentDashboard() {
             />
           </SectionErr>
 
+          {/* ── controls ── */}
+          {/* #3054 — learning controls sit directly after the summary (before any
+              printable/explore cards) so the parent's settings surface is
+              discoverable without scrolling past Games/Compare/Worksheet/Flashcards. */}
+          <SectionErr label="learning-controls">
+            <LearningControls
+              active={active}
+              activeSettings={activeSettings}
+              patchSettings={patchSettings}
+              wizLang={wizLang}
+              busy={busy}
+              handleSaveSettings={handleSaveSettings}
+              savedTick={savedTick}
+              onTogglePause={() => void handleTogglePause()}
+              saveError={saveError}
+              settingsLoaded={activeId ? settingsLoaded[activeId] === true : false}
+            />
+          </SectionErr>
+
           {/* #244 — daily play summary: today's headline on open */}
           <SectionErr label="today">
             <TodayCard
@@ -2612,22 +2631,6 @@ export default function ParentDashboard() {
               setQrCards={setQrCards}
             />
           </SectionErr>
-          {/* ── controls ── */}
-          <SectionErr label="learning-controls">
-            <LearningControls
-              active={active}
-              activeSettings={activeSettings}
-              patchSettings={patchSettings}
-              wizLang={wizLang}
-              busy={busy}
-              handleSaveSettings={handleSaveSettings}
-              savedTick={savedTick}
-              onTogglePause={() => void handleTogglePause()}
-              saveError={saveError}
-              settingsLoaded={activeId ? settingsLoaded[activeId] === true : false}
-            />
-          </SectionErr>
-
           {/* ── activity feed ── */}
           <SectionErr label="activity-feed">
             <ActivityFeed

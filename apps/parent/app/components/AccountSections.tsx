@@ -55,6 +55,9 @@ export function AddKidCard({
 }) {
   // #1511 — inline range hint for the birth-year field (no magic default).
   const [birthHint, setBirthHint] = useState<string | null>(null);
+  // #3055 — track when the field was cleared so it visually mirrors the truth
+  // (the committed year) instead of showing a blank that submits a stale value.
+  const [draftBlank, setDraftBlank] = useState(false);
   const t = KID_FORM_LANGS[wizLang];
   if (!showAdd) return null;
   return (
@@ -81,7 +84,7 @@ export function AddKidCard({
       inputMode="numeric"
       min={2010}
       max={2030}
-      value={editBirthYear}
+      value={draftBlank ? "" : editBirthYear}
       aria-label={t.birthLabel}
       role="spinbutton"
       aria-valuemin={2010}
@@ -92,9 +95,14 @@ export function AddKidCard({
         // snaps to a magic default, and out-of-range shows an inline hint.
         const raw = e.target.value;
         if (raw === "") {
-          setBirthHint(null);
+          // #3055 — a cleared field must not silently submit the previous year.
+          // State keeps the committed value; the hint says so, and the field
+          // shows blank until it loses focus, then re-renders the real year.
+          setDraftBlank(true);
+          setBirthHint(t.birthClearHint.replace("{year}", String(editBirthYear)));
           return;
         }
+        setDraftBlank(false);
         const v = Number(raw);
         if (!Number.isFinite(v)) return;
         if (v < 2010 || v > 2030) {
@@ -105,6 +113,7 @@ export function AddKidCard({
         setBirthHint(null);
         setEditBirthYear(v);
       }}
+      onBlur={() => setDraftBlank(false)}
       onKeyDown={(e) => {
         if (e.key === "ArrowUp" && editBirthYear < 2030) setEditBirthYear(editBirthYear + 1);
         if (e.key === "ArrowDown" && editBirthYear > 2010) setEditBirthYear(editBirthYear - 1);
@@ -448,6 +457,8 @@ export function EditKidCard({
 }) {
   // #1511 — inline range hint for the birth-year field (no magic default).
   const [birthHint, setBirthHint] = useState<string | null>(null);
+  // #3055 — see AddKidCard; keep the field honest when cleared.
+  const [draftBlank, setDraftBlank] = useState(false);
   const t = KID_FORM_LANGS[wizLang];
   return (
 <section className="card danger" id="edit-kid">
@@ -473,7 +484,7 @@ export function EditKidCard({
         inputMode="numeric"
         min={2010}
         max={2030}
-        value={editBirthYear}
+        value={draftBlank ? "" : editBirthYear}
         aria-label={t.birthLabel}
         role="spinbutton"
         aria-valuemin={2010}
@@ -484,9 +495,13 @@ export function EditKidCard({
           // snaps to a magic default, and out-of-range shows an inline hint.
           const raw = e.target.value;
           if (raw === "") {
-            setBirthHint(null);
+            // #3055 — a cleared field must not silently submit the previous
+            // year; surface a hint and re-render the real year on blur.
+            setDraftBlank(true);
+            setBirthHint(t.birthClearHint.replace("{year}", String(editBirthYear)));
             return;
           }
+          setDraftBlank(false);
           const v = Number(raw);
           if (!Number.isFinite(v)) return;
           if (v < 2010 || v > 2030) {
@@ -497,6 +512,7 @@ export function EditKidCard({
           setBirthHint(null);
           setEditBirthYear(v);
         }}
+        onBlur={() => setDraftBlank(false)}
         onKeyDown={(e) => {
           if (e.key === "ArrowUp" && editBirthYear < 2030) setEditBirthYear(editBirthYear + 1);
           if (e.key === "ArrowDown" && editBirthYear > 2010) setEditBirthYear(editBirthYear - 1);
