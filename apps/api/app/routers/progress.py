@@ -278,7 +278,21 @@ async def record_progress(
     db: AsyncSession = Depends(get_db),
 ):
     params = await _adaptive_params(db)
-    kid_ids = {e.kid_id for e in body.events}
+    # #3080 — the coin-sync loop iterated only the event kid_ids, so a device
+    # with coins to sync but zero events in this batch (a spend that left no
+    # rounds) never updated the wallet. Build the ownership/lock set from the
+    # UNION of the batch's event kid_ids AND the coins dict keys, so a coin-only
+    # sync is always processed (ownership-checked + wallet-updated) even when
+    # there is no accompanying progress event.
+    event_kid_ids = {e.kid_id for e in body.events}
+    coin_kid_ids = set()
+    if body.coins:
+        for kid_str in body.coins:
+            try:
+                coin_kid_ids.add(uuid.UUID(kid_str))
+            except (ValueError, AttributeError):
+                continue
+    kid_ids = event_kid_ids | coin_kid_ids
     for kid_id in kid_ids:
         # #3100 — lock the Kid row so this write serializes against a concurrent
         # reset (which also locks the Kid). Without the lock, a /progress could

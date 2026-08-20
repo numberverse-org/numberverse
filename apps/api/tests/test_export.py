@@ -285,6 +285,26 @@ for _plain in ("Aarif", "আরিফ"):
     _plain_cell = next(iter(csv.reader([_plain_csv.splitlines()[1]])))[0]
     check(f"csv keeps {_plain!r} unchanged", _plain_cell, _plain)
 
+print("⑥b  #3083 — export JSON encoder rejects bare NaN/Infinity…")
+# The input schemas reject NaN/negative difficulty at the boundary, but a legacy
+# row could still hold a non-finite float. `_safe_json_dumps` (allow_nan=False)
+# turns that into a hard error instead of emitting invalid RFC-7159 JSON.
+nan_payload = {"difficulty": float("nan")}
+try:
+    export._safe_json_dumps(nan_payload)
+    check("export serializes a NaN payload without error", "no-error", "ValueError")
+except ValueError:
+    check("export serializes a NaN payload without error", "ValueError", "ValueError")
+inf_payload = {"response_ms": float("inf")}
+try:
+    export._safe_json_dumps(inf_payload)
+    check("export serializes an Infinity payload without error", "no-error", "ValueError")
+except ValueError:
+    check("export serializes an Infinity payload without error", "ValueError", "ValueError")
+# A clean payload round-trips with no NaN/Infinity tokens in the bytes.
+ok = export._safe_json_dumps({"difficulty": 1.0, "response_ms": 900})
+check("export clean payload serializes fine", ("NaN" not in ok and "Infinity" not in ok), True)
+
 print("⑦  #1768 — export gets its own much smaller per-minute budget…")
 # Read-only import of the shared write-tier constant — app/ratelimit.py is
 # owned by a sibling task, so we never modify it, only read it. The router's

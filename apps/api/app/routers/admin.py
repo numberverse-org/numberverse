@@ -41,13 +41,24 @@ from ..models import (
     Subscription,
     TenantConfig,
 )
-from ..ratelimit import rate_limit
+from ..ratelimit import rate_limit, read_rate_limit
 from ..schemas import StorySearchIn, StorySearchOut
 from ..story_embedding_model import HAVE_VECTOR, StoryEmbedding
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 log = logging.getLogger("numberverse.admin")
+
+# #3118 — the generic admin CRUD routes previously depended on require_admin
+# ALONE (no rate_limit at all), so a compromised/misused admin token could issue
+# unbounded lists and writes. Admin is the most expensive endpoint class (every
+# list ran a full-table COUNT(*)) yet had the least protection. Add the same
+# account+IP write budget every other write surface carries, plus a read-tier
+# budget for the list/get reads. The limiter deps resolve `get_current_profile`
+# (cached per request) independently of `require_admin`'s role gate, so both the
+# 403 role check AND the 429 budget apply.
+ADMIN_WRITE_RATE_LIMIT = rate_limit()
+ADMIN_READ_RATE_LIMIT = read_rate_limit()
 
 # react-admin resources → model. Keys are the REST resource names.
 WHITELIST: dict[str, type] = {
@@ -851,6 +862,7 @@ async def list_resource(
     filter: str = None,
     _: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(ADMIN_READ_RATE_LIMIT),
 ):
     model = WHITELIST.get(resource)
     if not model:
@@ -988,8 +1000,13 @@ async def list_resource(
         stmt = stmt.order_by(col.asc() if direction.upper() == "ASC" else col.desc())
 
     # Pagination (react-admin sends range=[start,end]).
-    total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    # #3118 — the full-table COUNT(*) total used to run on EVERY list call even
+    # when the client sent no `range` (no Content-Range header requested), so a
+    # paged list of profiles/skills forced a repeated full-table scan for a total
+    # it never surfaced. Only compute the total when the caller actually asked
+    # for a range; a range-less list skips it entirely.
     if start is not None:
+        total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
         stmt = stmt.offset(start).limit(end - start + 1)
 
     result = await db.scalars(stmt)
@@ -1012,6 +1029,7 @@ async def get_resource(
     request: Request,
     _: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(ADMIN_READ_RATE_LIMIT),
 ):
     model = WHITELIST.get(resource)
     if not model:
@@ -1047,6 +1065,7 @@ async def create_resource(
     request: Request,
     profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(ADMIN_WRITE_RATE_LIMIT),
 ):
     model = WHITELIST.get(resource)
     if not model:
@@ -1166,6 +1185,7 @@ async def update_resource(
     request: Request,
     profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(ADMIN_WRITE_RATE_LIMIT),
 ):
     model = WHITELIST.get(resource)
     if not model:
@@ -1244,6 +1264,7 @@ async def delete_resource(
     request: Request,
     profile: Profile = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: Profile = Depends(ADMIN_WRITE_RATE_LIMIT),
 ):
     model = WHITELIST.get(resource)
     if not model:

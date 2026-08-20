@@ -237,7 +237,60 @@ check("#1649 coins accepts 1_000_000 (boundary)", accepts(ProgressBatchIn, event
 check("#1649 coins rejects 1_000_001", rejects(ProgressBatchIn, events=base_events, coins={KID: 1_000_001}), True)
 check("#1649 coins rejects a negative value", rejects(ProgressBatchIn, events=base_events, coins={KID: -1}), True)
 
+print("④  #3083 difficulty + response_ms — non-negative finite ranges (reject -5/NaN/±inf)…")
+
+import math  # noqa: E402
+
+# ProgressEventIn.difficulty is a float with ge=0 + allow_inf_nan=False: a
+# tampered client can no longer persist -5, NaN, or ±inf.
+check("#3083 ProgressEventIn.difficulty accepts 0 (boundary)",
+      accepts(ProgressEventIn, **pevent(difficulty=0)), True)
+check("#3083 ProgressEventIn.difficulty accepts a normal 1.5",
+      accepts(ProgressEventIn, **pevent(difficulty=1.5)), True)
+check("#3083 ProgressEventIn.difficulty rejects -5",
+      rejects(ProgressEventIn, **pevent(difficulty=-5)), True)
+check("#3083 ProgressEventIn.difficulty rejects NaN",
+      rejects(ProgressEventIn, **pevent(difficulty=float("nan"))), True)
+check("#3083 ProgressEventIn.difficulty rejects +inf",
+      rejects(ProgressEventIn, **pevent(difficulty=float("inf"))), True)
+check("#3083 ProgressEventIn.difficulty rejects -inf",
+      rejects(ProgressEventIn, **pevent(difficulty=float("-inf"))), True)
+check("#3083 ProgressEventIn.difficulty defaults to None",
+      ProgressEventIn(**pevent()).difficulty, None)
+
+# ProgressEventIn.response_ms (RoundedInt) — a fraction rounds to whole ms, but
+# negative/NaN/±inf are rejected (a non-finite float must never raise a 500 via
+# round(inf)).
+check("#3083 ProgressEventIn.response_ms accepts a normal int",
+      accepts(ProgressEventIn, **pevent(response_ms=1400)), True)
+check("#3083 ProgressEventIn.response_ms rounds a fraction",
+      ProgressEventIn(**pevent(response_ms=1234.456)).response_ms, 1234)
+check("#3083 ProgressEventIn.response_ms rejects a negative",
+      rejects(ProgressEventIn, **pevent(response_ms=-1)), True)
+check("#3083 ProgressEventIn.response_ms rejects NaN",
+      rejects(ProgressEventIn, **pevent(response_ms=float("nan"))), True)
+check("#3083 ProgressEventIn.response_ms rejects +inf",
+      rejects(ProgressEventIn, **pevent(response_ms=float("inf"))), True)
+check("#3083 ProgressEventIn.response_ms rejects -inf",
+      rejects(ProgressEventIn, **pevent(response_ms=float("-inf"))), True)
+
+# LearningStoryIn carries the same difficulty/response_ms fields — same guard.
+check("#3083 LearningStoryIn.difficulty rejects -5",
+      rejects(LearningStoryIn, **story(difficulty=-5)), True)
+check("#3083 LearningStoryIn.difficulty rejects NaN",
+      rejects(LearningStoryIn, **story(difficulty=float("nan"))), True)
+check("#3083 LearningStoryIn.difficulty rejects +inf",
+      rejects(LearningStoryIn, **story(difficulty=float("inf"))), True)
+check("#3083 LearningStoryIn.response_ms rejects a negative",
+      rejects(LearningStoryIn, **story(response_ms=-1)), True)
+check("#3083 LearningStoryIn.response_ms rejects NaN",
+      rejects(LearningStoryIn, **story(response_ms=float("nan"))), True)
+check("#3083 LearningStoryIn.response_ms rejects +inf",
+      rejects(LearningStoryIn, **story(response_ms=float("inf"))), True)
+check("#3083 LearningStoryIn.difficulty accepts a normal 1.0",
+      accepts(LearningStoryIn, **story(difficulty=1.0)), True)
+
 print()
 print(f"✓ schemas validation matrix: {passes} passed, {fails} failed")
-print(f"SUMMARY schemas: {passes} checks, #1824+#1828+#1641+#1642+#1643+#1649 fixed, test green")
+print(f"SUMMARY schemas: {passes} checks, #1824+#1828+#1641+#1642+#1643+#1649+#3083 fixed, test green")
 sys.exit(1 if fails else 0)

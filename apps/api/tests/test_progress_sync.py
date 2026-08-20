@@ -280,6 +280,19 @@ async def main():
     check("snapshot includes wallet_seq", snap.wallet_seq, 3)
     check("snapshot coins default 0", snap.coins, 0)
 
+    # #3080 — a COINS-ONLY batch (zero events) must still update the wallet.
+    # The coin-sync loop used to iterate only the batch's EVENT kid_ids, so a
+    # device with coins to sync but no rounds in the batch silently dropped the
+    # wallet write. The union of event + coin kid_ids fixes it: an empty events
+    # list with a coins entry still ownership-checks the kid and applies the
+    # atomic LWW wallet update.
+    fake = FakeSession()
+    kid = fake.add_kid(wallet_seq=0)
+    await post_progress(fake, kid.id, [],
+                        coins={str(kid.id): 100}, wallet_seq={str(kid.id): 1})
+    check("coins-only batch: wallet_seq adopted", kid.wallet_seq, 1)
+    check("coins-only batch: coins adopted (wallet updated to 100)", kid.coins, 100)
+
     print("②  #1803 — sequential batches accumulate attempts; advisory lock per (kid, skill)…")
 
     # (a) Two sequential batches on the SAME skill accumulate to the sum.

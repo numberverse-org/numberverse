@@ -58,6 +58,17 @@ def _attachment(filename: str) -> str:
     return f'attachment; filename="{filename}"'
 
 
+def _safe_json_dumps(obj: dict) -> str:
+    """#3083 — serialize export payloads as STRICT RFC-7159 JSON.
+
+    `json.dumps` emits bare `NaN`/`Infinity` tokens by default (invalid JSON for
+    strict consumers). The input schemas now reject them at the boundary, but a
+    legacy row could still carry a non-finite float into the export; `allow_nan=
+    False` makes that a hard error rather than emitting invalid JSON.
+    """
+    return json.dumps(obj, ensure_ascii=False, indent=2, allow_nan=False)
+
+
 async def _owned_kids(db: AsyncSession, profile: Profile) -> list[Kid]:
     return (await db.scalars(select(Kid).where(Kid.profile_id == profile.id).order_by(Kid.created_at))).all()
 
@@ -176,7 +187,7 @@ async def export_json(
     # heaviest privacy surface; the parent should see when one was pulled).
     db.add(ParentEvent(profile_id=profile.id, action="export_json", event_type="export", target="all"))
     await db.commit()
-    data = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    data = _safe_json_dumps(payload).encode("utf-8")
     return Response(
         content=data,
         media_type="application/json",

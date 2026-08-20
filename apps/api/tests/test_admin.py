@@ -1311,6 +1311,53 @@ async def _run_admin_integrity():
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# ⑰  #3118 — admin CRUD write/read endpoints carry a rate budget, and a
+#     range-less list skips the full-table COUNT(*)
+# ══════════════════════════════════════════════════════════════════════════
+
+def _test_admin_crud_throttle():
+    print("⑰  #3118 — admin CRUD rate budgets + range-less list skips COUNT(*)…")
+
+    # (a) the write and read limiters exist and are the rate_limit/read_rate_limit
+    #     products (account+IP write budget; read-tier budget).
+    write_limit = inspect.getclosurevars(admin_router.ADMIN_WRITE_RATE_LIMIT).nonlocals.get("limit")
+    read_limit = inspect.getclosurevars(admin_router.ADMIN_READ_RATE_LIMIT).nonlocals.get("limit")
+    check("ADMIN_WRITE_RATE_LIMIT budget is the 120/min default", write_limit, _REQUESTS_PER_MIN)
+    check("ADMIN_READ_RATE_LIMIT budget is the read-tier default",
+          read_limit is not None and read_limit > _REQUESTS_PER_MIN, True)
+
+    # (b) every generic CRUD handler declares an `_rl` rate-limit dependency param.
+    for name in ("list_resource", "get_resource", "create_resource", "update_resource", "delete_resource"):
+        sig = inspect.signature(getattr(admin_router, name))
+        check(f"{name} declares the _rl rate-limit param", "_rl" in sig.parameters, True)
+
+    # (c) a range-less list never issues the COUNT(*) total query. The fake DB
+    #     records every stmt handed to scalars(); a range-less list must NOT
+    #     produce a stmt whose compiled SQL contains "count".
+    prof = _profile()
+    db = _FakeDB()
+    db.list_rows = [_content_row("c1", "One")]
+
+    async def _range_less_list():
+        await admin_router.list_resource("content_items", _request(), None, None, None, prof, db)
+
+    asyncio.run(_range_less_list())
+    # the SELECT stmt is the only one handed to scalars() (no COUNT(*))
+    count_stmts = [s for s in db.last_stmts if "count" in str(s.compile()).lower()]
+    check("range-less list issues NO COUNT(*) scan", count_stmts, [])
+
+    # (d) a ranged list STILL computes the total (Content-Range header present).
+    db2 = _FakeDB()
+    db2.list_rows = [_content_row("c1", "One")]
+
+    async def _ranged_list():
+        return await admin_router.list_resource("content_items", _request(), None, "[0,0]", None, prof, db2)
+
+    resp = asyncio.run(_ranged_list())
+    check("ranged list still returns Content-Range", resp.headers.get("Content-Range"), "content_items 0-0/1")
+
+
+# ══════════════════════════════════════════════════════════════════════════
 
 def _run():
     test_mass_assignment_guard()
@@ -1330,6 +1377,7 @@ def _run():
     test_search_embed_rate_limits()
     asyncio.run(_run_search_embed_direct_calls())
     asyncio.run(_run_admin_reset_password())
+    _test_admin_crud_throttle()
 
     print()
     if fails:

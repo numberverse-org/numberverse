@@ -1,4 +1,5 @@
 import json
+import math
 import re
 import unicodedata
 import uuid
@@ -15,12 +16,28 @@ from pydantic import BaseModel, BeforeValidator, EmailStr, Field, field_validato
 # check — this also un-sticks events queued BEFORE the client-side rounding fix.
 def _round_int(v: int | float | str | None) -> int | float | str | None:
     if isinstance(v, float):
+        # #3083 — `round(float('inf'))` / `round(float('-inf'))` raise
+        # OverflowError (→ 500) and `round(float('nan'))` yields a float that
+        # trips the int conversion with a confusing error. Return non-finite
+        # floats unchanged so the downstream int coercion rejects them as a
+        # clean 422 instead of a 500.
+        if not math.isfinite(v):
+            return v
         return round(v)
     return v
 
 
 RoundedInt = Annotated[int | None, BeforeValidator(_round_int)]
 RoundedIntRequired = Annotated[int, BeforeValidator(_round_int)]
+
+
+# #3083 — difficulty/response_ms are client-reported numeric fields that used to
+# pass any float/negative through (and Python's json.loads accepts the bare NaN
+# literal, which then serializes back out as invalid RFC-7159 JSON). `ge=0` +
+# `allow_inf_nan=False` together reject negatives, NaN AND ±inf at the boundary,
+# so a tampered client can never persist nonsense into the activity feed, weekly
+# report, or export.
+_NONNEG_FINITE_FLOAT = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 
 
 # ── Auth ──
@@ -517,8 +534,8 @@ class ProgressEventIn(BaseModel):
     skill_id: str = Field(max_length=64)
     game_id: str = Field(max_length=64)
     correct: bool
-    response_ms: RoundedInt = None
-    difficulty: float | None = None
+    response_ms: RoundedInt = Field(default=None, ge=0, allow_inf_nan=False)
+    difficulty: _NONNEG_FINITE_FLOAT | None = None
     # #1023 — durable-outbox uid for dedup + BKT replay protection. Optional so
     # pre-dedup clients still post; the server synthesizes one when absent.
     uid: str | None = None
@@ -655,8 +672,8 @@ class LearningStoryIn(BaseModel):
     error_kind: str | None = Field(default=None, max_length=24)
     misconception_code: str | None = Field(default=None, max_length=64)
     action: str | None = Field(default=None, max_length=24)
-    difficulty: float | None = None
-    response_ms: RoundedInt = None
+    difficulty: _NONNEG_FINITE_FLOAT | None = None
+    response_ms: RoundedInt = Field(default=None, ge=0, allow_inf_nan=False)
     wrong_streak: RoundedInt = None
     context: dict = Field(default_factory=dict)
 
