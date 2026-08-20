@@ -74,7 +74,7 @@ export function ActivityFeed({ active, activity, wizLang }: {
                 </span>
               ) : null}
             </span>
-            <span className="activity-time">{fmtTime(a.created_at)}</span>
+            <span className="activity-time">{fmtTime(a.created_at, wizLang)}</span>
           </li>
         ))}
       </ul>
@@ -122,7 +122,7 @@ export function MissedCard({ active, missedSkills, wizLang }: {
             {ms.misses.map((m, i) => (
               <li key={i} className="missed-row">
                 <span className="missed-game">{gameLabel(m.gameId, wizLang)}</span>
-                <span className="missed-time">{fmtTime(m.at)}</span>
+                <span className="missed-time">{fmtTime(m.at, wizLang)}</span>
                 <span className="missed-detail">
                   {m.wrongAnswer != null && `${MISSED_LANGS[wizLang].picked} ${m.wrongAnswer}`}
                   {m.wrongAnswer != null && m.correctAnswer != null && " · "}

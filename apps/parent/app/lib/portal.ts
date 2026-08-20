@@ -516,6 +516,13 @@ export const ACCOUNT_LANGS = {
     sessionEnded: "Your session ended — sign in again.",
     // #1511 — birth-year range hint (mirrors WIZARD_LANGS.birthRangeErr).
     birthRangeErr: "Birth year must be between 2010 and 2030.",
+    // #2966 — active-logins device/session rows, localized so the "signed in /
+    // last seen" lines match the portal language instead of hardcoded English.
+    thisDevice: "This device",
+    currentSession: "current",
+    signedIn: "signed in",
+    lastSeen: "last seen",
+    unknownDevice: "Unknown device",
     // #1513 — unsaved-settings guard.
     unsavedConfirm: "Unsaved changes will be lost — continue?",
     unsavedContinue: "Continue",
@@ -566,6 +573,12 @@ export const ACCOUNT_LANGS = {
     sessionEnded: "আপনার সেশন শেষ হয়েছে — আবার সাইন ইন করুন।",
     // #1511 — birth-year range hint (mirrors WIZARD_LANGS.birthRangeErr).
     birthRangeErr: "জন্মসাল ২০১০ থেকে ২০৩০-এর মধ্যে হতে হবে।",
+    // #2966 — active-logins device/session rows (Bangla).
+    thisDevice: "এই ডিভাইস",
+    currentSession: "বর্তমান",
+    signedIn: "সাইন ইন হয়েছে",
+    lastSeen: "সর্বশেষ দেখা",
+    unknownDevice: "অজানা ডিভাইস",
     // #1513 — unsaved-settings guard.
     unsavedConfirm: "সংরক্ষণ না করা পরিবর্তন হারিয়ে যাবে — চালিয়ে যাবেন?",
     unsavedContinue: "চালিয়ে যান",
@@ -868,10 +881,17 @@ export function gameLabel(id: string, lang: "en" | "bn" = "en"): string {
   return GAME_LABELS[id] ?? id.replace("game-", "").replace(/-/g, " ");
 }
 
-export function fmtTime(iso: string): string {
+export function fmtTime(iso: string, lang: "en" | "bn" = "en"): string {
   try {
     const d = new Date(iso);
-    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    // #2966 — honor the portal language (not the device locale): a Bangla parent
+    // on a non-BN phone still sees Bengali month names + ০–৯ digits.
+    if (lang === "bn") {
+      const h = d.getHours() % 12 || 12;
+      const min = d.getMinutes().toString().padStart(2, "0");
+      return `${BN_M[d.getMonth()]} ${toBnNum(d.getDate())}, ${toBnNum(h)}:${min}`;
+    }
+    return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   } catch {
     return iso;
   }
@@ -891,9 +911,11 @@ export function friendlyDevice(ua: string | null): string {
   return ua.split(" ")[0].slice(0, 30) || "Device";
 }
 
-export function weekdayShort(iso: string): string {
+export function weekdayShort(iso: string, lang: "en" | "bn" = "en"): string {
   try {
     const d = new Date(iso + "T00:00:00");
+    // #2966 — honor the portal language (Bengali weekday) when the parent chose it.
+    if (lang === "bn") return BN_WD[d.getDay()];
     return d.toLocaleString(undefined, { weekday: "short" });
   } catch {
     return iso;
@@ -905,31 +927,46 @@ export function weekdayShort(iso: string): string {
  *  as a single ISO date with no accompanying range, so the parent portal derives
  *  the human-readable "Mon D – Sun D" span locally — no API round-trip, no
  *  date-native tz surprises (we parse the fields, never the wall-clock string). */
-export function shareWeekRangeLabel(weekOf: string): string {
+export function shareWeekRangeLabel(weekOf: string, lang: "en" | "bn" = "en"): string {
   const end = new Date(weekOf + "T00:00:00");
   if (Number.isNaN(end.getTime())) return "";
   const start = new Date(end);
   start.setDate(end.getDate() - 6);
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  // #2961/#2966 — honor the portal language (Bengali months + ০–৯ digits) so the
+  // caption / share card matches the dashboard the Bangla parent is looking at.
+  const fmt = lang === "bn"
+    ? (d: Date) => `${BN_M[d.getMonth()]} ${toBnNum(d.getDate())}`
+    : (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   // Same day/month (e.g. a short window display in transit) collapses sensibly.
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
 /** Privacy-safe share blurb — only aggregates, never a kid's name/device data
- *  unless the parent types the name into the share line themselves. */
-export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
+ *  unless the parent types the name into the share line themselves. `lang`
+ *  localizes the caption (Bengali words + ০–৯ digits) so a Bangla parent shares
+ *  Bangla text, matching the dashboard they are looking at. */
+export function weeklyShareText(_kidName: string, w: WeeklyReport, lang: "en" | "bn" = "en"): string {
+  const bn = lang === "bn";
   const n = w.mastered_this_week.length;
-  // #1560 — mastered skills use curated EN titles (with the Bangla title suffix
-  // where the catalog carries one), never raw hyphen-stripped slugs.
-  const mastered = n
-    ? `🏆 Mastered ${n} skill${n > 1 ? "s" : ""}: ${
-        n <= 4
-          ? w.mastered_this_week
-              .map((s) => (narrTitleBn(s) !== narrTitleEn(s) ? `${narrTitleEn(s)} · ${narrTitleBn(s)}` : narrTitleEn(s)))
-              .join(", ")
-          : `${n} total`
-      }`
-    : "🌱 Still growing — we keep playing every day!";
+  // #1560 — mastered skills use curated titles (the Bangla title when in bn
+  // mode), never raw hyphen-stripped slugs.
+  const mastered = bn
+    ? n
+      ? `🏆 ${toBnNum(n)}টি দক্ষতা আয়ত্ত করেছে: ${
+          n <= 4
+            ? w.mastered_this_week.map((s) => narrTitleBn(s)).join(", ")
+            : `${toBnNum(n)}টি মোট`
+        }`
+      : "🌱 এখনো বাড়ছে — আমরা প্রতিদিন খেলছি!"
+    : n
+      ? `🏆 Mastered ${n} skill${n > 1 ? "s" : ""}: ${
+          n <= 4
+            ? w.mastered_this_week
+                .map((s) => (narrTitleBn(s) !== narrTitleEn(s) ? `${narrTitleEn(s)} · ${narrTitleBn(s)}` : narrTitleEn(s)))
+                .join(", ")
+            : `${n} total`
+        }`
+      : "🌱 Still growing — we keep playing every day!";
   // #3063 — no coins line: the shared snapshot (ShareSnapshotOut, #867) carries
   // no coins field, so a coins mention in the caption promised a number the
   // linked page could never show. Dropped so the caption and card agree.
@@ -937,13 +974,21 @@ export function weeklyShareText(_kidName: string, w: WeeklyReport): string {
   // should name the actual date range rather than a bare "this week". The weekly
   // report's `days` carry the concrete dates the card aggregates.
   const range = w.days?.length
-    ? shareWeekRangeLabel(w.days[w.days.length - 1].date)
+    ? shareWeekRangeLabel(w.days[w.days.length - 1].date, lang)
     : "";
-  const headline = range ? `📊 Numberverse learning — ${range}` : "📊 This week's learning on Numberverse";
+  const headline = bn
+    ? (range ? `📊 নাম্বারভার্সে শেখা — ${range}` : "📊 এই সপ্তাহের নাম্বারভার্সে শেখা")
+    : (range ? `📊 Numberverse learning — ${range}` : "📊 This week's learning on Numberverse");
+  const rounds = bn ? toBnNum(w.rounds) : String(w.rounds);
+  const minutes = bn ? toBnNum(w.minutes) : String(w.minutes);
+  const activeDays = bn ? toBnNum(w.active_days) : String(w.active_days);
+  const correctPct = bn ? toBnNum(w.correct_pct) : String(w.correct_pct);
   return [
     headline,
-    `🎮 ${w.rounds} rounds · ${w.minutes} min · ${w.active_days} day${w.active_days === 1 ? "" : "s"} active`,
-    `🎯 ${w.correct_pct}% correct`,
+    bn
+      ? `🎮 ${rounds} রাউন্ড · ${minutes} মিনিট · ${activeDays} দিন সক্রিয়`
+      : `🎮 ${w.rounds} rounds · ${w.minutes} min · ${w.active_days} day${w.active_days === 1 ? "" : "s"} active`,
+    bn ? `🎯 ${correctPct}% সঠিক` : `🎯 ${w.correct_pct}% correct`,
     mastered,
   ].join("\n");
 }
@@ -2469,3 +2514,70 @@ export const SHARE_LANGS = {
   },
 } as const;
 export type ShareLang = keyof typeof SHARE_LANGS;
+
+/** 🧭 #2971 — Explore sections (Games/Compare/Worksheet/Flashcards) + On-device
+ *  data copy. EN + BN — same country-pack seam as the other *_LANGS maps. */
+export const EXPLORE_LANGS = {
+  en: {
+    gamesTitle: "🎮 Games to try",
+    gamesHint: "Which of the catalog’s games {name} has played — and which are still waiting. Derived from the dashboard’s already-loaded progress, so it works offline.",
+    gamesPlayed: "{played} of {total} games played",
+    gamesDone: "All games played — {name} is a full explorer! 🎉",
+    world: "World {band}",
+    compareTitle: "⚖️ Compare two kids",
+    compareHint: "How {a} and {b} stack up, metric by metric. Everything here is read from the dashboard’s already-loaded data — it works offline.",
+    metric: "Metric",
+    vs: "vs",
+    worksheetTitle: "📄 Printable worksheet",
+    worksheetHint: "A practice sheet built from what {name} hasn't mastered yet — perfect for offline homework. Print or save as PDF (your browser's Print dialog).",
+    building: "Building…",
+    buildWorksheet: "🖨️ Build worksheet",
+    printPdf: "Print / save PDF",
+    close: "Close",
+    sheetMeta: "{n} practice lines for {name} · generated {date} · tap Print for a clean A4 sheet.",
+    flashcardsTitle: "🎴 Flashcard QR cards",
+    flashcardsHint: "Printable QR codes for the games {name} has played. A kid scans a card (or types its code) in the app to jump straight into that mini-game — works offline.",
+    buildQrCards: "🎴 Build QR cards",
+    noGamesPlayed: "No games played yet — {name} needs a session first (mastery builds from rounds).",
+    // Compare metric labels (built in page.tsx).
+    cmpSkillsMastered: "🏆 Skills mastered",
+    cmpCurrentWorld: "🚀 Current world",
+    cmpMinutesWeek: "🕒 Minutes this week",
+    cmpRoundsWeek: "🎮 Rounds this week",
+    cmpCorrectWeek: "🎯 Correct this week",
+    cmpDaysActive: "📅 Days active",
+    cmpMasteredWeek: "🆕 Mastered this week",
+    cmpInProgress: "📖 Skills in progress",
+  },
+  bn: {
+    gamesTitle: "🎮 খেলার মতো গেম",
+    gamesHint: "ক্যাটালগের কোন গেম {name} খেলেছে — আর কোনগুলো এখনো বাকি। ইতিমধ্যে লোড হওয়া অগ্রগতি থেকে নির্ধারণ করা হয়, তাই অফলাইনে কাজ করে।",
+    gamesPlayed: "{total}টির মধ্যে {played}টি গেম খেলা হয়েছে",
+    gamesDone: "সব গেম খেলা হয়েছে — {name} একজন পূর্ণ অভিযাত্রী! 🎉",
+    world: "ওয়ার্ল্ড {band}",
+    compareTitle: "⚖️ দুই বাচ্চার তুলনা",
+    compareHint: "{a} আর {b} কীভাবে তুলনায় দাঁড়ায়, ধাপে ধাপে। এখানকার সবই ইতিমধ্যে লোড হওয়া ড্যাশবোর্ডের তথ্য থেকে পড়া হয় — অফলাইনে কাজ করে।",
+    metric: "মাপকাঠি",
+    vs: "বনাম",
+    worksheetTitle: "📄 প্রিন্টযোগ্য ওয়ার্কশিট",
+    worksheetHint: "{name} যা এখনো আয়ত্ত করেনি তা দিয়ে বানানো অনুশীলনের শিট — অফলাইন হোমওয়ার্কের জন্য দারুণ। প্রিন্ট করুন বা PDF হিসেবে সংরক্ষণ করুন (ব্রাউজারের Print ডায়ালগ)।",
+    building: "তৈরি হচ্ছে…",
+    buildWorksheet: "🖨️ ওয়ার্কশিট তৈরি করুন",
+    printPdf: "প্রিন্ট / PDF সংরক্ষণ",
+    close: "বন্ধ করুন",
+    sheetMeta: "{name}-এর জন্য {n}টি অনুশীলনের লাইন · তৈরি {date} · পরিষ্কার A4 শিটের জন্য Print চাপুন।",
+    flashcardsTitle: "🎴 ফ্ল্যাশকার্ড QR কার্ড",
+    flashcardsHint: "{name} যে গেম খেলেছে তার প্রিন্টযোগ্য QR কোড। একটি কার্ড স্ক্যান করলে (বা কোড টাইপ করলে) অ্যাপে সরাসরি সেই মিনি-গেমে ঢুকে যায় — অফলাইনে কাজ করে।",
+    buildQrCards: "🎴 QR কার্ড তৈরি করুন",
+    noGamesPlayed: "এখনো কোনো গেম খেলা হয়নি — {name}-কে আগে একটি সেশন খেলতে হবে (রাউন্ড থেকে আয়ত্ত তৈরি হয়)।",
+    cmpSkillsMastered: "🏆 আয়ত্ত করা দক্ষতা",
+    cmpCurrentWorld: "🚀 বর্তমান ওয়ার্ল্ড",
+    cmpMinutesWeek: "🕒 এই সপ্তাহের মিনিট",
+    cmpRoundsWeek: "🎮 এই সপ্তাহের রাউন্ড",
+    cmpCorrectWeek: "🎯 এই সপ্তাহে সঠিক",
+    cmpDaysActive: "📅 সক্রিয় দিন",
+    cmpMasteredWeek: "🆕 এই সপ্তাহে আয়ত্ত",
+    cmpInProgress: "📖 চলমান দক্ষতা",
+  },
+} as const;
+export type ExploreLang = keyof typeof EXPLORE_LANGS;

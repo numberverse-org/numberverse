@@ -64,6 +64,7 @@ import {
   BANNER_LANGS,
   DEBUG_LANGS,
   DEFAULT_SETTINGS,
+  EXPLORE_LANGS,
   KID_FORM_LANGS,
   LOADING_LANGS,
   NAV_GROUPS,
@@ -1170,7 +1171,7 @@ export default function ParentDashboard() {
       const active = kids.find((k) => k.id === activeId);
       setSheet({
         name: active?.name ?? "My kid",
-        items: worksheetFor(weak, "en", Date.now() % 100000),
+        items: worksheetFor(weak, wizLang, Date.now() % 100000),
         date: new Date().toISOString().slice(0, 10),
       });
     } catch {
@@ -1846,15 +1847,16 @@ export default function ParentDashboard() {
   };
   const mtrA = cmpMetric(cmpAId);
   const mtrB = cmpMetric(cmpBId);
+  const cmpL = EXPLORE_LANGS[wizLang];
   const compareRows = [
-    { label: "🏆 Skills mastered", a: String(mtrA.mastered), b: String(mtrB.mastered), higher: mtrA.mastered !== mtrB.mastered ? (mtrA.mastered > mtrB.mastered ? "a" : "b") : null },
-    { label: "🚀 Current world", a: mtrA.band ? `World ${mtrA.band}` : "—", b: mtrB.band ? `World ${mtrB.band}` : "—", higher: mtrA.band !== mtrB.band ? (mtrA.band > mtrB.band ? "a" : "b") : null },
-    { label: "🕒 Minutes this week", a: String(mtrA.minutes), b: String(mtrB.minutes), higher: mtrA.minutes !== mtrB.minutes ? (mtrA.minutes > mtrB.minutes ? "a" : "b") : null },
-    { label: "🎮 Rounds this week", a: String(mtrA.rounds), b: String(mtrB.rounds), higher: mtrA.rounds !== mtrB.rounds ? (mtrA.rounds > mtrB.rounds ? "a" : "b") : null },
-    { label: "🎯 Correct this week", a: `${mtrA.correctPct}%`, b: `${mtrB.correctPct}%`, higher: mtrA.correctPct !== mtrB.correctPct ? (mtrA.correctPct > mtrB.correctPct ? "a" : "b") : null },
-    { label: "📅 Days active", a: String(mtrA.activeDays), b: String(mtrB.activeDays), higher: mtrA.activeDays !== mtrB.activeDays ? (mtrA.activeDays > mtrB.activeDays ? "a" : "b") : null },
-    { label: "🆕 Mastered this week", a: String(mtrA.masteredWeek), b: String(mtrB.masteredWeek), higher: mtrA.masteredWeek !== mtrB.masteredWeek ? (mtrA.masteredWeek > mtrB.masteredWeek ? "a" : "b") : null },
-    { label: "📖 Skills in progress", a: String(mtrA.inProgress), b: String(mtrB.inProgress), higher: null },
+    { label: cmpL.cmpSkillsMastered, a: String(mtrA.mastered), b: String(mtrB.mastered), higher: mtrA.mastered !== mtrB.mastered ? (mtrA.mastered > mtrB.mastered ? "a" : "b") : null },
+    { label: cmpL.cmpCurrentWorld, a: mtrA.band ? (wizLang === "bn" ? `ওয়ার্ল্ড ${toBnNum(mtrA.band)}` : `World ${mtrA.band}`) : "—", b: mtrB.band ? (wizLang === "bn" ? `ওয়ার্ল্ড ${toBnNum(mtrB.band)}` : `World ${mtrB.band}`) : "—", higher: mtrA.band !== mtrB.band ? (mtrA.band > mtrB.band ? "a" : "b") : null },
+    { label: cmpL.cmpMinutesWeek, a: String(mtrA.minutes), b: String(mtrB.minutes), higher: mtrA.minutes !== mtrB.minutes ? (mtrA.minutes > mtrB.minutes ? "a" : "b") : null },
+    { label: cmpL.cmpRoundsWeek, a: String(mtrA.rounds), b: String(mtrB.rounds), higher: mtrA.rounds !== mtrB.rounds ? (mtrA.rounds > mtrB.rounds ? "a" : "b") : null },
+    { label: cmpL.cmpCorrectWeek, a: `${mtrA.correctPct}%`, b: `${mtrB.correctPct}%`, higher: mtrA.correctPct !== mtrB.correctPct ? (mtrA.correctPct > mtrB.correctPct ? "a" : "b") : null },
+    { label: cmpL.cmpDaysActive, a: String(mtrA.activeDays), b: String(mtrB.activeDays), higher: mtrA.activeDays !== mtrB.activeDays ? (mtrA.activeDays > mtrB.activeDays ? "a" : "b") : null },
+    { label: cmpL.cmpMasteredWeek, a: String(mtrA.masteredWeek), b: String(mtrB.masteredWeek), higher: mtrA.masteredWeek !== mtrB.masteredWeek ? (mtrA.masteredWeek > mtrB.masteredWeek ? "a" : "b") : null },
+    { label: cmpL.cmpInProgress, a: String(mtrA.inProgress), b: String(mtrB.inProgress), higher: null },
   ];
   const narrText =
     narrDraft && narrDraft.edited
@@ -2005,7 +2007,9 @@ export default function ParentDashboard() {
       const shareToken = await getShareToken(token, kidId);
       const base = (typeof window !== "undefined" ? window.location.origin : "") + (process.env.NEXT_PUBLIC_BASE_PATH ?? "");
       const link = `${base}/share/?t=${encodeURIComponent(shareToken)}`;
-      const text = weeklyShareText(active?.name ?? "My kid", activeWeekly) + `\n🔗 See the week: ${link}`;
+      const text =
+        weeklyShareText(active?.name ?? "My kid", activeWeekly, wizLang) +
+        (wizLang === "bn" ? `\n🔗 সপ্তাহ দেখুন: ${link}` : `\n🔗 See the week: ${link}`);
       const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
       if (isAllowedExternalUrl(wa)) window.open(wa, "_blank", "noopener,noreferrer");
       // #1531 — store the minted link under the kid it belongs to.
@@ -2593,6 +2597,7 @@ export default function ParentDashboard() {
               coveragePlayed={coveragePlayed}
               coverageTotal={coverageTotal}
               untriedGames={untriedGames}
+              wizLang={wizLang}
             />
           </SectionErr>
 
@@ -2607,6 +2612,7 @@ export default function ParentDashboard() {
               mtrA={mtrA}
               mtrB={mtrB}
               compareRows={compareRows}
+              wizLang={wizLang}
             />
           </SectionErr>
 
@@ -2618,6 +2624,7 @@ export default function ParentDashboard() {
               sheetBusy={sheetBusy}
               handleWorksheet={handleWorksheet}
               setSheet={setSheet}
+              wizLang={wizLang}
             />
           </SectionErr>
 
@@ -2629,6 +2636,7 @@ export default function ParentDashboard() {
               qrBusy={qrBusy}
               handleQRCards={handleQRCards}
               setQrCards={setQrCards}
+              wizLang={wizLang}
             />
           </SectionErr>
           {/* ── activity feed ── */}

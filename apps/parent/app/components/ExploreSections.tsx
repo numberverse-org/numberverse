@@ -1,8 +1,11 @@
-/* ─── ExploreSections — games/compare/printables (#620) ─── */
+/* ─── ExploreSections — games/compare/printables (#620) ───
+   i18n seam: EXPLORE_LANGS keyed by `wizLang`; add a locale key to that map in
+   lib/portal and these cards follow. */
 "use client";
 
 import type { Kid } from "../../lib/api";
 import type { WorksheetProblem } from "../../lib/worksheet";
+import { EXPLORE_LANGS, type WizardLang } from "../lib/portal";
 
 interface ActiveKid {
   name: string;
@@ -35,23 +38,24 @@ interface SheetView {
 
 
 
-export function GamesCard({ active, coverageBySubject, coveragePct, coveragePlayed, coverageTotal, untriedGames }: {
+export function GamesCard({ active, coverageBySubject, coveragePct, coveragePlayed, coverageTotal, untriedGames, wizLang }: {
   active: ActiveKid;
   coverageBySubject: CoverageSubject[];
   coveragePct: number;
   coveragePlayed: number;
   coverageTotal: number;
   untriedGames: UntriedGame[];
+  wizLang: WizardLang;
 }) {
+  const L = EXPLORE_LANGS[wizLang];
   return (
 <section className="card coverage-card" id="games">
-  <h2>🎮 Games to try</h2>
+  <h2>{L.gamesTitle}</h2>
   <p className="muted small">
-    Which of the catalog’s games {active.name} has played — and which are still
-    waiting. Derived from the dashboard’s already-loaded progress, so it works offline.
+    {L.gamesHint.replace("{name}", active.name)}
   </p>
   <div className="coverage-summary">
-    <span className="coverage-total">{coveragePlayed} of {coverageTotal} games played</span>
+    <span className="coverage-total">{L.gamesPlayed.replace("{played}", String(coveragePlayed)).replace("{total}", String(coverageTotal))}</span>
     <div className="bar big">
       <div className={`fill${coveragePct === 100 ? " done" : ""}`} style={{ width: `${coveragePct}%` }} />
     </div>
@@ -70,7 +74,7 @@ export function GamesCard({ active, coverageBySubject, coveragePct, coveragePlay
     );
   })}
   {untriedGames.length === 0 ? (
-    <p className="muted">All games played — {active.name} is a full explorer! 🎉</p>
+    <p className="muted">{L.gamesDone.replace("{name}", active.name)}</p>
   ) : (
     <ul className="coverage-list">
       {untriedGames.map((g) => (
@@ -79,7 +83,7 @@ export function GamesCard({ active, coverageBySubject, coveragePct, coveragePlay
             {g.skill.title}
             {g.skill.titleBn ? <span className="muted small"> · {g.skill.titleBn}</span> : null}
           </span>
-          <span className="coverage-band">World {g.skill.band}</span>
+          <span className="coverage-band">{L.world.replace("{band}", String(g.skill.band))}</span>
         </li>
       ))}
     </ul>
@@ -97,6 +101,7 @@ export function CompareCard({
   mtrA,
   mtrB,
   compareRows,
+  wizLang,
 }: {
   kids: Kid[];
   cmpAId: string;
@@ -106,14 +111,15 @@ export function CompareCard({
   mtrA: { avatar: string; name: string };
   mtrB: { avatar: string; name: string };
   compareRows: CompareRow[];
+  wizLang: WizardLang;
 }) {
   if (kids.length < 2) return null;
+  const L = EXPLORE_LANGS[wizLang];
   return (
   <section className="card compare-card" id="compare">
-    <h2>⚖️ Compare two kids</h2>
+    <h2>{L.compareTitle}</h2>
     <p className="muted small">
-      How {mtrA.name} and {mtrB.name} stack up, metric by metric. Everything here is
-      read from the dashboard’s already-loaded data — it works offline.
+      {L.compareHint.replace("{a}", mtrA.name).replace("{b}", mtrB.name)}
     </p>
     <div className="compare-pickers">
       <select aria-label="First kid to compare" value={cmpAId} onChange={(e) => setCmpA(e.target.value)}>
@@ -123,7 +129,7 @@ export function CompareCard({
           </option>
         ))}
       </select>
-      <span className="vs">vs</span>
+      <span className="vs">{L.vs}</span>
       <select aria-label="Second kid to compare" value={cmpBId} onChange={(e) => setCmpB(e.target.value)}>
         {kids.map((k) => (
           <option key={k.id} value={k.id}>
@@ -135,7 +141,7 @@ export function CompareCard({
     <table className="compare-table">
       <thead>
         <tr>
-          <th>Metric</th>
+          <th>{L.metric}</th>
           <th>{mtrA.avatar} {mtrA.name}</th>
           <th>{mtrB.avatar} {mtrB.name}</th>
         </tr>
@@ -154,68 +160,70 @@ export function CompareCard({
   );
 }
 
-export function WorksheetCard({ active, sheet, sheetBusy, handleWorksheet, setSheet }: {
+export function WorksheetCard({ active, sheet, sheetBusy, handleWorksheet, setSheet, wizLang }: {
   active: ActiveKid;
   sheet: SheetView | null;
   sheetBusy: boolean;
   handleWorksheet: () => Promise<void> | void;
   setSheet: (s: SheetView | null) => void;
+  wizLang: WizardLang;
 }) {
+  const L = EXPLORE_LANGS[wizLang];
   return (
 <section className="card worksheet-card" id="worksheet">
-  <h2>📄 Printable worksheet</h2>
+  <h2>{L.worksheetTitle}</h2>
   <p className="muted small">
-    A practice sheet built from what {active.name} hasn't mastered yet — perfect for offline
-    homework. Print or save as PDF (your browser's Print dialog).
+    {L.worksheetHint.replace("{name}", active.name)}
   </p>
   <div className="worksheet-actions">
     <button className="btn" disabled={sheetBusy} onClick={() => void handleWorksheet()}>
-      {sheetBusy ? "Building…" : "🖨️ Build worksheet"}
+      {sheetBusy ? L.building : L.buildWorksheet}
     </button>
     {sheet && (
-      <button className="btn ghost-btn" onClick={() => window.print()}>Print / save PDF</button>
+      <button className="btn ghost-btn" onClick={() => window.print()}>{L.printPdf}</button>
     )}
     {sheet && (
-      <button className="btn ghost-btn" onClick={() => setSheet(null)}>Close</button>
+      <button className="btn ghost-btn" onClick={() => setSheet(null)}>{L.close}</button>
     )}
   </div>
   {sheet && (
     <p className="muted small mt-8">
-      {sheet.items.length} practice lines for {sheet.name} · generated {sheet.date} · tap Print for a clean A4 sheet.
+      {L.sheetMeta.replace("{n}", String(sheet.items.length)).replace("{name}", sheet.name).replace("{date}", sheet.date)}
     </p>
   )}
 </section>
   );
 }
 
-export function FlashcardsCard({ active, qrCards, qrBusy, handleQRCards, setQrCards }: {
+export function FlashcardsCard({ active, qrCards, qrBusy, handleQRCards, setQrCards, wizLang }: {
   active: ActiveKid;
   qrCards: { length: number } | null;
   qrBusy: boolean;
   handleQRCards: () => Promise<void> | void;
   setQrCards: (c: null) => void;
+  wizLang: WizardLang;
 }) {
+  const L = EXPLORE_LANGS[wizLang];
   return (
 <section className="card worksheet-card" id="flashcards">
-  <h2>🎴 Flashcard QR cards</h2>
+  <h2>{L.flashcardsTitle}</h2>
   <p className="muted small">
-    Printable QR codes for the games {active.name} has played. A kid scans a card
-    (or types its code) in the app to jump straight into that mini-game — works offline.
+    {L.flashcardsHint.replace("{name}", active.name)}
   </p>
   <div className="worksheet-actions">
     <button className="btn" disabled={qrBusy} onClick={() => void handleQRCards()}>
-      {qrBusy ? "Building…" : "🎴 Build QR cards"}
+      {qrBusy ? L.building : L.buildQrCards}
     </button>
     {qrCards && qrCards.length > 0 && (
-      <button className="btn ghost-btn" onClick={() => window.print()}>Print / save PDF</button>
+      <button className="btn ghost-btn" onClick={() => window.print()}>{L.printPdf}</button>
     )}
     {qrCards && (
-      <button className="btn ghost-btn" onClick={() => setQrCards(null)}>Close</button>
+      <button className="btn ghost-btn" onClick={() => setQrCards(null)}>{L.close}</button>
     )}
   </div>
   {qrCards && qrCards.length === 0 && (
     <p className="muted small mt-8">
-      No games played yet — {active.name} needs a session first (mastery builds from rounds).
+      {L.noGamesPlayed.replace("{name}", active.name)}
     </p>
   )}
 </section>

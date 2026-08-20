@@ -92,9 +92,9 @@ export default function ShareClient() {
           {/* #3058 — the snapshot is a LIVE rolling window, so render its actual
               date range so a recipient opening an old link sees exactly which
               week they're looking at (week_of = the window's end day). */}
-          {snap.week_of && shareWeekRangeLabel(snap.week_of) && (
+          {snap.week_of && shareWeekRangeLabel(snap.week_of, lang) && (
             <p className="center muted small">
-              {t.windowLabel.replace("{range}", shareWeekRangeLabel(snap.week_of))}
+              {t.windowLabel.replace("{range}", shareWeekRangeLabel(snap.week_of, lang))}
             </p>
           )}
           <section className="card">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signup, type LoginResponse } from "../../lib/api";
-import { SIGNUP_LANGS, type SignupLang, nvTrackParent } from "../lib/portal";
+import { SIGNUP_LANGS, LOGIN_LANGS, type SignupLang, nvTrackParent } from "../lib/portal";
 
 /** #1537 — the parent portal's missing self-onboarding path. Same shell/card
  *  styling as /login, but POSTs the signup shape and, on success, stores the
@@ -84,7 +84,7 @@ export default function SignupPage() {
   return (
     <main className="shell">
       <div className="logo">🔢</div>
-      <h1>Numberverse Parent Portal</h1>
+      <h1>{LOGIN_LANGS[lang].title}</h1>
       {ok ? (
         <div className="card">
           <p>

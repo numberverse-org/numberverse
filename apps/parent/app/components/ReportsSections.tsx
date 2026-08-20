@@ -505,7 +505,7 @@ export function SessionsCard({
           return (
             <li key={s.key} className="timeline-row">
               <div className="timeline-head">
-                <span className="timeline-time">{fmtTime(s.startISO)}</span>
+                <span className="timeline-time">{fmtTime(s.startISO, wizLang)}</span>
                 <span className="timeline-count">
                   {s.rounds} {SESSION_LANGS[wizLang].rounds} · {s.minutes} {SESSION_LANGS[wizLang].min}
                 </span>

@@ -302,15 +302,15 @@ export function AccountCard({
             <span className="session-icon">{s.current ? "🖥️" : "📱"}</span>
             <span className="session-meta">
               <span className="session-device">
-                {s.current ? "This device" : friendlyDevice(s.user_agent)}
-                {s.current && <span className="session-current-badge">current</span>}
+                {s.current ? t.thisDevice : friendlyDevice(s.user_agent)}
+                {s.current && <span className="session-current-badge">{t.currentSession}</span>}
               </span>
               <span className="muted small">
-                {s.user_agent ? friendlyDevice(s.user_agent) : "Unknown device"}
-                {s.ip ? ` · ${s.ip}` : ""} · signed in {fmtTime(s.created_at)}
+                {s.user_agent ? friendlyDevice(s.user_agent) : t.unknownDevice}
+                {s.ip ? ` · ${s.ip}` : ""} · {t.signedIn} {fmtTime(s.created_at, wizLang)}
                 {!s.current &&
                   (s.last_seen_at
-                    ? ` · last seen ${fmtTime(s.last_seen_at)}`
+                    ? ` · ${t.lastSeen} ${fmtTime(s.last_seen_at, wizLang)}`
                     : ` · ${t.noRecentActivity}`)}
               </span>
             </span>
@@ -592,7 +592,7 @@ export function DiagnosticsCard({
           <dt>{DEBUG_LANGS[wizLang].lastSync}</dt>
           <dd>
             {lastSync
-              ? new Date(lastSync).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+              ? fmtTime(new Date(lastSync).toISOString(), wizLang)
               : DEBUG_LANGS[wizLang].never}
           </dd>
         </div>

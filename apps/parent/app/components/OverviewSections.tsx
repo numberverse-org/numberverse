@@ -256,13 +256,13 @@ export function WeeklyCard({
           const idle = d.rounds === 0;
           const h = idle ? 0 : Math.max(4, Math.round((d.rounds / maxRounds) * 60));
           return (
-            <div key={d.date} className={`week-col${idle ? " idle" : ""}`} title={`${weekdayShort(d.date)}: ${d.rounds === 0 ? "no play" : `${d.rounds} rounds`}`}>
+            <div key={d.date} className={`week-col${idle ? " idle" : ""}`} title={`${weekdayShort(d.date, wizLang)}: ${d.rounds === 0 ? "no play" : `${d.rounds} rounds`}`}>
               {idle ? (
                 <span className="week-idle" aria-hidden="true">·</span>
               ) : (
                 <div className="week-bar" style={{ height: `${h}px` }} />
               )}
-              <span className="week-day">{weekdayShort(d.date)}</span>
+              <span className="week-day">{weekdayShort(d.date, wizLang)}</span>
             </div>
           );
         })}
