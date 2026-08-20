@@ -1310,7 +1310,10 @@ function toEpochMs(v: unknown): number | null {
  *  #1805/#1813 — the mastery rows carry the server's last_practice / last_decay
  *  (ISO datetimes) converted to epoch ms so restoreSnapshot can do genuine
  *  last-write-wins and preserve the decay stamp. */
-async function fetchSnapshot(localKidId: string): Promise<{
+async function fetchSnapshot(
+  identity: SyncIdentity,
+  localKidId: string
+): Promise<{
   coins: number;
   walletSeq: number; // #1804 — monotonic wallet version (last-write-wins restore)
   mastery: Array<{
@@ -1323,9 +1326,13 @@ async function fetchSnapshot(localKidId: string): Promise<{
     lastDecay: number | null;
   }>;
 } | null> {
-  const identity = await ensureIdentity();
-  const sid = identity?.kidFor(localKidId);
-  if (!identity || !sid) return null;
+  // #3103 — the identity is captured ONCE by the caller (restoreServerState) and
+  // threaded in, so every kid in one restore pass restores against the SAME
+  // account even if a sign-out/in lands mid-loop. Re-resolving per kid (the old
+  // `await ensureIdentity()` here) could merge some kids from the old account
+  // and others from the new one.
+  const sid = identity.kidFor(localKidId);
+  if (!sid) return null;
   try {
     const res = await fetch(`${API}/kids/${sid}/snapshot`, {
       headers: { Authorization: `Bearer ${identity.token}` },
@@ -1363,15 +1370,27 @@ async function fetchSnapshot(localKidId: string): Promise<{
  *  device (where the merge is a no-op / equal-values). */
 export async function restoreServerState(): Promise<void> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return; // #264 offline
+  // #3103 — resolve the identity ONCE, up front, and thread it into every
+  // fetchSnapshot. The OLD code re-resolved per kid, so a sign-out/in landing
+  // mid-loop could restore some kids from the old account and others from the
+  // new one (merging old-account mastery into the new account for kids that
+  // exist in both). Capturing it once pins the whole pass to a single account.
   const identity = await resolveIdentity();
   if (!identity) return; // offline — don't consume the throttle; retry on the online event
   const now = Date.now();
   for (const k of localKids()) {
     if (now - (lastRestoreAtPerKid[k.id] ?? 0) < RESTORE_INTERVAL_MS) continue;
-    const snap = await fetchSnapshot(k.id);
+    // #3103 — stamp the throttle BEFORE the await so two concurrent calls can't
+    // both pass the 5-minute gate and double-fetch the same kid. The stamp is
+    // cleared below if the snapshot actually fails, so a failed kid still
+    // retries on the next tick (preserving #1810's per-kid-on-success contract).
+    lastRestoreAtPerKid[k.id] = now;
+    const snap = await fetchSnapshot(identity, k.id);
     if (snap) {
       useKidStore.getState().restoreSnapshot(k.id, snap);
-      lastRestoreAtPerKid[k.id] = now; // #1810 — throttle consumed ONLY on success
+    } else {
+      // failed (offline / server error / unmapped) — never consume the throttle
+      delete lastRestoreAtPerKid[k.id]; // #1810 — throttle consumed ONLY on success
     }
   }
 }

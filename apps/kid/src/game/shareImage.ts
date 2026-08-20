@@ -19,6 +19,16 @@
 import { isAllowedExternalUrl, stripPngMetadata } from "@numberverse/core";
 import { NV_GOLD, NV_MINT, NV_NAVY, NV_SKY } from "./ui"; // tokenized #591
 
+// #3152 — the share cards were drawn in system-ui. The Baloo 2 / Nunito faces
+// are already loaded in the kid document, so the canvas can use them for the
+// Latin copy (matching the on-screen brand) instead of the bare system face.
+// The two stacks mirror ui.ts's young/mature fallback order: the webfont first,
+// then Noto Sans Bengali (so Bangla world titles / taglines shape in the brand
+// face), then the system fallbacks. ui-serif is reserved for the certificate
+// card below (its keepsake look is intentionally serif).
+const FONT_DISPLAY = `'Baloo 2', 'Noto Sans Bengali', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif`;
+const FONT_BODY = `'Nunito', 'Noto Sans Bengali', system-ui, -apple-system, 'Segoe UI', sans-serif`;
+
 export interface ShareCardData {
   title: string;          // "🎉 Numberverse" (or local brand)
   name: string;           // kid's name
@@ -72,7 +82,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
   // ── header wordmark ──
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "800 56px system-ui, -apple-system, 'Segoe UI', sans-serif";
+  ctx.font = `800 56px ${FONT_DISPLAY}`;
   ctx.fillStyle = "#ffffff";
   ctx.fillText(d.title, W / 2, 120);
 
@@ -97,7 +107,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
   await nextFrame();
 
   // ── name (#1827: cap long names so they never overflow the ring) ──
-  ctx.font = "800 76px system-ui, -apple-system, 'Segoe UI', sans-serif";
+  ctx.font = `800 76px ${FONT_DISPLAY}`;
   ctx.fillStyle = "#ffffff";
   ctx.fillText(capName(d.name), cx, cy + R + 90);
 
@@ -120,10 +130,10 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
     ctx.stroke();
     ctx.font = "64px 'Apple Color Emoji','Segoe UI Emoji',sans-serif";
     ctx.fillText(statEmoji[i], x + tileW / 2, tilesY + 60);
-    ctx.font = "700 52px system-ui, sans-serif";
+    ctx.font = `700 52px ${FONT_DISPLAY}`;
     ctx.fillStyle = NV_GOLD;
     ctx.fillText(String(v), x + tileW / 2, tilesY + 128);
-    ctx.font = "600 30px system-ui, sans-serif";
+    ctx.font = `600 30px ${FONT_BODY}`;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.fillText(d.statsLabels[i], x + tileW / 2, tilesY + 176);
   });
@@ -132,7 +142,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
 
   // ── worlds progress ──
   const wTitleY = tilesY + tileH + 92;
-  ctx.font = "700 44px system-ui, sans-serif";
+  ctx.font = `700 44px ${FONT_DISPLAY}`;
   ctx.fillStyle = "#9be7ff";
   ctx.fillText(d.worldsTitle, cx, wTitleY);
 
@@ -147,7 +157,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
     ctx.fillText(w.emoji, emojiX, y + rowH / 2 + 4);
     // title
     ctx.textAlign = "left";
-    ctx.font = "600 34px system-ui, sans-serif";
+    ctx.font = `600 34px ${FONT_BODY}`;
     ctx.fillStyle = "rgba(255,255,255,0.95)";
     const title = w.title.length > 22 ? w.title.slice(0, 21) + "…" : w.title;
     ctx.fillText(title, barX, y + rowH / 2);
@@ -161,7 +171,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
     ctx.fill();
     // count
     ctx.textAlign = "right";
-    ctx.font = "700 32px system-ui, sans-serif";
+    ctx.font = `700 32px ${FONT_DISPLAY}`;
     ctx.fillStyle = NV_GOLD;
     ctx.fillText(`${w.mastered}/${w.total}`, barMax, y + rowH / 2);
     ctx.textAlign = "center";
@@ -170,7 +180,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
   await nextFrame();
 
   // ── footer tagline ──
-  ctx.font = "500 36px system-ui, sans-serif";
+  ctx.font = `500 36px ${FONT_BODY}`;
   ctx.fillStyle = "rgba(255,255,255,0.65)";
   wrapText(ctx, d.footer, W / 2, H - 130, W - 160, 50);
 
@@ -273,7 +283,9 @@ export async function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData
   const shownSkills = d.skills.slice(0, 6);
   shownSkills.forEach((s, i) => {
     const label = (s.titleBn && s.titleBn !== s.title) ? `${s.title} (${s.titleBn})` : s.title;
-    ctx.font = "500 33px system-ui, sans-serif";
+    // #3152 — the skill list is Latin+Bangla mixed copy; give it the brand
+    // body stack (with Noto Sans Bengali) so Bangla skill names shape correctly.
+    ctx.font = `500 33px ${FONT_BODY}`;
     ctx.fillStyle = "#5a4a28";
     wrapText(ctx, `•  ${label}`, cx, listY + i * skillLineH, W - 280, skillLineH);
   });
@@ -303,7 +315,7 @@ export async function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData
 
   // tagline — anchored so the last wrapped line lands at H-72, keeping the
   // whole Bangla 3-line footer on-canvas instead of clipping past 1350.
-  ctx.font = "500 30px system-ui, sans-serif";
+  ctx.font = `500 30px ${FONT_BODY}`;
   ctx.fillStyle = "rgba(90,74,40,0.7)";
   const footerLineH = 38;
   const footerLines = wrapLines(ctx, d.footer, W - 200);

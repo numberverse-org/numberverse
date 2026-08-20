@@ -332,7 +332,7 @@ export default function HomeScreen({
                       {/* #1397 — the settings trigger says what it is, not just a
                           tooltip: the voice state stays in the glyph, the label
                           keeps it readable for pre-readers and parents alike. */}
-                      <span className="voice-chip-label">{t.settingsTitle}</span>
+                      <span>{t.settingsTitle}</span>
                     </button>
                     {/* #1395 — one settings trigger, not two: the voice-chip
                         already opens Settings and carries the voice state. */}
@@ -346,14 +346,14 @@ export default function HomeScreen({
                       <span className="scan-btn-glyph" aria-hidden="true">📷</span>
                       {/* #1397 — the scan trigger says what it does (visible
                           label), instead of relying on the camera glyph alone. */}
-                      <span className="scan-btn-label">{t.scanShort}</span>
+                      <span>{t.scanShort}</span>
                     </button>
                     {/* #parent-door — the grown-up corner: ONE labeled tap opens
                         the parent portal. goParent() re-arms the PIN gate, so a
                         kid tapping it lands on the gate — never the analytics. */}
                     <button className="parent-btn" onClick={onParent} aria-label={t.parentDoor}>
                       <span className="parent-btn-emoji" aria-hidden="true">👨‍👩‍👧</span>
-                      <span className="parent-btn-label">{t.parentDoor}</span>
+                      <span>{t.parentDoor}</span>
                     </button>
                   </>
                 )}
@@ -363,7 +363,7 @@ export default function HomeScreen({
             {/* #1394 — guest mode is a persistent state, not a hidden one: a slim
                 banner names the local-only risk and offers the upgrade path. */}
             {guestMode && (
-              <div className="syllabus-guest-banner home-guest-banner" role="status">
+              <div className="syllabus-guest-banner" role="status">
                 <span className="syllabus-guest-emoji" aria-hidden="true">👀</span>
                 <p className="syllabus-guest-text">
                   {t.guestModeWipe}{" "}

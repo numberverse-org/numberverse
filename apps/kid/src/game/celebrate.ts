@@ -35,6 +35,16 @@ import { NV_GOLD, NV_PINK, NV_SKY, NV_ORANGE } from "./tokens"; // #1939 — lea
 /** A round at this difficulty (or above) counts as a hard problem. */
 export const HARD_DIFFICULTY = 4;
 
+/** #3125 — allocation ceilings for the celebration bursts. Each confetti rect
+ *  and star Text owns its own scene tween, so the per-answer allocation scales
+ *  1:1 with the requested count. A high-combo streak used to ask for 72+ confetti
+ *  and 20+ stars (≈90 short-lived objects + tweens) per correct answer — a
+ *  measurable long-frame spike on low-end hardware. These caps keep the visible
+ *  escalation (the tiers still ladder up) while flattening the worst-case spike
+ *  to ~52 objects (40 confetti + 12 stars). */
+const MAX_CONFETTI = 40;
+const MAX_STARS = 12;
+
 /** Current combo for a scene (0 = none). Resets on scene shutdown. */
 export function comboOf(scene: Phaser.Scene): number {
   let v = scene.data.get("nv:combo") as number | undefined;
@@ -172,6 +182,7 @@ export function confettiBurst(scene: Phaser.Scene, x: number, y: number, n = 24)
     staticGoldFlare(scene, x, y);
     return;
   }
+  n = Math.min(n, MAX_CONFETTI); // #3125 — cap the per-answer allocation
   // #784 — NV_* tokens for the colors that have one; the teal/lavender extras
   // are intentional land accents without a token yet.
   const colors = [
@@ -214,6 +225,7 @@ export function starBurst(scene: Phaser.Scene, x: number, y: number, n = 10) {
     staticGoldFlare(scene, x, y);
     return;
   }
+  n = Math.min(n, MAX_STARS); // #3125 — cap the per-answer allocation
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
     const dist = Phaser.Math.Between(70, 120);

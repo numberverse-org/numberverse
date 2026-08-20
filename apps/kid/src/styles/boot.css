@@ -26,7 +26,21 @@
    700/800) use font-display: optional: they're preloaded so they land before
    first paint, and optional never swaps — the splash either renders the real
    face (loaded) or the fallback (no FOUT flash). Non-preloaded faces keep
-   swap so secondary text still upgrades when its face lands. */
+   swap so secondary text still upgrades when its face lands.
+
+   #3152 — SYMBOL-GLYPH FALLBACK (deliberate): the UI strings use ← → ✓ ✕ ★ ▾
+   (App.tsx answer buttons, PrintSheets, ui.ts, screens.css). These are NOT in
+   the Baloo 2 / Nunito subsets (the webfonts are glyph-subsetted to the Latin
+   + Bengali characters the app's copy actually sets; they ship no symbol/
+   dingbat/arrow block). Extending `unicode-range` to U+2190/U+2192/U+2605/
+   U+2713/U+2715/U+25BE would make the browser SELECT Baloo/Nunito for those
+   code points and rasterize .notdef tofu boxes instead of the glyph — far
+   worse than the current behavior, where they fall through the font stack to
+   system-ui's symbol coverage (Segoe UI Symbol / Apple Color Emoji / Noto
+   Symbols). Those symbols are drawn 1:1 by the system face regardless of
+   language, so a mid-sentence style mix (Latin webfont + system symbol) is
+   invisible. Declaring them out of the range is therefore the CORRECT fix,
+   not an omission. */
 @font-face {
   font-family: "Baloo 2";
   font-style: normal;
@@ -226,6 +240,19 @@
   --sp-10: 40px;
   --sp-12: 48px;
   --sp-15: 60px;
+
+  /* #3152 — type scale: ~30 ad-hoc px sizes (12px ×113, 13px ×78, …) collapse
+     onto named tokens. Values are pixel-identical to the ad-hoc sizes they
+     replace (zero visual change); the `clamp()` display sizes (title/wordmark/
+     splash faces) intentionally stay literal since they're fluid, not fixed. */
+  --nv-text-xs: 11px;
+  --nv-text-sm: 12px;
+  --nv-text-base: 14px;
+  --nv-text-md: 16px;
+  --nv-text-lg: 18px;
+  --nv-text-xl: 20px;
+  --nv-text-2xl: 24px;
+  --nv-text-3xl: 30px;
 
   /* #3148 — radius scale: pill / card / panel corner tokens so the ~9 ad-hoc
      border-radius buckets (8…999px) collapse to a shared set. */

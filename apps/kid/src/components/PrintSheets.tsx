@@ -121,7 +121,7 @@ export function WorksheetScreen({ kid, skillsMap, mistakes, t, lang, onBack }: S
           <span className="cert-toolbar-title">{t.wsTitle}</span>
           <button className="cert-print-btn" onClick={() => window.print()}>{t.wsPrint}</button>
         </div>
-        <div className="print-sheet ws-sheet">
+        <div className="print-sheet">
           <div className="ws-head">
             <span className="ws-emoji" aria-hidden="true">📝</span>
             <div className="ws-head-txt">

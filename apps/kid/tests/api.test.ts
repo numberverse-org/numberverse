@@ -747,3 +747,47 @@ describe("#1810 per-kid restore throttle", () => {
     }
   });
 });
+
+describe("#3103 restore identity is pinned for the whole pass (no account mixing)", () => {
+  it("restores every kid against one identity even if the token flips mid-loop", async () => {
+    vi.useFakeTimers();
+    try {
+      // Two kids, both mapped in the FIRST account.
+      localStorage.setItem("nv_parent_token", "tok_A");
+      localStorage.setItem(
+        "nv_kids",
+        JSON.stringify([
+          { id: "k1", name: "Kid One", birthYear: 2018 },
+          { id: "k2", name: "Kid Two", birthYear: 2019 },
+        ])
+      );
+      localStorage.setItem("nv_kid_map", JSON.stringify({ k1: "srv_A1", k2: "srv_A2" }));
+
+      // Each snapshot fetch asks for a DIFFERENT kid by its server id in the URL.
+      const seen: string[] = [];
+      const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+        const u = String(url);
+        seen.push(u);
+        // On the FIRST fetch, simulate a sign-out/in that swaps the account
+        // BEFORE the second kid is fetched. The restore must keep using the
+        // ORIGINAL account's mapping (srv_A2), not re-resolve to account B.
+        if (/srv_A1/.test(u)) {
+          localStorage.setItem("nv_parent_token", "tok_B");
+          localStorage.setItem("nv_kid_map", JSON.stringify({ k1: "srv_B1", k2: "srv_B2" }));
+        }
+        return okJson({ coins: 5, wallet_seq: 1, mastery: [] });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await restoreServerState();
+
+      // Both kids fetched from account A — the pass was pinned to tok_A's map.
+      expect(seen.some((u) => u.includes("srv_A1"))).toBe(true);
+      expect(seen.some((u) => u.includes("srv_A2"))).toBe(true);
+      expect(seen.some((u) => u.includes("srv_B1"))).toBe(false);
+      expect(seen.some((u) => u.includes("srv_B2"))).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

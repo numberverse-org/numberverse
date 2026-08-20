@@ -264,9 +264,12 @@ const WORLDS: Record<string, Asset> = {
 const SUBJECTS: Record<string, Asset> = {
   math: {
     emoji: "🧮",
+    // #3152 — the "+"/"−" tiles were <text> glyphs, rasterized in the default
+    // sans (inconsistent with the rest of the vector library). Now real stroke
+    // paths (same round caps / weight as the bangla-tile lines below).
     svg: view(`<g filter="url(#s)"><rect x="22" y="22" width="56" height="56" rx="10" fill="#5fb6e8"/>
-      <text x="50" y="44" font-size="26" font-weight="800" text-anchor="middle" fill="#fff">+</text>
-      <text x="50" y="72" font-size="26" font-weight="800" text-anchor="middle" fill="#fff">−</text></g>`),
+      <path d="M50 33 v22 M39 44 h22" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+      <path d="M38 72 h24" stroke="#fff" stroke-width="6" stroke-linecap="round"/></g>`),
   },
   bangla: {
     emoji: "📘",
@@ -277,8 +280,13 @@ const SUBJECTS: Record<string, Asset> = {
   },
   english: {
     emoji: "📗",
+    // #3152 — the "Ab" tile was a <text> glyph in default sans; now path
+    // outlines (stroke "A" leg/apex/crossbar + stem/bowl "b").
     svg: view(`<g filter="url(#s)"><rect x="22" y="22" width="56" height="56" rx="10" fill="#6d9dc5"/>
-      <text x="50" y="60" font-size="30" font-weight="800" text-anchor="middle" fill="#fff" font-family="sans-serif">Ab</text></g>`),
+      <path d="M39 60 L50 39 L61 60" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M44.5 50 L55.5 50" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+      <path d="M64 40 L64 64" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+      <path d="M64 43 a11 11 0 0 1 0 18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g>`),
   },
   science: {
     emoji: "🔬",

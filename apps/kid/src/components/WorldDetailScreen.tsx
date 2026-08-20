@@ -191,7 +191,9 @@ export default function WorldDetailScreen({
                     </span>
                     {isNext && <span className="next-badge">{t.nextBadge}</span>}
                   </button>
-                  <span className="tree-spacer" aria-hidden="true" />
+                  {/* #3147 — .tree-spacer was a zero-width empty <span> (0 CSS
+                      rules); .tree-row's justify-content already positions the
+                      node. Removed as dead markup. */}
                 </div>
               );
             })}

@@ -169,7 +169,7 @@ export default function DoneScreen({
             the big "Next round"; "Play again" is hidden so the path forward is
             unambiguous (it stays available via the other ghost links below). */}
         {nextStop ? (
-          <button className="big-btn next-btn" onClick={startNextRound}>
+          <button className="big-btn" onClick={startNextRound}>
             <span className="play-btn-main">▶ {t.nextRound}</span>
             <span className="play-btn-sub">
               {nextStop.skill.title}

@@ -217,13 +217,10 @@ export default function WorldsScreen({
           <div id="view-panel-map" role="tabpanel" aria-label={t.mapTab} className="world-map">
             {/* A winding road through all five lands — the kid's avatar sits
                 on the current land, mastered lands glow, locked ones await. */}
-            <div className="map-road" aria-hidden="true">
-              <span className="map-road-dot" />
-              <span className="map-road-dot" />
-              <span className="map-road-dot" />
-              <span className="map-road-dot" />
-              <span className="map-road-dot" />
-            </div>
+            {/* #3147 — the road is drawn by .map-road's own dashed border; the
+                five empty .map-road-dot spans were invisible dead markup (0 CSS
+                rules) and are removed. */}
+            <div className="map-road" aria-hidden="true" />
             {BANDS.map((b, i) => {
               const prog = worldProgress(skillsMap, kid!.id, b.id);
               const premiumLocked = plan !== "plus" && b.id > 2;
@@ -483,7 +480,7 @@ export default function WorldsScreen({
           DOM/celebration language as the owl challenge but its own state). */}
       {landBoss && (
         <div className="challenge-overlay" onClick={closeBoss}>
-          <div className="challenge-sheet boss-sheet" role="dialog" aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn} onClick={(e) => e.stopPropagation()} ref={bossRef}>
+          <div className="challenge-sheet" role="dialog" aria-label={lang === "bn" ? t.bossBtnBn : t.bossBtn} onClick={(e) => e.stopPropagation()} ref={bossRef}>
             {landBoss.won ? (
               <>
                 <div className="challenge-result" role="status">

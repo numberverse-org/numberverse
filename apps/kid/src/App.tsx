@@ -2401,6 +2401,13 @@ export default function App() {
     // #131 — locale packs carry the text direction: an RTL locale (Arabic…)
     // flips the whole document so bidi text lays out correctly.
     document.documentElement.dir = getLocale().dir === "rtl" ? "rtl" : "ltr";
+    // #3152 — mirror the document language on switch so :lang(bn)/html[lang="bn"]
+    // rules (Bangla letter-spacing guards + the Bangla legibility scale) match
+    // at RUNTIME, not just at boot. The boot script in index.html sets these for
+    // the first paint, but a mid-session switch never updated them before.
+    const code = lang === "bn" ? "bn" : "en";
+    document.documentElement.lang = code;
+    document.documentElement.classList.toggle("lang-bn", code === "bn");
   }, [lang]);
 
   /* #1040/#1035 — mirror the active kid's age band into the Phaser render layer
