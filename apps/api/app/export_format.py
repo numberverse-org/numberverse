@@ -122,6 +122,10 @@ def serialize_kid(kid, settings, mastery, events, stories, acceleration=None) ->
                 # #3072 — export the real play time (client_ts → timestamp →
                 # created_at), not the server sync stamp.
                 "created_at": iso(event_occurred_at(e)),
+                # #2947 — also carry the raw client round time (epoch ms) so a
+                # backup/restore round-trips ProgressEvent.timestamp instead of
+                # degrading every event back to the server created_at.
+                "timestamp": getattr(e, "timestamp", None),
             }
             for e in sorted(events, key=lambda e: event_occurred_at(e) or datetime.min)
         ],

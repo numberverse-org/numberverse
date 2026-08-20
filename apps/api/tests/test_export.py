@@ -318,6 +318,28 @@ check("EXPORT_RATE_LIMIT strictly below _REQUESTS_PER_MIN (120/min)",
       _export_budget is not None and _export_budget < _REQUESTS_PER_MIN, True)
 check("EXPORT_RATE_LIMIT is 10/min", _export_budget, 10)
 
+
+print("⑧  #2947 — serialize_kid emits the raw client round timestamp…")
+_ts_out = serialize_kid(
+    kid(), settings(), [],
+    [event(timestamp=1725000000000, created_at=datetime(2026, 8, 10, 8, 0, 0))], [],
+)
+check("#2947 event timestamp serialized", _ts_out["events"][0]["timestamp"], 1725000000000)
+# a legacy event with no timestamp serializes it as None (not a crash)
+_legacy_out = serialize_kid(kid(), settings(), [], [event()], [])
+check("#2947 legacy event timestamp is None", _legacy_out["events"][0].get("timestamp"), None)
+
+
+print("⑨  #2951 — export responses carry Cache-Control: no-store / Pragma…")
+check("#2951 no-store cache header present", export._NO_CACHE_HEADERS["Cache-Control"],
+      "no-store, private, max-age=0")
+check("#2951 Pragma: no-cache present", export._NO_CACHE_HEADERS["Pragma"], "no-cache")
+# both export routes build their Response headers from the shared dict — confirm
+# the helper is actually referenced by the route functions (a regression guard
+# so a future edit can't drop the header silently).
+_export_src = inspect.getsource(export.export_json) + inspect.getsource(export.export_csv)
+check("#2951 JSON export route uses _NO_CACHE_HEADERS", "_NO_CACHE_HEADERS" in _export_src, True)
+
 print()
 print(f"✓ export format matrix: {passes} passed, {fails} failed")
 sys.exit(1 if fails else 0)

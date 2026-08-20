@@ -58,6 +58,17 @@ def _attachment(filename: str) -> str:
     return f'attachment; filename="{filename}"'
 
 
+# #2951 — the export streams the family's entire PII (names, birth years,
+# email, mastery, answers); `Content-Disposition: attachment` stops auto-render
+# but NOT HTTP caching. A shared browser/proxy/CDN could otherwise retain the
+# full backup body. Emit no-store/private + no-cache on every export response
+# so nothing is ever cached anywhere along the path.
+_NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, private, max-age=0",
+    "Pragma": "no-cache",
+}
+
+
 def _safe_json_dumps(obj: dict) -> str:
     """#3083 — serialize export payloads as STRICT RFC-7159 JSON.
 
@@ -191,7 +202,10 @@ async def export_json(
     return Response(
         content=data,
         media_type="application/json",
-        headers={"Content-Disposition": _attachment(f'numberverse-export-{datetime.now(timezone.utc).strftime("%Y-%m-%d")}.json')},
+        headers={
+            "Content-Disposition": _attachment(f'numberverse-export-{datetime.now(timezone.utc).strftime("%Y-%m-%d")}.json'),
+            **_NO_CACHE_HEADERS,
+        },
     )
 
 
@@ -215,7 +229,10 @@ async def export_csv(
     return Response(
         content=data,
         media_type="text/csv",
-        headers={"Content-Disposition": _attachment(f'numberverse-export-{datetime.now(timezone.utc).strftime("%Y-%m-%d")}.csv')},
+        headers={
+            "Content-Disposition": _attachment(f'numberverse-export-{datetime.now(timezone.utc).strftime("%Y-%m-%d")}.csv'),
+            **_NO_CACHE_HEADERS,
+        },
     )
 
 

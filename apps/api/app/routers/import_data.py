@@ -106,6 +106,10 @@ class ImportEventIn(BaseModel):
     response_ms: RoundedInt = None
     difficulty: float | None = None
     created_at: datetime | None = None
+    # #2947 — the client's real round time (epoch ms, #1024). Exported by
+    # serialize_kid so a backup/restore preserves the activity-feed / weekly
+    # timing instead of degrading every round to the server created_at.
+    timestamp: int | None = None
 
 
 class ImportStoryIn(BaseModel):
@@ -159,6 +163,14 @@ class ImportKidIn(BaseModel):
     name: str = Field(min_length=1, max_length=40)
     avatar: str | None = None
     birth_year: int | None = Field(default=None, ge=2010, le=2030)
+    # #2948 — wallet balance must round-trip (export surfaces it via #987). A
+    # restore that omits it would silently zero the kid's coins.
+    coins: int = Field(default=0, ge=0)
+    # #2949 — per-kid consent audit trail (#985) is exported but must be restored
+    # too, otherwise a backup silently erases every consent version/method/at.
+    consent_version: str | None = None
+    consent_at: datetime | None = None
+    consent_method: str | None = None
     created_at: datetime | None = None
     settings: ImportSettingsIn | None = None
     # #1639 — per-kid ceilings consistent with realistic export sizes. The 1 MiB
@@ -185,6 +197,11 @@ class ImportOut(BaseModel):
     skipped: int
     conflicts: int
     conflict_details: list[str] = []
+    # #2953 — when the backup's profile block is absent (or its email can't be
+    # compared), surface a warning so the caller knows ownership was not verified.
+    # When present and mismatched, the import is REJECTED outright (a 409), never
+    # a warning — absorbing another family's data must not proceed.
+    warnings: list[str] = []
 
 
 _SETTINGS_FIELDS = (
@@ -240,13 +257,27 @@ def _apply_fields(obj, fields: dict) -> bool:
 
 def _upsert_kid(db: AsyncSession, item: ImportKidIn, kid_uuid: uuid.UUID, existing: Kid | None, profile_id: uuid.UUID) -> tuple[int, int, int]:
     """Create or update one kid. Returns (created, updated, skipped)."""
+    # #2948/#2949 — a restore must carry the wallet balance and the consent
+    # audit trail, not just the visible profile columns.
+    fields = {
+        "name": item.name,
+        "avatar": item.avatar,
+        "birth_year": item.birth_year,
+        "coins": item.coins,
+        "consent_version": item.consent_version,
+        "consent_at": _utc(item.consent_at),
+        "consent_method": item.consent_method,
+    }
     if existing is None:
-        kid = Kid(id=kid_uuid, profile_id=profile_id, name=item.name, avatar=item.avatar, birth_year=item.birth_year)
+        kid = Kid(id=kid_uuid, profile_id=profile_id, name=item.name, avatar=item.avatar,
+                  birth_year=item.birth_year, coins=item.coins,
+                  consent_version=item.consent_version, consent_at=_utc(item.consent_at),
+                  consent_method=item.consent_method)
         if item.created_at is not None:
             kid.created_at = _utc(item.created_at)
         db.add(kid)
         return 1, 0, 0
-    if _apply_fields(existing, {"name": item.name, "avatar": item.avatar, "birth_year": item.birth_year}):
+    if _apply_fields(existing, fields):
         return 0, 1, 0
     return 0, 0, 1
 
@@ -324,6 +355,27 @@ async def import_family_data(
             f"Unsupported export document: expected format {FORMAT!r}, version {VERSION}",
         )
 
+    # #2953 — the backup carries the original owner's email in its profile block
+    # (profile_meta). Anyone holding a valid token could otherwise absorb a
+    # *stolen* family export into their own account, so when a profile email is
+    # present it must match the caller's — a mismatch is a HARD 409 rejection,
+    # never a silent merge. A missing/unparseable profile block is a warning, not
+    # a rejection (legacy V1 exports carried no profile block).
+    warnings: list[str] = []
+    if body.profile is not None:
+        owner_email = body.profile.get("email") if isinstance(body.profile, dict) else None
+        if owner_email:
+            caller_email = getattr(profile, "email", None)
+            if caller_email and owner_email != caller_email:
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    "Import document belongs to a different account",
+                )
+        else:
+            warnings.append("import profile block missing email — ownership not verified")
+    else:
+        warnings.append("import profile block absent — ownership not verified")
+
     created = 0
     updated = 0
     skipped = 0
@@ -378,6 +430,7 @@ async def import_family_data(
             skipped=skipped,
             conflicts=conflicts,
             conflict_details=conflict_details,
+            warnings=warnings,
         )
 
     settings_by_kid = {
@@ -452,6 +505,8 @@ async def import_family_data(
                     response_ms=event.response_ms,
                     difficulty=event.difficulty,
                     created_at=created_at,
+                    # #2947 — preserve the client's real round time (epoch ms).
+                    timestamp=event.timestamp,
                 )
             )
             event_keys.add(key)
@@ -502,4 +557,5 @@ async def import_family_data(
         skipped=skipped,
         conflicts=conflicts,
         conflict_details=conflict_details,
+        warnings=warnings,
     )

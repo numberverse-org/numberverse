@@ -192,11 +192,14 @@ SETTINGS_UPDATED_AT = datetime(2026, 8, 5, 9, 0, 0)
 
 
 def make_doc(kid_id=str(KID_ID), name="ময়না", settings=None, mastery=None,
-             events=None, stories=None, profile_id=None, fmt=FORMAT, version=VERSION):
+             events=None, stories=None, profile_id=None, fmt=FORMAT, version=VERSION,
+             coins=0, consent_version=None, consent_at=None, consent_method=None,
+             profile=None):
     return import_data.ImportIn(
         format=fmt,
         version=version,
         exported_at=datetime(2026, 8, 1, 12, 0, 0),
+        profile=profile,
         kids=[
             import_data.ImportKidIn(
                 id=kid_id,
@@ -204,6 +207,10 @@ def make_doc(kid_id=str(KID_ID), name="ময়না", settings=None, mastery=
                 name=name,
                 avatar="owl",
                 birth_year=2019,
+                coins=coins,
+                consent_version=consent_version,
+                consent_at=consent_at,
+                consent_method=consent_method,
                 settings=settings,
                 mastery=mastery or [],
                 events=events or [],
@@ -249,7 +256,8 @@ def default_story(**kw):
 async def run(body, existing_sets=None, headers=None):
     db = FakeSession(existing_sets or [[], [], [], [], []])
     result = await import_family_data(
-        body=body, request=FakeRequest(headers), profile=SimpleNamespace(id=PROFILE_ID), db=db
+        body=body, request=FakeRequest(headers),
+        profile=SimpleNamespace(id=PROFILE_ID, email="p@ex.com"), db=db
     )
     return result, db
 
@@ -286,7 +294,10 @@ check("unchanged → False", import_data._apply_fields(row2, {"name": "b", "avat
 print("③  _upsert_kid() insert/update/skip + tenant stamp…")
 db = FakeSession([])
 item = import_data.ImportKidIn(id=str(KID_ID), name="ময়না", avatar="owl", birth_year=2019,
-                               created_at=datetime(2026, 8, 1, 10, 0, 0))
+                               created_at=datetime(2026, 8, 1, 10, 0, 0),
+                               coins=150,
+                               consent_version="1.0", consent_at=datetime(2026, 8, 1, 10, 0, 0),
+                               consent_method="create_kid")
 c, u, s = import_data._upsert_kid(db, item, KID_UUID, None, PROFILE_ID)
 check("new kid → created", (c, u, s), (1, 0, 0))
 new_kid = db.added[0]
@@ -295,16 +306,28 @@ check("kid id preserved", new_kid.id, KID_UUID)
 check("kid name", new_kid.name, "ময়না")
 check("kid created_at restored", new_kid.created_at,
       datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc))
+# #2948/#2949 — wallet balance + consent audit trail must round-trip on create.
+check("#2948 new kid coins restored", new_kid.coins, 150)
+check("#2949 new kid consent_version", new_kid.consent_version, "1.0")
+check("#2949 new kid consent_method", new_kid.consent_method, "create_kid")
+check("#2949 new kid consent_at (aware UTC)", new_kid.consent_at,
+      datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc))
 
 db2 = FakeSession([])
-existing = SimpleNamespace(name="Old", avatar=None, birth_year=None, profile_id=PROFILE_ID)
+existing = SimpleNamespace(name="Old", avatar=None, birth_year=None, profile_id=PROFILE_ID,
+                           coins=0, consent_version=None, consent_at=None, consent_method=None)
 c, u, s = import_data._upsert_kid(db2, item, KID_UUID, existing, PROFILE_ID)
 check("existing changed → updated", (c, u, s), (0, 1, 0))
 check("existing name updated", existing.name, "ময়না")
 check("existing tenant untouched", existing.profile_id, PROFILE_ID)
+check("#2948 existing coins updated", existing.coins, 150)
+check("#2949 existing consent_version updated", existing.consent_version, "1.0")
 
 db3 = FakeSession([])
-same = SimpleNamespace(name="ময়না", avatar="owl", birth_year=2019, profile_id=PROFILE_ID)
+same = SimpleNamespace(name="ময়না", avatar="owl", birth_year=2019, profile_id=PROFILE_ID,
+                       coins=150, consent_version="1.0",
+                       consent_at=datetime(2026, 8, 1, 10, 0, 0, tzinfo=timezone.utc),
+                       consent_method="create_kid")
 c, u, s = import_data._upsert_kid(db3, item, KID_UUID, same, PROFILE_ID)
 check("existing unchanged → skipped", (c, u, s), (0, 0, 1))
 
@@ -596,6 +619,61 @@ rejects("#1639 >64 kids in a document", lambda: import_data.ImportIn(
 # at the cap (boundary inclusive) is accepted
 import_data.ImportKidIn(name="x", events=[default_event() for _ in range(5000)])
 check("#1639 5000 events accepted", "accepted", "accepted")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ⑬  #2953 — import verifies the backup's owner via body.profile.email
+# ═══════════════════════════════════════════════════════════════════
+print("⑬  #2953 — owner mismatch is rejected; absent profile block warns…")
+# A profile email that matches the caller's → accepted, no extra warnings.
+_body_match = make_doc(profile={"email": "p@ex.com"})
+r_match, _d = run_sync(_body_match)
+check("#2953 matching owner accepted", r_match.conflicts, 0)
+
+# A profile email that DIFFERS from the caller's → hard 409, nothing imported.
+_body_foreign = make_doc(profile={"email": "someone-else@ex.com"})
+try:
+    run_sync(_body_foreign)
+    check("#2953 foreign owner → 409", "no exception", "HTTPException")
+except import_data.HTTPException as e:
+    check("#2953 foreign owner → 409", e.status_code, 409)
+
+# A profile block missing its email → accepted with a warning (legacy V1).
+_body_no_email = make_doc(profile={"display_name": "Parent"})
+r_noemail, _d = run_sync(_body_no_email)
+check("#2953 profile sans email warns", any("ownership not verified" in w for w in r_noemail.warnings), True)
+
+# An absent profile block → accepted with a warning, never rejected.
+_body_absent = make_doc(profile=None)
+r_absent, _d = run_sync(_body_absent)
+check("#2953 absent profile warns", any("ownership not verified" in w for w in r_absent.warnings), True)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ⑭  #2947 — ProgressEvent.timestamp round-trips through import
+# ═══════════════════════════════════════════════════════════════════
+print("⑭  #2947 — event timestamp (epoch ms) is written on import…")
+_ts = 1_725_000_000_000
+_body_ts = make_doc(events=[default_event(timestamp=_ts)])
+r_ts, db_ts = run_sync(_body_ts)
+_event_row = [o for o in db_ts.added if type(o).__name__ == "ProgressEvent"][0]
+check("#2947 timestamp persisted", _event_row.timestamp, _ts)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ⑮  #2948/#2949 — coins + consent audit trail round-trip through import
+# ═══════════════════════════════════════════════════════════════════
+print("⑮  #2948/#2949 — coins + consent restore through the full route…")
+_consent_at = datetime(2026, 8, 1, 10, 0, 0)
+_body_coins = make_doc(coins=150, consent_version="1.0", consent_at=_consent_at,
+                       consent_method="create_kid")
+r_coins, db_coins = run_sync(_body_coins)
+_kid_row = [o for o in db_coins.added if type(o).__name__ == "Kid"][0]
+check("#2948 coins restored via route", _kid_row.coins, 150)
+check("#2949 consent_version restored via route", _kid_row.consent_version, "1.0")
+check("#2949 consent_method restored via route", _kid_row.consent_method, "create_kid")
+check("#2949 consent_at restored (aware UTC)", _kid_row.consent_at,
+      _consent_at.replace(tzinfo=timezone.utc))
 
 
 # ═══════════════════════════════════════════════════════════════════
