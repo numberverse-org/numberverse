@@ -26,12 +26,26 @@ export default function ShareClient() {
 
   // #1597 — anonymous page: read the parent portal's saved language when it
   // exists, otherwise English. A tiny EN/বাংলা toggle lets the reader switch.
+  // #2854 — a Bangladeshi relative (bn-BD browser locale) should land on the
+  // Bangla card, not English. Resolution order: saved portal preference, then
+  // the browser locale (navigator.language startsWith "bn"), then English.
   useEffect(() => {
     try {
       const saved = localStorage.getItem("nv_parent_lang");
-      if (saved === "en" || saved === "bn") setLang(saved);
+      if (saved === "en" || saved === "bn") {
+        setLang(saved);
+        return;
+      }
     } catch {
-      /* private browsing — keep English */
+      /* private browsing — fall through to browser locale */
+    }
+    try {
+      const locale =
+        (typeof navigator !== "undefined" ? navigator.language : "").toLowerCase();
+      if (locale.startsWith("bn")) setLang("bn");
+      else if (locale.startsWith("en")) setLang("en");
+    } catch {
+      /* keep default English */
     }
   }, []);
 
@@ -55,7 +69,16 @@ export default function ShareClient() {
   }, [token]);
 
   const t = SHARE_LANGS[lang];
-  const toggleLang = () => setLang((prev) => (prev === "en" ? "bn" : "en"));
+  const toggleLang = () =>
+    setLang((prev) => {
+      const next = prev === "en" ? "bn" : "en";
+      try {
+        localStorage.setItem("nv_parent_lang", next);
+      } catch {
+        /* private browsing — toggle still works, just not persisted */
+      }
+      return next;
+    });
 
   return (
     <ErrorBoundary

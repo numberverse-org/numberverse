@@ -1,3 +1,5 @@
+import type { SkillState, KidProfile } from "@numberverse/core";
+
 // API base. Resolution order:
 //  1. NEXT_PUBLIC_API_URL at build time (the demo/tunnel build sets "/api/v1" —
 //     same origin, proxied by nginx through the Cloudflare tunnel).
@@ -47,6 +49,43 @@ export interface MasteryRow {
    *  surfaced in the parent mastery table so regression can be flagged. */
   last_practice?: string | null;
   last_decay?: string | null;
+}
+
+/**
+ * #2898 — wire→domain adapters. `api.ts` is the THIN wire contract and models
+ * the API's snake_case JSON directly; `@numberverse/core` is the shared
+ * camelCase domain. These converters are the single audited seam where the two
+ * spellings meet, so a rename in either layer can only break in ONE place.
+ *
+ * NOTE the impedance: the core `SkillState`/`KidProfile` carry fields the
+ * parent wire rows don't (kidId, createdAt) and use epoch-ms timestamps where
+ * the API returns ISO strings, so the mapping is lossy by design — these are
+ * for INTEROP, not the portal's own display (which keeps using `MasteryRow`).
+ */
+export function toSkillState(row: MasteryRow, kidId = ""): SkillState {
+  return {
+    kidId,
+    skillId: row.skill_id,
+    pMastered: row.mastery, // both 0..1
+    correct: row.correct,
+    attempts: row.attempts,
+    streak: row.streak,
+    // API timestamps are ISO strings → core wants epoch ms (null-safe).
+    lastPractice: row.last_practice ? Date.parse(row.last_practice) : null,
+    lastDecay: row.last_decay ? Date.parse(row.last_decay) : 0,
+  };
+}
+
+export function toKidProfile(kid: Kid): KidProfile {
+  return {
+    id: kid.id,
+    name: kid.name,
+    avatar: kid.avatar,
+    birthYear: kid.birth_year,
+    // The parent `Kid` wire row has no created_at; the core domain field is
+    // left empty at this seam (nothing in apps/parent consumes it yet).
+    createdAt: "",
+  };
 }
 
 /** #132 — a skill below mastery, with catalog titles for the worksheet. */
