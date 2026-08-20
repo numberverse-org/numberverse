@@ -1,3 +1,36 @@
+## 20 Aug 2026 — 1.11.0 (Kids-get-stuck wave: crash recovery, tap-to-answer, un-stick games, nav + HUD, playability sweep, share-token expiry, rate-limit hardening, BKT decay, Bangla i18n, notifications)
+
+c486aff fix(release): sweep gate guards on Playwright browsers, not pnpm
+75eca99 fix(kid): restore race + celebration clamp + typography/Bangla + dead CSS
+adff722 fix(api): input validation + admin rate-limit + coin-only sync + test coverage
+9c39340 fix(parent): charts/cards honesty — BKT vs accuracy, idle-day marker, captions
+c8ca1d9 feat(api): web-push delivery path (inert until VAPID + pywebpush) + /auth/verify
+5eb0689 fix(parent): Bangla i18n — game/skill names, numerals, narrLang, <html lang>
+26db861 perf(kid): incremental roundMeter + 10Hz progress bars + spacing/radius/z tokens
+04c9e2d chore: ignore apps/api/data (runtime log artifacts from test runs)
+52e3553 fix(parent): route SW-registration failure through logBoundaryError, not console.warn
+8990349 fix(api): time-attribution + retention — client-observed time in reports/prune
+ffd5d1c fix(kid): unhandled-rejection hardening — resolveIdentity + guarded fire-and-forget chains
+aa11b53 fix(parent): settings-destructive-write guard + tap targets + share coins cleanup
+2b0e6f5 fix(api): BKT/adaptive-mastery correctness — decay-on-read, play-time practice, skip mastery
+c2fd8f0 fix(parent): notifications/push — modal prompt, SW-ready timeout, permission branching, browser-sub revoke
+082691d fix(api): concurrency/race cluster — atomic first-use, FOR UPDATE, deterministic uid, timestamp precedence
+f5c27a8 fix(parent): onboarding/signup — zero-kid add form, lang persist, 409 inline
+5a07885 fix(kid): sync-engine + async reliability (unhandled rejections, idempotency, races)
+c1bcbe6 feat(api): per-recipient share tokens with expiry (#3057/#3061/#3062)
+2eab9ae fix(parent): archive/timeline correctness — local months, session-span minutes, BKT decay
+d8d6d7f fix(parent): language toggle + zero-kid reachability + inline save error
+147a040 fix(kid): long-tail emoji tofu + slim PWA precache
+8dfdf4d fix(api): sliding-window rate limit + kid-scoped story cap + limiter tests
+6ffe37b perf(kid): pool reorder cards via the makeCard hook (#3120 remainder)
+669557b fix(parent): share card shows the live window's real date range (#3058)
+3cb11ca fix(kid): perf — persistent option cards + coalesced resize + incremental stroke
+fd7bd17 fix(parent): settings-screen UX — quiet-hours checkbox, goal cap, unsaved-sign-out guard
+5923832 fix(api): auth/rate-limit hardening — lockout escalation, brute-force paths, global cap
+7dc3420 feat(admin): brand theme + AA contrast + dark-mode toggle (#3153)
+fab0b5c fix(parent): white save-bar + WCAG contrast + PNG OG share card
+242e620 fix(kid): ReadAloud distinguishable answers + layout/safe-area bugs
+
 ## 19 Aug 2026 — 1.10.1 (Unmistakable ← back arrows across all screens (navigation clarity))
 
 fc751ff fix(kid): replace cryptic ‹ back glyph with unmistakable ← across all screens
