@@ -2090,6 +2090,9 @@ export default function App() {
 
   /** Transient "✓ Shared" / error feedback next to the share buttons. */
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  /** #2855 — desktop fallback wa.me URL surfaced as a visible "Open WhatsApp"
+   *  link (a real tap gesture) instead of a popup-blocked window.open. */
+  const [waFallback, setWaFallback] = useState<string | null>(null);
   const flashShare = (msg: string, ms = 2600) => {
     setShareMsg(msg);
     window.setTimeout(() => setShareMsg((m) => (m === msg ? null : m)), ms);
@@ -2124,6 +2127,18 @@ export default function App() {
       const res = await sharePng(blob, `numberverse-${safeDownloadName}-progress.png`, caption, waTextUrl(caption));
       if (res === "unsupported") {
         flashShare(t.shareFail);
+        return;
+      }
+      // The parent dismissed the OS share sheet — no reward, no forced download.
+      if (res === "cancelled") {
+        return;
+      }
+      // A desktop fallback downloaded the PNG and returned an (allowlisted)
+      // wa.me link — surface it as a visible "Open WhatsApp" tap target instead
+      // of a popup-blocked window.open.
+      if (typeof res === "object") {
+        setWaFallback(res.waUrl);
+        flashShare(t.shareDownloaded);
         return;
       }
       // Reward the kid (once per calendar day) + let Nova announce it.
@@ -2210,6 +2225,12 @@ export default function App() {
       const caption = t.certShareCaption(kid.name, lang === "bn" ? certWorld.titleBn ?? certWorld.title : certWorld.title);
       const safeDownloadName = sanitizeDisplayName(kid.name, { forDownload: true, maxLen: 60 }).replace(/\s+/g, "-");
       const res = await sharePng(blob, `numberverse-${safeDownloadName}-certificate.png`, caption, waTextUrl(caption));
+      if (res === "cancelled") return;
+      if (typeof res === "object") {
+        setWaFallback(res.waUrl);
+        flashShare(t.shareDownloaded);
+        return;
+      }
       flashShare(res === "unsupported" ? t.shareFail : res === "downloaded" ? t.shareDownloaded : t.shareDone);
     } catch {
       flashShare(t.shareFail);
@@ -5131,6 +5152,11 @@ export default function App() {
                       {t.digestBtn}
                     </button>
                     {shareMsg && <p className="share-feedback" role="status">{shareMsg}</p>}
+                    {waFallback && (
+                      <a className="share-wa-link" href={waFallback} target="_blank" rel="noopener noreferrer" onClick={() => setWaFallback(null)}>
+                        {t.shareOpenWhatsApp}
+                      </a>
+                    )}
                     <details className="parent-skills">
                       <summary>{t.parentSkills}</summary>
                       <div className="skill-list">

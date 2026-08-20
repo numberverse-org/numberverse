@@ -705,6 +705,7 @@ export const en: Strings = {
     shareRewardSpeak: (name, n) => `${name}'s progress was shared! You earned +${n} coins! 🎉`,
     shareRewardToast: (n) => `🎉 Shared! +${n} coins for your kid`,
     shareWhatsApp: "WhatsApp",
+    shareOpenWhatsApp: "Open WhatsApp",
     shareDone: "✓ Shared",
     shareDownloaded: "✓ Downloaded — attach it in WhatsApp",
     shareFail: "Couldn't share on this device",

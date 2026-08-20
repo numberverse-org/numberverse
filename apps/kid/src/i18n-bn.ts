@@ -704,6 +704,7 @@ export const bn: Strings = {
     shareRewardSpeak: (name, n) => `${name}-এর শেখার খবর শেয়ার হয়েছে! তুমি +${bnNum(n)} কয়েন পেয়েছ! 🎉`,
     shareRewardToast: (n) => `🎉 শেয়ার হয়েছে! আপনার সন্তানের জন্য +${bnNum(n)} কয়েন`,
     shareWhatsApp: "WhatsApp",
+    shareOpenWhatsApp: "WhatsApp খুলুন",
     shareDone: "✓ শেয়ার হয়েছে",
     shareDownloaded: "✓ ডাউনলোড হয়েছে — WhatsApp-এ যোগ করো",
     shareFail: "এই ডিভাইসে শেয়ার করা যায়নি",

@@ -159,10 +159,10 @@ export class PhotoBoothScene extends Phaser.Scene {
         stars: nova.petStage,
         score: nova.affection,
         sessions: Math.max(1, nova.days.length),
-        statsLabels: ["Growth", "Love", "Days"],
+        statsLabels: [T("photoBoothStatGrowth"), T("photoBoothStatLove"), T("photoBoothStatDays")],
         worlds: [],
         worldsTitle: "",
-        footer: "Numberverse 💛",
+        footer: T("photoBoothFooter"),
       };
       // #1818 — renderShareCard is now async (chunked across frames) so the
       // 1080×1350 paint yields off the Phaser tick; the status line above
@@ -173,6 +173,11 @@ export class PhotoBoothScene extends Phaser.Scene {
       const caption = this.lang === "bn" ? "নোভার ছবি 📸" : "Nova's photo 📸";
       const res = await sharePng(blob, "numberverse-nova-photo.png", caption, waTextUrl(caption));
       if (res === "unsupported") {
+        this.status.setText("…");
+        return;
+      }
+      if (res === "cancelled") {
+        // The parent dismissed the OS share sheet — no reward, no forced download.
         this.status.setText("…");
         return;
       }

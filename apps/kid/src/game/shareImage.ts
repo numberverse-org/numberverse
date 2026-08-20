@@ -106,10 +106,13 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
   // phase 2/4 done — avatar badge painted, yield before the name + stats
   await nextFrame();
 
-  // ── name (#1827: cap long names so they never overflow the ring) ──
+  // ── name (#1827 #2850: shrink-to-fit then ellipsize so a long Bangla name
+  //     never clips off either edge of the canvas) ──
   ctx.font = `800 76px ${FONT_DISPLAY}`;
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(capName(d.name), cx, cy + R + 90);
+  const nameFit = capName(ctx, d.name, W - 120, 40);
+  ctx.font = `800 ${nameFit.font}px ${FONT_DISPLAY}`;
+  ctx.fillText(nameFit.text, cx, cy + R + 90);
 
   // ── stat tiles ──
   const tileW = 300;
@@ -141,48 +144,78 @@ export async function renderShareCard(canvas: HTMLCanvasElement, d: ShareCardDat
   await nextFrame();
 
   // ── worlds progress ──
+  // #2848 — the worlds column used a fixed 92px pitch anchored near the bottom,
+  // so with all 8 worlds rows 2+ were drawn below the 1350px edge (invisible)
+  // and row 1 overlapped the footer. Measure the room available above the
+  // footer band, size compact rows, and fit as many as the space allows; the
+  // remainder is surfaced with a "+N more" line instead of silently hiding the
+  // kid's progress. The footer anchors below the last drawn row, never at a
+  // hardcoded H-130.
   const wTitleY = tilesY + tileH + 92;
   ctx.font = `700 44px ${FONT_DISPLAY}`;
   ctx.fillStyle = "#9be7ff";
   ctx.fillText(d.worldsTitle, cx, wTitleY);
 
-  const rowsY = wTitleY + 70;
-  const rowH = 66;
+  const rowsY = wTitleY + 64;
+  const total = d.worlds.length;
+  // Footer band: reserve enough room for a (possibly wrapped) tagline above the
+  // card margin so the worlds column and the footer can never collide.
+  const footerBand = 150;
+  const avail = H - footerBand - rowsY;
+  // Compact row: a 40px text line + a thin 8px bar (+4px gap) = ~52px/row.
+  const rowTextH = 40;
+  const barH = 8;
+  const ROW_H = rowTextH + 14;
   const barX = 200;
   const barMax = W - 240;
-  d.worlds.forEach((w, i) => {
-    const y = rowsY + i * (rowH + 26);
+  const showCount = Math.max(1, Math.floor(avail / ROW_H));
+  const pitch = ROW_H;
+  d.worlds.slice(0, showCount).forEach((w, i) => {
+    const y = rowsY + i * pitch;
     const emojiX = 120;
-    ctx.font = "44px 'Apple Color Emoji','Segoe UI Emoji',sans-serif";
-    ctx.fillText(w.emoji, emojiX, y + rowH / 2 + 4);
+    ctx.font = "30px 'Apple Color Emoji','Segoe UI Emoji',sans-serif";
+    ctx.fillText(w.emoji, emojiX, y + rowTextH / 2 + 4);
     // title
     ctx.textAlign = "left";
-    ctx.font = `600 34px ${FONT_BODY}`;
+    ctx.font = `600 30px ${FONT_BODY}`;
     ctx.fillStyle = "rgba(255,255,255,0.95)";
     const title = w.title.length > 22 ? w.title.slice(0, 21) + "…" : w.title;
-    ctx.fillText(title, barX, y + rowH / 2);
+    ctx.fillText(title, barX, y + rowTextH / 2);
+    // count
+    ctx.textAlign = "right";
+    ctx.font = `700 28px ${FONT_DISPLAY}`;
+    ctx.fillStyle = NV_GOLD;
+    ctx.fillText(`${w.mastered}/${w.total}`, barMax, y + rowTextH / 2);
+    ctx.textAlign = "center";
     // bar
     ctx.fillStyle = "rgba(255,255,255,0.12)";
-    rr(ctx, barX, y + rowH + 12, barMax - barX, 18, 9);
+    rr(ctx, barX, y + rowTextH + 6, barMax - barX, barH, 5);
     ctx.fill();
     const pct = w.total > 0 ? w.mastered / w.total : 0;
     ctx.fillStyle = pct >= 1 ? NV_MINT : NV_SKY;
-    rr(ctx, barX, y + rowH + 12, Math.max(18, (barMax - barX) * pct), 18, 9);
+    rr(ctx, barX, y + rowTextH + 6, Math.max(14, (barMax - barX) * pct), barH, 5);
     ctx.fill();
-    // count
-    ctx.textAlign = "right";
-    ctx.font = `700 32px ${FONT_DISPLAY}`;
-    ctx.fillStyle = NV_GOLD;
-    ctx.fillText(`${w.mastered}/${w.total}`, barMax, y + rowH / 2);
-    ctx.textAlign = "center";
   });
+  // Surfaced remainder: the worlds that don't fit get a "+N more" line so a
+  // multi-world kid's progress is never silently dropped off-canvas.
+  let drawnBottom = rowsY + showCount * pitch;
+  if (total > showCount) {
+    const moreY = drawnBottom;
+    ctx.font = `600 30px ${FONT_BODY}`;
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText(`+${total - showCount} more`, cx, moreY);
+    drawnBottom = moreY + 40;
+  }
   // phase 4/4 done — worlds column painted, final yield before the footer
   await nextFrame();
 
-  // ── footer tagline ──
+  // ── footer tagline — anchored below the last drawn row so the fitted worlds
+  //    column can never overlap it (falls back to the old margin for a short
+  //    list where the natural anchor is higher up). ──
+  const footY = Math.max(drawnBottom + 20, H - 130);
   ctx.font = `500 36px ${FONT_BODY}`;
   ctx.fillStyle = "rgba(255,255,255,0.65)";
-  wrapText(ctx, d.footer, W / 2, H - 130, W - 160, 50);
+  wrapText(ctx, d.footer, W / 2, footY, W - 160, 50);
 
   return canvas;
 }
@@ -260,7 +293,11 @@ export async function renderCertCard(canvas: HTMLCanvasElement, d: ShareCertData
   ctx.fillText(d.certifies, cx, 400);
   ctx.font = "900 96px ui-serif, Georgia, serif";
   ctx.fillStyle = "#3a2a17";
-  ctx.fillText(capName(d.name), cx, 500); // #1827: cap long names
+  // #1827 #2850 — shrink-to-fit then ellipsize so a long Bangla name never
+  // clips off the cream sheet's two edges.
+  const certNameFit = capName(ctx, d.name, W - 240, 44);
+  ctx.font = `900 ${certNameFit.font}px ui-serif, Georgia, serif`;
+  ctx.fillText(certNameFit.text, cx, 500);
   ctx.font = "500 40px ui-serif, Georgia, serif";
   ctx.fillStyle = "#6a5430";
   ctx.fillText(d.mastered, cx, 590);
@@ -342,15 +379,48 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.closePath();
 }
 
-/** #1827 — a very long kid name overflows the card. Cap it to a readable
- *  ~24 chars (plus an ellipsis) before drawing, so the layout at both draw
- *  sites stays intact. Uses Array.from so emoji/surrogate pairs count as one
- *  "character". Never mutates stored data — it only shapes the drawn string. */
-function capName(name: string): string {
-  const MAX = 24;
+/** #1827 / #2850 — a very long kid name overflows the card. Measure the name
+ *  and shrink the font until it fits the available width (down to a readable
+ *  floor), then ellipsize anything still too wide so a 30+ glyph Bangla name
+ *  stays fully on-canvas instead of clipping symmetrically off both edges.
+ *  Never mutates stored data — it only shapes the drawn string. */
+function capName(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  maxW: number,
+  minFont: number
+): { text: string; font: number } {
+  // Best-effort when measureText is unavailable (e.g. a minimal test canvas).
+  if (typeof ctx.measureText !== "function") {
+    return { text: name.slice(0, 24), font: minFont };
+  }
+  const base = maxFontPx(ctx);
+  let font = base;
+  while (font > minFont) {
+    ctx.font = fontPx(ctx, font);
+    if (ctx.measureText(name).width <= maxW) return { text: name, font };
+    font -= 2;
+  }
+  // Even the floor doesn't fit — ellipsize to fit at the floor size.
+  ctx.font = fontPx(ctx, minFont);
   const chars = Array.from(name);
-  if (chars.length <= MAX) return name; // short names draw byte-identical
-  return chars.slice(0, MAX - 1).join("") + "…";
+  let text = name;
+  while (chars.length && ctx.measureText(text + "…").width > maxW) {
+    chars.pop();
+    text = chars.join("");
+  }
+  return { text: chars.length ? text + "…" : "…", font: minFont };
+}
+
+/** Read the capName base font size off the current ctx.font (px only). */
+function maxFontPx(ctx: CanvasRenderingContext2D): number {
+  const m = /(\d+(?:\.\d+)?)px/.exec(ctx.font);
+  return m ? Number(m[1]) : 76;
+}
+
+/** Write the ctx.font stack at a specific px size, preserving face/size order. */
+function fontPx(ctx: CanvasRenderingContext2D, px: number): string {
+  return ctx.font.replace(/(\d+(?:\.\d+)?)px/, `${px}px`);
 }
 
 /** #1817/#1818 — yield to the browser between card draw phases so a 1080×1350
@@ -455,20 +525,54 @@ export async function canvasToBlob(
   });
 }
 
-export type ShareResult = "shared" | "downloaded" | "unsupported";
+export type ShareResult = "shared" | "downloaded" | "unsupported" | "cancelled";
+
+/** A fallback action the UI can surface after a native-share is unavailable:
+ *  the PNG was downloaded and, when a WhatsApp caption URL is provided, the
+ *  caller should render it as a tappable "Open WhatsApp" link (a real user
+ *  gesture, so the popup is never blocked). */
+export interface ShareFallback {
+  kind: "downloaded";
+  /** null when the caption URL was absent or blocked by the allowlist. */
+  waUrl: string | null;
+  filename: string;
+}
+
+/** #2855 — trigger the PNG download that accompanies the desktop fallback. A
+ *  programmatic anchor click carries no user gesture, so a follow-up wa.me
+ *  `window.open` would be popup-blocked; instead we do the download here and
+ *  hand the (optionally allowlisted) waUrl back to the caller to surface as a
+ *  visible, tappable "Open WhatsApp" link. Returns the resolved waUrl (or
+ *  null). */
+function downloadPng(blob: Blob, filename: string, waUrl: string): string | null {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(a.href as string), 4000);
+  // #790 — core is pure (no browser globals): the allowlist check lives in
+  // core, while any window.open / anchor lives here in the kid app.
+  return waUrl && isAllowedExternalUrl(waUrl) ? waUrl : null;
+}
 
 /**
  * Share a PNG: native Web Share API with the FILE (opens the device share sheet
- * incl. WhatsApp — the parent just picks WhatsApp and posts). If the file share
- * isn't supported (desktop), download the PNG AND open wa.me with the caption
- * text so the parent can attach it in one tap. Resolves the outcome.
+ * incl. WhatsApp — the parent just picks WhatsApp and posts). If the user
+ * dismisses the sheet (AbortError) it resolves "cancelled" (no forced download,
+ * no reward). If the file share isn't supported (desktop), it downloads the PNG
+ * and hands back the allowed waUrl so the UI can render a visible "Open
+ * WhatsApp" link — a real tap gesture replaces the old gesture-less
+ * `window.open`, which desktop browsers silently popup-block. Resolves the
+ * outcome.
  */
 export async function sharePng(
   blob: Blob,
   filename: string,
   caption: string,
   waUrl: string
-): Promise<ShareResult> {
+): Promise<ShareResult | ShareFallback> {
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   try {
     const file = new File([blob], filename, { type: "image/png" });
@@ -476,30 +580,27 @@ export async function sharePng(
       await nav.share({ files: [file], title: filename, text: caption });
       return "shared";
     }
-  } catch {
-    // AbortError = user cancelled the sheet — not a failure worth surfacing.
+  } catch (err) {
+    // AbortError = user cancelled the sheet — not a failure, and NOT a fallback
+    // trigger. Skip the download so a kid is never rewarded for a share that
+    // didn't happen. Any other rejection still falls through to the download
+    // fallback (unchanged legacy behavior).
+    if (isAbortError(err)) return "cancelled";
   }
   try {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(a.href as string), 4000);
-    // #790 — core is pure (no browser globals): the allowlist check lives in
-    // core, while the window.open call lives here in the kid app.
-    if (waUrl && isAllowedExternalUrl(waUrl)) {
-      try {
-        window.open(waUrl, "_blank", "noopener,noreferrer");
-      } catch {
-        /* best-effort share */
-      }
-    }
-    return "downloaded";
+    const allowed = downloadPng(blob, filename, waUrl);
+    return { kind: "downloaded", waUrl: allowed, filename };
   } catch {
     return "unsupported";
   }
+}
+
+/** Web Share's user-cancel rejection is a DOMException named "AbortError"; a
+ *  non-standard environment may reject with a plain Error carrying that
+ *  message. Either way it means the parent dismissed the sheet. */
+function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  return err instanceof Error && err.name === "AbortError";
 }
 
 /** WhatsApp share URL with just text (no image — the caption companions the

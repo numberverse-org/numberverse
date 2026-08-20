@@ -742,6 +742,7 @@ export interface Strings {
   shareRewardSpeak: (name: string, n: number) => string;
   shareRewardToast: (n: number) => string;
   shareWhatsApp: string;
+  shareOpenWhatsApp: string;
   shareDone: string;
   shareDownloaded: string;
   shareFail: string;
