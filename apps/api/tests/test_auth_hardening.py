@@ -110,12 +110,13 @@ def test_1675_password_bytes_ok():
 
 async def test_1675_route_422s():
     print("① #1675 route-level bytes 422 (before any bcrypt/Google)…")
-    # signup — a 72-CHAR emoji password passes the schema's char cap but is 288
-    # BYTES; the route must reject it with the clear 422.
+    # signup — a 72-CHAR multibyte password ("A1😀"×18) passes the schema's char
+    # cap AND the complexity policy (upper+digit+symbol) but is 108 BYTES; the
+    # route must reject it with the clear 422.
     e = await expect_http(
         "signup >72-byte password → 422",
         auth.signup(
-            SignupIn(email="long@test.com", password="😀" * 72, display_name="P"),
+            SignupIn(email="long@test.com", password="A1😀" * 18, display_name="P"),
             _req(),
             _DummyDB(),
             _signup_limit=None,
@@ -128,7 +129,7 @@ async def test_1675_route_422s():
     await expect_http(
         "signup valid password reaches DB lookup (email dup) → 409 not 422",
         auth.signup(
-            SignupIn(email="dup@test.com", password="password123", display_name="P"),
+            SignupIn(email="dup@test.com", password="Password1!", display_name="P"),
             _req(),
             _DummyDB(),
             _signup_limit=None,
@@ -136,10 +137,12 @@ async def test_1675_route_422s():
         409,
     )
     # change-password: both current (bcrypt-CHECKED) and new (bcrypt-HASHED).
+    # current_password is VERIFY-only: 72 emoji chars pass max_length (chars) but
+    # are 288 bytes → the route's byte check rejects it as the 422.
     e2 = await expect_http(
         "change-password >72-byte current_password → 422",
         auth.change_password(
-            ChangePasswordIn(current_password="😀" * 72, new_password="newpass456"),
+            ChangePasswordIn(current_password="😀" * 72, new_password="NewPass456!"),
             _req(),
             _local_profile(),
             _DummyDB(),
@@ -150,7 +153,7 @@ async def test_1675_route_422s():
     e3 = await expect_http(
         "change-password >72-byte new_password → 422",
         auth.change_password(
-            ChangePasswordIn(current_password="oldpass123", new_password="😀" * 72),
+            ChangePasswordIn(current_password="oldpass123", new_password="A1😀" * 18),
             _req(),
             _local_profile(),
             _DummyDB(),
@@ -162,7 +165,7 @@ async def test_1675_route_422s():
     e4 = await expect_http(
         "set-password >72-byte new_password → 422 (before Google verify)",
         auth.set_password(
-            SetPasswordIn(id_token="x" * 10, new_password="😀" * 72),
+            SetPasswordIn(id_token="x" * 10, new_password="A1😀" * 18),
             _DummyDB(),
             _set_password_limit=None,
         ),
@@ -390,12 +393,131 @@ def test_1673_cors_config():
           cors_opts["allow_origins"], settings.origins)
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# ⑤ #2934/#2939/#2941/#2944/#2940 — auth-hardening cluster (password policy,
+#    length caps, signup-enumeration leak, login-lockout DoS)
+# ═════════════════════════════════════════════════════════════════════════
+
+def test_2934_password_complexity_schema():
+    print("⑤ #2934 password-complexity policy (schema boundary)…")
+    from pydantic import ValidationError
+
+    def _rejected(label, pw):
+        try:
+            SignupIn(email="a@b.co", password=pw)
+            check(label, "accepted", "rejected (ValidationError)")
+        except ValidationError:
+            check(label, "rejected", "rejected")
+        except Exception as e:  # noqa: BLE001
+            check(label, type(e).__name__, "ValidationError")
+
+    # The two spec "Done when" cases: 'aaaaaaaa' and 8 spaces.
+    _rejected("'aaaaaaaa' (1 class) rejected", "aaaaaaaa")
+    _rejected("8 spaces (whitespace-only) rejected", "        ")
+    # Other weak shapes that the old min_length=8 let through.
+    _rejected("'password1' (lower+digit = 2 classes) rejected", "password1")
+    _rejected("'Password' (upper+lower = 2 classes) rejected", "Password")
+    _rejected("8 chars all-lowercase rejected", "abcdefgh")
+    # Strong shapes still accepted (3 of 4 classes).
+    SignupIn(email="a@b.co", password="Password1!")  # 4 classes
+    SignupIn(email="a@b.co", password="Abc123xyz")   # upper+lower+digit = 3
+    SignupIn(email="a@b.co", password="Abcdef!!")    # upper+lower+symbol = 3
+    check("Password1! accepted", True, True)
+    # Same policy on change-password + set-password NEW secrets.
+    ChangePasswordIn(current_password="oldpass123", new_password="Password1!")
+    SetPasswordIn(id_token="x" * 10, new_password="Password1!")
+    check("change/set-password new_password accepts strong", True, True)
+    # …but NOT on the VERIFY-only fields (legacy weak passwords must still verify).
+    from app.schemas import LoginIn  # LoginIn.password has no complexity validator
+    LoginIn(email="a@b.co", password="password123")
+    ChangePasswordIn(current_password="password123", new_password="Password1!")
+    check("verify-only fields still accept weak legacy passwords", True, True)
+
+
+def test_2939_current_password_max_length():
+    print("⑤ #2939 current_password is capped like every other password field…")
+    from pydantic import ValidationError
+    # A 10 KB current_password must be rejected at the schema boundary (422),
+    # not accepted through to bcrypt (which would 401/500 on >72-byte inputs).
+    big = "a" * (10 * 1024)
+    try:
+        ChangePasswordIn(current_password=big, new_password="Password1!")
+        check("10 KB current_password → 422", "accepted", "rejected (ValidationError)")
+    except ValidationError:
+        check("10 KB current_password → 422", "rejected", "rejected")
+    # 72 chars is still fine; 73 is rejected (char cap, like every other field).
+    ChangePasswordIn(current_password="a" * 72, new_password="Password1!")
+    try:
+        ChangePasswordIn(current_password="a" * 73, new_password="Password1!")
+        check("73-char current_password rejected", "accepted", "rejected")
+    except ValidationError:
+        check("73-char current_password rejected", "rejected", "rejected")
+
+
+def test_2944_signup_display_name_bounded():
+    print("⑤ #2944 signup display_name bounded at 80 chars (matches PATCH /auth/me)…")
+    from pydantic import ValidationError
+    # 500-char display_name must be rejected with 422 (schema boundary).
+    try:
+        SignupIn(email="a@b.co", password="Password1!", display_name="x" * 500)
+        check("500-char display_name → 422", "accepted", "rejected (ValidationError)")
+    except ValidationError:
+        check("500-char display_name → 422", "rejected", "rejected")
+    # 80 chars is the ceiling (PARENT_NAME_MAX_LENGTH).
+    SignupIn(email="a@b.co", password="Password1!", display_name="x" * 80)
+    check("80-char display_name accepted", True, True)
+
+
+async def test_2941_signup_no_enumeration():
+    print("⑤ #2941 signup does not leak email registration…")
+    # Both the pre-lookup duplicate and the IntegrityError race use the SAME
+    # generic body, so a second signup for a known email is indistinguishable
+    # from a generic failure.
+    check("_SIGNUP_CONFLICT_MESSAGE is generic", "registered" not in auth._SIGNUP_CONFLICT_MESSAGE.lower(), True)
+    class _DupDB:
+        async def scalar(self, *a, **k):
+            return SimpleNamespace(id=uuid.uuid4(), auth_provider="local")  # email exists
+    e = await expect_http(
+        "duplicate signup → 409 generic body",
+        auth.signup(
+            SignupIn(email="victim@test.com", password="Password1!", display_name="V"),
+            _req(),
+            _DupDB(),
+            _signup_limit=None,
+        ),
+        409,
+    )
+    check("duplicate body indistinguishable (no 'registered'/'email')",
+          "registered" not in e.detail.lower() and "email" not in e.detail.lower(), True)
+
+
+def test_2940_login_lockout_ip_cap():
+    print("⑤ #2940/#3112 login lockout per-IP cap is wired…")
+    # #3112 already caps distinct victim-emails a single IP can lock to 3/hour.
+    # Verify the constant + wiring are in place (login passes ip + cap to the guard).
+    check("_MAX_LOCKOUTS_PER_IP_PER_HOUR == 3", auth._MAX_LOCKOUTS_PER_IP_PER_HOUR, 3)
+    import inspect
+    sig = inspect.signature(auth._LOGIN_GUARD.record_failure)
+    check("record_failure accepts max_distinct_lockouts", "max_distinct_lockouts" in sig.parameters, True)
+    check("record_failure accepts ip", "ip" in sig.parameters, True)
+    # The login handler threads them through (source-level assertion).
+    import app.routers.auth as auth_mod
+    src = inspect.getsource(auth_mod.login)
+    check("login calls record_failure with ip", "ip=ip" in src, True)
+    check("login calls record_failure with the hour cap", "max_distinct_lockouts=_MAX_LOCKOUTS_PER_IP_PER_HOUR" in src, True)
+
+
 def _run():
     test_1675_password_bytes_ok()
     asyncio.run(test_1675_route_422s())
     asyncio.run(test_1669_1676_rate_limits())
     test_1672_same_origin_middleware()
     test_1673_cors_config()
+    test_2934_password_complexity_schema()
+    test_2939_current_password_max_length()
+    test_2944_signup_display_name_bounded()
+    asyncio.run(test_2941_signup_no_enumeration())
+    test_2940_login_lockout_ip_cap()
     print()
     if FAILS:
         print(f"✖ {len(FAILS)} check(s) failed: {FAILS}")

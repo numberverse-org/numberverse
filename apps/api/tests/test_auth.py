@@ -353,7 +353,7 @@ async def expect_http(name, coro, status_code):
     return None
 
 
-async def signup_and_seed(db, email="parent@test.com", password="password123"):
+async def signup_and_seed(db, email="parent@test.com", password="Password123!"):
     """Real signup handler → returns (profile, token, request)."""
     req = make_request()
     out = await auth.signup(
@@ -395,7 +395,7 @@ async def _run():
     db = FakeDB()
     req = make_request()
     out = await auth.signup(
-        SignupIn(email="New@Test.com", password="password123", display_name="Parent"),
+        SignupIn(email="New@Test.com", password="Password123!", display_name="Parent"),
         req,
         db,
         _signup_limit=None,
@@ -405,9 +405,9 @@ async def _run():
     check("signup role default", out.profile.role, "user")
     check("signup consent stamped", out.profile.consent_version, "1.0")
     stored = db._stores[Profile][out.profile.id]
-    check("stored password != plaintext", stored.password_hash != "password123", True)
+    check("stored password != plaintext", stored.password_hash != "Password123!", True)
     check("stored password looks like bcrypt", stored.password_hash.startswith("$2"), True)
-    check("verify_password matches", verify_password("password123", stored.password_hash), True)
+    check("verify_password matches", verify_password("Password123!", stored.password_hash), True)
     check("auth_provider=local", stored.auth_provider, "local")
     check("one session row minted", len(db._stores[Session]), 1)
     session_row = next(iter(db._stores[Session].values()))
@@ -416,10 +416,10 @@ async def _run():
 
     dup = await expect_http(
         "signup duplicate email → 409",
-        auth.signup(SignupIn(email="new@test.com", password="password123", display_name="Dup"), make_request(), db, _signup_limit=None),
+        auth.signup(SignupIn(email="new@test.com", password="Password123!", display_name="Dup"), make_request(), db, _signup_limit=None),
         409,
     )
-    check("dup error mentions registered", "registered" in dup.detail.lower(), True)
+    check("dup error is generic (no 'registered')", "registered" not in dup.detail.lower(), True)
 
     # Password length is enforced at the schema boundary.
     try:
@@ -520,12 +520,12 @@ async def _run():
     req4 = make_request()
     req4.state.session = cur_sess
     await auth.change_password(
-        ChangePasswordIn(current_password="oldpass123", new_password="newpass456"),
+        ChangePasswordIn(current_password="oldpass123", new_password="NewPass456!"),
         req4,
         prof,
         db,
     )
-    check("new hash verifies", verify_password("newpass456", prof.password_hash), True)
+    check("new hash verifies", verify_password("NewPass456!", prof.password_hash), True)
     check("old password no longer verifies", verify_password("oldpass123", prof.password_hash), False)
     check("current session kept", cur_sess.revoked_at, None)
     check("other session revoked", other_sess.revoked_at is not None, True)
@@ -537,14 +537,14 @@ async def _run():
         auth.login(LoginIn(email="pw@test.com", password="oldpass123"), make_request(), db),
         401,
     )
-    ok4 = await auth.login(LoginIn(email="pw@test.com", password="newpass456"), make_request(), db)
+    ok4 = await auth.login(LoginIn(email="pw@test.com", password="NewPass456!"), make_request(), db)
     check("re-login with NEW password succeeds", isinstance(ok4.token, str), True)
 
     before_fail = len(pw_guard.recorded_failures)
     await expect_http(
         "wrong current password → 401",
         auth.change_password(
-            ChangePasswordIn(current_password="nope", new_password="whatever123"),
+            ChangePasswordIn(current_password="nope", new_password="Whatever123!"),
             make_request(),
             prof,
             db,
@@ -763,7 +763,7 @@ async def _run():
     req_cp = make_request()
     req_cp.state.session = cur_sess_pw
     await auth.change_password(
-        ChangePasswordIn(current_password="oldpass123", new_password="newpass456"),
+        ChangePasswordIn(current_password="oldpass123", new_password="NewPass456!"),
         req_cp,
         p_pw,
         db_pw,

@@ -186,16 +186,16 @@ async def _run():
     db = SignupFakeDB(dup_on_flush=True)
     e = await expect_http(
         "signup race → 409",
-        auth.signup(SignupIn(email="race@test.com", password="password123", display_name="P"),
+        auth.signup(SignupIn(email="race@test.com", password="Password1!", display_name="P"),
                     req(), db, _signup_limit=None),
         409,
     )
-    check("signup 409 mentions registered", e is not None and "registered" in e.detail.lower(), True)
+    check("signup 409 is generic (no 'registered')", e is not None and "registered" not in e.detail.lower(), True)
     check("signup rolled back the transaction", db.rollback_called, True)
 
     # The happy path (no race) must be untouched: no rollback, a session minted.
     ok = SignupFakeDB(dup_on_flush=False)
-    out = await auth.signup(SignupIn(email="ok@test.com", password="password123", display_name="P"),
+    out = await auth.signup(SignupIn(email="ok@test.com", password="Password1!", display_name="P"),
                             req(), ok, _signup_limit=None)
     check("signup success still returns a token", isinstance(out.token, str) and len(out.token) > 20, True)
     check("signup success commits", ok.commits >= 1, True)

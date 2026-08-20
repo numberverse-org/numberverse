@@ -105,6 +105,12 @@ _DELETE_ACCOUNT_RATE_LIMIT = ip_rate_limit(limit=10, tag="delete-account")
 # otherwise knock each one offline forever.
 _MAX_LOCKOUTS_PER_IP_PER_HOUR = 3
 
+# #2941 — signup must not confirm whether an email is already registered. Both
+# the pre-lookup duplicate and the concurrent-signup IntegrityError use this one
+# generic body so the response text is indistinguishable from a generic signup
+# failure (mirrors login's "Invalid email or password").
+_SIGNUP_CONFLICT_MESSAGE = "Unable to create account — please try again later"
+
 
 def _check_password_bytes(password: str) -> None:
     """#1675 — reject a password that exceeds bcrypt's 72-BYTE window with a
@@ -241,7 +247,12 @@ async def signup(
     _check_password_bytes(body.password)  # #1675 — reject before bcrypt
     existing = await db.scalar(select(Profile).where(Profile.email == body.email.lower()))
     if existing:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+        # #2941 — the old 409 body ("Email already registered") told an attacker
+        # exactly which addresses already have accounts, feeding targeted
+        # phishing. Return the SAME generic body as the IntegrityError branch
+        # below, so a duplicate signup is indistinguishable from any other
+        # signup failure (login already returns a deliberately generic message).
+        raise HTTPException(status.HTTP_409_CONFLICT, _SIGNUP_CONFLICT_MESSAGE)
     profile = Profile(
         email=body.email.lower(),
         password_hash=hash_password(body.password),
@@ -263,7 +274,7 @@ async def signup(
         token, refresh_token = await _issue_session(profile, request, db)
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
+        raise HTTPException(status.HTTP_409_CONFLICT, _SIGNUP_CONFLICT_MESSAGE) from None
     if response is not None:
         set_refresh_cookie(response, request, refresh_token)
     await db.refresh(profile)

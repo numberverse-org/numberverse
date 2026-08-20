@@ -47,6 +47,54 @@ _NONNEG_FINITE_FLOAT = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 BCRYPT_MAX_PASSWORD_LENGTH = 72
 
 
+# #2934 — password-complexity policy. The account controls a child's learning
+# data, exports, settings and deletion, and there is no second factor, so a
+# weak password is one breached credential from full account compromise. The
+# old rule was Field(min_length=8) alone, which let 'aaaaaaaa', 'password1' and
+# 8 literal spaces through. Require at least 3 of {uppercase, lowercase, digit,
+# symbol} and reject whitespace-only strings. Applied to every password-INPUT
+# field that SETS a new secret (SignupIn.password, ChangePasswordIn.new_password,
+# SetPasswordIn.new_password); the VERIFY-only fields (LoginIn.password,
+# ChangePasswordIn.current_password, VerifyPasswordIn.password,
+# DeleteAccountIn.password) must NOT enforce complexity — they only bcrypt-CHECK
+# an already-stored secret, and rejecting a legacy weak password there would lock
+# a legit parent out of their own account.
+PASSWORD_MIN_LENGTH = 8
+_UPPER = re.compile(r"[A-Z]")
+_LOWER = re.compile(r"[a-z]")
+_DIGIT = re.compile(r"\d")
+_SYMBOL = re.compile(r"[^A-Za-z0-9]")  # any non-alphanumeric char is a "symbol"
+# Whitespace-only (or whitespace + zero other classes) is never allowed, even at
+# 3+ "classes" via symbols, because a run of spaces has no entropy.
+_WHITESPACE_ONLY = re.compile(r"^\s*$")
+
+
+def _validate_password_complexity(value: str) -> str:
+    """#2934 — enforce the 3-of-4 complexity policy on a NEW password.
+
+    Returns the value unchanged on success; raises ValueError with a clear,
+    human-readable message on failure (surfaced as a 422 `detail` by Pydantic).
+    """
+    if len(value) < PASSWORD_MIN_LENGTH:
+        raise ValueError(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+    if _WHITESPACE_ONLY.match(value):
+        raise ValueError("Password must not be whitespace only")
+    classes = 0
+    if _UPPER.search(value):
+        classes += 1
+    if _LOWER.search(value):
+        classes += 1
+    if _DIGIT.search(value):
+        classes += 1
+    if _SYMBOL.search(value):
+        classes += 1
+    if classes < 3:
+        raise ValueError(
+            "Password must include at least 3 of: uppercase, lowercase, digit, symbol"
+        )
+    return value
+
+
 # ── Name/avatar charset (#1824/#1828) ─────────────────────────────────────
 # Kid names + parent display_names flow into NON-HTML sinks — the share-card
 # canvas (apps/kid/src/game/shareImage.ts), TTS, download filenames, CSV
@@ -152,8 +200,13 @@ def _clamp_birth_year(value: int | None) -> int | None:
 
 class SignupIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
     display_name: str | None = Field(default=None, max_length=PARENT_NAME_MAX_LENGTH, pattern=OPTIONAL_NAME_PATTERN)
+
+    @field_validator("password")
+    @classmethod
+    def _signup_password(cls, v: str) -> str:
+        return _validate_password_complexity(v)
 
     @field_validator("display_name")
     @classmethod
@@ -180,7 +233,12 @@ class SetPasswordIn(BaseModel):
     password field."""
 
     id_token: str = Field(min_length=10)
-    new_password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def _set_password_new(cls, v: str) -> str:
+        return _validate_password_complexity(v)
 
 
 class ProfileOut(BaseModel):
@@ -227,8 +285,20 @@ class RefreshOut(BaseModel):
 
 
 class ChangePasswordIn(BaseModel):
-    current_password: str
-    new_password: str = Field(min_length=8, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+    # #2939 — current_password was the one password field without a max-length
+    # guard: an arbitrarily large (up to the 1 MiB body cap) current-password
+    # payload was accepted at the schema boundary, and a multibyte value over 72
+    # bytes made bcrypt.checkpw raise ValueError inside verify_password. Cap it
+    # like every other password field. No min_length / complexity here — it is
+    # VERIFY-only (bcrypt-CHECKED against the stored legacy hash), never a newly
+    # set secret.
+    current_password: str = Field(max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=BCRYPT_MAX_PASSWORD_LENGTH)
+
+    @field_validator("new_password")
+    @classmethod
+    def _change_password_new(cls, v: str) -> str:
+        return _validate_password_complexity(v)
 
 
 class VerifyPasswordIn(BaseModel):

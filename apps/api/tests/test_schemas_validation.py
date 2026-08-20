@@ -79,7 +79,7 @@ def input_kwargs(model, *, name=None, display_name=None, avatar="🦉"):
     if model is ProfileUpdateIn:
         return {"display_name": display_name}
     if model is SignupIn:
-        return {"email": "p@t.co", "password": "password123", "display_name": display_name}
+        return {"email": "p@t.co", "password": "Password1!", "display_name": display_name}
     raise TypeError(model)
 
 
@@ -159,7 +159,7 @@ for model in (KidIn, KidUpdateIn, ProfileUpdateIn, SignupIn, KidOut, KidSnapshot
 # Whitespace-only / empty optional names normalize to None (routers' no-op).
 p = ProfileUpdateIn(display_name="   ")
 check("ProfileUpdateIn whitespace-only display_name → None", p.display_name, None)
-s = SignupIn(email="p@t.co", password="password123", display_name="")
+s = SignupIn(email="p@t.co", password="Password1!", display_name="")
 check("SignupIn empty display_name → None", s.display_name, None)
 
 print("②  avatar — rejects over-length + HTML, accepts short emoji, strips controls…")
