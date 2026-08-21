@@ -41,7 +41,11 @@ if [ "$AUDIT_RC" -ne 0 ]; then
   echo "✖ AUDIT GATE FAILED (exit $AUDIT_RC) — aborting, no stamp/tag/deploy." >&2
   exit 1
 fi
-python3 scripts/team/oracle_team.py --no-page 2>&1 | tail -1 | sed 's/^/  oracle: /'
+# NV_ORACLE_ARGS lets the operator override the oracle flags for a ONE-OFF run
+# (e.g. NV_ORACLE_ARGS="--ci" to skip box-only checks like Monitoring Watch when
+# the local memory API is saturated but healthy). Default stays the strict
+# --no-page gate. Use sparingly — it does NOT weaken the audit.mjs gate.
+python3 scripts/team/oracle_team.py ${NV_ORACLE_ARGS:---no-page} 2>&1 | tail -1 | sed 's/^/  oracle: /'
 ORACLE_RC="${PIPESTATUS[0]}"
 if [ "$ORACLE_RC" -ne 0 ]; then
   echo "✖ ORACLE GATE FAILED (exit $ORACLE_RC) — aborting, no stamp/tag/deploy." >&2
