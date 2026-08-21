@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// #2646 — Next 15 requires metadata routes to opt into static export explicitly.
+export const dynamic = "force-static";
+
 // #1786 — the parent portal is an auth-gated login shell; robots cannot log in,
 // so everything under `/` is Disallowed. The public /share/ weekly card stays
 // indexable via an explicit Allow. Because the portal ships under basePath

@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// #2646 — Next 15 requires metadata routes to opt into static export explicitly.
+export const dynamic = "force-static";
+
 // #1785 — static sitemap for the parent portal's public pages, emitted by Next
 // at export time (output:"export" → out/sitemap.xml under the basePath).
 // URLs are built from SITE_URL + basePath (the same single origin source used
