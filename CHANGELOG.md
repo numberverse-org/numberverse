@@ -1,3 +1,11 @@
+## 21 Aug 2026 — 1.12.0 (Wave 2: migration safety, auth hardening, share-card fixes, Bangla i18n, responsive parent portal, export security)
+
+bd6c70b chore(release): allow NV_ORACLE_ARGS override for one-off deploys
+b20854f fix(kid): share-card overflow + name fit + photo-booth i18n + wa fallback
+a655e05 fix(api): migration-harness safety — advisory lock, idempotent DDL, NOT NULL drift guard
+e3a7077 fix(parent): share page browser-locale autodetect + wire→domain adapters
+f6e734a fix(api): auth hardening — password complexity + length caps + no-email-leak signup
+
 ## 20 Aug 2026 — 1.11.1 (release train (8 since 1.11.0))
 
 f00c224 fix(parent): responsive topbar + table overflow + compare-kids gate + quiet-hours grid

@@ -1,5 +1,5 @@
 # 🎮 Numberverse — Product Tracker
-> Last updated: 20 Aug 2026
+> Last updated: 21 Aug 2026
 
 ## 🩹 PGVECTOR BOOT-CRASH FIX 18 Aug 2026 ✅ → 1.0.1 (0 fan-out, direct fix)
 - **#live-incident** the deployed 1.0.0 API crash-looped at boot: `StoryEmbedding` sat on `Base.metadata`, so startup `create_all` tried `CREATE TABLE story_embeddings … VECTOR(384)` on `postgres:16-alpine` (no `vector` extension) → `type "vector" does not exist` → 502 on `/health` + tunnel. `72fb9e8` moves the model onto its own `embed_metadata` (startup `create_all` never touches it; the lazy embed job creates the table only after `CREATE EXTENSION IF NOT EXISTS vector` succeeds) + NEW `test_embedding_metadata.py`. Embed job degrades gracefully (`skipped` when pgvector/ML stack absent).
