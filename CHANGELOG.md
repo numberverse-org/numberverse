@@ -1,3 +1,9 @@
+## 21 Aug 2026 — 1.12.1 (Next 15 + React 19, nginx 1.28, dead-i18n cleanup)
+
+d56f9f7 chore(parent): Next 14 → 15 + React 19 (EOL major upgrade)
+2e64e8f chore(kid): remove 16 dead engine-i18n keys (EN+BN)
+23ea6c8 chore(deploy): nginx 1.27-alpine → 1.28-alpine (EOL mainline → stable)
+
 ## 21 Aug 2026 — 1.12.0 (Wave 2: migration safety, auth hardening, share-card fixes, Bangla i18n, responsive parent portal, export security)
 
 bd6c70b chore(release): allow NV_ORACLE_ARGS override for one-off deploys
