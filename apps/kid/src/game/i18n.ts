@@ -804,12 +804,6 @@ const EN: Record<string, Entry> = {
   seTouch: "Touch",
   seGreat: "Senses!",
   seDone: "Senses star!",
-  seSpeak: "I use my {choice} for {name}!",
-  seLinkSee: "A {name} — you see it with your eyes! Tap the eye",
-  seLinkHear: "A {name} — you hear it with your ears! Tap the ear",
-  seLinkSmell: "A {name} — you smell it with your nose! Tap the nose",
-  seLinkTaste: "A {name} — you taste it with your tongue! Tap the tongue",
-  seLinkTouch: "A {name} — you touch it with your hands! Tap the hand",
   tapTry: "Try again — which one is it?",
   // #1479 — shared tap-choice coaching banner (miss #2+ of the hint ladder).
   tapHint: "Look at the picture — tap the matching card!",
@@ -1602,11 +1596,8 @@ const EN: Record<string, Entry> = {
   moneyChange: "You paid ৳{paid} for a ৳{price} thing. What is your change?",
   priceLabel: "Price",
   // #1474 — home streak badge teaser (mirrors the HomeScreen STR copy).
-  streakTomorrow: "tomorrow +{n} 🪙",
   // #1473 — home calendar fresh-start cue after a missed day.
-  calendarFreshStart: "🌱 Fresh start — play today to begin a new week",
   // #1472 — home line when a held freeze token can't cover the missed days.
-  freezeNotEnough: "Your 🧊 covers one missed day, but {n} days passed — fresh start 🌱",
   // #1058 — shared per-item countdown timeout cue in the timed sort/tap scenes.
   timeUp: "Time's up — you can do it!",
   /* ── Pet mini-games (#104) ── */
@@ -1643,13 +1634,6 @@ const EN: Record<string, Entry> = {
   eggHatchHatched: "It hatched! Say hi to your new pet! 🎉",
   eggHatchDone: "New friend! 🐣✨",
   exploreGardenTitle: "🌱 Explore garden",
-  exploreGardenSubtitle: "Plant anything you like — there is no wrong answer!",
-  exploreGardenPrompt0: "How many flowers did you plant?",
-  exploreGardenPrompt1: "Make a row of 5!",
-  exploreGardenPrompt2: "Can you plant three bees?",
-  exploreGardenPrompt3: "Plant a butterfly next to a flower!",
-  exploreGardenPrompt4: "Where will you put the sun?",
-  exploreGardenPrompt5: "Try a garden with more flowers than bees!",
   exploreGardenCounter: (vars) => `plants placed: ${vars?.n ?? "0"}`,
   // Guided counting goals — a clear, visible per-quest target (K.CC.1).
   exploreGardenGoal: (vars) => `Plant ${vars?.n ?? "?"} ${vars?.emoji ?? "🌱"}`,
@@ -2534,12 +2518,6 @@ const BN: Record<string, Entry> = {
   seTouch: "স্পর্শ",
   seGreat: "ইন্দ্রিয়!",
   seDone: "ইন্দ্রিয়ের তারকা!",
-  seSpeak: "{name} — আমি {choice} ব্যবহার করি!",
-  seLinkSee: "{name} — তুমি এটা চোখে দেখো! চোখ টিপো",
-  seLinkHear: "{name} — তুমি এটা কানে শোনো! কান টিপো",
-  seLinkSmell: "{name} — তুমি এটা নাকে গন্ধ পাও! নাক টিপো",
-  seLinkTaste: "{name} — তুমি এটা জিভে স্বাদ পাও! জিভ টিপো",
-  seLinkTouch: "{name} — তুমি এটা হাতে স্পর্শ করো! হাত টিপো",
   tapTry: "আবার চেষ্টা করো — কোনটা?",
   // #1479 — shared tap-choice coaching banner (miss #2+ of the hint ladder).
   tapHint: "ছবিটা দেখো — মিলওয়ালা কার্ডে চাপ দাও!",
@@ -3333,11 +3311,8 @@ const BN: Record<string, Entry> = {
   moneyChange: "তুমি ৳{paid} দিয়ে ৳{price} এর জিনিস কিনলে। ফেরত কত টাকা?",
   priceLabel: "দাম",
   // #1474 — home streak badge teaser (mirrors the HomeScreen STR copy).
-  streakTomorrow: "আগামীকাল +{n} 🪙",
   // #1473 — home calendar fresh-start cue after a missed day.
-  calendarFreshStart: "🌱 নতুন শুরু — আজ খেললে নতুন সপ্তাহ শুরু হবে",
   // #1472 — home line when a held freeze token can't cover the missed days.
-  freezeNotEnough: "তোমার 🧊 একদিন বাঁচায়, কিন্তু {n} দিন পেরিয়ে গেছে — নতুন শুরু 🌱",
   // #1058 — shared per-item countdown timeout cue in the timed sort/tap scenes.
   timeUp: "সময় শেষ — তুমি পারবে!",
   /* ── Pet mini-games (#104) ── */
@@ -3374,13 +3349,6 @@ const BN: Record<string, Entry> = {
   eggHatchHatched: "ডিম ফুটেছে! তোমার নতুন পোষা প্রাণী! 🎉",
   eggHatchDone: "নতুন বন্ধু! 🐣✨",
   exploreGardenTitle: "🌱 বাগান সাজাই",
-  exploreGardenSubtitle: "যা খুশি লাগাও — কোনো ভুল নেই!",
-  exploreGardenPrompt0: "কতগুলো ফুল লাগিয়েছ?",
-  exploreGardenPrompt1: "পাঁচটার একটা সারি বানাও!",
-  exploreGardenPrompt2: "তিনটা মৌমাছি বসাতে পারো?",
-  exploreGardenPrompt3: "ফুলের পাশে একটা প্রজাপতি বসাও!",
-  exploreGardenPrompt4: "সূর্যকে কোথায় রাখবে?",
-  exploreGardenPrompt5: "মৌমাছির চেয়ে বেশি ফুলের বাগান বানাও!",
   exploreGardenCounter: (vars) => `লাগানো: ${bnNum(vars?.n ?? "0")}`,
   // Guided counting goals — a clear, visible per-quest target (K.CC.1).
   exploreGardenGoal: (vars) => `${bnNum(vars?.n ?? "?")}টা ${vars?.emoji ?? "🌱"} লাগাও`,
