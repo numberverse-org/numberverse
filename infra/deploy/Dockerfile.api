@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --timeout 120 --retries 5 "uv==0.12.5"
 
 # deps first (layer-cached)
 COPY apps/api/pyproject.toml apps/api/uv.lock ./
-RUN uv sync --frozen --no-dev --retries 5 --timeout 120
+RUN uv sync --frozen --no-dev
 
 # source
 COPY apps/api/app ./app
