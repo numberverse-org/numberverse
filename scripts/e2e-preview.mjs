@@ -43,9 +43,12 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PROXY_HOST = "127.0.0.1";
-const PROXY_PORT = 8081;
-const PARENT_PORT = 3000;
-const KID_PORT = 4173;
+const PROXY_PORT = Number(process.env.NV_E2E_PROXY_PORT) || 8081;
+// #playable — the parent/kid backend ports are env-overridable so the sweep can
+// run on a dev box where another service already owns the default (e.g. Docker
+// Desktop squats :3000). CI leaves these unset → the documented defaults.
+const PARENT_PORT = Number(process.env.NV_E2E_PARENT_PORT) || 3000;
+const KID_PORT = Number(process.env.NV_E2E_KID_PORT) || 4173;
 
 const KID_DIST = path.join(ROOT, "apps", "kid", "dist");
 const PARENT_OUT = path.join(ROOT, "apps", "parent", "out");
