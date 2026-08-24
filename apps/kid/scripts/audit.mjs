@@ -522,6 +522,29 @@ console.log("⑦  AST no-unused-export scan (dead exports in kid src/ — TS AST
   else console.log(`  ✖ ${deadCount} dead export(s) — see above`);
 }
 
+/* ── 8. drag-only scene trap (a kid who can't drag must never be stuck) ──
+   A scene that wires drag input (setDraggable / .on("dragend")) but exposes NO
+   tap fallback (.on("pointerdown"|"pointerup") / registerTap) can trap a kid who
+   can't drag: the round never completes → they're stuck. binSort/reorder BASES
+   carry the tap fallback so their subclasses are fine; this catches a STANDALONE
+   Phaser.Scene (like PrepositionsScene was) that owns its own drag handlers with
+   no tap path. Prevents the "some games are not playable" class from recurring. */
+console.log("⑧  drag-only scene trap (drag input with no tap fallback)…");
+let dragTraps = 0;
+for (const f of readdirSync(GAME).filter((x) => x.endsWith("Scene.ts"))) {
+  const src = readFileSync(join(GAME, f), "utf8");
+  // Only STANDALONE scenes own their input wiring; subclasses inherit the base's
+  // tap fallback (DragReorderScene/BinSortScene both have registerTap/pointerdown).
+  if (!/extends\s+Phaser\.Scene/.test(src)) continue;
+  const hasDrag = /setDraggable\s*\(|\.on\(\s*["']dragend["']/.test(src);
+  const hasTap = /\.on\(\s*["'](pointerdown|pointerup)["']|registerTap\s*\(/.test(src);
+  if (hasDrag && !hasTap) {
+    fail(`${f}: drag input (setDraggable/dragend) with NO tap fallback (pointerdown/pointerup) — a kid who can't drag is trapped. Add a tap-to-place path (see PrepositionsScene / reorder.ts #1999).`);
+    dragTraps++;
+  }
+}
+if (dragTraps === 0) console.log("  ✓ no drag-only standalone scenes (every drag scene has a tap fallback)");
+
 console.log("\n──────────────────────────────");
 if (errors) { console.log(`✖ ${errors} error(s), ${warns} warning(s)`); process.exit(1); }
 if (warns) console.log(`✓ 0 errors, ${warns} warning(s) — fix warnings or leave deliberate`);
