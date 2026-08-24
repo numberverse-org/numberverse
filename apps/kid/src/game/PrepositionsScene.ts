@@ -42,6 +42,7 @@ export class PrepositionsScene extends Phaser.Scene {
   private qInRound = 0;
   private startedAt = 0;
   private locked = false;
+  private dragActive = false; // #playable — true while a real drag is in flight, so the tap fallback ignores the drag's release
   private prep = "on";
   private obj!: { e: string; name: string };
   private objGo?: Phaser.GameObjects.Text;
@@ -73,6 +74,9 @@ export class PrepositionsScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.meter = roundMeter(this);
     this.prompt = questionPanel(this, 0, 0);
+    this.input.on("dragstart", () => {
+      this.dragActive = true;
+    });
     this.input.on("drag", (_p: Phaser.Input.Pointer, go: Phaser.GameObjects.GameObject, x: number, y: number) => {
       const obj = go as Phaser.GameObjects.Text;
       if (this.locked) return;
@@ -83,6 +87,23 @@ export class PrepositionsScene extends Phaser.Scene {
       if (this.locked) return;
       this.drop(obj);
     });
+    // #playable — TAP-TO-PLACE fallback (mirrors binSort/reorder #1999): a kid
+    // who can't drag can instead just TAP the spot where the object should go.
+    // The object slides there and the same drop() check runs, so tap reaches the
+    // exact same correct/wrong path as a drag. Guarded by dragActive so a real
+    // drag's release is never also treated as a tap.
+    this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
+      if (this.locked || !this.objGo) return;
+      if (this.dragActive) { this.dragActive = false; return; }
+      const dx = p.x - p.downX;
+      const dy = p.y - p.downY;
+      if (Math.hypot(dx, dy) > 10) return; // a genuine drag, not a tap
+      // ignore a tap that lands on the object itself (that's a pick-up, not a place)
+      if (this.objGo.getBounds().contains(p.x, p.y)) return;
+      this.objGo.setPosition(p.x, p.y);
+      this.drop(this.objGo);
+    });
+    this.input.on("pointercancel", () => { this.dragActive = false; });
     onSceneResize(this, () => this.layout());
     this.layout();
     this.startRound();

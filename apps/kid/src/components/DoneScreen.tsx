@@ -111,6 +111,33 @@ export default function DoneScreen({
             <span>{t.worldChampDone(lang === "bn" ? world.titleBn ?? world.title : world.title)}</span>
           </div>
         )}
+        {/* kids-flow — the ONE forward tap sits right under the reward, above all
+            the rank/feedback meta, so a kid never has to scan past (or answer) a
+            question to keep playing. The "too easy/hard?" voice + rank badge live
+            BELOW this now (still available, never blocking the next game). */}
+        <div className="badge">
+          {complete
+            ? nextWorld
+              ? t.completeUnlocked(world.title, nextWorld.title)
+              : t.champion
+            : nextWorld
+              ? t.keepGoing(prog.total - prog.mastered, world.title)
+              : t.greatSession}
+        </div>
+        {nextStop ? (
+          <button className="big-btn" onClick={startNextRound}>
+            <span className="play-btn-main">▶ {t.nextRound}</span>
+            <span className="play-btn-sub">
+              {nextStop.skill.title}
+              {(() => { const b = BANDS.find((bb) => bb.id === nextStop.skill.band); return b ? ` · ${b.title}` : ""; })()}
+            </span>
+          </button>
+        ) : (
+          <button className="big-btn" onClick={replaySession}>{t.playAgain}</button>
+        )}
+        {complete && (
+          <button className="cert-btn" onClick={() => openCert(world)}>{t.certBtn}</button>
+        )}
         <div className="rank-badge">
           <span className="rank-badge-label">{t.rankLabel}</span>
           <span className="rank-badge-title">{rank.title}</span>
@@ -156,32 +183,8 @@ export default function DoneScreen({
             </div>
           );
         })()}
-        <div className="badge">
-          {complete
-            ? nextWorld
-              ? t.completeUnlocked(world.title, nextWorld.title)
-              : t.champion
-            : nextWorld
-              ? t.keepGoing(prog.total - prog.mastered, world.title)
-              : t.greatSession}
-        </div>
-        {/* #1568 — ONE prominent call-to-action. When a next stop exists, it's
-            the big "Next round"; "Play again" is hidden so the path forward is
-            unambiguous (it stays available via the other ghost links below). */}
-        {nextStop ? (
-          <button className="big-btn" onClick={startNextRound}>
-            <span className="play-btn-main">▶ {t.nextRound}</span>
-            <span className="play-btn-sub">
-              {nextStop.skill.title}
-              {(() => { const b = BANDS.find((bb) => bb.id === nextStop.skill.band); return b ? ` · ${b.title}` : ""; })()}
-            </span>
-          </button>
-        ) : (
-          <button className="big-btn" onClick={replaySession}>{t.playAgain}</button>
-        )}
-        {complete && (
-          <button className="cert-btn" onClick={() => openCert(world)}>{t.certBtn}</button>
-        )}
+        {/* kids-flow — the forward CTA + cert now render ABOVE (right under the
+            reward). Only the low-priority navigation links remain down here. */}
         <button className="ghost-btn nova-home-btn" onClick={goNova}><Icon name="nova" size={20} /> {t.novaMeet} · <Icon name="coin" size={15} /> {novaCoins}</button>
         <button className="ghost-btn" onClick={() => setScreen("worlds")}>{t.worldsBtn}</button>
         <button className="ghost-btn" onClick={() => setScreen("home")}>{t.homeBtn}</button>
