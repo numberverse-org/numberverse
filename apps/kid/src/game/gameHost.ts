@@ -112,8 +112,21 @@ export function startSceneWithFade({ game, fromKey, toKey, data, onStarted, onRe
     return;
   }
 
-  from.cameras.main.fadeOut(SCENE_FADE_MS, 0, 0, 0);
-  from.cameras.main.once("camerafadeoutcomplete", () => {
+  // #playable — a `from` scene that was already stopped (e.g. the playability
+  // sweep boots scene→scene without a live transition) has its camera torn down,
+  // so `from.cameras.main` is undefined and `.fadeOut` throws. Guard it: if the
+  // outgoing scene has no live camera, just stop it and begin (no fade needed —
+  // there is nothing visible to fade out).
+  const fromCam = from.cameras?.main;
+  if (!fromCam) {
+    game.scene.stop(fromKey as string);
+    if (isCancelled?.()) return;
+    begin();
+    return;
+  }
+
+  fromCam.fadeOut(SCENE_FADE_MS, 0, 0, 0);
+  fromCam.once("camerafadeoutcomplete", () => {
     game.scene.stop(fromKey as string);
     if (isCancelled?.()) return;
     begin();
