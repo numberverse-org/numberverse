@@ -10,5 +10,5 @@
  * version the banner offers. Keep this file to these two tiny strings — the
  * stamp lives here specifically so nothing heavy has to be imported to read it.
  */
-export const APP_BUILD = "21 Aug 2026 · 1.12.1 (Next 15 + React 19, nginx 1.28, dead-i18n cleanup)";
-export const APP_VERSION = "1.12.1";
+export const APP_BUILD = "26 Aug 2026 · 1.13.0 (Parent Plus paywall + bKash checkout flow + scene fixes)";
+export const APP_VERSION = "1.13.0";

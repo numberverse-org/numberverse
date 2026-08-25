@@ -1,3 +1,14 @@
+## 26 Aug 2026 — 1.13.0 (Parent Plus paywall + bKash checkout flow + scene fixes)
+
+081dbe3 feat(parent): Parent Plus paywall + bKash checkout flow
+c67d04e fix(api): add pysocks so bKash SOCKS proxy can connect
+d41f18d fix(kid): guard scene fade when outgoing scene is already stopped
+4ec9cab fix(e2e): make preview server ports env-overridable (NV_E2E_PARENT/KID/PROXY_PORT)
+bc8e75f fix(kid): audit gate — catch drag-only scenes with no tap fallback
+9211e34 fix(kid): unstick Prepositions (tap-to-place) + hoist post-game Next CTA
+d113a58 fix(deploy): remove invalid --retries/--timeout from uv sync (uv has no such flags)
+547616f fix(deploy): make pip + uv sync resilient to box ISP timeouts
+
 ## 21 Aug 2026 — 1.12.1 (Next 15 + React 19, nginx 1.28, dead-i18n cleanup)
 
 d56f9f7 chore(parent): Next 14 → 15 + React 19 (EOL major upgrade)
