@@ -23,6 +23,10 @@ export interface Profile {
    *  current password, so the portal shows a set-password flow instead of the
    *  change-password form. null/"local" accounts use the normal flow. */
   auth_provider?: string | null;
+  /** Billing entitlement — "free" (Worlds 1–2) or "plus" (all worlds). The
+   *  server is the source of truth; the portal shows it + an upgrade affordance. */
+  plan?: string;
+  plan_expires_at?: string | null;
 }
 
 export interface LoginResponse {
@@ -370,6 +374,66 @@ export async function deleteAccount(
 export async function getProfile(token: string): Promise<Profile> {
   const res = await authFetch(token, `${API}/auth/me`);
   if (!res.ok) await throwApiError(res, "Failed to load profile");
+  return res.json();
+}
+
+/* ─── Parent Plus billing (bKash Tokenized Checkout) ─────────────────────────
+ * The kid app only ever reads `plan` from /auth/me; payment is a parent-portal
+ * concern. When bKash is unconfigured the routes return 501 — the portal hides
+ * the upgrade button and shows a "coming soon" line instead. */
+
+/** GET /billing/bkash/status — whether bKash is configured on THIS server, and
+ *  the annual price. The portal gates the upgrade button on `enabled`. */
+export interface BillingStatus {
+  enabled: boolean;
+  annual_bdt: number;
+}
+
+export async function getBillingStatus(token: string): Promise<BillingStatus> {
+  const res = await authFetch(token, `${API}/billing/bkash/status`);
+  if (!res.ok) await throwApiError(res, "Failed to load billing status");
+  return res.json();
+}
+
+/** POST /billing/bkash/create — mint a bKash payment; the parent is redirected
+ *  to `bkashURL` to authorize, then bKash returns to `callback_url`. */
+export interface BkashCreateResult {
+  paymentID: string;
+  bkashURL: string;
+  amount: number;
+  currency: string;
+}
+
+export async function createBkashPayment(
+  token: string,
+  callback_url: string,
+): Promise<BkashCreateResult> {
+  const res = await authFetch(token, `${API}/billing/bkash/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_url, payer_reference: "{}" }),
+  });
+  if (!res.ok) await throwApiError(res, "Failed to start payment");
+  return res.json();
+}
+
+/** POST /billing/bkash/execute — complete an authorized bKash payment. On
+ *  success the server activates the subscription and returns plan="plus". */
+export interface BkashExecuteResult {
+  status: string;
+  plan: string | null;
+}
+
+export async function executeBkashPayment(
+  token: string,
+  payment_id: string,
+): Promise<BkashExecuteResult> {
+  const res = await authFetch(token, `${API}/billing/bkash/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ payment_id }),
+  });
+  if (!res.ok) await throwApiError(res, "Failed to complete payment");
   return res.json();
 }
 

@@ -600,6 +600,47 @@ export const ACCOUNT_LANGS = {
   },
 } as const;
 
+/** 💳 Parent Plus billing (bKash) — EN + BN. Same country-pack seam as
+ *  WIZARD_LANGS: a new locale = a new key, no component rewrites. */
+export const BILLING_LANGS = {
+  en: {
+    plusTitle: "Parent Plus",
+    plusSub: "Unlock every world for every kid on this account.",
+    freeBadge: "Free plan",
+    freeLine: "Worlds 1–2 are free forever.",
+    plusBadge: "Parent Plus active",
+    expiresAt: "until {date}",
+    includesTitle: "Parent Plus includes",
+    include1: "All 8 worlds · every game",
+    include2: "Cloud sync & multi-device",
+    include3: "Up to 4 kid profiles",
+    include4: "Offline — works without internet",
+    upgradeButton: "Unlock all 8 worlds",
+    redirecting: "Opening bKash…",
+    comingSoon: "Payments are opening soon — check back shortly.",
+    statusUnavailable: "Couldn't load your plan — check your connection.",
+    createErr: "Couldn't start the payment — please try again.",
+  },
+  bn: {
+    plusTitle: "প্যারেন্ট প্লাস",
+    plusSub: "এই অ্যাকাউন্টের প্রতিটি বাচ্চার জন্য সব ওয়ার্ল্ড আনলক করুন।",
+    freeBadge: "ফ্রি প্ল্যান",
+    freeLine: "ওয়ার্ল্ড ১–২ চিরকাল ফ্রি।",
+    plusBadge: "প্যারেন্ট প্লাস সক্রিয়",
+    expiresAt: "{date} পর্যন্ত",
+    includesTitle: "প্যারেন্ট প্লাস-এ যা যা আছে",
+    include1: "সব ৮টি ওয়ার্ল্ড · প্রতিটি গেম",
+    include2: "ক্লাউড সিঙ্ক ও একাধিক ডিভাইস",
+    include3: "সর্বোচ্চ ৪টি বাচ্চার প্রোফাইল",
+    include4: "অফলাইন — ইন্টারনেট ছাড়াই চলে",
+    upgradeButton: "সব ৮টি ওয়ার্ল্ড আনলক করুন",
+    redirecting: "বিকাশ খুলছে…",
+    comingSoon: "পেমেন্ট খুব শিগগিরিই চালু হচ্ছে — একটু পরে আবার দেখুন।",
+    statusUnavailable: "আপনার প্ল্যান লোড করা যায়নি — সংযোগ পরীক্ষা করুন।",
+    createErr: "পেমেন্ট শুরু করা যায়নি — আবার চেষ্টা করুন।",
+  },
+} as const;
+
 /** 🎛️ #1512/#1514/#1515 — learning-controls captions + shortcuts (EN + BN).
  *  Same country-pack seam as WIZARD_LANGS: a new locale = a new key, no
  *  component rewrites. */
@@ -2461,6 +2502,7 @@ export const NAV_GROUPS: {
       // #3047 — these sections are profile/session-only (no kid data), so they
       // stay reachable from the sidebar even when the account has zero kids.
       { id: "account", label: "Account & security" },
+      { id: "billing", label: "Parent Plus", bn: "প্যারেন্ট প্লাস" },
       // #1499 — make the diagnostics card reachable from the sidebar.
       { id: "diagnostics", label: "Diagnostics", bn: "ডায়াগনস্টিকস" },
       { id: "help", label: "Help & setup" },

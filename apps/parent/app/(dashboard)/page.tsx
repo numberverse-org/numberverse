@@ -127,6 +127,7 @@ import {
   DiagnosticsCard,
   HelpCard,
 } from "../components/AccountSections";
+import { BillingCard } from "../components/BillingCard";
 
 // #1530/#1508 — single source of truth for the "new kid" birth-year default.
 function defaultBirthYear(): number {
@@ -2726,6 +2727,15 @@ export default function ParentDashboard() {
                 onSetPassword={handleSetPassword}
                 sessionsLoading={sessionsLoading}
                 onDeleteAccount={(confirmation, password) => void handleDeleteAccount(confirmation, password)}
+                wizLang={wizLang}
+              />
+            </SectionErr>
+
+            {/* ── 💳 Parent Plus billing (bKash) — profile/session-only ── */}
+            <SectionErr label="billing">
+              <BillingCard
+                profile={profile}
+                token={token ?? ""}
                 wizLang={wizLang}
               />
             </SectionErr>
