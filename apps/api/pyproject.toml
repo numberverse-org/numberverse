@@ -23,6 +23,11 @@ dependencies = [
   "email-validator>=2.2,<3.0",
   "google-auth>=2.29,<3.0",
   "requests~=2.34",
+  # bKash Tokenized Checkout routes outbound calls through the bkash-tunnel
+  # container (socks5h:// proxy). requests needs PySocks for SOCKS proxies —
+  # without it the first real bKash call raises "Missing dependencies for SOCKS
+  # support". Present in the manifest, never forgeable (no default creds).
+  "pysocks>=1.7.1,<2.0",
   # #329 Kotha embeddings — pgvector SQL types (lightweight; the server-side
   # `vector` extension is ensured at job time). The actual embedding model is
   # an OPTIONAL extra so the API stays light: `pip install "numberverse-api[embeddings]"`.
